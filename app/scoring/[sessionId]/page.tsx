@@ -208,7 +208,8 @@ export default function SessionPage() {
     }
     if (mode === 'distance') {
       const val = parseFloat(distanceVal) || 0
-      const raw_score = distanceUnit === 'cm' ? val / 100 : val
+      // Store in cm as a whole number — avoids decimal type errors in DB
+      const raw_score = distanceUnit === 'm' ? Math.round(val * 100) : Math.round(val)
       return { raw_score, score_label: `${distanceVal}${distanceUnit}` }
     }
     if (mode === 'sport') {
