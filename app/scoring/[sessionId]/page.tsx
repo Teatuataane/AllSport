@@ -175,6 +175,20 @@ export default function SessionPage() {
 
   const standings = calcPlacements(results, events)
   const RANK_COLOURS = ['#F9B051', '#aaa', '#CD7F32', '#2371BB', '#4DB26E']
+  const [expandedEventId, setExpandedEventId] = useState<string | null>(null)
+
+  function getEventScores(eventId: string) {
+    return results
+      .filter(r => r.event_id === eventId)
+      .sort((a, b) => b.raw_score - a.raw_score)
+      .map((r, idx, arr) => {
+        let placement = idx + 1
+        if (idx > 0 && r.raw_score === arr[idx - 1].raw_score) {
+          placement = arr.findIndex(x => x.raw_score === r.raw_score) + 1
+        }
+        return { ...r, placement }
+      })
+  }
 
   const timerColour = timeLeft !== null
     ? timeLeft < 600 ? '#EA4742' : timeLeft < 1800 ? '#F9B051' : '#4DB26E'
@@ -280,16 +294,62 @@ export default function SessionPage() {
             <div style={{ fontSize: '12px', color: '#555', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '1px' }}>Today's Events</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               {events.map(event => {
-                const count = results.filter(r => r.event_id === event.id).length
+                const scores = getEventScores(event.id)
+                const leader = scores[0] ?? null
+                const isExpanded = expandedEventId === event.id
                 return (
-                  <div key={event.id} style={{ background: '#111', borderRadius: '8px', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <span style={{ fontSize: '13px', fontWeight: 'bold' }}>{event.event_name}</span>
-                      <span style={{ fontSize: '11px', color: '#555', marginLeft: '8px' }}>{event.domain_name}</span>
-                    </div>
-                    <span style={{ fontSize: '12px', color: count > 0 ? '#4DB26E' : '#555' }}>
-                      {count > 0 ? `${count} score${count !== 1 ? 's' : ''}` : 'No scores'}
-                    </span>
+                  <div key={event.id} style={{ background: '#111', borderRadius: '8px', overflow: 'hidden', border: `1px solid ${isExpanded ? '#2371BB' : '#1e1e1e'}` }}>
+                    {/* Event header row — tap to expand */}
+                    <button
+                      onClick={() => setExpandedEventId(isExpanded ? null : event.id)}
+                      style={{ width: '100%', background: 'transparent', border: 'none', cursor: 'pointer', padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}
+                    >
+                      <div style={{ textAlign: 'left', flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#fff' }}>{event.event_name}</div>
+                        <div style={{ fontSize: '11px', color: '#555', marginTop: '1px' }}>{event.domain_name}</div>
+                      </div>
+                      {leader ? (
+                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                          <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#F9B051' }}>{leader.player_name}</div>
+                          <div style={{ fontSize: '11px', color: '#4DB26E' }}>{leader.score_label || leader.raw_score} · {scores.length} score{scores.length !== 1 ? 's' : ''}</div>
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: '11px', color: '#444' }}>No scores yet</div>
+                      )}
+                      <div style={{ color: '#333', fontSize: '12px', flexShrink: 0, marginLeft: '4px' }}>{isExpanded ? '▲' : '▼'}</div>
+                    </button>
+
+                    {/* Expanded scores list */}
+                    {isExpanded && (
+                      <div style={{ borderTop: '1px solid #1e1e1e' }}>
+                        {scores.length === 0 ? (
+                          <div style={{ padding: '12px 14px', color: '#444', fontSize: '12px' }}>No scores submitted for this event yet.</div>
+                        ) : (
+                          scores.map((r, idx) => (
+                            <div key={r.id} style={{
+                              display: 'flex', alignItems: 'center', gap: '12px',
+                              padding: '10px 14px',
+                              borderBottom: idx < scores.length - 1 ? '1px solid #1a1a1a' : 'none',
+                              background: idx === 0 ? '#0d1a0d' : 'transparent',
+                            }}>
+                              <div style={{
+                                width: '24px', height: '24px', borderRadius: '50%', flexShrink: 0,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                fontSize: '11px', fontWeight: 'bold',
+                                background: RANK_COLOURS[idx] || '#222',
+                                color: idx < 3 ? '#000' : '#fff',
+                              }}>{r.placement}</div>
+                              <div style={{ flex: 1, fontSize: '13px', color: idx === 0 ? '#fff' : '#aaa', fontWeight: idx === 0 ? 'bold' : 'normal' }}>
+                                {r.player_name}
+                              </div>
+                              <div style={{ fontSize: '14px', fontWeight: 'bold', color: idx === 0 ? '#F9B051' : '#666' }}>
+                                {r.score_label || r.raw_score}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
                   </div>
                 )
               })}
