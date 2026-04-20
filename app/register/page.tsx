@@ -182,7 +182,7 @@ export default function Register() {
               <div style={{ display: 'flex', gap: '8px' }}>
                 {["Men's", "Women's"].map(div => (
                   <button key={div} onClick={() => set('division', div)} style={{
-                    flex: 1, padding: '12px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: 'bold',
+                    flex: 1, padding: '12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold',
                     background: form.division === div ? '#2371BB' : '#111',
                     color: form.division === div ? '#fff' : '#555',
                     border: `1px solid ${form.division === div ? '#2371BB' : '#333'}`,
