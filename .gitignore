@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Claude Code local state (skills and worktrees are machine-local)
+.claude/skills/
+.claude/worktrees/
