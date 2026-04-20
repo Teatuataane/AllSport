@@ -25,6 +25,10 @@ export default function ScoringSetup() {
   const router = useRouter()
   const [location, setLocation] = useState('AllSport HQ')
   const [isChampionship, setIsChampionship] = useState(false)
+  const [startTime, setStartTime] = useState(() => {
+    const now = new Date()
+    return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
+  })
   const [selectedEvents, setSelectedEvents] = useState<{ [domainNumber: number]: string }>({})
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -55,18 +59,21 @@ export default function ScoringSetup() {
       }
 
       const today = new Date().toISOString().split('T')[0]
-      const now = new Date().toTimeString().split(' ')[0]
+      // Build started_at from the selected start time today
+      const [h, m] = startTime.split(':').map(Number)
+      const started = new Date()
+      started.setHours(h, m, 0, 0)
 
       const { data: session, error: sessionError } = await supabase
         .from('sessions')
         .insert({
           session_date: today,
-          start_time: now,
+          start_time: startTime + ':00',
           location,
           duration_minutes: 100,
           is_championship: isChampionship,
           is_active: true,
-          started_at: new Date().toISOString(),
+          started_at: started.toISOString(),
         })
         .select()
         .single()
@@ -119,13 +126,24 @@ export default function ScoringSetup() {
       <div style={{ maxWidth: '680px', margin: '0 auto', padding: '24px' }}>
         {/* Session config */}
         <div style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '20px', marginBottom: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div>
-            <label style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: '11px', color: '#555', letterSpacing: '0.15em', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>Location</label>
-            <input
-              value={location}
-              onChange={e => setLocation(e.target.value)}
-              style={{ width: '100%', background: '#0a0a0a', border: '1px solid #2a2a2a', borderRadius: '8px', padding: '10px 14px', color: '#fff', fontSize: '15px', fontFamily: 'Barlow, sans-serif', boxSizing: 'border-box' as const, outline: 'none' }}
-            />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '12px' }}>
+            <div>
+              <label style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: '11px', color: '#555', letterSpacing: '0.15em', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>Location</label>
+              <input
+                value={location}
+                onChange={e => setLocation(e.target.value)}
+                style={{ width: '100%', background: '#0a0a0a', border: '1px solid #2a2a2a', borderRadius: '8px', padding: '10px 14px', color: '#fff', fontSize: '15px', fontFamily: 'Barlow, sans-serif', boxSizing: 'border-box' as const, outline: 'none' }}
+              />
+            </div>
+            <div>
+              <label style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: '11px', color: '#555', letterSpacing: '0.15em', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>Start Time</label>
+              <input
+                type="time"
+                value={startTime}
+                onChange={e => setStartTime(e.target.value)}
+                style={{ background: '#0a0a0a', border: '1px solid #2a2a2a', borderRadius: '8px', padding: '10px 14px', color: '#fff', fontSize: '15px', fontFamily: 'Barlow, sans-serif', outline: 'none', colorScheme: 'dark' as any }}
+              />
+            </div>
           </div>
           <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
             <input

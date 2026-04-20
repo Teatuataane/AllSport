@@ -99,6 +99,15 @@ export default function SessionPage() {
   const [timeLeft, setTimeLeft] = useState<number | null>(null)
   const [sessionEnded, setSessionEnded] = useState(false)
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null)
+  const [bodyweight, setBodyweight] = useState('')
+  const [bodyweightSaved, setBodyweightSaved] = useState(false)
+
+  const saveBodyweight = async () => {
+    if (!player || !bodyweight) return
+    await supabase.from('players').update({ bodyweight_kg: parseFloat(bodyweight) }).eq('id', player.id)
+    setBodyweightSaved(true)
+    setTimeout(() => setBodyweightSaved(false), 2000)
+  }
 
   // Structured score inputs
   const [weightKg, setWeightKg] = useState('')
@@ -142,6 +151,7 @@ export default function SessionPage() {
       if (authSession) {
         const { data: playerData } = await supabase.from('players').select('*').eq('id', authSession.user.id).single()
         setPlayer(playerData)
+        if (playerData?.bodyweight_kg) setBodyweight(String(playerData.bodyweight_kg))
       }
       const { data: sessionData } = await supabase.from('sessions').select('*').eq('id', sessionId).single()
       setSession(sessionData)
@@ -442,14 +452,27 @@ export default function SessionPage() {
                 </div>
               )}
 
-              {/* Player chip */}
-              <div style={{ background: '#111', borderRadius: '8px', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#2371BB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '14px' }}>
+              {/* Player chip + bodyweight */}
+              <div style={{ background: '#111', borderRadius: '8px', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#2371BB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '14px', flexShrink: 0 }}>
                   {(player.display_name || player.username || '?')[0].toUpperCase()}
                 </div>
-                <div>
+                <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{player.display_name || player.username}</div>
                   <div style={{ fontSize: '11px', color: '#555' }}>{player.division}</div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                  <input
+                    type="number"
+                    value={bodyweight}
+                    onChange={e => setBodyweight(e.target.value)}
+                    onBlur={saveBodyweight}
+                    placeholder="kg"
+                    style={{ width: '60px', background: '#0d0d0d', border: '1px solid #2a2a2a', borderRadius: '6px', padding: '6px 8px', color: '#fff', fontSize: '14px', fontWeight: 'bold', textAlign: 'center' }}
+                  />
+                  <span style={{ fontSize: '11px', color: bodyweightSaved ? '#4DB26E' : '#444' }}>
+                    {bodyweightSaved ? '✓ saved' : 'BW kg'}
+                  </span>
                 </div>
               </div>
 

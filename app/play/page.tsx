@@ -55,7 +55,6 @@ export default function PlayPage() {
         <div style={{ fontFamily: 'var(--font-bebas)', fontSize: '36px', letterSpacing: '4px' }}>
           ALL<span style={{ color: '#EA4742' }}>SPORT</span>
         </div>
-        <div style={{ color: '#555', fontSize: '13px', letterSpacing: '2px', marginTop: '4px' }}>TRAIN EVERYTHING</div>
       </div>
 
       <div style={{ width: '100%', maxWidth: '400px' }}>

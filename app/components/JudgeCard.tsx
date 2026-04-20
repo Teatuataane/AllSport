@@ -27,6 +27,8 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
   const [fullscreenQR, setFullscreenQR] = useState<Session | null>(null)
   const [ending, setEnding] = useState<string | null>(null)
   const [endConfirm, setEndConfirm] = useState<string | null>(null)
+  const [voiding, setVoiding] = useState<string | null>(null)
+  const [voidConfirm, setVoidConfirm] = useState<string | null>(null)
   const [endError, setEndError] = useState('')
   const [loading, setLoading] = useState(true)
 
@@ -71,15 +73,14 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
     fetchSessions()
   }, [])
 
-  // Two-tap end confirmation: first tap sets confirm, second tap within timeout ends
+  // Two-tap end confirmation
   const handleEndTap = (sessionId: string) => {
     if (endConfirm === sessionId) {
-      // Second tap — execute end
       handleEndSession(sessionId)
       setEndConfirm(null)
     } else {
-      // First tap — enter confirm state, auto-cancel after 3s
       setEndConfirm(sessionId)
+      setVoidConfirm(null)
       setTimeout(() => setEndConfirm(c => c === sessionId ? null : c), 3000)
     }
   }
@@ -99,6 +100,37 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
     }
     await fetchSessions()
     setEnding(null)
+  }
+
+  // Two-tap void confirmation — sets points_awarded_at so trigger skips point award
+  const handleVoidTap = (sessionId: string) => {
+    if (voidConfirm === sessionId) {
+      handleVoidSession(sessionId)
+      setVoidConfirm(null)
+    } else {
+      setVoidConfirm(sessionId)
+      setEndConfirm(null)
+      setTimeout(() => setVoidConfirm(c => c === sessionId ? null : c), 3000)
+    }
+  }
+
+  const handleVoidSession = async (sessionId: string) => {
+    if (playerRole !== 'judge') return
+    setVoiding(sessionId)
+    setEndError('')
+    const now = new Date().toISOString()
+    // Setting points_awarded_at prevents the trigger from awarding points
+    const { error } = await supabase
+      .from('sessions')
+      .update({ is_active: false, ended_at: now, points_awarded_at: now })
+      .eq('id', sessionId)
+    if (error) {
+      setEndError('Failed to void session — try again')
+      setVoiding(null)
+      return
+    }
+    await fetchSessions()
+    setVoiding(null)
   }
 
   const joinUrl = (code: string) =>
@@ -243,8 +275,25 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
                           Continue →
                         </button>
                         <button
+                          onClick={() => handleVoidTap(sess.id)}
+                          disabled={voiding === sess.id || ending === sess.id}
+                          style={{
+                            padding: '10px 16px', borderRadius: '8px',
+                            border: voidConfirm === sess.id ? '2px solid #F9B051' : '1px solid #F9B05166',
+                            background: voidConfirm === sess.id ? '#F9B05122' : '#1a1200',
+                            color: '#F9B051', cursor: voiding === sess.id ? 'not-allowed' : 'pointer',
+                            fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px',
+                            fontWeight: 700, letterSpacing: '0.05em',
+                            opacity: voiding === sess.id ? 0.6 : 1,
+                            minHeight: '44px', flex: '1 1 auto',
+                            transition: 'all 0.15s',
+                          }}
+                        >
+                          {voiding === sess.id ? 'Voiding...' : voidConfirm === sess.id ? 'Confirm Void?' : 'Void'}
+                        </button>
+                        <button
                           onClick={() => handleEndTap(sess.id)}
-                          disabled={ending === sess.id}
+                          disabled={ending === sess.id || voiding === sess.id}
                           style={{
                             padding: '10px 16px', borderRadius: '8px',
                             border: endConfirm === sess.id ? '2px solid #EA4742' : '1px solid #EA474266',

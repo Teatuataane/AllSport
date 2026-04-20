@@ -3,8 +3,8 @@
 import Link from 'next/link'
 
 const sessions = [
-  { day: 'Tuesday', time: '5:00 PM', duration: '100 mins', spots: 100 },
-  { day: 'Thursday', time: '5:00 PM', duration: '100 mins', spots: 100 },
+  { day: 'Tuesday', time: '4:30 PM', duration: '100 mins', spots: 100 },
+  { day: 'Thursday', time: '4:30 PM', duration: '100 mins', spots: 100 },
   { day: 'Saturday', time: '9:00 AM', duration: '100 mins', spots: 100 },
 ]
 
@@ -155,7 +155,7 @@ export default function Schedule() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div style={{ background: '#0a0a0a', border: '1px solid #f4a22633', padding: '28px 32px' }}>
                   <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555555', marginBottom: '8px' }}>Date</div>
-                  <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '36px', color: '#f4a226', lineHeight: 1 }}>Sunday 19 April 2026</div>
+                  <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '36px', color: '#f4a226', lineHeight: 1 }}>Sunday 14 March 2027</div>
                 </div>
                 <div style={{ background: '#0a0a0a', border: '1px solid #f4a22633', padding: '28px 32px' }}>
                   <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555555', marginBottom: '8px' }}>Location</div>
