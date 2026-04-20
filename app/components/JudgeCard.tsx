@@ -1,0 +1,360 @@
+'use client'
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase-browser'
+import { QRCodeSVG } from 'qrcode.react'
+
+type Session = {
+  id: string
+  session_code: string
+  session_date: string
+  location: string
+  is_active: boolean
+  started_at: string | null
+}
+
+type JudgeCardProps = {
+  playerRole: string
+}
+
+export default function JudgeCard({ playerRole }: JudgeCardProps) {
+  const router = useRouter()
+  const supabase = createClient()
+  const [activeSessions, setActiveSessions] = useState<Session[]>([])
+  const [recentSessions, setRecentSessions] = useState<Session[]>([])
+  const [playerCounts, setPlayerCounts] = useState<Record<string, number>>({})
+  const [expandedQR, setExpandedQR] = useState<string | null>(null)
+  const [fullscreenQR, setFullscreenQR] = useState<Session | null>(null)
+  const [ending, setEnding] = useState<string | null>(null)
+  const [endConfirm, setEndConfirm] = useState<string | null>(null)
+  const [endError, setEndError] = useState('')
+  const [loading, setLoading] = useState(true)
+
+  const fetchSessions = async () => {
+    const [activeResult, recentResult] = await Promise.all([
+      supabase
+        .from('sessions')
+        .select('*')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(5),
+      supabase
+        .from('sessions')
+        .select('*')
+        .eq('is_active', false)
+        .order('created_at', { ascending: false })
+        .limit(5),
+    ])
+
+    const active = activeResult.data || []
+    setActiveSessions(active)
+    setRecentSessions(recentResult.data || [])
+
+    if (active.length > 0) {
+      const counts: Record<string, number> = {}
+      await Promise.all(
+        active.map(async (sess) => {
+          const { count } = await supabase
+            .from('results')
+            .select('*', { count: 'exact', head: true })
+            .eq('session_id', sess.id)
+          counts[sess.id] = count || 0
+        })
+      )
+      setPlayerCounts(counts)
+    }
+
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    fetchSessions()
+  }, [])
+
+  // Two-tap end confirmation: first tap sets confirm, second tap within timeout ends
+  const handleEndTap = (sessionId: string) => {
+    if (endConfirm === sessionId) {
+      // Second tap — execute end
+      handleEndSession(sessionId)
+      setEndConfirm(null)
+    } else {
+      // First tap — enter confirm state, auto-cancel after 3s
+      setEndConfirm(sessionId)
+      setTimeout(() => setEndConfirm(c => c === sessionId ? null : c), 3000)
+    }
+  }
+
+  const handleEndSession = async (sessionId: string) => {
+    if (playerRole !== 'judge') return
+    setEnding(sessionId)
+    setEndError('')
+    const { error } = await supabase
+      .from('sessions')
+      .update({ is_active: false, ended_at: new Date().toISOString() })
+      .eq('id', sessionId)
+    if (error) {
+      setEndError('Failed to end session — try again')
+      setEnding(null)
+      return
+    }
+    await fetchSessions()
+    setEnding(null)
+  }
+
+  const joinUrl = (code: string) =>
+    typeof window !== 'undefined' ? `${window.location.origin}?code=${code}` : ''
+
+  const hasActive = activeSessions.length > 0
+
+  return (
+    <>
+      {/* Fullscreen QR overlay */}
+      {fullscreenQR && (
+        <div
+          onClick={() => setFullscreenQR(null)}
+          style={{
+            position: 'fixed', inset: 0, background: '#000', zIndex: 9999,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer',
+          }}
+        >
+          <div style={{ background: '#fff', padding: '32px', borderRadius: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+            <QRCodeSVG value={joinUrl(fullscreenQR.session_code)} size={280} />
+            <div style={{
+              fontFamily: 'Bebas Neue, cursive', fontSize: '48px', letterSpacing: '0.3em',
+              color: '#0a0a0a', lineHeight: 1,
+            }}>
+              {fullscreenQR.session_code}
+            </div>
+            <div style={{ color: '#888', fontSize: '13px', fontFamily: 'Barlow, sans-serif' }}>
+              Tap anywhere to close
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div style={{
+        background: '#111', border: '1px solid #1e3a5f', borderRadius: '12px',
+        padding: '20px', marginBottom: '20px',
+      }}>
+        {/* Header: Te Reo label + start CTA */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+          <div>
+            <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '22px', color: '#2371BB', letterSpacing: '0.05em', lineHeight: 1 }}>
+              Kaiwāwao
+            </div>
+            <div style={{ fontSize: '11px', color: '#555', marginTop: '2px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.08em' }}>
+              JUDGE PANEL
+            </div>
+          </div>
+          {!hasActive && (
+            <button
+              onClick={() => router.push('/scoring')}
+              style={{
+                padding: '10px 18px', borderRadius: '8px', border: 'none',
+                cursor: 'pointer',
+                background: 'linear-gradient(90deg, #2371BB, #4DB26E)',
+                color: '#fff',
+                fontFamily: 'Bebas Neue, cursive', fontSize: '16px', letterSpacing: '0.08em',
+                minHeight: '44px',
+              }}
+            >
+              Start New Session →
+            </button>
+          )}
+        </div>
+
+        {endError && (
+          <div style={{
+            background: '#2e0d0d', border: '1px solid #EA4742', borderRadius: '8px',
+            padding: '10px 14px', color: '#EA4742', fontSize: '13px',
+            fontFamily: 'Barlow, sans-serif', marginBottom: '12px',
+          }}>
+            {endError}
+          </div>
+        )}
+
+        {loading ? (
+          <div style={{ color: '#555', fontSize: '13px', padding: '8px 0', fontFamily: 'Barlow, sans-serif' }}>Loading sessions...</div>
+        ) : (
+          <>
+            {/* Active sessions */}
+            {activeSessions.length > 0 && (
+              <div style={{ marginBottom: '16px' }}>
+                <div style={{ fontSize: '11px', color: '#555', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '10px', fontFamily: 'Barlow Condensed, sans-serif' }}>
+                  Active
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {activeSessions.map(sess => (
+                    <div key={sess.id} style={{
+                      background: '#0d1f2d', border: '1px solid #1e3a5f', borderRadius: '10px', padding: '14px',
+                    }}>
+                      {/* Session code + player count — loudest element */}
+                      <div style={{ marginBottom: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                          <span style={{
+                            background: '#2371BB22', border: '1px solid #2371BB',
+                            color: '#2371BB', fontFamily: 'Bebas Neue, cursive',
+                            fontSize: '32px', letterSpacing: '0.25em', padding: '4px 14px',
+                            borderRadius: '6px', lineHeight: 1.1,
+                          }}>
+                            {sess.session_code}
+                          </span>
+                          <div>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#fff' }}>
+                              {playerCounts[sess.id] ?? '—'}
+                            </div>
+                            <div style={{ fontSize: '11px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.05em' }}>
+                              joined
+                            </div>
+                          </div>
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#555', marginTop: '6px', fontFamily: 'Barlow, sans-serif' }}>
+                          {sess.location}
+                        </div>
+                      </div>
+
+                      {/* Action buttons — mobile stacks via flex-wrap */}
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        <button
+                          onClick={() => {
+                            setExpandedQR(expandedQR === sess.id ? null : sess.id)
+                          }}
+                          style={{
+                            padding: '10px 16px', borderRadius: '8px', border: '1px solid #333',
+                            background: '#0a0a0a', color: '#ccc', cursor: 'pointer',
+                            fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px',
+                            fontWeight: 700, letterSpacing: '0.05em', minHeight: '44px',
+                            flex: '1 1 auto',
+                          }}
+                        >
+                          {expandedQR === sess.id ? 'Hide QR' : 'Show QR'}
+                        </button>
+                        <button
+                          onClick={() => router.push(`/scoring/${sess.id}`)}
+                          style={{
+                            padding: '10px 16px', borderRadius: '8px', border: '1px solid #2371BB',
+                            background: '#2371BB22', color: '#2371BB', cursor: 'pointer',
+                            fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px',
+                            fontWeight: 700, letterSpacing: '0.05em', minHeight: '44px',
+                            flex: '1 1 auto',
+                          }}
+                        >
+                          Continue →
+                        </button>
+                        <button
+                          onClick={() => handleEndTap(sess.id)}
+                          disabled={ending === sess.id}
+                          style={{
+                            padding: '10px 16px', borderRadius: '8px',
+                            border: endConfirm === sess.id ? '2px solid #EA4742' : '1px solid #EA474266',
+                            background: endConfirm === sess.id ? '#EA474222' : '#1a0808',
+                            color: '#EA4742', cursor: ending === sess.id ? 'not-allowed' : 'pointer',
+                            fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px',
+                            fontWeight: 700, letterSpacing: '0.05em',
+                            opacity: ending === sess.id ? 0.6 : 1,
+                            minHeight: '44px', flex: '1 1 auto',
+                            transition: 'all 0.15s',
+                          }}
+                        >
+                          {ending === sess.id ? 'Ending...' : endConfirm === sess.id ? 'Confirm End?' : 'End'}
+                        </button>
+                      </div>
+
+                      {/* QR panel (expandable inline → tap for fullscreen) */}
+                      {expandedQR === sess.id && (
+                        <div
+                          onClick={() => setFullscreenQR(sess)}
+                          style={{
+                            display: 'flex', flexDirection: 'column', alignItems: 'center',
+                            padding: '20px', background: '#fff', borderRadius: '10px',
+                            marginTop: '12px', cursor: 'pointer',
+                          }}
+                        >
+                          <QRCodeSVG value={joinUrl(sess.session_code)} size={180} />
+                          <div style={{
+                            marginTop: '10px', color: '#0a0a0a', fontFamily: 'Bebas Neue, cursive',
+                            fontSize: '24px', letterSpacing: '0.2em',
+                          }}>
+                            {sess.session_code}
+                          </div>
+                          <div style={{ color: '#888', fontSize: '11px', marginTop: '4px', fontFamily: 'Barlow, sans-serif' }}>
+                            Tap to fullscreen
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Start button when session active — disabled, shown below active section */}
+                <button
+                  onClick={() => router.push('/scoring')}
+                  disabled
+                  style={{
+                    width: '100%', marginTop: '10px', padding: '12px', borderRadius: '8px',
+                    border: 'none', cursor: 'not-allowed',
+                    background: '#1a1a1a', color: '#444',
+                    fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px',
+                    fontWeight: 700, letterSpacing: '0.05em',
+                  }}
+                >
+                  Session in progress — end it to start a new one
+                </button>
+              </div>
+            )}
+
+            {/* Empty active state */}
+            {activeSessions.length === 0 && (
+              <div style={{
+                background: '#0a0a0a', borderRadius: '8px', padding: '20px',
+                textAlign: 'center', marginBottom: '16px',
+              }}>
+                <div style={{ color: '#444', fontSize: '13px', fontFamily: 'Barlow, sans-serif' }}>
+                  No active sessions
+                </div>
+                <div style={{ color: '#333', fontSize: '12px', marginTop: '4px', fontFamily: 'Barlow, sans-serif' }}>
+                  Tap "Start New Session" above to begin
+                </div>
+              </div>
+            )}
+
+            {/* Recent sessions */}
+            {recentSessions.length > 0 && (
+              <div>
+                <div style={{ fontSize: '11px', color: '#555', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px', fontFamily: 'Barlow Condensed, sans-serif' }}>
+                  Recent
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {recentSessions.map(sess => (
+                    <div key={sess.id} style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      background: '#0a0a0a', borderRadius: '8px', padding: '10px 12px',
+                    }}>
+                      <div>
+                        <div style={{ fontSize: '13px', color: '#888', fontFamily: 'Barlow, sans-serif' }}>{sess.location}</div>
+                        <div style={{ fontSize: '11px', color: '#444', marginTop: '2px', fontFamily: 'Barlow, sans-serif' }}>
+                          {sess.session_date
+                            ? new Date(sess.session_date).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })
+                            : ''}
+                        </div>
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#444', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.05em' }}>ENDED</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Empty recent state — only show when no active sessions either (first time) */}
+            {recentSessions.length === 0 && activeSessions.length === 0 && (
+              <div style={{ color: '#333', fontSize: '12px', fontFamily: 'Barlow, sans-serif', textAlign: 'center', paddingTop: '4px' }}>
+                Your session history will appear here
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </>
+  )
+}
