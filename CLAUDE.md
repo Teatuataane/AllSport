@@ -35,7 +35,7 @@ Through this model, AllSport aims to improve public health, build connected comm
 | Fonts | Bebas Neue, Barlow, Barlow Condensed (Google Fonts) |
 | Database | Supabase (PostgreSQL) |
 | Auth | Supabase Auth (email/password + Google OAuth) |
-| Hosting | Vercel (not yet deployed — running locally) |
+| Hosting | Vercel — https://all-sport-psi.vercel.app |
 | Dev tools | Claude Code + gstack |
 
 **Supabase project URL:** https://pvutdyosuhpwnklrpczu.supabase.co
@@ -219,16 +219,16 @@ update players set role = 'judge' where id = '[uuid]';
 |---|---|---|---|
 | Home | / | Complete | Hero, ethos, colours, CTA |
 | How To Play | /how-to-play | Complete | Rules, scoring, 10 domains |
-| Schedule | /schedule | Complete | Session times, Championship section |
-| Leaderboard | /leaderboard | Placeholder data | Needs real Supabase queries |
+| Schedule | /schedule | Complete | Times correct (4:30pm Tue/Thu, 9am Sat), Championship 14 Mar 2027 |
+| Leaderboard | /leaderboard | Complete | Real data, division tabs, active session live banner |
 | Koha | /koha | Complete | Tiers, IRD rebate |
 | Play | /play | Complete | Login/register landing, Google OAuth |
 | Register | /register | Complete | 3-step form, division, display prefs, junior parent fields |
 | Login | /login | Complete | Email + Google OAuth |
 | Dashboard | /dashboard | Complete | Grade progress, stats, join by code, recent sessions |
-| Judge Panel | /judge | Complete | Create sessions, manage scores, history |
-| Scoring Setup | /scoring | Complete | Select 10 events, create session |
-| Live Session | /scoring/[sessionId] | Complete | Live leaderboard, timer, score submission, session code |
+| Judge Panel | dashboard (JudgeCard) | Complete | Create/end/void sessions, QR code, history |
+| Scoring Setup | /scoring | Complete | Select 10 events, editable start time, create session |
+| Live Session | /scoring/[sessionId] | Complete | Live leaderboard, timer, structured score entry, expandable event scores, bodyweight |
 | Auth Callback | /auth/callback | Complete | Google OAuth handler |
 
 ---
@@ -238,13 +238,21 @@ update players set role = 'judge' where id = '[uuid]';
 ### players
 id, created_at, full_name, email, phone, date_of_birth, address, city, region, country,
 parent_name, parent_email, parent_phone, is_active, username, division,
-role (default: player), show_full_name, show_username, show_division, show_location, display_name
+role (default: player), show_full_name, show_username, show_division, show_location, display_name,
+bodyweight_kg
+
+**Add bodyweight column if not present:**
+```sql
+ALTER TABLE players ADD COLUMN IF NOT EXISTS bodyweight_kg NUMERIC;
+```
 
 ### sessions
 id, created_at, session_date, start_time, location, max_participants, duration_minutes,
-is_tournament, is_championship, is_active, started_at, ended_at, session_code, notes
+is_tournament, is_championship, is_active, started_at, ended_at, session_code, notes,
+points_awarded_at
 
 Session code: auto-generated 6-character code via PostgreSQL trigger on insert.
+points_awarded_at: set by the award_session_points trigger. If set before is_active→false, trigger skips (used by Void).
 
 ### session_events
 id, created_at, session_id, domain_number, domain_name, event_name
@@ -256,15 +264,24 @@ rank_in_session, notes, player_name, raw_score, score_label, adjusted_score, pla
 exercise_variation, weight_kg, reps, time_seconds, pose_variation,
 opponent_name, match_score, result_type
 
+Unique constraint: results_player_event_unique ON (player_id, session_id, event_id)
+Score submission uses upsert — resubmitting updates the existing row.
+
 ### rankings
 id, updated_at, player_id, total_points, total_sessions, average_score,
-best_score, current_rank, division, average_placement
+best_score, current_rank, division, average_placement, season_year
+
+Unique constraint: rankings_player_season_unique ON (player_id, season_year)
 
 ### Key Logic
 - player_id on results is nullable (players can join by name without account)
 - Realtime enabled on session_events and results
 - RLS enabled on all tables
 - Session auto-locks when timer hits zero (is_active set to false)
+- Points auto-awarded via trigger when session closes (award_session_points)
+- Void session: set points_awarded_at=NOW() before/with is_active=false to skip trigger
+- raw_score for time events is stored negative (faster = higher) so rankings sort correctly
+- Input modes by domain: strength (weight+reps), reps, time (mm:ss), distance (m/cm), sport (win/draw/loss)
 
 ---
 
@@ -276,25 +293,29 @@ best_score, current_rank, division, average_placement
     page.tsx                        # Homepage
     layout.tsx                      # Root layout
     globals.css                     # Design system
-    play/page.tsx                   # Login/register landing
+    play/page.tsx                   # Login/register landing, Google OAuth
     how-to-play/page.tsx
     schedule/page.tsx
-    leaderboard/page.tsx            # Placeholder data — needs real queries
+    leaderboard/page.tsx            # Real data, division tabs, active session banner
     koha/page.tsx
     register/page.tsx               # 3-step registration
     login/page.tsx
     dashboard/page.tsx              # Player home — grade, stats, join session
-    judge/page.tsx                  # Judge panel
-    scoring/page.tsx                # Session setup
-    scoring/[sessionId]/page.tsx    # Live session
+    scoring/page.tsx                # Session setup — events, location, start time
+    scoring/[sessionId]/page.tsx    # Live session — structured inputs, expandable scores, bodyweight
     auth/callback/route.ts
+    components/
+      JudgeCard.tsx                 # Judge panel — embedded in dashboard, end/void sessions, QR
   components/
     Navbar.tsx                      # PLAY NOW, auth-aware, judge link
     Footer.tsx
   lib/
-    supabase.ts                     # Basic client
+    supabase.ts                     # Basic client (legacy — avoid in new code)
     supabase-browser.ts             # Browser client (use this in all client components)
     supabase-server.ts              # Server client
+  supabase/
+    migrations/
+      20260420_phase1.sql           # Points trigger, season_year on rankings, calculate_streak, RLS
   public/
     logo.png
 ```
@@ -307,15 +328,25 @@ best_score, current_rank, division, average_placement
 
 - Full public website (5 pages)
 - 3-step player registration with Google OAuth, division, display preferences
-- Play page — login/register landing
+- Play page — login/register landing (tagline removed)
 - Player dashboard — grade progress, year tabs, stats, join by code, recent sessions
-- Judge panel — create/end sessions, edit/delete scores, history
-- Live scoring app — 100-event pool, live leaderboard, 100-min timer, session code, real-time
+- Judge panel (JudgeCard) — create/end/void sessions, QR code fullscreen, history
+- Live scoring app — 100-event pool, structured inputs by domain, live leaderboard, expandable event scores, bodyweight field, 100-min timer, session code, real-time
+- Leaderboard — real data, division tabs, active session live banner (updates via realtime)
 - Navbar rebuilt — PLAY NOW button, auth-aware, judge link
 - Role system (player/judge)
 - Session code system — 6-character auto-generated, join from dashboard
-- Full database schema with all new columns
+- Full database schema with all columns
 - Supabase browser client (fixes auth in Next.js App Router)
+- Google OAuth — redirect URLs configured correctly in Supabase for production
+- RLS policies — players can insert/update own results, trigger can write rankings
+- Points auto-calculation — trigger fires on session close, awards placement points + bonuses + multipliers
+- Season year on rankings (2026, 2027 etc.)
+- calculate_streak() function — 4 of last 5 sessions
+- Score upsert — resubmitting an event updates rather than errors
+- Session start time — editable field in setup, pre-filled with now
+- Bodyweight — saved to player profile, pre-fills on return
+- Deployed to Vercel at https://all-sport-psi.vercel.app
 - Brand colours, points formula, grades, koha, mission — all confirmed
 - How to Play branded PDF — complete
 - Strategy 2026-2027 branded PDF — complete
@@ -324,32 +355,36 @@ best_score, current_rank, division, average_placement
 
 ## What's Next (In Priority Order)
 
-1. Deploy to Vercel
-2. Live leaderboard data — replace placeholder on /leaderboard
-3. Points calculation — auto-award points when session ends
-4. Structured score entry — variation + weight + reps for strength; time for flexibility; win/loss for sports
-5. Event detail pages — rules and personal bests
-6. Division split on live leaderboard
-7. QR code for session join
-8. Judge score management from within live session view
-9. Judge approval flow (replace manual SQL)
+1. allsport.org.nz — purchase domain, point DNS to Vercel
+2. Judge score management from within live session view
+3. Real-time player count in JudgeCard (subscribe to results inserts)
+4. Judge approval flow (replace manual SQL)
+5. Event detail pages — rules and personal bests per event
+6. Player profile page — edit display prefs, view grade history
+7. Division split on live session leaderboard
+8. Verify Te Reo "Kaiwāwao" is correct for judge/referee in sports context
 
 ---
 
 ## Key Decisions
 
 - Koha only — no set fees
-- Tagline: Play EVERYTHING
+- Tagline: Play EVERYTHING (not shown on login screen)
 - Te reo Maori identity throughout
 - Taniwha = Black = peak grade = black belt equivalent
 - Grades reset January, history kept forever
-- Role system: player and judge — judge panel at /judge
-- Session join: 6-digit code or QR (QR pending)
+- Role system: player and judge — judge panel embedded in dashboard via JudgeCard
+- Session join: 6-digit code or QR (QR done in JudgeCard)
 - Login required to submit scores
 - 100-min timer auto-locks session
-- Supabase browser client required in all client components
+- Supabase browser client required in all client components (supabase-browser.ts)
 - Judge assignment: manual SQL for now, approval flow planned
 - Domain display order confirmed (Maximal Strength first)
+- Score resubmission: upsert on (player_id, session_id, event_id) — updates existing row
+- Time events: raw_score stored as negative seconds so faster = higher (sort consistency)
+- Void vs End: Void sets points_awarded_at before closing to prevent trigger firing
+- Bodyweight stored on player profile (bodyweight_kg), pre-filled in session scoring
+- Structured score inputs: 5 modes — strength (weight+reps), reps, time, distance, sport
 
 ---
 
