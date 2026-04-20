@@ -4,6 +4,27 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase-browser'
 
+type ActiveSession = {
+  id: string
+  session_date: string
+  started_at: string | null
+  location: string
+  is_championship: boolean
+}
+
+type SessionResult = {
+  player_id: string | null
+  player_name: string | null
+  placement: number | null
+  points_earned: number | null
+}
+
+type SessionLeader = {
+  name: string
+  eventsCompleted: number
+  totalPlacement: number
+}
+
 type RankingRow = {
   id: string
   player_id: string
@@ -148,11 +169,35 @@ function LeaderboardTable({ data, accentColor, loading }: { data: EnrichedPlayer
   )
 }
 
+function computeLeader(results: SessionResult[]): SessionLeader | null {
+  // Only count rows where we have a placement and a player name
+  const valid = results.filter(r => r.placement != null && (r.player_name || r.player_id))
+  if (valid.length === 0) return null
+
+  const totals: Record<string, { name: string; total: number; count: number }> = {}
+  for (const r of valid) {
+    const key = r.player_id ?? r.player_name ?? 'unknown'
+    const name = r.player_name ?? r.player_id ?? 'Unknown'
+    if (!totals[key]) totals[key] = { name, total: 0, count: 0 }
+    totals[key].total += r.placement!
+    totals[key].count += 1
+  }
+
+  // Lowest total placement wins
+  const sorted = Object.values(totals).sort((a, b) => a.total - b.total || b.count - a.count)
+  if (sorted.length === 0) return null
+  const leader = sorted[0]
+  return { name: leader.name, eventsCompleted: leader.count, totalPlacement: leader.total }
+}
+
 export default function Leaderboard() {
   const [activeTab, setActiveTab] = useState('men')
   const [rankings, setRankings] = useState<RankingRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [activeSession, setActiveSession] = useState<ActiveSession | null>(null)
+  const [sessionLeader, setSessionLeader] = useState<SessionLeader | null>(null)
 
+  // Fetch seasonal rankings
   useEffect(() => {
     const supabase = createClient()
     supabase
@@ -163,6 +208,59 @@ export default function Leaderboard() {
         setRankings(data || [])
         setLoading(false)
       })
+  }, [])
+
+  // Fetch active session + results, subscribe to realtime
+  useEffect(() => {
+    const supabase = createClient()
+    let channel: ReturnType<typeof supabase.channel> | null = null
+
+    async function loadActiveSession() {
+      const { data: sessions } = await supabase
+        .from('sessions')
+        .select('id, session_date, started_at, location, is_championship')
+        .eq('is_active', true)
+        .limit(1)
+
+      const session = sessions?.[0] ?? null
+      setActiveSession(session)
+
+      if (!session) {
+        setSessionLeader(null)
+        return
+      }
+
+      // Load current results for this session
+      const { data: results } = await supabase
+        .from('results')
+        .select('player_id, player_name, placement, points_earned')
+        .eq('session_id', session.id)
+
+      setSessionLeader(computeLeader((results ?? []) as SessionResult[]))
+
+      // Subscribe to realtime updates on results for this session
+      channel = supabase
+        .channel(`leaderboard-session-${session.id}`)
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'results',
+          filter: `session_id=eq.${session.id}`,
+        }, async () => {
+          const { data: fresh } = await supabase
+            .from('results')
+            .select('player_id, player_name, placement, points_earned')
+            .eq('session_id', session.id)
+          setSessionLeader(computeLeader((fresh ?? []) as SessionResult[]))
+        })
+        .subscribe()
+    }
+
+    loadActiveSession()
+
+    return () => {
+      if (channel) supabase.removeChannel(channel)
+    }
   }, [])
 
   const getTabData = (tabKey: string): EnrichedPlayer[] => {
@@ -212,6 +310,56 @@ export default function Leaderboard() {
           </p>
         </div>
       </section>
+
+      {/* Active session banner */}
+      {activeSession && (
+        <section style={{ background: '#0a1a0a', borderTop: '3px solid #4DB26E', borderBottom: '1px solid #1e2e1e', padding: '28px 0' }}>
+          <div className="container">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+              {/* Pulse dot */}
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <style>{`
+                  @keyframes ping { 0% { transform: scale(1); opacity: 0.8; } 100% { transform: scale(2.2); opacity: 0; } }
+                  .pulse-ring { position: absolute; inset: 0; border-radius: 50%; background: #4DB26E; animation: ping 1.4s cubic-bezier(0,0,0.2,1) infinite; }
+                `}</style>
+                <div style={{ position: 'relative', width: '12px', height: '12px' }}>
+                  <div className="pulse-ring" />
+                  <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#4DB26E', position: 'relative', zIndex: 1 }} />
+                </div>
+              </div>
+
+              <div className="tag" style={{ margin: 0, color: '#4DB26E', borderColor: '#4DB26E22', background: '#4DB26E11' }}>
+                Session in progress
+              </div>
+
+              {sessionLeader ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '32px', flexWrap: 'wrap' }}>
+                  <div>
+                    <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#555', marginBottom: '2px' }}>Current Leader</div>
+                    <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '28px', color: '#ffffff', lineHeight: 1 }}>{sessionLeader.name}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#555', marginBottom: '2px' }}>Total Placement</div>
+                    <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '28px', color: '#4DB26E', lineHeight: 1 }}>{sessionLeader.totalPlacement}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#555', marginBottom: '2px' }}>Events Done</div>
+                    <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '28px', color: '#888', lineHeight: 1 }}>{sessionLeader.eventsCompleted} / 10</div>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '15px', color: '#555' }}>No scores recorded yet — session underway</div>
+              )}
+
+              {activeSession.is_championship && (
+                <div className="tag" style={{ margin: 0, color: '#F9B051', borderColor: '#F9B05122', background: '#F9B05111' }}>
+                  🏆 Championship
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Tabs + table */}
       <section className="section" style={{ background: '#0d0d0d', borderTop: '3px solid #2563eb' }}>
