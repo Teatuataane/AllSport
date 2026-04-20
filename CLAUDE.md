@@ -120,7 +120,7 @@ linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)
 
 | Session Size | Gap | Example |
 |---|---|---|
-| 5 players | 20 pts | 100/80/60/20 |
+| 5 players | 20 pts | 100/80/60/40/20 |
 | 10 players | 10 pts | 100/90/80/10 |
 | 20+ players | min 10 | 100/90/80/10 |
 
@@ -166,12 +166,12 @@ Resets each January. History kept permanently.
 
 | # | Te Reo | Colour | Points |
 |---|---|---|---|
-| 1 | Ma | White | 0-499 |
+| 1 | Mā | White | 0-499 |
 | 2 | Kiwikiwi | Grey | 500 |
 | 3 | Whero | Red | 1,000 |
 | 4 | Karaka | Orange | 2,000 |
-| 5 | Kowhai | Yellow | 3,000 |
-| 6 | Kakariki | Green | 4,000 |
+| 5 | Kōwhai | Yellow | 3,000 |
+| 6 | Kākāriki | Green | 4,000 |
 | 7 | Kahurangi | Blue | 5,000 |
 | 8 | Poroporo | Purple | 6,000 |
 | 9 | Uenuku | Rainbow | 8,000 |
@@ -339,7 +339,7 @@ best_score, current_rank, division, average_placement
 ## Key Decisions
 
 - Koha only — no set fees
-- Tagline: Train Everything
+- Tagline: Play EVERYTHING
 - Te reo Maori identity throughout
 - Taniwha = Black = peak grade = black belt equivalent
 - Grades reset January, history kept forever
