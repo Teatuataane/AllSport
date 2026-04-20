@@ -152,7 +152,7 @@ export default function SessionPage() {
     setSubmitting(true)
     setError('')
     try {
-      const { error: err } = await supabase.from('results').insert({
+      const { error: err } = await supabase.from('results').upsert({
         session_id: sessionId,
         event_id: selectedEvent.id,
         player_name: player.display_name || player.username || player.full_name,
@@ -160,7 +160,7 @@ export default function SessionPage() {
         raw_score: parseFloat(scoreValue),
         score_label: scoreLabel || scoreValue,
         score: parseFloat(scoreValue),
-      })
+      }, { onConflict: 'player_id,session_id,event_id' })
       if (err) throw err
       setScoreValue('')
       setScoreLabel('')
