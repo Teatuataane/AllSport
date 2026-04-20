@@ -234,7 +234,6 @@ export default function SessionPage() {
         player_id: player.id,
         raw_score,
         score_label,
-        score: raw_score,
       }, { onConflict: 'player_id,session_id,event_id' })
       if (err) throw err
       clearInputs()
