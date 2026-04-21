@@ -337,6 +337,9 @@ export default function SessionPage() {
   const [playerDivisions, setPlayerDivisions] = useState<Record<string, { division: string; dob: string | null }>>({})
   const [bodyweight, setBodyweight] = useState('')
   const [bodyweightSaved, setBodyweightSaved] = useState(false)
+  // Family accounts
+  const [familyMembers, setFamilyMembers] = useState<any[]>([])
+  const [activePlayer, setActivePlayer] = useState<any>(null)
 
   // Score input fields
   const [weightKg, setWeightKg] = useState('')
@@ -394,7 +397,16 @@ export default function SessionPage() {
       if (auth) {
         const { data: p } = await supabase.from('players').select('*').eq('id', auth.user.id).single()
         setPlayer(p)
+        setActivePlayer(p)
         if (p?.bodyweight_kg) setBodyweight(String(p.bodyweight_kg))
+
+        // Load linked child profiles
+        const { data: children } = await supabase
+          .from('players')
+          .select('*')
+          .eq('parent_id', auth.user.id)
+          .order('full_name')
+        setFamilyMembers(children || [])
       }
       const { data: s } = await supabase.from('sessions').select('*').eq('id', sessionId).single()
       setSession(s)
@@ -557,8 +569,9 @@ export default function SessionPage() {
 
   // ── Submit ─────────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
-    if (!selectedEvent || !isScoreValid() || sessionEnded || preSessionSecsLeft !== null || !player) {
-      if (!player) setError('You must be logged in to submit a score')
+    const submittingAs = activePlayer || player
+    if (!selectedEvent || !isScoreValid() || sessionEnded || preSessionSecsLeft !== null || !submittingAs) {
+      if (!submittingAs) setError('You must be logged in to submit a score')
       return
     }
     setSubmitting(true); setError('')
@@ -570,8 +583,8 @@ export default function SessionPage() {
       const payload: Record<string, any> = {
         session_id: sessionId,
         event_id: selectedEvent.id,
-        player_name: player.display_name || player.username || player.full_name,
-        player_id: player.id,
+        player_name: submittingAs.display_name || submittingAs.username || submittingAs.full_name,
+        player_id: submittingAs.id,
         raw_score,
         score_label,
       }
@@ -1014,36 +1027,68 @@ export default function SessionPage() {
                 </div>
               )}
 
-              {/* Player chip + bodyweight */}
-              <div style={{ background: '#111', borderRadius: '8px', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#2371BB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '14px', flexShrink: 0 }}>
-                  {(player.display_name || player.username || '?')[0].toUpperCase()}
+              {/* Submitting as — family switcher */}
+              <div style={{ background: '#111', borderRadius: '10px', padding: '12px 14px' }}>
+                <div style={{ fontSize: '10px', color: '#444', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '8px' }}>
+                  Submitting as
                 </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{player.display_name || player.username}</div>
-                  <div style={{ fontSize: '11px', color: '#555' }}>{player.division}</div>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {[player, ...familyMembers].filter(Boolean).map((p: any) => {
+                    const isActive = (activePlayer || player)?.id === p.id
+                    const name = p.display_name || p.username || p.full_name || '?'
+                    return (
+                      <button
+                        key={p.id}
+                        onClick={() => { setActivePlayer(p); setSelectedEvent(null); clearInputs() }}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: '8px',
+                          padding: '7px 12px', borderRadius: '8px', border: `1px solid ${isActive ? '#2371BB' : '#2a2a2a'}`,
+                          background: isActive ? '#0d1a2e' : 'transparent',
+                          cursor: 'pointer', color: isActive ? '#fff' : '#666',
+                        }}
+                      >
+                        <div style={{
+                          width: '26px', height: '26px', borderRadius: '50%', flexShrink: 0,
+                          background: isActive ? '#2371BB' : '#222',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontWeight: 'bold', fontSize: '12px', color: '#fff',
+                        }}>
+                          {name[0].toUpperCase()}
+                        </div>
+                        <div style={{ textAlign: 'left' }}>
+                          <div style={{ fontSize: '13px', fontWeight: 'bold', whiteSpace: 'nowrap' }}>{name}</div>
+                          <div style={{ fontSize: '10px', color: '#555' }}>{p.division}</div>
+                        </div>
+                      </button>
+                    )
+                  })}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+              </div>
+
+              {/* Bodyweight — only for the logged-in player */}
+              {(activePlayer || player)?.id === player?.id && (
+                <div style={{ background: '#111', borderRadius: '8px', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '12px', color: '#555', flex: 1 }}>Bodyweight</span>
                   <input
                     type="number"
                     value={bodyweight}
                     onChange={e => setBodyweight(e.target.value)}
                     onBlur={saveBodyweight}
                     placeholder="kg"
-                    style={{ width: '60px', background: '#0d0d0d', border: '1px solid #2a2a2a', borderRadius: '6px', padding: '6px 8px', color: '#fff', fontSize: '14px', fontWeight: 'bold', textAlign: 'center' }}
+                    style={{ width: '70px', background: '#0d0d0d', border: '1px solid #2a2a2a', borderRadius: '6px', padding: '6px 8px', color: '#fff', fontSize: '14px', fontWeight: 'bold', textAlign: 'center' }}
                   />
                   <span style={{ fontSize: '11px', color: bodyweightSaved ? '#4DB26E' : '#444' }}>
-                    {bodyweightSaved ? '✓ saved' : 'BW kg'}
+                    {bodyweightSaved ? '✓ saved' : 'kg'}
                   </span>
                 </div>
-              </div>
+              )}
 
               {/* Event selector */}
               <div>
                 <label style={{ fontSize: '12px', color: '#888', display: 'block', marginBottom: '6px' }}>SELECT EVENT</label>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   {events.map(event => {
-                    const myScore = results.find(r => r.event_id === event.id && r.player_id === player.id)
+                    const myScore = results.find(r => r.event_id === event.id && r.player_id === (activePlayer || player)?.id)
                     const isSelected = selectedEvent?.id === event.id
                     return (
                       <button key={event.id} onClick={() => setSelectedEvent(isSelected ? null : event)} style={{
@@ -1223,7 +1268,7 @@ export default function SessionPage() {
 
                   {/* SPORT — opponent + win/draw/loss + score */}
                   {effectiveMode === 'sport' && (() => {
-                    const myName = player?.display_name || player?.username || player?.full_name
+                    const myName = (activePlayer || player)?.display_name || (activePlayer || player)?.username || (activePlayer || player)?.full_name
                     const otherPlayers = [...new Set(results.map(r => r.player_name))].filter(n => n !== myName)
                     return (
                       <>
