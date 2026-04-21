@@ -112,6 +112,8 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
       setEnding(null)
       return
     }
+    // Points are awarded automatically by the award_session_points DB trigger
+    // which fires when is_active changes true → false above.
     await fetchSessions()
     setEnding(null)
   }

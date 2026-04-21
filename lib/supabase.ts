@@ -1,12 +1,12 @@
-import { createClient } from '@supabase/supabase-js'
+/**
+ * DEPRECATED — do not use this file.
+ *
+ * This client does not handle SSR auth sessions correctly in Next.js App Router.
+ * Sessions are lost on page refresh and RLS policies break.
+ *
+ * Use instead:
+ *   import { createClient } from '@/lib/supabase-browser'   ← client components
+ *   import { createServerClient } from '@supabase/ssr'       ← server components / route handlers
+ */
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  realtime: {
-    params: {
-      eventsPerSecond: 10
-    }
-  }
-})
+export {}

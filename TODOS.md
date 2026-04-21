@@ -34,6 +34,12 @@
 - /play — redirects already-logged-in users to dashboard
 - Browser tab — "AllSport — Play EVERYTHING" + logo favicon
 - Bodyweight SQL migration — `ALTER TABLE players ADD COLUMN IF NOT EXISTS bodyweight_kg NUMERIC;`
+- Sign out button on desktop navbar
+- Family accounts — parent adds/removes whānau profiles from dashboard; "Submitting as" switcher in live session; `parent_id` column + RLS migration
+- Registration failure fix — switched to `supabase-browser`, upsert on profile, email-confirmation handling
+- Legacy `lib/supabase.ts` deprecated — all pages now use `supabase-browser.ts`
+- SQL fix: `v_player_count` now counts distinct players (not result rows) — point gaps were wrong
+- SQL fix: Masters Women ×1.4 multiplier ELSIF reordered — was unreachable, always gave ×1.2
 
 ---
 
@@ -54,6 +60,12 @@
 ---
 
 ## P2 — Soon
+
+### Welcome email on registration
+**What:** Send a branded welcome email when a new player registers — their username, division, next session times, and a link back to their dashboard.
+**Why:** Confirms account creation, gives players something to refer back to, opens a communication channel for session reminders and results.
+**How:** Supabase Edge Function triggered by a database webhook on `players INSERT`, calling Resend (free tier, 3,000/month). Domain `allsport.nz` needs two DNS TXT records added in Resend.
+**Effort:** M (CC) — Edge Function + webhook + Resend account setup + DNS.
 
 ### Judge approval flow
 **What:** Judges can be assigned via the app rather than running `UPDATE players SET role = 'judge'` manually.

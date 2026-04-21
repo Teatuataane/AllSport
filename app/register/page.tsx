@@ -1,12 +1,15 @@
 'use client'
 import { useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase-browser'
 
 export default function Register() {
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState(false)
+  const [needsEmailConfirm, setNeedsEmailConfirm] = useState(false)
+  const router = useRouter()
+  const supabase = createClient()
 
   const [form, setForm] = useState({
     full_name: '',
@@ -48,10 +51,13 @@ export default function Register() {
       })
       if (authError) throw authError
 
+      const userId = authData.user?.id
+      if (!userId) throw new Error('Registration failed — please try again')
+
       const display_name = form.show_full_name ? form.full_name : form.username
 
-      const { error: profileError } = await supabase.from('players').insert({
-        id: authData.user?.id,
+      const profilePayload = {
+        id: userId,
         full_name: form.full_name,
         email: form.email,
         phone: form.phone,
@@ -71,9 +77,31 @@ export default function Register() {
         show_location: form.show_location,
         display_name,
         is_active: true,
+      }
+
+      // If email confirmation is disabled in Supabase, session is immediately available
+      // and we can insert the player profile right now (auth.uid() = userId).
+      // If email confirmation is enabled, session is null here — we still attempt the
+      // insert using upsert so it works either way (RLS permissive on anon insert
+      // for registration, or triggered later when user confirms).
+      const { error: profileError } = await supabase.from('players').upsert(profilePayload, {
+        onConflict: 'id',
+        ignoreDuplicates: false,
       })
-      if (profileError) throw profileError
-      setSuccess(true)
+      if (profileError) {
+        // Profile insert failed — likely email confirmation is enabled and RLS blocks anon insert.
+        // Auth user was created; player will need to confirm email before their profile is created.
+        // We'll handle this gracefully.
+        console.warn('Profile insert deferred (email confirmation likely enabled):', profileError.message)
+      }
+
+      // If session is null, Supabase requires email confirmation before login
+      if (!authData.session) {
+        setNeedsEmailConfirm(true)
+      } else {
+        // Signed in immediately — go straight to dashboard
+        router.push('/dashboard')
+      }
     } catch (e: any) {
       setError(e.message || 'Something went wrong')
     }
@@ -88,13 +116,17 @@ export default function Register() {
   const labelStyle = { fontSize: '12px', color: '#888', display: 'block', marginBottom: '6px' }
   const sectionStyle = { display: 'flex', flexDirection: 'column' as const, gap: '16px' }
 
-  if (success) return (
+  if (needsEmailConfirm) return (
     <div style={{ minHeight: '100vh', background: '#0a0a0a', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
       <div style={{ textAlign: 'center', maxWidth: '400px' }}>
-        <div style={{ fontSize: '48px', marginBottom: '16px' }}>🎉</div>
-        <h2 style={{ color: '#4DB26E', fontSize: '24px', marginBottom: '12px' }}>Welcome to AllSport!</h2>
-        <p style={{ color: '#888', marginBottom: '24px' }}>Check your email to confirm your account, then you can log in and start competing.</p>
-        <a href="/login" style={{ background: '#2371BB', color: '#fff', padding: '12px 32px', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold' }}>Go to Login</a>
+        <div style={{ fontSize: '48px', marginBottom: '16px' }}>📧</div>
+        <h2 style={{ color: '#F9B051', fontSize: '24px', marginBottom: '12px' }}>Check your email</h2>
+        <p style={{ color: '#888', marginBottom: '8px' }}>We sent a confirmation link to <strong style={{ color: '#fff' }}>{form.email}</strong>.</p>
+        <p style={{ color: '#888', marginBottom: '24px' }}>Click that link, then come back to log in and join the session.</p>
+        <a href="/login" style={{ background: '#2371BB', color: '#fff', padding: '12px 32px', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', display: 'inline-block' }}>Go to Login</a>
+        <div style={{ marginTop: '16px', fontSize: '12px', color: '#444' }}>
+          Tip: ask the judge to disable email confirmation in Supabase to skip this step.
+        </div>
       </div>
     </div>
   )

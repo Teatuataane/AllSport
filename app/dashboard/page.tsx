@@ -54,6 +54,11 @@ export default function Dashboard() {
   const [joinError, setJoinError] = useState('')
   const [joining, setJoining] = useState(false)
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
+  const [familyMembers, setFamilyMembers] = useState<any[]>([])
+  const [showAddMember, setShowAddMember] = useState(false)
+  const [addingMember, setAddingMember] = useState(false)
+  const [memberForm, setMemberForm] = useState({ full_name: '', username: '', date_of_birth: '', gender: 'male' as 'male' | 'female' })
+  const [memberError, setMemberError] = useState('')
 
   // Initial load — player, sessions, streak, PBs (not year-dependent)
   useEffect(() => {
@@ -84,6 +89,14 @@ export default function Dashboard() {
 
       setPlayer(playerResult.data)
       setRecentSessions(resultsResult.data || [])
+
+      // Load linked family members
+      const { data: children } = await supabase
+        .from('players')
+        .select('id, full_name, display_name, username, division, date_of_birth')
+        .eq('parent_id', user.id)
+        .order('full_name')
+      setFamilyMembers(children || [])
 
       // Streak — rpc returns array, take first row
       if (streakResult.data && streakResult.data.length > 0) {
@@ -155,6 +168,46 @@ export default function Dashboard() {
       setJoinError(e.message)
     }
     setJoining(false)
+  }
+
+  const isJunior = (dob: string) => {
+    if (!dob) return false
+    return Math.floor((Date.now() - new Date(dob).getTime()) / 31557600000) < 17
+  }
+
+  const handleAddMember = async () => {
+    if (!memberForm.full_name || !memberForm.username || !memberForm.date_of_birth) return
+    setAddingMember(true); setMemberError('')
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { setAddingMember(false); return }
+    const division = isJunior(memberForm.date_of_birth) ? 'Juniors' : memberForm.gender === 'female' ? "Women's" : "Men's"
+    const { data, error } = await supabase.from('players').insert({
+      full_name: memberForm.full_name,
+      username: memberForm.username,
+      display_name: memberForm.username,
+      date_of_birth: memberForm.date_of_birth,
+      division,
+      parent_id: user.id,
+      show_username: true,
+      show_division: true,
+      is_active: true,
+      country: 'New Zealand',
+    }).select().single()
+    if (error) {
+      setMemberError(error.message)
+    } else {
+      setFamilyMembers(prev => [...prev, data])
+      setMemberForm({ full_name: '', username: '', date_of_birth: '', gender: 'male' })
+      setShowAddMember(false)
+    }
+    setAddingMember(false)
+  }
+
+  const handleRemoveMember = async (id: string) => {
+    if (!confirm('Remove this family member? Their scores will remain on the leaderboard.')) return
+    const { error } = await supabase.from('players').delete().eq('id', id)
+    if (error) { alert('Could not remove family member — try again'); return }
+    setFamilyMembers(prev => prev.filter(m => m.id !== id))
   }
 
   if (loading) return (
@@ -361,6 +414,116 @@ export default function Dashboard() {
           </button>
         </div>
         {joinError && <p style={{ color: '#EA4742', fontSize: '13px', margin: 0 }}>{joinError}</p>}
+      </div>
+
+      {/* Family members */}
+      <div style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '20px', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <div>
+            <div style={{ fontWeight: 'bold', fontSize: '15px' }}>Family</div>
+            <div style={{ fontSize: '12px', color: '#555', marginTop: '2px' }}>Add whānau so you can submit scores for them during sessions</div>
+          </div>
+          <button onClick={() => { setShowAddMember(v => !v); setMemberError('') }} style={{
+            background: showAddMember ? '#1e1e1e' : '#2371BB', color: '#fff',
+            border: 'none', borderRadius: '8px', padding: '8px 14px',
+            fontSize: '13px', fontWeight: 'bold', cursor: 'pointer', flexShrink: 0,
+          }}>
+            {showAddMember ? 'Cancel' : '+ Add'}
+          </button>
+        </div>
+
+        {/* Add member form */}
+        {showAddMember && (
+          <div style={{ background: '#0a0a0a', borderRadius: '10px', padding: '16px', marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div>
+              <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '4px' }}>FULL NAME</label>
+              <input
+                value={memberForm.full_name}
+                onChange={e => setMemberForm(f => ({ ...f, full_name: e.target.value }))}
+                placeholder="e.g. Aroha Clement"
+                style={{ width: '100%', background: '#111', border: '1px solid #333', borderRadius: '8px', padding: '10px 12px', color: '#fff', fontSize: '14px', boxSizing: 'border-box' as const }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '4px' }}>USERNAME (appears on leaderboard)</label>
+              <input
+                value={memberForm.username}
+                onChange={e => setMemberForm(f => ({ ...f, username: e.target.value }))}
+                placeholder="e.g. aroha"
+                style={{ width: '100%', background: '#111', border: '1px solid #333', borderRadius: '8px', padding: '10px 12px', color: '#fff', fontSize: '14px', boxSizing: 'border-box' as const }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '4px' }}>DATE OF BIRTH (sets division automatically)</label>
+              <input
+                type="date"
+                value={memberForm.date_of_birth}
+                onChange={e => setMemberForm(f => ({ ...f, date_of_birth: e.target.value }))}
+                style={{ width: '100%', background: '#111', border: '1px solid #333', borderRadius: '8px', padding: '10px 12px', color: '#fff', fontSize: '14px', boxSizing: 'border-box' as const }}
+              />
+            </div>
+            {!isJunior(memberForm.date_of_birth) && (
+              <div>
+                <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>GENDER</label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {(['male', 'female'] as const).map(g => (
+                    <button key={g} onClick={() => setMemberForm(f => ({ ...f, gender: g }))} style={{
+                      flex: 1, padding: '8px', borderRadius: '8px', border: `1px solid ${memberForm.gender === g ? '#2371BB' : '#2a2a2a'}`,
+                      background: memberForm.gender === g ? '#0d1a2e' : 'transparent',
+                      color: memberForm.gender === g ? '#fff' : '#555', cursor: 'pointer', fontSize: '13px',
+                    }}>{g === 'male' ? "Men's" : "Women's"}</button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {memberForm.date_of_birth && (
+              <div style={{ fontSize: '11px', color: isJunior(memberForm.date_of_birth) ? '#F9B051' : '#4DB26E' }}>
+                Division: {isJunior(memberForm.date_of_birth) ? 'Juniors (×1.2 multiplier)' : memberForm.gender === 'female' ? "Women's (×1.2)" : "Men's"}
+              </div>
+            )}
+            {memberError && <div style={{ color: '#EA4742', fontSize: '13px' }}>{memberError}</div>}
+            <button
+              onClick={handleAddMember}
+              disabled={addingMember || !memberForm.full_name || !memberForm.username || !memberForm.date_of_birth}
+              style={{
+                background: memberForm.full_name && memberForm.username && memberForm.date_of_birth ? '#2371BB' : '#1a1a1a',
+                color: memberForm.full_name && memberForm.username && memberForm.date_of_birth ? '#fff' : '#444',
+                border: 'none', borderRadius: '8px', padding: '12px',
+                fontWeight: 'bold', fontSize: '14px', cursor: 'pointer',
+              }}
+            >
+              {addingMember ? 'Adding...' : 'Add Family Member'}
+            </button>
+          </div>
+        )}
+
+        {/* Member list */}
+        {familyMembers.length === 0 && !showAddMember ? (
+          <div style={{ color: '#444', fontSize: '13px', textAlign: 'center', padding: '12px 0' }}>
+            No family members added yet
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {familyMembers.map(m => (
+              <div key={m.id} style={{ background: '#0a0a0a', borderRadius: '8px', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#1a1a2e', border: '1px solid #2371BB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '15px', flexShrink: 0, color: '#2371BB' }}>
+                  {(m.display_name || m.username || '?')[0].toUpperCase()}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{m.display_name || m.username}</div>
+                  <div style={{ fontSize: '11px', color: '#555', marginTop: '1px' }}>
+                    {m.division}
+                    {m.date_of_birth && ` · born ${new Date(m.date_of_birth).getFullYear()}`}
+                  </div>
+                </div>
+                <button onClick={() => handleRemoveMember(m.id)} style={{
+                  background: 'transparent', border: 'none', color: '#333',
+                  cursor: 'pointer', fontSize: '18px', padding: '4px 8px', flexShrink: 0,
+                }}>×</button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Recent sessions */}
