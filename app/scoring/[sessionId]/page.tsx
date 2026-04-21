@@ -22,6 +22,7 @@ type InputMode =
 type EventConfig = {
   mode: InputMode
   variations?: string[]
+  freeVariation?: boolean  // show text input in addition to chips (for open-ended variations)
 }
 
 type SessionEvent = {
@@ -38,6 +39,9 @@ type Result = {
   event_id: string
   raw_score: number
   score_label: string
+  result_type?: string
+  opponent_name?: string
+  match_score?: string
 }
 
 type Standing = {
@@ -64,7 +68,11 @@ const EVENT_CONFIG: Record<string, EventConfig> = {
   'Turkish Get-Up':    { mode: 'strength' },
 
   // Relative Strength
-  '1 Leg Squat':       { mode: 'reps' },
+  '1 Leg Squat': {
+    mode: 'reps',
+    variations: ['Pistol Squat', 'Box Pistol', 'Weighted Pistol', 'Pause Pistol', 'Shrimp Squat'],
+    freeVariation: true,
+  },
   'Flag': {
     mode: 'dynamic',
     variations: ['Side Plank / Hold', '1 Leg Side Plank / Hold', 'Jumping Side Plank / Reps'],
@@ -272,11 +280,12 @@ export default function SessionPage() {
   const [sportResult, setSportResult] = useState<'win' | 'draw' | 'loss' | ''>('')
   const [sportScore, setSportScore] = useState('')
   const [exerciseVariation, setExerciseVariation] = useState('')
+  const [opponentName, setOpponentName] = useState('')
 
   function clearInputs() {
     setWeightKg(''); setRepCount(''); setTimeMins(''); setTimeSecs('')
     setDistanceVal(''); setDistanceUnit('m'); setSportResult(''); setSportScore('')
-    setExerciseVariation(''); setError('')
+    setExerciseVariation(''); setOpponentName(''); setError('')
   }
 
   useEffect(() => { clearInputs() }, [selectedEvent?.id])
@@ -409,6 +418,7 @@ export default function SessionPage() {
       case 'sport': {
         const raw_score = sportResult === 'win' ? 2 : sportResult === 'draw' ? 1 : 0
         let label = sportResult ? sportResult.charAt(0).toUpperCase() + sportResult.slice(1) : ''
+        if (opponentName) label += ` vs ${opponentName}`
         if (sportScore) label += ` (${sportScore})`
         return { raw_score, score_label: label }
       }
@@ -464,6 +474,27 @@ export default function SessionPage() {
       if (m === 'sport') {
         payload.result_type = sportResult
         if (sportScore) payload.match_score = sportScore
+        if (opponentName) payload.opponent_name = opponentName
+
+        // Conflict check: does opponent's existing result contradict ours?
+        if (opponentName) {
+          const theirResult = results.find(r =>
+            r.event_id === selectedEvent.id && r.player_name === opponentName
+          )
+          if (theirResult?.result_type) {
+            const mine = sportResult
+            const theirs = theirResult.result_type
+            const conflict =
+              (mine === 'win' && theirs === 'win') ||
+              (mine === 'loss' && theirs === 'loss') ||
+              (mine === 'draw' && theirs !== 'draw')
+            if (conflict) {
+              setError(`⚠ Score conflict: ${opponentName} recorded a "${theirs}" for this match. Check with your judge.`)
+              setSubmitting(false)
+              return
+            }
+          }
+        }
       }
 
       const { error: err } = await supabase.from('results').upsert(payload, {
@@ -752,14 +783,13 @@ export default function SessionPage() {
                     {selectedEvent.domain_name} — {selectedEvent.event_name}
                   </div>
 
-                  {/* Variation picker (dynamic, hold, reps events that have options) */}
+                  {/* Variation picker */}
                   {eventConfig?.variations && (
                     <div>
                       <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '8px' }}>VARIATION</label>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: eventConfig.freeVariation ? '8px' : '0' }}>
                         {eventConfig.variations.map(v => {
                           const active = exerciseVariation === v
-                          // Strip mode suffix for button label
                           const label = v.replace(' / Hold', '').replace(' / Reps', '')
                           const isHold = v.endsWith('/ Hold')
                           const isReps = v.endsWith('/ Reps')
@@ -778,6 +808,15 @@ export default function SessionPage() {
                           )
                         })}
                       </div>
+                      {/* Free-text override — for events like 1 Leg Squat where custom variations are common */}
+                      {eventConfig.freeVariation && (
+                        <input
+                          value={exerciseVariation}
+                          onChange={e => setExerciseVariation(e.target.value)}
+                          placeholder="Or type your own variation..."
+                          style={{ ...inpSm, fontSize: '14px' }}
+                        />
+                      )}
                     </div>
                   )}
 
@@ -877,23 +916,79 @@ export default function SessionPage() {
                     </>
                   )}
 
-                  {/* SPORT — win / draw / loss + match score */}
-                  {effectiveMode === 'sport' && (
-                    <>
-                      <div>
-                        <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '8px' }}>RESULT</label>
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                          <button onClick={() => setSportResult('win')} style={sportBtn('win')}>Win</button>
-                          <button onClick={() => setSportResult('draw')} style={sportBtn('draw')}>Draw</button>
-                          <button onClick={() => setSportResult('loss')} style={sportBtn('loss')}>Loss</button>
+                  {/* SPORT — opponent + win/draw/loss + score */}
+                  {effectiveMode === 'sport' && (() => {
+                    const myName = player?.display_name || player?.username || player?.full_name
+                    const otherPlayers = [...new Set(results.map(r => r.player_name))].filter(n => n !== myName)
+                    return (
+                      <>
+                        {/* Opponent picker */}
+                        <div>
+                          <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '8px' }}>OPPONENT</label>
+                          {otherPlayers.length > 0 && (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
+                              {otherPlayers.map(name => {
+                                const active = opponentName === name
+                                return (
+                                  <button key={name} onClick={() => setOpponentName(active ? '' : name)} style={{
+                                    padding: '7px 13px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px',
+                                    border: `1px solid ${active ? '#2371BB' : '#2a2a2a'}`,
+                                    background: active ? '#2371BB22' : '#111',
+                                    color: active ? '#2371BB' : '#777', fontWeight: active ? 'bold' : 'normal',
+                                  }}>{name}</button>
+                                )
+                              })}
+                            </div>
+                          )}
+                          <input
+                            value={opponentName}
+                            onChange={e => setOpponentName(e.target.value)}
+                            placeholder={otherPlayers.length > 0 ? 'Or type a name...' : 'Opponent name'}
+                            style={{ ...inpSm, fontSize: '14px' }}
+                          />
                         </div>
-                      </div>
-                      <div>
-                        <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>SCORE (optional — e.g. 21-15)</label>
-                        <input value={sportScore} onChange={e => setSportScore(e.target.value)} placeholder="21-15" style={{ ...inp, fontSize: '18px' }} />
-                      </div>
-                    </>
-                  )}
+
+                        {/* Result */}
+                        <div>
+                          <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '8px' }}>RESULT</label>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button onClick={() => setSportResult('win')} style={sportBtn('win')}>Win</button>
+                            <button onClick={() => setSportResult('draw')} style={sportBtn('draw')}>Draw</button>
+                            <button onClick={() => setSportResult('loss')} style={sportBtn('loss')}>Loss</button>
+                          </div>
+                        </div>
+
+                        {/* Score */}
+                        <div>
+                          <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>SCORE (optional — e.g. 21-15)</label>
+                          <input value={sportScore} onChange={e => setSportScore(e.target.value)} placeholder="21-15" style={{ ...inp, fontSize: '18px' }} />
+                        </div>
+
+                        {/* Conflict notice when opponent already submitted */}
+                        {opponentName && sportResult && (() => {
+                          const their = results.find(r => r.event_id === selectedEvent?.id && r.player_name === opponentName)
+                          if (!their?.result_type) return null
+                          const mine = sportResult
+                          const conflict =
+                            (mine === 'win' && their.result_type === 'win') ||
+                            (mine === 'loss' && their.result_type === 'loss') ||
+                            (mine === 'draw' && their.result_type !== 'draw')
+                          return (
+                            <div style={{
+                              padding: '10px 12px', borderRadius: '8px', fontSize: '12px',
+                              background: conflict ? '#2e0d0d' : '#0d2e1a',
+                              border: `1px solid ${conflict ? '#EA4742' : '#4DB26E'}`,
+                              color: conflict ? '#EA4742' : '#4DB26E',
+                            }}>
+                              {conflict
+                                ? `⚠ Conflict: ${opponentName} recorded a "${their.result_type}" — scores don't match. Check with your judge.`
+                                : `✓ Matches ${opponentName}'s record (${their.result_type})`}
+                            </div>
+                          )
+                        })()}
+                      </>
+                    )
+                  })()}
 
                   {/* WEIGHT + TIME — 200m Carry */}
                   {effectiveMode === 'weight+time' && (
