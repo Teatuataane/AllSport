@@ -1,17 +1,25 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase-browser'
 import Link from 'next/link'
 
 export default function PlayPage() {
   const router = useRouter()
+  const supabase = createClient()
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
   const [error, setError] = useState('')
+
+  // Redirect to dashboard if already logged in
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) router.replace('/dashboard')
+    })
+  }, [])
 
   const handleLogin = async () => {
     setLoading(true)
@@ -35,6 +43,7 @@ export default function PlayPage() {
         options: { redirectTo: `${window.location.origin}/auth/callback` }
       })
       if (err) throw err
+      // signInWithOAuth redirects the browser — googleLoading stays true during redirect
     } catch (e: any) {
       setError(e.message)
       setGoogleLoading(false)

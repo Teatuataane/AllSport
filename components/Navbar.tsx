@@ -2,18 +2,24 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase-browser'
 
 export default function Navbar() {
   const [user, setUser] = useState<any>(null)
+  const [authLoading, setAuthLoading] = useState(true)
   const [menuOpen, setMenuOpen] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
+  const supabase = createClient()
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setUser(data.session?.user ?? null))
+    supabase.auth.getSession().then(({ data }) => {
+      setUser(data.session?.user ?? null)
+      setAuthLoading(false)
+    })
     const { data: listener } = supabase.auth.onAuthStateChange((_e, session) => {
       setUser(session?.user ?? null)
+      setAuthLoading(false)
     })
     return () => listener.subscription.unsubscribe()
   }, [])
@@ -57,16 +63,16 @@ export default function Navbar() {
           ))}
         </div>
 
-        {/* CTA */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          {user ? (
+        {/* CTA — held until auth resolves to avoid flicker */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: '120px', justifyContent: 'flex-end' }}>
+          {!authLoading && (user ? (
             <>
               <Link href="/dashboard" style={{
                 background: '#2371BB', color: '#fff', padding: '8px 20px', borderRadius: '6px',
                 textDecoration: 'none', fontFamily: 'var(--font-barlow-condensed)',
                 fontSize: '13px', fontWeight: 'bold', letterSpacing: '1px',
               }}>
-                MY PROFILE
+                DASHBOARD
               </Link>
               <button onClick={handleSignOut} style={{
                 background: 'transparent', border: '1px solid #333', color: '#888',
@@ -84,7 +90,7 @@ export default function Navbar() {
             }}>
               PLAY NOW
             </Link>
-          )}
+          ))}
         </div>
       </nav>
 

@@ -17,6 +17,7 @@ type InputMode =
   | 'sport'         // win/draw/loss + score       → raw = 2/1/0
   | 'weight+time'   // weight + mm:ss             → raw = -totalSecs
   | 'distance+time' // distance + mm:ss           → raw = distance cm
+  | 'sprint'        // ss.cs (seconds + centiseconds), lower = better → raw = -(secs*100 + cs)
   | 'dynamic'       // variation suffix drives mode: "/ Hold" → hold, "/ Reps" → reps
 
 type EventConfig = {
@@ -46,10 +47,13 @@ type Result = {
 
 type Standing = {
   player_name: string
+  player_id: string | null
   total_placement: number
   events_done: number
   placements: { [eventId: string]: number }
 }
+
+type DivisionTab = 'overall' | 'mens' | 'womens' | 'juniors'
 
 // ─── Per-event config ─────────────────────────────────────────────────────────
 // Keys match the event_name stored in session_events (set by scoring/page.tsx DOMAINS).
@@ -153,13 +157,13 @@ const EVENT_CONFIG: Record<string, EventConfig> = {
   'Bronco':            { mode: 'time' },
 
   // Speed & Agility
-  '100m Sprint':       { mode: 'time' },
+  '100m Sprint':       { mode: 'sprint' },
   'Tag':               { mode: 'sport' },
-  'T-Test':            { mode: 'time' },
+  'T-Test':            { mode: 'sprint' },
   '400m Race':         { mode: 'time' },
   'Beach Flags':       { mode: 'sport' },
-  '50m Sprint':        { mode: 'time' },
-  '200m Sprint':       { mode: 'time' },
+  '50m Sprint':        { mode: 'sprint' },
+  '200m Sprint':       { mode: 'sprint' },
   'Touch Rugby':       { mode: 'sport' },
   'Football Dribble':  { mode: 'time' },
   'Repeat High Jump':  { mode: 'distance+time' },
@@ -207,9 +211,13 @@ const EVENT_CONFIG: Record<string, EventConfig> = {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function calcPlacements(results: Result[], events: SessionEvent[]): Standing[] {
-  const players = [...new Set(results.map(r => r.player_name))]
-  const standings: Standing[] = players.map(name => ({
+  // Track unique players by name → id
+  const playerMap = new Map<string, string | null>()
+  results.forEach(r => { if (!playerMap.has(r.player_name)) playerMap.set(r.player_name, r.player_id) })
+
+  const standings: Standing[] = [...playerMap.entries()].map(([name, pid]) => ({
     player_name: name,
+    player_id: pid,
     total_placement: 0,
     events_done: 0,
     placements: {},
@@ -221,6 +229,56 @@ function calcPlacements(results: Result[], events: SessionEvent[]): Standing[] {
     let placement = 1
     eventResults.forEach((result, idx) => {
       if (idx > 0 && result.raw_score < eventResults[idx - 1].raw_score) placement = idx + 1
+      const s = standings.find(st => st.player_name === result.player_name)
+      if (s) { s.placements[event.id] = placement; s.total_placement += placement; s.events_done += 1 }
+    })
+  })
+  return standings.sort((a, b) => a.total_placement - b.total_placement)
+}
+
+// Multiplier for cross-division Overall ranking.
+// Applied to raw_score before placement so boosted players rank higher.
+function getMultiplier(division: string, dob: string | null): number {
+  const age = dob ? Math.floor((Date.now() - new Date(dob).getTime()) / (365.25 * 24 * 3600 * 1000)) : null
+  if (division === 'Juniors') return 1.2
+  if (division === "Women's") {
+    if (age !== null && age >= 40) return 1.4  // Masters Women
+    return 1.2
+  }
+  if (division === "Men's" && age !== null && age >= 40) return 1.2  // Masters Men
+  return 1.0
+}
+
+function calcOverallPlacements(
+  results: Result[],
+  events: SessionEvent[],
+  playerDivisions: Record<string, { division: string; dob: string | null }>
+): Standing[] {
+  // Track unique players
+  const playerMap = new Map<string, string | null>()
+  results.forEach(r => { if (!playerMap.has(r.player_name)) playerMap.set(r.player_name, r.player_id) })
+
+  const standings: Standing[] = [...playerMap.entries()].map(([name, pid]) => ({
+    player_name: name,
+    player_id: pid,
+    total_placement: 0,
+    events_done: 0,
+    placements: {},
+  }))
+
+  events.forEach(event => {
+    const eventResults = results
+      .filter(r => r.event_id === event.id)
+      .map(r => {
+        const info = r.player_id ? (playerDivisions[r.player_id] ?? { division: "Men's", dob: null }) : { division: "Men's", dob: null }
+        const mult = getMultiplier(info.division, info.dob)
+        return { ...r, adjusted_score: r.raw_score * mult }
+      })
+      .sort((a, b) => b.adjusted_score - a.adjusted_score)
+
+    let placement = 1
+    eventResults.forEach((result, idx) => {
+      if (idx > 0 && result.adjusted_score < eventResults[idx - 1].adjusted_score) placement = idx + 1
       const s = standings.find(st => st.player_name === result.player_name)
       if (s) { s.placements[event.id] = placement; s.total_placement += placement; s.events_done += 1 }
     })
@@ -265,8 +323,12 @@ export default function SessionPage() {
   const [submitSuccess, setSubmitSuccess] = useState(false)
   const [error, setError] = useState('')
   const [timeLeft, setTimeLeft] = useState<number | null>(null)
+  const [preSessionSecsLeft, setPreSessionSecsLeft] = useState<number | null>(null)
   const [sessionEnded, setSessionEnded] = useState(false)
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null)
+  const [divisionTab, setDivisionTab] = useState<DivisionTab>('overall')
+  // player_id → { division, date_of_birth }
+  const [playerDivisions, setPlayerDivisions] = useState<Record<string, { division: string; dob: string | null }>>({})
   const [bodyweight, setBodyweight] = useState('')
   const [bodyweightSaved, setBodyweightSaved] = useState(false)
 
@@ -275,6 +337,7 @@ export default function SessionPage() {
   const [repCount, setRepCount] = useState('')
   const [timeMins, setTimeMins] = useState('')
   const [timeSecs, setTimeSecs] = useState('')
+  const [sprintCs, setSprintCs] = useState('')   // centiseconds for sprint mode
   const [distanceVal, setDistanceVal] = useState('')
   const [distanceUnit, setDistanceUnit] = useState<'m' | 'cm'>('m')
   const [sportResult, setSportResult] = useState<'win' | 'draw' | 'loss' | ''>('')
@@ -283,7 +346,7 @@ export default function SessionPage() {
   const [opponentName, setOpponentName] = useState('')
 
   function clearInputs() {
-    setWeightKg(''); setRepCount(''); setTimeMins(''); setTimeSecs('')
+    setWeightKg(''); setRepCount(''); setTimeMins(''); setTimeSecs(''); setSprintCs('')
     setDistanceVal(''); setDistanceUnit('m'); setSportResult(''); setSportScore('')
     setExerciseVariation(''); setOpponentName(''); setError('')
   }
@@ -293,13 +356,24 @@ export default function SessionPage() {
   // ── Timer ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!session?.started_at || !session?.duration_minutes) return
-    const endTime = new Date(session.started_at).getTime() + session.duration_minutes * 60 * 1000
+    const startTs = new Date(session.started_at).getTime()
+    const endTs = startTs + session.duration_minutes * 60 * 1000
+
     const tick = () => {
-      const remaining = Math.max(0, Math.floor((endTime - Date.now()) / 1000))
-      setTimeLeft(remaining)
-      if (remaining === 0) {
-        setSessionEnded(true)
-        supabase.from('sessions').update({ is_active: false, ended_at: new Date().toISOString() }).eq('id', sessionId)
+      const now = Date.now()
+      if (now < startTs) {
+        // Pre-session: count down to start time
+        setPreSessionSecsLeft(Math.ceil((startTs - now) / 1000))
+        setTimeLeft(null)
+      } else {
+        // Live: count down remaining session time
+        setPreSessionSecsLeft(null)
+        const remaining = Math.max(0, Math.floor((endTs - now) / 1000))
+        setTimeLeft(remaining)
+        if (remaining === 0) {
+          setSessionEnded(true)
+          supabase.from('sessions').update({ is_active: false, ended_at: new Date().toISOString() }).eq('id', sessionId)
+        }
       }
     }
     tick()
@@ -323,13 +397,40 @@ export default function SessionPage() {
       setEvents(ev || [])
       const { data: res } = await supabase.from('results').select('*').eq('session_id', sessionId)
       setResults(res || [])
+
+      // Load division info for every player_id seen in results
+      const playerIds = [...new Set((res || []).map((r: any) => r.player_id).filter(Boolean))]
+      if (playerIds.length > 0) {
+        const { data: pData } = await supabase
+          .from('players')
+          .select('id, division, date_of_birth')
+          .in('id', playerIds)
+        if (pData) {
+          const map: Record<string, { division: string; dob: string | null }> = {}
+          pData.forEach((p: any) => { map[p.id] = { division: p.division ?? 'Men\'s', dob: p.date_of_birth ?? null } })
+          setPlayerDivisions(map)
+        }
+      }
     }
     load()
 
     const ch = supabase
       .channel(`session-${sessionId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'results', filter: `session_id=eq.${sessionId}` },
-        p => setResults(prev => [...prev, p.new as Result]))
+        async p => {
+          setResults(prev => [...prev, p.new as Result])
+          const newPlayerId = (p.new as any).player_id
+          if (newPlayerId) {
+            setPlayerDivisions(prev => {
+              if (prev[newPlayerId]) return prev
+              // fetch in background
+              supabase.from('players').select('id, division, date_of_birth').eq('id', newPlayerId).single().then(({ data }) => {
+                if (data) setPlayerDivisions(m => ({ ...m, [data.id]: { division: data.division ?? 'Men\'s', dob: data.date_of_birth ?? null } }))
+              })
+              return prev
+            })
+          }
+        })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'results', filter: `session_id=eq.${sessionId}` },
         p => setResults(prev => prev.map(r => r.id === (p.new as Result).id ? p.new as Result : r)))
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'results', filter: `session_id=eq.${sessionId}` },
@@ -362,6 +463,7 @@ export default function SessionPage() {
       case 'reps':         return !!repCount
       case 'time':
       case 'hold':         return !!(timeMins || timeSecs)
+      case 'sprint':       return !!(timeSecs)
       case 'distance':     return !!distanceVal
       case 'flexibility':  return !!distanceVal
       case 'sport':        return !!sportResult
@@ -423,6 +525,14 @@ export default function SessionPage() {
         return { raw_score, score_label: label }
       }
 
+      case 'sprint': {
+        const s = parseFloat(timeSecs) || 0
+        const cs = parseInt(sprintCs) || 0
+        const totalCs = Math.round(s * 100) + cs
+        const label = `${s.toFixed(0)}s${cs > 0 ? `.${cs.toString().padStart(2, '0')}` : ''}`
+        return { raw_score: -totalCs, score_label: label }
+      }
+
       case 'weight+time':
         return { raw_score: -totalSecs, score_label: `${weightKg}kg · ${timeStr}` }
 
@@ -441,7 +551,7 @@ export default function SessionPage() {
 
   // ── Submit ─────────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
-    if (!selectedEvent || !isScoreValid() || sessionEnded || !player) {
+    if (!selectedEvent || !isScoreValid() || sessionEnded || preSessionSecsLeft !== null || !player) {
       if (!player) setError('You must be logged in to submit a score')
       return
     }
@@ -469,6 +579,11 @@ export default function SessionPage() {
       if (m === 'reps') payload.reps = parseInt(repCount) || 0
       if (['time', 'hold', 'weight+time', 'distance+time', 'flexibility'].includes(m) && totalSecs > 0) {
         payload.time_seconds = totalSecs
+      }
+      if (m === 'sprint') {
+        const s = parseFloat(timeSecs) || 0
+        const cs = parseInt(sprintCs) || 0
+        payload.time_seconds = s + cs / 100
       }
       if (m === 'weight+time') payload.weight_kg = parseFloat(weightKg) || 0
       if (m === 'sport') {
@@ -502,6 +617,11 @@ export default function SessionPage() {
       })
       if (err) throw err
 
+      // Always re-fetch results — don't rely solely on realtime,
+      // which won't fire an INSERT event for upserts that resolve as UPDATE.
+      const { data: freshResults } = await supabase.from('results').select('*').eq('session_id', sessionId)
+      if (freshResults) setResults(freshResults)
+
       clearInputs(); setSelectedEvent(null)
       setSubmitSuccess(true)
       setTimeout(() => setSubmitSuccess(false), 3000)
@@ -518,11 +638,33 @@ export default function SessionPage() {
   }
 
   // ── Derived ────────────────────────────────────────────────────────────────
-  const standings = calcPlacements(results, events)
+  // Filter results by division for the non-overall tabs
+  const DIVISION_MAP: Record<DivisionTab, string | null> = {
+    overall: null,
+    mens: "Men's",
+    womens: "Women's",
+    juniors: 'Juniors',
+  }
+  const divisionFilter = DIVISION_MAP[divisionTab]
+
+  function resultsForDivision(divFilter: string | null): Result[] {
+    if (!divFilter) return results
+    return results.filter(r => {
+      if (!r.player_id) return false
+      const info = playerDivisions[r.player_id]
+      return info?.division === divFilter
+    })
+  }
+
+  const standings = divisionTab === 'overall'
+    ? calcOverallPlacements(results, events, playerDivisions)
+    : calcPlacements(resultsForDivision(divisionFilter), events)
   const RANK_COLOURS = ['#F9B051', '#aaa', '#CD7F32', '#2371BB', '#4DB26E']
-  const timerColour = timeLeft !== null
-    ? timeLeft < 600 ? '#EA4742' : timeLeft < 1800 ? '#F9B051' : '#4DB26E'
-    : '#4DB26E'
+  const timerColour = preSessionSecsLeft !== null
+    ? '#B87DB5'   // purple = waiting to start
+    : timeLeft !== null
+      ? timeLeft < 600 ? '#EA4742' : timeLeft < 1800 ? '#F9B051' : '#4DB26E'
+      : '#4DB26E'
 
   function getEventScores(eventId: string) {
     return results
@@ -571,9 +713,11 @@ export default function SessionPage() {
           </div>
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontSize: '24px', fontWeight: 'bold', color: timerColour, fontVariantNumeric: 'tabular-nums' }}>
-              {sessionEnded ? 'ENDED' : timeLeft !== null ? fmtCountdown(timeLeft) : '--:--'}
+              {sessionEnded ? 'ENDED' : preSessionSecsLeft !== null ? fmtCountdown(preSessionSecsLeft) : timeLeft !== null ? fmtCountdown(timeLeft) : '--:--'}
             </div>
-            <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)' }}>remaining</div>
+            <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)' }}>
+              {preSessionSecsLeft !== null ? 'until start' : 'remaining'}
+            </div>
           </div>
         </div>
         {session?.session_code && (
@@ -610,35 +754,74 @@ export default function SessionPage() {
       {/* ── LEADERBOARD TAB ────────────────────────────────────────────────── */}
       {activeTab === 'leaderboard' && (
         <div style={{ padding: '16px' }}>
+
+          {/* Division tabs */}
+          <div style={{ display: 'flex', gap: '6px', marginBottom: '16px' }}>
+            {([
+              { key: 'overall', label: '🌐 Overall' },
+              { key: 'mens',    label: "Men's" },
+              { key: 'womens',  label: "Women's" },
+              { key: 'juniors', label: 'Juniors' },
+            ] as { key: DivisionTab; label: string }[]).map(({ key, label }) => {
+              const active = divisionTab === key
+              return (
+                <button key={key} onClick={() => setDivisionTab(key)} style={{
+                  flex: 1, padding: '8px 4px', border: `1px solid ${active ? '#2371BB' : '#222'}`,
+                  borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: active ? 700 : 400,
+                  background: active ? '#0d1a2e' : '#111',
+                  color: active ? '#2371BB' : '#555',
+                }}>
+                  {label}
+                </button>
+              )
+            })}
+          </div>
+
+          {divisionTab === 'overall' && (
+            <div style={{ fontSize: '11px', color: '#555', marginBottom: '10px', textAlign: 'center' }}>
+              Multipliers applied: Women's & Juniors ×1.2 · Masters Men ×1.2 · Masters Women ×1.4
+            </div>
+          )}
+
           {standings.length === 0 ? (
             <div style={{ textAlign: 'center', color: '#555', padding: '48px 0' }}>
               <div style={{ fontSize: '32px', marginBottom: '12px' }}>🏁</div>
-              <div>No scores yet — be the first to submit!</div>
+              <div>{divisionTab === 'overall' ? 'No scores yet — be the first to submit!' : `No ${DIVISION_MAP[divisionTab]} scores yet`}</div>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>
-              {standings.map((s, idx) => (
-                <div key={s.player_name} style={{
-                  background: '#111', borderRadius: '10px', padding: '14px 16px',
-                  border: `1px solid ${idx === 0 ? '#F9B051' : '#1e1e1e'}`,
-                  display: 'flex', alignItems: 'center', gap: '14px',
-                }}>
-                  <div style={{
-                    width: '32px', height: '32px', borderRadius: '50%', flexShrink: 0,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontWeight: 'bold', fontSize: '14px',
-                    background: RANK_COLOURS[idx] || '#333', color: idx < 3 ? '#000' : '#fff',
-                  }}>{idx + 1}</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 'bold', fontSize: '15px' }}>{s.player_name}</div>
-                    <div style={{ fontSize: '12px', color: '#555', marginTop: '2px' }}>{s.events_done} event{s.events_done !== 1 ? 's' : ''} done</div>
+              {standings.map((s, idx) => {
+                const divInfo = s.player_id ? playerDivisions[s.player_id] : null
+                const divLabel = divInfo?.division ?? null
+                const divColour = divLabel === "Women's" ? '#F397C0' : divLabel === 'Juniors' ? '#F9B051' : '#2371BB'
+                return (
+                  <div key={s.player_name} style={{
+                    background: '#111', borderRadius: '10px', padding: '14px 16px',
+                    border: `1px solid ${idx === 0 ? '#F9B051' : '#1e1e1e'}`,
+                    display: 'flex', alignItems: 'center', gap: '14px',
+                  }}>
+                    <div style={{
+                      width: '32px', height: '32px', borderRadius: '50%', flexShrink: 0,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontWeight: 'bold', fontSize: '14px',
+                      background: RANK_COLOURS[idx] || '#333', color: idx < 3 ? '#000' : '#fff',
+                    }}>{idx + 1}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 'bold', fontSize: '15px' }}>{s.player_name}</div>
+                      <div style={{ fontSize: '12px', color: '#555', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span>{s.events_done} event{s.events_done !== 1 ? 's' : ''} done</span>
+                        {divisionTab === 'overall' && divLabel && (
+                          <span style={{ color: divColour, fontSize: '11px', background: divColour + '22', padding: '1px 6px', borderRadius: '4px' }}>{divLabel}</span>
+                        )}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '20px', fontWeight: 'bold', color: idx === 0 ? '#F9B051' : '#fff' }}>{s.total_placement}</div>
+                      <div style={{ fontSize: '11px', color: '#555' }}>{divisionTab === 'overall' ? 'adj. pts' : 'placement pts'}</div>
+                    </div>
                   </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '20px', fontWeight: 'bold', color: idx === 0 ? '#F9B051' : '#fff' }}>{s.total_placement}</div>
-                    <div style={{ fontSize: '11px', color: '#555' }}>placement pts</div>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
 
@@ -849,7 +1032,24 @@ export default function SessionPage() {
                     </div>
                   )}
 
-                  {/* TIME (lower = better — sprints, runs) */}
+                  {/* SPRINT (ss.cs — seconds + centiseconds, lower = better) */}
+                  {effectiveMode === 'sprint' && (
+                    <>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                        <div>
+                          <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>SECONDS</label>
+                          <input type="number" value={timeSecs} onChange={e => setTimeSecs(e.target.value)} placeholder="10" style={inp} />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>CENTISECONDS (00–99)</label>
+                          <input type="number" min="0" max="99" value={sprintCs} onChange={e => setSprintCs(e.target.value)} placeholder="54" style={inp} />
+                        </div>
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#444' }}>e.g. 10s 54cs = 10.54s · Lower = better</div>
+                    </>
+                  )}
+
+                  {/* TIME (lower = better — runs, rows) */}
                   {effectiveMode === 'time' && (
                     <>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
