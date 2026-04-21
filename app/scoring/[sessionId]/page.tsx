@@ -5,6 +5,25 @@ import { createClient } from '@/lib/supabase-browser'
 
 const supabase = createClient()
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type InputMode =
+  | 'strength'      // weight kg + optional reps  → raw = weight
+  | 'reps'          // reps only                  → raw = reps
+  | 'time'          // mm:ss, lower = better      → raw = -totalSecs
+  | 'hold'          // mm:ss, longer = better     → raw = +totalSecs
+  | 'distance'      // value + m/cm toggle        → raw = cm
+  | 'flexibility'   // blocks (lower = better)    → raw = -blocks
+  | 'sport'         // win/draw/loss + score       → raw = 2/1/0
+  | 'weight+time'   // weight + mm:ss             → raw = -totalSecs
+  | 'distance+time' // distance + mm:ss           → raw = distance cm
+  | 'dynamic'       // variation suffix drives mode: "/ Hold" → hold, "/ Reps" → reps
+
+type EventConfig = {
+  mode: InputMode
+  variations?: string[]
+}
+
 type SessionEvent = {
   id: string
   domain_number: number
@@ -28,19 +47,156 @@ type Standing = {
   placements: { [eventId: string]: number }
 }
 
-// Input mode per domain
-const INPUT_MODE: Record<string, 'strength' | 'reps' | 'time' | 'distance' | 'sport'> = {
-  'Maximal Strength': 'strength',
-  'Relative Strength': 'reps',
-  'Muscular Endurance': 'reps',
-  'Flexibility & Mobility': 'distance',
-  'Power': 'distance',
-  'Aerobic Endurance': 'time',
-  'Speed & Agility': 'time',
-  'Body Awareness': 'sport',
-  'Co-ordination': 'sport',
-  'Aim & Precision': 'sport',
+// ─── Per-event config ─────────────────────────────────────────────────────────
+// Keys match the event_name stored in session_events (set by scoring/page.tsx DOMAINS).
+
+const EVENT_CONFIG: Record<string, EventConfig> = {
+  // Maximal Strength
+  '1 Arm Press':       { mode: 'strength' },
+  'Deadlift':          { mode: 'strength' },
+  'Overhead Press':    { mode: 'strength' },
+  'Pause Dips':        { mode: 'strength' },
+  'Pause Chin Up':     { mode: 'strength' },
+  'Pause Squat':       { mode: 'strength' },
+  'Zercher Deadlift':  { mode: 'strength' },
+  'Hamstring Curl':    { mode: 'strength' },
+  'Pause Bench Press': { mode: 'strength' },
+  'Turkish Get-Up':    { mode: 'strength' },
+
+  // Relative Strength
+  '1 Leg Squat':       { mode: 'reps' },
+  'Flag': {
+    mode: 'dynamic',
+    variations: ['Side Plank / Hold', '1 Leg Side Plank / Hold', 'Jumping Side Plank / Reps'],
+  },
+  'Windshield Wipers': { mode: 'reps' },
+  'Toe Lift':          { mode: 'reps' },
+  'Planche': {
+    mode: 'dynamic',
+    variations: ['Tuck / Hold', 'Straddle / Hold', 'Full / Hold', 'Tuck / Reps', 'Straddle / Reps', 'Full / Reps'],
+  },
+  'Back Lever': {
+    mode: 'dynamic',
+    variations: ['Tuck / Hold', 'Straddle / Hold', 'Full / Hold', 'Tuck / Reps', 'Straddle / Reps', 'Full / Reps'],
+  },
+  'Iron Cross': {
+    mode: 'dynamic',
+    variations: ['Band Assisted / Hold', 'Unassisted / Hold', 'Band Assisted / Reps', 'Unassisted / Reps'],
+  },
+  'Front Lever': {
+    mode: 'dynamic',
+    variations: ['Tuck / Hold', 'Straddle / Hold', 'Full / Hold', 'Tuck / Reps', 'Straddle / Reps', 'Full / Reps'],
+  },
+  'Chin Up':     { mode: 'reps' },
+  'Rope Climb':  { mode: 'time' },
+
+  // Muscular Endurance
+  'Chin Up Contest':   { mode: 'reps' },
+  'Push Up Contest':   { mode: 'reps' },
+  'Reverse Hyper':     { mode: 'reps' },
+  'L-Sit Hold': {
+    mode: 'hold',
+    variations: ['Parallel Bars', 'Floor', 'Rings'],
+  },
+  'Tibialis Curl':     { mode: 'reps' },
+  'Headstand': {
+    mode: 'hold',
+    variations: ['Wall Supported', 'Freestanding', 'Handstand'],
+  },
+  'Finger Push Up':    { mode: 'reps' },
+  'Calf Raise':        { mode: 'reps' },
+  'Leg Extension':     { mode: 'reps' },
+  'Ab Wheel Rollout':  { mode: 'reps' },
+
+  // Flexibility & Mobility (blocks — 0 = floor = best)
+  'Rear Hand Clasp':   { mode: 'flexibility' },
+  'Bridge':            { mode: 'flexibility' },
+  'Forward Fold':      { mode: 'flexibility' },
+  'Needle Pose':       { mode: 'flexibility' },
+  'Front Split':       { mode: 'flexibility' },
+  'Middle Split':      { mode: 'flexibility' },
+  'Standing Split':    { mode: 'flexibility' },
+  'Foot Behind Head':  { mode: 'flexibility' },
+  'Shoulder Dislocate':{ mode: 'flexibility' },
+  'Side Bend':         { mode: 'flexibility' },
+
+  // Power
+  'Kelly Snatch':      { mode: 'strength' },
+  '1 Arm Snatch':      { mode: 'strength' },
+  'Triple Jump':       { mode: 'distance' },
+  'Javelin Throw':     { mode: 'distance' },
+  'Shot Put':          { mode: 'distance' },
+  'AFL':               { mode: 'sport' },
+  'Vertical Jump':     { mode: 'distance' },
+  'Glute Bridge':      { mode: 'strength' },
+  'Clean & Jerk':      { mode: 'strength' },
+  'Snatch':            { mode: 'strength' },
+
+  // Aerobic Endurance
+  '200m Burpee Broad Jump': { mode: 'time' },
+  '1k Run':            { mode: 'time' },
+  '1k Cycle':          { mode: 'time' },
+  '1k Ski Erg':        { mode: 'time' },
+  '1k Row':            { mode: 'time' },
+  'Iron Lungs':        { mode: 'hold' },
+  '200m Carry':        { mode: 'weight+time' },
+  '2k Run':            { mode: 'time' },
+  '200m Repeats':      { mode: 'time' },
+  'Bronco':            { mode: 'time' },
+
+  // Speed & Agility
+  '100m Sprint':       { mode: 'time' },
+  'Tag':               { mode: 'sport' },
+  'T-Test':            { mode: 'time' },
+  '400m Race':         { mode: 'time' },
+  'Beach Flags':       { mode: 'sport' },
+  '50m Sprint':        { mode: 'time' },
+  '200m Sprint':       { mode: 'time' },
+  'Touch Rugby':       { mode: 'sport' },
+  'Football Dribble':  { mode: 'time' },
+  'Repeat High Jump':  { mode: 'distance+time' },
+
+  // Body Awareness
+  'Tae Kwon Do':       { mode: 'sport' },
+  'Breakdancing':      { mode: 'sport' },
+  'Trampolining':      { mode: 'sport' },
+  'Jump Rope':         { mode: 'reps' },
+  'Wrestling':         { mode: 'sport' },
+  'Gymnastics':        { mode: 'sport' },
+  'Balance Ball': {
+    mode: 'hold',
+    variations: ['1 Foot', 'Knees', 'Eyes Closed', 'Arms Out', 'Eyes Closed + Arms Out'],
+  },
+  'SKATE':             { mode: 'sport' },
+  'Fencing':           { mode: 'sport' },
+  'Juggling':          { mode: 'sport' },
+
+  // Co-ordination
+  'Volleyball':        { mode: 'sport' },
+  'Baseball':          { mode: 'sport' },
+  'Teqball':           { mode: 'sport' },
+  'Tennis':            { mode: 'sport' },
+  'Cricket':           { mode: 'sport' },
+  'Badminton':         { mode: 'sport' },
+  'Basketball':        { mode: 'sport' },
+  'Football':          { mode: 'sport' },
+  'Hockey':            { mode: 'sport' },
+  'Squash':            { mode: 'sport' },
+
+  // Aim & Precision
+  'Netball':           { mode: 'sport' },
+  'Handball':          { mode: 'sport' },
+  'Cornhole':          { mode: 'sport' },
+  'Dodgeball':         { mode: 'sport' },
+  'Carrom':            { mode: 'sport' },
+  'Archery':           { mode: 'sport' },
+  'Bowling':           { mode: 'sport' },
+  'Darts':             { mode: 'sport' },
+  'Disc Golf':         { mode: 'sport' },
+  'Golf':              { mode: 'sport' },
 }
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function calcPlacements(results: Result[], events: SessionEvent[]): Standing[] {
   const players = [...new Set(results.map(r => r.player_name))]
@@ -50,34 +206,33 @@ function calcPlacements(results: Result[], events: SessionEvent[]): Standing[] {
     events_done: 0,
     placements: {},
   }))
-
   events.forEach(event => {
     const eventResults = results
       .filter(r => r.event_id === event.id)
       .sort((a, b) => b.raw_score - a.raw_score)
-
     let placement = 1
     eventResults.forEach((result, idx) => {
-      if (idx > 0 && result.raw_score < eventResults[idx - 1].raw_score) {
-        placement = idx + 1
-      }
-      const standing = standings.find(s => s.player_name === result.player_name)
-      if (standing) {
-        standing.placements[event.id] = placement
-        standing.total_placement += placement
-        standing.events_done += 1
-      }
+      if (idx > 0 && result.raw_score < eventResults[idx - 1].raw_score) placement = idx + 1
+      const s = standings.find(st => st.player_name === result.player_name)
+      if (s) { s.placements[event.id] = placement; s.total_placement += placement; s.events_done += 1 }
     })
   })
-
   return standings.sort((a, b) => a.total_placement - b.total_placement)
 }
 
-function formatTime(seconds: number) {
+function fmtTime(totalSecs: number) {
+  const m = Math.floor(totalSecs / 60)
+  const s = Math.round(totalSecs % 60)
+  return `${m}:${s.toString().padStart(2, '0')}`
+}
+
+function fmtCountdown(seconds: number) {
   const m = Math.floor(seconds / 60)
   const s = seconds % 60
   return `${m}:${s.toString().padStart(2, '0')}`
 }
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
 
 const inp: React.CSSProperties = {
   background: '#0d0d0d', border: '1px solid #2a2a2a', borderRadius: '8px',
@@ -85,8 +240,13 @@ const inp: React.CSSProperties = {
   width: '100%', boxSizing: 'border-box',
 }
 
+const inpSm: React.CSSProperties = { ...inp, fontSize: '16px', padding: '10px 12px' }
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export default function SessionPage() {
   const { sessionId } = useParams<{ sessionId: string }>()
+
   const [events, setEvents] = useState<SessionEvent[]>([])
   const [results, setResults] = useState<Result[]>([])
   const [session, setSession] = useState<any>(null)
@@ -102,14 +262,7 @@ export default function SessionPage() {
   const [bodyweight, setBodyweight] = useState('')
   const [bodyweightSaved, setBodyweightSaved] = useState(false)
 
-  const saveBodyweight = async () => {
-    if (!player || !bodyweight) return
-    await supabase.from('players').update({ bodyweight_kg: parseFloat(bodyweight) }).eq('id', player.id)
-    setBodyweightSaved(true)
-    setTimeout(() => setBodyweightSaved(false), 2000)
-  }
-
-  // Structured score inputs
+  // Score input fields
   const [weightKg, setWeightKg] = useState('')
   const [repCount, setRepCount] = useState('')
   const [timeMins, setTimeMins] = useState('')
@@ -118,17 +271,17 @@ export default function SessionPage() {
   const [distanceUnit, setDistanceUnit] = useState<'m' | 'cm'>('m')
   const [sportResult, setSportResult] = useState<'win' | 'draw' | 'loss' | ''>('')
   const [sportScore, setSportScore] = useState('')
+  const [exerciseVariation, setExerciseVariation] = useState('')
 
   function clearInputs() {
     setWeightKg(''); setRepCount(''); setTimeMins(''); setTimeSecs('')
     setDistanceVal(''); setDistanceUnit('m'); setSportResult(''); setSportScore('')
-    setError('')
+    setExerciseVariation(''); setError('')
   }
 
-  // Clear inputs whenever event changes
   useEffect(() => { clearInputs() }, [selectedEvent?.id])
 
-  // Timer
+  // ── Timer ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!session?.started_at || !session?.duration_minutes) return
     const endTime = new Date(session.started_at).getTime() + session.duration_minutes * 60 * 1000
@@ -141,104 +294,184 @@ export default function SessionPage() {
       }
     }
     tick()
-    const interval = setInterval(tick, 1000)
-    return () => clearInterval(interval)
+    const iv = setInterval(tick, 1000)
+    return () => clearInterval(iv)
   }, [session, sessionId])
 
+  // ── Load data + realtime ───────────────────────────────────────────────────
   useEffect(() => {
     const load = async () => {
-      const { data: { session: authSession } } = await supabase.auth.getSession()
-      if (authSession) {
-        const { data: playerData } = await supabase.from('players').select('*').eq('id', authSession.user.id).single()
-        setPlayer(playerData)
-        if (playerData?.bodyweight_kg) setBodyweight(String(playerData.bodyweight_kg))
+      const { data: { session: auth } } = await supabase.auth.getSession()
+      if (auth) {
+        const { data: p } = await supabase.from('players').select('*').eq('id', auth.user.id).single()
+        setPlayer(p)
+        if (p?.bodyweight_kg) setBodyweight(String(p.bodyweight_kg))
       }
-      const { data: sessionData } = await supabase.from('sessions').select('*').eq('id', sessionId).single()
-      setSession(sessionData)
-      if (!sessionData?.is_active) setSessionEnded(true)
-      const { data: eventsData } = await supabase.from('session_events').select('*').eq('session_id', sessionId).order('domain_number')
-      setEvents(eventsData || [])
-      const { data: resultsData } = await supabase.from('results').select('*').eq('session_id', sessionId)
-      setResults(resultsData || [])
+      const { data: s } = await supabase.from('sessions').select('*').eq('id', sessionId).single()
+      setSession(s)
+      if (!s?.is_active) setSessionEnded(true)
+      const { data: ev } = await supabase.from('session_events').select('*').eq('session_id', sessionId).order('domain_number')
+      setEvents(ev || [])
+      const { data: res } = await supabase.from('results').select('*').eq('session_id', sessionId)
+      setResults(res || [])
     }
     load()
 
-    const channel = supabase
+    const ch = supabase
       .channel(`session-${sessionId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'results', filter: `session_id=eq.${sessionId}` },
-        payload => setResults(prev => [...prev, payload.new as Result]))
+        p => setResults(prev => [...prev, p.new as Result]))
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'results', filter: `session_id=eq.${sessionId}` },
-        payload => setResults(prev => prev.map(r => r.id === (payload.new as Result).id ? payload.new as Result : r)))
+        p => setResults(prev => prev.map(r => r.id === (p.new as Result).id ? p.new as Result : r)))
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'results', filter: `session_id=eq.${sessionId}` },
-        payload => setResults(prev => prev.filter(r => r.id !== (payload.old as any).id)))
+        p => setResults(prev => prev.filter(r => r.id !== (p.old as any).id)))
       .subscribe()
 
-    return () => { supabase.removeChannel(channel) }
+    return () => { supabase.removeChannel(ch) }
   }, [sessionId])
 
-  const mode = selectedEvent ? (INPUT_MODE[selectedEvent.domain_name] || 'strength') : null
+  // ── Mode resolution ────────────────────────────────────────────────────────
+  const eventConfig = selectedEvent ? EVENT_CONFIG[selectedEvent.event_name] : null
+  const rawMode = eventConfig?.mode ?? 'strength'
 
+  function getEffectiveMode(): InputMode | null {
+    if (!selectedEvent) return null
+    if (rawMode === 'dynamic') {
+      if (!exerciseVariation) return null
+      return exerciseVariation.endsWith('/ Reps') ? 'reps' : 'hold'
+    }
+    return rawMode
+  }
+  const effectiveMode = getEffectiveMode()
+
+  // ── Validation ─────────────────────────────────────────────────────────────
   function isScoreValid(): boolean {
-    if (!selectedEvent || !mode) return false
-    if (mode === 'strength') return !!weightKg
-    if (mode === 'reps') return !!repCount
-    if (mode === 'time') return !!(timeMins || timeSecs)
-    if (mode === 'distance') return !!distanceVal
-    if (mode === 'sport') return !!sportResult
-    return false
+    const m = effectiveMode
+    if (!m) return false
+    switch (m) {
+      case 'strength':     return !!weightKg
+      case 'reps':         return !!repCount
+      case 'time':
+      case 'hold':         return !!(timeMins || timeSecs)
+      case 'distance':     return !!distanceVal
+      case 'flexibility':  return !!distanceVal
+      case 'sport':        return !!sportResult
+      case 'weight+time':  return !!weightKg && !!(timeMins || timeSecs)
+      case 'distance+time':return !!distanceVal
+      default:             return false
+    }
   }
 
+  // ── Score computation ──────────────────────────────────────────────────────
   function computeScore(): { raw_score: number; score_label: string } {
-    if (mode === 'strength') {
-      const w = parseFloat(weightKg) || 0
-      const r = parseInt(repCount) || 0
-      return {
-        raw_score: w,
-        score_label: r > 0 ? `${weightKg}kg × ${repCount} rep${repCount !== '1' ? 's' : ''}` : `${weightKg}kg`,
+    const m = effectiveMode
+    if (!m) return { raw_score: 0, score_label: '' }
+
+    const totalSecs = (parseFloat(timeMins) || 0) * 60 + (parseFloat(timeSecs) || 0)
+    const timeStr = fmtTime(totalSecs)
+
+    // Strip "/ Hold" / "/ Reps" from variation for display
+    const varLabel = exerciseVariation.replace(' / Hold', '').replace(' / Reps', '')
+    const varPrefix = varLabel ? `${varLabel}: ` : ''
+
+    switch (m) {
+      case 'strength': {
+        const w = parseFloat(weightKg) || 0
+        const r = parseInt(repCount) || 0
+        return {
+          raw_score: w,
+          score_label: r > 0 ? `${weightKg}kg × ${r} rep${r !== 1 ? 's' : ''}` : `${weightKg}kg`,
+        }
       }
+      case 'reps':
+        return { raw_score: parseInt(repCount) || 0, score_label: `${varPrefix}${repCount} reps` }
+
+      case 'time':
+        return { raw_score: -totalSecs, score_label: `${varPrefix}${timeStr}` }
+
+      case 'hold':
+        return { raw_score: totalSecs, score_label: `${varPrefix}${timeStr}` }
+
+      case 'distance': {
+        const val = parseFloat(distanceVal) || 0
+        const raw_score = distanceUnit === 'm' ? Math.round(val * 100) : Math.round(val)
+        return { raw_score, score_label: `${distanceVal}${distanceUnit}` }
+      }
+
+      case 'flexibility': {
+        const blocks = parseInt(distanceVal) || 0
+        const holdSecs = totalSecs
+        let label = blocks === 0 ? '0 blocks (floor)' : `${blocks} block${blocks !== 1 ? 's' : ''}`
+        if (holdSecs > 0) label += ` · ${timeStr} hold`
+        return { raw_score: -blocks, score_label: label }
+      }
+
+      case 'sport': {
+        const raw_score = sportResult === 'win' ? 2 : sportResult === 'draw' ? 1 : 0
+        let label = sportResult ? sportResult.charAt(0).toUpperCase() + sportResult.slice(1) : ''
+        if (sportScore) label += ` (${sportScore})`
+        return { raw_score, score_label: label }
+      }
+
+      case 'weight+time':
+        return { raw_score: -totalSecs, score_label: `${weightKg}kg · ${timeStr}` }
+
+      case 'distance+time': {
+        const val = parseFloat(distanceVal) || 0
+        const raw_score = distanceUnit === 'm' ? Math.round(val * 100) : Math.round(val)
+        const parts = [`${distanceVal}${distanceUnit}`]
+        if (totalSecs > 0) parts.push(timeStr)
+        return { raw_score, score_label: parts.join(' · ') }
+      }
+
+      default:
+        return { raw_score: 0, score_label: '' }
     }
-    if (mode === 'reps') {
-      return { raw_score: parseFloat(repCount) || 0, score_label: `${repCount} reps` }
-    }
-    if (mode === 'time') {
-      const totalSecs = (parseFloat(timeMins) || 0) * 60 + (parseFloat(timeSecs) || 0)
-      const m = Math.floor(totalSecs / 60)
-      const s = totalSecs % 60
-      return { raw_score: -totalSecs, score_label: `${m}:${s.toString().padStart(2, '0')}` }
-    }
-    if (mode === 'distance') {
-      const val = parseFloat(distanceVal) || 0
-      // Store in cm as a whole number — avoids decimal type errors in DB
-      const raw_score = distanceUnit === 'm' ? Math.round(val * 100) : Math.round(val)
-      return { raw_score, score_label: `${distanceVal}${distanceUnit}` }
-    }
-    if (mode === 'sport') {
-      const raw_score = sportResult === 'win' ? 2 : sportResult === 'draw' ? 1 : 0
-      let label = sportResult ? sportResult.charAt(0).toUpperCase() + sportResult.slice(1) : ''
-      if (sportScore) label += ` (${sportScore})`
-      return { raw_score, score_label: label }
-    }
-    return { raw_score: 0, score_label: '' }
   }
 
+  // ── Submit ─────────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
-    if (!selectedEvent || !isScoreValid() || sessionEnded) return
-    if (!player) { setError('You must be logged in to submit a score'); return }
-    setSubmitting(true)
-    setError('')
+    if (!selectedEvent || !isScoreValid() || sessionEnded || !player) {
+      if (!player) setError('You must be logged in to submit a score')
+      return
+    }
+    setSubmitting(true); setError('')
     try {
       const { raw_score, score_label } = computeScore()
-      const { error: err } = await supabase.from('results').upsert({
+      const totalSecs = (parseFloat(timeMins) || 0) * 60 + (parseFloat(timeSecs) || 0)
+      const m = effectiveMode!
+
+      const payload: Record<string, any> = {
         session_id: sessionId,
         event_id: selectedEvent.id,
         player_name: player.display_name || player.username || player.full_name,
         player_id: player.id,
         raw_score,
         score_label,
-      }, { onConflict: 'player_id,session_id,event_id' })
+      }
+
+      if (exerciseVariation) payload.exercise_variation = exerciseVariation
+
+      if (m === 'strength') {
+        payload.weight_kg = parseFloat(weightKg) || 0
+        if (repCount) payload.reps = parseInt(repCount)
+      }
+      if (m === 'reps') payload.reps = parseInt(repCount) || 0
+      if (['time', 'hold', 'weight+time', 'distance+time', 'flexibility'].includes(m) && totalSecs > 0) {
+        payload.time_seconds = totalSecs
+      }
+      if (m === 'weight+time') payload.weight_kg = parseFloat(weightKg) || 0
+      if (m === 'sport') {
+        payload.result_type = sportResult
+        if (sportScore) payload.match_score = sportScore
+      }
+
+      const { error: err } = await supabase.from('results').upsert(payload, {
+        onConflict: 'player_id,session_id,event_id',
+      })
       if (err) throw err
-      clearInputs()
-      setSelectedEvent(null)
+
+      clearInputs(); setSelectedEvent(null)
       setSubmitSuccess(true)
       setTimeout(() => setSubmitSuccess(false), 3000)
     } catch (e: any) {
@@ -247,8 +480,18 @@ export default function SessionPage() {
     setSubmitting(false)
   }
 
+  const saveBodyweight = async () => {
+    if (!player || !bodyweight) return
+    await supabase.from('players').update({ bodyweight_kg: parseFloat(bodyweight) }).eq('id', player.id)
+    setBodyweightSaved(true); setTimeout(() => setBodyweightSaved(false), 2000)
+  }
+
+  // ── Derived ────────────────────────────────────────────────────────────────
   const standings = calcPlacements(results, events)
   const RANK_COLOURS = ['#F9B051', '#aaa', '#CD7F32', '#2371BB', '#4DB26E']
+  const timerColour = timeLeft !== null
+    ? timeLeft < 600 ? '#EA4742' : timeLeft < 1800 ? '#F9B051' : '#4DB26E'
+    : '#4DB26E'
 
   function getEventScores(eventId: string) {
     return results
@@ -263,17 +506,15 @@ export default function SessionPage() {
       })
   }
 
-  const timerColour = timeLeft !== null
-    ? timeLeft < 600 ? '#EA4742' : timeLeft < 1800 ? '#F9B051' : '#4DB26E'
-    : '#4DB26E'
-
-  const unitBtn = (unit: 'm' | 'cm') => ({
-    padding: '10px 18px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px',
+  // ── Style helpers ──────────────────────────────────────────────────────────
+  const unitBtn = (unit: 'm' | 'cm'): React.CSSProperties => ({
+    padding: '10px 18px', border: 'none', borderRadius: '6px', cursor: 'pointer',
+    fontWeight: 'bold', fontSize: '14px',
     background: distanceUnit === unit ? '#2371BB' : '#1a1a1a',
     color: distanceUnit === unit ? '#fff' : '#666',
-  } as React.CSSProperties)
+  })
 
-  const sportBtn = (val: 'win' | 'draw' | 'loss') => {
+  const sportBtn = (val: 'win' | 'draw' | 'loss'): React.CSSProperties => {
     const colours = { win: '#4DB26E', draw: '#F9B051', loss: '#EA4742' }
     const active = sportResult === val
     return {
@@ -281,9 +522,10 @@ export default function SessionPage() {
       borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px',
       background: active ? colours[val] + '22' : '#111',
       color: active ? colours[val] : '#444',
-    } as React.CSSProperties
+    }
   }
 
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a0a', color: '#fff', maxWidth: '600px', margin: '0 auto', fontFamily: 'sans-serif' }}>
 
@@ -298,7 +540,7 @@ export default function SessionPage() {
           </div>
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontSize: '24px', fontWeight: 'bold', color: timerColour, fontVariantNumeric: 'tabular-nums' }}>
-              {sessionEnded ? 'ENDED' : timeLeft !== null ? formatTime(timeLeft) : '--:--'}
+              {sessionEnded ? 'ENDED' : timeLeft !== null ? fmtCountdown(timeLeft) : '--:--'}
             </div>
             <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)' }}>remaining</div>
           </div>
@@ -306,7 +548,7 @@ export default function SessionPage() {
         {session?.session_code && (
           <div style={{ marginTop: '12px', background: 'rgba(0,0,0,0.3)', borderRadius: '8px', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)' }}>SESSION CODE</div>
-            <div style={{ fontSize: '22px', fontWeight: 'bold', letterSpacing: '6px', color: '#fff' }}>{session.session_code}</div>
+            <div style={{ fontSize: '22px', fontWeight: 'bold', letterSpacing: '6px' }}>{session.session_code}</div>
           </div>
         )}
       </div>
@@ -314,7 +556,7 @@ export default function SessionPage() {
       {sessionEnded && (
         <div style={{ background: '#2e0d0d', border: '1px solid #EA4742', padding: '14px 20px', textAlign: 'center' }}>
           <div style={{ color: '#EA4742', fontWeight: 'bold', fontSize: '15px' }}>⏱ Session Ended</div>
-          <div style={{ color: '#888', fontSize: '12px', marginTop: '4px' }}>Score submission is now locked</div>
+          <div style={{ color: '#888', fontSize: '12px', marginTop: '4px' }}>Score submission is locked</div>
         </div>
       )}
 
@@ -334,7 +576,7 @@ export default function SessionPage() {
         ))}
       </div>
 
-      {/* ── LEADERBOARD TAB ── */}
+      {/* ── LEADERBOARD TAB ────────────────────────────────────────────────── */}
       {activeTab === 'leaderboard' && (
         <div style={{ padding: '16px' }}>
           {standings.length === 0 ? (
@@ -358,7 +600,7 @@ export default function SessionPage() {
                   }}>{idx + 1}</div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 'bold', fontSize: '15px' }}>{s.player_name}</div>
-                    <div style={{ fontSize: '12px', color: '#555', marginTop: '2px' }}>{s.events_done} event{s.events_done !== 1 ? 's' : ''} completed</div>
+                    <div style={{ fontSize: '12px', color: '#555', marginTop: '2px' }}>{s.events_done} event{s.events_done !== 1 ? 's' : ''} done</div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontSize: '20px', fontWeight: 'bold', color: idx === 0 ? '#F9B051' : '#fff' }}>{s.total_placement}</div>
@@ -390,7 +632,7 @@ export default function SessionPage() {
                       {leader ? (
                         <div style={{ textAlign: 'right', flexShrink: 0 }}>
                           <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#F9B051' }}>{leader.player_name}</div>
-                          <div style={{ fontSize: '11px', color: '#4DB26E' }}>{leader.score_label || leader.raw_score} · {scores.length} score{scores.length !== 1 ? 's' : ''}</div>
+                          <div style={{ fontSize: '11px', color: '#4DB26E' }}>{leader.score_label} · {scores.length} score{scores.length !== 1 ? 's' : ''}</div>
                         </div>
                       ) : (
                         <div style={{ fontSize: '11px', color: '#444' }}>No scores yet</div>
@@ -400,7 +642,7 @@ export default function SessionPage() {
                     {isExpanded && (
                       <div style={{ borderTop: '1px solid #1e1e1e' }}>
                         {scores.length === 0 ? (
-                          <div style={{ padding: '12px 14px', color: '#444', fontSize: '12px' }}>No scores submitted yet.</div>
+                          <div style={{ padding: '12px 14px', color: '#444', fontSize: '12px' }}>No scores yet.</div>
                         ) : scores.map((r, idx) => (
                           <div key={r.id} style={{
                             display: 'flex', alignItems: 'center', gap: '12px',
@@ -415,7 +657,7 @@ export default function SessionPage() {
                               background: RANK_COLOURS[idx] || '#222', color: idx < 3 ? '#000' : '#fff',
                             }}>{r.placement}</div>
                             <div style={{ flex: 1, fontSize: '13px', color: idx === 0 ? '#fff' : '#aaa', fontWeight: idx === 0 ? 'bold' : 'normal' }}>{r.player_name}</div>
-                            <div style={{ fontSize: '14px', fontWeight: 'bold', color: idx === 0 ? '#F9B051' : '#666' }}>{r.score_label || r.raw_score}</div>
+                            <div style={{ fontSize: '14px', fontWeight: 'bold', color: idx === 0 ? '#F9B051' : '#666' }}>{r.score_label}</div>
                           </div>
                         ))}
                       </div>
@@ -428,9 +670,10 @@ export default function SessionPage() {
         </div>
       )}
 
-      {/* ── SUBMIT TAB ── */}
+      {/* ── SUBMIT TAB ─────────────────────────────────────────────────────── */}
       {activeTab === 'submit' && (
         <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
           {!player ? (
             <div style={{ background: '#1a1a2e', border: '1px solid #2371BB', borderRadius: '10px', padding: '24px', textAlign: 'center' }}>
               <div style={{ fontSize: '24px', marginBottom: '12px' }}>🔒</div>
@@ -487,18 +730,14 @@ export default function SessionPage() {
                       <button key={event.id} onClick={() => setSelectedEvent(isSelected ? null : event)} style={{
                         padding: '12px 14px', borderRadius: '8px', border: `1px solid ${isSelected ? '#2371BB' : '#1e1e1e'}`,
                         cursor: 'pointer', textAlign: 'left', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                        background: isSelected ? '#0d1a2e' : '#111',
-                        color: isSelected ? '#fff' : '#aaa',
-                        fontSize: '13px',
+                        background: isSelected ? '#0d1a2e' : '#111', color: isSelected ? '#fff' : '#aaa', fontSize: '13px',
                       }}>
                         <div>
                           <span style={{ fontWeight: 'bold' }}>{event.event_name}</span>
                           <span style={{ marginLeft: '8px', opacity: 0.5, fontSize: '11px' }}>{event.domain_name}</span>
                         </div>
                         {myScore && (
-                          <span style={{ fontSize: '11px', color: '#4DB26E', flexShrink: 0 }}>
-                            ✓ {myScore.score_label || myScore.raw_score}
-                          </span>
+                          <span style={{ fontSize: '11px', color: '#4DB26E', flexShrink: 0 }}>✓ {myScore.score_label}</span>
                         )}
                       </button>
                     )
@@ -506,64 +745,111 @@ export default function SessionPage() {
                 </div>
               </div>
 
-              {/* Domain-specific score inputs */}
-              {selectedEvent && mode && (
+              {/* ── Score input panel ── */}
+              {selectedEvent && (
                 <div style={{ background: '#0d0d0d', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   <div style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', letterSpacing: '1px' }}>
                     {selectedEvent.domain_name} — {selectedEvent.event_name}
                   </div>
 
+                  {/* Variation picker (dynamic, hold, reps events that have options) */}
+                  {eventConfig?.variations && (
+                    <div>
+                      <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '8px' }}>VARIATION</label>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                        {eventConfig.variations.map(v => {
+                          const active = exerciseVariation === v
+                          // Strip mode suffix for button label
+                          const label = v.replace(' / Hold', '').replace(' / Reps', '')
+                          const isHold = v.endsWith('/ Hold')
+                          const isReps = v.endsWith('/ Reps')
+                          const accent = isHold ? '#B87DB5' : isReps ? '#F9B051' : '#2371BB'
+                          return (
+                            <button key={v} onClick={() => setExerciseVariation(active ? '' : v)} style={{
+                              padding: '8px 14px', borderRadius: '6px', border: `1px solid ${active ? accent : '#2a2a2a'}`,
+                              cursor: 'pointer', fontSize: '13px', fontWeight: active ? 'bold' : 'normal',
+                              background: active ? accent + '22' : '#111',
+                              color: active ? accent : '#777',
+                            }}>
+                              {label}
+                              {isHold && <span style={{ fontSize: '10px', marginLeft: '4px', opacity: 0.6 }}>hold</span>}
+                              {isReps && <span style={{ fontSize: '10px', marginLeft: '4px', opacity: 0.6 }}>reps</span>}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Dynamic mode: prompt to select variation first */}
+                  {rawMode === 'dynamic' && !exerciseVariation && (
+                    <div style={{ color: '#555', fontSize: '13px', textAlign: 'center', padding: '8px 0' }}>
+                      Select a variation above to continue
+                    </div>
+                  )}
+
                   {/* STRENGTH: weight + reps */}
-                  {mode === 'strength' && (
+                  {effectiveMode === 'strength' && (
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                       <div>
                         <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>WEIGHT (kg)</label>
-                        <input type="number" value={weightKg} onChange={e => setWeightKg(e.target.value)}
-                          placeholder="100" style={inp} />
+                        <input type="number" value={weightKg} onChange={e => setWeightKg(e.target.value)} placeholder="100" style={inp} />
                       </div>
                       <div>
-                        <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>REPS</label>
-                        <input type="number" value={repCount} onChange={e => setRepCount(e.target.value)}
-                          placeholder="5" style={inp} />
+                        <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>REPS (optional)</label>
+                        <input type="number" value={repCount} onChange={e => setRepCount(e.target.value)} placeholder="5" style={inp} />
                       </div>
                     </div>
                   )}
 
-                  {/* REPS: count only */}
-                  {mode === 'reps' && (
+                  {/* REPS */}
+                  {effectiveMode === 'reps' && (
                     <div>
                       <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>REPS / COUNT</label>
-                      <input type="number" value={repCount} onChange={e => setRepCount(e.target.value)}
-                        placeholder="42" style={{ ...inp, fontSize: '32px' }} />
+                      <input type="number" value={repCount} onChange={e => setRepCount(e.target.value)} placeholder="20" style={{ ...inp, fontSize: '32px' }} />
                     </div>
                   )}
 
-                  {/* TIME: min + sec */}
-                  {mode === 'time' && (
+                  {/* TIME (lower = better — sprints, runs) */}
+                  {effectiveMode === 'time' && (
                     <>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                         <div>
                           <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>MINUTES</label>
-                          <input type="number" value={timeMins} onChange={e => setTimeMins(e.target.value)}
-                            placeholder="1" style={inp} />
+                          <input type="number" value={timeMins} onChange={e => setTimeMins(e.target.value)} placeholder="4" style={inp} />
                         </div>
                         <div>
                           <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>SECONDS</label>
-                          <input type="number" value={timeSecs} onChange={e => setTimeSecs(e.target.value)}
-                            placeholder="42" style={inp} />
+                          <input type="number" value={timeSecs} onChange={e => setTimeSecs(e.target.value)} placeholder="30" style={inp} />
                         </div>
                       </div>
                       <div style={{ fontSize: '11px', color: '#444' }}>Lower time = better ranking</div>
                     </>
                   )}
 
-                  {/* DISTANCE: value + unit */}
-                  {mode === 'distance' && (
+                  {/* HOLD (longer = better — L-sit, planche, iron lungs) */}
+                  {effectiveMode === 'hold' && (
+                    <>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                        <div>
+                          <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>MINUTES</label>
+                          <input type="number" value={timeMins} onChange={e => setTimeMins(e.target.value)} placeholder="1" style={inp} />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>SECONDS</label>
+                          <input type="number" value={timeSecs} onChange={e => setTimeSecs(e.target.value)} placeholder="30" style={inp} />
+                        </div>
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#444' }}>Longer hold = better ranking</div>
+                    </>
+                  )}
+
+                  {/* DISTANCE (jumps, throws) */}
+                  {effectiveMode === 'distance' && (
                     <div>
-                      <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>DISTANCE / MEASUREMENT</label>
+                      <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>DISTANCE</label>
                       <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                        <input type="number" value={distanceVal} onChange={e => setDistanceVal(e.target.value)}
-                          placeholder="8.5" style={{ ...inp, flex: 1 }} />
+                        <input type="number" value={distanceVal} onChange={e => setDistanceVal(e.target.value)} placeholder="8.5" style={{ ...inp, flex: 1 }} />
                         <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
                           <button onClick={() => setDistanceUnit('m')} style={unitBtn('m')}>m</button>
                           <button onClick={() => setDistanceUnit('cm')} style={unitBtn('cm')}>cm</button>
@@ -572,8 +858,27 @@ export default function SessionPage() {
                     </div>
                   )}
 
-                  {/* SPORT: win / draw / loss */}
-                  {mode === 'sport' && (
+                  {/* FLEXIBILITY — blocks (0 = floor = best) + optional hold time */}
+                  {effectiveMode === 'flexibility' && (
+                    <>
+                      <div>
+                        <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>BLOCKS FROM FLOOR (0 = touching floor)</label>
+                        <input type="number" min="0" max="20" value={distanceVal} onChange={e => setDistanceVal(e.target.value)}
+                          placeholder="2" style={{ ...inp, fontSize: '32px' }} />
+                        <div style={{ fontSize: '11px', color: '#444', marginTop: '4px' }}>Fewer blocks = better ranking</div>
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>HOLD TIME (optional — min / sec)</label>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                          <input type="number" value={timeMins} onChange={e => setTimeMins(e.target.value)} placeholder="0" style={inpSm} />
+                          <input type="number" value={timeSecs} onChange={e => setTimeSecs(e.target.value)} placeholder="30" style={inpSm} />
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* SPORT — win / draw / loss + match score */}
+                  {effectiveMode === 'sport' && (
                     <>
                       <div>
                         <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '8px' }}>RESULT</label>
@@ -585,13 +890,54 @@ export default function SessionPage() {
                       </div>
                       <div>
                         <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>SCORE (optional — e.g. 21-15)</label>
-                        <input value={sportScore} onChange={e => setSportScore(e.target.value)}
-                          placeholder="21-15" style={{ ...inp, fontSize: '18px' }} />
+                        <input value={sportScore} onChange={e => setSportScore(e.target.value)} placeholder="21-15" style={{ ...inp, fontSize: '18px' }} />
                       </div>
                     </>
                   )}
 
-                  {/* Preview */}
+                  {/* WEIGHT + TIME — 200m Carry */}
+                  {effectiveMode === 'weight+time' && (
+                    <>
+                      <div>
+                        <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>WEIGHT CARRIED (kg)</label>
+                        <input type="number" value={weightKg} onChange={e => setWeightKg(e.target.value)} placeholder="50" style={inp} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>TIME (min / sec)</label>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                          <input type="number" value={timeMins} onChange={e => setTimeMins(e.target.value)} placeholder="4" style={inp} />
+                          <input type="number" value={timeSecs} onChange={e => setTimeSecs(e.target.value)} placeholder="30" style={inp} />
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#444', marginTop: '4px' }}>Lower time = better ranking</div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* DISTANCE + TIME — Repeat High Jump */}
+                  {effectiveMode === 'distance+time' && (
+                    <>
+                      <div>
+                        <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>HEIGHT REACHED</label>
+                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                          <input type="number" value={distanceVal} onChange={e => setDistanceVal(e.target.value)} placeholder="45" style={{ ...inp, flex: 1 }} />
+                          <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                            <button onClick={() => setDistanceUnit('cm')} style={unitBtn('cm')}>cm</button>
+                            <button onClick={() => setDistanceUnit('m')} style={unitBtn('m')}>m</button>
+                          </div>
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#444', marginTop: '4px' }}>Higher = better ranking</div>
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>TIME FOR 10 JUMPS (optional — min / sec)</label>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                          <input type="number" value={timeMins} onChange={e => setTimeMins(e.target.value)} placeholder="1" style={inpSm} />
+                          <input type="number" value={timeSecs} onChange={e => setTimeSecs(e.target.value)} placeholder="30" style={inpSm} />
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Score preview */}
                   {isScoreValid() && (
                     <div style={{ background: '#111', borderRadius: '8px', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ fontSize: '12px', color: '#555' }}>Preview</span>
