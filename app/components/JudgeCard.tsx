@@ -73,6 +73,20 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
     fetchSessions()
   }, [])
 
+  // Realtime: keep player count live during active sessions
+  useEffect(() => {
+    if (activeSessions.length === 0) return
+    const sessionId = activeSessions[0].id
+    const ch = supabase
+      .channel(`judge-count-${sessionId}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'results', filter: `session_id=eq.${sessionId}` },
+        () => setPlayerCounts(prev => ({ ...prev, [sessionId]: (prev[sessionId] ?? 0) + 1 })))
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'results', filter: `session_id=eq.${sessionId}` },
+        () => setPlayerCounts(prev => ({ ...prev, [sessionId]: Math.max(0, (prev[sessionId] ?? 1) - 1) })))
+      .subscribe()
+    return () => { supabase.removeChannel(ch) }
+  }, [activeSessions.map(s => s.id).join(',')])
+
   // Two-tap end confirmation
   const handleEndTap = (sessionId: string) => {
     if (endConfirm === sessionId) {

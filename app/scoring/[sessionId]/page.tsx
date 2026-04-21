@@ -327,6 +327,12 @@ export default function SessionPage() {
   const [sessionEnded, setSessionEnded] = useState(false)
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null)
   const [divisionTab, setDivisionTab] = useState<DivisionTab>('overall')
+  // Judge score management
+  const [judgeEdit, setJudgeEdit] = useState<Result | null>(null)
+  const [judgeEditLabel, setJudgeEditLabel] = useState('')
+  const [judgeEditRaw, setJudgeEditRaw] = useState('')
+  const [judgeDeleteId, setJudgeDeleteId] = useState<string | null>(null)
+  const [judgeSaving, setJudgeSaving] = useState(false)
   // player_id → { division, date_of_birth }
   const [playerDivisions, setPlayerDivisions] = useState<Record<string, { division: string; dob: string | null }>>({})
   const [bodyweight, setBodyweight] = useState('')
@@ -631,6 +637,45 @@ export default function SessionPage() {
     setSubmitting(false)
   }
 
+  // ── Judge score management ─────────────────────────────────────────────────
+  const isJudge = player?.role === 'judge'
+
+  const openJudgeEdit = (r: Result) => {
+    setJudgeEdit(r)
+    setJudgeEditLabel(r.score_label)
+    setJudgeEditRaw(String(r.raw_score))
+    setJudgeDeleteId(null)
+  }
+
+  const handleJudgeSave = async () => {
+    if (!judgeEdit) return
+    setJudgeSaving(true)
+    const { error } = await supabase.from('results').update({
+      score_label: judgeEditLabel,
+      raw_score: parseFloat(judgeEditRaw) || 0,
+    }).eq('id', judgeEdit.id)
+    if (!error) {
+      const { data: fresh } = await supabase.from('results').select('*').eq('session_id', sessionId)
+      if (fresh) setResults(fresh)
+      setJudgeEdit(null)
+    }
+    setJudgeSaving(false)
+  }
+
+  const handleJudgeDelete = async (resultId: string) => {
+    if (judgeDeleteId !== resultId) {
+      setJudgeDeleteId(resultId)
+      setTimeout(() => setJudgeDeleteId(d => d === resultId ? null : d), 3000)
+      return
+    }
+    setJudgeSaving(true)
+    await supabase.from('results').delete().eq('id', resultId)
+    const { data: fresh } = await supabase.from('results').select('*').eq('session_id', sessionId)
+    if (fresh) setResults(fresh)
+    setJudgeDeleteId(null)
+    setJudgeSaving(false)
+  }
+
   const saveBodyweight = async () => {
     if (!player || !bodyweight) return
     await supabase.from('players').update({ bodyweight_kg: parseFloat(bodyweight) }).eq('id', player.id)
@@ -701,6 +746,47 @@ export default function SessionPage() {
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a0a', color: '#fff', maxWidth: '600px', margin: '0 auto', fontFamily: 'sans-serif' }}>
+
+      {/* ── Judge edit modal ── */}
+      {judgeEdit && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+          <div style={{ background: '#111', border: '1px solid #2371BB', borderRadius: '14px', padding: '24px', width: '100%', maxWidth: '400px' }}>
+            <div style={{ fontSize: '11px', color: '#555', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '4px' }}>Judge Edit</div>
+            <div style={{ fontWeight: 'bold', fontSize: '16px', marginBottom: '4px' }}>{judgeEdit.player_name}</div>
+            <div style={{ fontSize: '12px', color: '#555', marginBottom: '20px' }}>
+              {events.find(e => e.id === judgeEdit.event_id)?.event_name}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div>
+                <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>SCORE LABEL</label>
+                <input
+                  value={judgeEditLabel}
+                  onChange={e => setJudgeEditLabel(e.target.value)}
+                  style={{ width: '100%', background: '#0d0d0d', border: '1px solid #2a2a2a', borderRadius: '8px', padding: '12px', color: '#fff', fontSize: '16px', boxSizing: 'border-box' as const }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>RAW SCORE (used for ranking)</label>
+                <input
+                  type="number"
+                  value={judgeEditRaw}
+                  onChange={e => setJudgeEditRaw(e.target.value)}
+                  style={{ width: '100%', background: '#0d0d0d', border: '1px solid #2a2a2a', borderRadius: '8px', padding: '12px', color: '#fff', fontSize: '16px', boxSizing: 'border-box' as const }}
+                />
+                <div style={{ fontSize: '11px', color: '#444', marginTop: '4px' }}>Note: time events use negative values, faster = more negative</div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+              <button onClick={() => setJudgeEdit(null)} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid #333', background: 'transparent', color: '#888', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold' }}>
+                Cancel
+              </button>
+              <button onClick={handleJudgeSave} disabled={judgeSaving} style={{ flex: 2, padding: '12px', borderRadius: '8px', border: 'none', background: '#2371BB', color: '#fff', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold', opacity: judgeSaving ? 0.6 : 1 }}>
+                {judgeSaving ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Header */}
       <div style={{ background: '#2371BB', padding: '14px 20px' }}>
@@ -859,7 +945,7 @@ export default function SessionPage() {
                           <div style={{ padding: '12px 14px', color: '#444', fontSize: '12px' }}>No scores yet.</div>
                         ) : scores.map((r, idx) => (
                           <div key={r.id} style={{
-                            display: 'flex', alignItems: 'center', gap: '12px',
+                            display: 'flex', alignItems: 'center', gap: '10px',
                             padding: '10px 14px',
                             borderBottom: idx < scores.length - 1 ? '1px solid #1a1a1a' : 'none',
                             background: idx === 0 ? '#0d1a0d' : 'transparent',
@@ -871,7 +957,26 @@ export default function SessionPage() {
                               background: RANK_COLOURS[idx] || '#222', color: idx < 3 ? '#000' : '#fff',
                             }}>{r.placement}</div>
                             <div style={{ flex: 1, fontSize: '13px', color: idx === 0 ? '#fff' : '#aaa', fontWeight: idx === 0 ? 'bold' : 'normal' }}>{r.player_name}</div>
-                            <div style={{ fontSize: '14px', fontWeight: 'bold', color: idx === 0 ? '#F9B051' : '#666' }}>{r.score_label}</div>
+                            <div style={{ fontSize: '13px', fontWeight: 'bold', color: idx === 0 ? '#F9B051' : '#666' }}>{r.score_label}</div>
+                            {isJudge && (
+                              <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                                <button
+                                  onClick={() => openJudgeEdit(r)}
+                                  title="Edit score"
+                                  style={{ padding: '4px 8px', borderRadius: '5px', border: '1px solid #2371BB44', background: '#2371BB11', color: '#2371BB', cursor: 'pointer', fontSize: '12px', lineHeight: 1 }}
+                                >
+                                  ✏️
+                                </button>
+                                <button
+                                  onClick={() => handleJudgeDelete(r.id)}
+                                  disabled={judgeSaving}
+                                  title={judgeDeleteId === r.id ? 'Tap again to confirm' : 'Delete score'}
+                                  style={{ padding: '4px 8px', borderRadius: '5px', border: `1px solid ${judgeDeleteId === r.id ? '#EA4742' : '#EA474244'}`, background: judgeDeleteId === r.id ? '#EA474222' : '#EA474211', color: '#EA4742', cursor: 'pointer', fontSize: '12px', lineHeight: 1, transition: 'all 0.15s' }}
+                                >
+                                  {judgeDeleteId === r.id ? '⚠️' : '🗑'}
+                                </button>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
