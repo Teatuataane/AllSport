@@ -2,7 +2,8 @@
 
 ## ✅ Done
 
-- Deploy to Vercel (https://all-sport-psi.vercel.app)
+- Deploy to Vercel
+- Custom domain allsport.nz — DNS configured, SSL live, Supabase Auth URLs updated
 - Google OAuth redirect URLs configured for production
 - RLS policies — results INSERT, UPDATE, rankings write
 - Points auto-calculation trigger (award_session_points on session close)
@@ -10,30 +11,33 @@
 - calculate_streak() function
 - Live leaderboard — real Supabase data, division tabs, podium
 - Active session banner on leaderboard (realtime, shows current leader)
-- Session scoring — structured inputs per domain (strength/reps/time/distance/sport)
-- Score upsert — resubmit updates instead of erroring
+- Session scoring — per-event structured inputs (10 modes: strength, reps, time, hold, distance, flexibility, sport, sprint, weight+time, distance+time, dynamic)
+- Sprint timing mode — seconds + centiseconds for 100m/50m/200m Sprint, T-Test
+- Score upsert — resubmitting updates instead of erroring
+- Score submission re-fetch — results always appear after submit (fixes realtime UPDATE miss)
 - Unique constraint: results_player_event_unique (player_id, session_id, event_id)
 - Expandable event scores in session leaderboard (shows ranked list, current best)
 - Judge Void button — cancels session without awarding points
 - Session start time — editable field, pre-filled with now
+- Pre-session timer — purple "until start" countdown before started_at, then game clock
 - Bodyweight field in session scoring — saves to player profile
 - Schedule page — corrected session times (4:30pm Tue/Thu) and championship date (14 Mar 2027)
 - Removed "Train Everything" tagline from login screen
 - QR code fullscreen in JudgeCard
+- Sport events — record opponent name + conflict detection between players
+- 1 Leg Squat — variation picker with free-text override
+- Distance score decimal fix — stored as whole cm integers (no DB type errors)
+- Division tabs on live session leaderboard — Overall / Men's / Women's / Juniors
+- Overall tab multipliers — Women's/Juniors ×1.2, Masters Men ×1.2, Masters Women ×1.4
+- Supabase SSR middleware (middleware.ts) — fixes session persistence and Google double sign-in
+- Navbar — switched to browser client, PLAY NOW hides when logged in (shows DASHBOARD)
+- /play — redirects already-logged-in users to dashboard
+- Browser tab — "AllSport — Play EVERYTHING" + logo favicon
+- Bodyweight SQL migration — `ALTER TABLE players ADD COLUMN IF NOT EXISTS bodyweight_kg NUMERIC;`
 
 ---
 
 ## P1 — Do Next
-
-### allsport.org.nz domain
-**What:** Purchase domain and point DNS to Vercel.
-**Why:** all-sport-psi.vercel.app is not shareable. Players need a real URL.
-**Effort:** S (human) — purchase on Namecheap/GoDaddy, add custom domain in Vercel settings.
-
-### Run bodyweight SQL migration
-**What:** `ALTER TABLE players ADD COLUMN IF NOT EXISTS bodyweight_kg NUMERIC;`
-**Why:** Bodyweight field in session scoring saves to this column. If it doesn't exist, saves fail silently.
-**Effort:** XS — one line in Supabase SQL Editor.
 
 ### Judge score management from live session
 **What:** Judge can edit or delete any player's score from within /scoring/[sessionId] without going to a separate screen.
@@ -66,11 +70,6 @@
 **What:** Each event has a page showing rules, how to score, and the player's personal best.
 **Why:** New players don't know how to perform or score events.
 **Effort:** L (CC)
-
-### Division split on live session leaderboard
-**What:** In /scoring/[sessionId], show standings split by Men's / Women's / Juniors.
-**Why:** Currently all divisions are ranked together in one list.
-**Effort:** S (CC) — tab or toggle on the leaderboard tab, filter standings by player division.
 
 ---
 

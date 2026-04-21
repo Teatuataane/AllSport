@@ -228,7 +228,7 @@ update players set role = 'judge' where id = '[uuid]';
 | Dashboard | /dashboard | Complete | Grade progress, stats, join by code, recent sessions |
 | Judge Panel | dashboard (JudgeCard) | Complete | Create/end/void sessions, QR code, history |
 | Scoring Setup | /scoring | Complete | Select 10 events, editable start time, create session |
-| Live Session | /scoring/[sessionId] | Complete | Live leaderboard, timer, structured score entry, expandable event scores, bodyweight |
+| Live Session | /scoring/[sessionId] | Complete | Live leaderboard, division tabs, pre-session timer, structured score entry, sprint timing, expandable event scores, bodyweight |
 | Auth Callback | /auth/callback | Complete | Google OAuth handler |
 
 ---
@@ -281,7 +281,10 @@ Unique constraint: rankings_player_season_unique ON (player_id, season_year)
 - Points auto-awarded via trigger when session closes (award_session_points)
 - Void session: set points_awarded_at=NOW() before/with is_active=false to skip trigger
 - raw_score for time events is stored negative (faster = higher) so rankings sort correctly
-- Input modes by domain: strength (weight+reps), reps, time (mm:ss), distance (m/cm), sport (win/draw/loss)
+- Input modes: strength (weight+reps), reps, time (mm:ss), hold (mm:ss), distance (m/cm), flexibility (blocks), sport (win/draw/loss + opponent), sprint (ss.cs), weight+time, distance+time, dynamic (variation suffix drives hold vs reps)
+- Sprint mode: seconds + centiseconds (0–99), raw_score = -(secs*100 + cs). Used for 100m/50m/200m Sprint, T-Test
+- Pre-session timer: if started_at is in the future, shows purple "until start" countdown. Game clock begins at started_at
+- Score submission re-fetches results after upsert (realtime alone misses UPDATEs from re-submissions)
 
 ---
 
@@ -289,11 +292,12 @@ Unique constraint: rankings_player_season_unique ON (player_id, season_year)
 
 ```
 ~/allsport/
+  middleware.ts                     # REQUIRED — refreshes Supabase session on every request
   app/
     page.tsx                        # Homepage
-    layout.tsx                      # Root layout
+    layout.tsx                      # Root layout — title "AllSport — Play EVERYTHING", logo favicon
     globals.css                     # Design system
-    play/page.tsx                   # Login/register landing, Google OAuth
+    play/page.tsx                   # Login/register landing, Google OAuth, redirects if already logged in
     how-to-play/page.tsx
     schedule/page.tsx
     leaderboard/page.tsx            # Real data, division tabs, active session banner
@@ -302,16 +306,16 @@ Unique constraint: rankings_player_season_unique ON (player_id, season_year)
     login/page.tsx
     dashboard/page.tsx              # Player home — grade, stats, join session
     scoring/page.tsx                # Session setup — events, location, start time
-    scoring/[sessionId]/page.tsx    # Live session — structured inputs, expandable scores, bodyweight
+    scoring/[sessionId]/page.tsx    # Live session — structured inputs, division tabs, sprint timing, pre-session timer
     auth/callback/route.ts
     components/
       JudgeCard.tsx                 # Judge panel — embedded in dashboard, end/void sessions, QR
   components/
-    Navbar.tsx                      # PLAY NOW, auth-aware, judge link
+    Navbar.tsx                      # PLAY NOW/DASHBOARD auth-aware, uses supabase-browser
     Footer.tsx
   lib/
-    supabase.ts                     # Basic client (legacy — avoid in new code)
-    supabase-browser.ts             # Browser client (use this in all client components)
+    supabase.ts                     # Basic client (legacy — DO NOT USE in new code)
+    supabase-browser.ts             # Browser client (use this in ALL client components)
     supabase-server.ts              # Server client
   supabase/
     migrations/
@@ -328,17 +332,24 @@ Unique constraint: rankings_player_season_unique ON (player_id, season_year)
 
 - Full public website (5 pages)
 - 3-step player registration with Google OAuth, division, display preferences
-- Play page — login/register landing (tagline removed)
+- Play page — login/register landing, redirects logged-in users to dashboard
 - Player dashboard — grade progress, year tabs, stats, join by code, recent sessions
 - Judge panel (JudgeCard) — create/end/void sessions, QR code fullscreen, history
-- Live scoring app — 100-event pool, structured inputs by domain, live leaderboard, expandable event scores, bodyweight field, 100-min timer, session code, real-time
+- Live scoring app — 100-event pool, per-event structured inputs (10 modes), live leaderboard, division tabs, expandable event scores, bodyweight field, 100-min timer, session code, real-time
+- Division tabs on live leaderboard — Overall (with multipliers) / Men's / Women's / Juniors
+- Sprint timing mode — seconds + centiseconds for 100m/50m/200m Sprint and T-Test
+- Pre-session timer — purple countdown until scheduled start, then game clock
+- Score submission reliability — re-fetches results after upsert (fixes UPDATE events not showing)
+- Sport events — record opponent name, conflict detection between players
+- 1 Leg Squat — variation picker with free-text override
 - Leaderboard — real data, division tabs, active session live banner (updates via realtime)
-- Navbar rebuilt — PLAY NOW button, auth-aware, judge link
+- Navbar — PLAY NOW (logged out) / DASHBOARD (logged in), auth-aware, no flicker
 - Role system (player/judge)
 - Session code system — 6-character auto-generated, join from dashboard
 - Full database schema with all columns
-- Supabase browser client (fixes auth in Next.js App Router)
-- Google OAuth — redirect URLs configured correctly in Supabase for production
+- Supabase SSR middleware (middleware.ts) — session persistence across page refreshes
+- Supabase browser client in all client components (fixes auth in Next.js App Router)
+- Google OAuth — configured for allsport.nz, redirect URLs correct
 - RLS policies — players can insert/update own results, trigger can write rankings
 - Points auto-calculation — trigger fires on session close, awards placement points + bonuses + multipliers
 - Season year on rankings (2026, 2027 etc.)
@@ -346,7 +357,8 @@ Unique constraint: rankings_player_season_unique ON (player_id, season_year)
 - Score upsert — resubmitting an event updates rather than errors
 - Session start time — editable field in setup, pre-filled with now
 - Bodyweight — saved to player profile, pre-fills on return
-- Deployed to Vercel at https://all-sport-psi.vercel.app
+- Custom domain allsport.nz — live on Vercel, Supabase Auth URLs configured
+- Browser tab — "AllSport — Play EVERYTHING" title + logo favicon
 - Brand colours, points formula, grades, koha, mission — all confirmed
 - How to Play branded PDF — complete
 - Strategy 2026-2027 branded PDF — complete
@@ -355,14 +367,12 @@ Unique constraint: rankings_player_season_unique ON (player_id, season_year)
 
 ## What's Next (In Priority Order)
 
-1. allsport.org.nz — purchase domain, point DNS to Vercel
-2. Judge score management from within live session view
-3. Real-time player count in JudgeCard (subscribe to results inserts)
-4. Judge approval flow (replace manual SQL)
+1. Judge score management from within live session view
+2. Real-time player count in JudgeCard (subscribe to results inserts)
+3. Judge approval flow (replace manual SQL)
+4. Player profile page — edit display prefs, view grade history
 5. Event detail pages — rules and personal bests per event
-6. Player profile page — edit display prefs, view grade history
-7. Division split on live session leaderboard
-8. Verify Te Reo "Kaiwāwao" is correct for judge/referee in sports context
+6. Verify Te Reo "Kaiwāwao" is correct for judge/referee in sports context
 
 ---
 
@@ -384,11 +394,14 @@ Unique constraint: rankings_player_season_unique ON (player_id, season_year)
 - Time events: raw_score stored as negative seconds so faster = higher (sort consistency)
 - Void vs End: Void sets points_awarded_at before closing to prevent trigger firing
 - Bodyweight stored on player profile (bodyweight_kg), pre-filled in session scoring
-- Structured score inputs: 5 modes — strength (weight+reps), reps, time, distance, sport
+- Structured score inputs: 10 modes — strength, reps, time, hold, distance, flexibility, sport, sprint (ss.cs), weight+time, distance+time, dynamic
+- middleware.ts is mandatory — without it, Supabase sessions don't persist across page loads in Next.js App Router
+- Division Overall tab applies multipliers to raw_score before ranking (Women's/Juniors ×1.2, Masters Men ×1.2, Masters Women ×1.4)
+- allsport.nz is the live domain (not all-sport-psi.vercel.app)
 
 ---
 
-*Last updated: April 2026*
+*Last updated: April 2026 (session 3)*
 *Project started: March 2026*
 
 ## Skill routing
