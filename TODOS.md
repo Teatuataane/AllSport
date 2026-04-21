@@ -55,6 +55,12 @@
 
 ## P2 — Soon
 
+### Welcome email on registration
+**What:** Send a branded welcome email when a new player registers — their username, division, next session times, and a link back to their dashboard.
+**Why:** Confirms account creation, gives players something to refer back to, opens a communication channel for session reminders and results.
+**How:** Supabase Edge Function triggered by a database webhook on `players INSERT`, calling Resend (free tier, 3,000/month). Domain `allsport.nz` needs two DNS TXT records added in Resend.
+**Effort:** M (CC) — Edge Function + webhook + Resend account setup + DNS.
+
 ### Judge approval flow
 **What:** Judges can be assigned via the app rather than running `UPDATE players SET role = 'judge'` manually.
 **Why:** Manual SQL is not viable once there are multiple judges or the community grows.
