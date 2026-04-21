@@ -368,6 +368,7 @@ export default function SessionPage() {
     const startTs = new Date(session.started_at).getTime()
     const endTs = startTs + session.duration_minutes * 60 * 1000
 
+    let sessionClosedByTimer = false
     const tick = () => {
       const now = Date.now()
       if (now < startTs) {
@@ -379,15 +380,13 @@ export default function SessionPage() {
         setPreSessionSecsLeft(null)
         const remaining = Math.max(0, Math.floor((endTs - now) / 1000))
         setTimeLeft(remaining)
-        if (remaining === 0) {
+        if (remaining === 0 && !sessionClosedByTimer) {
+          sessionClosedByTimer = true
           setSessionEnded(true)
+          // Closing the session triggers the award_session_points DB trigger automatically
           supabase.from('sessions')
             .update({ is_active: false, ended_at: new Date().toISOString() })
             .eq('id', sessionId)
-            .then(() => {
-              // Award points — idempotent, safe if judge already triggered it
-              supabase.rpc('award_session_points', { p_session_id: sessionId })
-            })
         }
       }
     }
@@ -409,7 +408,7 @@ export default function SessionPage() {
         // Load linked child profiles
         const { data: children } = await supabase
           .from('players')
-          .select('*')
+          .select('id, full_name, display_name, username, division, date_of_birth, bodyweight_kg')
           .eq('parent_id', auth.user.id)
           .order('full_name')
         setFamilyMembers(children || [])

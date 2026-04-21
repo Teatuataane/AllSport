@@ -112,12 +112,8 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
       setEnding(null)
       return
     }
-    // Award points — idempotent, safe to call even if timer already triggered it
-    const { data: pts, error: ptsErr } = await supabase
-      .rpc('award_session_points', { p_session_id: sessionId })
-    if (ptsErr) {
-      setEndError(`Session ended but points failed: ${ptsErr.message}`)
-    }
+    // Points are awarded automatically by the award_session_points DB trigger
+    // which fires when is_active changes true → false above.
     await fetchSessions()
     setEnding(null)
   }

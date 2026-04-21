@@ -98,7 +98,7 @@ DECLARE
   v_top_placement    INT;
 BEGIN
   v_player_count := (
-    SELECT COUNT(*) FROM results
+    SELECT COUNT(DISTINCT player_id) FROM results
     WHERE session_id = NEW.id AND player_id IS NOT NULL
   );
 
@@ -130,20 +130,20 @@ BEGIN
     -- Placement points: 1st = 100, each subsequent = 100 - (gap * (placement - 1)), min 10
     v_placement_points := GREATEST(100.0 - (v_gap * (rec.placement - 1)), 10.0);
 
-    -- Multiplier based on division and age
+    -- Multiplier based on division and age (check Masters before Open so x1.4 isn't shadowed)
     v_multiplier := 1.0;
     IF rec.division = 'Juniors' THEN
-      v_multiplier := 1.2;
-    ELSIF rec.division = 'Women''s' THEN
-      v_multiplier := 1.2;
-    ELSIF rec.division = 'Men''s'
-      AND rec.date_of_birth IS NOT NULL
-      AND EXTRACT(YEAR FROM AGE(rec.date_of_birth)) >= 40 THEN
       v_multiplier := 1.2;
     ELSIF rec.division = 'Women''s'
       AND rec.date_of_birth IS NOT NULL
       AND EXTRACT(YEAR FROM AGE(rec.date_of_birth)) >= 40 THEN
-      v_multiplier := 1.4;  -- Masters Women override
+      v_multiplier := 1.4;  -- Masters Women
+    ELSIF rec.division = 'Women''s' THEN
+      v_multiplier := 1.2;  -- Open Women
+    ELSIF rec.division = 'Men''s'
+      AND rec.date_of_birth IS NOT NULL
+      AND EXTRACT(YEAR FROM AGE(rec.date_of_birth)) >= 40 THEN
+      v_multiplier := 1.2;  -- Masters Men
     END IF;
 
     -- Bonus points

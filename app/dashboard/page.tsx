@@ -57,7 +57,7 @@ export default function Dashboard() {
   const [familyMembers, setFamilyMembers] = useState<any[]>([])
   const [showAddMember, setShowAddMember] = useState(false)
   const [addingMember, setAddingMember] = useState(false)
-  const [memberForm, setMemberForm] = useState({ full_name: '', username: '', date_of_birth: '' })
+  const [memberForm, setMemberForm] = useState({ full_name: '', username: '', date_of_birth: '', gender: 'male' as 'male' | 'female' })
   const [memberError, setMemberError] = useState('')
 
   // Initial load — player, sessions, streak, PBs (not year-dependent)
@@ -93,7 +93,7 @@ export default function Dashboard() {
       // Load linked family members
       const { data: children } = await supabase
         .from('players')
-        .select('*')
+        .select('id, full_name, display_name, username, division, date_of_birth')
         .eq('parent_id', user.id)
         .order('full_name')
       setFamilyMembers(children || [])
@@ -179,8 +179,8 @@ export default function Dashboard() {
     if (!memberForm.full_name || !memberForm.username || !memberForm.date_of_birth) return
     setAddingMember(true); setMemberError('')
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    const division = isJunior(memberForm.date_of_birth) ? 'Juniors' : "Men's"
+    if (!user) { setAddingMember(false); return }
+    const division = isJunior(memberForm.date_of_birth) ? 'Juniors' : memberForm.gender === 'female' ? "Women's" : "Men's"
     const { data, error } = await supabase.from('players').insert({
       full_name: memberForm.full_name,
       username: memberForm.username,
@@ -197,7 +197,7 @@ export default function Dashboard() {
       setMemberError(error.message)
     } else {
       setFamilyMembers(prev => [...prev, data])
-      setMemberForm({ full_name: '', username: '', date_of_birth: '' })
+      setMemberForm({ full_name: '', username: '', date_of_birth: '', gender: 'male' })
       setShowAddMember(false)
     }
     setAddingMember(false)
@@ -205,7 +205,8 @@ export default function Dashboard() {
 
   const handleRemoveMember = async (id: string) => {
     if (!confirm('Remove this family member? Their scores will remain on the leaderboard.')) return
-    await supabase.from('players').delete().eq('id', id)
+    const { error } = await supabase.from('players').delete().eq('id', id)
+    if (error) { alert('Could not remove family member — try again'); return }
     setFamilyMembers(prev => prev.filter(m => m.id !== id))
   }
 
@@ -460,12 +461,26 @@ export default function Dashboard() {
                 onChange={e => setMemberForm(f => ({ ...f, date_of_birth: e.target.value }))}
                 style={{ width: '100%', background: '#111', border: '1px solid #333', borderRadius: '8px', padding: '10px 12px', color: '#fff', fontSize: '14px', boxSizing: 'border-box' as const }}
               />
-              {memberForm.date_of_birth && (
-                <div style={{ fontSize: '11px', color: isJunior(memberForm.date_of_birth) ? '#F9B051' : '#4DB26E', marginTop: '4px' }}>
-                  Division: {isJunior(memberForm.date_of_birth) ? 'Juniors (×1.2 multiplier)' : "Men's"}
-                </div>
-              )}
             </div>
+            {!isJunior(memberForm.date_of_birth) && (
+              <div>
+                <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>GENDER</label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {(['male', 'female'] as const).map(g => (
+                    <button key={g} onClick={() => setMemberForm(f => ({ ...f, gender: g }))} style={{
+                      flex: 1, padding: '8px', borderRadius: '8px', border: `1px solid ${memberForm.gender === g ? '#2371BB' : '#2a2a2a'}`,
+                      background: memberForm.gender === g ? '#0d1a2e' : 'transparent',
+                      color: memberForm.gender === g ? '#fff' : '#555', cursor: 'pointer', fontSize: '13px',
+                    }}>{g === 'male' ? "Men's" : "Women's"}</button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {memberForm.date_of_birth && (
+              <div style={{ fontSize: '11px', color: isJunior(memberForm.date_of_birth) ? '#F9B051' : '#4DB26E' }}>
+                Division: {isJunior(memberForm.date_of_birth) ? 'Juniors (×1.2 multiplier)' : memberForm.gender === 'female' ? "Women's (×1.2)" : "Men's"}
+              </div>
+            )}
             {memberError && <div style={{ color: '#EA4742', fontSize: '13px' }}>{memberError}</div>}
             <button
               onClick={handleAddMember}
