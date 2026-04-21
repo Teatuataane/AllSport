@@ -381,7 +381,13 @@ export default function SessionPage() {
         setTimeLeft(remaining)
         if (remaining === 0) {
           setSessionEnded(true)
-          supabase.from('sessions').update({ is_active: false, ended_at: new Date().toISOString() }).eq('id', sessionId)
+          supabase.from('sessions')
+            .update({ is_active: false, ended_at: new Date().toISOString() })
+            .eq('id', sessionId)
+            .then(() => {
+              // Award points — idempotent, safe if judge already triggered it
+              supabase.rpc('award_session_points', { p_session_id: sessionId })
+            })
         }
       }
     }
