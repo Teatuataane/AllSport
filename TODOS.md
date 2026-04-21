@@ -34,6 +34,12 @@
 - /play — redirects already-logged-in users to dashboard
 - Browser tab — "AllSport — Play EVERYTHING" + logo favicon
 - Bodyweight SQL migration — `ALTER TABLE players ADD COLUMN IF NOT EXISTS bodyweight_kg NUMERIC;`
+- Sign out button on desktop navbar
+- Family accounts — parent adds/removes whānau profiles from dashboard; "Submitting as" switcher in live session; `parent_id` column + RLS migration
+- Registration failure fix — switched to `supabase-browser`, upsert on profile, email-confirmation handling
+- Legacy `lib/supabase.ts` deprecated — all pages now use `supabase-browser.ts`
+- SQL fix: `v_player_count` now counts distinct players (not result rows) — point gaps were wrong
+- SQL fix: Masters Women ×1.4 multiplier ELSIF reordered — was unreachable, always gave ×1.2
 
 ---
 
