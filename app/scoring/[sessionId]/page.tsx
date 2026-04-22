@@ -79,7 +79,7 @@ const EVENT_CONFIG: Record<string, EventConfig> = {
   },
   'Flag': {
     mode: 'dynamic',
-    variations: ['Side Plank / Hold', '1 Leg Side Plank / Hold', 'Jumping Side Plank / Reps'],
+    variations: ['Side Plank / Hold', '1 Leg Side Plank / Hold', 'Partial Flag / Hold', 'Full Flag / Hold', 'Jumping Side Plank / Reps'],
   },
   'Windshield Wipers': { mode: 'reps' },
   'Toe Lift':          { mode: 'reps' },
@@ -104,7 +104,10 @@ const EVENT_CONFIG: Record<string, EventConfig> = {
 
   // Muscular Endurance
   'Chin Up Contest':   { mode: 'reps' },
-  'Push Up Contest':   { mode: 'reps' },
+  'Push Up Contest': {
+    mode: 'reps',
+    variations: ['Assisted', 'Knee Pushup', 'Full Pushup'],
+  },
   'Reverse Hyper':     { mode: 'reps' },
   'L-Sit Hold': {
     mode: 'hold',
@@ -122,7 +125,10 @@ const EVENT_CONFIG: Record<string, EventConfig> = {
 
   // Flexibility & Mobility (blocks — 0 = floor = best)
   'Rear Hand Clasp':   { mode: 'flexibility' },
-  'Bridge':            { mode: 'flexibility' },
+  'Bridge': {
+    mode: 'hold',
+    variations: ['Wall Bridge', 'Deep Wall Bridge', 'Assisted Bridge', 'Bridge'],
+  },
   'Forward Fold':      { mode: 'flexibility' },
   'Needle Pose':       { mode: 'flexibility' },
   'Front Split':       { mode: 'flexibility' },
@@ -519,9 +525,11 @@ export default function SessionPage() {
       case 'strength': {
         const w = parseFloat(weightKg) || 0
         const r = parseInt(repCount) || 0
+        const bw = parseFloat(bodyweights[(activePlayer || player)?.id] || '0')
+        const ratio = bw > 0 ? ` (${(w / bw).toFixed(2)}× BW)` : ''
         return {
           raw_score: w,
-          score_label: r > 0 ? `${weightKg}kg × ${r} rep${r !== 1 ? 's' : ''}` : `${weightKg}kg`,
+          score_label: r > 0 ? `${weightKg}kg × ${r} rep${r !== 1 ? 's' : ''}${ratio}` : `${weightKg}kg${ratio}`,
         }
       }
       case 'reps':
@@ -728,9 +736,7 @@ export default function SessionPage() {
     })
   }
 
-  const standings = divisionTab === 'overall'
-    ? calcOverallPlacements(results, events, playerDivisions)
-    : calcPlacements(resultsForDivision(divisionFilter), events)
+  const standings = calcOverallPlacements(results, events, playerDivisions)
   const RANK_COLOURS = ['#F9B051', '#aaa', '#CD7F32', '#2371BB', '#4DB26E']
   const timerColour = preSessionSecsLeft !== null
     ? '#B87DB5'   // purple = waiting to start
@@ -868,38 +874,14 @@ export default function SessionPage() {
       {activeTab === 'leaderboard' && (
         <div style={{ padding: '16px' }}>
 
-          {/* Division tabs */}
-          <div style={{ display: 'flex', gap: '6px', marginBottom: '16px' }}>
-            {([
-              { key: 'overall', label: '🌐 Overall' },
-              { key: 'mens',    label: "Men's" },
-              { key: 'womens',  label: "Women's" },
-              { key: 'juniors', label: 'Juniors' },
-            ] as { key: DivisionTab; label: string }[]).map(({ key, label }) => {
-              const active = divisionTab === key
-              return (
-                <button key={key} onClick={() => setDivisionTab(key)} style={{
-                  flex: 1, padding: '8px 4px', border: `1px solid ${active ? '#2371BB' : '#222'}`,
-                  borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: active ? 700 : 400,
-                  background: active ? '#0d1a2e' : '#111',
-                  color: active ? '#2371BB' : '#555',
-                }}>
-                  {label}
-                </button>
-              )
-            })}
+          <div style={{ fontSize: '11px', color: '#555', marginBottom: '10px', textAlign: 'center' }}>
+            Multipliers applied: Women's & Juniors ×1.2 · Masters Men ×1.2 · Masters Women ×1.4
           </div>
-
-          {divisionTab === 'overall' && (
-            <div style={{ fontSize: '11px', color: '#555', marginBottom: '10px', textAlign: 'center' }}>
-              Multipliers applied: Women's & Juniors ×1.2 · Masters Men ×1.2 · Masters Women ×1.4
-            </div>
-          )}
 
           {standings.length === 0 ? (
             <div style={{ textAlign: 'center', color: '#555', padding: '48px 0' }}>
               <div style={{ fontSize: '32px', marginBottom: '12px' }}>🏁</div>
-              <div>{divisionTab === 'overall' ? 'No scores yet — be the first to submit!' : `No ${DIVISION_MAP[divisionTab]} scores yet`}</div>
+              <div>No scores yet — be the first to submit!</div>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>
@@ -923,14 +905,14 @@ export default function SessionPage() {
                       <div style={{ fontWeight: 'bold', fontSize: '15px' }}>{s.player_name}</div>
                       <div style={{ fontSize: '12px', color: '#555', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <span>{s.events_done} event{s.events_done !== 1 ? 's' : ''} done</span>
-                        {divisionTab === 'overall' && divLabel && (
+                        {divLabel && (
                           <span style={{ color: divColour, fontSize: '11px', background: divColour + '22', padding: '1px 6px', borderRadius: '4px' }}>{divLabel}</span>
                         )}
                       </div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
                       <div style={{ fontSize: '20px', fontWeight: 'bold', color: idx === 0 ? '#F9B051' : '#fff' }}>{s.total_placement}</div>
-                      <div style={{ fontSize: '11px', color: '#555' }}>{divisionTab === 'overall' ? 'adj. pts' : 'placement pts'}</div>
+                      <div style={{ fontSize: '11px', color: '#555' }}>adj. pts</div>
                     </div>
                   </div>
                 )
