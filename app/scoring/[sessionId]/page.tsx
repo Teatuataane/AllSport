@@ -104,10 +104,7 @@ const EVENT_CONFIG: Record<string, EventConfig> = {
 
   // Muscular Endurance
   'Chin Up Contest':   { mode: 'reps' },
-  'Push Up Contest': {
-    mode: 'reps',
-    variations: ['Assisted', 'Knee Pushup', 'Full Pushup'],
-  },
+  'Push Up Contest':   { mode: 'reps', variations: ['Assisted', 'Knee Push Up', 'Full Push Up'] },
   'Reverse Hyper':     { mode: 'reps' },
   'L-Sit Hold': {
     mode: 'hold',
@@ -125,10 +122,7 @@ const EVENT_CONFIG: Record<string, EventConfig> = {
 
   // Flexibility & Mobility (blocks — 0 = floor = best)
   'Rear Hand Clasp':   { mode: 'flexibility' },
-  'Bridge': {
-    mode: 'hold',
-    variations: ['Wall Bridge', 'Deep Wall Bridge', 'Assisted Bridge', 'Bridge'],
-  },
+  'Bridge':            { mode: 'hold', variations: ['Wall Bridge', 'Deep Wall Bridge', 'Assisted Bridge', 'Bridge'] },
   'Forward Fold':      { mode: 'flexibility' },
   'Needle Pose':       { mode: 'flexibility' },
   'Front Split':       { mode: 'flexibility' },
@@ -409,6 +403,11 @@ export default function SessionPage() {
         const { data: p } = await supabase.from('players').select('*').eq('id', auth.user.id).single()
         setPlayer(p)
         setActivePlayer(p)
+<<<<<<< HEAD
+        const initBw: Record<string, string> = {}
+        if (p?.bodyweight_kg) initBw[p.id] = String(p.bodyweight_kg)
+=======
+>>>>>>> origin/main
 
         // Load linked child profiles
         const { data: children } = await supabase
@@ -417,6 +416,10 @@ export default function SessionPage() {
           .eq('parent_id', auth.user.id)
           .order('full_name')
         setFamilyMembers(children || [])
+<<<<<<< HEAD
+        ;(children || []).forEach((c: any) => { if (c.bodyweight_kg) initBw[c.id] = String(c.bodyweight_kg) })
+        setBodyweights(initBw)
+=======
 
         // Pre-fill bodyweights for self + family
         const bwMap: Record<string, string> = {}
@@ -425,6 +428,7 @@ export default function SessionPage() {
           if (child.bodyweight_kg) bwMap[child.id] = String(child.bodyweight_kg)
         }
         setBodyweights(bwMap)
+>>>>>>> origin/main
       }
       const { data: s } = await supabase.from('sessions').select('*').eq('id', sessionId).single()
       setSession(s)
@@ -495,7 +499,10 @@ export default function SessionPage() {
     const m = effectiveMode
     if (!m) return false
     switch (m) {
-      case 'strength':     return !!weightKg
+      case 'strength': {
+        const bw = parseFloat(bodyweights[(activePlayer || player)?.id] ?? '') || 0
+        return !!weightKg && bw > 0
+      }
       case 'reps':         return !!repCount
       case 'time':
       case 'hold':         return !!(timeMins || timeSecs)
@@ -524,12 +531,21 @@ export default function SessionPage() {
     switch (m) {
       case 'strength': {
         const w = parseFloat(weightKg) || 0
+        const bw = parseFloat(bodyweights[(activePlayer || player)?.id] ?? '') || 0
         const r = parseInt(repCount) || 0
+<<<<<<< HEAD
+        const ratio = bw > 0 ? w / bw : 0
+        const ratioLabel = bw > 0 ? ` (${ratio.toFixed(2)}× BW)` : ''
+        return {
+          raw_score: ratio,
+          score_label: r > 0 ? `${weightKg}kg × ${r} rep${r !== 1 ? 's' : ''}${ratioLabel}` : `${weightKg}kg${ratioLabel}`,
+=======
         const bw = parseFloat(bodyweights[(activePlayer || player)?.id] || '0')
         const ratio = bw > 0 ? ` (${(w / bw).toFixed(2)}× BW)` : ''
         return {
           raw_score: w,
           score_label: r > 0 ? `${weightKg}kg × ${r} rep${r !== 1 ? 's' : ''}${ratio}` : `${weightKg}kg${ratio}`,
+>>>>>>> origin/main
         }
       }
       case 'reps':
@@ -711,9 +727,15 @@ export default function SessionPage() {
 
   const saveBodyweight = async () => {
     const target = activePlayer || player
+<<<<<<< HEAD
+    const bwVal = bodyweights[target?.id]
+    if (!target || !bwVal) return
+    await supabase.from('players').update({ bodyweight_kg: parseFloat(bwVal) }).eq('id', target.id)
+=======
     const bw = bodyweights[target?.id]
     if (!target || !bw) return
     await supabase.from('players').update({ bodyweight_kg: parseFloat(bw) }).eq('id', target.id)
+>>>>>>> origin/main
     setBodyweightSaved(true); setTimeout(() => setBodyweightSaved(false), 2000)
   }
 
@@ -1087,7 +1109,11 @@ export default function SessionPage() {
                 </div>
               </div>
 
+<<<<<<< HEAD
+              {/* Bodyweight — for all players, required for strength events */}
+=======
               {/* Bodyweight — for active player (self or family member) */}
+>>>>>>> origin/main
               <div style={{ background: '#111', borderRadius: '8px', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ fontSize: '12px', color: '#555', flex: 1 }}>Bodyweight</span>
                 <input
