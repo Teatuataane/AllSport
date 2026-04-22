@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase-browser'
 
@@ -8,8 +8,21 @@ export default function Register() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [needsEmailConfirm, setNeedsEmailConfirm] = useState(false)
+  const [existingUserId, setExistingUserId] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
+
+  // Google OAuth users arrive already authenticated but with no player profile.
+  // Detect this on mount so we can skip signUp() and use their existing auth ID.
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setExistingUserId(session.user.id)
+        setForm(prev => ({ ...prev, email: session.user.email ?? prev.email }))
+        setStep(2) // skip account details — they're already authenticated
+      }
+    })
+  }, [])
 
   const [form, setForm] = useState({
     full_name: '',
@@ -45,14 +58,20 @@ export default function Register() {
     setLoading(true)
     setError('')
     try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: form.email,
-        password: form.password,
-      })
-      if (authError) throw authError
+      let userId = existingUserId
+      let newSession: any = null
 
-      const userId = authData.user?.id
-      if (!userId) throw new Error('Registration failed — please try again')
+      if (!userId) {
+        // New registration via email/password
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: form.email,
+          password: form.password,
+        })
+        if (authError) throw authError
+        userId = authData.user?.id ?? null
+        newSession = authData.session
+        if (!userId) throw new Error('Registration failed — please try again')
+      }
 
       const display_name = form.show_full_name ? form.full_name : form.username
 
@@ -95,12 +114,11 @@ export default function Register() {
         console.warn('Profile insert deferred (email confirmation likely enabled):', profileError.message)
       }
 
-      // If session is null, Supabase requires email confirmation before login
-      if (!authData.session) {
-        setNeedsEmailConfirm(true)
-      } else {
-        // Signed in immediately — go straight to dashboard
+      // OAuth users already have a session; email/password users may need confirmation
+      if (existingUserId || newSession) {
         router.push('/dashboard')
+      } else {
+        setNeedsEmailConfirm(true)
       }
     } catch (e: any) {
       setError(e.message || 'Something went wrong')

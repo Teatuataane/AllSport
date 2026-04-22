@@ -24,6 +24,7 @@ type EventConfig = {
   mode: InputMode
   variations?: string[]
   freeVariation?: boolean  // show text input in addition to chips (for open-ended variations)
+  orderedVariations?: boolean  // true = higher index in variations array always beats lower index regardless of score
 }
 
 type SessionEvent = {
@@ -80,40 +81,47 @@ const EVENT_CONFIG: Record<string, EventConfig> = {
   'Flag': {
     mode: 'dynamic',
     variations: ['Side Plank / Hold', '1 Leg Side Plank / Hold', 'Partial Flag / Hold', 'Full Flag / Hold', 'Jumping Side Plank / Reps'],
+    orderedVariations: true,
   },
   'Windshield Wipers': { mode: 'reps' },
   'Toe Lift':          { mode: 'reps' },
   'Planche': {
     mode: 'dynamic',
     variations: ['Tuck / Hold', 'Straddle / Hold', 'Full / Hold', 'Tuck / Reps', 'Straddle / Reps', 'Full / Reps'],
+    orderedVariations: true,
   },
   'Back Lever': {
     mode: 'dynamic',
     variations: ['Tuck / Hold', 'Straddle / Hold', 'Full / Hold', 'Tuck / Reps', 'Straddle / Reps', 'Full / Reps'],
+    orderedVariations: true,
   },
   'Iron Cross': {
     mode: 'dynamic',
     variations: ['Band Assisted / Hold', 'Unassisted / Hold', 'Band Assisted / Reps', 'Unassisted / Reps'],
+    orderedVariations: true,
   },
   'Front Lever': {
     mode: 'dynamic',
     variations: ['Tuck / Hold', 'Straddle / Hold', 'Full / Hold', 'Tuck / Reps', 'Straddle / Reps', 'Full / Reps'],
+    orderedVariations: true,
   },
   'Chin Up':     { mode: 'reps' },
   'Rope Climb':  { mode: 'time' },
 
   // Muscular Endurance
   'Chin Up Contest':   { mode: 'reps' },
-  'Push Up Contest':   { mode: 'reps', variations: ['Assisted', 'Knee Push Up', 'Full Push Up'] },
+  'Push Up Contest':   { mode: 'reps', variations: ['Assisted', 'Knee Push Up', 'Full Push Up'], orderedVariations: true },
   'Reverse Hyper':     { mode: 'reps' },
   'L-Sit Hold': {
     mode: 'hold',
     variations: ['Parallel Bars', 'Floor', 'Rings'],
+    orderedVariations: true,
   },
   'Tibialis Curl':     { mode: 'reps' },
   'Headstand': {
     mode: 'hold',
     variations: ['Wall Supported', 'Freestanding', 'Handstand'],
+    orderedVariations: true,
   },
   'Finger Push Up':    { mode: 'reps' },
   'Calf Raise':        { mode: 'reps' },
@@ -122,7 +130,7 @@ const EVENT_CONFIG: Record<string, EventConfig> = {
 
   // Flexibility & Mobility (blocks — 0 = floor = best)
   'Rear Hand Clasp':   { mode: 'flexibility' },
-  'Bridge':            { mode: 'hold', variations: ['Wall Bridge', 'Deep Wall Bridge', 'Assisted Bridge', 'Bridge'] },
+  'Bridge':            { mode: 'hold', variations: ['Wall Bridge', 'Deep Wall Bridge', 'Assisted Bridge', 'Bridge'], orderedVariations: true },
   'Forward Fold':      { mode: 'flexibility' },
   'Needle Pose':       { mode: 'flexibility' },
   'Front Split':       { mode: 'flexibility' },
@@ -178,6 +186,7 @@ const EVENT_CONFIG: Record<string, EventConfig> = {
   'Balance Ball': {
     mode: 'hold',
     variations: ['1 Foot', 'Knees', 'Eyes Closed', 'Arms Out', 'Eyes Closed + Arms Out'],
+    orderedVariations: true,
   },
   'SKATE':             { mode: 'sport' },
   'Fencing':           { mode: 'sport' },
@@ -514,6 +523,12 @@ export default function SessionPage() {
     const varLabel = exerciseVariation.replace(' / Hold', '').replace(' / Reps', '')
     const varPrefix = varLabel ? `${varLabel}: ` : ''
 
+    // Ordered variations: each tier step adds 10000 so any score at tier N beats any score at tier N-1
+    const varIdx = (eventConfig?.orderedVariations && exerciseVariation && eventConfig.variations)
+      ? Math.max(0, eventConfig.variations.indexOf(exerciseVariation))
+      : 0
+    const tierBonus = eventConfig?.orderedVariations ? varIdx * 10000 : 0
+
     switch (m) {
       case 'strength': {
         const w = parseFloat(weightKg) || 0
@@ -527,13 +542,13 @@ export default function SessionPage() {
         }
       }
       case 'reps':
-        return { raw_score: parseInt(repCount) || 0, score_label: `${varPrefix}${repCount} reps` }
+        return { raw_score: (parseInt(repCount) || 0) + tierBonus, score_label: `${varPrefix}${repCount} reps` }
 
       case 'time':
         return { raw_score: -totalSecs, score_label: `${varPrefix}${timeStr}` }
 
       case 'hold':
-        return { raw_score: totalSecs, score_label: `${varPrefix}${timeStr}` }
+        return { raw_score: totalSecs + tierBonus, score_label: `${varPrefix}${timeStr}` }
 
       case 'distance': {
         const val = parseFloat(distanceVal) || 0
