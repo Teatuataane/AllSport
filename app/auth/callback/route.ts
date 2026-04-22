@@ -27,7 +27,7 @@ export async function GET(request: Request) {
     )
     const { data, error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error && data.user) {
-      // Ensure a player profile exists (may have been missed if email confirmation was enabled)
+      // Check if a player profile exists
       const { data: existing } = await supabase
         .from('players')
         .select('id')
@@ -35,20 +35,8 @@ export async function GET(request: Request) {
         .maybeSingle()
 
       if (!existing) {
-        // Profile missing — create a minimal one so dashboard doesn't crash
-        const email = data.user.email ?? ''
-        const username = email.split('@')[0]
-        await supabase.from('players').insert({
-          id: data.user.id,
-          email,
-          full_name: data.user.user_metadata?.full_name ?? username,
-          username,
-          display_name: data.user.user_metadata?.full_name ?? username,
-          division: "Men's",
-          show_username: true,
-          show_division: true,
-          is_active: true,
-        })
+        // No profile yet — send to registration to complete their details
+        return NextResponse.redirect(`${origin}/register`)
       }
 
       return NextResponse.redirect(`${origin}${next}`)

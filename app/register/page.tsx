@@ -17,9 +17,14 @@ export default function Register() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        setExistingUserId(session.user.id)
-        setForm(prev => ({ ...prev, email: session.user.email ?? prev.email }))
-        setStep(2) // skip account details — they're already authenticated
+        const u = session.user
+        setExistingUserId(u.id)
+        setForm(prev => ({
+          ...prev,
+          email: u.email ?? prev.email,
+          full_name: u.user_metadata?.full_name ?? prev.full_name,
+        }))
+        setStep(2) // skip account details — already authenticated
       }
     })
   }, [])
