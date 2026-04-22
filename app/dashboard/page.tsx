@@ -59,6 +59,13 @@ export default function Dashboard() {
   const [addingMember, setAddingMember] = useState(false)
   const [memberForm, setMemberForm] = useState({ full_name: '', username: '', date_of_birth: '', gender: 'male' as 'male' | 'female' })
   const [memberError, setMemberError] = useState('')
+  // Username / display name editing
+  const [editingUsername, setEditingUsername] = useState(false)
+  const [usernameForm, setUsernameForm] = useState({ username: '', display_name: '' })
+  const [usernameSaving, setUsernameSaving] = useState(false)
+  const [usernameError, setUsernameError] = useState('')
+  // Stats view — self or a family member
+  const [statsPlayerId, setStatsPlayerId] = useState<string | null>(null)
 
   // Initial load — player, sessions, streak, PBs (not year-dependent)
   useEffect(() => {
@@ -139,17 +146,18 @@ export default function Dashboard() {
     if (!userId) return
     const loadRanking = async () => {
       setRankingLoading(true)
+      const targetId = statsPlayerId || userId
       const { data } = await supabase
         .from('rankings')
         .select('*')
-        .eq('player_id', userId)
+        .eq('player_id', targetId)
         .eq('season_year', selectedYear)
         .maybeSingle()
       setRanking(data)
       setRankingLoading(false)
     }
     loadRanking()
-  }, [userId, selectedYear])
+  }, [userId, selectedYear, statsPlayerId])
 
   const handleJoinByCode = async () => {
     if (!sessionCode.trim()) return
@@ -208,6 +216,22 @@ export default function Dashboard() {
     const { error } = await supabase.from('players').delete().eq('id', id)
     if (error) { alert('Could not remove family member — try again'); return }
     setFamilyMembers(prev => prev.filter(m => m.id !== id))
+  }
+
+  const handleSaveUsername = async () => {
+    if (!usernameForm.username.trim()) { setUsernameError('Username is required'); return }
+    setUsernameSaving(true); setUsernameError('')
+    const { error } = await supabase.from('players').update({
+      username: usernameForm.username.trim(),
+      display_name: usernameForm.display_name.trim() || usernameForm.username.trim(),
+    }).eq('id', player.id)
+    if (error) {
+      setUsernameError(error.message)
+    } else {
+      setPlayer((p: any) => ({ ...p, username: usernameForm.username.trim(), display_name: usernameForm.display_name.trim() || usernameForm.username.trim() }))
+      setEditingUsername(false)
+    }
+    setUsernameSaving(false)
   }
 
   if (loading) return (
@@ -290,7 +314,7 @@ export default function Dashboard() {
           {(player.display_name || player.username || '?')[0].toUpperCase()}
         </div>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             <div style={{ fontSize: '20px', fontWeight: 'bold' }}>{player.display_name || player.username}</div>
             {streak?.streak_active && (
               <div style={{
@@ -300,11 +324,40 @@ export default function Dashboard() {
                 🔥 {streak.streak_count}-session streak
               </div>
             )}
+            <button
+              onClick={() => { setUsernameForm({ username: player.username || '', display_name: player.display_name || '' }); setEditingUsername(true) }}
+              style={{ fontSize: '11px', color: '#555', background: 'none', border: '1px solid #333', borderRadius: '5px', padding: '2px 8px', cursor: 'pointer' }}
+            >
+              Edit name
+            </button>
           </div>
           <div style={{ fontSize: '13px', color: '#555', marginTop: '2px' }}>
             {player.division} · {player.city || 'Ōtautahi'}
           </div>
         </div>
+
+        {/* Username edit form */}
+        {editingUsername && (
+          <div style={{ marginTop: '12px', background: '#0d0d0d', border: '1px solid #2a2a2a', borderRadius: '10px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div>
+              <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '4px' }}>USERNAME (leaderboard)</label>
+              <input value={usernameForm.username} onChange={e => setUsernameForm(f => ({ ...f, username: e.target.value }))}
+                style={{ width: '100%', boxSizing: 'border-box', background: '#111', border: '1px solid #2a2a2a', borderRadius: '6px', padding: '8px 10px', color: '#fff', fontSize: '14px' }} />
+            </div>
+            <div>
+              <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '4px' }}>DISPLAY NAME (optional — defaults to username)</label>
+              <input value={usernameForm.display_name} onChange={e => setUsernameForm(f => ({ ...f, display_name: e.target.value }))}
+                style={{ width: '100%', boxSizing: 'border-box', background: '#111', border: '1px solid #2a2a2a', borderRadius: '6px', padding: '8px 10px', color: '#fff', fontSize: '14px' }} />
+            </div>
+            {usernameError && <div style={{ color: '#EA4742', fontSize: '12px' }}>{usernameError}</div>}
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button onClick={() => setEditingUsername(false)} style={{ flex: 1, padding: '8px', borderRadius: '7px', border: '1px solid #333', background: 'transparent', color: '#888', cursor: 'pointer', fontSize: '13px' }}>Cancel</button>
+              <button onClick={handleSaveUsername} disabled={usernameSaving} style={{ flex: 2, padding: '8px', borderRadius: '7px', border: 'none', background: '#2371BB', color: '#fff', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold', opacity: usernameSaving ? 0.6 : 1 }}>
+                {usernameSaving ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Grade + progress */}
@@ -354,6 +407,22 @@ export default function Dashboard() {
           ))}
         </div>
       </div>
+
+      {/* Stats player switcher — shown only when family members exist */}
+      {familyMembers.length > 0 && (
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '10px' }}>
+          {[{ id: null, label: player.display_name || player.username || 'Me' }, ...familyMembers.map(m => ({ id: m.id, label: m.display_name || m.username || m.full_name }))].map(p => {
+            const active = statsPlayerId === p.id
+            return (
+              <button key={p.id ?? 'self'} onClick={() => setStatsPlayerId(p.id)} style={{
+                padding: '5px 12px', borderRadius: '6px', border: `1px solid ${active ? '#2371BB' : '#333'}`,
+                background: active ? '#0d1a2e' : 'transparent', color: active ? '#2371BB' : '#666',
+                cursor: 'pointer', fontSize: '12px', fontWeight: active ? 700 : 400,
+              }}>{p.label}</button>
+            )
+          })}
+        </div>
+      )}
 
       {/* Stats row */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '16px' }}>
