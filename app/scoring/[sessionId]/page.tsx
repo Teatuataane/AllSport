@@ -279,7 +279,7 @@ function calcOverallPlacements(
     const eventResults = results
       .filter(r => r.event_id === event.id)
       .map(r => {
-        const info = r.player_id ? (playerDivisions[r.player_id] ?? { division: "Men's", dob: null }) : { division: "Men's", dob: null }
+        const info = r.player_id ? (playerDivisions[r.player_id] ?? { division: '', dob: null }) : { division: '', dob: null }
         const mult = getMultiplier(info.division, info.dob)
         return { ...r, adjusted_score: r.raw_score * mult }
       })
@@ -442,7 +442,7 @@ export default function SessionPage() {
           .in('id', playerIds)
         if (pData) {
           const map: Record<string, { division: string; dob: string | null }> = {}
-          pData.forEach((p: any) => { map[p.id] = { division: p.division ?? 'Men\'s', dob: p.date_of_birth ?? null } })
+          pData.forEach((p: any) => { map[p.id] = { division: p.division ?? '', dob: p.date_of_birth ?? null } })
           setPlayerDivisions(map)
         }
       }
