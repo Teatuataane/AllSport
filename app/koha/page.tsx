@@ -4,25 +4,55 @@ import Link from 'next/link'
 
 const tiers = [
   {
-    amount: '>$100',
-    reward: 'Grading Certificate',
-    desc: 'A certificate acknowledging your grade achievement for the year — a formal record of your AllSport progress.',
+    amount: 'Any Amount',
+    reward: 'Supporters Wall',
+    desc: 'Your name goes on the AllSport supporters wall. Every contribution, no matter the size, is acknowledged.',
+    icon: '🫶',
+    color: '#888888',
+    isBase: true,
+  },
+  {
+    amount: '>$50',
+    reward: 'Digital Certificate',
+    desc: 'A digital certificate acknowledging your koha — a formal record of your contribution to AllSport.',
     icon: '📜',
+    color: '#2d9e4f',
+  },
+  {
+    amount: '>$200',
+    reward: 'Sticker Pack + Certificate',
+    desc: 'AllSport sticker pack plus your digital certificate. Represent the community.',
+    icon: '🎁',
+    color: '#2563eb',
+  },
+  {
+    amount: '>$500',
+    reward: 'Grading T-Shirt',
+    desc: 'A t-shirt in the colour of your highest grade achieved. Wear your mana.',
+    icon: '👕',
+    color: '#9333ea',
+  },
+  {
+    amount: '>$2,000',
+    reward: 'AllSport Clothing Stack',
+    desc: 'The full AllSport clothing set — everything we produce, in your grade colours.',
+    icon: '🎽',
     color: '#e63946',
   },
   {
-    amount: '>$1,000',
-    reward: 'Grading T-Shirt',
-    desc: 'A t-shirt in the colour of your highest grade achieved that year. Wear your mana.',
-    icon: '👕',
+    amount: '>$5,000',
+    reward: 'Personal Coaching',
+    desc: '50 personal coaching sessions per year. One-on-one training built around your goals.',
+    icon: '🏆',
     color: '#f4a226',
   },
   {
     amount: '>$10,000',
-    reward: 'Weekly Personal Coaching',
-    desc: '50 sessions of personal coaching per year — the ultimate investment in your AllSport journey.',
-    icon: '🏆',
-    color: '#2d9e4f',
+    reward: 'AllSport Comes To You',
+    desc: 'We bring AllSport to your workplace or community. Full corporate sessions, run by AllSport.',
+    icon: '🌍',
+    color: '#f4a226',
+    isPremium: true,
   },
 ]
 
@@ -30,8 +60,10 @@ export default function Koha() {
   return (
     <>
       <style>{`
-        .tier-card { background: #111111; border: 1px solid #1e1e1e; padding: 40px 32px; position: relative; overflow: hidden; transition: border-color 0.2s; }
+        .tier-card { background: #111111; border: 1px solid #1e1e1e; padding: 28px 24px; position: relative; overflow: hidden; transition: border-color 0.2s; }
         .tier-card:hover { border-color: #333; }
+        .tier-card-premium { background: #0d0d0d; border: 1px solid #f4a22644; padding: 28px 24px; position: relative; overflow: hidden; transition: border-color 0.2s; }
+        .tier-card-premium:hover { border-color: #f4a226; }
         .fact-card { display: flex; align-items: flex-start; gap: 16px; background: #111111; border: 1px solid #1e1e1e; padding: 16px 20px; }
       `}</style>
 
@@ -51,7 +83,7 @@ export default function Koha() {
           </h1>
           <div className="rainbow-line" style={{ width: '80px', marginBottom: '28px' }} />
           <p style={{ color: '#cccccc', fontSize: '20px', maxWidth: '640px', lineHeight: 1.7 }}>
-            AllSport is a community-led charitable initiative. We want everyone to be able to engage in sport and exercise regardless of cost. We do not set fees — we only accept koha. Only donate what is reasonable for you and your whānau.
+            AllSport is a community-led charitable initiative. We want everyone to be able to engage in sport and exercise regardless of cost. We do not set fees — we only accept koha. Only give what is reasonable for you and your whānau.
           </p>
         </div>
       </section>
@@ -73,17 +105,18 @@ export default function Koha() {
                 There are no membership fees, no session costs, and no financial barriers to competing. Give what you can, when you can. Your participation and effort are contribution enough.
               </p>
               <p style={{ color: '#888888', fontSize: '15px', lineHeight: 1.8 }}>
-                To acknowledge the generosity of those who contribute, we offer three tiers of appreciation — each tied to the koha given over the course of a year.
+                To acknowledge those who contribute generously, we offer seven tiers of appreciation — each a gift of gratitude, not a purchase.
               </p>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {[
                 { icon: '💚', text: 'No set fees — give only what is right for you and your whānau' },
-                { icon: '🏛️', text: 'AllSport is a registered community-led charitable initiative' },
-                { icon: '💸', text: 'Any koha can be claimed with IRD to receive 33% of your donation back' },
-                { icon: '🎽', text: 'Koha acknowledgements include certificates, t-shirts, and coaching' },
+                { icon: '🏛️', text: 'AllSport is a community-led charitable initiative' },
+                { icon: '💸', text: 'IRD 33% tax rebate applies to all koha contributions' },
+                { icon: '🎽', text: 'Koha acknowledgements range from the supporters wall to personal coaching' },
                 { icon: '🌈', text: 'Your grade is earned through performance — not through giving' },
+                { icon: '🤝', text: 'We collaborate with local sports clubs so more people benefit from more sport' },
               ].map(item => (
                 <div key={item.text} className="fact-card">
                   <span style={{ fontSize: '20px', marginTop: '2px' }}>{item.icon}</span>
@@ -104,23 +137,37 @@ export default function Koha() {
           </h2>
           <div className="divider" style={{ background: '#f4a226' }} />
           <p style={{ color: '#888888', fontSize: '16px', maxWidth: '560px', marginBottom: '48px', lineHeight: 1.7 }}>
-            To acknowledge those who contribute generously, we offer three types of appreciation. These are gifts of gratitude — not purchases, not memberships.
+            These are gifts of gratitude — not purchases, not memberships. Every tier is our way of saying thank you for believing in what we're building.
           </p>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px', marginBottom: '32px' }}>
-            {tiers.map(tier => (
-              <div key={tier.amount} className="tier-card">
+          {/* Base tier — any amount, full width */}
+          <div style={{ background: '#111111', border: '1px solid #1e1e1e', padding: '24px 28px', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '24px', flexWrap: 'wrap', position: 'relative', overflow: 'hidden' }}>
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: '#333' }} />
+            <div style={{ fontSize: '32px' }}>{tiers[0].icon}</div>
+            <div style={{ flex: 1, minWidth: '200px' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '16px', flexWrap: 'wrap', marginBottom: '6px' }}>
+                <span style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '36px', color: '#888', lineHeight: 1 }}>{tiers[0].amount}</span>
+                <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: '14px', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#fff' }}>{tiers[0].reward}</span>
+              </div>
+              <p style={{ color: '#666', fontSize: '14px', lineHeight: 1.6 }}>{tiers[0].desc}</p>
+            </div>
+          </div>
+
+          {/* Remaining tiers — grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '10px' }}>
+            {tiers.slice(1).map(tier => (
+              <div key={tier.amount} className={tier.isPremium ? 'tier-card-premium' : 'tier-card'}>
                 <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: tier.color }} />
-                <div style={{ fontSize: '36px', marginBottom: '16px' }}>{tier.icon}</div>
-                <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '48px', color: tier.color, lineHeight: 1, marginBottom: '4px' }}>{tier.amount}</div>
-                <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: '16px', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#ffffff', marginBottom: '16px' }}>{tier.reward}</div>
-                <p style={{ color: '#888888', fontSize: '14px', lineHeight: 1.7 }}>{tier.desc}</p>
+                <div style={{ fontSize: '28px', marginBottom: '12px' }}>{tier.icon}</div>
+                <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '40px', color: tier.color, lineHeight: 1, marginBottom: '2px' }}>{tier.amount}</div>
+                <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: '14px', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#ffffff', marginBottom: '12px' }}>{tier.reward}</div>
+                <p style={{ color: '#777', fontSize: '13px', lineHeight: 1.65 }}>{tier.desc}</p>
               </div>
             ))}
           </div>
 
           {/* IRD callout */}
-          <div style={{ background: '#111111', border: '1px solid #f4a22633', padding: '28px 32px', display: 'flex', alignItems: 'center', gap: '24px', flexWrap: 'wrap' }}>
+          <div style={{ background: '#111111', border: '1px solid #f4a22633', padding: '28px 32px', display: 'flex', alignItems: 'center', gap: '24px', flexWrap: 'wrap', marginTop: '32px' }}>
             <div style={{ fontSize: '32px' }}>💸</div>
             <div>
               <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '28px', color: '#f4a226', marginBottom: '4px' }}>IRD Tax Rebate</div>

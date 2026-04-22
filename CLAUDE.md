@@ -239,7 +239,14 @@ update players set role = 'judge' where id = '[uuid]';
 id, created_at, full_name, email, phone, date_of_birth, address, city, region, country,
 parent_name, parent_email, parent_phone, is_active, username, division,
 role (default: player), show_full_name, show_username, show_division, show_location, display_name,
-bodyweight_kg
+bodyweight_kg, parent_id (uuid, references auth.users.id)
+
+Family accounts: child profiles have parent_id set to the parent's auth.uid(). Children have no auth account — parent submits scores on their behalf via the "Submitting as" switcher in the live session view.
+
+**Add parent_id column if not present:**
+```sql
+ALTER TABLE players ADD COLUMN IF NOT EXISTS parent_id UUID REFERENCES auth.users(id);
+```
 
 **Add bodyweight column if not present:**
 ```sql
@@ -359,6 +366,7 @@ Unique constraint: rankings_player_season_unique ON (player_id, season_year)
 - Bodyweight — saved to player profile, pre-fills on return
 - Custom domain allsport.nz — live on Vercel, Supabase Auth URLs configured
 - Browser tab — "AllSport — Play EVERYTHING" title + logo favicon
+- Family accounts — parents can add child profiles (no email required), switch "Submitting as" during live sessions, manage from dashboard
 - Brand colours, points formula, grades, koha, mission — all confirmed
 - How to Play branded PDF — complete
 - Strategy 2026-2027 branded PDF — complete
@@ -390,6 +398,7 @@ Unique constraint: rankings_player_season_unique ON (player_id, season_year)
 - Supabase browser client required in all client components (supabase-browser.ts)
 - Judge assignment: manual SQL for now, approval flow planned
 - Domain display order confirmed (Maximal Strength first)
+- Family accounts: child profiles have parent_id = parent's auth.uid(), no auth account, parent switches via "Submitting as" chips in live session
 - Score resubmission: upsert on (player_id, session_id, event_id) — updates existing row
 - Time events: raw_score stored as negative seconds so faster = higher (sort consistency)
 - Void vs End: Void sets points_awarded_at before closing to prevent trigger firing

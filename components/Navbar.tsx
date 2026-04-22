@@ -82,10 +82,10 @@ export default function Navbar() {
                 DASHBOARD
               </Link>
               <button onClick={handleSignOut} className="desktop-nav" style={{
-                background: 'transparent', border: 'none', cursor: 'pointer',
-                fontFamily: 'var(--font-barlow-condensed)', fontSize: '12px',
-                fontWeight: 'bold', letterSpacing: '1px', color: '#666',
-                padding: '8px 4px',
+                background: 'transparent', border: '1px solid #333', borderRadius: '4px',
+                cursor: 'pointer', fontFamily: 'var(--font-barlow-condensed)', fontSize: '12px',
+                fontWeight: 'bold', letterSpacing: '1px', color: '#aaa',
+                padding: '6px 12px',
               }}>
                 SIGN OUT
               </button>
