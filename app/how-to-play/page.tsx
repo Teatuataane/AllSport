@@ -1,77 +1,78 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 
-const categories = [
+const domains = [
   {
-    name: 'Core Strength',
+    name: 'Maximal Strength',
     icon: '🏋️',
     color: '#e63946',
-    examples: 'Deadlifts, Turkish Getups, Dragon Flags',
-    desc: 'A strong spine carries everything else.',
+    desc: 'How much can you lift? Absolute strength tested to its limit.',
+    events: ['1A Press', 'Deadlift', 'OHP', 'Pause Dips', 'Pause Chinup', 'Pause Squat', 'Zercher Dead', 'Ham Curl', 'Pause Bench', 'Turkish'],
   },
   {
-    name: 'Upper Body',
+    name: 'Relative Strength',
     icon: '💪',
     color: '#f4a226',
-    examples: 'Bench Press, Chinups, Curls',
-    desc: 'Your arms are how you interact with the world.',
+    desc: 'Strength relative to your bodyweight. Calisthenics, skills, and feats.',
+    events: ['1L Squat', 'Flag', 'Windshield Wipers', 'Toe Lift', 'Planche', 'Back Lever', 'Iron Cross', 'Front Lever', 'Chin Lift', 'Climbing'],
   },
   {
-    name: 'Lower Body',
-    icon: '🦵',
+    name: 'Muscular Endurance',
+    icon: '🔄',
     color: '#f7e03c',
-    examples: 'Back Squat, Clean & Jerk, Glute Thrusts',
-    desc: 'Your legs literally carry you.',
+    desc: 'How long can you keep going? Sustained output under fatigue.',
+    events: ['Chinup Contest', 'Pushup Contest', 'Reverse Hyper', 'L Sit Hold', 'Tib Curl', 'Headstand', 'Finger Pushup', 'Calf Raise', 'Leg Ext', 'Ab Rollout'],
   },
   {
-    name: 'Grip & Extremities',
-    icon: '🤌',
-    color: '#2d9e4f',
-    examples: 'Finger Pushups, Wrist Curls, Tibialis Curls',
-    desc: 'The small muscles that hold everything together.',
-  },
-  {
-    name: 'Flexibility',
+    name: 'Flexibility & Mobility',
     icon: '🤸',
-    color: '#2563eb',
-    examples: 'Forward Splits, Bridge, Standing Needle',
+    color: '#2d9e4f',
     desc: 'The range you have is the range you can use.',
+    events: ['Rear Hand Clasp', 'Bridge', 'Forward Fold', 'Needle Pose', 'F Split', 'M Split', 'Standing Split', 'Foot Behind Head Pose', 'Shoulder Dislocate', 'Side Bend'],
   },
   {
-    name: 'Body Control',
-    icon: '🥋',
+    name: 'Power',
+    icon: '⚡',
+    color: '#2563eb',
+    desc: 'Strength applied fast. Explosiveness through full range of motion.',
+    events: ['Kelly Snatch', '1A Snatch', 'Triple Jump', 'Javelin', 'Shotput', 'AFL', 'Vert Jump', 'Glute Bridge', 'Clean & Jerk', 'Snatch'],
+  },
+  {
+    name: 'Aerobic Endurance',
+    icon: '🫀',
     color: '#9333ea',
-    examples: 'Breakdancing, Gymnastics, Wrestling',
-    desc: 'Without control there is no grace.',
+    desc: 'Keep going, even when it hurts. The engine that runs everything else.',
+    events: ['Burpee Broad Jump', '1k Run', '1k Cycle', 'Ski 1k', '1k Row', 'Iron Lungs', '200m Carry', '2k Run', '200m Repeats', 'Bronco'],
   },
   {
-    name: 'Sport Skills',
-    icon: '🏒',
+    name: 'Speed & Agility',
+    icon: '🏃',
     color: '#e63946',
-    examples: 'Basketball, Hockey, Tennis',
-    desc: 'Smash EVERY sport.',
+    desc: 'React faster, move better, change direction without losing a step.',
+    events: ['100m Sprint', 'Tag', 'T Race', '400m Race', 'Beach Flags', '50m Sprint', '200m Sprint', 'Touch Rugby', 'Football Dribble', 'Repeat High Jump'],
+  },
+  {
+    name: 'Body Awareness',
+    icon: '🥋',
+    color: '#f4a226',
+    desc: 'Control your body in space. Without control there is no grace.',
+    events: ['Tae Kwon Do', 'Breakdancing', 'Trampolining', 'Jump Rope', 'Wrestling', 'Gymnastics', 'Balance Ball', 'Skate', 'Fencing', 'Juggling'],
+  },
+  {
+    name: 'Co-ordination',
+    icon: '🏐',
+    color: '#2d9e4f',
+    desc: 'Hand-eye, timing, anticipation. The athletic skills behind every sport.',
+    events: ['Volleyball', 'Baseball', 'Teqball', 'Tennis', 'Cricket', 'Badminton', 'Basketball', 'Football', 'Hockey', 'Squash'],
   },
   {
     name: 'Aim & Precision',
     icon: '🎯',
-    color: '#f4a226',
-    examples: 'Archery, Darts, Golf',
-    desc: 'When you shoot, it hits.',
-  },
-  {
-    name: 'Endurance',
-    icon: '🫀',
-    color: '#2d9e4f',
-    examples: '1k Run, 1k Cycle, Burpee Broad Jump',
-    desc: 'Keep going, even when it hurts.',
-  },
-  {
-    name: 'Power & Speed',
-    icon: '⚡',
     color: '#2563eb',
-    examples: '100m Sprint, High Jump, Shotput',
-    desc: 'Do it fast and with great OOMPH.',
+    desc: 'When you shoot, it hits. Accuracy and composure under pressure.',
+    events: ['Netball', 'Handball', 'Cornhole', 'Dodgeball', 'Carrom', 'Archery', 'Bowling', 'Darts', 'Disc Golf', 'Golf'],
   },
 ]
 
@@ -79,19 +80,19 @@ const ethos = [
   {
     word: 'Mahi',
     meaning: 'Work / Effort',
-    desc: 'Effort and dedication represents outcome. Pride yourself on how you shape your life.',
+    desc: 'AllSport is built on showing up. Every session counts, every rep matters. Effort is the most honest measure of who you are.',
     color: '#e63946',
   },
   {
     word: 'Mauri',
-    meaning: 'Spirit / Intention',
-    desc: 'Carry yourself with pride in your work and play.',
+    meaning: 'Spirit / Life Force',
+    desc: 'We built AllSport to remove every barrier — cost, experience, fitness level. Your spirit, not your starting point, determines your journey.',
     color: '#2d9e4f',
   },
   {
     word: 'Mana',
     meaning: 'Power / Influence',
-    desc: 'Earn the strength that you deserve.',
+    desc: 'Earned through persistence, not talent. The more you put in, the more you earn. That\'s how mana works.',
     color: '#2563eb',
   },
 ]
@@ -110,7 +111,7 @@ const steps = [
   {
     number: '03',
     title: 'Learn The Events',
-    desc: 'At the start of each session, the 10 events are announced — one drawn from each physical category. Each event is explained before it begins. First time? You\'ll be guided through everything.',
+    desc: 'At the start of each session, the 10 events are announced — one drawn from each discipline. Each event is explained before it begins. First time? You\'ll be guided through everything.',
   },
   {
     number: '04',
@@ -119,24 +120,45 @@ const steps = [
   },
   {
     number: '05',
-    title: 'Get Scored',
-    desc: 'Each event is scored 1–10 based on your performance. Scores are logged in real time. Your total score across all 10 events determines your result for the session.',
+    title: 'Get Placed',
+    desc: 'In each event, players are ranked by their result. Your placement in each event (1st, 2nd, 3rd...) is recorded. Lowest total placement across all 10 events wins. Points are awarded based on placement, and stack across sessions toward your grade.',
   },
   {
     number: '06',
     title: 'Earn Your Colours',
-    desc: 'Your total score earns you points toward your colours. From Mā all the way to Taniwha.',
+    desc: 'Your session points build your annual total. From Mā (White) all the way to Taniwha (Black) — the AllSport equivalent of a black belt.',
   },
 ]
 
+const bonuses = [
+  { label: 'Attend a session', points: '+10' },
+  { label: 'Set a personal best', points: '+10 per event' },
+  { label: 'Top performance in an event', points: '+10 per division' },
+  { label: 'First session ever', points: '+10' },
+  { label: 'Consistency streak (4 of last 5)', points: '+10' },
+  { label: 'Championship participation', points: '+100' },
+  { label: 'Championship podium', points: '+500' },
+]
+
+const multipliers = [
+  { group: 'Juniors (under 17)', mult: '×1.2' },
+  { group: 'Women (open)', mult: '×1.2' },
+  { group: 'Masters Men (40+)', mult: '×1.2' },
+  { group: 'Masters Women (40+)', mult: '×1.4' },
+]
+
 export default function HowToPlay() {
+  const [expandedDomain, setExpandedDomain] = useState<string | null>(null)
+
   return (
     <>
       <style>{`
-        .cat-card-htp { background: #111111; border: 1px solid #1e1e1e; padding: 24px; transition: all 0.2s; cursor: default; }
-        .cat-card-htp:hover { background: #161616; border-color: #333; }
+        .domain-card-htp { background: #111111; border: 1px solid #1e1e1e; transition: all 0.2s; cursor: pointer; }
+        .domain-card-htp:hover { background: #161616; border-color: #333; }
+        .event-pill { display: inline-block; font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 8px; border-radius: 3px; background: #1a1a1a; color: #666; border: 1px solid #222; margin: 2px; }
         .ethos-card { background: #111111; border: 1px solid #1e1e1e; padding: 40px 32px; position: relative; overflow: hidden; }
         .checklist-item { display: flex; align-items: center; gap: 16px; background: #111111; border: 1px solid #1e1e1e; padding: 16px 20px; }
+        .bonus-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #1a1a1a; }
       `}</style>
 
       {/* Hero — red */}
@@ -151,7 +173,7 @@ export default function HowToPlay() {
           </h1>
           <div className="rainbow-line" style={{ width: '80px', marginBottom: '28px' }} />
           <p style={{ color: '#cccccc', fontSize: '20px', maxWidth: '620px', lineHeight: 1.7 }}>
-            AllSport is the first sport designed to test your ability at every form of athleticism. Ten disciplines. One hundred events in the rotation. No two sessions are ever the same.
+            AllSport is the first sport designed to test your ability across every form of athleticism. Ten disciplines. One hundred events in rotation. No two sessions are ever the same.
           </p>
         </div>
       </section>
@@ -171,7 +193,7 @@ export default function HowToPlay() {
                 AllSport is designed for the long term. It's meant to be fun, accessible, and sustainable. You don't need to push to your limit every session — showing up consistently is what creates results.
               </p>
               <p style={{ color: '#888888', fontSize: '15px', lineHeight: 1.8 }}>
-                The scoring is relative to your effort and ability. You are competing against your own standard — and improving it every session you attend.
+                Scoring is placement-based — you compete relative to everyone else in the room, not against a fixed standard. Come last in every event today and still earn points. Come back next week and beat yourself.
               </p>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -216,69 +238,124 @@ export default function HowToPlay() {
       {/* Scoring — blue */}
       <section className="section" style={{ background: '#0d0d0d', borderTop: '3px solid #2563eb' }}>
         <div className="container">
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '48px', alignItems: 'start' }}>
+          <div className="tag">Scoring System</div>
+          <h2 style={{ fontSize: 'clamp(40px, 5vw, 64px)', marginBottom: '8px' }}>HOW YOU'RE <span style={{ color: '#2563eb' }}>SCORED</span></h2>
+          <div className="divider" style={{ background: '#2563eb' }} />
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '48px', marginTop: '8px', alignItems: 'start' }}>
+            {/* Placement explanation */}
             <div>
-              <div className="tag">Scoring System</div>
-              <h2 style={{ fontSize: 'clamp(40px, 5vw, 64px)', marginBottom: '8px' }}>HOW YOU'RE <span style={{ color: '#2563eb' }}>SCORED</span></h2>
-              <div className="divider" style={{ background: '#2563eb' }} />
+              <h3 style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '28px', color: '#fff', marginBottom: '12px' }}>Placement-Based</h3>
               <p style={{ color: '#cccccc', fontSize: '16px', lineHeight: 1.8, marginBottom: '16px' }}>
-                Each of the 10 events is scored <strong style={{ color: '#ffffff' }}>1 to 10</strong> based on your performance. At the end of the session, your 10 scores are added together. The <strong style={{ color: '#ffffff' }}>highest total score wins.</strong>
+                In each event, players are ranked by their result. Your placement — 1st, 2nd, 3rd — is recorded. <strong style={{ color: '#ffffff' }}>Lowest total placement score wins.</strong>
               </p>
               <p style={{ color: '#888888', fontSize: '15px', lineHeight: 1.8, marginBottom: '16px' }}>
-                This format rewards consistency across all disciplines. A player who scores 8 in every event will beat a player who scores 10 in one event and 5 in the rest. AllSport favours the complete athlete.
+                This rewards consistency. A player who finishes 3rd in every event will beat one who wins two events but finishes last in the rest.
               </p>
-              <p style={{ color: '#888888', fontSize: '15px', lineHeight: 1.8 }}>
-                Over time, your scores improve as your all-round ability develops — which is the whole point.
+              <p style={{ color: '#555555', fontSize: '14px', lineHeight: 1.8, fontStyle: 'italic' }}>
+                Tied results share the same placement. If two players tie for 2nd, both receive 2nd place and the next player receives 4th.
               </p>
             </div>
-            <div style={{ background: '#111111', border: '1px solid #1e1e1e', padding: '32px' }}>
-              <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555555', marginBottom: '24px' }}>Score Scale — Per Event</div>
+
+            {/* Points formula */}
+            <div style={{ background: '#111111', border: '1px solid #1e1e1e', padding: '28px' }}>
+              <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555555', marginBottom: '20px' }}>Points Formula</div>
+              <p style={{ color: '#888', fontSize: '14px', lineHeight: 1.7, marginBottom: '16px' }}>
+                1st place always earns <strong style={{ color: '#fff' }}>100 points</strong>. Each subsequent place drops by a gap calculated from session size.
+              </p>
               {[
-                { score: '9–10', label: 'Elite Performance', color: '#e63946' },
-                { score: '7–8', label: 'Strong Performance', color: '#f4a226' },
-                { score: '5–6', label: 'Solid Performance', color: '#2d9e4f' },
-                { score: '3–4', label: 'Developing', color: '#2563eb' },
-                { score: '1–2', label: 'Baseline', color: '#555555' },
+                { size: '5 players', gap: '20 pts', example: '100 / 80 / 60 / 40 / 20' },
+                { size: '10 players', gap: '10 pts', example: '100 / 90 / 80 / ... / 10' },
+                { size: '20+ players', gap: 'min 10 pts', example: '100 / 90 / 80 / ... / 10' },
               ].map(row => (
-                <div key={row.score} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #1a1a1a' }}>
-                  <span style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '28px', color: row.color }}>{row.score}</span>
-                  <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 600, fontSize: '14px', color: '#cccccc' }}>{row.label}</span>
+                <div key={row.size} style={{ padding: '10px 0', borderBottom: '1px solid #1a1a1a' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: '13px', color: '#ccc' }}>{row.size}</span>
+                    <span style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '16px', color: '#2563eb' }}>{row.gap}</span>
+                  </div>
+                  <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', color: '#444', letterSpacing: '0.05em' }}>{row.example}</div>
                 </div>
               ))}
-              <div style={{ marginTop: '20px', padding: '16px', background: '#0a0a0a', border: '1px solid #1e1e1e' }}>
-                <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: '12px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#555555', marginBottom: '8px' }}>Max possible score</div>
-                <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '48px', lineHeight: 1, background: 'linear-gradient(90deg, #e63946, #f4a226, #2d9e4f, #2563eb, #9333ea)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>100 Points</div>
+              <div style={{ marginTop: '16px', padding: '12px', background: '#0a0a0a', border: '1px solid #1e1e1e' }}>
+                <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', color: '#555', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '4px' }}>Minimum earn</div>
+                <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '32px', color: '#2563eb' }}>10 Points</div>
               </div>
+            </div>
+
+            {/* Bonuses */}
+            <div style={{ background: '#111111', border: '1px solid #1e1e1e', padding: '28px' }}>
+              <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555555', marginBottom: '20px' }}>Bonus Points</div>
+              {bonuses.map(b => (
+                <div key={b.label} className="bonus-row">
+                  <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 600, fontSize: '14px', color: '#cccccc' }}>{b.label}</span>
+                  <span style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '18px', color: '#2d9e4f', flexShrink: 0, marginLeft: '12px' }}>{b.points}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Multipliers */}
+            <div style={{ background: '#111111', border: '1px solid #1e1e1e', padding: '28px' }}>
+              <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555555', marginBottom: '20px' }}>Scoring Multipliers</div>
+              <p style={{ color: '#666', fontSize: '13px', lineHeight: 1.6, marginBottom: '16px' }}>Applied to ensure fair competition across groups with different physical baselines.</p>
+              {multipliers.map(m => (
+                <div key={m.group} className="bonus-row">
+                  <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 600, fontSize: '14px', color: '#cccccc' }}>{m.group}</span>
+                  <span style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '22px', color: '#f4a226', flexShrink: 0, marginLeft: '12px' }}>{m.mult}</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
       </section>
 
-      {/* 10 Categories — purple */}
+      {/* 10 Disciplines — purple, with accordion */}
       <section className="section" style={{ background: '#0a0a0a', borderTop: '3px solid #9333ea' }}>
         <div className="container">
           <div className="tag">The 10 Disciplines</div>
-          <h2 style={{ fontSize: 'clamp(40px, 5vw, 64px)', marginBottom: '8px' }}>EVENT <span style={{ color: '#9333ea' }}>CATEGORIES</span></h2>
+          <h2 style={{ fontSize: 'clamp(40px, 5vw, 64px)', marginBottom: '8px' }}>EVENT <span style={{ color: '#9333ea' }}>DOMAINS</span></h2>
           <div className="divider" style={{ background: '#9333ea' }} />
           <p style={{ color: '#888888', fontSize: '16px', maxWidth: '680px', marginBottom: '8px', lineHeight: 1.7 }}>
-            Each game, one event is drawn from each category. Our yearly competition's 10 are chosen by community vote. During training we rotate the 10 each session.
+            Each session, one event is drawn at random from each of the 10 domains below — 10 events in total. Our annual Championship events are chosen by community vote.
           </p>
-          <p style={{ color: '#555555', fontSize: '14px', maxWidth: '680px', marginBottom: '48px', lineHeight: 1.7 }}>
-            100 events in total — 10 per category. No two sessions are the same. Be ready for anything.
+          <p style={{ color: '#555555', fontSize: '14px', maxWidth: '680px', marginBottom: '40px', lineHeight: 1.7 }}>
+            100 events in total across all domains. Click any domain to see its full event list.
           </p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '12px' }}>
-            {categories.map(cat => (
-              <div key={cat.name} className="cat-card-htp">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '24px' }}>{cat.icon}</span>
-                  <h3 style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '24px', color: cat.color, letterSpacing: '0.05em' }}>{cat.name}</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {domains.map((domain) => {
+              const isOpen = expandedDomain === domain.name
+              return (
+                <div
+                  key={domain.name}
+                  className="domain-card-htp"
+                  onClick={() => setExpandedDomain(isOpen ? null : domain.name)}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '16px 20px' }}>
+                    <span style={{ fontSize: '20px', flexShrink: 0 }}>{domain.icon}</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '22px', color: isOpen ? domain.color : '#ffffff', letterSpacing: '0.04em', lineHeight: 1 }}>
+                        {domain.name}
+                      </div>
+                      {!isOpen && (
+                        <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', color: '#555', marginTop: '2px' }}>{domain.desc}</div>
+                      )}
+                    </div>
+                    <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', color: '#333', marginRight: '8px', flexShrink: 0 }}>10 events</span>
+                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: domain.color, flexShrink: 0 }} />
+                    <span style={{ color: '#333', fontSize: '13px', marginLeft: '6px' }}>{isOpen ? '▲' : '▼'}</span>
+                  </div>
+                  {isOpen && (
+                    <div style={{ padding: '0 20px 16px', borderTop: `1px solid ${domain.color}33` }}>
+                      <p style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', color: '#666', marginBottom: '12px', paddingTop: '12px' }}>{domain.desc}</p>
+                      <div style={{ display: 'flex', flexWrap: 'wrap' }}>
+                        {domain.events.map(event => (
+                          <span key={event} className="event-pill">{event}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <p style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 600, fontSize: '13px', color: '#555555', letterSpacing: '0.05em', marginBottom: '8px' }}>
-                  e.g. {cat.examples}
-                </p>
-                <p style={{ color: '#888888', fontSize: '14px', lineHeight: 1.6 }}>{cat.desc}</p>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       </section>

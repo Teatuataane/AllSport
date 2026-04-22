@@ -1,37 +1,88 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 
-const categories = [
-  { name: 'Core Strength', icon: '🏋️', color: '#e63946' },
-  { name: 'Upper Body', icon: '💪', color: '#f4a226' },
-  { name: 'Lower Body', icon: '🦵', color: '#f7e03c' },
-  { name: 'Grip & Extremities', icon: '🤌', color: '#2d9e4f' },
-  { name: 'Flexibility', icon: '🤸', color: '#2563eb' },
-  { name: 'Body Control', icon: '🥋', color: '#9333ea' },
-  { name: 'Sport Skills', icon: '🏒', color: '#e63946' },
-  { name: 'Aim & Precision', icon: '🎯', color: '#f4a226' },
-  { name: 'Endurance', icon: '🫀', color: '#2d9e4f' },
-  { name: 'Power & Speed', icon: '⚡', color: '#2563eb' },
+const domains = [
+  {
+    name: 'Maximal Strength',
+    icon: '🏋️',
+    color: '#e63946',
+    events: ['1A Press', 'Deadlift', 'OHP', 'Pause Dips', 'Pause Chinup', 'Pause Squat', 'Zercher Dead', 'Ham Curl', 'Pause Bench', 'Turkish'],
+  },
+  {
+    name: 'Relative Strength',
+    icon: '💪',
+    color: '#f4a226',
+    events: ['1L Squat', 'Flag', 'Windshield Wipers', 'Toe Lift', 'Planche', 'Back Lever', 'Iron Cross', 'Front Lever', 'Chin Lift', 'Climbing'],
+  },
+  {
+    name: 'Muscular Endurance',
+    icon: '🔄',
+    color: '#f7e03c',
+    events: ['Chinup Contest', 'Pushup Contest', 'Reverse Hyper', 'L Sit Hold', 'Tib Curl', 'Headstand', 'Finger Pushup', 'Calf Raise', 'Leg Ext', 'Ab Rollout'],
+  },
+  {
+    name: 'Flexibility & Mobility',
+    icon: '🤸',
+    color: '#2d9e4f',
+    events: ['Rear Hand Clasp', 'Bridge', 'Forward Fold', 'Needle Pose', 'F Split', 'M Split', 'Standing Split', 'Foot Behind Head Pose', 'Shoulder Dislocate', 'Side Bend'],
+  },
+  {
+    name: 'Power',
+    icon: '⚡',
+    color: '#2563eb',
+    events: ['Kelly Snatch', '1A Snatch', 'Triple Jump', 'Javelin', 'Shotput', 'AFL', 'Vert Jump', 'Glute Bridge', 'Clean & Jerk', 'Snatch'],
+  },
+  {
+    name: 'Aerobic Endurance',
+    icon: '🫀',
+    color: '#9333ea',
+    events: ['Burpee Broad Jump', '1k Run', '1k Cycle', 'Ski 1k', '1k Row', 'Iron Lungs', '200m Carry', '2k Run', '200m Repeats', 'Bronco'],
+  },
+  {
+    name: 'Speed & Agility',
+    icon: '🏃',
+    color: '#e63946',
+    events: ['100m Sprint', 'Tag', 'T Race', '400m Race', 'Beach Flags', '50m Sprint', '200m Sprint', 'Touch Rugby', 'Football Dribble', 'Repeat High Jump'],
+  },
+  {
+    name: 'Body Awareness',
+    icon: '🥋',
+    color: '#f4a226',
+    events: ['Tae Kwon Do', 'Breakdancing', 'Trampolining', 'Jump Rope', 'Wrestling', 'Gymnastics', 'Balance Ball', 'Skate', 'Fencing', 'Juggling'],
+  },
+  {
+    name: 'Co-ordination',
+    icon: '🏐',
+    color: '#2d9e4f',
+    events: ['Volleyball', 'Baseball', 'Teqball', 'Tennis', 'Cricket', 'Badminton', 'Basketball', 'Football', 'Hockey', 'Squash'],
+  },
+  {
+    name: 'Aim & Precision',
+    icon: '🎯',
+    color: '#2563eb',
+    events: ['Netball', 'Handball', 'Cornhole', 'Dodgeball', 'Carrom', 'Archery', 'Bowling', 'Darts', 'Disc Golf', 'Golf'],
+  },
 ]
 
 const ethos = [
   {
     word: 'Mahi',
     meaning: 'Work / Effort',
-    desc: 'Effort and dedication represents outcome. Pride yourself on how you shape your life.',
+    desc: 'AllSport is built on showing up. Every session counts, every rep matters. Effort is the most honest measure of who you are.',
     color: '#e63946',
   },
   {
     word: 'Mauri',
-    meaning: 'Spirit / Intention',
-    desc: 'Carry yourself with pride in your work and play.',
+    meaning: 'Spirit / Life Force',
+    desc: 'We built AllSport to remove every barrier — cost, experience, fitness level. Your spirit, not your starting point, determines your journey.',
     color: '#2d9e4f',
   },
   {
     word: 'Mana',
     meaning: 'Power / Influence',
-    desc: 'Earn the strength that you deserve.',
+    desc: 'Earned through persistence, not talent. The more you put in, the more you earn. That\'s how mana works.',
     color: '#2563eb',
   },
 ]
@@ -56,14 +107,17 @@ const stats = [
 ]
 
 export default function Home() {
+  const [expandedDomain, setExpandedDomain] = useState<string | null>(null)
+
   return (
     <>
       <style>{`
-        .cat-card { background: #111111; border: 1px solid #1e1e1e; padding: 16px; display: flex; align-items: center; gap: 12px; transition: all 0.2s; }
-        .cat-card:hover { background: #1a1a1a; border-color: #333; }
+        .domain-card { background: #111111; border: 1px solid #1e1e1e; transition: all 0.2s; cursor: pointer; }
+        .domain-card:hover { background: #161616; border-color: #333; }
         .ethos-card { background: #111111; border: 1px solid #1e1e1e; padding: 40px 32px; position: relative; overflow: hidden; }
         .rank-row { display: flex; align-items: center; gap: 20px; padding: 14px 20px; border: 1px solid #1a1a1a; background: #0d0d0d; transition: background 0.2s; }
         .rank-row:hover { background: #141414; }
+        .event-pill { display: inline-block; font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 8px; border-radius: 3px; background: #1a1a1a; color: #666; border: 1px solid #222; margin: 2px; }
         @keyframes float {
           0%, 100% { transform: translateY(0px); }
           50% { transform: translateY(-16px); }
@@ -155,7 +209,7 @@ export default function Home() {
       {/* WHAT IS ALLSPORT — red */}
       <section className="section" style={{ background: '#0d0d0d', borderTop: '3px solid #e63946' }}>
         <div className="container">
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '64px', alignItems: 'center' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '64px', alignItems: 'start' }}>
             <div>
               <div className="tag">What Is AllSport</div>
               <h2 style={{ fontSize: 'clamp(40px, 5vw, 68px)', marginBottom: '8px', lineHeight: 1 }}>
@@ -166,7 +220,7 @@ export default function Home() {
                 Every sport you've ever played only tested a fraction of your ability. Running tests speed and endurance, but not strength. Gymnastics tests strength, flexibility and body awareness, but not hand-eye coordination. <strong style={{ color: '#ffffff' }}>AllSport tests all of you — simultaneously.</strong>
               </p>
               <p style={{ color: '#888888', fontSize: '15px', lineHeight: 1.8, marginBottom: '20px' }}>
-                Every session develops strength, flexibility, coordination, endurance, and power at the same time. The result is an athlete who improves at everything — because everything is being trained.
+                Every session covers 10 disciplines drawn from 100 events. One event per domain, chosen fresh each session. Strength, flexibility, power, coordination, endurance — all in 100 minutes.
               </p>
               <p style={{ color: '#888888', fontSize: '15px', lineHeight: 1.8, marginBottom: '32px' }}>
                 The same system that challenges elite competitors will rebuild someone returning from injury. That's not a coincidence — it's the design.
@@ -174,14 +228,37 @@ export default function Home() {
               <Link href="/how-to-play" className="btn btn-primary">Learn The Rules</Link>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
-              {categories.map(cat => (
-                <div key={cat.name} className="cat-card">
-                  <span style={{ fontSize: '18px' }}>{cat.icon}</span>
-                  <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 600, fontSize: '13px', letterSpacing: '0.05em', color: '#cccccc' }}>{cat.name}</span>
-                  <div style={{ marginLeft: 'auto', width: '6px', height: '6px', borderRadius: '50%', background: cat.color, flexShrink: 0 }} />
-                </div>
-              ))}
+            {/* Domain accordion */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {domains.map((domain, idx) => {
+                const isOpen = expandedDomain === domain.name
+                return (
+                  <div
+                    key={domain.name}
+                    className="domain-card"
+                    onClick={() => setExpandedDomain(isOpen ? null : domain.name)}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px' }}>
+                      <span style={{ fontSize: '16px', flexShrink: 0 }}>{domain.icon}</span>
+                      <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: '13px', letterSpacing: '0.08em', textTransform: 'uppercase', color: isOpen ? domain.color : '#cccccc', flex: 1 }}>
+                        {domain.name}
+                      </span>
+                      <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', color: '#444', marginRight: '4px' }}>10 events</span>
+                      <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: domain.color, flexShrink: 0 }} />
+                      <span style={{ color: '#444', fontSize: '14px', marginLeft: '4px' }}>{isOpen ? '▲' : '▼'}</span>
+                    </div>
+                    {isOpen && (
+                      <div style={{ padding: '0 16px 12px', borderTop: `1px solid ${domain.color}22` }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', paddingTop: '10px' }}>
+                          {domain.events.map(event => (
+                            <span key={event} className="event-pill">{event}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           </div>
         </div>
