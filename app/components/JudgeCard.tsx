@@ -133,7 +133,7 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
       .update({ is_active: false, ended_at: new Date().toISOString() })
       .eq('id', sessionId)
     if (error) {
-      setEndError('Failed to end session — try again')
+      setEndError(`Failed: ${error.message}`)
       setEnding(null)
       return
     }
