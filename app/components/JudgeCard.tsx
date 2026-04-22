@@ -11,6 +11,8 @@ type Session = {
   location: string
   is_active: boolean
   started_at: string | null
+  duration_minutes: number | null
+  points_awarded_at: string | null
 }
 
 type JudgeCardProps = {
@@ -49,6 +51,29 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
     ])
 
     const active = activeResult.data || []
+
+    // Auto-close sessions whose timer has expired
+    const now = Date.now()
+    const expiredIds = active
+      .filter(s => s.started_at && s.duration_minutes && s.points_awarded_at === null)
+      .filter(s => now > new Date(s.started_at!).getTime() + s.duration_minutes! * 60 * 1000)
+      .map(s => s.id)
+    if (expiredIds.length > 0) {
+      const endedAt = new Date().toISOString()
+      await Promise.all(expiredIds.map(id =>
+        supabase.from('sessions').update({ is_active: false, ended_at: endedAt }).eq('id', id)
+      ))
+      // Re-fetch after closing expired sessions
+      const [ar2, rr2] = await Promise.all([
+        supabase.from('sessions').select('*').eq('is_active', true).order('created_at', { ascending: false }).limit(5),
+        supabase.from('sessions').select('*').eq('is_active', false).order('created_at', { ascending: false }).limit(5),
+      ])
+      setActiveSessions(ar2.data || [])
+      setRecentSessions(rr2.data || [])
+      setLoading(false)
+      return
+    }
+
     setActiveSessions(active)
     setRecentSessions(recentResult.data || [])
 

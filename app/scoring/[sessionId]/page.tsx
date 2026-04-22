@@ -79,7 +79,7 @@ const EVENT_CONFIG: Record<string, EventConfig> = {
   },
   'Flag': {
     mode: 'dynamic',
-    variations: ['Side Plank / Hold', '1 Leg Side Plank / Hold', 'Jumping Side Plank / Reps'],
+    variations: ['Side Plank / Hold', '1 Leg Side Plank / Hold', 'Partial Flag / Hold', 'Full Flag / Hold', 'Jumping Side Plank / Reps'],
   },
   'Windshield Wipers': { mode: 'reps' },
   'Toe Lift':          { mode: 'reps' },
@@ -104,7 +104,7 @@ const EVENT_CONFIG: Record<string, EventConfig> = {
 
   // Muscular Endurance
   'Chin Up Contest':   { mode: 'reps' },
-  'Push Up Contest':   { mode: 'reps' },
+  'Push Up Contest':   { mode: 'reps', variations: ['Assisted', 'Knee Push Up', 'Full Push Up'] },
   'Reverse Hyper':     { mode: 'reps' },
   'L-Sit Hold': {
     mode: 'hold',
@@ -122,7 +122,7 @@ const EVENT_CONFIG: Record<string, EventConfig> = {
 
   // Flexibility & Mobility (blocks — 0 = floor = best)
   'Rear Hand Clasp':   { mode: 'flexibility' },
-  'Bridge':            { mode: 'flexibility' },
+  'Bridge':            { mode: 'hold', variations: ['Wall Bridge', 'Deep Wall Bridge', 'Assisted Bridge', 'Bridge'] },
   'Forward Fold':      { mode: 'flexibility' },
   'Needle Pose':       { mode: 'flexibility' },
   'Front Split':       { mode: 'flexibility' },
@@ -335,7 +335,7 @@ export default function SessionPage() {
   const [judgeSaving, setJudgeSaving] = useState(false)
   // player_id → { division, date_of_birth }
   const [playerDivisions, setPlayerDivisions] = useState<Record<string, { division: string; dob: string | null }>>({})
-  const [bodyweight, setBodyweight] = useState('')
+  const [bodyweights, setBodyweights] = useState<Record<string, string>>({})
   const [bodyweightSaved, setBodyweightSaved] = useState(false)
   // Family accounts
   const [familyMembers, setFamilyMembers] = useState<any[]>([])
@@ -403,7 +403,8 @@ export default function SessionPage() {
         const { data: p } = await supabase.from('players').select('*').eq('id', auth.user.id).single()
         setPlayer(p)
         setActivePlayer(p)
-        if (p?.bodyweight_kg) setBodyweight(String(p.bodyweight_kg))
+        const initBw: Record<string, string> = {}
+        if (p?.bodyweight_kg) initBw[p.id] = String(p.bodyweight_kg)
 
         // Load linked child profiles
         const { data: children } = await supabase
@@ -412,6 +413,8 @@ export default function SessionPage() {
           .eq('parent_id', auth.user.id)
           .order('full_name')
         setFamilyMembers(children || [])
+        ;(children || []).forEach((c: any) => { if (c.bodyweight_kg) initBw[c.id] = String(c.bodyweight_kg) })
+        setBodyweights(initBw)
       }
       const { data: s } = await supabase.from('sessions').select('*').eq('id', sessionId).single()
       setSession(s)
@@ -482,7 +485,10 @@ export default function SessionPage() {
     const m = effectiveMode
     if (!m) return false
     switch (m) {
-      case 'strength':     return !!weightKg
+      case 'strength': {
+        const bw = parseFloat(bodyweights[(activePlayer || player)?.id] ?? '') || 0
+        return !!weightKg && bw > 0
+      }
       case 'reps':         return !!repCount
       case 'time':
       case 'hold':         return !!(timeMins || timeSecs)
@@ -511,10 +517,13 @@ export default function SessionPage() {
     switch (m) {
       case 'strength': {
         const w = parseFloat(weightKg) || 0
+        const bw = parseFloat(bodyweights[(activePlayer || player)?.id] ?? '') || 0
         const r = parseInt(repCount) || 0
+        const ratio = bw > 0 ? w / bw : 0
+        const ratioLabel = bw > 0 ? ` (${ratio.toFixed(2)}× BW)` : ''
         return {
-          raw_score: w,
-          score_label: r > 0 ? `${weightKg}kg × ${r} rep${r !== 1 ? 's' : ''}` : `${weightKg}kg`,
+          raw_score: ratio,
+          score_label: r > 0 ? `${weightKg}kg × ${r} rep${r !== 1 ? 's' : ''}${ratioLabel}` : `${weightKg}kg${ratioLabel}`,
         }
       }
       case 'reps':
@@ -695,8 +704,10 @@ export default function SessionPage() {
   }
 
   const saveBodyweight = async () => {
-    if (!player || !bodyweight) return
-    await supabase.from('players').update({ bodyweight_kg: parseFloat(bodyweight) }).eq('id', player.id)
+    const target = activePlayer || player
+    const bwVal = bodyweights[target?.id]
+    if (!target || !bwVal) return
+    await supabase.from('players').update({ bodyweight_kg: parseFloat(bwVal) }).eq('id', target.id)
     setBodyweightSaved(true); setTimeout(() => setBodyweightSaved(false), 2000)
   }
 
@@ -1070,23 +1081,24 @@ export default function SessionPage() {
                 </div>
               </div>
 
-              {/* Bodyweight — only for the logged-in player */}
-              {(activePlayer || player)?.id === player?.id && (
-                <div style={{ background: '#111', borderRadius: '8px', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '12px', color: '#555', flex: 1 }}>Bodyweight</span>
-                  <input
-                    type="number"
-                    value={bodyweight}
-                    onChange={e => setBodyweight(e.target.value)}
-                    onBlur={saveBodyweight}
-                    placeholder="kg"
-                    style={{ width: '70px', background: '#0d0d0d', border: '1px solid #2a2a2a', borderRadius: '6px', padding: '6px 8px', color: '#fff', fontSize: '14px', fontWeight: 'bold', textAlign: 'center' }}
-                  />
-                  <span style={{ fontSize: '11px', color: bodyweightSaved ? '#4DB26E' : '#444' }}>
-                    {bodyweightSaved ? '✓ saved' : 'kg'}
-                  </span>
-                </div>
-              )}
+              {/* Bodyweight — for all players, required for strength events */}
+              <div style={{ background: '#111', borderRadius: '8px', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '12px', color: '#555', flex: 1 }}>Bodyweight</span>
+                <input
+                  type="number"
+                  value={bodyweights[(activePlayer || player)?.id] ?? ''}
+                  onChange={e => {
+                    const id = (activePlayer || player)?.id
+                    if (id) setBodyweights(prev => ({ ...prev, [id]: e.target.value }))
+                  }}
+                  onBlur={saveBodyweight}
+                  placeholder="kg"
+                  style={{ width: '70px', background: '#0d0d0d', border: '1px solid #2a2a2a', borderRadius: '6px', padding: '6px 8px', color: '#fff', fontSize: '14px', fontWeight: 'bold', textAlign: 'center' }}
+                />
+                <span style={{ fontSize: '11px', color: bodyweightSaved ? '#4DB26E' : '#444' }}>
+                  {bodyweightSaved ? '✓ saved' : 'kg'}
+                </span>
+              </div>
 
               {/* Event selector */}
               <div>
