@@ -1,15 +1,29 @@
 -- Fix award_session_points: compute placements dynamically from raw_scores
 -- (previously relied on results.placement being pre-written, which never happened)
 --
--- Also adds a public SELECT policy on sessions so dashboard history works.
+-- Also fixes sessions and players SELECT policies.
 
 -- ============================================================
--- 1. Sessions SELECT policy
+-- 1. Sessions SELECT — public read so dashboard history works
 -- ============================================================
 
 DROP POLICY IF EXISTS "Public read sessions" ON sessions;
 CREATE POLICY "Public read sessions" ON sessions
   FOR SELECT USING (true);
+
+-- ============================================================
+-- 2. Players SELECT — allow authenticated users to read all player
+--    records so division tabs on the live leaderboard work correctly.
+--    (The previous policy only allowed reading own + children profiles,
+--    which broke division filtering for other players in a session.)
+-- ============================================================
+
+DROP POLICY IF EXISTS "Players can view own profile" ON players;
+DROP POLICY IF EXISTS "Authenticated users can read players" ON players;
+CREATE POLICY "Players can read own profile" ON players
+  FOR SELECT USING (auth.uid() = id OR parent_id = auth.uid());
+CREATE POLICY "Authenticated users can read players" ON players
+  FOR SELECT USING (auth.role() = 'authenticated');
 
 -- ============================================================
 -- 2. Rewrite award_session_points

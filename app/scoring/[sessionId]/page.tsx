@@ -736,7 +736,9 @@ export default function SessionPage() {
     })
   }
 
-  const standings = calcOverallPlacements(results, events, playerDivisions)
+  const standings = divisionTab === 'overall'
+    ? calcOverallPlacements(results, events, playerDivisions)
+    : calcPlacements(resultsForDivision(divisionFilter), events)
   const RANK_COLOURS = ['#F9B051', '#aaa', '#CD7F32', '#2371BB', '#4DB26E']
   const timerColour = preSessionSecsLeft !== null
     ? '#B87DB5'   // purple = waiting to start
@@ -874,14 +876,38 @@ export default function SessionPage() {
       {activeTab === 'leaderboard' && (
         <div style={{ padding: '16px' }}>
 
-          <div style={{ fontSize: '11px', color: '#555', marginBottom: '10px', textAlign: 'center' }}>
-            Multipliers applied: Women's & Juniors ×1.2 · Masters Men ×1.2 · Masters Women ×1.4
+          {/* Division tabs */}
+          <div style={{ display: 'flex', gap: '6px', marginBottom: '16px' }}>
+            {([
+              { key: 'overall', label: '🌐 Overall' },
+              { key: 'mens',    label: "Men's" },
+              { key: 'womens',  label: "Women's" },
+              { key: 'juniors', label: 'Juniors' },
+            ] as { key: DivisionTab; label: string }[]).map(({ key, label }) => {
+              const active = divisionTab === key
+              return (
+                <button key={key} onClick={() => setDivisionTab(key)} style={{
+                  flex: 1, padding: '8px 4px', border: `1px solid ${active ? '#2371BB' : '#222'}`,
+                  borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: active ? 700 : 400,
+                  background: active ? '#0d1a2e' : '#111',
+                  color: active ? '#2371BB' : '#555',
+                }}>
+                  {label}
+                </button>
+              )
+            })}
           </div>
+
+          {divisionTab === 'overall' && (
+            <div style={{ fontSize: '11px', color: '#555', marginBottom: '10px', textAlign: 'center' }}>
+              Multipliers applied: Women's & Juniors ×1.2 · Masters Men ×1.2 · Masters Women ×1.4
+            </div>
+          )}
 
           {standings.length === 0 ? (
             <div style={{ textAlign: 'center', color: '#555', padding: '48px 0' }}>
               <div style={{ fontSize: '32px', marginBottom: '12px' }}>🏁</div>
-              <div>No scores yet — be the first to submit!</div>
+              <div>{divisionTab === 'overall' ? 'No scores yet — be the first to submit!' : `No ${DIVISION_MAP[divisionTab]} scores yet`}</div>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>
@@ -905,14 +931,14 @@ export default function SessionPage() {
                       <div style={{ fontWeight: 'bold', fontSize: '15px' }}>{s.player_name}</div>
                       <div style={{ fontSize: '12px', color: '#555', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <span>{s.events_done} event{s.events_done !== 1 ? 's' : ''} done</span>
-                        {divLabel && (
+                        {divisionTab === 'overall' && divLabel && (
                           <span style={{ color: divColour, fontSize: '11px', background: divColour + '22', padding: '1px 6px', borderRadius: '4px' }}>{divLabel}</span>
                         )}
                       </div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
                       <div style={{ fontSize: '20px', fontWeight: 'bold', color: idx === 0 ? '#F9B051' : '#fff' }}>{s.total_placement}</div>
-                      <div style={{ fontSize: '11px', color: '#555' }}>adj. pts</div>
+                      <div style={{ fontSize: '11px', color: '#555' }}>{divisionTab === 'overall' ? 'adj. pts' : 'placement pts'}</div>
                     </div>
                   </div>
                 )
