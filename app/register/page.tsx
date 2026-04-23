@@ -1,9 +1,9 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase-browser'
 
-export default function Register() {
+function RegisterInner() {
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -338,4 +338,8 @@ export default function Register() {
       )}
     </div>
   )
+}
+
+export default function Register() {
+  return <Suspense><RegisterInner /></Suspense>
 }

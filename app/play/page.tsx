@@ -1,10 +1,10 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase-browser'
 import Link from 'next/link'
 
-export default function PlayPage() {
+function PlayPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = createClient()
@@ -167,4 +167,8 @@ export default function PlayPage() {
       </div>
     </div>
   )
+}
+
+export default function PlayPage() {
+  return <Suspense><PlayPageInner /></Suspense>
 }

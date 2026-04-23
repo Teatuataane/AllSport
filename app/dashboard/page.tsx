@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase-browser'
 import Link from 'next/link'
@@ -39,7 +39,7 @@ function getNextGrade(points: number) {
   return null
 }
 
-export default function Dashboard() {
+function DashboardInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [player, setPlayer] = useState<any>(null)
@@ -653,4 +653,8 @@ export default function Dashboard() {
       </div>
     </div>
   )
+}
+
+export default function Dashboard() {
+  return <Suspense><DashboardInner /></Suspense>
 }
