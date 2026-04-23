@@ -176,7 +176,7 @@ function DashboardInner() {
   }, [userId, selectedYear, statsPlayerId])
 
   const handleJoinByCode = async (codeOverride?: string) => {
-    const code = (codeOverride ?? sessionCode).trim().toUpperCase()
+    const code = (codeOverride ?? sessionCode).trim()
     if (!code) return
     setJoining(true)
     setJoinError('')
@@ -184,10 +184,11 @@ function DashboardInner() {
       const { data: sess, error } = await supabase
         .from('sessions')
         .select('*')
-        .eq('session_code', code)
+        .ilike('session_code', code)
         .eq('is_active', true)
-        .single()
-      if (error || !sess) throw new Error('Session not found. Check the code and try again.')
+        .maybeSingle()
+      if (error) throw new Error(`Query error: ${error.message}`)
+      if (!sess) throw new Error('No active session found with that code. Double-check the code on the judge screen.')
       window.location.href = `/scoring/${sess.id}`
     } catch (e: any) {
       setJoinError(e.message)
@@ -485,7 +486,12 @@ function DashboardInner() {
       <div style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '20px', marginBottom: '16px' }}>
         <div style={{ fontWeight: 'bold', fontSize: '15px', marginBottom: '4px' }}>Join a Session</div>
         <div style={{ fontSize: '12px', color: '#555', marginBottom: '16px' }}>Enter the 6-digit code shown on the judge screen</div>
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+        {joinError && (
+          <div style={{ background: '#2e0d0d', border: '1px solid #EA4742', borderRadius: '8px', padding: '12px 14px', marginBottom: '12px', color: '#EA4742', fontSize: '14px', fontWeight: 'bold' }}>
+            ⚠ {joinError}
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: '8px' }}>
           <input
             value={sessionCode}
             onChange={e => setSessionCode(e.target.value.toUpperCase())}
@@ -498,16 +504,15 @@ function DashboardInner() {
             }}
             onKeyDown={e => e.key === 'Enter' && handleJoinByCode()}
           />
-          <button onClick={() => handleJoinByCode()} disabled={sessionCode.length < 6 || joining} style={{
+          <button onClick={() => handleJoinByCode()} disabled={sessionCode.trim().length < 6 || joining} style={{
             padding: '12px 20px', borderRadius: '8px', border: 'none', cursor: 'pointer',
-            background: sessionCode.length === 6 ? '#EA4742' : '#222',
-            color: sessionCode.length === 6 ? '#fff' : '#555',
+            background: sessionCode.trim().length >= 6 ? '#EA4742' : '#222',
+            color: sessionCode.trim().length >= 6 ? '#fff' : '#555',
             fontWeight: 'bold', fontSize: '14px',
           }}>
             {joining ? '...' : 'Join'}
           </button>
         </div>
-        {joinError && <p style={{ color: '#EA4742', fontSize: '13px', margin: 0 }}>{joinError}</p>}
       </div>
 
       {/* Family members */}
