@@ -175,7 +175,7 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
   }
 
   const joinUrl = (code: string) =>
-    typeof window !== 'undefined' ? `${window.location.origin}?code=${code}` : ''
+    typeof window !== 'undefined' ? `${window.location.origin}/play?code=${code}` : ''
 
   const hasActive = activeSessions.length > 0
 

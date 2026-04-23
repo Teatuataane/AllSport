@@ -1,6 +1,6 @@
 'use client'
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase-browser'
 import Link from 'next/link'
 import JudgeCard from '@/app/components/JudgeCard'
@@ -39,8 +39,9 @@ function getNextGrade(points: number) {
   return null
 }
 
-export default function Dashboard() {
+function DashboardInner() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [player, setPlayer] = useState<any>(null)
   const [userId, setUserId] = useState<string | null>(null)
   const [ranking, setRanking] = useState<any>(null)
@@ -141,6 +142,21 @@ export default function Dashboard() {
     load()
   }, [router])
 
+  const [pendingAutoJoin, setPendingAutoJoin] = useState<string | null>(null)
+
+  // Auto-join from QR code or /play?code= redirect
+  useEffect(() => {
+    const codeFromUrl = searchParams.get('code')
+    const codeFromStorage = typeof window !== 'undefined' ? localStorage.getItem('pending_session_code') : null
+    const code = codeFromUrl || codeFromStorage
+    if (code) {
+      const upper = code.toUpperCase()
+      setSessionCode(upper)
+      setPendingAutoJoin(upper)
+      if (codeFromStorage) localStorage.removeItem('pending_session_code')
+    }
+  }, [searchParams])
+
   // Year-dependent load — rankings filtered by selected year
   useEffect(() => {
     if (!userId) return
@@ -159,15 +175,16 @@ export default function Dashboard() {
     loadRanking()
   }, [userId, selectedYear, statsPlayerId])
 
-  const handleJoinByCode = async () => {
-    if (!sessionCode.trim()) return
+  const handleJoinByCode = async (codeOverride?: string) => {
+    const code = (codeOverride ?? sessionCode).trim().toUpperCase()
+    if (!code) return
     setJoining(true)
     setJoinError('')
     try {
       const { data: sess, error } = await supabase
         .from('sessions')
         .select('*')
-        .eq('session_code', sessionCode.trim().toUpperCase())
+        .eq('session_code', code)
         .eq('is_active', true)
         .single()
       if (error || !sess) throw new Error('Session not found. Check the code and try again.')
@@ -177,6 +194,14 @@ export default function Dashboard() {
     }
     setJoining(false)
   }
+
+  // Fire auto-join once the player is confirmed loaded (auth ready)
+  useEffect(() => {
+    if (pendingAutoJoin && !loading) {
+      setPendingAutoJoin(null)
+      handleJoinByCode(pendingAutoJoin)
+    }
+  }, [pendingAutoJoin, loading])
 
   const isJunior = (dob: string) => {
     if (!dob) return false
@@ -473,7 +498,7 @@ export default function Dashboard() {
             }}
             onKeyDown={e => e.key === 'Enter' && handleJoinByCode()}
           />
-          <button onClick={handleJoinByCode} disabled={sessionCode.length < 6 || joining} style={{
+          <button onClick={() => handleJoinByCode()} disabled={sessionCode.length < 6 || joining} style={{
             padding: '12px 20px', borderRadius: '8px', border: 'none', cursor: 'pointer',
             background: sessionCode.length === 6 ? '#EA4742' : '#222',
             color: sessionCode.length === 6 ? '#fff' : '#555',
@@ -628,4 +653,8 @@ export default function Dashboard() {
       </div>
     </div>
   )
+}
+
+export default function Dashboard() {
+  return <Suspense><DashboardInner /></Suspense>
 }
