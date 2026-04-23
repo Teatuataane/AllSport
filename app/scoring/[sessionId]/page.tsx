@@ -407,9 +407,9 @@ export default function SessionPage() {
   // ── Load data + realtime ───────────────────────────────────────────────────
   useEffect(() => {
     const load = async () => {
-      const { data: { session: auth } } = await supabase.auth.getSession()
-      if (auth) {
-        const { data: p } = await supabase.from('players').select('*').eq('id', auth.user.id).single()
+      const { data: { user: authUser } } = await supabase.auth.getUser()
+      if (authUser) {
+        const { data: p } = await supabase.from('players').select('*').eq('id', authUser.id).single()
         setPlayer(p)
         setActivePlayer(p)
         const initBw: Record<string, string> = {}
@@ -419,7 +419,7 @@ export default function SessionPage() {
         const { data: children } = await supabase
           .from('players')
           .select('id, full_name, display_name, username, division, date_of_birth, bodyweight_kg')
-          .eq('parent_id', auth.user.id)
+          .eq('parent_id', authUser.id)
           .order('full_name')
         setFamilyMembers(children || [])
         ;(children || []).forEach((c: any) => { if (c.bodyweight_kg) initBw[c.id] = String(c.bodyweight_kg) })
