@@ -864,6 +864,7 @@ export default function SessionPage() {
         <div style={{ background: '#2e0d0d', border: '1px solid #EA4742', padding: '14px 20px', textAlign: 'center' }}>
           <div style={{ color: '#EA4742', fontWeight: 'bold', fontSize: '15px' }}>⏱ Session Ended</div>
           <div style={{ color: '#888', fontSize: '12px', marginTop: '4px' }}>Score submission is locked</div>
+          <a href="/dashboard" style={{ display: 'inline-block', marginTop: '10px', color: '#2371BB', fontSize: '13px', textDecoration: 'none', fontWeight: 'bold' }}>← Back to Dashboard</a>
         </div>
       )}
 
