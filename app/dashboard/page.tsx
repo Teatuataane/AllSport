@@ -188,7 +188,7 @@ function DashboardInner() {
         .eq('is_active', true)
         .single()
       if (error || !sess) throw new Error('Session not found. Check the code and try again.')
-      router.push(`/scoring/${sess.id}`)
+      window.location.href = `/scoring/${sess.id}`
     } catch (e: any) {
       setJoinError(e.message)
     }
