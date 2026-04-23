@@ -427,7 +427,7 @@ export default function SessionPage() {
       }
       const { data: s } = await supabase.from('sessions').select('*').eq('id', sessionId).single()
       setSession(s)
-      if (!s?.is_active) setSessionEnded(true)
+      if (s && !s.is_active) setSessionEnded(true)
       const { data: ev } = await supabase.from('session_events').select('*').eq('session_id', sessionId).order('domain_number')
       setEvents(ev || [])
       const { data: res } = await supabase.from('results').select('*').eq('session_id', sessionId)
