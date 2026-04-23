@@ -1,11 +1,12 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase-browser'
 import Link from 'next/link'
 
 export default function PlayPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = createClient()
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [email, setEmail] = useState('')
@@ -14,10 +15,14 @@ export default function PlayPage() {
   const [googleLoading, setGoogleLoading] = useState(false)
   const [error, setError] = useState('')
 
-  // Redirect to dashboard if already logged in
+  const pendingCode = searchParams.get('code')
+
+  const dashboardUrl = pendingCode ? `/dashboard?code=${pendingCode}` : '/dashboard'
+
+  // Redirect to dashboard if already logged in, preserving any session code
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) router.replace('/dashboard')
+      if (data.session) router.replace(dashboardUrl)
     })
   }, [])
 
@@ -27,7 +32,7 @@ export default function PlayPage() {
     try {
       const { error: err } = await supabase.auth.signInWithPassword({ email, password })
       if (err) throw err
-      router.push('/dashboard')
+      router.push(dashboardUrl)
     } catch (e: any) {
       setError(e.message)
     }
@@ -38,6 +43,8 @@ export default function PlayPage() {
     setGoogleLoading(true)
     setError('')
     try {
+      // Store pending code so /auth/callback can forward it to dashboard
+      if (pendingCode) localStorage.setItem('pending_session_code', pendingCode)
       const { error: err } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: { redirectTo: `${window.location.origin}/auth/callback` }
@@ -142,7 +149,7 @@ export default function PlayPage() {
               <p style={{ color: '#888', fontSize: '14px', textAlign: 'center', margin: 0 }}>
                 Create your AllSport account to track scores, earn colours, and compete on the leaderboard.
               </p>
-              <Link href="/register" style={{
+              <Link href={pendingCode ? `/register?code=${pendingCode}` : '/register'} style={{
                 display: 'block', width: '100%', padding: '14px', borderRadius: '8px',
                 background: '#2371BB', color: '#fff', textAlign: 'center',
                 textDecoration: 'none', fontWeight: 'bold', fontSize: '15px',

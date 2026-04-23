@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase-browser'
 
 export default function Register() {
@@ -10,7 +10,10 @@ export default function Register() {
   const [needsEmailConfirm, setNeedsEmailConfirm] = useState(false)
   const [existingUserId, setExistingUserId] = useState<string | null>(null)
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = createClient()
+
+  const pendingCode = searchParams.get('code')
 
   // Google OAuth users arrive already authenticated but with no player profile.
   // Detect this on mount so we can skip signUp() and use their existing auth ID.
@@ -123,7 +126,7 @@ export default function Register() {
 
       // OAuth users already have a session; email/password users may need confirmation
       if (existingUserId || newSession) {
-        router.push('/dashboard')
+        router.push(pendingCode ? `/dashboard?code=${pendingCode}` : '/dashboard')
       } else {
         setNeedsEmailConfirm(true)
       }
