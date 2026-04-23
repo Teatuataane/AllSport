@@ -85,7 +85,7 @@ export default function Register() {
         full_name: form.full_name,
         email: form.email,
         phone: form.phone,
-        date_of_birth: form.date_of_birth,
+        date_of_birth: form.date_of_birth || null,
         username: form.username,
         division: isJunior() ? 'Juniors' : form.division,
         address: form.address,
@@ -232,6 +232,14 @@ export default function Register() {
             <input value={form.username} onChange={e => set('username', e.target.value)} style={inputStyle} placeholder="How you'll appear on leaderboards" />
             <div style={{ fontSize: '11px', color: '#555', marginTop: '4px' }}>This is how other players will see you by default</div>
           </div>
+
+          {existingUserId && (
+            <div>
+              <label style={labelStyle}>DATE OF BIRTH</label>
+              <input type="date" value={form.date_of_birth} onChange={e => set('date_of_birth', e.target.value)} style={inputStyle} />
+              <div style={{ fontSize: '11px', color: '#555', marginTop: '4px' }}>Used to determine your division (Juniors = under 17)</div>
+            </div>
+          )}
 
           {!isJunior() && (
             <div>
