@@ -181,16 +181,29 @@ function DashboardInner() {
     setJoining(true)
     setJoinError('')
     try {
+      console.log('[AllSport] Join attempt — code:', code)
       const { data: sess, error } = await supabase
         .from('sessions')
         .select('*')
         .ilike('session_code', code)
         .eq('is_active', true)
         .maybeSingle()
+      console.log('[AllSport] Session query result — sess:', sess, 'error:', error)
       if (error) throw new Error(`Query error: ${error.message}`)
-      if (!sess) throw new Error('No active session found with that code. Double-check the code on the judge screen.')
+      if (!sess) {
+        // Also try without is_active filter to diagnose
+        const { data: anySess } = await supabase
+          .from('sessions')
+          .select('id, session_code, is_active')
+          .ilike('session_code', code)
+          .maybeSingle()
+        console.log('[AllSport] Session without is_active filter:', anySess)
+        throw new Error('No active session found with that code. Double-check the code on the judge screen.')
+      }
+      console.log('[AllSport] Navigating to:', `/scoring/${sess.id}`)
       window.location.href = `/scoring/${sess.id}`
     } catch (e: any) {
+      console.log('[AllSport] Join error:', e.message)
       setJoinError(e.message)
     }
     setJoining(false)
