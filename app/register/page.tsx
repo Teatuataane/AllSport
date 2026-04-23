@@ -113,9 +113,11 @@ export default function Register() {
         ignoreDuplicates: false,
       })
       if (profileError) {
-        // Profile insert failed — likely email confirmation is enabled and RLS blocks anon insert.
-        // Auth user was created; player will need to confirm email before their profile is created.
-        // We'll handle this gracefully.
+        if (existingUserId || newSession) {
+          // Authenticated user — profile insert should always succeed. Surface the error.
+          throw new Error(`Profile save failed: ${profileError.message}`)
+        }
+        // Email/password with confirmation enabled — auth user created, profile deferred.
         console.warn('Profile insert deferred (email confirmation likely enabled):', profileError.message)
       }
 

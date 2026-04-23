@@ -2,6 +2,15 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.2.0.1] - 2026-04-23
+
+### Fixed
+- **Google OAuth registration loop** — new players completing registration via Google
+  sign-in were stuck in an infinite loop ("No player profile found") because the
+  `players` table had no RLS INSERT policy for self-registration. Added
+  `Players can insert own profile` and `Players can update own profile` RLS policies.
+  Profile save errors are now surfaced in the UI rather than silently swallowed.
+
 ## [0.2.0.0] - 2026-04-22
 
 ### Added
