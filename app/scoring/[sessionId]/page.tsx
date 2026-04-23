@@ -326,6 +326,7 @@ export default function SessionPage() {
   const [results, setResults] = useState<Result[]>([])
   const [session, setSession] = useState<any>(null)
   const [player, setPlayer] = useState<any>(null)
+  const [authLoading, setAuthLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'leaderboard' | 'submit'>('leaderboard')
   const [selectedEvent, setSelectedEvent] = useState<SessionEvent | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -408,6 +409,7 @@ export default function SessionPage() {
   useEffect(() => {
     const load = async () => {
       const { data: { user: authUser } } = await supabase.auth.getUser()
+      setAuthLoading(false)
       if (authUser) {
         const { data: p } = await supabase.from('players').select('*').eq('id', authUser.id).single()
         setPlayer(p)
@@ -1037,7 +1039,9 @@ export default function SessionPage() {
       {activeTab === 'submit' && (
         <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
-          {!player ? (
+          {authLoading ? (
+            <div style={{ textAlign: 'center', padding: '40px', color: '#555' }}>Loading...</div>
+          ) : !player ? (
             <div style={{ background: '#1a1a2e', border: '1px solid #2371BB', borderRadius: '10px', padding: '24px', textAlign: 'center' }}>
               <div style={{ fontSize: '24px', marginBottom: '12px' }}>🔒</div>
               <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>Login required</div>
