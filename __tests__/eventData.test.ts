@@ -1,0 +1,343 @@
+import { describe, it, expect } from 'vitest'
+import {
+  EVENTS,
+  DOMAIN_ORDER,
+  getEventBySlug,
+  getEventByName,
+  getEventsByDomain,
+  getDisadvantageOptions,
+} from '@/lib/eventData'
+
+// ─── EVENTS array integrity ───────────────────────────────────────────────────
+
+describe('EVENTS array', () => {
+  it('contains exactly 100 events', () => {
+    expect(EVENTS).toHaveLength(100)
+  })
+
+  it('every event has a unique slug', () => {
+    const slugs = EVENTS.map(e => e.slug)
+    const unique = new Set(slugs)
+    expect(unique.size).toBe(slugs.length)
+  })
+
+  it('every event has a unique name', () => {
+    const names = EVENTS.map(e => e.name)
+    const unique = new Set(names)
+    expect(unique.size).toBe(names.length)
+  })
+
+  it('all domainNumbers are between 1 and 10', () => {
+    for (const e of EVENTS) {
+      expect(e.domainNumber).toBeGreaterThanOrEqual(1)
+      expect(e.domainNumber).toBeLessThanOrEqual(10)
+    }
+  })
+
+  it('exactly 10 events per domain (10 domains × 10 events = 100)', () => {
+    const counts: Record<number, number> = {}
+    for (const e of EVENTS) {
+      counts[e.domainNumber] = (counts[e.domainNumber] ?? 0) + 1
+    }
+    for (let d = 1; d <= 10; d++) {
+      expect(counts[d]).toBe(10)
+    }
+  })
+
+  it('events with hasDifficultyTiers=true have a non-empty difficultyTiers array', () => {
+    const tiered = EVENTS.filter(e => e.hasDifficultyTiers)
+    for (const e of tiered) {
+      expect(e.difficultyTiers).toBeDefined()
+      expect(e.difficultyTiers!.length).toBeGreaterThan(0)
+    }
+  })
+
+  it('events with hasDifficultyTiers=false have no difficultyTiers', () => {
+    const flat = EVENTS.filter(e => !e.hasDifficultyTiers)
+    for (const e of flat) {
+      // difficultyTiers should be undefined (or absent) when hasDifficultyTiers is false
+      expect(e.difficultyTiers).toBeUndefined()
+    }
+  })
+
+  it('every event has a disadvantage object with small and large arrays of length 3', () => {
+    for (const e of EVENTS) {
+      expect(e.disadvantage.small).toHaveLength(3)
+      expect(e.disadvantage.large).toHaveLength(3)
+    }
+  })
+})
+
+// ─── DOMAIN_ORDER ─────────────────────────────────────────────────────────────
+
+describe('DOMAIN_ORDER', () => {
+  it('contains exactly 10 domains', () => {
+    expect(DOMAIN_ORDER).toHaveLength(10)
+  })
+
+  it('first domain is Maximal Strength', () => {
+    expect(DOMAIN_ORDER[0]).toBe('Maximal Strength')
+  })
+
+  it('last domain is Aim & Precision', () => {
+    expect(DOMAIN_ORDER[9]).toBe('Aim & Precision')
+  })
+
+  it('matches the domain names present in EVENTS', () => {
+    const domainsInEvents = new Set(EVENTS.map(e => e.domain))
+    for (const d of DOMAIN_ORDER) {
+      expect(domainsInEvents.has(d)).toBe(true)
+    }
+  })
+})
+
+// ─── getEventBySlug ───────────────────────────────────────────────────────────
+
+describe('getEventBySlug', () => {
+  it('finds deadlift by slug', () => {
+    const e = getEventBySlug('deadlift')
+    expect(e).toBeDefined()
+    expect(e!.name).toBe('Deadlift')
+  })
+
+  it('finds 1-leg-squat by slug', () => {
+    const e = getEventBySlug('1-leg-squat')
+    expect(e).toBeDefined()
+    expect(e!.domainNumber).toBe(2)
+  })
+
+  it('returns undefined for unknown slug', () => {
+    expect(getEventBySlug('not-a-real-event')).toBeUndefined()
+  })
+
+  it('returns undefined for empty string', () => {
+    expect(getEventBySlug('')).toBeUndefined()
+  })
+})
+
+// ─── getEventByName ───────────────────────────────────────────────────────────
+
+describe('getEventByName', () => {
+  it('finds Deadlift by name', () => {
+    const e = getEventByName('Deadlift')
+    expect(e).toBeDefined()
+    expect(e!.slug).toBe('deadlift')
+  })
+
+  it('finds 1 Arm Press by exact name', () => {
+    const e = getEventByName('1 Arm Press')
+    expect(e).toBeDefined()
+    expect(e!.domainNumber).toBe(1)
+  })
+
+  it('returns undefined for unknown name', () => {
+    expect(getEventByName('Completely Made Up Event')).toBeUndefined()
+  })
+
+  it('is case-sensitive (wrong case returns undefined)', () => {
+    expect(getEventByName('deadlift')).toBeUndefined()
+  })
+})
+
+// ─── getEventsByDomain ────────────────────────────────────────────────────────
+
+describe('getEventsByDomain', () => {
+  it('returns a record with all 10 domains as keys', () => {
+    const map = getEventsByDomain()
+    expect(Object.keys(map)).toHaveLength(10)
+  })
+
+  it('Maximal Strength has 10 events', () => {
+    const map = getEventsByDomain()
+    expect(map['Maximal Strength']).toHaveLength(10)
+  })
+
+  it('every event appears in exactly one domain bucket', () => {
+    const map = getEventsByDomain()
+    const total = Object.values(map).reduce((sum, arr) => sum + arr.length, 0)
+    expect(total).toBe(100)
+  })
+
+  it('domain buckets contain the correct event objects (spot-check Deadlift)', () => {
+    const map = getEventsByDomain()
+    const maxStr = map['Maximal Strength']
+    expect(maxStr.some(e => e.slug === 'deadlift')).toBe(true)
+  })
+})
+
+// ─── getDisadvantageOptions ───────────────────────────────────────────────────
+
+describe('getDisadvantageOptions', () => {
+  it('returns real disadvantage options for Deadlift', () => {
+    const opts = getDisadvantageOptions('Deadlift')
+    // Deadlift has hand-written content — not placeholder
+    expect(opts.small[0]).not.toBe('Option A')
+    expect(opts.small).toHaveLength(3)
+    expect(opts.large).toHaveLength(3)
+  })
+
+  it('returns placeholder for events with placeholder disadvantage', () => {
+    const opts = getDisadvantageOptions('1 Arm Press')
+    expect(opts.small[0]).toBe('Option A')
+  })
+
+  it('returns placeholder disadvantage for unknown event name', () => {
+    const opts = getDisadvantageOptions('Not A Real Event')
+    expect(opts.small).toHaveLength(3)
+    expect(opts.large).toHaveLength(3)
+    expect(opts.small[0]).toBe('Option A')
+  })
+})
+
+// ─── effectiveScore helper (pure logic, extracted for tests) ──────────────────
+// Mirrors: function effectiveScore(r) { return r.adjusted_score != null ? r.adjusted_score : r.raw_score }
+
+describe('effectiveScore logic', () => {
+  function effectiveScore(r: { raw_score: number; adjusted_score?: number | null }): number {
+    return r.adjusted_score != null ? r.adjusted_score : r.raw_score
+  }
+
+  it('returns adjusted_score when set', () => {
+    expect(effectiveScore({ raw_score: 1.0, adjusted_score: 1.2 })).toBe(1.2)
+  })
+
+  it('returns raw_score when adjusted_score is null', () => {
+    expect(effectiveScore({ raw_score: 0.8, adjusted_score: null })).toBe(0.8)
+  })
+
+  it('returns raw_score when adjusted_score is undefined', () => {
+    expect(effectiveScore({ raw_score: 0.5 })).toBe(0.5)
+  })
+
+  it('returns adjusted_score of 0 (not raw) when explicitly set to 0', () => {
+    // 0 is not null/undefined — should return 0, not raw_score
+    expect(effectiveScore({ raw_score: 1.0, adjusted_score: 0 })).toBe(0)
+  })
+})
+
+// ─── disadvantage multiplier logic ───────────────────────────────────────────
+// Mirrors scoring page: isStrengthDomain && small → 1.2 / large → 1.5 / else → 1.0
+
+describe('disadvantage multiplier', () => {
+  function getDisadvMult(domainNum: number | null, disadvantageType: string): number {
+    const isStrengthDomain = domainNum === 1 || domainNum === 2
+    return isStrengthDomain && disadvantageType === 'small'
+      ? 1.2
+      : isStrengthDomain && disadvantageType === 'large'
+      ? 1.5
+      : 1.0
+  }
+
+  it('domain 1 + small → 1.2', () => {
+    expect(getDisadvMult(1, 'small')).toBe(1.2)
+  })
+
+  it('domain 1 + large → 1.5', () => {
+    expect(getDisadvMult(1, 'large')).toBe(1.5)
+  })
+
+  it('domain 2 + small → 1.2', () => {
+    expect(getDisadvMult(2, 'small')).toBe(1.2)
+  })
+
+  it('domain 2 + large → 1.5', () => {
+    expect(getDisadvMult(2, 'large')).toBe(1.5)
+  })
+
+  it('domain 3 + small → 1.0 (not a strength domain)', () => {
+    expect(getDisadvMult(3, 'small')).toBe(1.0)
+  })
+
+  it('domain 1 + empty string → 1.0 (no disadvantage selected)', () => {
+    expect(getDisadvMult(1, '')).toBe(1.0)
+  })
+
+  it('null domain → 1.0', () => {
+    expect(getDisadvMult(null, 'large')).toBe(1.0)
+  })
+})
+
+// ─── division multiplier logic ────────────────────────────────────────────────
+// Mirrors getMultiplier() in scoring page
+
+describe('getMultiplier (division scoring)', () => {
+  function getMultiplier(division: string, dob: string | null): number {
+    const age = dob ? Math.floor((Date.now() - new Date(dob).getTime()) / (365.25 * 24 * 3600 * 1000)) : null
+    if (division === 'Juniors') return 1.2
+    if (division === "Women's") {
+      if (age !== null && age >= 40) return 1.4
+      return 1.2
+    }
+    if (division === "Men's" && age !== null && age >= 40) return 1.2
+    return 1.0
+  }
+
+  it("Men's under 40 → 1.0", () => {
+    const dob = new Date()
+    dob.setFullYear(dob.getFullYear() - 30)
+    expect(getMultiplier("Men's", dob.toISOString())).toBe(1.0)
+  })
+
+  it("Men's over 40 (Masters Men) → 1.2", () => {
+    const dob = new Date()
+    dob.setFullYear(dob.getFullYear() - 45)
+    expect(getMultiplier("Men's", dob.toISOString())).toBe(1.2)
+  })
+
+  it("Women's under 40 → 1.2", () => {
+    const dob = new Date()
+    dob.setFullYear(dob.getFullYear() - 25)
+    expect(getMultiplier("Women's", dob.toISOString())).toBe(1.2)
+  })
+
+  it("Women's over 40 (Masters Women) → 1.4", () => {
+    const dob = new Date()
+    dob.setFullYear(dob.getFullYear() - 45)
+    expect(getMultiplier("Women's", dob.toISOString())).toBe(1.4)
+  })
+
+  it('Juniors → 1.2 regardless of age', () => {
+    const dob = new Date()
+    dob.setFullYear(dob.getFullYear() - 14)
+    expect(getMultiplier('Juniors', dob.toISOString())).toBe(1.2)
+  })
+
+  it("Men's with null dob → 1.0 (age unknown, no Masters boost)", () => {
+    expect(getMultiplier("Men's", null)).toBe(1.0)
+  })
+
+  it('unknown division with null dob → 1.0', () => {
+    expect(getMultiplier('Unknown', null)).toBe(1.0)
+  })
+})
+
+// ─── tier-based score formula ─────────────────────────────────────────────────
+// Mirrors computeScore tier path: tierIdx * 10000 + time_seconds
+
+describe('tier-based score formula', () => {
+  function tierScore(tierIdx: number, timeSeconds: number): number {
+    return tierIdx * 10000 + timeSeconds
+  }
+
+  it('tier 0 with no time = 0', () => {
+    expect(tierScore(0, 0)).toBe(0)
+  })
+
+  it('tier 1 with no time = 10000', () => {
+    expect(tierScore(1, 0)).toBe(10000)
+  })
+
+  it('tier 0 with 30 seconds beats no score but loses to tier 1', () => {
+    expect(tierScore(0, 30)).toBe(30)
+    expect(tierScore(0, 30)).toBeLessThan(tierScore(1, 0))
+  })
+
+  it('higher tier always beats lower tier regardless of time (within 10000s)', () => {
+    // Tier 1 at 0 secs (10000) > Tier 0 at 9999 secs (9999)
+    expect(tierScore(1, 0)).toBeGreaterThan(tierScore(0, 9999))
+  })
+
+  it('within same tier, more time = higher score', () => {
+    expect(tierScore(2, 60)).toBeGreaterThan(tierScore(2, 30))
+  })
+})

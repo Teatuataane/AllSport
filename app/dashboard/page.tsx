@@ -45,10 +45,15 @@ function DashboardInner() {
   const [player, setPlayer] = useState<any>(null)
   const [userId, setUserId] = useState<string | null>(null)
   const [ranking, setRanking] = useState<any>(null)
+  const [allRankings, setAllRankings] = useState<any[]>([])
   const [recentSessions, setRecentSessions] = useState<any[]>([])
   const [activeSession, setActiveSession] = useState<any>(null)
   const [streak, setStreak] = useState<{ streak_active: boolean; streak_count: number } | null>(null)
   const [personalBests, setPersonalBests] = useState<{ event_name: string; best_placement: number }[]>([])
+  // Session summary popup (Feature 5)
+  const [summarySession, setSummarySession] = useState<any>(null)
+  const [summaryResults, setSummaryResults] = useState<any[]>([])
+  const [summaryEvents, setSummaryEvents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [rankingLoading, setRankingLoading] = useState(false)
   const [sessionCode, setSessionCode] = useState('')
@@ -163,13 +168,12 @@ function DashboardInner() {
     const loadRanking = async () => {
       setRankingLoading(true)
       const targetId = statsPlayerId || userId
-      const { data } = await supabase
-        .from('rankings')
-        .select('*')
-        .eq('player_id', targetId)
-        .eq('season_year', selectedYear)
-        .maybeSingle()
-      setRanking(data)
+      const [singleResult, allResult] = await Promise.all([
+        supabase.from('rankings').select('*').eq('player_id', targetId).eq('season_year', selectedYear).maybeSingle(),
+        supabase.from('rankings').select('season_year, total_points').eq('player_id', targetId).gt('total_points', 0).order('season_year', { ascending: false }),
+      ])
+      setRanking(singleResult.data)
+      setAllRankings(allResult.data || [])
       setRankingLoading(false)
     }
     loadRanking()
@@ -294,7 +298,19 @@ function DashboardInner() {
     ? ((points - grade.threshold) / (nextGrade.threshold - grade.threshold)) * 100
     : 100
   const currentYear = new Date().getFullYear()
-  const years = Array.from({ length: 3 }, (_, i) => currentYear - i)
+  // Year tabs: only show years with actual data + current year (Feature 6)
+  const yearsWithData = allRankings.map((r: any) => r.season_year)
+  const years = [...new Set([currentYear, ...yearsWithData])].filter(y => y >= 2025).sort((a, b) => b - a)
+
+  // Grade colour hex for progress bar (Feature 6)
+  const GRADE_COLOURS: Record<string, string> = {
+    'Mā': '#ffffff', 'Kiwikiwi': '#888888', 'Whero': '#EA4742', 'Karaka': '#F9B051',
+    'Kōwhai': '#FFE566', 'Kākāriki': '#4DB26E', 'Kahurangi': '#2371BB', 'Poroporo': '#B87DB5',
+    'Uenuku': 'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)',
+    'Taniwha': '#000000',
+  }
+  const barColour = GRADE_COLOURS[grade.name] || '#2371BB'
+  const barStyle: React.CSSProperties = barColour.startsWith('linear') ? { backgroundImage: barColour } : { background: barColour }
 
   // Championship banner: show within 8 weeks of 14 March 2027
   const weeksAway = Math.floor((CHAMPIONSHIP_DATE.getTime() - Date.now()) / (7 * 24 * 60 * 60 * 1000))
@@ -400,11 +416,11 @@ function DashboardInner() {
         )}
       </div>
 
-      {/* Grade + progress */}
+      {/* Colours + progress (Feature 6) */}
       <div style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '20px', marginBottom: '16px', opacity: rankingLoading ? 0.6 : 1, transition: 'opacity 0.2s' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
           <div>
-            <div style={{ fontSize: '12px', color: '#555', marginBottom: '6px', letterSpacing: '1px' }}>CURRENT GRADE</div>
+            <div style={{ fontSize: '12px', color: '#555', marginBottom: '6px', letterSpacing: '1px' }}>COLOURS</div>
             <div style={{
               ...gradeStyle(grade.colour), color: grade.textColour,
               padding: '4px 14px', borderRadius: '20px', fontSize: '14px', fontWeight: 'bold',
@@ -419,22 +435,24 @@ function DashboardInner() {
           </div>
         </div>
 
-        {nextGrade && (
+        {nextGrade ? (
           <>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#555', marginBottom: '6px' }}>
-              <span>{grade.name}</span>
-              <span>{nextGrade.name} · {nextGrade.threshold.toLocaleString()} pts</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#888', marginBottom: '6px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.05em' }}>
+              <span style={{ fontWeight: 'bold' }}>{grade.name}</span>
+              <span>{nextGrade.name} — {(nextGrade.threshold - points).toLocaleString()}pts to go</span>
             </div>
-            <div style={{ background: '#222', borderRadius: '4px', height: '8px', overflow: 'hidden' }}>
+            <div style={{ background: '#222', borderRadius: '4px', height: '8px', overflow: 'hidden', border: grade.name === 'Taniwha' ? '1px solid #F9B051' : 'none' }}>
               <div style={{
                 height: '100%', borderRadius: '4px', width: `${Math.min(progress, 100)}%`,
-                background: 'linear-gradient(90deg, #2371BB, #4DB26E)',
+                ...barStyle,
+                transition: 'width 0.6s ease',
               }} />
             </div>
-            <div style={{ fontSize: '11px', color: '#555', marginTop: '6px', textAlign: 'right' }}>
-              {(nextGrade.threshold - points).toLocaleString()} pts to {nextGrade.name}
-            </div>
           </>
+        ) : (
+          <div style={{ fontSize: '12px', color: '#F9B051', marginTop: '4px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.05em' }}>
+            Taniwha — Peak Grade
+          </div>
         )}
 
         <div style={{ display: 'flex', gap: '6px', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #1e1e1e' }}>
@@ -478,23 +496,20 @@ function DashboardInner() {
         ))}
       </div>
 
-      {/* Personal bests */}
-      {personalBests.length > 0 && (
-        <div style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '20px', marginBottom: '16px' }}>
-          <div style={{ fontWeight: 'bold', fontSize: '15px', marginBottom: '12px' }}>Personal Bests</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-            {personalBests.map(pb => (
-              <div key={pb.event_name} style={{
-                background: '#0a0a0a', border: '1px solid #1e1e1e', borderRadius: '8px',
-                padding: '6px 12px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px',
-              }}>
-                <span style={{ color: '#888' }}>{pb.event_name}</span>
-                <span style={{ color: '#4DB26E', fontWeight: 'bold' }}>#{pb.best_placement}</span>
-              </div>
-            ))}
+      {/* My Personal Bests button (Feature 11) */}
+      <div style={{ marginBottom: '16px' }}>
+        <Link href="/prs" style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          background: '#111', border: '1px solid #1e1e1e', borderRadius: '12px',
+          padding: '16px 20px', textDecoration: 'none',
+        }}>
+          <div>
+            <div style={{ fontWeight: 'bold', fontSize: '15px', color: '#fff' }}>My Personal Bests</div>
+            <div style={{ fontSize: '12px', color: '#555', marginTop: '2px' }}>All 100 events — your best scores</div>
           </div>
-        </div>
-      )}
+          <div style={{ color: '#2371BB', fontSize: '20px' }}>→</div>
+        </Link>
+      </div>
 
       {/* Join a session */}
       <div style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '20px', marginBottom: '16px' }}>
@@ -642,7 +657,7 @@ function DashboardInner() {
         )}
       </div>
 
-      {/* Recent sessions */}
+      {/* Recent sessions (Feature 5 — View Summary) */}
       <div style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '20px' }}>
         <div style={{ fontWeight: 'bold', fontSize: '15px', marginBottom: '16px' }}>Recent Sessions</div>
         {recentSessions.length === 0 ? (
@@ -653,7 +668,7 @@ function DashboardInner() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {recentSessions.slice(0, 5).map((result, idx) => (
               <div key={idx} style={{ background: '#0a0a0a', borderRadius: '8px', padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
+                <div style={{ flex: 1 }}>
                   <div style={{ fontSize: '13px', fontWeight: 'bold' }}>
                     {result.sessions?.location || 'Session'}
                     {result.sessions?.is_championship && <span style={{ color: '#F9B051', marginLeft: '6px', fontSize: '11px' }}>CHAMPIONSHIP</span>}
@@ -664,15 +679,81 @@ function DashboardInner() {
                       : ''}
                   </div>
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#2371BB' }}>+{result.points_earned || 0}</div>
-                  <div style={{ fontSize: '11px', color: '#555' }}>pts</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#2371BB' }}>+{result.points_earned || 0}</div>
+                    <div style={{ fontSize: '11px', color: '#555' }}>pts</div>
+                  </div>
+                  {result.sessions?.id && (
+                    <button
+                      onClick={async () => {
+                        if (!userId) return
+                        const sess = result.sessions
+                        setSummarySession(sess)
+                        const [resData, evData] = await Promise.all([
+                          supabase.from('results').select('*').eq('session_id', sess.id).eq('player_id', userId),
+                          supabase.from('session_events').select('*').eq('session_id', sess.id).order('domain_number'),
+                        ])
+                        setSummaryResults(resData.data || [])
+                        setSummaryEvents(evData.data || [])
+                      }}
+                      style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid #2371BB44', background: '#2371BB11', color: '#2371BB', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold', whiteSpace: 'nowrap' }}
+                    >
+                      View Summary
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {/* Session summary popup (Feature 5) */}
+      {summarySession && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,10,10,0.95)', zIndex: 300, overflowY: 'auto', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '24px 16px' }}>
+          <div style={{ width: '100%', maxWidth: '460px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+            <div style={{ background: '#111', borderRadius: '14px', padding: '24px', textAlign: 'center', border: '1px solid #2371BB' }}>
+              <div style={{ fontSize: '11px', color: '#2371BB', letterSpacing: '2px', marginBottom: '8px' }}>
+                {summarySession.location} · {summarySession.session_date ? new Date(summarySession.session_date).toLocaleDateString('en-NZ', { day: 'numeric', month: 'long', year: 'numeric' }) : ''}
+              </div>
+              <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '36px', letterSpacing: '2px', color: '#fff', lineHeight: 1 }}>Session Summary</div>
+            </div>
+
+            {summaryEvents.length > 0 && (
+              <div style={{ background: '#111', borderRadius: '12px', padding: '20px', border: '1px solid #1e1e1e' }}>
+                <div style={{ fontSize: '12px', color: '#555', marginBottom: '12px', letterSpacing: '1px' }}>EVENT BREAKDOWN</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {summaryEvents.map((ev: any) => {
+                    const myResult = summaryResults.find(r => r.event_id === ev.id)
+                    return (
+                      <div key={ev.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #1a1a1a' }}>
+                        <div>
+                          <div style={{ fontSize: '13px', color: '#ccc' }}>{ev.event_name}</div>
+                          <div style={{ fontSize: '11px', color: myResult ? '#4DB26E' : '#555', marginTop: '1px' }}>
+                            {myResult ? myResult.score_label : 'No score'}
+                          </div>
+                        </div>
+                        {myResult?.placement && (
+                          <div style={{ fontSize: '13px', color: '#888' }}>#{myResult.placement}</div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            <button onClick={() => { setSummarySession(null); setSummaryResults([]); setSummaryEvents([]) }} style={{
+              padding: '16px', borderRadius: '10px', border: 'none', background: '#2371BB',
+              color: '#fff', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer',
+            }}>
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -317,9 +317,12 @@ export default function HowToPlay() {
           <p style={{ color: '#888888', fontSize: '16px', maxWidth: '680px', marginBottom: '8px', lineHeight: 1.7 }}>
             Each session, one event is drawn at random from each of the 10 domains below — 10 events in total. Our annual Championship events are chosen by community vote.
           </p>
-          <p style={{ color: '#555555', fontSize: '14px', maxWidth: '680px', marginBottom: '40px', lineHeight: 1.7 }}>
+          <p style={{ color: '#555555', fontSize: '14px', maxWidth: '680px', marginBottom: '24px', lineHeight: 1.7 }}>
             100 events in total across all domains. Click any domain to see its full event list.
           </p>
+          <Link href="/events" style={{ display: 'inline-block', marginBottom: '32px', padding: '9px 20px', borderRadius: '8px', background: '#111', border: '1px solid #333', color: '#ccc', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, letterSpacing: '0.08em', textDecoration: 'none', textTransform: 'uppercase' }}>
+            Browse All 100 Events →
+          </Link>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {domains.map((domain) => {
               const isOpen = expandedDomain === domain.name
@@ -351,6 +354,9 @@ export default function HowToPlay() {
                           <span key={event} className="event-pill">{event}</span>
                         ))}
                       </div>
+                      <Link href="/events" style={{ display: 'inline-block', marginTop: '12px', fontSize: '12px', color: '#2371BB', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, letterSpacing: '0.05em', textDecoration: 'none' }}>
+                        View full event details →
+                      </Link>
                     </div>
                   )}
                 </div>

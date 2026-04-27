@@ -2,6 +2,62 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.3.0.0] - 2026-04-28
+
+### Added
+- **Event pages** — browse all 100 events at `/events`, or go deep on any single
+  event at `/events/[slug]`. Each event page shows how to perform it, the rules,
+  scoring method, difficulty tiers (D1–Dn), disadvantage options, and your
+  personal best for that event if you're logged in.
+- **Personal bests page** — `/prs` shows your best result for every one of the
+  100 events, grouped by domain. Tap any event to expand the full history with
+  PB badge, championship flags, and difficulty tier labels. Switch between this
+  season and all-time with the tab at the top.
+- **Difficulty tiers** — 24 skill events now have D1–Dn tier selectors in the
+  live scoring view. Breakdancing and Standing Split use a tier × time formula
+  so harder variations always rank above easier ones regardless of performance time.
+- **Disadvantage system** — players can self-declare a small or large disadvantage
+  before competing. Strength events (Domain 1 and 2) apply a 1.2× or 1.5× score
+  multiplier. All events record the declaration for future reference.
+- **All-Divisions tab** — the combined division tab is now labelled "All-Divisions"
+  throughout the live scoring leaderboard.
+- **Missing score = last place** — players who submit at least one result in a
+  session but miss an event are assigned last place for that event in the standings.
+
+### Changed
+- **Dashboard Colours section** — the grade section is now called "Colours" and
+  the progress bar uses the colour of your current grade (White → Taniwha Black).
+  Year tabs are computed from your actual ranking history (no placeholder years).
+- **Session history summary** — each recent session on the dashboard now has a
+  "View Summary" popup showing your per-event scores and placements.
+- **Browse all events link** — the How to Play page now links to `/events` and
+  each domain accordion links to the full event list.
+- **Difficulty tier labels** — D1–Dn range is shown on event buttons in session
+  setup and on event rows in the live session event list.
+- **T-Race** renamed from T-Test; **Chin Hang** renamed from Chin Lift — updated
+  across scoring setup, live session, and event data.
+- **My Personal Bests** — the dashboard now links to `/prs` instead of showing
+  a stub card.
+
+### Fixed
+- **Post-game standings lookup** — player lookup in the post-game popup now uses
+  `player_id` rather than display name (display name changes no longer cause a
+  missing placement).
+- **Judge edit clears adjusted_score** — editing a result as a judge now sets
+  `adjusted_score = null` so the override isn't contaminated by a prior
+  disadvantage multiplier.
+- **Difficulty tier guard** — if a tier name is no longer found in event data,
+  score computation returns 0 rather than a large negative value.
+- **Ordinal suffixes** — 11th, 12th, 13th now display correctly (was 11st/12nd/13rd).
+- **Personal best query** — event detail page now correctly filters results by
+  event name (was returning the global best across all events).
+- **React key collision** — no-score ghost entries now use `player_id` as the
+  key component to avoid collisions with real players who have similar names.
+- **Session summary null guard** — View Summary button in the dashboard now guards
+  against a null `userId` before fetching results.
+- **CURRENT_YEAR** — personal bests page now derives the season year from the
+  system clock rather than a hardcoded 2026 constant.
+
 ## [0.2.0.1] - 2026-04-23
 
 ### Fixed
