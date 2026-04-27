@@ -180,37 +180,38 @@ function DashboardInner() {
   }, [userId, selectedYear, statsPlayerId])
 
   const handleJoinByCode = async (codeOverride?: string) => {
-    const code = (codeOverride ?? sessionCode).trim()
+    const code = (codeOverride ?? sessionCode).trim().toUpperCase()
     if (!code) return
     setJoining(true)
     setJoinError('')
     try {
-      console.log('[AllSport] Join attempt — code:', code)
+      console.log('[AllSport] handleJoinByCode — code:', code, '| player id:', userId)
+
       const { data: sess, error } = await supabase
         .from('sessions')
-        .select('*')
+        .select('id, session_code, is_active, location')
         .ilike('session_code', code)
-        .eq('is_active', true)
         .maybeSingle()
-      console.log('[AllSport] Session query result — sess:', sess, 'error:', error)
-      if (error) throw new Error(`Query error: ${error.message}`)
+
+      console.log('[AllSport] sessions query — data:', sess, '| error:', error)
+
+      if (error) throw new Error(`Session lookup failed: ${error.message}`)
+
       if (!sess) {
-        // Also try without is_active filter to diagnose
-        const { data: anySess } = await supabase
-          .from('sessions')
-          .select('id, session_code, is_active')
-          .ilike('session_code', code)
-          .maybeSingle()
-        console.log('[AllSport] Session without is_active filter:', anySess)
-        throw new Error('No active session found with that code. Double-check the code on the judge screen.')
+        throw new Error(`No session found with code "${code}". Ask the judge to confirm the code on their screen.`)
       }
-      console.log('[AllSport] Navigating to:', `/scoring/${sess.id}`)
+
+      if (!sess.is_active) {
+        throw new Error(`Session "${code}" has ended. Ask your judge to start a new one.`)
+      }
+
+      console.log('[AllSport] Navigating to session:', sess.id)
       window.location.href = `/scoring/${sess.id}`
     } catch (e: any) {
-      console.log('[AllSport] Join error:', e.message)
+      console.error('[AllSport] Join failed:', e.message)
       setJoinError(e.message)
+      setJoining(false)
     }
-    setJoining(false)
   }
 
   // Fire auto-join once the player is confirmed loaded (auth ready)
@@ -515,7 +516,10 @@ function DashboardInner() {
         <div style={{ fontWeight: 'bold', fontSize: '15px', marginBottom: '4px' }}>Join a Session</div>
         <div style={{ fontSize: '12px', color: '#555', marginBottom: '16px' }}>Enter the 6-digit code shown on the judge screen</div>
         {joinError && (
-          <div style={{ background: '#2e0d0d', border: '1px solid #EA4742', borderRadius: '8px', padding: '12px 14px', marginBottom: '12px', color: '#EA4742', fontSize: '14px', fontWeight: 'bold' }}>
+          <div
+            ref={el => el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })}
+            style={{ background: '#2e0d0d', border: '2px solid #EA4742', borderRadius: '8px', padding: '14px 16px', marginBottom: '12px', color: '#EA4742', fontSize: '14px', fontWeight: 'bold', lineHeight: 1.4 }}
+          >
             ⚠ {joinError}
           </div>
         )}
