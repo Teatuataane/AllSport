@@ -12,7 +12,7 @@
 - Live leaderboard — real Supabase data, division tabs, podium
 - Active session banner on leaderboard (realtime, shows current leader)
 - Session scoring — per-event structured inputs (10 modes: strength, reps, time, hold, distance, flexibility, sport, sprint, weight+time, distance+time, dynamic)
-- Sprint timing mode — seconds + centiseconds for 100m/50m/200m Sprint, T-Test
+- Sprint timing mode — seconds + centiseconds for 100m/50m/200m Sprint
 - Score upsert — resubmitting updates instead of erroring
 - Score submission re-fetch — results always appear after submit (fixes realtime UPDATE miss)
 - Unique constraint: results_player_event_unique (player_id, session_id, event_id)
@@ -25,10 +25,9 @@
 - Removed "Train Everything" tagline from login screen
 - QR code fullscreen in JudgeCard
 - Sport events — record opponent name + conflict detection between players
-- 1 Leg Squat — variation picker with free-text override
 - Distance score decimal fix — stored as whole cm integers (no DB type errors)
-- Division tabs on live session leaderboard — Overall / Men's / Women's / Juniors
-- Overall tab multipliers — Women's/Juniors ×1.2, Masters Men ×1.2, Masters Women ×1.4
+- Division tabs on live session leaderboard — All-Divisions / Men's / Women's / Juniors
+- All-Divisions multipliers — Women's/Juniors ×1.2, Masters Men ×1.2, Masters Women ×1.4
 - Supabase SSR middleware (middleware.ts) — fixes session persistence and Google double sign-in
 - Navbar — switched to browser client, PLAY NOW hides when logged in (shows DASHBOARD)
 - /play — redirects already-logged-in users to dashboard
@@ -40,22 +39,46 @@
 - Legacy `lib/supabase.ts` deprecated — all pages now use `supabase-browser.ts`
 - SQL fix: `v_player_count` now counts distinct players (not result rows) — point gaps were wrong
 - SQL fix: Masters Women ×1.4 multiplier ELSIF reordered — was unreachable, always gave ×1.2
+- Missing scores default to last place — players with no score for an event display as "No score" and are ranked last
+- Judge score edit — pencil icon on each result row in expanded event list, pre-fills input form, recalculates leaderboard on save
+- Judge score delete fix — confirmation state works correctly, delete executes on second click, leaderboard recalculates
+- "Overall" tab renamed to "All-Divisions" everywhere (live session, global leaderboard, post-game popup, session history)
+- Post-game popup — triggers on session close, shows placements, per-event breakdown, bonuses, total points, colour progression moment with animation
+- Session history View Summary — past session popup viewable from dashboard session cards
+- My Colour History — colour progression section on homepage becomes a button for logged-in players, opens modal of all past session summaries
+- Colours section renamed from "Grade" on dashboard — conditional year tabs (no 2024, 2025 only for players with data), coloured progress bar
+- T-Race — renamed from T-Test everywhere, converted to sport/win-loss input mode
+- Chin Hang — renamed from Chin Lift everywhere
+- Difficulty tiers — tier selector in live session scoring for 24 events; stored in results.difficulty_tier; defined in lib/eventData.ts
+- Breakdancing converted to difficulty tier + time format (D1 Toprock → D6 Full Routine + seconds)
+- 1 Leg Squat updated to D1 Assisted Lunge → D6 Dragon Squat
+- Toe Lift converted to weight + reps (no tiers)
+- Turkish Get Up converted to weight + reps (no tiers)
+- Disadvantage system — self-declared small/large per event; ×1.2/×1.5 multiplier on strength events; recorded on all events; three options per level per event (5 events fully defined, 95 placeholder)
+- Event detail pages — /events/[slug] public pages with template: how-to, rules, difficulty tiers, disadvantage options, personal best
+- Events index — /events listing all 100 events by domain, links to detail pages
+- How To Play page links to /events; event names in domain table link to detail pages
+- Live session event names link to /events/[slug] (opens new tab)
+- Personal bests page — /prs with all 100 events, expandable history, this season + previous seasons tabs
+- Dashboard PR section replaced with "My Personal Bests" button linking to /prs
+- Real-time player count in JudgeCard
+- lib/eventData.ts — single source of truth for all 100 events
+- supabase/migrations/20260428_phase2.sql — difficulty_tier, disadvantage_type, disadvantage_option columns; updated award_session_points trigger
+- Sessions page display verified — times, location, championship date all correct
+- Difficulty tier labels on session event listings (e.g. "Planche D1–D7")
 
 ---
 
 ## P1 — Do Next
 
-### Judge score management from live session
-**What:** Judge can edit or delete any player's score from within /scoring/[sessionId] without going to a separate screen.
-**Why:** Currently judges have no in-session correction flow. Errors require manual Supabase queries.
-**Effort:** M (CC) — add a judge-only mode to the leaderboard tab that shows edit/delete on each score row.
-**Where to start:** `app/scoring/[sessionId]/page.tsx` — check player.role === 'judge', render edit icons on expanded event score rows.
+### Populate event content for remaining 95 events
+**What:** Fill in `howToPerform`, `rules`, and all disadvantage options in `lib/eventData.ts` for the 95 events that currently have placeholder content.
+**Why:** Event detail pages show "Content coming soon" for most events.
+**Effort:** L (content work, not code) — can be done incrementally, one domain at a time.
+**Where:** `lib/eventData.ts`
 
 ### Real-time player count in JudgeCard
-**What:** The "joined" count on active sessions updates live as players submit scores — no manual refresh.
-**Why:** Count loaded at dashboard open goes stale immediately during a session.
-**Effort:** S (CC) — subscribe to results INSERT filtered by session_id, increment count state.
-**Where to start:** `app/components/JudgeCard.tsx` — add Supabase realtime channel in useEffect.
+**What:** Already done — confirm it is working in production.
 
 ---
 
@@ -63,46 +86,39 @@
 
 ### Welcome email on registration
 **What:** Send a branded welcome email when a new player registers — their username, division, next session times, and a link back to their dashboard.
-**Why:** Confirms account creation, gives players something to refer back to, opens a communication channel for session reminders and results.
 **How:** Supabase Edge Function triggered by a database webhook on `players INSERT`, calling Resend (free tier, 3,000/month). Domain `allsport.nz` needs two DNS TXT records added in Resend.
-**Effort:** M (CC) — Edge Function + webhook + Resend account setup + DNS.
+**Effort:** M (CC)
 
 ### Judge approval flow
 **What:** Judges can be assigned via the app rather than running `UPDATE players SET role = 'judge'` manually.
-**Why:** Manual SQL is not viable once there are multiple judges or the community grows.
-**Effort:** M (CC) — admin UI or invite link that sets role.
+**Effort:** M (CC)
 
 ### Player profile page
 **What:** Players can view and edit their display name, division, privacy settings, and grade history.
-**Why:** No self-service profile editing currently exists.
 **Effort:** M (CC)
-**Where to start:** New route `/profile` or modal from dashboard.
+**Where:** New route `/profile` or modal from dashboard.
 
-### Event detail pages
-**What:** Each event has a page showing rules, how to score, and the player's personal best.
-**Why:** New players don't know how to perform or score events.
-**Effort:** L (CC)
+### Disadvantage options — full 100 events
+**What:** Define all three small and three large options for the 95 events currently using placeholders in `lib/eventData.ts`.
+**Effort:** L (content work) — no code changes required, only data entry in the constants file.
 
 ---
 
 ## P3 — Later
 
+### Verify Te Reo "Kaiwāwao"
+**What:** Confirm "Kaiwāwao" is correct and culturally appropriate for judge/referee in a sports context.
+**Effort:** S (human) — ask a te reo advisor or native speaker before first public session.
+**Where:** `app/components/JudgeCard.tsx` heading.
+
+### Championship registration flow
+**What:** Separate registration/confirmation flow for the annual championship.
+**When:** 6 months before March 2027.
+
 ### created_by column on sessions
 **What:** Add created_by (player_id) to sessions so judge panel can show "your sessions" vs all.
 **When:** Add when second judge joins.
 
-### Verify Te Reo "Kaiwāwao"
-**What:** Confirm "Kaiwāwao" is correct and culturally appropriate for judge/referee in a sports context.
-**Why:** Used as the heading on the Judge Panel. Incorrect te reo would be disrespectful.
-**Effort:** S (human) — ask a te reo advisor or native speaker before first public session.
-**Where:** `app/components/JudgeCard.tsx` heading.
-
-### Disadvantage system
-**What:** Define and implement the disadvantage rules for events where a multiplier is not appropriate.
-**Why:** Referenced in rules but not yet defined.
+### Disadvantage system — full rules documentation
+**What:** Write comprehensive public-facing rules for the disadvantage system.
 **When:** Before 2027 Championship.
-
-### Championship registration flow
-**What:** Separate registration/confirmation flow for the annual championship.
-**Why:** Championship has different entry requirements and needs a headcount.
-**When:** 6 months before March 2027.

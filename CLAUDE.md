@@ -98,16 +98,22 @@ linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)
 
 | # | Domain | Events (10) |
 |---|--------|-------------|
-| 1 | Maximal Strength | 1A Press, Deadlift, OHP, Pause Dips, Pause Chinup, Pause Squat, Zercher Dead, Ham Curl, Pause Bench, Turkish |
-| 2 | Relative Strength | 1L Squat, Flag, Windshield Wipers, Toe Lift, Planche, Back Lever, Iron Cross, Front Lever, Chin Lift, Climbing |
+| 1 | Maximal Strength | 1A Press, Deadlift, OHP, Pause Dips, Pause Chinup, Pause Squat, Zercher Dead, Ham Curl, Pause Bench, Turkish Get Up |
+| 2 | Relative Strength | 1L Squat, Flag, Windshield Wipers, Toe Lift, Planche, Back Lever, Iron Cross, Front Lever, Chin Hang, Climbing |
 | 3 | Muscular Endurance | Chinup Contest, Pushup Contest, Reverse Hyper, L Sit Hold, Tib Curl, Headstand, Finger Pushup, Calf Raise, Leg Ext, Ab Rollout |
-| 4 | Flexibility & Mobility | Rear Hand Clasp, Bridge, Forward Fold, Needle Pose, F Split, M Split, Standing Split, Foot Behind Head Pose, Shoulder Dislocate, Side Bend |
+| 4 | Flexibility & Mobility | Rear Hand Clasp, Bridge, Forward Fold, Needle Pose, F Split, M Split, Standing Split, Foot Behind Head, Shoulder Dislocate, Side Bend |
 | 5 | Power | Kelly Snatch, 1A Snatch, Triple Jump, Javelin, Shotput, AFL, Vert Jump, Glute Bridge, Clean & Jerk, Snatch |
 | 6 | Aerobic Endurance | Burpee Broad Jump, 1k Run, 1k Cycle, Ski 1k, 1k Row, Iron Lungs, 200m Carry, 2k Run, 200m Repeats, Bronco |
-| 7 | Speed & Agility | 100m Sprint, Tag, T Race, 400m Race, Beach Flags, 50m Sprint, 200m Sprint, Touch Rugby, Football Dribble, Repeat High Jump |
+| 7 | Speed & Agility | 100m Sprint, Tag, T-Race, 400m Race, Beach Flags, 50m Sprint, 200m Sprint, Touch Rugby, Football Dribble, Repeat High Jump |
 | 8 | Body Awareness | Tae Kwon Do, Breakdancing, Trampolining, Jump Rope, Wrestling, Gymnastics, Balance Ball, SKATE, Fencing, Juggling |
 | 9 | Co-ordination | Volleyball, Baseball, Teqball, Tennis, Cricket, Badminton, Basketball, Football, Hockey, Squash |
 | 10 | Aim & Precision | Netball, Handball, Cornhole, Dodgeball, Carrom, Archery, Bowling, Darts, Disc Golf, Golf |
+
+### Event renames (from previous names)
+- "T-Test" → **T-Race** (now uses sport/win-loss input mode, not sprint timing)
+- "Chin Lift" → **Chin Hang**
+- "Turkish" → **Turkish Get Up** (weight + reps, no tiers)
+- "Toe Lift" → **Toe Lift** (weight + reps, no tiers — variation picker removed)
 
 ---
 
@@ -117,6 +123,7 @@ linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)
 - 1st place always = 100 points
 - Gap = max(100 / players, 10)
 - Minimum earn = 10 points
+- Players who joined a session but submitted no score for an event are ranked **last** for that event
 
 | Session Size | Gap | Example |
 |---|---|---|
@@ -146,7 +153,59 @@ linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)
 | Masters Women (40+) | x1.4 |
 
 ### Disadvantage System
-For events where a multiplier is not appropriate. Judges determine the specific disadvantage. Not yet fully defined — rules to be confirmed before 2027 Championship.
+
+Players self-declare a disadvantage before competing in an event when a physical advantage difference exists between them and their opponents. No reason is required — they simply declare small or large.
+
+**Mechanical effect:**
+- Domain 1 (Maximal Strength) and Domain 2 (Relative Strength): disadvantage applies a score multiplier.
+  - Small: raw_score × 1.2 → stored in `adjusted_score`
+  - Large: raw_score × 1.5 → stored in `adjusted_score`
+- All other domains: disadvantage is recorded and displayed only. No score change. Physical rule modification is agreed between players and enforced by the judge in person.
+
+**Options:** Each event has three small-disadvantage options and three large-disadvantage options defined in `lib/eventData.ts`. Players choose which option they took. Stored in `disadvantage_type` ('small'/'large') and `disadvantage_option` (the chosen option text).
+
+**Display:** Small badge on result row — "S" (small) or "L" (large) in amber (#F9B051).
+
+---
+
+## Difficulty Tiers
+
+Events with multiple difficulty variations use a tier system (D1 = easiest). Tiers are purely informational — they do not affect scoring. Players declare which tier they attempted.
+
+Stored in `results.difficulty_tier` (TEXT).
+
+Full tier data defined in `lib/eventData.ts`. Summary:
+
+| Event | Tiers |
+|---|---|
+| Windshield Wipers | D1–D4 |
+| Reverse Hyper | D1–D4 |
+| Forward Fold | D1–D5 |
+| Planche | D1–D7 |
+| Front Lever | D1–D6 |
+| Back Lever | D1–D7 |
+| Iron Cross | D1–D6 |
+| Flag | D1–D7 |
+| L Sit Hold | D1–D5 |
+| Headstand | D1–D5 |
+| Finger Pushup | D1–D7 |
+| Climbing | D1–D5 |
+| Bridge | D1–D6 |
+| Needle Pose | D1–D6 |
+| Standing Split | D1–D6 (+ hold time in seconds) |
+| Foot Behind Head | D1–D6 |
+| Shoulder Dislocate | D1–D4 |
+| Jump Rope | D1–D5 |
+| Gymnastics | D1–D8 |
+| Juggling | D1–D4 |
+| Ab Rollout | D1–D5 |
+| Chin Hang | D1–D6 |
+| Breakdancing | D1–D6 (+ hold/performance time in seconds) |
+| 1 Leg Squat | D1–D6 |
+
+Events without tiers (objective measure): all lifts, sprints, throws, jumps, rows, runs, cycles, sport/racket events, aim events, Toe Lift, Turkish Get Up, F Split, M Split.
+
+F Split and M Split use distance input mode (block height from ground in cm).
 
 ---
 
@@ -158,26 +217,32 @@ For events where a multiplier is not appropriate. Judges determine the specific 
 | Women's | Female competitors aged 17+ |
 | Juniors | All competitors aged 16 and under |
 
+The combined division leaderboard tab is labelled **"All-Divisions"** (not "Overall") everywhere.
+
 ---
 
-## Colour/Grade System
+## Colour System (formerly "Grade")
 
-Resets each January. History kept permanently.
+The section is called **"Colours"** throughout the app. Resets each January. History kept permanently.
 
-| # | Te Reo | Colour | Points |
-|---|---|---|---|
-| 1 | Mā | White | 0-499 |
-| 2 | Kiwikiwi | Grey | 500 |
-| 3 | Whero | Red | 1,000 |
-| 4 | Karaka | Orange | 2,000 |
-| 5 | Kōwhai | Yellow | 3,000 |
-| 6 | Kākāriki | Green | 4,000 |
-| 7 | Kahurangi | Blue | 5,000 |
-| 8 | Poroporo | Purple | 6,000 |
-| 9 | Uenuku | Rainbow | 8,000 |
-| 10 | Taniwha | Black | 10,000+ |
+| # | Te Reo | Colour | Hex | Points |
+|---|---|---|---|---|
+| 1 | Mā | White | #ffffff | 0–499 |
+| 2 | Kiwikiwi | Grey | #888888 | 500 |
+| 3 | Whero | Red | #EA4742 | 1,000 |
+| 4 | Karaka | Orange | #F9B051 | 2,000 |
+| 5 | Kōwhai | Yellow | #F9E051 | 3,000 |
+| 6 | Kākāriki | Green | #4DB26E | 4,000 |
+| 7 | Kahurangi | Blue | #2371BB | 5,000 |
+| 8 | Poroporo | Purple | #B87DB5 | 6,000 |
+| 9 | Uenuku | Rainbow | gradient | 8,000 |
+| 10 | Taniwha | Black | #000000 | 10,000+ |
 
 Taniwha = Black = singular peak grade = equivalent to black belt.
+
+**Progress bar:** fills in the current colour, resets at each threshold. Layout: `[Te Reo name] [████░░░] [Next Te Reo name — Xpts to go]`
+
+**Year tabs:** Only show years where the player has ranking data with points > 0. No 2024 tab (no colours were awarded). 2025 tab only shows for: Tane Clement, Zeke Stokes, Rodrigo Gomez, Salvador Gomez.
 
 ---
 
@@ -217,18 +282,21 @@ update players set role = 'judge' where id = '[uuid]';
 
 | Page | Route | Status | Notes |
 |---|---|---|---|
-| Home | / | Complete | Hero, ethos, colours, CTA |
-| How To Play | /how-to-play | Complete | Rules, scoring, 10 domains |
+| Home | / | Complete | Hero, ethos, colours, CTA. Colour progression section is a "My Colour History" button for logged-in players |
+| How To Play | /how-to-play | Complete | Rules, scoring, 10 domains. Links to /events |
+| Events Index | /events | Complete | All 100 events grouped by domain, links to detail pages |
+| Event Detail | /events/[slug] | Complete | Template page: how to perform, rules, tiers, disadvantage, personal best |
 | Schedule | /schedule | Complete | Times correct (4:30pm Tue/Thu, 9am Sat), Championship 14 Mar 2027 |
-| Leaderboard | /leaderboard | Complete | Real data, division tabs, active session live banner |
+| Leaderboard | /leaderboard | Complete | Real data, All-Divisions tab, active session live banner |
 | Koha | /koha | Complete | Tiers, IRD rebate |
 | Play | /play | Complete | Login/register landing, Google OAuth |
 | Register | /register | Complete | 3-step form, division, display prefs, junior parent fields |
 | Login | /login | Complete | Email + Google OAuth |
-| Dashboard | /dashboard | Complete | Grade progress, stats, join by code, recent sessions |
-| Judge Panel | dashboard (JudgeCard) | Complete | Create/end/void sessions, QR code, history |
+| Dashboard | /dashboard | Complete | Colours progress, stats, join by code, recent sessions with View Summary, My Personal Bests button |
+| Judge Panel | dashboard (JudgeCard) | Complete | Create/end/void sessions, QR code, history, real-time player count |
 | Scoring Setup | /scoring | Complete | Select 10 events, editable start time, create session |
-| Live Session | /scoring/[sessionId] | Complete | Live leaderboard, division tabs, pre-session timer, structured score entry, sprint timing, expandable event scores, bodyweight |
+| Live Session | /scoring/[sessionId] | Complete | All-Divisions tab, judge edit/delete scores, difficulty tier selector, disadvantage selector, missing scores = last place, post-game popup on session end |
+| Personal Bests | /prs | Complete | All 100 events, PR per event, expandable history, this season + previous seasons tabs |
 | Auth Callback | /auth/callback | Complete | Google OAuth handler |
 
 ---
@@ -241,44 +309,26 @@ parent_name, parent_email, parent_phone, is_active, username, division,
 role (default: player), show_full_name, show_username, show_division, show_location, display_name,
 bodyweight_kg, parent_id (uuid, references auth.users.id)
 
-Family accounts: child profiles have parent_id set to the parent's auth.uid(). Children have no auth account — parent submits scores on their behalf via the "Submitting as" switcher in the live session view.
-
-**Add parent_id column if not present:**
-```sql
-ALTER TABLE players ADD COLUMN IF NOT EXISTS parent_id UUID REFERENCES auth.users(id);
-```
-
-**Add bodyweight column if not present:**
-```sql
-ALTER TABLE players ADD COLUMN IF NOT EXISTS bodyweight_kg NUMERIC;
-```
-
 ### sessions
 id, created_at, session_date, start_time, location, max_participants, duration_minutes,
 is_tournament, is_championship, is_active, started_at, ended_at, session_code, notes,
 points_awarded_at
 
-Session code: auto-generated 6-character code via PostgreSQL trigger on insert.
-points_awarded_at: set by the award_session_points trigger. If set before is_active→false, trigger skips (used by Void).
-
 ### session_events
 id, created_at, session_id, domain_number, domain_name, event_name
-(10 rows per session — one per domain)
 
 ### results
 id, created_at, player_id (nullable), session_id, event_id, score, points_earned,
 rank_in_session, notes, player_name, raw_score, score_label, adjusted_score, placement,
 exercise_variation, weight_kg, reps, time_seconds, pose_variation,
-opponent_name, match_score, result_type
-
-Unique constraint: results_player_event_unique ON (player_id, session_id, event_id)
-Score submission uses upsert — resubmitting updates the existing row.
+opponent_name, match_score, result_type,
+difficulty_tier (TEXT — D1/D2/etc or null),
+disadvantage_type (TEXT — 'small'/'large' or null),
+disadvantage_option (TEXT — the chosen option or null)
 
 ### rankings
 id, updated_at, player_id, total_points, total_sessions, average_score,
 best_score, current_rank, division, average_placement, season_year
-
-Unique constraint: rankings_player_season_unique ON (player_id, season_year)
 
 ### Key Logic
 - player_id on results is nullable (players can join by name without account)
@@ -288,10 +338,15 @@ Unique constraint: rankings_player_season_unique ON (player_id, season_year)
 - Points auto-awarded via trigger when session closes (award_session_points)
 - Void session: set points_awarded_at=NOW() before/with is_active=false to skip trigger
 - raw_score for time events is stored negative (faster = higher) so rankings sort correctly
-- Input modes: strength (weight+reps), reps, time (mm:ss), hold (mm:ss), distance (m/cm), flexibility (blocks), sport (win/draw/loss + opponent), sprint (ss.cs), weight+time, distance+time, dynamic (variation suffix drives hold vs reps)
-- Sprint mode: seconds + centiseconds (0–99), raw_score = -(secs*100 + cs). Used for 100m/50m/200m Sprint, T-Test
+- Players who joined a session (have any result row) but have no score for a specific event are ranked last for that event
+- Missing score players display as "No score" in expanded event lists
+- Disadvantage multipliers (×1.2 small, ×1.5 large) apply only to Domain 1 and Domain 2 events; stored in adjusted_score
+- Input modes: strength (weight+reps), reps, time (mm:ss), hold (mm:ss), distance (m/cm), flexibility (blocks), sport (win/draw/loss + opponent), sprint (ss.cs), weight+time, distance+time, dynamic, difficulty+time (tier selector + seconds)
+- Sprint mode: seconds + centiseconds (0–99), raw_score = -(secs*100 + cs). Used for 100m/50m/200m Sprint (T-Race now uses sport mode)
 - Pre-session timer: if started_at is in the future, shows purple "until start" countdown. Game clock begins at started_at
 - Score submission re-fetches results after upsert (realtime alone misses UPDATEs from re-submissions)
+- Post-game popup: triggers on is_active → false, dismissed per player per session via localStorage, viewable in session history thereafter
+- All-Divisions = the combined tab (previously called "Overall") — renamed everywhere
 
 ---
 
@@ -300,124 +355,113 @@ Unique constraint: rankings_player_season_unique ON (player_id, season_year)
 ```
 ~/allsport/
   middleware.ts                     # REQUIRED — refreshes Supabase session on every request
-  app/
-    page.tsx                        # Homepage
-    layout.tsx                      # Root layout — title "AllSport — Play EVERYTHING", logo favicon
-    globals.css                     # Design system
-    play/page.tsx                   # Login/register landing, Google OAuth, redirects if already logged in
-    how-to-play/page.tsx
-    schedule/page.tsx
-    leaderboard/page.tsx            # Real data, division tabs, active session banner
-    koha/page.tsx
-    register/page.tsx               # 3-step registration
-    login/page.tsx
-    dashboard/page.tsx              # Player home — grade, stats, join session
-    scoring/page.tsx                # Session setup — events, location, start time
-    scoring/[sessionId]/page.tsx    # Live session — structured inputs, division tabs, sprint timing, pre-session timer
-    auth/callback/route.ts
-    components/
-      JudgeCard.tsx                 # Judge panel — embedded in dashboard, end/void sessions, QR
-  components/
-    Navbar.tsx                      # PLAY NOW/DASHBOARD auth-aware, uses supabase-browser
-    Footer.tsx
   lib/
     supabase.ts                     # Basic client (legacy — DO NOT USE in new code)
     supabase-browser.ts             # Browser client (use this in ALL client components)
     supabase-server.ts              # Server client
+    eventData.ts                    # Single source of truth for all 100 events: name, slug, domain, inputMode, difficultyTiers, disadvantageOptions, howToPerform, rules
+  app/
+    page.tsx                        # Homepage — colour progression = "My Colour History" button
+    layout.tsx                      # Root layout
+    globals.css                     # Design system
+    play/page.tsx
+    how-to-play/page.tsx            # Links to /events
+    schedule/page.tsx
+    leaderboard/page.tsx            # All-Divisions tab
+    koha/page.tsx
+    events/
+      page.tsx                      # Event index — all 100 events by domain
+      [slug]/page.tsx               # Event detail — how to, rules, tiers, disadvantage, PB
+    register/page.tsx
+    login/page.tsx
+    dashboard/page.tsx              # Colours section, My Personal Bests button, View Summary on sessions
+    prs/page.tsx                    # Personal best history — all 100 events
+    scoring/page.tsx
+    scoring/[sessionId]/page.tsx    # Live session — All-Divisions tab, judge edit/delete, tier selector, disadvantage, post-game popup
+    auth/callback/route.ts
+    components/
+      JudgeCard.tsx                 # Judge panel — real-time player count
+  components/
+    Navbar.tsx
+    Footer.tsx
   supabase/
     migrations/
-      20260420_phase1.sql           # Points trigger, season_year on rankings, calculate_streak, RLS
+      20260420_phase1.sql
+      20260428_phase2.sql           # difficulty_tier, disadvantage_type, disadvantage_option columns; updated award_session_points trigger
   public/
     logo.png
 ```
 
-**IMPORTANT:** Always use createClient() from @/lib/supabase-browser in client components. Do not use the basic supabase.ts client in pages — it does not handle SSR auth sessions correctly.
+**IMPORTANT:** Always use createClient() from @/lib/supabase-browser in client components.
 
 ---
 
 ## What's Complete
 
 - Full public website (5 pages)
-- 3-step player registration with Google OAuth, division, display preferences
-- Play page — login/register landing, redirects logged-in users to dashboard
-- Player dashboard — grade progress, year tabs, stats, join by code, recent sessions
-- Judge panel (JudgeCard) — create/end/void sessions, QR code fullscreen, history
-- Live scoring app — 100-event pool, per-event structured inputs (10 modes), live leaderboard, division tabs, expandable event scores, bodyweight field, 100-min timer, session code, real-time
-- Division tabs on live leaderboard — Overall (with multipliers) / Men's / Women's / Juniors
-- Sprint timing mode — seconds + centiseconds for 100m/50m/200m Sprint and T-Test
-- Pre-session timer — purple countdown until scheduled start, then game clock
-- Score submission reliability — re-fetches results after upsert (fixes UPDATE events not showing)
-- Sport events — record opponent name, conflict detection between players
-- 1 Leg Squat — variation picker with free-text override
-- Leaderboard — real data, division tabs, active session live banner (updates via realtime)
-- Navbar — PLAY NOW (logged out) / DASHBOARD (logged in), auth-aware, no flicker
-- Role system (player/judge)
-- Session code system — 6-character auto-generated, join from dashboard
-- Full database schema with all columns
-- Supabase SSR middleware (middleware.ts) — session persistence across page refreshes
-- Supabase browser client in all client components (fixes auth in Next.js App Router)
-- Google OAuth — configured for allsport.nz, redirect URLs correct
-- RLS policies — players can insert/update own results, trigger can write rankings
-- Points auto-calculation — trigger fires on session close, awards placement points + bonuses + multipliers
-- Season year on rankings (2026, 2027 etc.)
-- calculate_streak() function — 4 of last 5 sessions
-- Score upsert — resubmitting an event updates rather than errors
-- Session start time — editable field in setup, pre-filled with now
-- Bodyweight — saved to player profile, pre-fills on return
-- Custom domain allsport.nz — live on Vercel, Supabase Auth URLs configured
-- Browser tab — "AllSport — Play EVERYTHING" title + logo favicon
-- Family accounts — parents can add child profiles (no email required), switch "Submitting as" during live sessions, manage from dashboard
-- Brand colours, points formula, grades, koha, mission — all confirmed
-- How to Play branded PDF — complete
-- Strategy 2026-2027 branded PDF — complete
+- 3-step player registration with Google OAuth
+- Player dashboard — Colours progress (bar + year tabs), stats, join by code, session history with View Summary
+- Judge panel (JudgeCard) — create/end/void sessions, QR code, real-time player count
+- Live scoring — 100-event pool, all input modes including difficulty tier selector and disadvantage selector, All-Divisions tab, judge edit/delete scores, missing scores = last place, post-game popup
+- Post-game popup — placement, per-event breakdown, bonuses, total points, colour progression moment
+- Session history — past session summaries accessible from dashboard
+- Colour history — accessible from homepage colour progression section (logged-in players)
+- Colours section on dashboard — renamed from Grade, conditional year tabs, coloured progress bar
+- Event detail pages — /events/[slug] with how-to, rules, difficulty tiers, disadvantage options, personal best
+- Events index — /events, all 100 events grouped by domain
+- Personal bests page — /prs, all 100 events, expandable history, this season + previous seasons
+- All-Divisions tab — renamed from Overall everywhere
+- T-Race — renamed from T-Test, now uses sport/win-loss input mode
+- Chin Hang — renamed from Chin Lift
+- Difficulty tiers — defined for 24 events in lib/eventData.ts
+- Disadvantage system — self-declared, recorded per result, mechanical multiplier on strength events
+- Judge score edit/delete fix — delete confirmation works correctly, leaderboard recalculates immediately
+- Supabase SSR middleware, browser client, Google OAuth, RLS, points trigger — all confirmed working
+- allsport.nz live domain
 
 ---
 
 ## What's Next (In Priority Order)
 
-1. Judge score management from within live session view
-2. Real-time player count in JudgeCard (subscribe to results inserts)
+1. Populate full content (howToPerform, rules, disadvantage options) for remaining 95 events in lib/eventData.ts
+2. Welcome email on registration (Supabase Edge Function + Resend)
 3. Judge approval flow (replace manual SQL)
-4. Player profile page — edit display prefs, view grade history
-5. Event detail pages — rules and personal bests per event
+4. Player profile page — edit display prefs
+5. Disadvantage option definitions for all 100 events (currently placeholder for 95)
 6. Verify Te Reo "Kaiwāwao" is correct for judge/referee in sports context
+7. Championship registration flow (6 months before March 2027)
 
 ---
 
 ## Key Decisions
 
 - Koha only — no set fees
-- Tagline: Play EVERYTHING (not shown on login screen)
-- Te reo Maori identity throughout
+- Tagline: Play EVERYTHING
+- Te reo Māori identity throughout
 - Taniwha = Black = peak grade = black belt equivalent
-- Grades reset January, history kept forever
-- Role system: player and judge — judge panel embedded in dashboard via JudgeCard
-- Session join: 6-digit code or QR (QR done in JudgeCard)
-- Login required to submit scores
-- 100-min timer auto-locks session
-- Supabase browser client required in all client components (supabase-browser.ts)
-- Judge assignment: manual SQL for now, approval flow planned
-- Domain display order confirmed (Maximal Strength first)
-- Family accounts: child profiles have parent_id = parent's auth.uid(), no auth account, parent switches via "Submitting as" chips in live session
+- Colours reset January, history kept forever — section called "Colours" not "Grade"
+- All-Divisions = combined division tab (not "Overall")
+- T-Race (not T-Test) uses sport/win-loss input mode
+- Chin Hang (not Chin Lift)
+- Difficulty tiers: D1 = easiest, purely informational, stored in results.difficulty_tier
+- Disadvantage: self-declared by players, small/large, three options per event per level; multiplier on strength events only (×1.2 / ×1.5)
+- Missing scores: players with any result in session but no score for a specific event = last place for that event
+- Post-game popup: triggers on session close, dismissed via localStorage, viewable in session history
+- lib/eventData.ts is the single source of truth for all 100 events
 - Score resubmission: upsert on (player_id, session_id, event_id) — updates existing row
-- Time events: raw_score stored as negative seconds so faster = higher (sort consistency)
+- Time events: raw_score stored as negative seconds so faster = higher
 - Void vs End: Void sets points_awarded_at before closing to prevent trigger firing
-- Bodyweight stored on player profile (bodyweight_kg), pre-filled in session scoring
-- Structured score inputs: 10 modes — strength, reps, time, hold, distance, flexibility, sport, sprint (ss.cs), weight+time, distance+time, dynamic
-- middleware.ts is mandatory — without it, Supabase sessions don't persist across page loads in Next.js App Router
-- Division Overall tab applies multipliers to raw_score before ranking (Women's/Juniors ×1.2, Masters Men ×1.2, Masters Women ×1.4)
-- allsport.nz is the live domain (not all-sport-psi.vercel.app)
+- middleware.ts is mandatory — without it, Supabase sessions don't persist across page loads
 
 ---
 
-*Last updated: April 2026 (session 3)*
+*Last updated: April 2026 (session 4)*
 *Project started: March 2026*
 
 ## Skill routing
 
 When the user's request matches an available skill, ALWAYS invoke it using the Skill
 tool as your FIRST action. Do NOT answer directly, do NOT use other tools first.
-The skill has specialized workflows that produce better results than ad-hoc answers.
 
 Key routing rules:
 - Product ideas, "is this worth building", brainstorming → invoke office-hours

@@ -2,15 +2,16 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase-browser'
+import { getEventByName } from '@/lib/eventData'
 
 const DOMAINS = [
   { number: 1,  name: 'Maximal Strength',    events: ['1 Arm Press','Deadlift','Overhead Press','Pause Dips','Pause Chin Up','Pause Squat','Zercher Deadlift','Hamstring Curl','Pause Bench Press','Turkish Get-Up'] },
-  { number: 2,  name: 'Relative Strength',   events: ['1 Leg Squat','Flag','Windshield Wipers','Toe Lift','Planche','Back Lever','Iron Cross','Front Lever','Chin Up','Rope Climb'] },
+  { number: 2,  name: 'Relative Strength',   events: ['1 Leg Squat','Flag','Windshield Wipers','Toe Lift','Planche','Back Lever','Iron Cross','Front Lever','Chin Hang','Rope Climb'] },
   { number: 3,  name: 'Muscular Endurance',  events: ['Chin Up Contest','Push Up Contest','Reverse Hyper','L-Sit Hold','Tibialis Curl','Headstand','Finger Push Up','Calf Raise','Leg Extension','Ab Wheel Rollout'] },
   { number: 4,  name: 'Flexibility & Mobility', events: ['Rear Hand Clasp','Bridge','Forward Fold','Needle Pose','Front Split','Middle Split','Standing Split','Foot Behind Head','Shoulder Dislocate','Side Bend'] },
   { number: 5,  name: 'Power',               events: ['Kelly Snatch','1 Arm Snatch','Triple Jump','Javelin Throw','Shot Put','AFL','Vertical Jump','Glute Bridge','Clean & Jerk','Snatch'] },
   { number: 6,  name: 'Aerobic Endurance',   events: ['200m Burpee Broad Jump','1k Run','1k Cycle','1k Ski Erg','1k Row','Iron Lungs','200m Carry','2k Run','200m Repeats','Bronco'] },
-  { number: 7,  name: 'Speed & Agility',     events: ['100m Sprint','Tag','T-Test','400m Race','Beach Flags','50m Sprint','200m Sprint','Touch Rugby','Football Dribble','Repeat High Jump'] },
+  { number: 7,  name: 'Speed & Agility',     events: ['100m Sprint','Tag','T-Race','400m Race','Beach Flags','50m Sprint','200m Sprint','Touch Rugby','Football Dribble','Repeat High Jump'] },
   { number: 8,  name: 'Body Awareness',      events: ['Tae Kwon Do','Breakdancing','Trampolining','Jump Rope','Wrestling','Gymnastics','Balance Ball','SKATE','Fencing','Juggling'] },
   { number: 9,  name: 'Co-ordination',       events: ['Volleyball','Baseball','Teqball','Tennis','Cricket','Badminton','Basketball','Football','Hockey','Squash'] },
   { number: 10, name: 'Aim & Precision',     events: ['Netball','Handball','Cornhole','Dodgeball','Carrom','Archery','Bowling','Darts','Disc Golf','Golf'] },
@@ -200,6 +201,7 @@ export default function ScoringSetup() {
                         }}
                       >
                         {event}
+                        {(() => { const ev = getEventByName(event); return ev?.hasDifficultyTiers && ev.difficultyTiers ? <span style={{ marginLeft: '5px', color: isSelected ? 'rgba(255,255,255,0.7)' : '#B87DB5', fontSize: '10px' }}>D1–D{ev.difficultyTiers.length}</span> : null })()}
                       </button>
                     )
                   })}
