@@ -43,13 +43,21 @@ export default function EventPage() {
       setPlayer(p)
 
       if (event) {
-        const { data } = await supabase
-          .from('results')
-          .select('score_label, placement, raw_score, session_events(event_name), sessions(session_date)')
-          .eq('player_id', user.id)
-          .order('raw_score', { ascending: false })
-          .limit(1)
-        if (data && data.length > 0) setPersonalBest(data[0])
+        const { data: seData } = await supabase
+          .from('session_events')
+          .select('id')
+          .eq('event_name', event.name)
+        const eventIds = (seData || []).map((e: any) => e.id)
+        if (eventIds.length > 0) {
+          const { data } = await supabase
+            .from('results')
+            .select('score_label, placement, raw_score, sessions(session_date)')
+            .eq('player_id', user.id)
+            .in('event_id', eventIds)
+            .order('raw_score', { ascending: false })
+            .limit(1)
+          if (data && data.length > 0) setPersonalBest(data[0])
+        }
       }
       setLoadingPB(false)
     }
