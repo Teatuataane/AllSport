@@ -602,6 +602,7 @@ export default function SessionPage() {
     const evData = selectedEvent ? getEventByName(selectedEvent.event_name) : null
     if (eventConfig?.tierBasedScoring && difficultyTier && evData?.difficultyTiers) {
       const tierIdx = evData.difficultyTiers.findIndex(t => t.name === difficultyTier)
+      if (tierIdx < 0) return { raw_score: 0, score_label: '' }
       const time = (parseFloat(timeMins) || 0) * 60 + (parseFloat(timeSecs) || 0)
       const rawScore = tierIdx * 10000 + time
       const label = `D${tierIdx + 1} ${difficultyTier}${time > 0 ? ` · ${fmtTime(time)}` : ''}`
@@ -797,6 +798,7 @@ export default function SessionPage() {
     const { error } = await supabase.from('results').update({
       score_label: judgeEditLabel,
       raw_score: parseFloat(judgeEditRaw) || 0,
+      adjusted_score: null,
     }).eq('id', judgeEdit.id)
     if (!error) {
       const { data: fresh } = await supabase.from('results').select('*').eq('session_id', sessionId)
@@ -879,7 +881,7 @@ export default function SessionPage() {
 
     const noScorePlayers: EventScore[] = [...playerMap.entries()]
       .filter(([name]) => !playersWithScore.has(name))
-      .map(([name, pid]) => ({ id: `no-score-${name}`, player_name: name, player_id: pid, placement: lastPlace, noScore: true as const }))
+      .map(([name, pid]) => ({ id: `no-score-${pid || name}`, player_name: name, player_id: pid, placement: lastPlace, noScore: true as const }))
 
     return [...withScore, ...noScorePlayers]
   }
@@ -1695,7 +1697,7 @@ export default function SessionPage() {
           setShowPostGamePopup(false)
         }
 
-        const myStanding = standings.find(s => s.player_name === (player.display_name || player.username || player.full_name))
+        const myStanding = standings.find(s => s.player_id === player.id) ?? standings.find(s => s.player_name === (player.display_name || player.username || player.full_name))
         const totalPlayers = standings.length
         const myPlacement = myStanding ? standings.indexOf(myStanding) + 1 : null
 
@@ -1719,7 +1721,7 @@ export default function SessionPage() {
         const newGrade = GRADES.reduce((acc, g) => newTotal >= g.threshold ? g : acc, GRADES[0])
         const colourLevelUp = newGrade.threshold > prevGrade.threshold
 
-        const ordSuffix = (n: number) => ['th','st','nd','rd'][n <= 3 ? n : 0] ?? 'th'
+        const ordSuffix = (n: number) => (n % 100 >= 11 && n % 100 <= 13) ? 'th' : (['th','st','nd','rd'][n % 10] ?? 'th')
 
         return (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,10,10,0.95)', zIndex: 300, overflowY: 'auto', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '24px 16px' }}>

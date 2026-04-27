@@ -13,7 +13,7 @@ const DOMAIN_COLOURS: Record<number, string> = {
   6: '#4DB26E', 7: '#EA4742', 8: '#F9B051', 9: '#B87DB5', 10: '#2371BB',
 }
 
-const CURRENT_YEAR = 2026
+const CURRENT_YEAR = new Date().getFullYear()
 
 type PRResult = {
   id: string

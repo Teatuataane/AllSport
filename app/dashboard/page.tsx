@@ -687,6 +687,7 @@ function DashboardInner() {
                   {result.sessions?.id && (
                     <button
                       onClick={async () => {
+                        if (!userId) return
                         const sess = result.sessions
                         setSummarySession(sess)
                         const [resData, evData] = await Promise.all([
