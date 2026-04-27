@@ -77,9 +77,6 @@
 **Effort:** L (content work, not code) — can be done incrementally, one domain at a time.
 **Where:** `lib/eventData.ts`
 
-### Real-time player count in JudgeCard
-**What:** Already done — confirm it is working in production.
-
 ---
 
 ## P2 — Soon
