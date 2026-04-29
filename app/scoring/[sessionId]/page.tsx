@@ -1,391 +1,121 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase-browser'
-import { getEventByName, type EventData } from '@/lib/eventData'
+import { EVENTS, getEventByName, getBonusTargets, type EventData, type BonusTarget } from '@/lib/eventData'
 
 const supabase = createClient()
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-type InputMode =
-  | 'strength'      // weight kg + optional reps  → raw = weight
-  | 'reps'          // reps only                  → raw = reps
-  | 'time'          // mm:ss, lower = better      → raw = -totalSecs
-  | 'hold'          // mm:ss, longer = better     → raw = +totalSecs
-  | 'distance'      // value + m/cm toggle        → raw = cm
-  | 'flexibility'   // blocks (lower = better)    → raw = -blocks
-  | 'sport'         // win/draw/loss + score       → raw = 2/1/0
-  | 'weight+time'   // weight + mm:ss             → raw = -totalSecs
-  | 'distance+time' // distance + mm:ss           → raw = distance cm
-  | 'sprint'        // ss.cs (seconds + centiseconds), lower = better → raw = -(secs*100 + cs)
-  | 'dynamic'       // variation suffix drives mode: "/ Hold" → hold, "/ Reps" → reps
-
-type EventConfig = {
-  mode: InputMode
-  variations?: string[]
-  freeVariation?: boolean
-  orderedVariations?: boolean
-  tierBasedScoring?: boolean  // tier × 10000 + time is the raw_score (Breakdancing, Standing Split)
-}
 
 type SessionEvent = {
   id: string
   domain_number: number
   domain_name: string
   event_name: string
+  event_slug: string
+  input_mode: string
+  display_order: number
 }
 
 type Result = {
   id: string
-  player_name: string
   player_id: string | null
+  player_name: string
   event_id: string
   raw_score: number
-  adjusted_score?: number | null
+  adjusted_score: number | null
   score_label: string
-  result_type?: string
-  opponent_name?: string
-  match_score?: string
-  difficulty_tier?: string | null
-  disadvantage_type?: string | null
-  disadvantage_option?: string | null
+  placement: number | null
+  placement_points: number | null
+  bonus_points_total: number | null
+  points_earned: number | null
+  difficulty_tier: string | null
+  disadvantage_type: string | null
+  disadvantage_option: string | null
+  result_type: string | null
+  opponent_name: string | null
+  match_score: string | null
+  weight_kg: number | null
+  reps: number | null
+  time_seconds: number | null
 }
 
-type Standing = {
-  player_name: string
-  player_id: string | null
-  total_placement: number
-  events_done: number
-  placements: { [eventId: string]: number }
-}
-
-type DivisionTab = 'overall' | 'mens' | 'womens' | 'juniors'
-
-// ─── Per-event config ─────────────────────────────────────────────────────────
-// Keys match the event_name stored in session_events (set by scoring/page.tsx DOMAINS).
-
-const EVENT_CONFIG: Record<string, EventConfig> = {
-  // Maximal Strength
-  '1 Arm Press':       { mode: 'strength' },
-  'Deadlift':          { mode: 'strength' },
-  'Overhead Press':    { mode: 'strength' },
-  'Pause Dips':        { mode: 'strength' },
-  'Pause Chin Up':     { mode: 'strength' },
-  'Pause Squat':       { mode: 'strength' },
-  'Zercher Deadlift':  { mode: 'strength' },
-  'Hamstring Curl':    { mode: 'strength' },
-  'Pause Bench Press': { mode: 'strength' },
-  'Turkish Get-Up':    { mode: 'strength' },
-
-  // Relative Strength
-  '1 Leg Squat': {
-    mode: 'reps',
-    variations: ['Assisted Lunge', 'Lunge', 'Bulgarian Split Squat', 'Shrimp Squat', 'Pistol Squat', 'Dragon Squat'],
-    orderedVariations: true,
-  },
-  'Flag': {
-    mode: 'dynamic',
-    variations: ['Side Plank / Hold', '1 Leg Side Plank / Hold', 'Partial Flag / Hold', 'Full Flag / Hold', 'Jumping Side Plank / Reps'],
-    orderedVariations: true,
-  },
-  'Windshield Wipers': { mode: 'reps' },
-  'Toe Lift':          { mode: 'reps' },
-  'Planche': {
-    mode: 'dynamic',
-    variations: ['Tuck / Hold', 'Straddle / Hold', 'Full / Hold', 'Tuck / Reps', 'Straddle / Reps', 'Full / Reps'],
-    orderedVariations: true,
-  },
-  'Back Lever': {
-    mode: 'dynamic',
-    variations: ['Tuck / Hold', 'Straddle / Hold', 'Full / Hold', 'Tuck / Reps', 'Straddle / Reps', 'Full / Reps'],
-    orderedVariations: true,
-  },
-  'Iron Cross': {
-    mode: 'dynamic',
-    variations: ['Band Assisted / Hold', 'Unassisted / Hold', 'Band Assisted / Reps', 'Unassisted / Reps'],
-    orderedVariations: true,
-  },
-  'Front Lever': {
-    mode: 'dynamic',
-    variations: ['Tuck / Hold', 'Straddle / Hold', 'Full / Hold', 'Tuck / Reps', 'Straddle / Reps', 'Full / Reps'],
-    orderedVariations: true,
-  },
-  'Chin Hang':   { mode: 'hold' },
-  'Rope Climb':  { mode: 'time' },
-
-  // Muscular Endurance
-  'Chin Up Contest':   { mode: 'reps' },
-  'Push Up Contest':   { mode: 'reps', variations: ['Assisted', 'Knee Push Up', 'Full Push Up'], orderedVariations: true },
-  'Reverse Hyper':     { mode: 'reps' },
-  'L-Sit Hold': {
-    mode: 'hold',
-    variations: ['Parallel Bars', 'Floor', 'Rings'],
-    orderedVariations: true,
-  },
-  'Tibialis Curl':     { mode: 'reps' },
-  'Headstand': {
-    mode: 'hold',
-    variations: ['Wall Supported', 'Freestanding', 'Handstand'],
-    orderedVariations: true,
-  },
-  'Finger Push Up':    { mode: 'reps' },
-  'Calf Raise':        { mode: 'reps' },
-  'Leg Extension':     { mode: 'reps' },
-  'Ab Wheel Rollout':  { mode: 'reps' },
-
-  // Flexibility & Mobility (blocks — 0 = floor = best)
-  'Rear Hand Clasp':   { mode: 'flexibility' },
-  'Bridge':            { mode: 'hold', variations: ['Wall Bridge', 'Deep Wall Bridge', 'Assisted Bridge', 'Bridge'], orderedVariations: true },
-  'Forward Fold':      { mode: 'flexibility' },
-  'Needle Pose':       { mode: 'flexibility' },
-  'Front Split':       { mode: 'flexibility' },
-  'Middle Split':      { mode: 'flexibility' },
-  'Standing Split':    { mode: 'hold', tierBasedScoring: true },
-  'Foot Behind Head':  { mode: 'flexibility' },
-  'Shoulder Dislocate':{ mode: 'flexibility' },
-  'Side Bend':         { mode: 'flexibility' },
-
-  // Power
-  'Kelly Snatch':      { mode: 'strength' },
-  '1 Arm Snatch':      { mode: 'strength' },
-  'Triple Jump':       { mode: 'distance' },
-  'Javelin Throw':     { mode: 'distance' },
-  'Shot Put':          { mode: 'distance' },
-  'AFL':               { mode: 'sport' },
-  'Vertical Jump':     { mode: 'distance' },
-  'Glute Bridge':      { mode: 'strength' },
-  'Clean & Jerk':      { mode: 'strength' },
-  'Snatch':            { mode: 'strength' },
-
-  // Aerobic Endurance
-  '200m Burpee Broad Jump': { mode: 'time' },
-  '1k Run':            { mode: 'time' },
-  '1k Cycle':          { mode: 'time' },
-  '1k Ski Erg':        { mode: 'time' },
-  '1k Row':            { mode: 'time' },
-  'Iron Lungs':        { mode: 'hold' },
-  '200m Carry':        { mode: 'weight+time' },
-  '2k Run':            { mode: 'time' },
-  '200m Repeats':      { mode: 'time' },
-  'Bronco':            { mode: 'time' },
-
-  // Speed & Agility
-  '100m Sprint':       { mode: 'sprint' },
-  'Tag':               { mode: 'sport' },
-  'T-Race':            { mode: 'sport' },
-  '400m Race':         { mode: 'time' },
-  'Beach Flags':       { mode: 'sport' },
-  '50m Sprint':        { mode: 'sprint' },
-  '200m Sprint':       { mode: 'sprint' },
-  'Touch Rugby':       { mode: 'sport' },
-  'Football Dribble':  { mode: 'time' },
-  'Repeat High Jump':  { mode: 'distance+time' },
-
-  // Body Awareness
-  'Tae Kwon Do':       { mode: 'sport' },
-  'Breakdancing':      { mode: 'hold', tierBasedScoring: true },
-  'Trampolining':      { mode: 'sport' },
-  'Jump Rope':         { mode: 'reps' },
-  'Wrestling':         { mode: 'sport' },
-  'Gymnastics':        { mode: 'sport' },
-  'Balance Ball': {
-    mode: 'hold',
-    variations: ['1 Foot', 'Knees', 'Eyes Closed', 'Arms Out', 'Eyes Closed + Arms Out'],
-    orderedVariations: true,
-  },
-  'SKATE':             { mode: 'sport' },
-  'Fencing':           { mode: 'sport' },
-  'Juggling':          { mode: 'sport' },
-
-  // Co-ordination
-  'Volleyball':        { mode: 'sport' },
-  'Baseball':          { mode: 'sport' },
-  'Teqball':           { mode: 'sport' },
-  'Tennis':            { mode: 'sport' },
-  'Cricket':           { mode: 'sport' },
-  'Badminton':         { mode: 'sport' },
-  'Basketball':        { mode: 'sport' },
-  'Football':          { mode: 'sport' },
-  'Hockey':            { mode: 'sport' },
-  'Squash':            { mode: 'sport' },
-
-  // Aim & Precision
-  'Netball':           { mode: 'sport' },
-  'Handball':          { mode: 'sport' },
-  'Cornhole':          { mode: 'sport' },
-  'Dodgeball':         { mode: 'sport' },
-  'Carrom':            { mode: 'sport' },
-  'Archery':           { mode: 'sport' },
-  'Bowling':           { mode: 'sport' },
-  'Darts':             { mode: 'sport' },
-  'Disc Golf':         { mode: 'sport' },
-  'Golf':              { mode: 'sport' },
+type BonusCompletion = {
+  id: string
+  player_id: string
+  event_id: string
+  tier: number
+  points_awarded: number
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function effectiveScore(r: Result): number {
-  return r.adjusted_score != null ? r.adjusted_score : r.raw_score
+function fmtTime(totalSecs: number): string {
+  const abs = Math.abs(totalSecs)
+  const m = Math.floor(abs / 60)
+  const s = Math.round(abs % 60)
+  return `${m}:${s.toString().padStart(2, '0')}`
 }
 
-function calcPlacements(results: Result[], events: SessionEvent[]): Standing[] {
-  // All unique players who have joined the session (have at least one result)
-  const playerMap = new Map<string, string | null>()
-  results.forEach(r => { if (!playerMap.has(r.player_name)) playerMap.set(r.player_name, r.player_id) })
-
-  const standings: Standing[] = [...playerMap.entries()].map(([name, pid]) => ({
-    player_name: name,
-    player_id: pid,
-    total_placement: 0,
-    events_done: 0,
-    placements: {},
-  }))
-
-  events.forEach(event => {
-    const eventResults = results
-      .filter(r => r.event_id === event.id)
-      .sort((a, b) => effectiveScore(b) - effectiveScore(a))
-    const playersWithScores = new Set(eventResults.map(r => r.player_name))
-    const lastPlace = eventResults.length + 1
-
-    let placement = 1
-    eventResults.forEach((result, idx) => {
-      if (idx > 0 && effectiveScore(result) < effectiveScore(eventResults[idx - 1])) placement = idx + 1
-      const s = standings.find(st => st.player_name === result.player_name)
-      if (s) { s.placements[event.id] = placement; s.total_placement += placement; s.events_done += 1 }
-    })
-
-    // Players who haven't submitted for this event get last place
-    standings.forEach(s => {
-      if (!playersWithScores.has(s.player_name)) {
-        s.placements[event.id] = lastPlace
-        s.total_placement += lastPlace
-      }
-    })
-  })
-  return standings.sort((a, b) => a.total_placement - b.total_placement)
+function fmtCountdown(secs: number): string {
+  const m = Math.floor(secs / 60)
+  const s = secs % 60
+  return `${m}:${s.toString().padStart(2, '0')}`
 }
 
-// Multiplier for cross-division Overall ranking.
-// Applied to raw_score before placement so boosted players rank higher.
-function getMultiplier(division: string, dob: string | null): number {
-  const age = dob ? Math.floor((Date.now() - new Date(dob).getTime()) / (365.25 * 24 * 3600 * 1000)) : null
-  if (division === 'Juniors') return 1.2
-  if (division === "Women's") {
-    if (age !== null && age >= 40) return 1.4  // Masters Women
-    return 1.2
+function formatPR(rawScore: number, inputMode: string): string {
+  switch (inputMode) {
+    case 'strength':   return `${rawScore} kg`
+    case 'reps':       return `${rawScore} reps`
+    case 'time':
+    case 'sprint':     return fmtTime(Math.abs(rawScore))
+    case 'hold':       return fmtTime(rawScore)
+    case 'distance':   return rawScore >= 100 ? `${(rawScore / 100).toFixed(2)}m` : `${rawScore}cm`
+    case 'flexibility': return `${Math.abs(rawScore)} blocks`
+    case 'sport':      return rawScore === 2 ? 'Win' : rawScore === 1 ? 'Draw' : 'Loss'
+    default:           return String(rawScore)
   }
-  if (division === "Men's" && age !== null && age >= 40) return 1.2  // Masters Men
-  return 1.0
 }
 
-function calcOverallPlacements(
-  results: Result[],
-  events: SessionEvent[],
-  playerDivisions: Record<string, { division: string; dob: string | null }>
-): Standing[] {
-  // Track unique players
-  const playerMap = new Map<string, string | null>()
-  results.forEach(r => { if (!playerMap.has(r.player_name)) playerMap.set(r.player_name, r.player_id) })
-
-  const standings: Standing[] = [...playerMap.entries()].map(([name, pid]) => ({
-    player_name: name,
-    player_id: pid,
-    total_placement: 0,
-    events_done: 0,
-    placements: {},
-  }))
-
-  events.forEach(event => {
-    const eventResults = results
-      .filter(r => r.event_id === event.id)
-      .map(r => {
-        const info = r.player_id ? (playerDivisions[r.player_id] ?? { division: '', dob: null }) : { division: '', dob: null }
-        const mult = getMultiplier(info.division, info.dob)
-        const base = r.adjusted_score != null ? r.adjusted_score : r.raw_score
-        return { ...r, _display_score: base * mult }
-      })
-      .sort((a, b) => b._display_score - a._display_score)
-
-    const playersWithScores = new Set(eventResults.map(r => r.player_name))
-    const lastPlace = eventResults.length + 1
-
-    let placement = 1
-    eventResults.forEach((result, idx) => {
-      if (idx > 0 && result._display_score < eventResults[idx - 1]._display_score) placement = idx + 1
-      const s = standings.find(st => st.player_name === result.player_name)
-      if (s) { s.placements[event.id] = placement; s.total_placement += placement; s.events_done += 1 }
-    })
-
-    // Players who haven't submitted for this event get last place
-    standings.forEach(s => {
-      if (!playersWithScores.has(s.player_name)) {
-        s.placements[event.id] = lastPlace
-        s.total_placement += lastPlace
-      }
-    })
-  })
-  return standings.sort((a, b) => a.total_placement - b.total_placement)
+function calcPlacementPts(rank: number, playerCount: number): number {
+  const gap = Math.max(Math.floor(100 / playerCount), 10)
+  return Math.max(100 - (rank - 1) * gap, 10)
 }
 
-function fmtTime(totalSecs: number) {
-  const m = Math.floor(totalSecs / 60)
-  const s = Math.round(totalSecs % 60)
-  return `${m}:${s.toString().padStart(2, '0')}`
-}
+// ─── Input component helpers ──────────────────────────────────────────────────
 
-function fmtCountdown(seconds: number) {
-  const m = Math.floor(seconds / 60)
-  const s = seconds % 60
-  return `${m}:${s.toString().padStart(2, '0')}`
-}
-
-// ─── Styles ───────────────────────────────────────────────────────────────────
-
-const inp: React.CSSProperties = {
+const INP: React.CSSProperties = {
   background: '#0d0d0d', border: '1px solid #2a2a2a', borderRadius: '8px',
-  padding: '14px', color: '#fff', fontSize: '22px', fontWeight: 'bold',
+  padding: '14px', color: '#fff', fontSize: '20px', fontWeight: 'bold',
   width: '100%', boxSizing: 'border-box',
 }
 
-const inpSm: React.CSSProperties = { ...inp, fontSize: '16px', padding: '10px 12px' }
+// ─── EventCard ────────────────────────────────────────────────────────────────
 
-// ─── Component ────────────────────────────────────────────────────────────────
+type EventCardProps = {
+  se: SessionEvent
+  eventData: EventData | undefined
+  myResult: Result | undefined
+  allResults: Result[]
+  allEvents: SessionEvent[]
+  seasonPR: number | string | null
+  bonusCompletions: BonusCompletion[]
+  playerId: string
+  playerName: string
+  sessionId: string
+  sessionEnded: boolean
+  isExpanded: boolean
+  onToggle: () => void
+  onScoreSubmitted: () => void
+}
 
-export default function SessionPage() {
-  const { sessionId } = useParams<{ sessionId: string }>()
-
-  const [events, setEvents] = useState<SessionEvent[]>([])
-  const [results, setResults] = useState<Result[]>([])
-  const [session, setSession] = useState<any>(null)
-  const [player, setPlayer] = useState<any>(null)
-  const [authLoading, setAuthLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'leaderboard' | 'submit'>('leaderboard')
-  const [selectedEvent, setSelectedEvent] = useState<SessionEvent | null>(null)
-  const [submitting, setSubmitting] = useState(false)
-  const [submitSuccess, setSubmitSuccess] = useState(false)
-  const [error, setError] = useState('')
-  const [timeLeft, setTimeLeft] = useState<number | null>(null)
-  const [preSessionSecsLeft, setPreSessionSecsLeft] = useState<number | null>(null)
-  const [sessionEnded, setSessionEnded] = useState(false)
-  const [expandedEventId, setExpandedEventId] = useState<string | null>(null)
-  const [divisionTab, setDivisionTab] = useState<DivisionTab>('overall')
-  // Judge score management
-  const [judgeEdit, setJudgeEdit] = useState<Result | null>(null)
-  const [judgeEditLabel, setJudgeEditLabel] = useState('')
-  const [judgeEditRaw, setJudgeEditRaw] = useState('')
-  const [judgeDeleteId, setJudgeDeleteId] = useState<string | null>(null)
-  const [judgeSaving, setJudgeSaving] = useState(false)
-  // player_id → { division, date_of_birth }
-  const [playerDivisions, setPlayerDivisions] = useState<Record<string, { division: string; dob: string | null }>>({})
-  const [bodyweights, setBodyweights] = useState<Record<string, string>>({})
-  const [bodyweightSaved, setBodyweightSaved] = useState(false)
-  // Family accounts
-  const [familyMembers, setFamilyMembers] = useState<any[]>([])
-  const [activePlayer, setActivePlayer] = useState<any>(null)
-
-  // Score input fields
+function EventCard({
+  se, eventData, myResult, allResults, allEvents, seasonPR,
+  bonusCompletions, playerId, playerName, sessionId, sessionEnded,
+  isExpanded, onToggle, onScoreSubmitted,
+}: EventCardProps) {
+  // Form state
   const [weightKg, setWeightKg] = useState('')
   const [repCount, setRepCount] = useState('')
   const [timeMins, setTimeMins] = useState('')
@@ -395,86 +125,800 @@ export default function SessionPage() {
   const [distanceUnit, setDistanceUnit] = useState<'m' | 'cm'>('m')
   const [sportResult, setSportResult] = useState<'win' | 'draw' | 'loss' | ''>('')
   const [sportScore, setSportScore] = useState('')
-  const [exerciseVariation, setExerciseVariation] = useState('')
   const [opponentName, setOpponentName] = useState('')
-  // Difficulty tier (Feature 8)
+  const [exerciseVariation, setExerciseVariation] = useState('')
   const [difficultyTier, setDifficultyTier] = useState('')
-  // Disadvantage (Feature 9)
-  const [disadvantageType, setDisadvantageType] = useState<'small' | 'large' | ''>('')
-  const [disadvantageOption, setDisadvantageOption] = useState('')
-  const [showDisadvantage, setShowDisadvantage] = useState(false)
-  // Post-game popup (Feature 4)
-  const [showPostGamePopup, setShowPostGamePopup] = useState(false)
-  const [postGamePoints, setPostGamePoints] = useState<number | null>(null)
-  const [prevTotalPoints, setPrevTotalPoints] = useState<number | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState(false)
+  // Bonus
+  const [bonusOpponent, setBonusOpponent] = useState<Record<number, string>>({})
+  const [bonusSubmitting, setBonusSubmitting] = useState<Record<number, boolean>>({})
 
-  function clearInputs() {
-    setWeightKg(''); setRepCount(''); setTimeMins(''); setTimeSecs(''); setSprintCs('')
-    setDistanceVal(''); setDistanceUnit('m'); setSportResult(''); setSportScore('')
-    setExerciseVariation(''); setOpponentName(''); setError('')
-    setDifficultyTier(''); setDisadvantageType(''); setDisadvantageOption(''); setShowDisadvantage(false)
+  const mode = se.input_mode as string
+  const emoji = eventData?.emoji ?? '🏅'
+
+  // Compute current placement for this player across this event
+  const eventResults = allResults.filter(r => r.event_id === se.id)
+  const allPlayers = [...new Set(allResults.map(r => r.player_id || r.player_name))]
+  const playerCount = allPlayers.length
+  const sorted = [...eventResults].sort((a, b) => (b.raw_score ?? 0) - (a.raw_score ?? 0))
+  let myRank: number | null = null
+  if (myResult) {
+    let rank = 1
+    for (let i = 0; i < sorted.length; i++) {
+      if (i > 0 && sorted[i].raw_score !== sorted[i - 1].raw_score) rank = i + 1
+      if (sorted[i].id === myResult.id) { myRank = rank; break }
+    }
   }
 
-  useEffect(() => { clearInputs() }, [selectedEvent?.id])
+  const placementPts = myRank && playerCount > 0 ? calcPlacementPts(myRank, playerCount) : null
+  const myBonuses = bonusCompletions.filter(b => b.event_id === se.id)
+  const bonusPts = myBonuses.reduce((sum, b) => sum + b.points_awarded, 0)
+  const totalPts = placementPts !== null ? placementPts + bonusPts : null
 
-  // Post-game popup: trigger when session ends (Feature 4)
-  useEffect(() => {
-    if (!sessionEnded || !player) return
-    const key = `dismissed_sessions_${player.id}`
-    const dismissed: string[] = JSON.parse(localStorage.getItem(key) || '[]')
-    if (dismissed.includes(sessionId as string)) return
-    setShowPostGamePopup(true)
+  const bonusTargets: BonusTarget[] = eventData ? getBonusTargets(eventData, seasonPR) : []
+  const completedTiers = new Set(myBonuses.map(b => b.tier))
 
-    // Load points earned in this session (after trigger fires)
-    const loadPoints = async () => {
-      await new Promise(r => setTimeout(r, 3000))
-      const { data } = await supabase
-        .from('results')
-        .select('points_earned')
-        .eq('session_id', sessionId)
-        .eq('player_id', player.id)
-        .not('points_earned', 'is', null)
-        .limit(1)
-      if (data?.[0]?.points_earned) setPostGamePoints(data[0].points_earned)
+  function computeScore(): { raw_score: number; score_label: string; adjusted_score?: number } | null {
+    const totalSecs = (parseFloat(timeMins) || 0) * 60 + (parseFloat(timeSecs) || 0)
 
-      // Load previous total points to detect colour threshold crossing
-      const year = new Date().getFullYear()
-      const { data: rData } = await supabase
-        .from('rankings')
-        .select('total_points')
-        .eq('player_id', player.id)
-        .eq('season_year', year)
-        .maybeSingle()
-      if (rData) setPrevTotalPoints(rData.total_points)
+    if (mode === 'strength') {
+      const w = parseFloat(weightKg) || 0
+      if (!w) return null
+      const r = parseInt(repCount) || 0
+      const label = r > 0 ? `${w}kg × ${r} rep${r !== 1 ? 's' : ''}` : `${w}kg`
+      return { raw_score: w, score_label: label }
     }
-    loadPoints()
-  }, [sessionEnded, player?.id])
+    if (mode === 'reps') {
+      const r = parseInt(repCount) || 0
+      if (!r) return null
+      const varLabel = exerciseVariation ? `${exerciseVariation}: ` : ''
+      // ordered variation bonus: each tier step adds 10000
+      const varIdx = eventData?.difficultyTiers?.findIndex(t => t.name === exerciseVariation) ?? -1
+      const tierBonus = varIdx >= 0 ? varIdx * 10000 : 0
+      return { raw_score: r + tierBonus, score_label: `${varLabel}${r} reps` }
+    }
+    if (mode === 'time') {
+      if (!totalSecs) return null
+      return { raw_score: -totalSecs, score_label: fmtTime(totalSecs) }
+    }
+    if (mode === 'hold') {
+      if (!totalSecs) return null
+      const varLabel = exerciseVariation ? `${exerciseVariation}: ` : ''
+      // tier-based scoring for events like Breakdancing, Standing Split
+      if (eventData?.difficultyTiers && difficultyTier) {
+        const tierIdx = eventData.difficultyTiers.findIndex(t => t.name === difficultyTier)
+        if (tierIdx >= 0) {
+          const rawScore = tierIdx * 10000 + totalSecs
+          return { raw_score: rawScore, score_label: `D${tierIdx + 1} ${difficultyTier}${totalSecs > 0 ? ` · ${fmtTime(totalSecs)}` : ''}` }
+        }
+      }
+      return { raw_score: totalSecs, score_label: `${varLabel}${fmtTime(totalSecs)}` }
+    }
+    if (mode === 'distance') {
+      const val = parseFloat(distanceVal) || 0
+      if (!val) return null
+      const raw_score = distanceUnit === 'm' ? Math.round(val * 100) : Math.round(val)
+      return { raw_score, score_label: `${distanceVal}${distanceUnit}` }
+    }
+    if (mode === 'flexibility') {
+      const blocks = parseInt(distanceVal) || 0
+      const label = blocks === 0 ? '0 blocks (floor)' : `${blocks} block${blocks !== 1 ? 's' : ''}`
+      return { raw_score: -blocks, score_label: label }
+    }
+    if (mode === 'sport') {
+      if (!sportResult) return null
+      const raw_score = sportResult === 'win' ? 2 : sportResult === 'draw' ? 1 : 0
+      let label = sportResult.charAt(0).toUpperCase() + sportResult.slice(1)
+      if (opponentName) label += ` vs ${opponentName}`
+      if (sportScore) label += ` (${sportScore})`
+      return { raw_score, score_label: label }
+    }
+    if (mode === 'sprint') {
+      const s = parseFloat(timeSecs) || 0
+      const cs = parseInt(sprintCs) || 0
+      if (!s && !cs) return null
+      const totalCs = Math.round(s * 100) + cs
+      const label = `${Math.floor(s)}s.${cs.toString().padStart(2, '0')}`
+      return { raw_score: -totalCs, score_label: label }
+    }
+    if (mode === 'weight+time') {
+      if (!weightKg || !totalSecs) return null
+      return { raw_score: -totalSecs, score_label: `${weightKg}kg · ${fmtTime(totalSecs)}` }
+    }
+    if (mode === 'distance+time') {
+      const val = parseFloat(distanceVal) || 0
+      if (!val) return null
+      const raw_score = distanceUnit === 'm' ? Math.round(val * 100) : Math.round(val)
+      const parts = [`${distanceVal}${distanceUnit}`]
+      if (totalSecs > 0) parts.push(fmtTime(totalSecs))
+      return { raw_score, score_label: parts.join(' · ') }
+    }
+    if (mode === 'dynamic') {
+      if (!exerciseVariation) return null
+      const isHold = exerciseVariation.endsWith('/ Hold')
+      if (isHold) {
+        if (!totalSecs) return null
+        const varLabel = exerciseVariation.replace(' / Hold', '')
+        return { raw_score: totalSecs, score_label: `${varLabel}: ${fmtTime(totalSecs)}` }
+      } else {
+        const r = parseInt(repCount) || 0
+        if (!r) return null
+        const varLabel = exerciseVariation.replace(' / Reps', '')
+        return { raw_score: r, score_label: `${varLabel}: ${r} reps` }
+      }
+    }
+    return null
+  }
+
+  function isValid(): boolean {
+    return computeScore() !== null
+  }
+
+  async function handleSubmit() {
+    if (sessionEnded) return
+    const scored = computeScore()
+    if (!scored) return
+    setSubmitting(true); setError('')
+    try {
+      const totalSecs = (parseFloat(timeMins) || 0) * 60 + (parseFloat(timeSecs) || 0)
+      const payload: Record<string, unknown> = {
+        session_id: sessionId,
+        event_id: se.id,
+        player_id: playerId,
+        player_name: playerName,
+        raw_score: scored.raw_score,
+        score_label: scored.score_label,
+      }
+      if (scored.adjusted_score != null) payload.adjusted_score = scored.adjusted_score
+      if (difficultyTier) payload.difficulty_tier = difficultyTier
+      if (exerciseVariation) payload.exercise_variation = exerciseVariation
+      if (mode === 'strength') {
+        payload.weight_kg = parseFloat(weightKg) || 0
+        if (repCount) payload.reps = parseInt(repCount)
+      }
+      if (mode === 'reps') payload.reps = parseInt(repCount) || 0
+      if (['time', 'hold', 'weight+time'].includes(mode) && totalSecs > 0) payload.time_seconds = totalSecs
+      if (mode === 'sprint') {
+        const s = parseFloat(timeSecs) || 0; const cs = parseInt(sprintCs) || 0
+        payload.time_seconds = s + cs / 100
+      }
+      if (mode === 'weight+time') payload.weight_kg = parseFloat(weightKg) || 0
+      if (mode === 'distance' || mode === 'distance+time') {
+        const val = parseFloat(distanceVal) || 0
+        payload.distance_m = distanceUnit === 'm' ? val : val / 100
+      }
+      if (mode === 'sport') {
+        payload.result_type = sportResult
+        if (opponentName) payload.opponent_name = opponentName
+        if (sportScore) payload.match_score = sportScore
+      }
+
+      const { error: err } = await supabase.from('results').upsert(payload, {
+        onConflict: 'player_id,session_id,event_id',
+      })
+      if (err) throw err
+      setSuccess(true); setTimeout(() => setSuccess(false), 2500)
+      onScoreSubmitted()
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Submission failed')
+    }
+    setSubmitting(false)
+  }
+
+  async function handleBonusSubmit(tier: number, label: string) {
+    setBonusSubmitting(prev => ({ ...prev, [tier]: true }))
+    try {
+      const opp = bonusOpponent[tier] || null
+      const completionData: Record<string, unknown> = { label }
+      if (opp) completionData.opponent_name = opp
+
+      const { error: err } = await supabase.from('bonus_completions').insert({
+        player_id: playerId,
+        session_id: sessionId,
+        event_id: se.id,
+        result_id: myResult?.id ?? null,
+        tier,
+        points_awarded: 15,
+        completion_data: completionData,
+      })
+      if (err) throw err
+      onScoreSubmitted()
+    } catch (e: unknown) {
+      // silently fail — user can retry
+    }
+    setBonusSubmitting(prev => ({ ...prev, [tier]: false }))
+  }
+
+  async function handleBonusDelete(completionId: string) {
+    await supabase.from('bonus_completions').delete().eq('id', completionId)
+    onScoreSubmitted()
+  }
+
+  // Collapsed card
+  if (!isExpanded) {
+    return (
+      <button
+        onClick={onToggle}
+        style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center',
+          background: myResult ? '#0d1a0d' : '#111', border: `1px solid ${myResult ? '#4DB26E33' : '#1e1e1e'}`,
+          borderRadius: '12px', padding: '16px 12px', cursor: 'pointer', width: '100%',
+          gap: '6px', textAlign: 'center',
+        }}
+      >
+        <div style={{ fontSize: '28px', lineHeight: 1 }}>{emoji}</div>
+        <div style={{ fontSize: '12px', fontWeight: 700, color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em', lineHeight: 1.2 }}>
+          {se.event_name}
+        </div>
+        <div style={{ fontSize: '16px', fontWeight: 700, color: myResult ? '#4DB26E' : '#555', fontFamily: 'Bebas Neue, cursive' }}>
+          {myResult ? myResult.score_label : '—'}
+        </div>
+        {seasonPR !== null && typeof seasonPR === 'number' && (
+          <div style={{ fontSize: '10px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif' }}>
+            PR: {formatPR(seasonPR as number, mode)}
+          </div>
+        )}
+        {typeof seasonPR === 'string' && (
+          <div style={{ fontSize: '10px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif' }}>
+            PR: {seasonPR}
+          </div>
+        )}
+        <div style={{ fontSize: '13px', color: totalPts !== null ? '#F9B051' : '#555', fontFamily: 'Bebas Neue, cursive' }}>
+          {totalPts !== null ? `${totalPts} pts` : '— pts'}
+        </div>
+      </button>
+    )
+  }
+
+  // Expanded card
+  const isTimeMode = mode === 'time' || mode === 'hold' || mode === 'weight+time' || mode === 'distance+time'
+  const isDynamicHold = mode === 'dynamic' && exerciseVariation?.endsWith('/ Hold')
+  const isDynamicReps = mode === 'dynamic' && exerciseVariation?.endsWith('/ Reps')
+
+  return (
+    <div style={{
+      background: '#111', border: '1px solid #2371BB', borderRadius: '12px',
+      overflow: 'hidden', gridColumn: '1 / -1',
+    }}>
+      {/* Card header */}
+      <button
+        onClick={onToggle}
+        style={{
+          display: 'flex', alignItems: 'center', gap: '12px', width: '100%',
+          padding: '16px', background: '#0d1a2e', border: 'none', cursor: 'pointer',
+        }}
+      >
+        <span style={{ fontSize: '24px' }}>{emoji}</span>
+        <span style={{ fontSize: '18px', fontWeight: 700, color: '#fff', fontFamily: 'Bebas Neue, cursive', letterSpacing: '0.05em' }}>
+          {se.event_name}
+        </span>
+        <span style={{ marginLeft: 'auto', color: '#2371BB', fontSize: '18px' }}>▲</span>
+      </button>
+
+      <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+        {/* 1. TODAY'S TOP SCORE */}
+        <div>
+          <div style={{ fontSize: '10px', color: '#555', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '6px', fontFamily: 'Barlow Condensed, sans-serif' }}>
+            Today's Top Score
+          </div>
+          {myResult ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ fontSize: '22px', fontWeight: 700, color: '#4DB26E', fontFamily: 'Bebas Neue, cursive' }}>
+                {myResult.score_label}
+              </div>
+              {myRank && <div style={{ fontSize: '13px', color: '#888', fontFamily: 'Barlow Condensed, sans-serif' }}>#{myRank} of {playerCount}</div>}
+              {totalPts !== null && <div style={{ fontSize: '13px', color: '#F9B051', fontFamily: 'Bebas Neue, cursive' }}>{totalPts} pts</div>}
+            </div>
+          ) : (
+            <div style={{ color: '#555', fontSize: '14px' }}>No score yet</div>
+          )}
+        </div>
+
+        {/* 2. SCORE HISTORY */}
+        {myResult && (
+          <div>
+            <div style={{ fontSize: '10px', color: '#555', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '6px', fontFamily: 'Barlow Condensed, sans-serif' }}>
+              Score History (today)
+            </div>
+            <div style={{ background: '#0d0d0d', borderRadius: '8px', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontSize: '15px', color: '#fff' }}>{myResult.score_label}</div>
+              {myResult.difficulty_tier && <div style={{ fontSize: '11px', color: '#888', fontFamily: 'Barlow Condensed, sans-serif' }}>{myResult.difficulty_tier}</div>}
+            </div>
+          </div>
+        )}
+
+        {/* 3. ADD A SCORE */}
+        {!sessionEnded && (
+          <div>
+            <div style={{ fontSize: '10px', color: '#555', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '10px', fontFamily: 'Barlow Condensed, sans-serif' }}>
+              {myResult ? 'Update Score' : 'Add a Score'}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {/* Variation selector (dynamic events) */}
+              {mode === 'dynamic' && eventData?.difficultyTiers && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '11px', color: '#666', fontFamily: 'Barlow Condensed, sans-serif' }}>VARIATION</label>
+                  <select value={exerciseVariation} onChange={e => setExerciseVariation(e.target.value)}
+                    style={{ ...INP, fontSize: '15px' }}>
+                    <option value="">Select variation...</option>
+                    {/* Dynamic events use tier names as variation options */}
+                    {eventData.difficultyTiers.map(t => (
+                      <option key={t.level} value={`${t.name} / Hold`}>{t.name} / Hold</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Difficulty tier (for tiered events that aren't dynamic) */}
+              {mode !== 'dynamic' && eventData?.hasDifficultyTiers && eventData.difficultyTiers && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '11px', color: '#666', fontFamily: 'Barlow Condensed, sans-serif' }}>DIFFICULTY TIER</label>
+                  <select value={difficultyTier} onChange={e => setDifficultyTier(e.target.value)}
+                    style={{ ...INP, fontSize: '15px' }}>
+                    <option value="">Select tier...</option>
+                    {eventData.difficultyTiers.map(t => (
+                      <option key={t.level} value={t.name}>D{t.level} — {t.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Strength mode */}
+              {(mode === 'strength' || mode === 'weight+time') && (
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input type="number" value={weightKg} onChange={e => setWeightKg(e.target.value)}
+                    placeholder="Weight (kg)" style={{ ...INP, flex: 2 }} />
+                  {mode === 'strength' && (
+                    <input type="number" value={repCount} onChange={e => setRepCount(e.target.value)}
+                      placeholder="Reps" style={{ ...INP, flex: 1 }} />
+                  )}
+                </div>
+              )}
+
+              {/* Reps mode */}
+              {(mode === 'reps' || isDynamicReps) && (
+                <input type="number" value={repCount} onChange={e => setRepCount(e.target.value)}
+                  placeholder="Reps" style={INP} />
+              )}
+
+              {/* Time / hold / weight+time */}
+              {(mode === 'time' || mode === 'hold' || mode === 'weight+time' || isDynamicHold) && (
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <input type="number" value={timeMins} onChange={e => setTimeMins(e.target.value)}
+                    placeholder="min" style={{ ...INP, flex: 1 }} />
+                  <span style={{ color: '#555', fontSize: '20px' }}>:</span>
+                  <input type="number" value={timeSecs} onChange={e => setTimeSecs(e.target.value)}
+                    placeholder="sec" style={{ ...INP, flex: 1 }} />
+                </div>
+              )}
+
+              {/* Sprint mode */}
+              {mode === 'sprint' && (
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <input type="number" value={timeSecs} onChange={e => setTimeSecs(e.target.value)}
+                    placeholder="Seconds" style={{ ...INP, flex: 2 }} />
+                  <span style={{ color: '#555', fontSize: '18px' }}>.</span>
+                  <input type="number" value={sprintCs} onChange={e => setSprintCs(e.target.value)}
+                    placeholder="cs" style={{ ...INP, flex: 1 }} min="0" max="99" />
+                </div>
+              )}
+
+              {/* Distance mode */}
+              {(mode === 'distance' || mode === 'distance+time') && (
+                <>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <input type="number" value={distanceVal} onChange={e => setDistanceVal(e.target.value)}
+                      placeholder="Distance" style={{ ...INP, flex: 2 }} />
+                    <div style={{ display: 'flex', borderRadius: '8px', overflow: 'hidden' }}>
+                      {(['m', 'cm'] as const).map(u => (
+                        <button key={u} onClick={() => setDistanceUnit(u)} style={{
+                          padding: '10px 16px', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px',
+                          background: distanceUnit === u ? '#2371BB' : '#1a1a1a',
+                          color: distanceUnit === u ? '#fff' : '#666',
+                        }}>{u}</button>
+                      ))}
+                    </div>
+                  </div>
+                  {mode === 'distance+time' && (
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <input type="number" value={timeMins} onChange={e => setTimeMins(e.target.value)}
+                        placeholder="min" style={{ ...INP, flex: 1 }} />
+                      <span style={{ color: '#555', fontSize: '20px' }}>:</span>
+                      <input type="number" value={timeSecs} onChange={e => setTimeSecs(e.target.value)}
+                        placeholder="sec" style={{ ...INP, flex: 1 }} />
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Flexibility mode */}
+              {mode === 'flexibility' && (
+                <input type="number" value={distanceVal} onChange={e => setDistanceVal(e.target.value)}
+                  placeholder="Blocks from floor (0 = floor)" style={INP} min="0" />
+              )}
+
+              {/* Sport mode */}
+              {mode === 'sport' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    {(['win', 'draw', 'loss'] as const).map(r => {
+                      const colors = { win: '#4DB26E', draw: '#F9B051', loss: '#EA4742' }
+                      const active = sportResult === r
+                      return (
+                        <button key={r} onClick={() => setSportResult(r)} style={{
+                          flex: 1, padding: '14px', border: `2px solid ${active ? colors[r] : '#222'}`,
+                          borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px',
+                          background: active ? colors[r] + '22' : '#111',
+                          color: active ? colors[r] : '#444',
+                        }}>{r.charAt(0).toUpperCase() + r.slice(1)}</button>
+                      )
+                    })}
+                  </div>
+                  <input value={opponentName} onChange={e => setOpponentName(e.target.value)}
+                    placeholder="Opponent name (optional)" style={{ ...INP, fontSize: '15px' }} />
+                  <input value={sportScore} onChange={e => setSportScore(e.target.value)}
+                    placeholder="Score e.g. 21–18 (optional)" style={{ ...INP, fontSize: '15px' }} />
+                </div>
+              )}
+
+              {error && <div style={{ color: '#EA4742', fontSize: '13px' }}>{error}</div>}
+              {success && <div style={{ color: '#4DB26E', fontSize: '13px' }}>Submitted!</div>}
+
+              <button
+                onClick={handleSubmit}
+                disabled={!isValid() || submitting}
+                style={{
+                  padding: '14px', borderRadius: '10px', border: 'none', fontWeight: 'bold',
+                  fontSize: '15px', cursor: isValid() && !submitting ? 'pointer' : 'not-allowed',
+                  background: isValid() && !submitting ? '#2371BB' : '#1a1a1a',
+                  color: isValid() && !submitting ? '#fff' : '#555',
+                }}
+              >
+                {submitting ? 'Submitting...' : myResult ? 'Update Score' : 'Submit Score'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 4. BONUS POINTS */}
+        {bonusTargets.length > 0 && (
+          <div>
+            <div style={{ fontSize: '10px', color: '#555', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '10px', fontFamily: 'Barlow Condensed, sans-serif' }}>
+              Bonus Points
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {bonusTargets.map(bt => {
+                const done = completedTiers.has(bt.tier)
+                const completion = myBonuses.find(b => b.tier === bt.tier)
+                return (
+                  <div key={bt.tier} style={{
+                    background: done ? '#0d1a0d' : '#0d0d0d',
+                    border: `1px solid ${done ? '#4DB26E33' : '#1e1e1e'}`,
+                    borderRadius: '8px', padding: '12px 14px',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{
+                        width: '20px', height: '20px', borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px',
+                        background: done ? '#4DB26E' : '#1e1e1e',
+                        color: done ? '#fff' : '#555',
+                      }}>
+                        {done ? '✓' : bt.tier}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: '14px', color: done ? '#4DB26E' : '#ccc', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700 }}>{bt.label}</div>
+                      </div>
+                      <div style={{ fontSize: '13px', color: '#F9B051', fontFamily: 'Bebas Neue, cursive' }}>+15 pts</div>
+                      {done && !sessionEnded && completion && (
+                        <button onClick={() => handleBonusDelete(completion.id)}
+                          style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: '14px', padding: '2px 6px' }}>
+                          ✕
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Sport bonus: opponent input */}
+                    {mode === 'sport' && !done && !sessionEnded && (
+                      <div style={{ marginTop: '10px', display: 'flex', gap: '8px' }}>
+                        <input
+                          value={bonusOpponent[bt.tier] || ''}
+                          onChange={e => setBonusOpponent(prev => ({ ...prev, [bt.tier]: e.target.value }))}
+                          placeholder="Opponent name"
+                          style={{ flex: 1, background: '#111', border: '1px solid #333', borderRadius: '6px', padding: '8px 12px', color: '#fff', fontSize: '14px' }}
+                        />
+                        <button
+                          onClick={() => handleBonusSubmit(bt.tier, bt.label)}
+                          disabled={bonusSubmitting[bt.tier]}
+                          style={{
+                            padding: '8px 14px', borderRadius: '6px', border: 'none', fontWeight: 'bold', fontSize: '13px',
+                            background: '#F9B051', color: '#000', cursor: 'pointer',
+                          }}
+                        >
+                          {bonusSubmitting[bt.tier] ? '...' : 'Confirm'}
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Non-sport bonus: confirm button */}
+                    {mode !== 'sport' && !done && !sessionEnded && (
+                      <div style={{ marginTop: '10px' }}>
+                        <button
+                          onClick={() => handleBonusSubmit(bt.tier, bt.label)}
+                          disabled={bonusSubmitting[bt.tier]}
+                          style={{
+                            padding: '8px 14px', borderRadius: '6px', border: '1px solid #F9B051', fontWeight: 'bold', fontSize: '13px',
+                            background: 'transparent', color: '#F9B051', cursor: 'pointer',
+                          }}
+                        >
+                          {bonusSubmitting[bt.tier] ? '...' : 'Claim +15 pts'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── LeaderboardTab ───────────────────────────────────────────────────────────
+
+const ALL_DIVISIONS = [
+  'All-Divisions', 'Youth', 'Juniors', "Men's", "Women's",
+  'Masters Men', 'Masters Women', 'Grandmasters Men', 'Grandmasters Women',
+]
+
+type PlayerInfo = { division: string }
+
+function LeaderboardTab({
+  events, results, playerInfoMap,
+}: {
+  events: SessionEvent[]
+  results: Result[]
+  playerInfoMap: Record<string, PlayerInfo>
+}) {
+  const [division, setDivision] = useState('All-Divisions')
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+
+  function filteredResults(eventId: string): Result[] {
+    const evRes = results.filter(r => r.event_id === eventId)
+    if (division === 'All-Divisions') return evRes
+    return evRes.filter(r => r.player_id && playerInfoMap[r.player_id]?.division === division)
+  }
+
+  function rankFor(evRes: Result[]): Array<Result & { rank: number }> {
+    const sorted = [...evRes].sort((a, b) => (b.raw_score ?? 0) - (a.raw_score ?? 0))
+    let rank = 1
+    return sorted.map((r, i) => {
+      if (i > 0 && r.raw_score !== sorted[i - 1].raw_score) rank = i + 1
+      return { ...r, rank }
+    })
+  }
+
+  return (
+    <div style={{ padding: '12px 16px' }}>
+      {/* Division filter */}
+      <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '8px', marginBottom: '16px' }}>
+        {ALL_DIVISIONS.map(d => (
+          <button key={d} onClick={() => setDivision(d)} style={{
+            padding: '6px 12px', border: `1px solid ${division === d ? '#2371BB' : '#222'}`,
+            borderRadius: '20px', cursor: 'pointer', whiteSpace: 'nowrap', fontSize: '12px', fontWeight: division === d ? 700 : 400,
+            background: division === d ? '#0d1a2e' : '#111',
+            color: division === d ? '#2371BB' : '#555',
+            flexShrink: 0,
+          }}>{d}</button>
+        ))}
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        {events.map(ev => {
+          const evData = getEventByName(ev.event_name)
+          const evRes = filteredResults(ev.id)
+          const ranked = rankFor(evRes)
+          const leader = ranked[0]
+          const isOpen = expandedId === ev.id
+
+          return (
+            <div key={ev.id} style={{ background: '#111', borderRadius: '10px', overflow: 'hidden', border: '1px solid #1e1e1e' }}>
+              <button onClick={() => setExpandedId(isOpen ? null : ev.id)} style={{
+                display: 'flex', alignItems: 'center', gap: '12px', width: '100%',
+                padding: '14px 16px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left',
+              }}>
+                <span style={{ fontSize: '20px' }}>{evData?.emoji ?? '🏅'}</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#fff', fontFamily: 'Barlow Condensed, sans-serif' }}>{ev.event_name}</div>
+                  {leader ? (
+                    <div style={{ fontSize: '12px', color: '#888', fontFamily: 'Barlow Condensed, sans-serif' }}>
+                      {leader.player_name} · {leader.score_label}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: '12px', color: '#555' }}>No scores yet</div>
+                  )}
+                </div>
+                {leader && (
+                  <div style={{ fontSize: '14px', color: '#F9B051', fontFamily: 'Bebas Neue, cursive' }}>
+                    {leader.placement_points !== null ? `${leader.placement_points + (leader.bonus_points_total ?? 0)} pts` : '—'}
+                  </div>
+                )}
+                <span style={{ color: '#444', fontSize: '14px' }}>{isOpen ? '▲' : '▼'}</span>
+              </button>
+
+              {isOpen && ranked.length > 0 && (
+                <div style={{ borderTop: '1px solid #1e1e1e' }}>
+                  {ranked.map(r => (
+                    <div key={r.id} style={{
+                      display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 16px',
+                      borderBottom: '1px solid #0d0d0d',
+                    }}>
+                      <div style={{ width: '24px', fontSize: '14px', fontWeight: 700, color: r.rank === 1 ? '#F9B051' : r.rank === 2 ? '#aaa' : r.rank === 3 ? '#CD7F32' : '#555', fontFamily: 'Bebas Neue, cursive', textAlign: 'center' }}>
+                        {r.rank}
+                      </div>
+                      <div style={{ flex: 1, fontSize: '14px', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700 }}>
+                        {r.player_name}
+                      </div>
+                      <div style={{ fontSize: '13px', color: '#4DB26E' }}>{r.score_label}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
+
+export default function SessionPage() {
+  const { sessionId } = useParams<{ sessionId: string }>()
+
+  const [session, setSession] = useState<Record<string, unknown> | null>(null)
+  const [events, setEvents] = useState<SessionEvent[]>([])
+  const [results, setResults] = useState<Result[]>([])
+  const [bonusCompletions, setBonusCompletions] = useState<BonusCompletion[]>([])
+  const [player, setPlayer] = useState<Record<string, unknown> | null>(null)
+  const [familyMembers, setFamilyMembers] = useState<Record<string, unknown>[]>([])
+  const [activePlayerId, setActivePlayerId] = useState<string | null>(null)
+  const [seasonPRs, setSeasonPRs] = useState<Record<string, number | string | null>>({})
+  const [activeTab, setActiveTab] = useState<string>('leaderboard')
+  const [expandedEventId, setExpandedEventId] = useState<string | null>(null)
+  const [timeLeft, setTimeLeft] = useState<number | null>(null)
+  const [preSessionSecsLeft, setPreSessionSecsLeft] = useState<number | null>(null)
+  const [sessionEnded, setSessionEnded] = useState(false)
+  const [playerInfoMap, setPlayerInfoMap] = useState<Record<string, PlayerInfo>>({})
+
+  const allPlayers = player ? [player, ...familyMembers] : []
+  const activePlayer = allPlayers.find(p => p.id === activePlayerId) ?? player
+
+  // ── Load initial data ──────────────────────────────────────────────────────
+  const loadResults = useCallback(async () => {
+    const { data } = await supabase.from('results').select('*').eq('session_id', sessionId)
+    if (data) setResults(data as Result[])
+  }, [sessionId])
+
+  const loadBonuses = useCallback(async () => {
+    const { data } = await supabase.from('bonus_completions').select('*').eq('session_id', sessionId)
+    if (data) setBonusCompletions(data as BonusCompletion[])
+  }, [sessionId])
+
+  useEffect(() => {
+    const load = async () => {
+      const { data: { user: authUser } } = await supabase.auth.getUser()
+      if (authUser) {
+        const { data: p } = await supabase.from('players').select('*').eq('id', authUser.id).single()
+        if (p) {
+          setPlayer(p as Record<string, unknown>)
+          setActivePlayerId(authUser.id)
+          const { data: children } = await supabase.from('players')
+            .select('*').eq('parent_id', authUser.id).order('full_name')
+          setFamilyMembers((children ?? []) as Record<string, unknown>[])
+        }
+      }
+      const { data: s } = await supabase.from('sessions').select('*').eq('id', sessionId).single()
+      setSession(s as Record<string, unknown> | null)
+      if (s && !(s as Record<string, unknown>).is_active) setSessionEnded(true)
+
+      const { data: ev } = await supabase.from('session_events').select('*')
+        .eq('session_id', sessionId).order('domain_number')
+      setEvents((ev ?? []) as SessionEvent[])
+
+      await loadResults()
+      await loadBonuses()
+    }
+    load()
+  }, [sessionId, loadResults, loadBonuses])
+
+  // ── Load player info for leaderboard ─────────────────────────────────────
+  useEffect(() => {
+    if (results.length === 0) return
+    const ids = [...new Set(results.map(r => r.player_id).filter(Boolean))] as string[]
+    if (ids.length === 0) return
+    supabase.from('players').select('id, division').in('id', ids).then(({ data }) => {
+      if (!data) return
+      const map: Record<string, PlayerInfo> = {}
+      data.forEach(p => { map[p.id] = { division: p.division ?? '' } })
+      setPlayerInfoMap(map)
+    })
+  }, [results])
+
+  // ── Load season PRs for active player ─────────────────────────────────────
+  useEffect(() => {
+    if (!activePlayerId || events.length === 0) return
+    const year = new Date().getFullYear()
+
+    async function loadPRs() {
+      const prs: Record<string, number | string | null> = {}
+      for (const ev of events) {
+        if (!ev.event_slug) {
+          // fallback: look up slug from eventData
+          const evData = getEventByName(ev.event_name)
+          if (!evData) { prs[ev.id] = null; continue }
+          const { data } = await supabase.rpc('get_player_season_pr', {
+            p_player_id: activePlayerId,
+            p_event_slug: evData.slug,
+            p_season_year: year,
+          })
+          prs[ev.id] = data as number | null
+        } else {
+          const { data } = await supabase.rpc('get_player_season_pr', {
+            p_player_id: activePlayerId,
+            p_event_slug: ev.event_slug,
+            p_season_year: year,
+          })
+          prs[ev.id] = data as number | null
+        }
+      }
+      setSeasonPRs(prs)
+    }
+    loadPRs()
+  }, [activePlayerId, events])
+
+  // ── Realtime subscriptions ─────────────────────────────────────────────────
+  useEffect(() => {
+    const ch = supabase.channel(`scoring-${sessionId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'results', filter: `session_id=eq.${sessionId}` },
+        () => loadResults())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bonus_completions', filter: `session_id=eq.${sessionId}` },
+        () => loadBonuses())
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'sessions', filter: `id=eq.${sessionId}` },
+        p => {
+          const updated = p.new as Record<string, unknown>
+          if (updated.is_active === false) setSessionEnded(true)
+        })
+      .subscribe()
+    return () => { supabase.removeChannel(ch) }
+  }, [sessionId, loadResults, loadBonuses])
 
   // ── Timer ──────────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!session?.started_at || !session?.duration_minutes) return
-    const startTs = new Date(session.started_at).getTime()
-    const endTs = startTs + session.duration_minutes * 60 * 1000
+    const s = session as Record<string, unknown> | null
+    if (!s?.started_at) return
+    const startTs = new Date(s.started_at as string).getTime()
+    const endTs = startTs + 100 * 60 * 1000
+    let closedByTimer = false
 
-    let sessionClosedByTimer = false
     const tick = () => {
       const now = Date.now()
       if (now < startTs) {
-        // Pre-session: count down to start time
         setPreSessionSecsLeft(Math.ceil((startTs - now) / 1000))
         setTimeLeft(null)
       } else {
-        // Live: count down remaining session time
         setPreSessionSecsLeft(null)
         const remaining = Math.max(0, Math.floor((endTs - now) / 1000))
         setTimeLeft(remaining)
-        if (remaining === 0 && !sessionClosedByTimer) {
-          sessionClosedByTimer = true
+        if (remaining === 0 && !closedByTimer && s.is_active) {
+          closedByTimer = true
           setSessionEnded(true)
-          // Closing the session triggers the award_session_points DB trigger automatically
-          supabase.from('sessions')
-            .update({ is_active: false, ended_at: new Date().toISOString() })
-            .eq('id', sessionId)
+          supabase.from('sessions').update({ is_active: false, ended_at: new Date().toISOString() }).eq('id', sessionId)
         }
       }
     }
@@ -483,1340 +927,146 @@ export default function SessionPage() {
     return () => clearInterval(iv)
   }, [session, sessionId])
 
-  // ── Load data + realtime ───────────────────────────────────────────────────
-  useEffect(() => {
-    const load = async () => {
-      const { data: { user: authUser } } = await supabase.auth.getUser()
-      setAuthLoading(false)
-      if (authUser) {
-        const { data: p } = await supabase.from('players').select('*').eq('id', authUser.id).single()
-        setPlayer(p)
-        setActivePlayer(p)
-        const initBw: Record<string, string> = {}
-        if (p?.bodyweight_kg) initBw[p.id] = String(p.bodyweight_kg)
-
-        // Load linked child profiles
-        const { data: children } = await supabase
-          .from('players')
-          .select('id, full_name, display_name, username, division, date_of_birth, bodyweight_kg')
-          .eq('parent_id', authUser.id)
-          .order('full_name')
-        setFamilyMembers(children || [])
-        ;(children || []).forEach((c: any) => { if (c.bodyweight_kg) initBw[c.id] = String(c.bodyweight_kg) })
-        setBodyweights(initBw)
-      }
-      const { data: s } = await supabase.from('sessions').select('*').eq('id', sessionId).single()
-      setSession(s)
-      if (s && !s.is_active) setSessionEnded(true)
-      const { data: ev } = await supabase.from('session_events').select('*').eq('session_id', sessionId).order('domain_number')
-      setEvents(ev || [])
-      const { data: res } = await supabase.from('results').select('*').eq('session_id', sessionId)
-      setResults(res || [])
-
-      // Load division info for every player_id seen in results
-      const playerIds = [...new Set((res || []).map((r: any) => r.player_id).filter(Boolean))]
-      if (playerIds.length > 0) {
-        const { data: pData } = await supabase
-          .from('players')
-          .select('id, division, date_of_birth')
-          .in('id', playerIds)
-        if (pData) {
-          const map: Record<string, { division: string; dob: string | null }> = {}
-          pData.forEach((p: any) => { map[p.id] = { division: p.division ?? '', dob: p.date_of_birth ?? null } })
-          setPlayerDivisions(map)
-        }
-      }
-    }
-    load()
-
-    const ch = supabase
-      .channel(`session-${sessionId}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'results', filter: `session_id=eq.${sessionId}` },
-        async p => {
-          setResults(prev => [...prev, p.new as Result])
-          const newPlayerId = (p.new as any).player_id
-          if (newPlayerId) {
-            setPlayerDivisions(prev => {
-              if (prev[newPlayerId]) return prev
-              // fetch in background
-              supabase.from('players').select('id, division, date_of_birth').eq('id', newPlayerId).single().then(({ data }) => {
-                if (data) setPlayerDivisions(m => ({ ...m, [data.id]: { division: data.division ?? 'Men\'s', dob: data.date_of_birth ?? null } }))
-              })
-              return prev
-            })
-          }
-        })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'results', filter: `session_id=eq.${sessionId}` },
-        p => setResults(prev => prev.map(r => r.id === (p.new as Result).id ? p.new as Result : r)))
-      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'results', filter: `session_id=eq.${sessionId}` },
-        p => setResults(prev => prev.filter(r => r.id !== (p.old as any).id)))
-      .subscribe()
-
-    return () => { supabase.removeChannel(ch) }
-  }, [sessionId])
-
-  // ── Mode resolution ────────────────────────────────────────────────────────
-  const eventConfig = selectedEvent ? EVENT_CONFIG[selectedEvent.event_name] : null
-  const rawMode = eventConfig?.mode ?? 'strength'
-
-  function getEffectiveMode(): InputMode | null {
-    if (!selectedEvent) return null
-    if (rawMode === 'dynamic') {
-      if (!exerciseVariation) return null
-      return exerciseVariation.endsWith('/ Reps') ? 'reps' : 'hold'
-    }
-    return rawMode
-  }
-  const effectiveMode = getEffectiveMode()
-
-  // ── Validation ─────────────────────────────────────────────────────────────
-  function isScoreValid(): boolean {
-    // Tier-based events need a tier selected
-    if (eventConfig?.tierBasedScoring) return !!difficultyTier
-    const m = effectiveMode
-    if (!m) return false
-    switch (m) {
-      case 'strength': {
-        const bw = parseFloat(bodyweights[(activePlayer || player)?.id] ?? '') || 0
-        return !!weightKg && bw > 0
-      }
-      case 'reps':         return !!repCount
-      case 'time':
-      case 'hold':         return !!(timeMins || timeSecs)
-      case 'sprint':       return !!(timeSecs)
-      case 'distance':     return !!distanceVal
-      case 'flexibility':  return !!distanceVal
-      case 'sport':        return !!sportResult
-      case 'weight+time':  return !!weightKg && !!(timeMins || timeSecs)
-      case 'distance+time':return !!distanceVal
-      default:             return false
-    }
-  }
-
-  // ── Score computation ──────────────────────────────────────────────────────
-  function computeScore(): { raw_score: number; score_label: string; adjusted_score?: number } {
-    const m = effectiveMode
-    if (!m) return { raw_score: 0, score_label: '' }
-
-    // Tier-based events (Breakdancing, Standing Split): tier × 10000 + time_seconds
-    const evData = selectedEvent ? getEventByName(selectedEvent.event_name) : null
-    if (eventConfig?.tierBasedScoring && difficultyTier && evData?.difficultyTiers) {
-      const tierIdx = evData.difficultyTiers.findIndex(t => t.name === difficultyTier)
-      if (tierIdx < 0) return { raw_score: 0, score_label: '' }
-      const time = (parseFloat(timeMins) || 0) * 60 + (parseFloat(timeSecs) || 0)
-      const rawScore = tierIdx * 10000 + time
-      const label = `D${tierIdx + 1} ${difficultyTier}${time > 0 ? ` · ${fmtTime(time)}` : ''}`
-      return { raw_score: rawScore, score_label: label }
-    }
-
-    const totalSecs = (parseFloat(timeMins) || 0) * 60 + (parseFloat(timeSecs) || 0)
-    const timeStr = fmtTime(totalSecs)
-
-    // Strip "/ Hold" / "/ Reps" from variation for display
-    const varLabel = exerciseVariation.replace(' / Hold', '').replace(' / Reps', '')
-    const varPrefix = varLabel ? `${varLabel}: ` : ''
-
-    // Ordered variations: each tier step adds 10000 so any score at tier N beats any score at tier N-1
-    const varIdx = (eventConfig?.orderedVariations && exerciseVariation && eventConfig.variations)
-      ? Math.max(0, eventConfig.variations.indexOf(exerciseVariation))
-      : 0
-    const tierBonus = eventConfig?.orderedVariations ? varIdx * 10000 : 0
-
-    // Disadvantage multiplier for Domain 1+2 strength events
-    const domainNum = selectedEvent ? events.find(e => e.id === selectedEvent.id)?.domain_number : null
-    const isStrengthDomain = domainNum === 1 || domainNum === 2
-    const disadvMult = isStrengthDomain && disadvantageType === 'small' ? 1.2 : isStrengthDomain && disadvantageType === 'large' ? 1.5 : 1.0
-
-    switch (m) {
-      case 'strength': {
-        const w = parseFloat(weightKg) || 0
-        const bw = parseFloat(bodyweights[(activePlayer || player)?.id] ?? '') || 0
-        const r = parseInt(repCount) || 0
-        const ratio = bw > 0 ? w / bw : 0
-        const ratioLabel = bw > 0 ? ` (${ratio.toFixed(2)}× BW)` : ''
-        const adjScore = ratio * disadvMult
-        return {
-          raw_score: ratio,
-          adjusted_score: disadvMult !== 1.0 ? adjScore : undefined,
-          score_label: r > 0 ? `${weightKg}kg × ${r} rep${r !== 1 ? 's' : ''}${ratioLabel}` : `${weightKg}kg${ratioLabel}`,
-        }
-      }
-      case 'reps':
-        return { raw_score: (parseInt(repCount) || 0) + tierBonus, score_label: `${varPrefix}${repCount} reps` }
-
-      case 'time':
-        return { raw_score: -totalSecs, score_label: `${varPrefix}${timeStr}` }
-
-      case 'hold':
-        return { raw_score: totalSecs + tierBonus, score_label: `${varPrefix}${timeStr}` }
-
-      case 'distance': {
-        const val = parseFloat(distanceVal) || 0
-        const raw_score = distanceUnit === 'm' ? Math.round(val * 100) : Math.round(val)
-        return { raw_score, score_label: `${distanceVal}${distanceUnit}` }
-      }
-
-      case 'flexibility': {
-        const blocks = parseInt(distanceVal) || 0
-        const holdSecs = totalSecs
-        let label = blocks === 0 ? '0 blocks (floor)' : `${blocks} block${blocks !== 1 ? 's' : ''}`
-        if (holdSecs > 0) label += ` · ${timeStr} hold`
-        return { raw_score: -blocks, score_label: label }
-      }
-
-      case 'sport': {
-        const raw_score = sportResult === 'win' ? 2 : sportResult === 'draw' ? 1 : 0
-        let label = sportResult ? sportResult.charAt(0).toUpperCase() + sportResult.slice(1) : ''
-        if (opponentName) label += ` vs ${opponentName}`
-        if (sportScore) label += ` (${sportScore})`
-        return { raw_score, score_label: label }
-      }
-
-      case 'sprint': {
-        const s = parseFloat(timeSecs) || 0
-        const cs = parseInt(sprintCs) || 0
-        const totalCs = Math.round(s * 100) + cs
-        const label = `${s.toFixed(0)}s${cs > 0 ? `.${cs.toString().padStart(2, '0')}` : ''}`
-        return { raw_score: -totalCs, score_label: label }
-      }
-
-      case 'weight+time':
-        return { raw_score: -totalSecs, score_label: `${weightKg}kg · ${timeStr}` }
-
-      case 'distance+time': {
-        const val = parseFloat(distanceVal) || 0
-        const raw_score = distanceUnit === 'm' ? Math.round(val * 100) : Math.round(val)
-        const parts = [`${distanceVal}${distanceUnit}`]
-        if (totalSecs > 0) parts.push(timeStr)
-        return { raw_score, score_label: parts.join(' · ') }
-      }
-
-      default:
-        return { raw_score: 0, score_label: '' }
-    }
-  }
-
-  // ── Submit ─────────────────────────────────────────────────────────────────
-  const handleSubmit = async () => {
-    const submittingAs = activePlayer || player
-    if (!submittingAs) { setError('You must be logged in to submit a score'); return }
-    if (sessionEnded) { setError('Session has ended — scores are locked'); return }
-    if (preSessionSecsLeft !== null) { setError('Session has not started yet'); return }
-    if (!selectedEvent || !isScoreValid()) return
-    setSubmitting(true); setError('')
-    try {
-      const { raw_score, score_label, adjusted_score } = computeScore()
-      const totalSecs = (parseFloat(timeMins) || 0) * 60 + (parseFloat(timeSecs) || 0)
-      const m = effectiveMode!
-
-      const payload: Record<string, any> = {
-        session_id: sessionId,
-        event_id: selectedEvent.id,
-        player_name: submittingAs.display_name || submittingAs.username || submittingAs.full_name,
-        player_id: submittingAs.id,
-        raw_score,
-        score_label,
-      }
-
-      if (adjusted_score != null) payload.adjusted_score = adjusted_score
-      if (difficultyTier) payload.difficulty_tier = difficultyTier
-      if (disadvantageType) { payload.disadvantage_type = disadvantageType; payload.disadvantage_option = disadvantageOption || null }
-      if (exerciseVariation) payload.exercise_variation = exerciseVariation
-
-      if (m === 'strength') {
-        payload.weight_kg = parseFloat(weightKg) || 0
-        if (repCount) payload.reps = parseInt(repCount)
-      }
-      if (m === 'reps') payload.reps = parseInt(repCount) || 0
-      if (['time', 'hold', 'weight+time', 'distance+time', 'flexibility'].includes(m) && totalSecs > 0) {
-        payload.time_seconds = totalSecs
-      }
-      if (m === 'sprint') {
-        const s = parseFloat(timeSecs) || 0
-        const cs = parseInt(sprintCs) || 0
-        payload.time_seconds = s + cs / 100
-      }
-      if (m === 'weight+time') payload.weight_kg = parseFloat(weightKg) || 0
-      if (m === 'sport') {
-        payload.result_type = sportResult
-        if (sportScore) payload.match_score = sportScore
-        if (opponentName) payload.opponent_name = opponentName
-
-        // Conflict check: does opponent's existing result contradict ours?
-        if (opponentName) {
-          const theirResult = results.find(r =>
-            r.event_id === selectedEvent.id && r.player_name === opponentName
-          )
-          if (theirResult?.result_type) {
-            const mine = sportResult
-            const theirs = theirResult.result_type
-            const conflict =
-              (mine === 'win' && theirs === 'win') ||
-              (mine === 'loss' && theirs === 'loss') ||
-              (mine === 'draw' && theirs !== 'draw')
-            if (conflict) {
-              setError(`⚠ Score conflict: ${opponentName} recorded a "${theirs}" for this match. Check with your judge.`)
-              setSubmitting(false)
-              return
-            }
-          }
-        }
-      }
-
-      const { error: err } = await supabase.from('results').upsert(payload, {
-        onConflict: 'player_id,session_id,event_id',
-      })
-      if (err) throw err
-
-      // Always re-fetch results — don't rely solely on realtime,
-      // which won't fire an INSERT event for upserts that resolve as UPDATE.
-      const { data: freshResults } = await supabase.from('results').select('*').eq('session_id', sessionId)
-      if (freshResults) setResults(freshResults)
-
-      clearInputs(); setSelectedEvent(null)
-      setSubmitSuccess(true)
-      setTimeout(() => setSubmitSuccess(false), 3000)
-    } catch (e: any) {
-      setError(e.message)
-    }
-    setSubmitting(false)
-  }
-
-  // ── Judge score management ─────────────────────────────────────────────────
-  const isJudge = player?.role === 'judge'
-
-  const openJudgeEdit = (r: Result) => {
-    setJudgeEdit(r)
-    setJudgeEditLabel(r.score_label)
-    setJudgeEditRaw(String(r.raw_score))
-    setJudgeDeleteId(null)
-  }
-
-  const handleJudgeSave = async () => {
-    if (!judgeEdit) return
-    setJudgeSaving(true)
-    const { error } = await supabase.from('results').update({
-      score_label: judgeEditLabel,
-      raw_score: parseFloat(judgeEditRaw) || 0,
-      adjusted_score: null,
-    }).eq('id', judgeEdit.id)
-    if (!error) {
-      const { data: fresh } = await supabase.from('results').select('*').eq('session_id', sessionId)
-      if (fresh) setResults(fresh)
-      setJudgeEdit(null)
-    }
-    setJudgeSaving(false)
-  }
-
-  const handleJudgeDelete = async (resultId: string) => {
-    if (judgeDeleteId !== resultId) {
-      setJudgeDeleteId(resultId)
-      setTimeout(() => setJudgeDeleteId(d => d === resultId ? null : d), 3000)
-      return
-    }
-    setJudgeSaving(true)
-    await supabase.from('results').delete().eq('id', resultId)
-    const { data: fresh } = await supabase.from('results').select('*').eq('session_id', sessionId)
-    if (fresh) setResults(fresh)
-    setJudgeDeleteId(null)
-    setJudgeSaving(false)
-  }
-
-  const saveBodyweight = async () => {
-    const target = activePlayer || player
-    const bwVal = bodyweights[target?.id]
-    if (!target || !bwVal) return
-    await supabase.from('players').update({ bodyweight_kg: parseFloat(bwVal) }).eq('id', target.id)
-    setBodyweightSaved(true); setTimeout(() => setBodyweightSaved(false), 2000)
-  }
-
   // ── Derived ────────────────────────────────────────────────────────────────
-  // Filter results by division for the non-overall tabs
-  const DIVISION_MAP: Record<DivisionTab, string | null> = {
-    overall: null,
-    mens: "Men's",
-    womens: "Women's",
-    juniors: 'Juniors',
-  }
-  const divisionFilter = DIVISION_MAP[divisionTab]
-
-  function resultsForDivision(divFilter: string | null): Result[] {
-    if (!divFilter) return results
-    return results.filter(r => {
-      if (!r.player_id) return false
-      const info = playerDivisions[r.player_id]
-      return info?.division === divFilter
-    })
-  }
-
-  const standings = divisionTab === 'overall'
-    ? calcOverallPlacements(results, events, playerDivisions)
-    : calcPlacements(resultsForDivision(divisionFilter), events)
-  const RANK_COLOURS = ['#F9B051', '#aaa', '#CD7F32', '#2371BB', '#4DB26E']
   const timerColour = preSessionSecsLeft !== null
-    ? '#B87DB5'   // purple = waiting to start
+    ? '#B87DB5'
     : timeLeft !== null
       ? timeLeft < 600 ? '#EA4742' : timeLeft < 1800 ? '#F9B051' : '#4DB26E'
       : '#4DB26E'
 
-  type EventScore = (Result & { placement: number }) | { id: string; player_name: string; player_id: string | null; placement: number; noScore: true }
+  const timerDisplay = sessionEnded
+    ? 'ENDED'
+    : preSessionSecsLeft !== null
+      ? fmtCountdown(preSessionSecsLeft)
+      : timeLeft !== null
+        ? fmtCountdown(timeLeft)
+        : '--:--'
 
-  function getEventScores(eventId: string): EventScore[] {
-    const withScore = results
-      .filter(r => r.event_id === eventId)
-      .sort((a, b) => effectiveScore(b) - effectiveScore(a))
-      .map((r, idx, arr) => {
-        let placement = idx + 1
-        if (idx > 0 && effectiveScore(r) === effectiveScore(arr[idx - 1])) {
-          placement = arr.findIndex(x => effectiveScore(x) === effectiveScore(r)) + 1
-        }
-        return { ...r, placement, noScore: false as const }
-      })
-
-    // All players who've joined the session
-    const playerMap = new Map<string, string | null>()
-    results.forEach(r => { if (!playerMap.has(r.player_name)) playerMap.set(r.player_name, r.player_id) })
-    const playersWithScore = new Set(withScore.map(r => r.player_name))
-    const lastPlace = withScore.length + 1
-
-    const noScorePlayers: EventScore[] = [...playerMap.entries()]
-      .filter(([name]) => !playersWithScore.has(name))
-      .map(([name, pid]) => ({ id: `no-score-${pid || name}`, player_name: name, player_id: pid, placement: lastPlace, noScore: true as const }))
-
-    return [...withScore, ...noScorePlayers]
-  }
-
-  // ── Style helpers ──────────────────────────────────────────────────────────
-  const unitBtn = (unit: 'm' | 'cm'): React.CSSProperties => ({
-    padding: '10px 18px', border: 'none', borderRadius: '6px', cursor: 'pointer',
-    fontWeight: 'bold', fontSize: '14px',
-    background: distanceUnit === unit ? '#2371BB' : '#1a1a1a',
-    color: distanceUnit === unit ? '#fff' : '#666',
-  })
-
-  const sportBtn = (val: 'win' | 'draw' | 'loss'): React.CSSProperties => {
-    const colours = { win: '#4DB26E', draw: '#F9B051', loss: '#EA4742' }
-    const active = sportResult === val
-    return {
-      flex: 1, padding: '16px', border: `2px solid ${active ? colours[val] : '#222'}`,
-      borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px',
-      background: active ? colours[val] + '22' : '#111',
-      color: active ? colours[val] : '#444',
-    }
-  }
+  const sessionCode = (session as Record<string, unknown> | null)?.session_code as string | undefined
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div style={{ minHeight: '100vh', background: '#0a0a0a', color: '#fff', maxWidth: '600px', margin: '0 auto', fontFamily: 'sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: '#0a0a0a', color: '#fff', maxWidth: '640px', margin: '0 auto', fontFamily: 'Barlow, sans-serif' }}>
 
-      {/* ── Judge edit modal ── */}
-      {judgeEdit && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
-          <div style={{ background: '#111', border: '1px solid #2371BB', borderRadius: '14px', padding: '24px', width: '100%', maxWidth: '400px' }}>
-            <div style={{ fontSize: '11px', color: '#555', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '4px' }}>Judge Edit</div>
-            <div style={{ fontWeight: 'bold', fontSize: '16px', marginBottom: '4px' }}>{judgeEdit.player_name}</div>
-            <div style={{ fontSize: '12px', color: '#555', marginBottom: '20px' }}>
-              {events.find(e => e.id === judgeEdit.event_id)?.event_name}
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div>
-                <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>SCORE LABEL</label>
-                <input
-                  value={judgeEditLabel}
-                  onChange={e => setJudgeEditLabel(e.target.value)}
-                  style={{ width: '100%', background: '#0d0d0d', border: '1px solid #2a2a2a', borderRadius: '8px', padding: '12px', color: '#fff', fontSize: '16px', boxSizing: 'border-box' as const }}
-                />
-              </div>
-              <div>
-                <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>RAW SCORE (used for ranking)</label>
-                <input
-                  type="number"
-                  value={judgeEditRaw}
-                  onChange={e => setJudgeEditRaw(e.target.value)}
-                  style={{ width: '100%', background: '#0d0d0d', border: '1px solid #2a2a2a', borderRadius: '8px', padding: '12px', color: '#fff', fontSize: '16px', boxSizing: 'border-box' as const }}
-                />
-                <div style={{ fontSize: '11px', color: '#444', marginTop: '4px' }}>Note: time events use negative values, faster = more negative</div>
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-              <button onClick={() => setJudgeEdit(null)} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid #333', background: 'transparent', color: '#888', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold' }}>
-                Cancel
-              </button>
-              <button onClick={handleJudgeSave} disabled={judgeSaving} style={{ flex: 2, padding: '12px', borderRadius: '8px', border: 'none', background: '#2371BB', color: '#fff', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold', opacity: judgeSaving ? 0.6 : 1 }}>
-                {judgeSaving ? 'Saving...' : 'Save Changes'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Header */}
-      <div style={{ background: '#2371BB', padding: '14px 20px' }}>
+      {/* Top bar */}
+      <div style={{ background: '#2371BB', padding: '12px 16px', position: 'sticky', top: 0, zIndex: 10 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.7)', marginBottom: '2px' }}>
-              {session?.is_championship ? '🏆 CHAMPIONSHIP' : 'LIVE SESSION'} · {session?.location}
+            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+              {sessionEnded ? 'SESSION ENDED' : preSessionSecsLeft !== null ? 'STARTING SOON' : 'LIVE SESSION'}
             </div>
-            <div style={{ fontSize: '18px', fontWeight: 'bold' }}>AllSport Scoring</div>
+            <div style={{ fontSize: '18px', fontWeight: 700, fontFamily: 'Bebas Neue, cursive', letterSpacing: '0.05em' }}>
+              AllSport
+            </div>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: '24px', fontWeight: 'bold', color: timerColour, fontVariantNumeric: 'tabular-nums' }}>
-              {sessionEnded ? 'ENDED' : preSessionSecsLeft !== null ? fmtCountdown(preSessionSecsLeft) : timeLeft !== null ? fmtCountdown(timeLeft) : '--:--'}
+            <div style={{ fontSize: '28px', fontWeight: 700, color: timerColour, fontVariantNumeric: 'tabular-nums', fontFamily: 'Bebas Neue, cursive' }}>
+              {timerDisplay}
             </div>
-            <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)' }}>
-              {preSessionSecsLeft !== null ? 'until start' : 'remaining'}
-            </div>
+            {sessionCode && (
+              <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)', letterSpacing: '4px' }}>{sessionCode}</div>
+            )}
           </div>
         </div>
-        {session?.session_code && (
-          <div style={{ marginTop: '12px', background: 'rgba(0,0,0,0.3)', borderRadius: '8px', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)' }}>SESSION CODE</div>
-            <div style={{ fontSize: '22px', fontWeight: 'bold', letterSpacing: '6px' }}>{session.session_code}</div>
-          </div>
-        )}
       </div>
 
-      {sessionEnded && (
-        <div style={{ background: '#2e0d0d', border: '1px solid #EA4742', padding: '14px 20px', textAlign: 'center' }}>
-          <div style={{ color: '#EA4742', fontWeight: 'bold', fontSize: '15px' }}>⏱ Session Ended</div>
-          <div style={{ color: '#888', fontSize: '12px', marginTop: '4px' }}>Score submission is locked</div>
-          <a href="/dashboard" style={{ display: 'inline-block', marginTop: '10px', color: '#2371BB', fontSize: '13px', textDecoration: 'none', fontWeight: 'bold' }}>← Back to Dashboard</a>
-        </div>
-      )}
+      <div style={{ height: '3px', background: 'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)' }} />
 
-      <div style={{ height: '4px', background: 'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)' }} />
-
-      {/* Tabs */}
-      <div style={{ display: 'flex', borderBottom: '1px solid #222' }}>
-        {(['leaderboard', 'submit'] as const).map(tab => (
-          <button key={tab} onClick={() => setActiveTab(tab)} style={{
-            flex: 1, padding: '14px', border: 'none', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold',
-            background: activeTab === tab ? '#111' : '#0a0a0a',
-            color: activeTab === tab ? '#2371BB' : '#555',
-            borderBottom: activeTab === tab ? '2px solid #2371BB' : '2px solid transparent',
+      {/* Tab bar */}
+      <div style={{ display: 'flex', borderBottom: '1px solid #1e1e1e', overflowX: 'auto', background: '#0a0a0a', position: 'sticky', top: '60px', zIndex: 9 }}>
+        {allPlayers.map(p => {
+          const pid = p.id as string
+          const label = (p.display_name || p.username || p.full_name) as string
+          const tabId = `player-${pid}`
+          const active = activeTab === tabId
+          return (
+            <button key={pid} onClick={() => { setActiveTab(tabId); setActivePlayerId(pid); setExpandedEventId(null) }}
+              style={{
+                padding: '12px 16px', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
+                fontSize: '13px', fontWeight: active ? 700 : 400, flexShrink: 0,
+                background: active ? '#111' : 'transparent',
+                color: active ? '#fff' : '#555',
+                borderBottom: `2px solid ${active ? '#2371BB' : 'transparent'}`,
+              }}>
+              {label}
+            </button>
+          )
+        })}
+        <button onClick={() => setActiveTab('leaderboard')}
+          style={{
+            padding: '12px 16px', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
+            fontSize: '13px', fontWeight: activeTab === 'leaderboard' ? 700 : 400, flexShrink: 0,
+            background: activeTab === 'leaderboard' ? '#111' : 'transparent',
+            color: activeTab === 'leaderboard' ? '#fff' : '#555',
+            borderBottom: `2px solid ${activeTab === 'leaderboard' ? '#2371BB' : 'transparent'}`,
           }}>
-            {tab === 'leaderboard' ? '📊 Leaderboard' : '➕ Submit Score'}
-          </button>
-        ))}
+          Leaderboard
+        </button>
       </div>
 
-      {/* ── LEADERBOARD TAB ────────────────────────────────────────────────── */}
-      {activeTab === 'leaderboard' && (
-        <div style={{ padding: '16px' }}>
-
-          {/* Division tabs */}
-          <div style={{ display: 'flex', gap: '6px', marginBottom: '16px' }}>
-            {([
-              { key: 'overall', label: '🌐 All-Divisions' },
-              { key: 'mens',    label: "Men's" },
-              { key: 'womens',  label: "Women's" },
-              { key: 'juniors', label: 'Juniors' },
-            ] as { key: DivisionTab; label: string }[]).map(({ key, label }) => {
-              const active = divisionTab === key
-              return (
-                <button key={key} onClick={() => setDivisionTab(key)} style={{
-                  flex: 1, padding: '8px 4px', border: `1px solid ${active ? '#2371BB' : '#222'}`,
-                  borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: active ? 700 : 400,
-                  background: active ? '#0d1a2e' : '#111',
-                  color: active ? '#2371BB' : '#555',
-                }}>
-                  {label}
-                </button>
-              )
-            })}
-          </div>
-
-          {divisionTab === 'overall' && (
-            <div style={{ fontSize: '11px', color: '#555', marginBottom: '10px', textAlign: 'center' }}>
-              Multipliers applied: Women's & Juniors ×1.2 · Masters Men ×1.2 · Masters Women ×1.4
-            </div>
-          )}
-
-          {standings.length === 0 ? (
-            <div style={{ textAlign: 'center', color: '#555', padding: '48px 0' }}>
-              <div style={{ fontSize: '32px', marginBottom: '12px' }}>🏁</div>
-              <div>{divisionTab === 'overall' ? 'No scores yet — be the first to submit!' : `No ${DIVISION_MAP[divisionTab]} scores yet`}</div>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>
-              {standings.map((s, idx) => {
-                const divInfo = s.player_id ? playerDivisions[s.player_id] : null
-                const divLabel = divInfo?.division ?? null
-                const divColour = divLabel === "Women's" ? '#F397C0' : divLabel === 'Juniors' ? '#F9B051' : '#2371BB'
-                return (
-                  <div key={s.player_name} style={{
-                    background: '#111', borderRadius: '10px', padding: '14px 16px',
-                    border: `1px solid ${idx === 0 ? '#F9B051' : '#1e1e1e'}`,
-                    display: 'flex', alignItems: 'center', gap: '14px',
-                  }}>
-                    <div style={{
-                      width: '32px', height: '32px', borderRadius: '50%', flexShrink: 0,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontWeight: 'bold', fontSize: '14px',
-                      background: RANK_COLOURS[idx] || '#333', color: idx < 3 ? '#000' : '#fff',
-                    }}>{idx + 1}</div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 'bold', fontSize: '15px' }}>{s.player_name}</div>
-                      <div style={{ fontSize: '12px', color: '#555', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span>{s.events_done} event{s.events_done !== 1 ? 's' : ''} done</span>
-                        {divisionTab === 'overall' && divLabel && (
-                          <span style={{ color: divColour, fontSize: '11px', background: divColour + '22', padding: '1px 6px', borderRadius: '4px' }}>{divLabel}</span>
-                        )}
-                      </div>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '20px', fontWeight: 'bold', color: idx === 0 ? '#F9B051' : '#fff' }}>{s.total_placement}</div>
-                      <div style={{ fontSize: '11px', color: '#555' }}>{divisionTab === 'overall' ? 'adj. pts' : 'placement pts'}</div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-
-          {/* Events list */}
-          <div>
-            <div style={{ fontSize: '12px', color: '#555', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '1px' }}>Today's Events</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              {events.map(event => {
-                const scores = getEventScores(event.id)
-                const leader = (scores.find(s => !('noScore' in s)) ?? null) as (typeof scores[0] & { score_label: string }) | null
-                const isExpanded = expandedEventId === event.id
-                return (
-                  <div key={event.id} style={{ background: '#111', borderRadius: '8px', overflow: 'hidden', border: `1px solid ${isExpanded ? '#2371BB' : '#1e1e1e'}` }}>
-                    <button
-                      onClick={() => setExpandedEventId(isExpanded ? null : event.id)}
-                      style={{ width: '100%', background: 'transparent', border: 'none', cursor: 'pointer', padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}
-                    >
-                      <div style={{ textAlign: 'left', flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#fff' }}>
-                          {event.event_name}
-                          {(() => { const ev = getEventByName(event.event_name); return ev?.hasDifficultyTiers && ev.difficultyTiers ? <span style={{ marginLeft: '6px', fontSize: '10px', color: '#B87DB5', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700 }}>D1–D{ev.difficultyTiers.length}</span> : null })()}
-                        </div>
-                        <div style={{ fontSize: '11px', color: '#555', marginTop: '1px' }}>{event.domain_name}</div>
-                      </div>
-                      {leader ? (
-                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                          <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#F9B051' }}>{leader.player_name}</div>
-                          <div style={{ fontSize: '11px', color: '#4DB26E' }}>{leader.score_label} · {scores.length} score{scores.length !== 1 ? 's' : ''}</div>
-                        </div>
-                      ) : (
-                        <div style={{ fontSize: '11px', color: '#444' }}>No scores yet</div>
-                      )}
-                      <div style={{ color: '#333', fontSize: '12px', flexShrink: 0, marginLeft: '4px' }}>{isExpanded ? '▲' : '▼'}</div>
-                    </button>
-                    {isExpanded && (
-                      <div style={{ borderTop: '1px solid #1e1e1e' }}>
-                        {scores.length === 0 ? (
-                          <div style={{ padding: '12px 14px', color: '#444', fontSize: '12px' }}>No scores yet.</div>
-                        ) : scores.map((r, idx) => {
-                          const isNoScore = (r as any).noScore === true
-                          return (
-                            <div key={r.id} style={{
-                              display: 'flex', alignItems: 'center', gap: '10px',
-                              padding: '10px 14px',
-                              borderBottom: idx < scores.length - 1 ? '1px solid #1a1a1a' : 'none',
-                              background: idx === 0 && !isNoScore ? '#0d1a0d' : 'transparent',
-                              opacity: isNoScore ? 0.5 : 1,
-                            }}>
-                              <div style={{
-                                width: '24px', height: '24px', borderRadius: '50%', flexShrink: 0,
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                fontSize: '11px', fontWeight: 'bold',
-                                background: isNoScore ? '#222' : (RANK_COLOURS[idx] || '#222'),
-                                color: (!isNoScore && idx < 3) ? '#000' : '#fff',
-                              }}>{r.placement}</div>
-                              <div style={{ flex: 1, fontSize: '13px', color: idx === 0 && !isNoScore ? '#fff' : '#aaa', fontWeight: idx === 0 && !isNoScore ? 'bold' : 'normal' }}>{r.player_name}</div>
-                              {isNoScore ? (
-                                <div style={{ fontSize: '12px', color: '#555', fontStyle: 'italic' }}>No score — last place</div>
-                              ) : (
-                                <>
-                                  <div style={{ fontSize: '13px', fontWeight: 'bold', color: idx === 0 ? '#F9B051' : '#666' }}>
-                                    {(r as Result).score_label}
-                                    {(r as Result).difficulty_tier && (
-                                      <span style={{ fontSize: '10px', color: '#B87DB5', marginLeft: '4px', background: '#B87DB522', padding: '1px 5px', borderRadius: '3px' }}>
-                                        {(r as Result).difficulty_tier}
-                                      </span>
-                                    )}
-                                    {(r as Result).disadvantage_type && (
-                                      <span
-                                        title={(r as Result).disadvantage_option || ''}
-                                        style={{ fontSize: '10px', color: '#F9B051', marginLeft: '4px', background: '#F9B05122', padding: '1px 5px', borderRadius: '3px', cursor: 'help' }}
-                                      >
-                                        {(r as Result).disadvantage_type === 'small' ? 'S' : 'L'}
-                                      </span>
-                                    )}
-                                  </div>
-                                  {isJudge && (
-                                    <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-                                      <button
-                                        onClick={() => openJudgeEdit(r as Result)}
-                                        title="Edit score"
-                                        style={{ padding: '4px 8px', borderRadius: '5px', border: '1px solid #2371BB44', background: '#2371BB11', color: '#2371BB', cursor: 'pointer', fontSize: '12px', lineHeight: 1 }}
-                                      >
-                                        ✏️
-                                      </button>
-                                      <button
-                                        onClick={() => handleJudgeDelete((r as Result).id)}
-                                        disabled={judgeSaving}
-                                        title={judgeDeleteId === (r as Result).id ? 'Tap again to confirm' : 'Delete score'}
-                                        style={{ padding: '4px 8px', borderRadius: '5px', border: `1px solid ${judgeDeleteId === (r as Result).id ? '#EA4742' : '#EA474244'}`, background: judgeDeleteId === (r as Result).id ? '#EA474222' : '#EA474211', color: '#EA4742', cursor: 'pointer', fontSize: '12px', lineHeight: 1, transition: 'all 0.15s' }}
-                                      >
-                                        {judgeDeleteId === (r as Result).id ? '⚠️' : '🗑'}
-                                      </button>
-                                    </div>
-                                  )}
-                                </>
-                              )}
-                            </div>
-                          )
-                        })}
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── SUBMIT TAB ─────────────────────────────────────────────────────── */}
-      {activeTab === 'submit' && (
-        <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-
-          {authLoading ? (
-            <div style={{ textAlign: 'center', padding: '40px', color: '#555' }}>Loading...</div>
-          ) : !player ? (
-            <div style={{ background: '#1a1a2e', border: '1px solid #2371BB', borderRadius: '10px', padding: '24px', textAlign: 'center' }}>
-              <div style={{ fontSize: '24px', marginBottom: '12px' }}>🔒</div>
-              <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>Login required</div>
-              <div style={{ color: '#555', fontSize: '13px', marginBottom: '16px' }}>You need an AllSport account to submit scores</div>
-              <a href="/play" style={{ background: '#2371BB', color: '#fff', padding: '10px 24px', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', fontSize: '14px' }}>Log In →</a>
-            </div>
-          ) : sessionEnded ? (
-            <div style={{ background: '#2e0d0d', border: '1px solid #EA4742', borderRadius: '10px', padding: '24px', textAlign: 'center' }}>
-              <div style={{ fontSize: '24px', marginBottom: '12px' }}>⏱</div>
-              <div style={{ fontWeight: 'bold', color: '#EA4742' }}>Session has ended</div>
-              <div style={{ color: '#555', fontSize: '13px', marginTop: '8px' }}>Score submission is locked</div>
-            </div>
-          ) : (
-            <>
-              {submitSuccess && (
-                <div style={{ background: '#0d2e1a', border: '1px solid #4DB26E', borderRadius: '8px', padding: '12px 16px', color: '#4DB26E', fontSize: '14px' }}>
-                  ✓ Score submitted!
-                </div>
-              )}
-
-              {/* Submitting as — family switcher */}
-              <div style={{ background: '#111', borderRadius: '10px', padding: '12px 14px' }}>
-                <div style={{ fontSize: '10px', color: '#444', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '8px' }}>
-                  Submitting as
-                </div>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  {[player, ...familyMembers].filter(Boolean).map((p: any) => {
-                    const isActive = (activePlayer || player)?.id === p.id
-                    const name = p.display_name || p.username || p.full_name || '?'
-                    return (
-                      <button
-                        key={p.id}
-                        onClick={() => { setActivePlayer(p); setSelectedEvent(null); clearInputs() }}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: '8px',
-                          padding: '7px 12px', borderRadius: '8px', border: `1px solid ${isActive ? '#2371BB' : '#2a2a2a'}`,
-                          background: isActive ? '#0d1a2e' : 'transparent',
-                          cursor: 'pointer', color: isActive ? '#fff' : '#666',
-                        }}
-                      >
-                        <div style={{
-                          width: '26px', height: '26px', borderRadius: '50%', flexShrink: 0,
-                          background: isActive ? '#2371BB' : '#222',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontWeight: 'bold', fontSize: '12px', color: '#fff',
-                        }}>
-                          {name[0].toUpperCase()}
-                        </div>
-                        <div style={{ textAlign: 'left' }}>
-                          <div style={{ fontSize: '13px', fontWeight: 'bold', whiteSpace: 'nowrap' }}>{name}</div>
-                          <div style={{ fontSize: '10px', color: '#555' }}>{p.division}</div>
-                        </div>
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-
-              {/* Bodyweight — for all players, required for strength events */}
-              <div style={{ background: '#111', borderRadius: '8px', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '12px', color: '#555', flex: 1 }}>Bodyweight</span>
-                <input
-                  type="number"
-                  value={bodyweights[(activePlayer || player)?.id] ?? ''}
-                  onChange={e => {
-                    const id = (activePlayer || player)?.id
-                    if (id) setBodyweights(prev => ({ ...prev, [id]: e.target.value }))
-                  }}
-                  onBlur={saveBodyweight}
-                  placeholder="kg"
-                  style={{ width: '70px', background: '#0d0d0d', border: '1px solid #2a2a2a', borderRadius: '6px', padding: '6px 8px', color: '#fff', fontSize: '14px', fontWeight: 'bold', textAlign: 'center' }}
-                />
-                <span style={{ fontSize: '11px', color: bodyweightSaved ? '#4DB26E' : '#444' }}>
-                  {bodyweightSaved ? '✓ saved' : 'kg'}
-                </span>
-              </div>
-
-              {/* Event selector */}
-              <div>
-                <label style={{ fontSize: '12px', color: '#888', display: 'block', marginBottom: '6px' }}>SELECT EVENT</label>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  {events.map(event => {
-                    const myScore = results.find(r => r.event_id === event.id && r.player_id === (activePlayer || player)?.id)
-                    const isSelected = selectedEvent?.id === event.id
-                    return (
-                      <button key={event.id} onClick={() => setSelectedEvent(isSelected ? null : event)} style={{
-                        padding: '12px 14px', borderRadius: '8px', border: `1px solid ${isSelected ? '#2371BB' : '#1e1e1e'}`,
-                        cursor: 'pointer', textAlign: 'left', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                        background: isSelected ? '#0d1a2e' : '#111', color: isSelected ? '#fff' : '#aaa', fontSize: '13px',
-                      }}>
-                        <div>
-                          <span style={{ fontWeight: 'bold' }}>{event.event_name}</span>
-                          {(() => { const ev = getEventByName(event.event_name); return ev?.hasDifficultyTiers && ev.difficultyTiers ? <span style={{ marginLeft: '6px', fontSize: '10px', color: '#B87DB5', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700 }}>D1–D{ev.difficultyTiers.length}</span> : null })()}
-                          <span style={{ marginLeft: '8px', opacity: 0.5, fontSize: '11px' }}>{event.domain_name}</span>
-                        </div>
-                        {myScore && (
-                          <span style={{ fontSize: '11px', color: '#4DB26E', flexShrink: 0 }}>✓ {myScore.score_label}</span>
-                        )}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-
-              {/* ── Score input panel ── */}
-              {selectedEvent && (
-                <div style={{ background: '#0d0d0d', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  <div style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                    {selectedEvent.domain_name} — {selectedEvent.event_name}
-                  </div>
-
-                  {/* Variation picker */}
-                  {eventConfig?.variations && (
-                    <div>
-                      <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '8px' }}>VARIATION</label>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: eventConfig.freeVariation ? '8px' : '0' }}>
-                        {eventConfig.variations.map(v => {
-                          const active = exerciseVariation === v
-                          const label = v.replace(' / Hold', '').replace(' / Reps', '')
-                          const isHold = v.endsWith('/ Hold')
-                          const isReps = v.endsWith('/ Reps')
-                          const accent = isHold ? '#B87DB5' : isReps ? '#F9B051' : '#2371BB'
-                          return (
-                            <button key={v} onClick={() => setExerciseVariation(active ? '' : v)} style={{
-                              padding: '8px 14px', borderRadius: '6px', border: `1px solid ${active ? accent : '#2a2a2a'}`,
-                              cursor: 'pointer', fontSize: '13px', fontWeight: active ? 'bold' : 'normal',
-                              background: active ? accent + '22' : '#111',
-                              color: active ? accent : '#777',
-                            }}>
-                              {label}
-                              {isHold && <span style={{ fontSize: '10px', marginLeft: '4px', opacity: 0.6 }}>hold</span>}
-                              {isReps && <span style={{ fontSize: '10px', marginLeft: '4px', opacity: 0.6 }}>reps</span>}
-                            </button>
-                          )
-                        })}
-                      </div>
-                      {/* Free-text override — for events like 1 Leg Squat where custom variations are common */}
-                      {eventConfig.freeVariation && (
-                        <input
-                          value={exerciseVariation}
-                          onChange={e => setExerciseVariation(e.target.value)}
-                          placeholder="Or type your own variation..."
-                          style={{ ...inpSm, fontSize: '14px' }}
-                        />
-                      )}
-                    </div>
-                  )}
-
-                  {/* Dynamic mode: prompt to select variation first */}
-                  {rawMode === 'dynamic' && !exerciseVariation && (
-                    <div style={{ color: '#555', fontSize: '13px', textAlign: 'center', padding: '8px 0' }}>
-                      Select a variation above to continue
-                    </div>
-                  )}
-
-                  {/* Difficulty tier selector (Feature 8) */}
-                  {(() => {
-                    const evData = getEventByName(selectedEvent.event_name)
-                    if (!evData?.hasDifficultyTiers || !evData.difficultyTiers) return null
-                    return (
-                      <div>
-                        <label style={{ fontSize: '11px', color: '#B87DB5', display: 'block', marginBottom: '8px', letterSpacing: '1px' }}>DIFFICULTY TIER</label>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                          {evData.difficultyTiers.map(t => {
-                            const active = difficultyTier === t.name
-                            return (
-                              <button key={t.level} onClick={() => setDifficultyTier(active ? '' : t.name)} style={{
-                                padding: '7px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px',
-                                border: `1px solid ${active ? '#B87DB5' : '#2a2a2a'}`,
-                                background: active ? '#B87DB522' : '#111',
-                                color: active ? '#B87DB5' : '#777', fontWeight: active ? 'bold' : 'normal',
-                              }}>
-                                D{t.level} — {t.name}
-                              </button>
-                            )
-                          })}
-                        </div>
-                        {eventConfig?.tierBasedScoring && !difficultyTier && (
-                          <div style={{ fontSize: '11px', color: '#555', marginTop: '6px' }}>Select a tier to continue</div>
-                        )}
-                      </div>
-                    )
-                  })()}
-
-                  {/* Tier-based scoring: tier already selected above, optionally add time */}
-                  {eventConfig?.tierBasedScoring && difficultyTier && (
-                    <div>
-                      <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>DURATION (seconds — optional)</label>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                        <div>
-                          <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>MINUTES</label>
-                          <input type="number" value={timeMins} onChange={e => setTimeMins(e.target.value)} placeholder="0" style={inp} />
-                        </div>
-                        <div>
-                          <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>SECONDS</label>
-                          <input type="number" value={timeSecs} onChange={e => setTimeSecs(e.target.value)} placeholder="30" style={inp} />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* STRENGTH: weight + reps */}
-                  {!eventConfig?.tierBasedScoring && effectiveMode === 'strength' && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                      <div>
-                        <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>WEIGHT (kg)</label>
-                        <input type="number" value={weightKg} onChange={e => setWeightKg(e.target.value)} placeholder="100" style={inp} />
-                      </div>
-                      <div>
-                        <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>REPS (optional)</label>
-                        <input type="number" value={repCount} onChange={e => setRepCount(e.target.value)} placeholder="5" style={inp} />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* REPS */}
-                  {!eventConfig?.tierBasedScoring && effectiveMode === 'reps' && (
-                    <div>
-                      <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>REPS / COUNT</label>
-                      <input type="number" value={repCount} onChange={e => setRepCount(e.target.value)} placeholder="20" style={{ ...inp, fontSize: '32px' }} />
-                    </div>
-                  )}
-
-                  {/* SPRINT (ss.cs — seconds + centiseconds, lower = better) */}
-                  {!eventConfig?.tierBasedScoring && effectiveMode === 'sprint' && (
-                    <>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                        <div>
-                          <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>SECONDS</label>
-                          <input type="number" value={timeSecs} onChange={e => setTimeSecs(e.target.value)} placeholder="10" style={inp} />
-                        </div>
-                        <div>
-                          <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>CENTISECONDS (00–99)</label>
-                          <input type="number" min="0" max="99" value={sprintCs} onChange={e => setSprintCs(e.target.value)} placeholder="54" style={inp} />
-                        </div>
-                      </div>
-                      <div style={{ fontSize: '11px', color: '#444' }}>e.g. 10s 54cs = 10.54s · Lower = better</div>
-                    </>
-                  )}
-
-                  {/* TIME (lower = better — runs, rows) */}
-                  {!eventConfig?.tierBasedScoring && effectiveMode === 'time' && (
-                    <>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                        <div>
-                          <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>MINUTES</label>
-                          <input type="number" value={timeMins} onChange={e => setTimeMins(e.target.value)} placeholder="4" style={inp} />
-                        </div>
-                        <div>
-                          <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>SECONDS</label>
-                          <input type="number" value={timeSecs} onChange={e => setTimeSecs(e.target.value)} placeholder="30" style={inp} />
-                        </div>
-                      </div>
-                      <div style={{ fontSize: '11px', color: '#444' }}>Lower time = better ranking</div>
-                    </>
-                  )}
-
-                  {/* HOLD (longer = better — L-sit, planche, iron lungs) */}
-                  {!eventConfig?.tierBasedScoring && effectiveMode === 'hold' && (
-                    <>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                        <div>
-                          <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>MINUTES</label>
-                          <input type="number" value={timeMins} onChange={e => setTimeMins(e.target.value)} placeholder="1" style={inp} />
-                        </div>
-                        <div>
-                          <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>SECONDS</label>
-                          <input type="number" value={timeSecs} onChange={e => setTimeSecs(e.target.value)} placeholder="30" style={inp} />
-                        </div>
-                      </div>
-                      <div style={{ fontSize: '11px', color: '#444' }}>Longer hold = better ranking</div>
-                    </>
-                  )}
-
-                  {/* DISTANCE (jumps, throws) */}
-                  {!eventConfig?.tierBasedScoring && effectiveMode === 'distance' && (
-                    <div>
-                      <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>DISTANCE</label>
-                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                        <input type="number" value={distanceVal} onChange={e => setDistanceVal(e.target.value)} placeholder="8.5" style={{ ...inp, flex: 1 }} />
-                        <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-                          <button onClick={() => setDistanceUnit('m')} style={unitBtn('m')}>m</button>
-                          <button onClick={() => setDistanceUnit('cm')} style={unitBtn('cm')}>cm</button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* FLEXIBILITY — blocks (0 = floor = best) + optional hold time */}
-                  {!eventConfig?.tierBasedScoring && effectiveMode === 'flexibility' && (
-                    <>
-                      <div>
-                        <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>BLOCKS FROM FLOOR (0 = touching floor)</label>
-                        <input type="number" min="0" max="20" value={distanceVal} onChange={e => setDistanceVal(e.target.value)}
-                          placeholder="2" style={{ ...inp, fontSize: '32px' }} />
-                        <div style={{ fontSize: '11px', color: '#444', marginTop: '4px' }}>Fewer blocks = better ranking</div>
-                      </div>
-                      <div>
-                        <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>HOLD TIME (optional — min / sec)</label>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                          <input type="number" value={timeMins} onChange={e => setTimeMins(e.target.value)} placeholder="0" style={inpSm} />
-                          <input type="number" value={timeSecs} onChange={e => setTimeSecs(e.target.value)} placeholder="30" style={inpSm} />
-                        </div>
-                      </div>
-                    </>
-                  )}
-
-                  {/* SPORT — opponent + win/draw/loss + score */}
-                  {!eventConfig?.tierBasedScoring && effectiveMode === 'sport' && (() => {
-                    const myName = (activePlayer || player)?.display_name || (activePlayer || player)?.username || (activePlayer || player)?.full_name
-                    const otherPlayers = [...new Set(results.map(r => r.player_name))].filter(n => n !== myName)
-                    return (
-                      <>
-                        {/* Opponent picker */}
-                        <div>
-                          <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '8px' }}>OPPONENT</label>
-                          {otherPlayers.length > 0 && (
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
-                              {otherPlayers.map(name => {
-                                const active = opponentName === name
-                                return (
-                                  <button key={name} onClick={() => setOpponentName(active ? '' : name)} style={{
-                                    padding: '7px 13px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px',
-                                    border: `1px solid ${active ? '#2371BB' : '#2a2a2a'}`,
-                                    background: active ? '#2371BB22' : '#111',
-                                    color: active ? '#2371BB' : '#777', fontWeight: active ? 'bold' : 'normal',
-                                  }}>{name}</button>
-                                )
-                              })}
-                            </div>
-                          )}
-                          <input
-                            value={opponentName}
-                            onChange={e => setOpponentName(e.target.value)}
-                            placeholder={otherPlayers.length > 0 ? 'Or type a name...' : 'Opponent name'}
-                            style={{ ...inpSm, fontSize: '14px' }}
-                          />
-                        </div>
-
-                        {/* Result */}
-                        <div>
-                          <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '8px' }}>RESULT</label>
-                          <div style={{ display: 'flex', gap: '8px' }}>
-                            <button onClick={() => setSportResult('win')} style={sportBtn('win')}>Win</button>
-                            <button onClick={() => setSportResult('draw')} style={sportBtn('draw')}>Draw</button>
-                            <button onClick={() => setSportResult('loss')} style={sportBtn('loss')}>Loss</button>
-                          </div>
-                        </div>
-
-                        {/* Score */}
-                        <div>
-                          <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>SCORE (optional — e.g. 21-15)</label>
-                          <input value={sportScore} onChange={e => setSportScore(e.target.value)} placeholder="21-15" style={{ ...inp, fontSize: '18px' }} />
-                        </div>
-
-                        {/* Conflict notice when opponent already submitted */}
-                        {opponentName && sportResult && (() => {
-                          const their = results.find(r => r.event_id === selectedEvent?.id && r.player_name === opponentName)
-                          if (!their?.result_type) return null
-                          const mine = sportResult
-                          const conflict =
-                            (mine === 'win' && their.result_type === 'win') ||
-                            (mine === 'loss' && their.result_type === 'loss') ||
-                            (mine === 'draw' && their.result_type !== 'draw')
-                          return (
-                            <div style={{
-                              padding: '10px 12px', borderRadius: '8px', fontSize: '12px',
-                              background: conflict ? '#2e0d0d' : '#0d2e1a',
-                              border: `1px solid ${conflict ? '#EA4742' : '#4DB26E'}`,
-                              color: conflict ? '#EA4742' : '#4DB26E',
-                            }}>
-                              {conflict
-                                ? `⚠ Conflict: ${opponentName} recorded a "${their.result_type}" — scores don't match. Check with your judge.`
-                                : `✓ Matches ${opponentName}'s record (${their.result_type})`}
-                            </div>
-                          )
-                        })()}
-                      </>
-                    )
-                  })()}
-
-                  {/* WEIGHT + TIME — 200m Carry */}
-                  {!eventConfig?.tierBasedScoring && effectiveMode === 'weight+time' && (
-                    <>
-                      <div>
-                        <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>WEIGHT CARRIED (kg)</label>
-                        <input type="number" value={weightKg} onChange={e => setWeightKg(e.target.value)} placeholder="50" style={inp} />
-                      </div>
-                      <div>
-                        <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>TIME (min / sec)</label>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                          <input type="number" value={timeMins} onChange={e => setTimeMins(e.target.value)} placeholder="4" style={inp} />
-                          <input type="number" value={timeSecs} onChange={e => setTimeSecs(e.target.value)} placeholder="30" style={inp} />
-                        </div>
-                        <div style={{ fontSize: '11px', color: '#444', marginTop: '4px' }}>Lower time = better ranking</div>
-                      </div>
-                    </>
-                  )}
-
-                  {/* DISTANCE + TIME — Repeat High Jump */}
-                  {!eventConfig?.tierBasedScoring && effectiveMode === 'distance+time' && (
-                    <>
-                      <div>
-                        <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>HEIGHT REACHED</label>
-                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                          <input type="number" value={distanceVal} onChange={e => setDistanceVal(e.target.value)} placeholder="45" style={{ ...inp, flex: 1 }} />
-                          <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-                            <button onClick={() => setDistanceUnit('cm')} style={unitBtn('cm')}>cm</button>
-                            <button onClick={() => setDistanceUnit('m')} style={unitBtn('m')}>m</button>
-                          </div>
-                        </div>
-                        <div style={{ fontSize: '11px', color: '#444', marginTop: '4px' }}>Higher = better ranking</div>
-                      </div>
-                      <div>
-                        <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '6px' }}>TIME FOR 10 JUMPS (optional — min / sec)</label>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                          <input type="number" value={timeMins} onChange={e => setTimeMins(e.target.value)} placeholder="1" style={inpSm} />
-                          <input type="number" value={timeSecs} onChange={e => setTimeSecs(e.target.value)} placeholder="30" style={inpSm} />
-                        </div>
-                      </div>
-                    </>
-                  )}
-
-                  {/* Disadvantage section (Feature 9) */}
-                  {(() => {
-                    const evData = getEventByName(selectedEvent.event_name)
-                    const disadvData = evData?.disadvantage
-                    if (!disadvData) return null
-                    return (
-                      <div style={{ borderTop: '1px solid #1e1e1e', paddingTop: '12px' }}>
-                        <button
-                          onClick={() => setShowDisadvantage(v => !v)}
-                          style={{ background: 'none', border: 'none', color: '#F9B051', cursor: 'pointer', fontSize: '12px', padding: '0', fontWeight: 'bold', letterSpacing: '0.5px' }}
-                        >
-                          {showDisadvantage ? '▼' : '▶'} Disadvantage (optional)
-                        </button>
-                        {showDisadvantage && (
-                          <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                            <div style={{ display: 'flex', gap: '8px' }}>
-                              {(['small', 'large'] as const).map(type => (
-                                <button key={type} onClick={() => { setDisadvantageType(disadvantageType === type ? '' : type); setDisadvantageOption('') }} style={{
-                                  flex: 1, padding: '9px', borderRadius: '7px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold',
-                                  border: `1px solid ${disadvantageType === type ? '#F9B051' : '#2a2a2a'}`,
-                                  background: disadvantageType === type ? '#F9B05122' : '#111',
-                                  color: disadvantageType === type ? '#F9B051' : '#666',
-                                }}>
-                                  {type === 'small' ? 'Small Disadvantage' : 'Large Disadvantage'}
-                                </button>
-                              ))}
-                            </div>
-                            {disadvantageType && (
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                <div style={{ fontSize: '11px', color: '#555' }}>Which option did you take?</div>
-                                {disadvData[disadvantageType].map((opt: string) => (
-                                  <button key={opt} onClick={() => setDisadvantageOption(disadvantageOption === opt ? '' : opt)} style={{
-                                    padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', textAlign: 'left', fontSize: '13px',
-                                    border: `1px solid ${disadvantageOption === opt ? '#F9B051' : '#2a2a2a'}`,
-                                    background: disadvantageOption === opt ? '#F9B05111' : 'transparent',
-                                    color: disadvantageOption === opt ? '#F9B051' : '#888',
-                                  }}>
-                                    {opt}
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })()}
-
-                  {/* Score preview */}
-                  {isScoreValid() && (
-                    <div style={{ background: '#111', borderRadius: '8px', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '12px', color: '#555' }}>Preview</span>
-                      <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#4DB26E' }}>{computeScore().score_label}</span>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {error && <p style={{ color: '#EA4742', fontSize: '13px', margin: 0 }}>{error}</p>}
-
-              <button
-                onClick={handleSubmit}
-                disabled={!selectedEvent || !isScoreValid() || submitting}
-                style={{
-                  padding: '16px', borderRadius: '10px', border: 'none', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer',
-                  background: selectedEvent && isScoreValid() ? '#EA4742' : '#1a1a1a',
-                  color: selectedEvent && isScoreValid() ? '#fff' : '#444',
-                }}
-              >
-                {submitting ? 'Submitting...' : 'Submit Score'}
-              </button>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* ── Post-game popup (Feature 4) ─────────────────────────────────────── */}
-      {showPostGamePopup && player && (() => {
-        const dismissPopup = () => {
-          const key = `dismissed_sessions_${player.id}`
-          const dismissed: string[] = JSON.parse(localStorage.getItem(key) || '[]')
-          dismissed.push(sessionId as string)
-          localStorage.setItem(key, JSON.stringify(dismissed))
-          setShowPostGamePopup(false)
-        }
-
-        const myStanding = standings.find(s => s.player_id === player.id) ?? standings.find(s => s.player_name === (player.display_name || player.username || player.full_name))
-        const totalPlayers = standings.length
-        const myPlacement = myStanding ? standings.indexOf(myStanding) + 1 : null
-
-        // Grade colour data
-        const GRADES = [
-          { name: 'Mā', colour: '#ffffff', textColour: '#000', threshold: 0 },
-          { name: 'Kiwikiwi', colour: '#888888', textColour: '#fff', threshold: 500 },
-          { name: 'Whero', colour: '#EA4742', textColour: '#fff', threshold: 1000 },
-          { name: 'Karaka', colour: '#F9B051', textColour: '#000', threshold: 2000 },
-          { name: 'Kōwhai', colour: '#FFE566', textColour: '#000', threshold: 3000 },
-          { name: 'Kākāriki', colour: '#4DB26E', textColour: '#fff', threshold: 4000 },
-          { name: 'Kahurangi', colour: '#2371BB', textColour: '#fff', threshold: 5000 },
-          { name: 'Poroporo', colour: '#B87DB5', textColour: '#fff', threshold: 6000 },
-          { name: 'Uenuku', colour: 'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)', textColour: '#fff', threshold: 8000 },
-          { name: 'Taniwha', colour: '#000000', textColour: '#fff', threshold: 10000 },
-        ]
-
-        const currentTotal = prevTotalPoints || 0
-        const newTotal = currentTotal + (postGamePoints || 0)
-        const prevGrade = GRADES.reduce((acc, g) => currentTotal >= g.threshold ? g : acc, GRADES[0])
-        const newGrade = GRADES.reduce((acc, g) => newTotal >= g.threshold ? g : acc, GRADES[0])
-        const colourLevelUp = newGrade.threshold > prevGrade.threshold
-
-        const ordSuffix = (n: number) => (n % 100 >= 11 && n % 100 <= 13) ? 'th' : (['th','st','nd','rd'][n % 10] ?? 'th')
+      {/* Player tabs */}
+      {allPlayers.map(p => {
+        const pid = p.id as string
+        const tabId = `player-${pid}`
+        if (activeTab !== tabId) return null
+        const pName = (p.display_name || p.username || p.full_name) as string
+        const myResults = results.filter(r => r.player_id === pid)
+        const myBonuses = bonusCompletions.filter(b => b.player_id === pid)
 
         return (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,10,10,0.95)', zIndex: 300, overflowY: 'auto', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '24px 16px' }}>
-            <div style={{ width: '100%', maxWidth: '460px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-
-              {/* Header */}
-              <div style={{ background: '#111', borderRadius: '14px', padding: '24px', textAlign: 'center', border: '1px solid #2371BB' }}>
-                <div style={{ fontSize: '11px', color: '#2371BB', letterSpacing: '2px', marginBottom: '8px' }}>
-                  {session?.location} · {session?.session_date ? new Date(session.session_date).toLocaleDateString('en-NZ', { day: 'numeric', month: 'long', year: 'numeric' }) : ''}
-                </div>
-                <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '36px', letterSpacing: '2px', color: '#fff', lineHeight: 1 }}>Session Complete</div>
+          <div key={pid} style={{ padding: '16px' }}>
+            {sessionEnded && (
+              <div style={{ background: '#2e0d0d', border: '1px solid #EA4742', borderRadius: '8px', padding: '12px 16px', marginBottom: '16px', textAlign: 'center' }}>
+                <div style={{ color: '#EA4742', fontWeight: 700, fontFamily: 'Bebas Neue, cursive', fontSize: '18px' }}>Session Ended</div>
+                <div style={{ color: '#888', fontSize: '13px', marginTop: '4px' }}>Score submission is locked</div>
               </div>
+            )}
 
-              {/* Placement */}
-              <div style={{ background: '#111', borderRadius: '12px', padding: '20px', border: '1px solid #1e1e1e' }}>
-                <div style={{ fontSize: '12px', color: '#555', marginBottom: '12px', letterSpacing: '1px' }}>YOUR PLACEMENT</div>
-                <div style={{ display: 'flex', gap: '12px' }}>
-                  {myPlacement && (
-                    <div style={{ flex: 1, background: '#0a0a0a', borderRadius: '8px', padding: '14px', textAlign: 'center' }}>
-                      <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '32px', color: '#F9B051' }}>
-                        {myPlacement}{ordSuffix(myPlacement)}
-                      </div>
-                      <div style={{ fontSize: '11px', color: '#555', marginTop: '4px' }}>of {totalPlayers} players (All-Divisions)</div>
-                    </div>
-                  )}
-                </div>
-              </div>
+            {/* 2-column grid of event cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              {events.map(ev => {
+                const myResult = myResults.find(r => r.event_id === ev.id)
+                const evBonuses = myBonuses.filter(b => b.event_id === ev.id)
+                const evData = getEventByName(ev.event_name)
+                const pr = seasonPRs[ev.id] ?? null
 
-              {/* Per-event breakdown */}
-              <div style={{ background: '#111', borderRadius: '12px', padding: '20px', border: '1px solid #1e1e1e' }}>
-                <div style={{ fontSize: '12px', color: '#555', marginBottom: '12px', letterSpacing: '1px' }}>EVENT BREAKDOWN</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  {events.map(ev => {
-                    const myResult = results.find(r => r.event_id === ev.id && r.player_id === player.id)
-                    const eventScores = getEventScores(ev.id)
-                    const myPlace = myStanding?.placements[ev.id]
-                    return (
-                      <div key={ev.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #1a1a1a' }}>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: '13px', color: '#ccc' }}>{ev.event_name}</div>
-                          <div style={{ fontSize: '11px', color: myResult ? '#4DB26E' : '#555', marginTop: '1px' }}>
-                            {myResult ? myResult.score_label : 'No score'}
-                          </div>
-                        </div>
-                        <div style={{ textAlign: 'right', fontSize: '13px', color: myPlace === 1 ? '#F9B051' : '#888', fontWeight: myPlace === 1 ? 'bold' : 'normal' }}>
-                          {myPlace ? `#${myPlace}` : '—'}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-
-              {/* Points earned */}
-              {postGamePoints !== null && (
-                <div style={{ background: '#0d2e1a', borderRadius: '12px', padding: '20px', border: '1px solid #4DB26E', textAlign: 'center' }}>
-                  <div style={{ fontSize: '14px', color: '#4DB26E', marginBottom: '6px' }}>Points Earned This Session</div>
-                  <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '48px', color: '#fff', lineHeight: 1 }}>+{postGamePoints}</div>
-                </div>
-              )}
-
-              {/* Colour level-up moment */}
-              {colourLevelUp && (() => {
-                const isRainbow = newGrade.colour.startsWith('linear')
-                const isTaniwha = newGrade.name === 'Taniwha'
                 return (
-                  <div style={{
-                    borderRadius: '12px', padding: '24px', textAlign: 'center', overflow: 'hidden',
-                    ...(isRainbow ? { backgroundImage: newGrade.colour } : { background: isTaniwha ? '#000' : newGrade.colour }),
-                    border: isTaniwha ? '2px solid #F9B051' : 'none',
-                    animation: 'pulse 2s infinite',
-                  }}>
-                    <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.85} }`}</style>
-                    <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '40px', color: newGrade.textColour, letterSpacing: '2px', lineHeight: 1 }}>
-                      {newGrade.name.toUpperCase()}
-                    </div>
-                    <div style={{ fontSize: '14px', color: newGrade.textColour, opacity: 0.8, marginTop: '8px' }}>
-                      You've reached {newGrade.name}! Keep going.
-                    </div>
-                  </div>
+                  <EventCard
+                    key={ev.id}
+                    se={ev}
+                    eventData={evData}
+                    myResult={myResult}
+                    allResults={results}
+                    allEvents={events}
+                    seasonPR={pr}
+                    bonusCompletions={evBonuses}
+                    playerId={pid}
+                    playerName={pName}
+                    sessionId={sessionId as string}
+                    sessionEnded={sessionEnded}
+                    isExpanded={expandedEventId === ev.id}
+                    onToggle={() => setExpandedEventId(expandedEventId === ev.id ? null : ev.id)}
+                    onScoreSubmitted={async () => { await loadResults(); await loadBonuses() }}
+                  />
                 )
-              })()}
-
-              {/* Close */}
-              <button onClick={dismissPopup} style={{
-                padding: '16px', borderRadius: '10px', border: 'none', background: '#2371BB',
-                color: '#fff', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer',
-              }}>
-                Nice work — close
-              </button>
-
+              })}
             </div>
           </div>
         )
-      })()}
+      })}
+
+      {/* Leaderboard tab */}
+      {activeTab === 'leaderboard' && (
+        <LeaderboardTab events={events} results={results} playerInfoMap={playerInfoMap} />
+      )}
+
+      {/* Not logged in */}
+      {!player && (
+        <div style={{ padding: '48px 24px', textAlign: 'center' }}>
+          <div style={{ color: '#555', marginBottom: '16px' }}>Log in to submit scores</div>
+          <a href="/login" style={{ color: '#2371BB', fontWeight: 700, textDecoration: 'none' }}>Log in →</a>
+        </div>
+      )}
     </div>
   )
 }

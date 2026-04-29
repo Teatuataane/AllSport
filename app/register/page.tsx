@@ -56,11 +56,7 @@ function RegisterInner() {
   const set = (field: string, value: any) =>
     setForm(prev => ({ ...prev, [field]: value }))
 
-  const isJunior = () => {
-    if (!form.date_of_birth) return false
-    const age = Math.floor((Date.now() - new Date(form.date_of_birth).getTime()) / 31557600000)
-    return age < 17
-  }
+  const isYouthOrJunior = form.division === 'Youth' || form.division === 'Juniors'
 
   const handleSubmit = async () => {
     setLoading(true)
@@ -90,7 +86,7 @@ function RegisterInner() {
         phone: form.phone,
         date_of_birth: form.date_of_birth || null,
         username: form.username,
-        division: isJunior() ? 'Juniors' : form.division,
+        division: form.division,
         address: form.address,
         city: form.city,
         region: form.region,
@@ -198,25 +194,6 @@ function RegisterInner() {
             <label style={labelStyle}>PHONE</label>
             <input value={form.phone} onChange={e => set('phone', e.target.value)} style={inputStyle} placeholder="+64 21 000 0000" />
           </div>
-          {isJunior() && (
-            <div style={{ background: '#1a1a2e', border: '1px solid #2371BB', borderRadius: '8px', padding: '16px' }}>
-              <div style={{ color: '#2371BB', fontWeight: 'bold', marginBottom: '12px', fontSize: '14px' }}>Parent / Guardian Details Required</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div>
-                  <label style={labelStyle}>PARENT NAME</label>
-                  <input value={form.parent_name} onChange={e => set('parent_name', e.target.value)} style={inputStyle} />
-                </div>
-                <div>
-                  <label style={labelStyle}>PARENT EMAIL</label>
-                  <input value={form.parent_email} onChange={e => set('parent_email', e.target.value)} style={inputStyle} />
-                </div>
-                <div>
-                  <label style={labelStyle}>PARENT PHONE</label>
-                  <input value={form.parent_phone} onChange={e => set('parent_phone', e.target.value)} style={inputStyle} />
-                </div>
-              </div>
-            </div>
-          )}
           <button
             onClick={() => setStep(2)}
             disabled={!form.full_name || !form.email || !form.password || !form.date_of_birth}
@@ -240,29 +217,40 @@ function RegisterInner() {
             <div>
               <label style={labelStyle}>DATE OF BIRTH</label>
               <input type="date" value={form.date_of_birth} onChange={e => set('date_of_birth', e.target.value)} style={inputStyle} />
-              <div style={{ fontSize: '11px', color: '#555', marginTop: '4px' }}>Used to determine your division (Juniors = under 17)</div>
             </div>
           )}
 
-          {!isJunior() && (
-            <div>
-              <label style={labelStyle}>DIVISION</label>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                {["Men's", "Women's"].map(div => (
-                  <button key={div} onClick={() => set('division', div)} style={{
-                    flex: 1, padding: '12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold',
-                    background: form.division === div ? '#2371BB' : '#111',
-                    color: form.division === div ? '#fff' : '#555',
-                    border: `1px solid ${form.division === div ? '#2371BB' : '#333'}`,
-                  }}>{div}</button>
-                ))}
-              </div>
-              {isJunior() && <div style={{ fontSize: '11px', color: '#555', marginTop: '4px' }}>Automatically set to Juniors based on your date of birth</div>}
+          <div>
+            <label style={labelStyle}>DIVISION</label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              {['Youth', 'Juniors', "Men's", "Women's", 'Masters Men', 'Masters Women', 'Grandmasters Men', 'Grandmasters Women'].map(div => (
+                <button key={div} onClick={() => set('division', div)} style={{
+                  padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px',
+                  background: form.division === div ? '#2371BB' : '#111',
+                  color: form.division === div ? '#fff' : '#555',
+                  border: `1px solid ${form.division === div ? '#2371BB' : '#333'}`,
+                }}>{div}</button>
+              ))}
             </div>
-          )}
-          {isJunior() && (
-            <div style={{ background: '#111', border: '1px solid #333', borderRadius: '8px', padding: '12px 16px', color: '#888', fontSize: '13px' }}>
-              Division: <strong style={{ color: '#4DB26E' }}>Juniors</strong> — set automatically based on your date of birth
+          </div>
+
+          {isYouthOrJunior && (
+            <div style={{ background: '#1a1a2e', border: '1px solid #2371BB', borderRadius: '8px', padding: '16px' }}>
+              <div style={{ color: '#2371BB', fontWeight: 'bold', marginBottom: '12px', fontSize: '14px' }}>Parent / Guardian Details Required</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div>
+                  <label style={labelStyle}>PARENT NAME</label>
+                  <input value={form.parent_name} onChange={e => set('parent_name', e.target.value)} style={inputStyle} />
+                </div>
+                <div>
+                  <label style={labelStyle}>PARENT EMAIL</label>
+                  <input value={form.parent_email} onChange={e => set('parent_email', e.target.value)} style={inputStyle} />
+                </div>
+                <div>
+                  <label style={labelStyle}>PARENT PHONE</label>
+                  <input value={form.parent_phone} onChange={e => set('parent_phone', e.target.value)} style={inputStyle} />
+                </div>
+              </div>
             </div>
           )}
 
@@ -279,8 +267,8 @@ function RegisterInner() {
             <button onClick={() => setStep(1)} style={{ flex: 1, padding: '14px', borderRadius: '8px', border: '1px solid #333', background: 'transparent', color: '#888', cursor: 'pointer', fontWeight: 'bold' }}>← Back</button>
             <button
               onClick={() => setStep(3)}
-              disabled={!form.username || (!isJunior() && !form.division)}
-              style={{ flex: 2, padding: '14px', borderRadius: '8px', border: 'none', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer', background: form.username && (isJunior() || form.division) ? '#2371BB' : '#222', color: form.username && (isJunior() || form.division) ? '#fff' : '#555' }}
+              disabled={!form.username || !form.division}
+              style={{ flex: 2, padding: '14px', borderRadius: '8px', border: 'none', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer', background: form.username && form.division ? '#2371BB' : '#222', color: form.username && form.division ? '#fff' : '#555' }}
             >
               Next →
             </button>
@@ -318,7 +306,7 @@ function RegisterInner() {
 
           <div style={{ background: '#0d1f0d', border: '1px solid #4DB26E', borderRadius: '8px', padding: '12px 16px', fontSize: '13px', color: '#4DB26E' }}>
             You'll appear as: <strong>{form.show_full_name ? form.full_name : form.username || 'your username'}</strong>
-            {form.show_division && <span style={{ color: '#888' }}> · {isJunior() ? 'Juniors' : form.division || 'Division'}</span>}
+            {form.show_division && <span style={{ color: '#888' }}> · {form.division || 'Division'}</span>}
             {form.show_location && form.city && <span style={{ color: '#888' }}> · {form.city}</span>}
           </div>
 

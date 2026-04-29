@@ -31,9 +31,7 @@ type RankingRow = {
   total_points: number
   total_sessions: number
   average_placement: number | null
-  average_score: number | null
   division: string
-  // Supabase returns joins as array; we always take index 0
   players: { display_name: string | null; username: string | null }[] | { display_name: string | null; username: string | null } | null
 }
 
@@ -61,9 +59,15 @@ function getGrade(points: number): { name: string; color: string } {
 }
 
 const DIVISION_MAP: Record<string, string> = {
-  men: "Men's",
-  women: "Women's",
+  'all-divisions': '',
+  youth: 'Youth',
   juniors: 'Juniors',
+  mens: "Men's",
+  womens: "Women's",
+  'masters-men': 'Masters Men',
+  'masters-women': 'Masters Women',
+  'grandmasters-men': 'Grandmasters Men',
+  'grandmasters-women': 'Grandmasters Women',
 }
 
 const grades = [
@@ -82,9 +86,15 @@ const grades = [
 const medals: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' }
 
 const tabs = [
-  { key: 'men', label: 'Men', color: '#2563eb' },
-  { key: 'women', label: 'Women', color: '#e63946' },
-  { key: 'juniors', label: 'Juniors', color: '#2d9e4f', subtitle: 'Under 16' },
+  { key: 'all-divisions', label: 'All-Divisions', color: '#F9B051' },
+  { key: 'youth', label: 'Youth', color: '#B87DB5' },
+  { key: 'juniors', label: 'Juniors', color: '#2d9e4f' },
+  { key: 'mens', label: "Men's", color: '#2563eb' },
+  { key: 'womens', label: "Women's", color: '#e63946' },
+  { key: 'masters-men', label: 'Masters Men', color: '#4DB26E' },
+  { key: 'masters-women', label: 'Masters Women', color: '#EA4742' },
+  { key: 'grandmasters-men', label: 'Grandmasters Men', color: '#888888' },
+  { key: 'grandmasters-women', label: 'Grandmasters Women', color: '#F397C0' },
 ]
 
 function LeaderboardTable({ data, accentColor, loading }: { data: EnrichedPlayer[]; accentColor: string; loading: boolean }) {
@@ -144,7 +154,7 @@ function LeaderboardTable({ data, accentColor, loading }: { data: EnrichedPlayer
 
       {/* Table header */}
       <div style={{ display: 'grid', gridTemplateColumns: '56px 1fr 90px 110px 110px 160px', gap: '16px', padding: '10px 24px' }}>
-        {['#', 'Player', 'Sessions', 'Avg Place', 'Total Pts', 'Grade'].map(h => (
+        {['#', 'Player', 'Sessions', 'Avg Place', 'Total Pts', 'Colour'].map(h => (
           <div key={h} style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#444444' }}>{h}</div>
         ))}
       </div>
@@ -191,7 +201,7 @@ function computeLeader(results: SessionResult[]): SessionLeader | null {
 }
 
 export default function Leaderboard() {
-  const [activeTab, setActiveTab] = useState('men')
+  const [activeTab, setActiveTab] = useState('all-divisions')
   const [rankings, setRankings] = useState<RankingRow[]>([])
   const [loading, setLoading] = useState(true)
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null)
@@ -202,7 +212,7 @@ export default function Leaderboard() {
     const supabase = createClient()
     supabase
       .from('rankings')
-      .select('id, player_id, total_points, total_sessions, average_placement, average_score, division, players(display_name, username)')
+      .select('id, player_id, total_points, total_sessions, average_placement, division, players(display_name, username)')
       .order('total_points', { ascending: false })
       .then(({ data }) => {
         setRankings(data || [])
@@ -265,21 +275,22 @@ export default function Leaderboard() {
 
   const getTabData = (tabKey: string): EnrichedPlayer[] => {
     const division = DIVISION_MAP[tabKey]
-    return rankings
-      .filter(r => r.division === division)
-      .map((r, i) => {
-        const p = Array.isArray(r.players) ? r.players[0] : r.players
+    const filtered = tabKey === 'all-divisions'
+      ? [...rankings].sort((a, b) => b.total_points - a.total_points)
+      : rankings.filter(r => r.division === division)
+    return filtered.map((r, i) => {
+      const p = Array.isArray(r.players) ? r.players[0] : r.players
       const username = p?.display_name || p?.username || 'Anonymous'
-        const grade = getGrade(r.total_points)
-        return {
-          rank: i + 1,
-          username,
-          sessions: r.total_sessions,
-          avgPlacement: r.average_placement ?? 0,
-          totalPoints: r.total_points,
-          ...grade,
-        }
-      })
+      const grade = getGrade(r.total_points)
+      return {
+        rank: i + 1,
+        username,
+        sessions: r.total_sessions,
+        avgPlacement: r.average_placement ?? 0,
+        totalPoints: r.total_points,
+        ...grade,
+      }
+    })
   }
 
   const activeTabData = tabs.find(t => t.key === activeTab)!
@@ -306,7 +317,7 @@ export default function Leaderboard() {
           </h1>
           <div className="rainbow-line" style={{ width: '80px', marginBottom: '28px' }} />
           <p style={{ color: '#cccccc', fontSize: '20px', maxWidth: '560px', lineHeight: 1.7 }}>
-            Current season standings across three divisions. Points accumulate throughout the year — grades are awarded at year end. Leaderboard resets each January.
+            Current season standings across all divisions. Points accumulate throughout the year — colours are awarded at year end. Leaderboard resets each January.
           </p>
         </div>
       </section>
@@ -362,18 +373,17 @@ export default function Leaderboard() {
       )}
 
       {/* Tabs + table */}
-      <section className="section" style={{ background: '#0d0d0d', borderTop: '3px solid #2563eb' }}>
+      <section className="section" style={{ background: '#0d0d0d', borderTop: `3px solid ${activeTabData.color}` }}>
         <div className="container">
           <div style={{ display: 'flex', gap: '4px', marginBottom: '48px', flexWrap: 'wrap' }}>
             {tabs.map(tab => (
               <button key={tab.key} className={`tab-btn${activeTab === tab.key ? ' active' : ''}`} onClick={() => setActiveTab(tab.key)}
-                style={{ background: activeTab === tab.key ? tab.color : '#0d0d0d', borderColor: activeTab === tab.key ? tab.color : '#1e1e1e', color: activeTab === tab.key ? '#ffffff' : '#555555' }}>
+                style={{ background: activeTab === tab.key ? tab.color : '#0d0d0d', borderColor: activeTab === tab.key ? tab.color : '#1e1e1e', color: activeTab === tab.key ? '#ffffff' : '#555555', fontSize: '16px', padding: '10px 20px' }}>
                 {tab.label}
-                {tab.subtitle && <span style={{ fontSize: '12px', marginLeft: '8px', opacity: 0.7, fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.1em' }}>{tab.subtitle}</span>}
               </button>
             ))}
           </div>
-          <div className="tag">{activeTabData.label} Division</div>
+          <div className="tag">{activeTabData.label}</div>
           <h2 style={{ fontSize: 'clamp(32px, 4vw, 48px)', marginBottom: '32px' }}>
             <span style={{ color: activeTabData.color }}>{activeTabData.label.toUpperCase()}</span> RANKINGS
           </h2>
@@ -385,9 +395,9 @@ export default function Leaderboard() {
       <section className="section" style={{ background: '#0a0a0a' }}>
         <div style={{ height: '3px', background: 'linear-gradient(90deg, #e63946, #f4a226, #f7e03c, #2d9e4f, #2563eb, #9333ea)', marginTop: '-80px', marginBottom: '80px' }} />
         <div className="container">
-          <div className="tag">Grade Thresholds</div>
+          <div className="tag">Colour Thresholds</div>
           <h2 style={{ fontSize: 'clamp(36px, 4vw, 56px)', marginBottom: '8px' }}>
-            GRADE <span style={{ background: 'linear-gradient(90deg, #e63946, #9333ea)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>KEY</span>
+            COLOUR <span style={{ background: 'linear-gradient(90deg, #e63946, #9333ea)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>KEY</span>
           </h2>
           <div className="rainbow-line" style={{ width: '60px', marginBottom: '16px' }} />
           <p style={{ color: '#888888', fontSize: '15px', maxWidth: '560px', marginBottom: '40px', lineHeight: 1.7 }}>

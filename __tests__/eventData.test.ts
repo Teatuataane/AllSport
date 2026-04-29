@@ -6,6 +6,7 @@ import {
   getEventByName,
   getEventsByDomain,
   getDisadvantageOptions,
+  getBonusTargets,
 } from '@/lib/eventData'
 
 // ─── EVENTS array integrity ───────────────────────────────────────────────────
@@ -25,6 +26,13 @@ describe('EVENTS array', () => {
     const names = EVENTS.map(e => e.name)
     const unique = new Set(names)
     expect(unique.size).toBe(names.length)
+  })
+
+  it('every event has a non-empty emoji string', () => {
+    for (const e of EVENTS) {
+      expect(typeof e.emoji).toBe('string')
+      expect(e.emoji.length).toBeGreaterThan(0)
+    }
   })
 
   it('all domainNumbers are between 1 and 10', () => {
@@ -257,57 +265,85 @@ describe('disadvantage multiplier', () => {
   })
 })
 
-// ─── division multiplier logic ────────────────────────────────────────────────
-// Mirrors getMultiplier() in scoring page
+// ─── getBonusTargets ──────────────────────────────────────────────────────────
 
-describe('getMultiplier (division scoring)', () => {
-  function getMultiplier(division: string, dob: string | null): number {
-    const age = dob ? Math.floor((Date.now() - new Date(dob).getTime()) / (365.25 * 24 * 3600 * 1000)) : null
-    if (division === 'Juniors') return 1.2
-    if (division === "Women's") {
-      if (age !== null && age >= 40) return 1.4
-      return 1.2
-    }
-    if (division === "Men's" && age !== null && age >= 40) return 1.2
-    return 1.0
-  }
+describe('getBonusTargets', () => {
+  const deadlift = EVENTS.find(e => e.slug === 'deadlift')!
+  const sprint100 = EVENTS.find(e => e.slug === '100m-sprint')!
+  const lSitHold = EVENTS.find(e => e.slug === 'l-sit-hold')! // domain 3, hold, tiered → flex path
+  const tennis = EVENTS.find(e => e.slug === 'tennis')!
+  const chinupContest = EVENTS.find(e => e.slug === 'chin-up-contest')!
 
-  it("Men's under 40 → 1.0", () => {
-    const dob = new Date()
-    dob.setFullYear(dob.getFullYear() - 30)
-    expect(getMultiplier("Men's", dob.toISOString())).toBe(1.0)
+  it('sport events → 4 targets regardless of PR', () => {
+    const targets = getBonusTargets(tennis, null)
+    expect(targets).toHaveLength(4)
+    expect(targets.every(t => t.inputMode === 'sport')).toBe(true)
+    expect(targets.every(t => t.points === 15)).toBe(true)
+    expect(targets.map(t => t.tier)).toEqual([1, 2, 3, 4])
   })
 
-  it("Men's over 40 (Masters Men) → 1.2", () => {
-    const dob = new Date()
-    dob.setFullYear(dob.getFullYear() - 45)
-    expect(getMultiplier("Men's", dob.toISOString())).toBe(1.2)
+  it('non-sport event with null PR → []', () => {
+    expect(getBonusTargets(deadlift, null)).toEqual([])
+    expect(getBonusTargets(sprint100, null)).toEqual([])
+    expect(getBonusTargets(lSitHold, null)).toEqual([])
   })
 
-  it("Women's under 40 → 1.2", () => {
-    const dob = new Date()
-    dob.setFullYear(dob.getFullYear() - 25)
-    expect(getMultiplier("Women's", dob.toISOString())).toBe(1.2)
+  it('strength event with valid PR → 4 weight targets', () => {
+    const targets = getBonusTargets(deadlift, 100)
+    expect(targets).toHaveLength(4)
+    expect(targets[0].label).toBe('90kg × 3 reps')
+    expect(targets[1].label).toBe('80kg × 5 reps')
+    expect(targets[2].label).toBe('70kg × 8 reps')
+    expect(targets[3].label).toBe('60kg × 12 reps')
+    expect(targets.every(t => t.points === 15)).toBe(true)
+    expect(targets.every(t => t.inputMode === 'strength')).toBe(true)
   })
 
-  it("Women's over 40 (Masters Women) → 1.4", () => {
-    const dob = new Date()
-    dob.setFullYear(dob.getFullYear() - 45)
-    expect(getMultiplier("Women's", dob.toISOString())).toBe(1.4)
+  it('strength event with zero PR → []', () => {
+    expect(getBonusTargets(deadlift, 0)).toEqual([])
   })
 
-  it('Juniors → 1.2 regardless of age', () => {
-    const dob = new Date()
-    dob.setFullYear(dob.getFullYear() - 14)
-    expect(getMultiplier('Juniors', dob.toISOString())).toBe(1.2)
+  it('strength event with NaN string PR → []', () => {
+    expect(getBonusTargets(deadlift, 'bad')).toEqual([])
   })
 
-  it("Men's with null dob → 1.0 (age unknown, no Masters boost)", () => {
-    expect(getMultiplier("Men's", null)).toBe(1.0)
+  it('time/sprint event with valid PR → 4 efforts under time targets', () => {
+    // raw_score for a sprint is stored negative; -6000 = 60 seconds
+    const targets = getBonusTargets(sprint100, -6000)
+    expect(targets).toHaveLength(4)
+    expect(targets[0].tier).toBe(1)
+    expect(targets[0].label).toContain('1 effort')
+    expect(targets[1].label).toContain('2 efforts')
+    expect(targets.every(t => t.points === 15)).toBe(true)
   })
 
-  it('unknown division with null dob → 1.0', () => {
-    expect(getMultiplier('Unknown', null)).toBe(1.0)
+  it('time/sprint event with NaN PR → []', () => {
+    expect(getBonusTargets(sprint100, NaN)).toEqual([])
+  })
+
+  it('flex/tiered-hold event at D5 → 4 targets (hold D5 + 3x below)', () => {
+    const targets = getBonusTargets(lSitHold, 'D5')
+    expect(targets).toHaveLength(4)
+    expect(targets[0].label).toBe('Hold D5 for 1 min')
+    expect(targets[1].label).toBe('Hold D4 for 2 min')
+    expect(targets[2].label).toBe('Hold D4 for 4 min')
+    expect(targets[3].label).toBe('Hold D4 for 6 min')
+  })
+
+  it('flex/tiered-hold event at D1 → 1 target only (no tier below)', () => {
+    const targets = getBonusTargets(lSitHold, 'D1')
+    expect(targets).toHaveLength(1)
+    expect(targets[0].label).toBe('Hold D1 for 1 min')
+  })
+
+  it('flex/tiered-hold event with invalid PR string → []', () => {
+    expect(getBonusTargets(lSitHold, 'invalid')).toEqual([])
+    expect(getBonusTargets(lSitHold, '')).toEqual([])
+  })
+
+  it('reps-mode event with valid PR → [] (fallback, no bonus targets)', () => {
+    // chin-up-contest is domain 3, reps mode, no difficulty tiers — hits fallback
+    expect(getBonusTargets(chinupContest, 20)).toEqual([])
   })
 })
 

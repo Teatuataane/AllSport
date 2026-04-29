@@ -35,6 +35,15 @@ export type EventData = {
   rules: string
   disadvantage: DisadvantageOptions
   videoPlaceholder: boolean
+  emoji: string
+}
+
+export type BonusTarget = {
+  tier: 1 | 2 | 3 | 4
+  label: string
+  detail: string
+  points: 15
+  inputMode: string
 }
 
 const PLACEHOLDER_DISADVANTAGE: DisadvantageOptions = {
@@ -57,6 +66,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '💪',
   },
   {
     slug: 'deadlift',
@@ -72,6 +82,7 @@ export const EVENTS: EventData[] = [
       large: ['Pause at floor + knee + lockout', 'Band resistance added', 'One leg only'],
     },
     videoPlaceholder: true,
+    emoji: '🏋️',
   },
   {
     slug: 'overhead-press',
@@ -84,6 +95,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🏋️',
   },
   {
     slug: 'pause-dips',
@@ -96,6 +108,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '💪',
   },
   {
     slug: 'pause-chin-up',
@@ -108,6 +121,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '💪',
   },
   {
     slug: 'pause-squat',
@@ -120,6 +134,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🏋️',
   },
   {
     slug: 'zercher-deadlift',
@@ -132,6 +147,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🏋️',
   },
   {
     slug: 'hamstring-curl',
@@ -144,6 +160,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🦵',
   },
   {
     slug: 'pause-bench-press',
@@ -156,6 +173,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🏋️',
   },
   {
     slug: 'turkish-get-up',
@@ -168,6 +186,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🏋️',
   },
 
   // ─── Domain 2: Relative Strength ─────────────────────────────────────────────
@@ -190,6 +209,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🦵',
   },
   {
     slug: 'flag',
@@ -211,6 +231,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🚩',
   },
   {
     slug: 'windshield-wipers',
@@ -229,6 +250,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🌀',
   },
   {
     slug: 'toe-lift',
@@ -241,6 +263,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🦶',
   },
   {
     slug: 'planche',
@@ -262,6 +285,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🤸',
   },
   {
     slug: 'back-lever',
@@ -283,6 +307,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🤸',
   },
   {
     slug: 'iron-cross',
@@ -303,6 +328,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '✚',
   },
   {
     slug: 'front-lever',
@@ -323,6 +349,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🤸',
   },
   {
     slug: 'chin-hang',
@@ -343,6 +370,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🧗',
   },
   {
     slug: 'rope-climb',
@@ -362,6 +390,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🪢',
   },
 
   // ─── Domain 3: Muscular Endurance ─────────────────────────────────────────────
@@ -379,6 +408,7 @@ export const EVENTS: EventData[] = [
       large: ['Weighted vest 10kg', 'One arm assist only', 'Towel grip both hands'],
     },
     videoPlaceholder: true,
+    emoji: '💪',
   },
   {
     slug: 'push-up-contest',
@@ -391,6 +421,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '💪',
   },
   {
     slug: 'reverse-hyper',
@@ -409,6 +440,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🔄',
   },
   {
     slug: 'l-sit-hold',
@@ -428,6 +460,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🪑',
   },
   {
     slug: 'tibialis-curl',
@@ -440,6 +473,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🦵',
   },
   {
     slug: 'headstand',
@@ -459,6 +493,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🙃',
   },
   {
     slug: 'finger-push-up',
@@ -480,6 +515,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '👆',
   },
   {
     slug: 'calf-raise',
@@ -492,6 +528,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🦵',
   },
   {
     slug: 'leg-extension',
@@ -504,6 +541,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🦵',
   },
   {
     slug: 'ab-wheel-rollout',
@@ -523,6 +561,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '⚙️',
   },
 
   // ─── Domain 4: Flexibility & Mobility ────────────────────────────────────────
@@ -537,6 +576,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🙏',
   },
   {
     slug: 'bridge',
@@ -557,6 +597,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🌉',
   },
   {
     slug: 'forward-fold',
@@ -576,6 +617,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🧘',
   },
   {
     slug: 'needle-pose',
@@ -596,6 +638,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🪡',
   },
   {
     slug: 'front-split',
@@ -608,6 +651,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🤸',
   },
   {
     slug: 'middle-split',
@@ -620,6 +664,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🤸',
   },
   {
     slug: 'standing-split',
@@ -640,6 +685,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🤸',
   },
   {
     slug: 'foot-behind-head',
@@ -660,6 +706,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🦶',
   },
   {
     slug: 'shoulder-dislocate',
@@ -678,6 +725,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🌀',
   },
   {
     slug: 'side-bend',
@@ -690,6 +738,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🧘',
   },
 
   // ─── Domain 5: Power ─────────────────────────────────────────────────────────
@@ -704,6 +753,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '💥',
   },
   {
     slug: '1-arm-snatch',
@@ -716,6 +766,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '💥',
   },
   {
     slug: 'triple-jump',
@@ -728,6 +779,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🦘',
   },
   {
     slug: 'javelin-throw',
@@ -740,6 +792,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🏹',
   },
   {
     slug: 'shot-put',
@@ -752,6 +805,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🏋️',
   },
   {
     slug: 'afl',
@@ -764,6 +818,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🏉',
   },
   {
     slug: 'vertical-jump',
@@ -776,6 +831,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '⬆️',
   },
   {
     slug: 'glute-bridge',
@@ -788,6 +844,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🍑',
   },
   {
     slug: 'clean-and-jerk',
@@ -800,6 +857,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🏋️',
   },
   {
     slug: 'snatch',
@@ -812,6 +870,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🏋️',
   },
 
   // ─── Domain 6: Aerobic Endurance ─────────────────────────────────────────────
@@ -826,6 +885,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '💨',
   },
   {
     slug: '1k-run',
@@ -841,6 +901,7 @@ export const EVENTS: EventData[] = [
       large: ['Carry a 10kg weighted vest', 'Run the entire distance backwards', 'Crawl the final 100m'],
     },
     videoPlaceholder: true,
+    emoji: '🏃',
   },
   {
     slug: '1k-cycle',
@@ -853,6 +914,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🚴',
   },
   {
     slug: '1k-ski-erg',
@@ -865,6 +927,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '⛷️',
   },
   {
     slug: '1k-row',
@@ -877,6 +940,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🚣',
   },
   {
     slug: 'iron-lungs',
@@ -889,6 +953,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🫁',
   },
   {
     slug: '200m-carry',
@@ -901,6 +966,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '📦',
   },
   {
     slug: '2k-run',
@@ -913,6 +979,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🏃',
   },
   {
     slug: '200m-repeats',
@@ -925,6 +992,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🏃',
   },
   {
     slug: 'bronco',
@@ -937,6 +1005,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🐴',
   },
 
   // ─── Domain 7: Speed & Agility ───────────────────────────────────────────────
@@ -954,6 +1023,7 @@ export const EVENTS: EventData[] = [
       large: ['Give opponent a 10m head start', 'Run the entire distance backwards', 'Wear a 10kg weighted vest'],
     },
     videoPlaceholder: true,
+    emoji: '💨',
   },
   {
     slug: 'tag',
@@ -966,6 +1036,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🏷️',
   },
   {
     slug: 't-race',
@@ -978,6 +1049,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '⚡',
   },
   {
     slug: '400m-race',
@@ -990,6 +1062,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🏃',
   },
   {
     slug: 'beach-flags',
@@ -1002,6 +1075,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🚩',
   },
   {
     slug: '50m-sprint',
@@ -1014,6 +1088,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '⚡',
   },
   {
     slug: '200m-sprint',
@@ -1026,6 +1101,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '💨',
   },
   {
     slug: 'touch-rugby',
@@ -1038,6 +1114,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🏉',
   },
   {
     slug: 'football-dribble',
@@ -1050,6 +1127,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '⚽',
   },
   {
     slug: 'repeat-high-jump',
@@ -1062,6 +1140,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '⬆️',
   },
 
   // ─── Domain 8: Body Awareness ─────────────────────────────────────────────────
@@ -1076,6 +1155,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🥋',
   },
   {
     slug: 'breakdancing',
@@ -1096,6 +1176,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '💃',
   },
   {
     slug: 'trampolining',
@@ -1108,6 +1189,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🎪',
   },
   {
     slug: 'jump-rope',
@@ -1127,6 +1209,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🪢',
   },
   {
     slug: 'wrestling',
@@ -1139,6 +1222,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🤼',
   },
   {
     slug: 'gymnastics',
@@ -1161,6 +1245,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🤸',
   },
   {
     slug: 'balance-ball',
@@ -1173,6 +1258,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '⚖️',
   },
   {
     slug: 'skate',
@@ -1185,6 +1271,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🛹',
   },
   {
     slug: 'fencing',
@@ -1197,6 +1284,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🤺',
   },
   {
     slug: 'juggling',
@@ -1215,6 +1303,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🤹',
   },
 
   // ─── Domain 9: Co-ordination ─────────────────────────────────────────────────
@@ -1232,6 +1321,7 @@ export const EVENTS: EventData[] = [
       large: ['Must play on knees for the entire match', 'No overhand hits allowed (underarm only)', 'Opponent gets two touches per rally, you get one'],
     },
     videoPlaceholder: true,
+    emoji: '🏐',
   },
   {
     slug: 'baseball',
@@ -1244,6 +1334,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '⚾',
   },
   {
     slug: 'teqball',
@@ -1256,6 +1347,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '⚽',
   },
   {
     slug: 'tennis',
@@ -1268,6 +1360,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🎾',
   },
   {
     slug: 'cricket',
@@ -1280,6 +1373,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🏏',
   },
   {
     slug: 'badminton',
@@ -1292,6 +1386,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🏸',
   },
   {
     slug: 'basketball',
@@ -1304,6 +1399,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🏀',
   },
   {
     slug: 'football',
@@ -1316,6 +1412,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '⚽',
   },
   {
     slug: 'hockey',
@@ -1328,6 +1425,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🏑',
   },
   {
     slug: 'squash',
@@ -1340,6 +1438,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🎾',
   },
 
   // ─── Domain 10: Aim & Precision ──────────────────────────────────────────────
@@ -1354,6 +1453,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🏀',
   },
   {
     slug: 'handball',
@@ -1366,6 +1466,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🤾',
   },
   {
     slug: 'cornhole',
@@ -1378,6 +1479,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🎯',
   },
   {
     slug: 'dodgeball',
@@ -1390,6 +1492,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🎯',
   },
   {
     slug: 'carrom',
@@ -1402,6 +1505,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🎱',
   },
   {
     slug: 'archery',
@@ -1414,6 +1518,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🏹',
   },
   {
     slug: 'bowling',
@@ -1426,6 +1531,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🎳',
   },
   {
     slug: 'darts',
@@ -1438,6 +1544,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🎯',
   },
   {
     slug: 'disc-golf',
@@ -1450,6 +1557,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '🥏',
   },
   {
     slug: 'golf',
@@ -1462,6 +1570,7 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
     videoPlaceholder: true,
+    emoji: '⛳',
   },
 ]
 
@@ -1486,6 +1595,140 @@ export function getEventsByDomain(): Record<string, EventData[]> {
 
 export function getDisadvantageOptions(eventName: string): DisadvantageOptions {
   return getEventByName(eventName)?.disadvantage ?? PLACEHOLDER_DISADVANTAGE
+}
+
+// ─── getBonusTargets ─────────────────────────────────────────────────────────
+// Returns the 4 bonus tiers for a given event and season PR.
+// seasonPR:
+//   - strength → best weight_kg (numeric)
+//   - time/sprint → best raw_score (negative seconds; more negative = faster)
+//   - flexibility / tiered-hold events → best difficulty_tier string e.g. "D5"
+//   - sport → null (always returns targets)
+//   - all others → null (no targets)
+
+function fmtSecs(totalSecs: number): string {
+  const abs = Math.abs(totalSecs)
+  const m = Math.floor(abs / 60)
+  const s = Math.round(abs % 60)
+  return `${m}:${s.toString().padStart(2, '0')}`
+}
+
+export function getBonusTargets(
+  event: EventData,
+  seasonPR: number | string | null
+): BonusTarget[] {
+  const mode = event.inputMode
+
+  // Sport events: always available, no PR needed
+  if (mode === 'sport') {
+    return ([1, 2, 3, 4] as const).map(tier => ({
+      tier,
+      label: `${tier} extra game${tier > 1 ? 's' : ''} vs a new opponent`,
+      detail: `${tier} additional game${tier > 1 ? 's' : ''} vs different opponent${tier > 1 ? 's' : ''}`,
+      points: 15 as const,
+      inputMode: 'sport',
+    }))
+  }
+
+  if (seasonPR === null) return []
+
+  // Strength events: PR = best weight_kg
+  if (mode === 'strength') {
+    const prKg = typeof seasonPR === 'number' ? seasonPR : parseFloat(String(seasonPR))
+    if (!prKg || isNaN(prKg)) return []
+    const tiers: Array<{ tier: 1|2|3|4; pct: number; reps: number }> = [
+      { tier: 1, pct: 0.9, reps: 3 },
+      { tier: 2, pct: 0.8, reps: 5 },
+      { tier: 3, pct: 0.7, reps: 8 },
+      { tier: 4, pct: 0.6, reps: 12 },
+    ]
+    return tiers.map(({ tier, pct, reps }) => {
+      const targetKg = Math.round(prKg * pct)
+      return {
+        tier,
+        label: `${targetKg}kg × ${reps} reps`,
+        detail: `${targetKg}kg × ${reps} reps`,
+        points: 15 as const,
+        inputMode: 'strength',
+      }
+    })
+  }
+
+  // Time/sprint events: PR = negative seconds (more negative = faster)
+  if (mode === 'time' || mode === 'sprint') {
+    const prSecs = typeof seasonPR === 'number' ? seasonPR : parseFloat(String(seasonPR))
+    if (isNaN(prSecs)) return []
+    const tiers: Array<{ tier: 1|2|3|4; efforts: number; pct: number }> = [
+      { tier: 1, efforts: 1, pct: 0.90 },
+      { tier: 2, efforts: 2, pct: 0.85 },
+      { tier: 3, efforts: 3, pct: 0.80 },
+      { tier: 4, efforts: 4, pct: 0.75 },
+    ]
+    return tiers.map(({ tier, efforts, pct }) => {
+      const threshold = prSecs * pct
+      const timeStr = fmtSecs(threshold)
+      return {
+        tier,
+        label: `${efforts} effort${efforts > 1 ? 's' : ''} under ${timeStr}`,
+        detail: `${efforts} effort${efforts > 1 ? 's' : ''}, each under ${timeStr}`,
+        points: 15 as const,
+        inputMode: mode,
+      }
+    })
+  }
+
+  // Flexibility & tiered hold events: PR = difficulty tier string e.g. "D5"
+  const isFlexOrTieredHold =
+    mode === 'flexibility' ||
+    (event.hasDifficultyTiers && (event.domainNumber === 3 || event.domainNumber === 4))
+  if (isFlexOrTieredHold) {
+    const prTierStr = typeof seasonPR === 'string' ? seasonPR : null
+    if (!prTierStr || !prTierStr.startsWith('D')) return []
+    const prTierNum = parseInt(prTierStr.slice(1))
+    if (isNaN(prTierNum)) return []
+
+    const prTierName = event.difficultyTiers?.find(t => t.level === prTierNum)?.name ?? prTierStr
+    const belowNum = prTierNum - 1
+    const belowTierName = belowNum >= 1
+      ? (event.difficultyTiers?.find(t => t.level === belowNum)?.name ?? `D${belowNum}`)
+      : null
+
+    const targets: BonusTarget[] = [{
+      tier: 1,
+      label: `Hold ${prTierStr} for 1 min`,
+      detail: `Hold ${prTierName} for 1 minute`,
+      points: 15,
+      inputMode: 'hold',
+    }]
+
+    if (belowTierName) {
+      targets.push({
+        tier: 2,
+        label: `Hold D${belowNum} for 2 min`,
+        detail: `Hold ${belowTierName} for 2 minutes`,
+        points: 15,
+        inputMode: 'hold',
+      })
+      targets.push({
+        tier: 3,
+        label: `Hold D${belowNum} for 4 min`,
+        detail: `Hold ${belowTierName} for 4 minutes`,
+        points: 15,
+        inputMode: 'hold',
+      })
+      targets.push({
+        tier: 4,
+        label: `Hold D${belowNum} for 6 min`,
+        detail: `Hold ${belowTierName} for 6 minutes`,
+        points: 15,
+        inputMode: 'hold',
+      })
+    }
+
+    return targets
+  }
+
+  return []
 }
 
 // Ordered domain list for consistent display
