@@ -137,6 +137,7 @@ function EventCard({
 
   const mode = (se.input_mode || eventData?.inputMode || 'strength') as string
   const emoji = eventData?.emoji ?? '🏅'
+  const isWeightVariation = !!exerciseVariation && (eventData?.weightVariations?.includes(exerciseVariation) ?? false)
 
   // Compute current placement for this player across this event
   const eventResults = allResults.filter(r => r.event_id === se.id)
@@ -171,13 +172,19 @@ function EventCard({
       return { raw_score: w, score_label: label }
     }
     if (mode === 'reps') {
+      // Variation requires weight (e.g. Ring Dip) — score by weight like strength
+      if (isWeightVariation) {
+        const w = parseFloat(weightKg) || 0
+        if (!w) return null
+        const r = parseInt(repCount) || 0
+        const varLabel = exerciseVariation ? `${exerciseVariation}: ` : ''
+        const label = r > 0 ? `${varLabel}${w}kg × ${r} rep${r !== 1 ? 's' : ''}` : `${varLabel}${w}kg`
+        return { raw_score: w, score_label: label }
+      }
       const r = parseInt(repCount) || 0
       if (!r) return null
       const varLabel = exerciseVariation ? `${exerciseVariation}: ` : ''
-      // ordered variation bonus: each tier step adds 10000
-      const varIdx = eventData?.difficultyTiers?.findIndex(t => t.name === exerciseVariation) ?? -1
-      const tierBonus = varIdx >= 0 ? varIdx * 10000 : 0
-      return { raw_score: r + tierBonus, score_label: `${varLabel}${r} reps` }
+      return { raw_score: r, score_label: `${varLabel}${r} reps` }
     }
     if (mode === 'time') {
       if (!totalSecs) return null
@@ -445,9 +452,22 @@ function EventCard({
                   <select value={exerciseVariation} onChange={e => setExerciseVariation(e.target.value)}
                     style={{ ...INP, fontSize: '15px' }}>
                     <option value="">Select variation...</option>
-                    {/* Dynamic events use tier names as variation options */}
                     {eventData.difficultyTiers.map(t => (
                       <option key={t.level} value={`${t.name} / Hold`}>{t.name} / Hold</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Variation selector (events with named variations e.g. Pause Dips) */}
+              {eventData?.variations && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '11px', color: '#666', fontFamily: 'Barlow Condensed, sans-serif' }}>VARIATION</label>
+                  <select value={exerciseVariation} onChange={e => setExerciseVariation(e.target.value)}
+                    style={{ ...INP, fontSize: '15px' }}>
+                    <option value="">Select variation...</option>
+                    {eventData.variations.map(v => (
+                      <option key={v} value={v}>{v}{eventData.weightVariations?.includes(v) ? ' (weight + reps)' : ''}</option>
                     ))}
                   </select>
                 </div>
@@ -467,20 +487,20 @@ function EventCard({
                 </div>
               )}
 
-              {/* Strength mode */}
-              {(mode === 'strength' || mode === 'weight+time') && (
+              {/* Strength mode — also shown when a weight variation is selected (e.g. Ring Dip) */}
+              {(mode === 'strength' || mode === 'weight+time' || isWeightVariation) && (
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <input type="number" value={weightKg} onChange={e => setWeightKg(e.target.value)}
                     placeholder="Weight (kg)" style={{ ...INP, flex: 2 }} />
-                  {mode === 'strength' && (
+                  {(mode === 'strength' || isWeightVariation) && (
                     <input type="number" value={repCount} onChange={e => setRepCount(e.target.value)}
                       placeholder="Reps" style={{ ...INP, flex: 1 }} />
                   )}
                 </div>
               )}
 
-              {/* Reps mode */}
-              {(mode === 'reps' || isDynamicReps) && (
+              {/* Reps mode — hidden when a weight variation is selected (reps shown inside weight row) */}
+              {(mode === 'reps' || isDynamicReps) && !isWeightVariation && (
                 <input type="number" value={repCount} onChange={e => setRepCount(e.target.value)}
                   placeholder="Reps" style={INP} />
               )}

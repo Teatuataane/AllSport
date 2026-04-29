@@ -31,6 +31,8 @@ export type EventData = {
   inputMode: InputMode
   hasDifficultyTiers: boolean
   difficultyTiers?: DifficultyTier[]
+  variations?: string[]
+  weightVariations?: string[]
   howToPerform: string
   rules: string
   disadvantage: DisadvantageOptions
@@ -102,8 +104,10 @@ export const EVENTS: EventData[] = [
     name: 'Pause Dips',
     domain: 'Maximal Strength',
     domainNumber: 1,
-    inputMode: 'strength',
+    inputMode: 'reps',
     hasDifficultyTiers: false,
+    variations: ['Assisted Pushup', 'Knee Pushups', 'Pushups', 'Paralette Dip', 'Straight Bar Dip', 'Ring Dip'],
+    weightVariations: ['Ring Dip'],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
