@@ -80,12 +80,19 @@ export default function ScoringSetup() {
 
       if (sessionError) throw sessionError
 
-      const eventsToInsert = DOMAINS.map(d => ({
-        session_id: session.id,
-        domain_number: d.number,
-        domain_name: d.name,
-        event_name: selectedEvents[d.number],
-      }))
+      const eventsToInsert = DOMAINS.map(d => {
+        const evName = selectedEvents[d.number]
+        const evData = getEventByName(evName)
+        return {
+          session_id: session.id,
+          domain_number: d.number,
+          domain_name: d.name,
+          event_name: evName,
+          event_slug: evData?.slug ?? '',
+          input_mode: evData?.inputMode ?? 'strength',
+          display_order: d.number,
+        }
+      })
 
       const { error: eventsError } = await supabase
         .from('session_events')
