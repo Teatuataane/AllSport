@@ -135,7 +135,7 @@ function EventCard({
   const [bonusOpponent, setBonusOpponent] = useState<Record<number, string>>({})
   const [bonusSubmitting, setBonusSubmitting] = useState<Record<number, boolean>>({})
 
-  const mode = se.input_mode as string
+  const mode = (se.input_mode || eventData?.inputMode || 'strength') as string
   const emoji = eventData?.emoji ?? '🏅'
 
   // Compute current placement for this player across this event
