@@ -8,12 +8,11 @@ DROP TABLE IF EXISTS bonus_completions CASCADE;
 DROP TABLE IF EXISTS results CASCADE;
 DROP TABLE IF EXISTS rankings CASCADE;
 DROP TABLE IF EXISTS session_events CASCADE;
-DROP TABLE IF EXISTS sessions CASCADE;
+DROP TABLE IF EXISTS sessions CASCADE;  -- CASCADE drops on_session_end trigger automatically
 DROP TABLE IF EXISTS players CASCADE;
 
-DROP TRIGGER IF EXISTS on_session_end ON sessions;
-DROP FUNCTION IF EXISTS award_session_points();
-DROP FUNCTION IF EXISTS get_player_season_pr(uuid, text, int);
+DROP FUNCTION IF EXISTS award_session_points() CASCADE;
+DROP FUNCTION IF EXISTS get_player_season_pr(uuid, text, int) CASCADE;
 
 -- ─── players ───────────────────────────────────────────────────────────────
 
