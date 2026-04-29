@@ -11,7 +11,6 @@ type Session = {
   location: string
   is_active: boolean
   started_at: string | null
-  duration_minutes: number | null
   points_awarded_at: string | null
 }
 
@@ -55,8 +54,8 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
     // Auto-close sessions whose timer has expired
     const now = Date.now()
     const expiredIds = active
-      .filter(s => s.started_at && s.duration_minutes && s.points_awarded_at === null)
-      .filter(s => now > new Date(s.started_at!).getTime() + s.duration_minutes! * 60 * 1000)
+      .filter(s => s.started_at && s.points_awarded_at === null)
+      .filter(s => now > new Date(s.started_at!).getTime() + 100 * 60 * 1000)
       .map(s => s.id)
     if (expiredIds.length > 0) {
       const endedAt = new Date().toISOString()

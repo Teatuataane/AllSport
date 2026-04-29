@@ -71,7 +71,6 @@ export default function ScoringSetup() {
           session_date: today,
           start_time: startTime + ':00',
           location,
-          duration_minutes: 100,
           is_championship: isChampionship,
           is_active: true,
           started_at: started.toISOString(),
