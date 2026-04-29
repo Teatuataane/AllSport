@@ -3,6 +3,30 @@ import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase-browser'
 
+function calculateAge(dob: string): number {
+  const today = new Date()
+  const birth = new Date(dob)
+  let age = today.getFullYear() - birth.getFullYear()
+  const m = today.getMonth() - birth.getMonth()
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--
+  return age
+}
+
+function calculateDivision(dob: string, gender: string): string {
+  const age = calculateAge(dob)
+  if (age <= 12) return 'Youth'
+  if (age <= 16) return 'Juniors'
+  if (gender === 'Female') {
+    if (age < 40) return "Women's"
+    if (age < 60) return 'Masters Women'
+    return 'Grandmasters Women'
+  }
+  // Male + Other default to men's categories
+  if (age < 40) return "Men's"
+  if (age < 60) return 'Masters Men'
+  return 'Grandmasters Men'
+}
+
 function RegisterInner() {
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
@@ -15,8 +39,6 @@ function RegisterInner() {
 
   const pendingCode = searchParams.get('code')
 
-  // Google OAuth users arrive already authenticated but with no player profile.
-  // Detect this on mount so we can skip signUp() and use their existing auth ID.
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
@@ -27,7 +49,7 @@ function RegisterInner() {
           email: u.email ?? prev.email,
           full_name: u.user_metadata?.full_name ?? prev.full_name,
         }))
-        setStep(2) // skip account details — already authenticated
+        setStep(2)
       }
     })
   }, [])
@@ -38,9 +60,8 @@ function RegisterInner() {
     password: '',
     phone: '',
     date_of_birth: '',
+    gender: '' as 'Male' | 'Female' | 'Other' | '',
     username: '',
-    division: '',
-    address: '',
     city: '',
     region: '',
     country: 'New Zealand',
@@ -56,7 +77,11 @@ function RegisterInner() {
   const set = (field: string, value: any) =>
     setForm(prev => ({ ...prev, [field]: value }))
 
-  const isYouthOrJunior = form.division === 'Youth' || form.division === 'Juniors'
+  const division = form.date_of_birth && form.gender
+    ? calculateDivision(form.date_of_birth, form.gender)
+    : ''
+
+  const isMinor = form.date_of_birth ? calculateAge(form.date_of_birth) < 17 : false
 
   const handleSubmit = async () => {
     setLoading(true)
@@ -66,7 +91,6 @@ function RegisterInner() {
       let newSession: any = null
 
       if (!userId) {
-        // New registration via email/password
         const { data: authData, error: authError } = await supabase.auth.signUp({
           email: form.email,
           password: form.password,
@@ -85,9 +109,9 @@ function RegisterInner() {
         email: form.email,
         phone: form.phone,
         date_of_birth: form.date_of_birth || null,
+        gender: form.gender || null,
         username: form.username,
-        division: form.division,
-        address: form.address,
+        division,
         city: form.city,
         region: form.region,
         country: form.country,
@@ -102,25 +126,17 @@ function RegisterInner() {
         is_active: true,
       }
 
-      // If email confirmation is disabled in Supabase, session is immediately available
-      // and we can insert the player profile right now (auth.uid() = userId).
-      // If email confirmation is enabled, session is null here — we still attempt the
-      // insert using upsert so it works either way (RLS permissive on anon insert
-      // for registration, or triggered later when user confirms).
       const { error: profileError } = await supabase.from('players').upsert(profilePayload, {
         onConflict: 'id',
         ignoreDuplicates: false,
       })
       if (profileError) {
         if (existingUserId || newSession) {
-          // Authenticated user — profile insert should always succeed. Surface the error.
           throw new Error(`Profile save failed: ${profileError.message}`)
         }
-        // Email/password with confirmation enabled — auth user created, profile deferred.
         console.warn('Profile insert deferred (email confirmation likely enabled):', profileError.message)
       }
 
-      // OAuth users already have a session; email/password users may need confirmation
       if (existingUserId || newSession) {
         router.push(pendingCode ? `/dashboard?code=${pendingCode}` : '/dashboard')
       } else {
@@ -155,12 +171,13 @@ function RegisterInner() {
     </div>
   )
 
+  const step1Valid = !!(form.full_name && form.email && form.password && form.date_of_birth && form.gender)
+
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a0a', color: '#fff', padding: '24px', maxWidth: '560px', margin: '0 auto' }}>
       <div style={{ marginBottom: '32px' }}>
         <h1 style={{ fontSize: '28px', fontWeight: 'bold', color: '#2371BB', marginBottom: '4px' }}>Register</h1>
         <p style={{ color: '#888', fontSize: '14px' }}>Join AllSport Kura Kaha</p>
-        {/* Step indicator */}
         <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
           {[1,2,3].map(s => (
             <div key={s} style={{ flex: 1, height: '4px', borderRadius: '2px', background: step >= s ? '#2371BB' : '#222' }} />
@@ -191,13 +208,45 @@ function RegisterInner() {
             <input type="date" value={form.date_of_birth} onChange={e => set('date_of_birth', e.target.value)} style={inputStyle} />
           </div>
           <div>
+            <label style={labelStyle}>GENDER</label>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {(['Male', 'Female', 'Other'] as const).map(g => (
+                <button
+                  key={g}
+                  onClick={() => set('gender', g)}
+                  style={{
+                    flex: 1, padding: '10px', borderRadius: '8px', cursor: 'pointer',
+                    fontWeight: 'bold', fontSize: '13px',
+                    background: form.gender === g ? '#2371BB' : '#111',
+                    color: form.gender === g ? '#fff' : '#555',
+                    border: `1px solid ${form.gender === g ? '#2371BB' : '#333'}`,
+                  }}
+                >{g}</button>
+              ))}
+            </div>
+            {form.gender === 'Other' && (
+              <div style={{ marginTop: '8px', fontSize: '12px', color: '#555' }}>
+                You'll be placed in the Men's or Grandmasters equivalent by default. A judge can reassign you to any division before your first session.
+              </div>
+            )}
+          </div>
+          <div>
             <label style={labelStyle}>PHONE</label>
             <input value={form.phone} onChange={e => set('phone', e.target.value)} style={inputStyle} placeholder="+64 21 000 0000" />
           </div>
+
+          {/* Show calculated division preview */}
+          {form.date_of_birth && form.gender && (
+            <div style={{ background: '#0d1320', border: '1px solid #2371BB', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#888' }}>
+              Division: <strong style={{ color: '#fff' }}>{division}</strong>
+              <span style={{ marginLeft: '8px', color: '#444', fontSize: '11px' }}>auto-calculated from your age and gender</span>
+            </div>
+          )}
+
           <button
             onClick={() => setStep(2)}
-            disabled={!form.full_name || !form.email || !form.password || !form.date_of_birth}
-            style={{ padding: '14px', borderRadius: '8px', border: 'none', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer', background: form.full_name && form.email && form.password && form.date_of_birth ? '#2371BB' : '#222', color: form.full_name && form.email && form.password && form.date_of_birth ? '#fff' : '#555' }}
+            disabled={!step1Valid}
+            style={{ padding: '14px', borderRadius: '8px', border: 'none', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer', background: step1Valid ? '#2371BB' : '#222', color: step1Valid ? '#fff' : '#555' }}
           >
             Next →
           </button>
@@ -214,27 +263,44 @@ function RegisterInner() {
           </div>
 
           {existingUserId && (
+            <>
+              <div>
+                <label style={labelStyle}>DATE OF BIRTH</label>
+                <input type="date" value={form.date_of_birth} onChange={e => set('date_of_birth', e.target.value)} style={inputStyle} />
+              </div>
+              <div>
+                <label style={labelStyle}>GENDER</label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {(['Male', 'Female', 'Other'] as const).map(g => (
+                    <button
+                      key={g}
+                      onClick={() => set('gender', g)}
+                      style={{
+                        flex: 1, padding: '10px', borderRadius: '8px', cursor: 'pointer',
+                        fontWeight: 'bold', fontSize: '13px',
+                        background: form.gender === g ? '#2371BB' : '#111',
+                        color: form.gender === g ? '#fff' : '#555',
+                        border: `1px solid ${form.gender === g ? '#2371BB' : '#333'}`,
+                      }}
+                    >{g}</button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Division — read only, calculated from step 1 data */}
+          {division && (
             <div>
-              <label style={labelStyle}>DATE OF BIRTH</label>
-              <input type="date" value={form.date_of_birth} onChange={e => set('date_of_birth', e.target.value)} style={inputStyle} />
+              <label style={labelStyle}>DIVISION</label>
+              <div style={{ background: '#111', border: '1px solid #333', borderRadius: '8px', padding: '12px 14px', fontSize: '14px', color: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>{division}</span>
+                <span style={{ fontSize: '11px', color: '#444' }}>calculated automatically</span>
+              </div>
             </div>
           )}
 
-          <div>
-            <label style={labelStyle}>DIVISION</label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-              {['Youth', 'Juniors', "Men's", "Women's", 'Masters Men', 'Masters Women', 'Grandmasters Men', 'Grandmasters Women'].map(div => (
-                <button key={div} onClick={() => set('division', div)} style={{
-                  padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px',
-                  background: form.division === div ? '#2371BB' : '#111',
-                  color: form.division === div ? '#fff' : '#555',
-                  border: `1px solid ${form.division === div ? '#2371BB' : '#333'}`,
-                }}>{div}</button>
-              ))}
-            </div>
-          </div>
-
-          {isYouthOrJunior && (
+          {isMinor && (
             <div style={{ background: '#1a1a2e', border: '1px solid #2371BB', borderRadius: '8px', padding: '16px' }}>
               <div style={{ color: '#2371BB', fontWeight: 'bold', marginBottom: '12px', fontSize: '14px' }}>Parent / Guardian Details Required</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -267,8 +333,8 @@ function RegisterInner() {
             <button onClick={() => setStep(1)} style={{ flex: 1, padding: '14px', borderRadius: '8px', border: '1px solid #333', background: 'transparent', color: '#888', cursor: 'pointer', fontWeight: 'bold' }}>← Back</button>
             <button
               onClick={() => setStep(3)}
-              disabled={!form.username || !form.division}
-              style={{ flex: 2, padding: '14px', borderRadius: '8px', border: 'none', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer', background: form.username && form.division ? '#2371BB' : '#222', color: form.username && form.division ? '#fff' : '#555' }}
+              disabled={!form.username}
+              style={{ flex: 2, padding: '14px', borderRadius: '8px', border: 'none', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer', background: form.username ? '#2371BB' : '#222', color: form.username ? '#fff' : '#555' }}
             >
               Next →
             </button>
@@ -286,7 +352,7 @@ function RegisterInner() {
             {[
               { field: 'show_username', label: 'Show username / handle', sub: 'Recommended — lets people know who you are without revealing personal details' },
               { field: 'show_full_name', label: 'Show full name', sub: 'Your legal name will be visible on public leaderboards' },
-              { field: 'show_division', label: 'Show division', sub: "Men's, Women's or Juniors shown next to your name" },
+              { field: 'show_division', label: 'Show division', sub: "Your division shown next to your name" },
               { field: 'show_location', label: 'Show location', sub: 'Your city and region will be visible' },
             ].map(({ field, label, sub }) => (
               <label key={field} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', cursor: 'pointer', marginBottom: '16px' }}>
@@ -306,7 +372,7 @@ function RegisterInner() {
 
           <div style={{ background: '#0d1f0d', border: '1px solid #4DB26E', borderRadius: '8px', padding: '12px 16px', fontSize: '13px', color: '#4DB26E' }}>
             You'll appear as: <strong>{form.show_full_name ? form.full_name : form.username || 'your username'}</strong>
-            {form.show_division && <span style={{ color: '#888' }}> · {form.division || 'Division'}</span>}
+            {form.show_division && division && <span style={{ color: '#888' }}> · {division}</span>}
             {form.show_location && form.city && <span style={{ color: '#888' }}> · {form.city}</span>}
           </div>
 
