@@ -65,6 +65,8 @@ export default function ScoringSetup() {
       const started = new Date()
       started.setHours(h, m, 0, 0)
 
+      const sessionCode = Math.random().toString(36).substring(2, 8).toUpperCase()
+
       const { data: session, error: sessionError } = await supabase
         .from('sessions')
         .insert({
@@ -74,6 +76,7 @@ export default function ScoringSetup() {
           is_championship: isChampionship,
           is_active: true,
           started_at: started.toISOString(),
+          session_code: sessionCode,
         })
         .select()
         .single()
