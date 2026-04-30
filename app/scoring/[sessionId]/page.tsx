@@ -737,53 +737,58 @@ function LeaderboardTab({
         ))}
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         {events.map(ev => {
           const evData = getEventByName(ev.event_name)
           const evRes = filteredResults(ev.id)
           const ranked = rankFor(evRes)
           const leader = ranked[0]
           const isOpen = expandedId === ev.id
+          const scoreCount = ranked.length
 
           return (
-            <div key={ev.id} style={{ background: '#111', borderRadius: '10px', overflow: 'hidden', border: '1px solid #1e1e1e' }}>
+            <div key={ev.id} style={{ background: '#111', borderRadius: '12px', overflow: 'hidden', border: `1px solid ${isOpen ? '#2371BB' : '#1e1e1e'}` }}>
               <button onClick={() => setExpandedId(isOpen ? null : ev.id)} style={{
-                display: 'flex', alignItems: 'center', gap: '12px', width: '100%',
-                padding: '14px 16px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left',
+                display: 'flex', alignItems: 'center', gap: '14px', width: '100%',
+                padding: '16px 18px', background: isOpen ? '#0d1a2e' : 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left',
               }}>
-                <span style={{ fontSize: '20px' }}>{evData?.emoji ?? '🏅'}</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#fff', fontFamily: 'Barlow Condensed, sans-serif' }}>{ev.event_name}</div>
+                <span style={{ fontSize: '24px', flexShrink: 0 }}>{evData?.emoji ?? '🏅'}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '16px', fontWeight: 700, color: isOpen ? '#fff' : '#ccc' }}>{ev.event_name}</div>
+                  <div style={{ fontSize: '12px', color: '#555', marginTop: '2px' }}>{ev.domain_name}</div>
                   {leader ? (
-                    <div style={{ fontSize: '12px', color: '#888', fontFamily: 'Barlow Condensed, sans-serif' }}>
+                    <div style={{ fontSize: '13px', color: '#F9B051', marginTop: '4px', fontWeight: 600 }}>
                       {leader.player_name} · {leader.score_label}
+                      <span style={{ color: '#555', fontWeight: 400, marginLeft: '6px' }}>{scoreCount} score{scoreCount !== 1 ? 's' : ''}</span>
                     </div>
                   ) : (
-                    <div style={{ fontSize: '12px', color: '#555' }}>No scores yet</div>
+                    <div style={{ fontSize: '13px', color: '#444', marginTop: '4px' }}>No scores yet</div>
                   )}
                 </div>
-                {leader && (
-                  <div style={{ fontSize: '14px', color: '#F9B051', fontFamily: 'Bebas Neue, cursive' }}>
-                    {leader.placement_points !== null ? `${leader.placement_points + (leader.bonus_points_total ?? 0)} pts` : '—'}
-                  </div>
-                )}
-                <span style={{ color: '#444', fontSize: '14px' }}>{isOpen ? '▲' : '▼'}</span>
+                <span style={{ color: isOpen ? '#2371BB' : '#444', fontSize: '16px', flexShrink: 0 }}>{isOpen ? '▲' : '▼'}</span>
               </button>
 
-              {isOpen && ranked.length > 0 && (
+              {isOpen && (
                 <div style={{ borderTop: '1px solid #1e1e1e' }}>
-                  {ranked.map(r => (
+                  {ranked.length === 0 ? (
+                    <div style={{ padding: '14px 18px', color: '#444', fontSize: '13px' }}>No scores yet.</div>
+                  ) : ranked.map((r, idx) => (
                     <div key={r.id} style={{
-                      display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 16px',
-                      borderBottom: '1px solid #0d0d0d',
+                      display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 18px',
+                      borderBottom: idx < ranked.length - 1 ? '1px solid #0d0d0d' : 'none',
+                      background: idx === 0 ? '#0d1a0d' : 'transparent',
                     }}>
-                      <div style={{ width: '24px', fontSize: '14px', fontWeight: 700, color: r.rank === 1 ? '#F9B051' : r.rank === 2 ? '#aaa' : r.rank === 3 ? '#CD7F32' : '#555', fontFamily: 'Bebas Neue, cursive', textAlign: 'center' }}>
-                        {r.rank}
-                      </div>
-                      <div style={{ flex: 1, fontSize: '14px', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700 }}>
+                      <div style={{
+                        width: '28px', height: '28px', borderRadius: '50%', flexShrink: 0,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '13px', fontWeight: 700,
+                        background: r.rank === 1 ? '#F9B051' : r.rank === 2 ? '#888' : r.rank === 3 ? '#CD7F32' : '#333',
+                        color: r.rank <= 3 ? '#000' : '#fff',
+                      }}>{r.rank}</div>
+                      <div style={{ flex: 1, fontSize: '14px', color: idx === 0 ? '#fff' : '#aaa', fontWeight: idx === 0 ? 700 : 400 }}>
                         {r.player_name}
                       </div>
-                      <div style={{ fontSize: '13px', color: '#4DB26E' }}>{r.score_label}</div>
+                      <div style={{ fontSize: '14px', fontWeight: 700, color: idx === 0 ? '#F9B051' : '#666' }}>{r.score_label}</div>
                     </div>
                   ))}
                 </div>
@@ -988,6 +993,13 @@ export default function SessionPage() {
             )}
           </div>
         </div>
+        {sessionCode && (
+          <div style={{ marginTop: '10px', background: '#000', borderRadius: '12px', padding: '12px 16px', textAlign: 'center', border: '2px solid rgba(255,255,255,0.15)' }}>
+            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', letterSpacing: '2px', marginBottom: '6px', fontFamily: 'Barlow Condensed, sans-serif' }}>GAME CODE — share with players to join</div>
+            <div style={{ fontSize: '42px', fontWeight: 'bold', letterSpacing: '10px', color: '#F9B051', fontFamily: 'Barlow Condensed, sans-serif', lineHeight: 1 }}>{sessionCode}</div>
+            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginTop: '6px' }}>Players enter this at Dashboard → Join a Session</div>
+          </div>
+        )}
       </div>
 
       <div style={{ height: '3px', background: 'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)' }} />
