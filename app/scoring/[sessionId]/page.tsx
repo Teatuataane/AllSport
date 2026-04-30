@@ -135,7 +135,7 @@ function EventCard({
   const [bonusOpponent, setBonusOpponent] = useState<Record<number, string>>({})
   const [bonusSubmitting, setBonusSubmitting] = useState<Record<number, boolean>>({})
 
-  const mode = (se.input_mode || eventData?.inputMode || 'strength') as string
+  const mode = (eventData?.inputMode || se.input_mode || 'strength') as string
   const emoji = eventData?.emoji ?? '🏅'
   const isWeightVariation = !!exerciseVariation && (eventData?.weightVariations?.includes(exerciseVariation) ?? false)
 
@@ -192,16 +192,13 @@ function EventCard({
     }
     if (mode === 'hold') {
       if (!totalSecs) return null
-      // hideTierPrefix events (e.g. Front Split) treat the tier as the position — require it
-      if (eventData?.hideTierPrefix && !difficultyTier) return null
       const varLabel = exerciseVariation ? `${exerciseVariation}: ` : ''
-      // tier-based scoring for events like Breakdancing, Standing Split, Front Split
+      // tier-based scoring: higher tier always beats lower tier, time breaks ties within same tier
       if (eventData?.difficultyTiers && difficultyTier) {
         const tierIdx = eventData.difficultyTiers.findIndex(t => t.name === difficultyTier)
         if (tierIdx >= 0) {
           const rawScore = tierIdx * 10000 + totalSecs
-          const tierLabel = eventData.hideTierPrefix ? difficultyTier : `D${tierIdx + 1} ${difficultyTier}`
-          return { raw_score: rawScore, score_label: `${tierLabel} · ${fmtTime(totalSecs)}` }
+          return { raw_score: rawScore, score_label: `D${tierIdx + 1} ${difficultyTier} · ${fmtTime(totalSecs)}` }
         }
       }
       return { raw_score: totalSecs, score_label: `${varLabel}${fmtTime(totalSecs)}` }
@@ -449,7 +446,7 @@ function EventCard({
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {/* Variation selector (dynamic events) */}
+              {/* Variation selector — dynamic events (Planche, Flag, etc.) */}
               {mode === 'dynamic' && eventData?.difficultyTiers && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '11px', color: '#666', fontFamily: 'Barlow Condensed, sans-serif' }}>VARIATION</label>
@@ -457,27 +454,27 @@ function EventCard({
                     style={{ ...INP, fontSize: '15px' }}>
                     <option value="">Select variation...</option>
                     {eventData.difficultyTiers.map(t => (
-                      <option key={t.level} value={`${t.name} / Hold`}>{t.name} / Hold</option>
+                      <option key={t.level} value={`${t.name} / Hold`}>D{t.level} — {t.name}</option>
                     ))}
                   </select>
                 </div>
               )}
 
-              {/* Variation selector (events with named variations e.g. Pause Dips) */}
+              {/* Variation selector — events with named variations (Pause Dips, Pause Chinup, etc.) */}
               {eventData?.variations && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '11px', color: '#666', fontFamily: 'Barlow Condensed, sans-serif' }}>VARIATION</label>
                   <select value={exerciseVariation} onChange={e => setExerciseVariation(e.target.value)}
                     style={{ ...INP, fontSize: '15px' }}>
                     <option value="">Select variation...</option>
-                    {eventData.variations.map(v => (
-                      <option key={v} value={v}>{v}{eventData.weightVariations?.includes(v) ? ' (weight + reps)' : ''}</option>
+                    {eventData.variations.map((v, i) => (
+                      <option key={v} value={v}>D{i + 1} — {v}{eventData.weightVariations?.includes(v) ? ' (weight + reps)' : ''}</option>
                     ))}
                   </select>
                 </div>
               )}
 
-              {/* Difficulty tier (for tiered events that aren't dynamic) */}
+              {/* Difficulty tier selector — non-dynamic tiered events (Front Split, Standing Split, etc.) */}
               {mode !== 'dynamic' && eventData?.hasDifficultyTiers && eventData.difficultyTiers && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '11px', color: '#666', fontFamily: 'Barlow Condensed, sans-serif' }}>DIFFICULTY TIER</label>
@@ -485,9 +482,7 @@ function EventCard({
                     style={{ ...INP, fontSize: '15px' }}>
                     <option value="">Select tier...</option>
                     {eventData.difficultyTiers.map(t => (
-                      <option key={t.level} value={t.name}>
-                        {eventData.hideTierPrefix ? t.name : `D${t.level} — ${t.name}`}
-                      </option>
+                      <option key={t.level} value={t.name}>D{t.level} — {t.name}</option>
                     ))}
                   </select>
                 </div>

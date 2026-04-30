@@ -33,7 +33,6 @@ export type EventData = {
   difficultyTiers?: DifficultyTier[]
   variations?: string[]
   weightVariations?: string[]
-  hideTierPrefix?: boolean  // when true: show tier name only (no "D1 —" prefix), require tier selection
   howToPerform: string
   rules: string
   disadvantage: DisadvantageOptions
@@ -654,7 +653,6 @@ export const EVENTS: EventData[] = [
     domainNumber: 4,
     inputMode: 'hold',
     hasDifficultyTiers: true,
-    hideTierPrefix: true,
     difficultyTiers: [
       { level: 1, name: 'Assisted Lunge Hold' },
       { level: 2, name: 'Lunge Hold' },
