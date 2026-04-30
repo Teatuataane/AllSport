@@ -2,6 +2,11 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.3.0.1] - 2026-04-30
+
+### Fixed
+- **Session code not displaying** — the join code was never written to the database when a session was created, leaving the JudgeCard badge and the in-game banner blank. New sessions now generate and store a 6-character alphanumeric code on creation.
+
 ## [0.3.0.0] - 2026-04-28
 
 ### Added
