@@ -192,13 +192,16 @@ function EventCard({
     }
     if (mode === 'hold') {
       if (!totalSecs) return null
+      // hideTierPrefix events (e.g. Front Split) treat the tier as the position — require it
+      if (eventData?.hideTierPrefix && !difficultyTier) return null
       const varLabel = exerciseVariation ? `${exerciseVariation}: ` : ''
-      // tier-based scoring for events like Breakdancing, Standing Split
+      // tier-based scoring for events like Breakdancing, Standing Split, Front Split
       if (eventData?.difficultyTiers && difficultyTier) {
         const tierIdx = eventData.difficultyTiers.findIndex(t => t.name === difficultyTier)
         if (tierIdx >= 0) {
           const rawScore = tierIdx * 10000 + totalSecs
-          return { raw_score: rawScore, score_label: `D${tierIdx + 1} ${difficultyTier}${totalSecs > 0 ? ` · ${fmtTime(totalSecs)}` : ''}` }
+          const tierLabel = eventData.hideTierPrefix ? difficultyTier : `D${tierIdx + 1} ${difficultyTier}`
+          return { raw_score: rawScore, score_label: `${tierLabel} · ${fmtTime(totalSecs)}` }
         }
       }
       return { raw_score: totalSecs, score_label: `${varLabel}${fmtTime(totalSecs)}` }
@@ -287,6 +290,7 @@ function EventCard({
       }
       if (mode === 'reps') payload.reps = parseInt(repCount) || 0
       if (['time', 'hold', 'weight+time'].includes(mode) && totalSecs > 0) payload.time_seconds = totalSecs
+      if (mode === 'dynamic' && isDynamicHold && totalSecs > 0) payload.time_seconds = totalSecs
       if (mode === 'sprint') {
         const s = parseFloat(timeSecs) || 0; const cs = parseInt(sprintCs) || 0
         payload.time_seconds = s + cs / 100
@@ -481,7 +485,9 @@ function EventCard({
                     style={{ ...INP, fontSize: '15px' }}>
                     <option value="">Select tier...</option>
                     {eventData.difficultyTiers.map(t => (
-                      <option key={t.level} value={t.name}>D{t.level} — {t.name}</option>
+                      <option key={t.level} value={t.name}>
+                        {eventData.hideTierPrefix ? t.name : `D${t.level} — ${t.name}`}
+                      </option>
                     ))}
                   </select>
                 </div>

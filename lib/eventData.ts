@@ -33,6 +33,7 @@ export type EventData = {
   difficultyTiers?: DifficultyTier[]
   variations?: string[]
   weightVariations?: string[]
+  hideTierPrefix?: boolean  // when true: show tier name only (no "D1 —" prefix), require tier selection
   howToPerform: string
   rules: string
   disadvantage: DisadvantageOptions
@@ -119,8 +120,10 @@ export const EVENTS: EventData[] = [
     name: 'Pause Chin Up',
     domain: 'Maximal Strength',
     domainNumber: 1,
-    inputMode: 'strength',
+    inputMode: 'reps',
     hasDifficultyTiers: false,
+    variations: ['Bodyweight Row', 'Elevated Bodyweight Row', 'Banded Chinup', 'Jumping Chinup', 'Strict Chinup'],
+    weightVariations: ['Strict Chinup'],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
@@ -471,7 +474,7 @@ export const EVENTS: EventData[] = [
     name: 'Tibialis Curl',
     domain: 'Muscular Endurance',
     domainNumber: 3,
-    inputMode: 'reps',
+    inputMode: 'strength',
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
@@ -649,8 +652,18 @@ export const EVENTS: EventData[] = [
     name: 'Front Split',
     domain: 'Flexibility & Mobility',
     domainNumber: 4,
-    inputMode: 'flexibility',
-    hasDifficultyTiers: false,
+    inputMode: 'hold',
+    hasDifficultyTiers: true,
+    hideTierPrefix: true,
+    difficultyTiers: [
+      { level: 1, name: 'Assisted Lunge Hold' },
+      { level: 2, name: 'Lunge Hold' },
+      { level: 3, name: 'Front Split (2 Blocks)' },
+      { level: 4, name: 'Front Split (1.5 Blocks)' },
+      { level: 5, name: 'Front Split (1 Block)' },
+      { level: 6, name: 'Front Split (0.5 Block)' },
+      { level: 7, name: 'Front Split' },
+    ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
