@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase-browser'
 import { EVENTS, getEventByName, getBonusTargets, type EventData, type BonusTarget } from '@/lib/eventData'
+import { generateEffortTasks, isQualifyingSubmission, type EffortTask } from '@/lib/effortTasks'
 
 const supabase = createClient()
 
@@ -49,6 +50,20 @@ type BonusCompletion = {
   points_awarded: number
 }
 
+type EffortScore = {
+  id: string
+  player_id: string
+  session_id: string
+  event_id: string
+  difficulty_tier: string | null
+  time_seconds: number | null
+  weight_kg: number | null
+  reps: number | null
+  distance_m: number | null
+  points_awarded: number
+  is_qualifying: boolean
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function fmtTime(totalSecs: number): string {
@@ -79,7 +94,7 @@ function formatPR(rawScore: number, inputMode: string): string {
 }
 
 function calcPlacementPts(rank: number, playerCount: number): number {
-  const gap = Math.max(Math.floor(100 / playerCount), 10)
+  const gap = 100 / playerCount
   return Math.max(100 - (rank - 1) * gap, 10)
 }
 
@@ -101,6 +116,8 @@ type EventCardProps = {
   allEvents: SessionEvent[]
   seasonPR: number | string | null
   bonusCompletions: BonusCompletion[]
+  effortScores: EffortScore[]
+  sessionEffortTotal: number
   playerId: string
   playerName: string
   sessionId: string
@@ -108,12 +125,14 @@ type EventCardProps = {
   isExpanded: boolean
   onToggle: () => void
   onScoreSubmitted: () => void
+  onEffortSubmitted: () => void
 }
 
 function EventCard({
   se, eventData, myResult, allResults, allEvents, seasonPR,
-  bonusCompletions, playerId, playerName, sessionId, sessionEnded,
-  isExpanded, onToggle, onScoreSubmitted,
+  bonusCompletions, effortScores, sessionEffortTotal,
+  playerId, playerName, sessionId, sessionEnded,
+  isExpanded, onToggle, onScoreSubmitted, onEffortSubmitted,
 }: EventCardProps) {
   // Form state
   const [weightKg, setWeightKg] = useState('')
@@ -134,10 +153,19 @@ function EventCard({
   // Bonus
   const [bonusOpponent, setBonusOpponent] = useState<Record<number, string>>({})
   const [bonusSubmitting, setBonusSubmitting] = useState<Record<number, boolean>>({})
+  // Effort
+  const [effortSubmitting, setEffortSubmitting] = useState<Record<number, boolean>>({})
 
   const mode = (eventData?.inputMode || se.input_mode || 'strength') as string
   const emoji = eventData?.emoji ?? '🏅'
   const isWeightVariation = !!exerciseVariation && (eventData?.weightVariations?.includes(exerciseVariation) ?? false)
+
+  // Effort tasks derived from comp score and season PR
+  const compRawScore = myResult?.raw_score ?? null
+  const prRawScore = typeof seasonPR === 'number' ? seasonPR : null
+  const effortTasks = generateEffortTasks(mode, compRawScore, prRawScore, eventData?.difficultyTiers)
+  const effortLevel = effortScores.filter(e => e.is_qualifying).length
+  const effortCapReached = sessionEffortTotal >= 100
 
   // Compute current placement for this player across this event
   const eventResults = allResults.filter(r => r.event_id === se.id)
@@ -344,6 +372,39 @@ function EventCard({
     onScoreSubmitted()
   }
 
+  async function handleEffortSubmit(task: EffortTask, taskIndex: number) {
+    setEffortSubmitting(prev => ({ ...prev, [taskIndex]: true }))
+    try {
+      const submission = {
+        difficulty_tier: task.tier.startsWith('D') ? task.tier : null,
+        time_seconds: task.timeSeconds > 0 ? task.timeSeconds : null,
+        weight_kg: null as number | null,
+        reps: null as number | null,
+        distance_m: null as number | null,
+      }
+      const qualifying = isQualifyingSubmission(task, submission)
+      const pointsAwarded = qualifying && !effortCapReached ? 10 : 0
+
+      const { error: err } = await supabase.from('effort_scores').insert({
+        player_id: playerId,
+        session_id: sessionId,
+        event_id: se.id,
+        difficulty_tier: submission.difficulty_tier,
+        time_seconds: submission.time_seconds,
+        weight_kg: submission.weight_kg,
+        reps: submission.reps,
+        distance_m: submission.distance_m,
+        is_qualifying: qualifying,
+        points_awarded: pointsAwarded,
+      })
+      if (err) throw err
+      onEffortSubmitted()
+    } catch {
+      // silently fail — user can retry
+    }
+    setEffortSubmitting(prev => ({ ...prev, [taskIndex]: false }))
+  }
+
   // Collapsed card
   if (!isExpanded) {
     return (
@@ -402,6 +463,14 @@ function EventCard({
         <span style={{ fontSize: '18px', fontWeight: 700, color: '#fff', fontFamily: 'Bebas Neue, cursive', letterSpacing: '0.05em' }}>
           {se.event_name}
         </span>
+        {effortLevel > 0 && (
+          <span style={{
+            fontSize: '11px', fontWeight: 700, color: '#F9B051', fontFamily: 'Barlow Condensed, sans-serif',
+            background: 'rgba(249,176,81,0.12)', borderRadius: '4px', padding: '2px 6px', letterSpacing: '0.05em',
+          }}>
+            Effort Lv.{effortLevel}
+          </span>
+        )}
         <span style={{ marginLeft: 'auto', color: '#2371BB', fontSize: '18px' }}>▲</span>
       </button>
 
@@ -684,6 +753,100 @@ function EventCard({
             </div>
           </div>
         )}
+
+        {/* 5. EFFORT TASKS */}
+        {effortTasks.length > 0 && (
+          <div>
+            <div style={{ fontSize: '10px', color: '#555', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '10px', fontFamily: 'Barlow Condensed, sans-serif' }}>
+              Effort Points
+            </div>
+
+            {/* Session cap notification */}
+            {effortCapReached && (
+              <div style={{
+                background: 'rgba(77,178,110,0.12)', border: '1px solid #4DB26E', borderRadius: '8px',
+                padding: '12px 14px', marginBottom: '10px', textAlign: 'center',
+              }}>
+                <div style={{ fontSize: '15px', fontWeight: 700, color: '#4DB26E', fontFamily: 'Bebas Neue, cursive', letterSpacing: '0.05em' }}>
+                  Maximum Effort Score Reached!
+                </div>
+                <div style={{ fontSize: '12px', color: '#4DB26E', opacity: 0.8, marginTop: '2px' }}>
+                  You've hit the 100pt effort cap this session.
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {effortTasks.map((task, i) => {
+                const qualifying = effortScores.some(e => isQualifyingSubmission(task, e))
+                const alreadySubmitted = effortScores.some(
+                  e => e.difficulty_tier === task.tier && e.time_seconds !== null && e.time_seconds >= task.timeSeconds
+                )
+                return (
+                  <div key={i} style={{
+                    background: qualifying ? '#0d1a0d' : '#0d0d0d',
+                    border: `1px solid ${qualifying ? '#4DB26E33' : '#1e1e1e'}`,
+                    borderRadius: '8px', padding: '12px 14px',
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                  }}>
+                    <div style={{
+                      width: '20px', height: '20px', borderRadius: '50%', flexShrink: 0,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px',
+                      background: qualifying ? '#4DB26E' : '#1e1e1e',
+                      color: qualifying ? '#fff' : '#555',
+                    }}>
+                      {qualifying ? '✓' : i + 1}
+                    </div>
+                    <div style={{ flex: 1, fontSize: '13px', color: qualifying ? '#4DB26E' : '#ccc', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 600 }}>
+                      {task.label}
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#F9B051', fontFamily: 'Bebas Neue, cursive' }}>
+                      {effortCapReached ? 'Cap reached' : '+10 pts'}
+                    </div>
+                    {!sessionEnded && !alreadySubmitted && (
+                      <button
+                        onClick={() => handleEffortSubmit(task, i)}
+                        disabled={effortSubmitting[i]}
+                        style={{
+                          padding: '6px 12px', borderRadius: '6px', border: `1px solid ${effortCapReached ? '#333' : '#F9B051'}`,
+                          fontWeight: 'bold', fontSize: '12px', cursor: effortSubmitting[i] ? 'not-allowed' : 'pointer',
+                          background: 'transparent', color: effortCapReached ? '#444' : '#F9B051',
+                          flexShrink: 0,
+                        }}
+                      >
+                        {effortSubmitting[i] ? '...' : 'Log'}
+                      </button>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* All effort submissions for this event */}
+            {effortScores.length > 0 && (
+              <div style={{ marginTop: '10px' }}>
+                <div style={{ fontSize: '10px', color: '#444', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '6px', fontFamily: 'Barlow Condensed, sans-serif' }}>
+                  Your Effort Submissions
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {effortScores.map(e => (
+                    <div key={e.id} style={{
+                      display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px',
+                      color: e.is_qualifying ? '#4DB26E' : '#555',
+                      fontFamily: 'Barlow Condensed, sans-serif',
+                    }}>
+                      <span>{e.difficulty_tier ?? '—'}</span>
+                      {e.time_seconds != null && <span>· {fmtTime(e.time_seconds)}</span>}
+                      {e.is_qualifying && <span style={{ color: '#F9B051' }}>+{e.points_awarded}pts</span>}
+                      {!e.is_qualifying && <span style={{ color: '#444' }}>not qualifying</span>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
       </div>
     </div>
   )
@@ -811,6 +974,7 @@ export default function SessionPage() {
   const [events, setEvents] = useState<SessionEvent[]>([])
   const [results, setResults] = useState<Result[]>([])
   const [bonusCompletions, setBonusCompletions] = useState<BonusCompletion[]>([])
+  const [effortScores, setEffortScores] = useState<EffortScore[]>([])
   const [player, setPlayer] = useState<Record<string, unknown> | null>(null)
   const [familyMembers, setFamilyMembers] = useState<Record<string, unknown>[]>([])
   const [activePlayerId, setActivePlayerId] = useState<string | null>(null)
@@ -836,6 +1000,11 @@ export default function SessionPage() {
     if (data) setBonusCompletions(data as BonusCompletion[])
   }, [sessionId])
 
+  const loadEffortScores = useCallback(async () => {
+    const { data } = await supabase.from('effort_scores').select('*').eq('session_id', sessionId)
+    if (data) setEffortScores(data as EffortScore[])
+  }, [sessionId])
+
   useEffect(() => {
     const load = async () => {
       const { data: { user: authUser } } = await supabase.auth.getUser()
@@ -859,9 +1028,10 @@ export default function SessionPage() {
 
       await loadResults()
       await loadBonuses()
+      await loadEffortScores()
     }
     load()
-  }, [sessionId, loadResults, loadBonuses])
+  }, [sessionId, loadResults, loadBonuses, loadEffortScores])
 
   // ── Load player info for leaderboard ─────────────────────────────────────
   useEffect(() => {
@@ -915,6 +1085,8 @@ export default function SessionPage() {
         () => loadResults())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'bonus_completions', filter: `session_id=eq.${sessionId}` },
         () => loadBonuses())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'effort_scores', filter: `session_id=eq.${sessionId}` },
+        () => loadEffortScores())
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'sessions', filter: `id=eq.${sessionId}` },
         p => {
           const updated = p.new as Record<string, unknown>
@@ -922,7 +1094,7 @@ export default function SessionPage() {
         })
       .subscribe()
     return () => { supabase.removeChannel(ch) }
-  }, [sessionId, loadResults, loadBonuses])
+  }, [sessionId, loadResults, loadBonuses, loadEffortScores])
 
   // ── Timer ──────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -1045,6 +1217,8 @@ export default function SessionPage() {
         const pName = (p.display_name || p.username || p.full_name) as string
         const myResults = results.filter(r => r.player_id === pid)
         const myBonuses = bonusCompletions.filter(b => b.player_id === pid)
+        const myEffortScores = effortScores.filter(e => e.player_id === pid)
+        const sessionEffortTotal = myEffortScores.reduce((sum, e) => sum + e.points_awarded, 0)
 
         return (
           <div key={pid} style={{ padding: '16px' }}>
@@ -1060,6 +1234,7 @@ export default function SessionPage() {
               {events.map(ev => {
                 const myResult = myResults.find(r => r.event_id === ev.id)
                 const evBonuses = myBonuses.filter(b => b.event_id === ev.id)
+                const evEffortScores = myEffortScores.filter(e => e.event_id === ev.id)
                 const evData = getEventByName(ev.event_name)
                 const pr = seasonPRs[ev.id] ?? null
 
@@ -1073,6 +1248,8 @@ export default function SessionPage() {
                     allEvents={events}
                     seasonPR={pr}
                     bonusCompletions={evBonuses}
+                    effortScores={evEffortScores}
+                    sessionEffortTotal={sessionEffortTotal}
                     playerId={pid}
                     playerName={pName}
                     sessionId={sessionId as string}
@@ -1080,6 +1257,7 @@ export default function SessionPage() {
                     isExpanded={expandedEventId === ev.id}
                     onToggle={() => setExpandedEventId(expandedEventId === ev.id ? null : ev.id)}
                     onScoreSubmitted={async () => { await loadResults(); await loadBonuses() }}
+                    onEffortSubmitted={async () => { await loadEffortScores() }}
                   />
                 )
               })}
