@@ -864,8 +864,18 @@ export default function SessionPage() {
   const [sessionEnded, setSessionEnded] = useState(false)
   const [playerInfoMap, setPlayerInfoMap] = useState<Record<string, PlayerInfo>>({})
 
+  // Judge-only: additional player tabs (registered players or guests added by the judge)
+  const [judgeAddedPlayers, setJudgeAddedPlayers] = useState<Array<{id: string, label: string, isGuest: boolean}>>([])
+  const [showAddPlayerModal, setShowAddPlayerModal] = useState(false)
+  const [playerSearch, setPlayerSearch] = useState('')
+  const [searchResults, setSearchResults] = useState<Array<{id: string, full_name: string, username: string | null, display_name: string | null, division: string | null}>>([])
+  const [guestNameInput, setGuestNameInput] = useState('')
+  const [isCreatingGuest, setIsCreatingGuest] = useState(false)
+  const [addPlayerError, setAddPlayerError] = useState('')
+
   const allPlayers = player ? [player, ...familyMembers] : []
   const activePlayer = allPlayers.find(p => p.id === activePlayerId) ?? player
+  const isJudge = (player as Record<string, unknown>)?.role === 'judge'
 
   // ── Load initial data ──────────────────────────────────────────────────────
   const loadResults = useCallback(async () => {
@@ -904,6 +914,20 @@ export default function SessionPage() {
     }
     load()
   }, [sessionId, loadResults, loadBonuses])
+
+  // ── Judge tab persistence (localStorage) ──────────────────────────────────
+  useEffect(() => {
+    if (!sessionId || !player) return
+    const saved = localStorage.getItem(`allsport_judge_tabs_${sessionId}`)
+    if (saved) {
+      try { setJudgeAddedPlayers(JSON.parse(saved)) } catch {}
+    }
+  }, [sessionId, player])
+
+  useEffect(() => {
+    if (!sessionId) return
+    localStorage.setItem(`allsport_judge_tabs_${sessionId}`, JSON.stringify(judgeAddedPlayers))
+  }, [judgeAddedPlayers, sessionId])
 
   // ── Load player info for leaderboard ─────────────────────────────────────
   useEffect(() => {
@@ -1012,6 +1036,60 @@ export default function SessionPage() {
 
   const sessionCode = (session as Record<string, unknown> | null)?.session_code as string | undefined
 
+  // ── Judge: add player tab ──────────────────────────────────────────────────
+  function addPlayerTab(id: string, label: string, isGuest: boolean) {
+    const alreadyOwn = allPlayers.some(p => p.id as string === id)
+    if (alreadyOwn) { setShowAddPlayerModal(false); return }
+    setJudgeAddedPlayers(prev => {
+      if (prev.find(p => p.id === id)) return prev
+      return [...prev, { id, label, isGuest }]
+    })
+    setActiveTab(`player-${id}`)
+    setActivePlayerId(id)
+    setExpandedEventId(null)
+    setShowAddPlayerModal(false)
+    setPlayerSearch('')
+    setSearchResults([])
+    setAddPlayerError('')
+  }
+
+  async function searchPlayers(query: string) {
+    if (!query.trim()) { setSearchResults([]); return }
+    const alreadyAdded = new Set([
+      ...(player ? [player.id as string] : []),
+      ...familyMembers.map(f => f.id as string),
+      ...judgeAddedPlayers.map(j => j.id),
+    ])
+    const { data } = await supabase
+      .from('players')
+      .select('id, full_name, username, display_name, division')
+      .eq('is_guest', false)
+      .or(`full_name.ilike.%${query}%,username.ilike.%${query}%`)
+      .limit(20)
+    if (data) {
+      setSearchResults((data as typeof searchResults).filter(p => !alreadyAdded.has(p.id)))
+    }
+  }
+
+  async function createGuestPlayer() {
+    if (!guestNameInput.trim()) return
+    setIsCreatingGuest(true)
+    setAddPlayerError('')
+    try {
+      const { data, error } = await supabase
+        .from('players')
+        .insert({ full_name: guestNameInput.trim(), is_guest: true, role: 'player' })
+        .select('id')
+        .single()
+      if (error) throw error
+      addPlayerTab(data.id, guestNameInput.trim(), true)
+      setGuestNameInput('')
+    } catch (e: unknown) {
+      setAddPlayerError(e instanceof Error ? e.message : 'Failed to add guest')
+    }
+    setIsCreatingGuest(false)
+  }
+
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a0a', color: '#fff', maxWidth: '640px', margin: '0 auto', fontFamily: 'Barlow, sans-serif' }}>
@@ -1067,6 +1145,24 @@ export default function SessionPage() {
             </button>
           )
         })}
+        {/* Judge-added player tabs */}
+        {isJudge && judgeAddedPlayers.map(jp => {
+          const tabId = `player-${jp.id}`
+          const active = activeTab === tabId
+          return (
+            <button key={jp.id} onClick={() => { setActiveTab(tabId); setActivePlayerId(jp.id); setExpandedEventId(null) }}
+              style={{
+                padding: '12px 16px', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
+                fontSize: '13px', fontWeight: active ? 700 : 400, flexShrink: 0,
+                background: active ? '#111' : 'transparent',
+                color: active ? '#fff' : '#555',
+                borderBottom: `2px solid ${active ? (jp.isGuest ? '#F9B051' : '#2371BB') : 'transparent'}`,
+              }}>
+              {jp.label}
+              {jp.isGuest && <span style={{ fontSize: '10px', color: '#F9B051', marginLeft: '4px', fontFamily: 'Barlow Condensed, sans-serif' }}>GUEST</span>}
+            </button>
+          )
+        })}
         <button onClick={() => setActiveTab('leaderboard')}
           style={{
             padding: '12px 16px', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
@@ -1077,6 +1173,17 @@ export default function SessionPage() {
           }}>
           Leaderboard
         </button>
+        {isJudge && (
+          <button onClick={() => { setShowAddPlayerModal(true); setPlayerSearch(''); setSearchResults([]); setGuestNameInput(''); setAddPlayerError('') }}
+            style={{
+              padding: '12px 16px', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
+              fontSize: '18px', fontWeight: 700, flexShrink: 0,
+              background: 'transparent', color: '#4DB26E',
+              borderBottom: '2px solid transparent',
+            }}>
+            +
+          </button>
+        )}
       </div>
 
       {/* Player tabs */}
@@ -1130,6 +1237,58 @@ export default function SessionPage() {
         )
       })}
 
+      {/* Judge-added player tabs content */}
+      {isJudge && judgeAddedPlayers.map(jp => {
+        const tabId = `player-${jp.id}`
+        if (activeTab !== tabId) return null
+        const myResults = results.filter(r => r.player_id === jp.id)
+        const myBonuses = bonusCompletions.filter(b => b.player_id === jp.id)
+
+        return (
+          <div key={jp.id} style={{ padding: '16px' }}>
+            {jp.isGuest && (
+              <div style={{ background: '#1a1200', border: '1px solid #F9B051', borderRadius: '8px', padding: '10px 14px', marginBottom: '14px', fontSize: '12px', color: '#F9B051', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.05em' }}>
+                GUEST PLAYER — scores count for session placement
+              </div>
+            )}
+            {sessionEnded && (
+              <div style={{ background: '#2e0d0d', border: '1px solid #EA4742', borderRadius: '8px', padding: '12px 16px', marginBottom: '16px', textAlign: 'center' }}>
+                <div style={{ color: '#EA4742', fontWeight: 700, fontFamily: 'Bebas Neue, cursive', fontSize: '18px' }}>Session Ended</div>
+                <div style={{ color: '#888', fontSize: '13px', marginTop: '4px' }}>Score submission is locked</div>
+              </div>
+            )}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              {events.map(ev => {
+                const myResult = myResults.find(r => r.event_id === ev.id)
+                const evBonuses = myBonuses.filter(b => b.event_id === ev.id)
+                const evData = getEventByName(ev.event_name)
+                const pr = seasonPRs[ev.id] ?? null
+
+                return (
+                  <EventCard
+                    key={ev.id}
+                    se={ev}
+                    eventData={evData}
+                    myResult={myResult}
+                    allResults={results}
+                    allEvents={events}
+                    seasonPR={pr}
+                    bonusCompletions={evBonuses}
+                    playerId={jp.id}
+                    playerName={jp.label}
+                    sessionId={sessionId as string}
+                    sessionEnded={sessionEnded}
+                    isExpanded={expandedEventId === ev.id}
+                    onToggle={() => setExpandedEventId(expandedEventId === ev.id ? null : ev.id)}
+                    onScoreSubmitted={async () => { await loadResults(); await loadBonuses() }}
+                  />
+                )
+              })}
+            </div>
+          </div>
+        )
+      })}
+
       {/* Leaderboard tab */}
       {activeTab === 'leaderboard' && (
         <LeaderboardTab events={events} results={results} playerInfoMap={playerInfoMap} />
@@ -1140,6 +1299,125 @@ export default function SessionPage() {
         <div style={{ padding: '48px 24px', textAlign: 'center' }}>
           <div style={{ color: '#555', marginBottom: '16px' }}>Log in to submit scores</div>
           <a href="/login" style={{ color: '#2371BB', fontWeight: 700, textDecoration: 'none' }}>Log in →</a>
+        </div>
+      )}
+
+      {/* Add Player modal (judge-only) */}
+      {showAddPlayerModal && isJudge && (
+        <div
+          onClick={() => setShowAddPlayerModal(false)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 50,
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: '#111', borderRadius: '16px 16px 0 0', width: '100%', maxWidth: '640px',
+              padding: '24px 20px', maxHeight: '85vh', overflowY: 'auto',
+              border: '1px solid #1e1e1e', borderBottom: 'none',
+            }}
+          >
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <div style={{ fontSize: '22px', fontWeight: 700, fontFamily: 'Bebas Neue, cursive', letterSpacing: '0.05em' }}>
+                Add Player
+              </div>
+              <button
+                onClick={() => setShowAddPlayerModal(false)}
+                style={{ background: 'none', border: 'none', color: '#888', fontSize: '22px', cursor: 'pointer', lineHeight: 1 }}
+              >×</button>
+            </div>
+
+            {/* Search registered players */}
+            <div style={{ fontSize: '10px', color: '#555', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '8px', fontFamily: 'Barlow Condensed, sans-serif' }}>
+              Search Registered Players
+            </div>
+            <input
+              autoFocus
+              value={playerSearch}
+              onChange={e => { setPlayerSearch(e.target.value); searchPlayers(e.target.value) }}
+              placeholder="Name or username..."
+              style={{
+                width: '100%', background: '#0d0d0d', border: '1px solid #2a2a2a', borderRadius: '8px',
+                padding: '12px 14px', color: '#fff', fontSize: '16px', boxSizing: 'border-box', marginBottom: '10px',
+              }}
+            />
+
+            {/* Search results */}
+            {searchResults.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '20px' }}>
+                {searchResults.map(p => {
+                  const label = p.display_name || p.username || p.full_name
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => addPlayerTab(p.id, label, false)}
+                      style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        background: '#0d0d0d', border: '1px solid #1e1e1e', borderRadius: '8px',
+                        padding: '12px 14px', cursor: 'pointer', textAlign: 'left',
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontSize: '15px', fontWeight: 700, color: '#fff' }}>{label}</div>
+                        {p.username && p.display_name && (
+                          <div style={{ fontSize: '12px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif' }}>@{p.username}</div>
+                        )}
+                      </div>
+                      {p.division && (
+                        <div style={{ fontSize: '11px', color: '#888', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.05em' }}>
+                          {p.division}
+                        </div>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+            {playerSearch.trim() && searchResults.length === 0 && (
+              <div style={{ color: '#555', fontSize: '13px', marginBottom: '20px' }}>No players found.</div>
+            )}
+
+            {/* Divider */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+              <div style={{ flex: 1, height: '1px', background: '#1e1e1e' }} />
+              <div style={{ fontSize: '11px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.1em' }}>OR ADD GUEST</div>
+              <div style={{ flex: 1, height: '1px', background: '#1e1e1e' }} />
+            </div>
+
+            {/* Guest player */}
+            <div style={{ fontSize: '10px', color: '#555', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '8px', fontFamily: 'Barlow Condensed, sans-serif' }}>
+              Guest Player Name
+            </div>
+            <input
+              value={guestNameInput}
+              onChange={e => { setGuestNameInput(e.target.value); setAddPlayerError('') }}
+              onKeyDown={e => { if (e.key === 'Enter' && guestNameInput.trim()) createGuestPlayer() }}
+              placeholder="Enter name..."
+              style={{
+                width: '100%', background: '#0d0d0d', border: '1px solid #2a2a2a', borderRadius: '8px',
+                padding: '12px 14px', color: '#fff', fontSize: '16px', boxSizing: 'border-box', marginBottom: '10px',
+              }}
+            />
+            {addPlayerError && (
+              <div style={{ color: '#EA4742', fontSize: '12px', marginBottom: '8px' }}>{addPlayerError}</div>
+            )}
+            <button
+              onClick={createGuestPlayer}
+              disabled={!guestNameInput.trim() || isCreatingGuest}
+              style={{
+                width: '100%', padding: '14px', borderRadius: '8px', border: 'none', fontWeight: 700,
+                fontSize: '15px', cursor: guestNameInput.trim() && !isCreatingGuest ? 'pointer' : 'not-allowed',
+                background: guestNameInput.trim() && !isCreatingGuest ? '#F9B051' : '#1a1a1a',
+                color: guestNameInput.trim() && !isCreatingGuest ? '#000' : '#555',
+                fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.05em',
+              }}
+            >
+              {isCreatingGuest ? 'Adding...' : 'Add Guest Player'}
+            </button>
+          </div>
         </div>
       )}
     </div>

@@ -366,6 +366,9 @@ best_score, current_rank, division, average_placement, season_year
 - Score submission re-fetches results after upsert (realtime alone misses UPDATEs from re-submissions)
 - Post-game popup: triggers on is_active → false, dismissed per player per session via localStorage, viewable in session history thereafter
 - All-Divisions = the combined tab (previously called "Overall") — renamed everywhere
+- Guest players: created by judges during a live session, stored in players with is_guest=true and no auth account. player_id FK to auth.users was dropped in migration 20260505 — registered players still have id=auth.uid() by construction, guests use gen_random_uuid()
+- Judge player tabs: judges see their own + family tabs by default, can add any registered player or create a guest via "+" button. Tabs persist in localStorage keyed by sessionId. Added players stored as [{id, label, isGuest}]
+- Guest player RLS: judges can insert players (is_guest=true), results (any player_id), and bonus_completions (any player_id) — covered by policies in migration 20260505
 
 ---
 
@@ -407,6 +410,7 @@ best_score, current_rank, division, average_placement, season_year
     migrations/
       20260420_phase1.sql
       20260428_phase2.sql           # difficulty_tier, disadvantage_type, disadvantage_option columns; updated award_session_points trigger
+      20260505_judge_player_management.sql  # guest players (is_guest), drop players.id FK, judge RLS for results/bonuses
   public/
     logo.png
 ```
@@ -439,6 +443,8 @@ best_score, current_rank, division, average_placement, season_year
 - Difficulty tiers — now defined for all 100 tiered events in lib/eventData.ts
 - Disadvantage system — self-declared, recorded per result, mechanical multiplier on strength events
 - Judge score edit/delete fix — delete confirmation works correctly, leaderboard recalculates immediately
+- Judge player management — judges can add any registered player or create a guest during a live session; tabs persist across refresh via localStorage; guest players earn placement points
+- Guest players — stored in players table with is_guest=true and no auth account (players.id FK to auth.users removed); created via judge modal
 - Supabase SSR middleware, browser client, Google OAuth, RLS, points trigger — all confirmed working
 - allsport.nz live domain
 
@@ -453,6 +459,7 @@ best_score, current_rank, division, average_placement, season_year
 5. Disadvantage option definitions for all 100 events (currently placeholder for 95)
 6. Verify Te Reo "Kaiwāwao" is correct for judge/referee in sports context
 7. Championship registration flow (6 months before March 2027)
+8. Guest player claim flow — link a guest player record to a newly registered account (optional, post-MVP)
 
 ---
 
