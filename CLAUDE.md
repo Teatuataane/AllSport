@@ -100,9 +100,9 @@ linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)
 |---|--------|-------------|
 | 1 | Maximal Strength | 1A Press, Deadlift, OHP, Pause Dips, Pause Chinup, Pause Squat, Zercher Dead, Ham Curl, Pause Bench, Turkish Get Up |
 | 2 | Relative Strength | 1L Squat, Flag, Windshield Wipers, Toe Lift, Planche, Back Lever, Iron Cross, Front Lever, Chin Hang, Climbing |
-| 3 | Muscular Endurance | Chinup Contest, Pushup Contest, Reverse Hyper, L Sit Hold, Tib Curl, Headstand, Finger Pushup, Calf Raise, Leg Ext, Ab Rollout |
-| 4 | Flexibility & Mobility | Rear Hand Clasp, Bridge, Forward Fold, Needle Pose, F Split, M Split, Standing Split, Foot Behind Head, Shoulder Dislocate, Side Bend |
-| 5 | Power | Kelly Snatch, 1A Snatch, Triple Jump, Javelin, Shotput, AFL, Vert Jump, Glute Bridge, Clean & Jerk, Snatch |
+| 3 | Muscular Endurance | Chinup Contest, Pushup Contest, Reverse Hyper, L Sit Hold, Tib Curl, Headstand, Finger Pushup, GHD Situp, Leg Ext, Ab Rollout |
+| 4 | Flexibility & Mobility | Rear Hand Clasp, Bridge, Forward Fold, Needle Pose, Forward Split, Middle Split, Standing Split, Foot Behind Head, Shoulder Dislocate, Pancake |
+| 5 | Power | Kelly Snatch, 1A Snatch, Triple Jump, Javelin, Shotput, Australian Football, Vert Jump, 50m Hand Walk, Clean & Jerk, Snatch |
 | 6 | Aerobic Endurance | Burpee Broad Jump, 1k Run, 1k Cycle, Ski 1k, 1k Row, Iron Lungs, 200m Carry, 2k Run, 200m Repeats, Bronco |
 | 7 | Speed & Agility | 100m Sprint, Tag, T-Race, 400m Race, Beach Flags, 50m Sprint, 200m Sprint, Touch Rugby, Football Dribble, Repeat High Jump |
 | 8 | Body Awareness | Tae Kwon Do, Breakdancing, Trampolining, Jump Rope, Wrestling, Gymnastics, Balance Ball, SKATE, Fencing, Juggling |
@@ -112,8 +112,24 @@ linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)
 ### Event renames (from previous names)
 - "T-Test" → **T-Race** (now uses sport/win-loss input mode, not sprint timing)
 - "Chin Lift" → **Chin Hang**
-- "Turkish" → **Turkish Get Up** (weight + reps, no tiers)
-- "Toe Lift" → **Toe Lift** (weight + reps, no tiers — variation picker removed)
+- "Turkish" → **Turkish Get Up** (strength mode, no tiers)
+- "Toe Lift" → **Toe Lift** (strength mode, no tiers)
+- "Calf Raise" → **GHD Situp** (slug: `ghd-situp`, difficulty+reps D1–D4; D4 is weight-scored)
+- "Glute Bridge" → **50m Hand Walk** (slug: `hand-walk`, difficulty+time D1–D4)
+- "Side Bend" → **Pancake** (slug: `pancake`, difficulty+time D1–D7)
+- "F Split" → **Forward Split** (slug: `front-split`, difficulty+time D1–D6)
+- "AFL" → **Australian Football** (slug: `australian-football`, sport)
+- "1 Arm Press" → **1A Press** (slug: `one-arm-press`)
+- "Overhead Press" → **OHP** (slug: `overhead-press`)
+- "Zercher Deadlift" → **Zercher Dead**
+- "Hamstring Curl" → **Ham Curl**
+- "Pause Bench Press" → **Pause Bench** (slug: `pause-bench`)
+- "Rope Climb" → **Climbing** (slug: `rope-climb`, difficulty+time D1–D8)
+- "1 Arm Snatch" → **1A Snatch** (slug: `one-arm-snatch`)
+- "Javelin Throw" → **Javelin**
+- "Shot Put" → **Shotput**
+- "200m Burpee Broad Jump" → **Burpee Broad Jump**
+- "1k Ski Erg" → **Ski 1k**
 
 ---
 
@@ -341,8 +357,11 @@ best_score, current_rank, division, average_placement, season_year
 - Players who joined a session (have any result row) but have no score for a specific event are ranked last for that event
 - Missing score players display as "No score" in expanded event lists
 - Disadvantage multipliers (×1.2 small, ×1.5 large) apply only to Domain 1 and Domain 2 events; stored in adjusted_score
-- Input modes: strength (weight+reps), reps, time (mm:ss), hold (mm:ss), distance (m/cm), flexibility (blocks), sport (win/draw/loss + opponent), sprint (ss.cs), weight+time, distance+time, dynamic, difficulty+time (tier selector + seconds)
-- Sprint mode: seconds + centiseconds (0–99), raw_score = -(secs*100 + cs). Used for 100m/50m/200m Sprint (T-Race now uses sport mode)
+- Input modes: strength (weight+reps), reps, time (mm:ss), hold (mm:ss), difficulty+time (tier selector + seconds), difficulty+reps (tier selector + reps), distance (m/cm), flexibility (blocks, legacy), sport (win/draw/loss + opponent), sprint (ss.cs), weight+time, distance+time, dynamic (legacy)
+- difficulty+time raw_score = tierIdx * 10000 + seconds (0-based tierIdx). Used for all tiered hold events (planche, bridges, splits, etc.)
+- difficulty+reps raw_score = tierIdx * 10000 + reps (0-based tierIdx). Used for all tiered rep events. Special case: GHD Situp D4 is weight-scored (raw_score = weight_kg)
+- Sprint mode: seconds + centiseconds (0–99), raw_score = -(secs*100 + cs). Used for 100m/50m/200m/400m Sprint, Football Dribble (T-Race uses sport mode)
+- Effort points (getBonusTargets): returns 3 tiers. strength = 90%×3 / 80%×5 / 70%×8 reps. time/sprint = 1/2/3 efforts within 90%/80%/70% of PR. distance = 1/2/3 attempts at 90%/80%/70% of PR. difficulty+time = hold current tier 1min / hold tier-below 2min / 4min. difficulty+reps = 90%/80%/70% of PR reps at current tier. sport = 1/2/3 extra games.
 - Pre-session timer: if started_at is in the future, shows purple "until start" countdown. Game clock begins at started_at
 - Score submission re-fetches results after upsert (realtime alone misses UPDATEs from re-submissions)
 - Post-game popup: triggers on is_active → false, dismissed per player per session via localStorage, viewable in session history thereafter
@@ -413,7 +432,11 @@ best_score, current_rank, division, average_placement, season_year
 - All-Divisions tab — renamed from Overall everywhere
 - T-Race — renamed from T-Test, now uses sport/win-loss input mode
 - Chin Hang — renamed from Chin Lift
-- Difficulty tiers — defined for 24 events in lib/eventData.ts
+- Effort points system — getBonusTargets rewritten: 3 tiers (was 4), correct PR decoding from raw_score, all inputModes supported
+- difficulty+time and difficulty+reps InputModes — new modes for tiered hold and tiered rep events; raw_score = tierIdx*10000 + value
+- All 100 events updated — correct inputMode, hasDifficultyTiers, tier names from EVENT_DEFINITIONS.md
+- 20+ event renames/slug changes — see "Event renames" section above
+- Difficulty tiers — now defined for all 100 tiered events in lib/eventData.ts
 - Disadvantage system — self-declared, recorded per result, mechanical multiplier on strength events
 - Judge score edit/delete fix — delete confirmation works correctly, leaderboard recalculates immediately
 - Supabase SSR middleware, browser client, Google OAuth, RLS, points trigger — all confirmed working
@@ -443,7 +466,9 @@ best_score, current_rank, division, average_placement, season_year
 - All-Divisions = combined division tab (not "Overall")
 - T-Race (not T-Test) uses sport/win-loss input mode
 - Chin Hang (not Chin Lift)
-- Difficulty tiers: D1 = easiest, purely informational, stored in results.difficulty_tier
+- Difficulty tiers: D1 = easiest, purely informational, stored in results.difficulty_tier as tier name string
+- difficulty+time: raw_score = tierIdx*10000 + seconds; difficulty+reps: raw_score = tierIdx*10000 + reps (both 0-based tierIdx)
+- GHD Situp D4 special case: scoring switches to weight_kg (not reps); handled in computeScore by checking event.name === 'GHD Situp' && tierIdx === 3
 - Disadvantage: self-declared by players, small/large, three options per event per level; multiplier on strength events only (×1.2 / ×1.5)
 - Missing scores: players with any result in session but no score for a specific event = last place for that event
 - Post-game popup: triggers on session close, dismissed via localStorage, viewable in session history
@@ -455,7 +480,7 @@ best_score, current_rank, division, average_placement, season_year
 
 ---
 
-*Last updated: April 2026 (session 4)*
+*Last updated: May 2026 (session 5)*
 *Project started: March 2026*
 
 ## Skill routing
