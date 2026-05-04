@@ -66,6 +66,8 @@
 - supabase/migrations/20260428_phase2.sql — difficulty_tier, disadvantage_type, disadvantage_option columns; updated award_session_points trigger
 - Sessions page display verified — times, location, championship date all correct
 - Difficulty tier labels on session event listings (e.g. "Planche D1–D7")
+- Judge player management — judges can add any registered player or create a guest during a live session via "+" button; tabs persist in localStorage; guest players get real player_id, earn placement points, appear on leaderboard
+- Guest players — stored in players table with is_guest=true, no auth account; players.id FK to auth.users dropped (migration 20260505); RLS updated so judges can insert players/results/bonuses for any player
 
 ---
 
@@ -94,6 +96,11 @@
 **What:** Players can view and edit their display name, division, privacy settings, and grade history.
 **Effort:** M (CC)
 **Where:** New route `/profile` or modal from dashboard.
+
+### Guest player claim flow
+**What:** A guest player who later creates an account can claim their previous session results. Judge or admin links the guest `player_id` to the new account.
+**How:** Simple admin SQL or a judge UI that searches for guest players by name and merges them with a registered player.
+**Effort:** S–M (CC)
 
 ### Disadvantage options — full 100 events
 **What:** Define all three small and three large options for the 95 events currently using placeholders in `lib/eventData.ts`.
