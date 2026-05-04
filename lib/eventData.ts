@@ -5,6 +5,8 @@ export type InputMode =
   | 'reps'
   | 'time'
   | 'hold'
+  | 'difficulty+time'
+  | 'difficulty+reps'
   | 'distance'
   | 'flexibility'
   | 'sport'
@@ -41,7 +43,7 @@ export type EventData = {
 }
 
 export type BonusTarget = {
-  tier: 1 | 2 | 3 | 4
+  tier: 1 | 2 | 3
   label: string
   detail: string
   points: 15
@@ -58,8 +60,8 @@ const PLACEHOLDER_CONTENT = 'Content coming soon.'
 export const EVENTS: EventData[] = [
   // ─── Domain 1: Maximal Strength ─────────────────────────────────────────────
   {
-    slug: '1-arm-press',
-    name: '1 Arm Press',
+    slug: 'one-arm-press',
+    name: '1A Press',
     domain: 'Maximal Strength',
     domainNumber: 1,
     inputMode: 'strength',
@@ -88,7 +90,7 @@ export const EVENTS: EventData[] = [
   },
   {
     slug: 'overhead-press',
-    name: 'Overhead Press',
+    name: 'OHP',
     domain: 'Maximal Strength',
     domainNumber: 1,
     inputMode: 'strength',
@@ -104,10 +106,8 @@ export const EVENTS: EventData[] = [
     name: 'Pause Dips',
     domain: 'Maximal Strength',
     domainNumber: 1,
-    inputMode: 'reps',
+    inputMode: 'strength',
     hasDifficultyTiers: false,
-    variations: ['Assisted Pushup', 'Knee Pushups', 'Pushups', 'Paralette Dip', 'Straight Bar Dip', 'Ring Dip'],
-    weightVariations: ['Ring Dip'],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
@@ -119,10 +119,8 @@ export const EVENTS: EventData[] = [
     name: 'Pause Chin Up',
     domain: 'Maximal Strength',
     domainNumber: 1,
-    inputMode: 'reps',
+    inputMode: 'strength',
     hasDifficultyTiers: false,
-    variations: ['Bodyweight Row', 'Elevated Bodyweight Row', 'Banded Chinup', 'Jumping Chinup', 'Strict Chinup'],
-    weightVariations: ['Strict Chinup'],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
@@ -144,7 +142,7 @@ export const EVENTS: EventData[] = [
   },
   {
     slug: 'zercher-deadlift',
-    name: 'Zercher Deadlift',
+    name: 'Zercher Dead',
     domain: 'Maximal Strength',
     domainNumber: 1,
     inputMode: 'strength',
@@ -157,7 +155,7 @@ export const EVENTS: EventData[] = [
   },
   {
     slug: 'hamstring-curl',
-    name: 'Hamstring Curl',
+    name: 'Ham Curl',
     domain: 'Maximal Strength',
     domainNumber: 1,
     inputMode: 'strength',
@@ -169,8 +167,8 @@ export const EVENTS: EventData[] = [
     emoji: '🦵',
   },
   {
-    slug: 'pause-bench-press',
-    name: 'Pause Bench Press',
+    slug: 'pause-bench',
+    name: 'Pause Bench',
     domain: 'Maximal Strength',
     domainNumber: 1,
     inputMode: 'strength',
@@ -183,7 +181,7 @@ export const EVENTS: EventData[] = [
   },
   {
     slug: 'turkish-get-up',
-    name: 'Turkish Get-Up',
+    name: 'Turkish Get Up',
     domain: 'Maximal Strength',
     domainNumber: 1,
     inputMode: 'strength',
@@ -201,7 +199,7 @@ export const EVENTS: EventData[] = [
     name: '1 Leg Squat',
     domain: 'Relative Strength',
     domainNumber: 2,
-    inputMode: 'reps',
+    inputMode: 'difficulty+reps',
     hasDifficultyTiers: true,
     difficultyTiers: [
       { level: 1, name: 'Assisted Lunge' },
@@ -222,16 +220,15 @@ export const EVENTS: EventData[] = [
     name: 'Flag',
     domain: 'Relative Strength',
     domainNumber: 2,
-    inputMode: 'dynamic',
+    inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
     difficultyTiers: [
-      { level: 1, name: 'Knee Side Plank' },
+      { level: 1, name: 'Elevated Side Plank' },
       { level: 2, name: 'Side Plank' },
-      { level: 3, name: 'One Leg Side Plank' },
-      { level: 4, name: 'Jumping Side Plank' },
-      { level: 5, name: 'Top Flag' },
-      { level: 6, name: 'Half Flag' },
-      { level: 7, name: 'Human Flag' },
+      { level: 3, name: '1 Leg Side Plank' },
+      { level: 4, name: 'Partial Flag' },
+      { level: 5, name: 'Tuck Flag' },
+      { level: 6, name: 'Human Flag' },
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
@@ -244,12 +241,12 @@ export const EVENTS: EventData[] = [
     name: 'Windshield Wipers',
     domain: 'Relative Strength',
     domainNumber: 2,
-    inputMode: 'reps',
+    inputMode: 'difficulty+reps',
     hasDifficultyTiers: true,
     difficultyTiers: [
-      { level: 1, name: 'Lying Tuck Twists' },
-      { level: 2, name: 'Lying L Twist' },
-      { level: 3, name: 'Hanging Circles' },
+      { level: 1, name: 'Tuck Floor Wiper' },
+      { level: 2, name: 'Floor Wipers' },
+      { level: 3, name: 'Hanging Wiper Circles' },
       { level: 4, name: 'Windshield Wipers' },
     ],
     howToPerform: PLACEHOLDER_CONTENT,
@@ -276,16 +273,15 @@ export const EVENTS: EventData[] = [
     name: 'Planche',
     domain: 'Relative Strength',
     domainNumber: 2,
-    inputMode: 'dynamic',
+    inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
     difficultyTiers: [
-      { level: 1, name: 'Wall Lean' },
-      { level: 2, name: 'Pseudo Planche Lean' },
-      { level: 3, name: 'Elevated Pseudo Planche' },
-      { level: 4, name: 'Tuck Planche' },
-      { level: 5, name: 'Advanced Tuck' },
-      { level: 6, name: 'Straddle Planche' },
-      { level: 7, name: 'Full Planche' },
+      { level: 1, name: 'Pseudo Planche Lean' },
+      { level: 2, name: 'Elevated Pseudo Planche Lean' },
+      { level: 3, name: 'Tuck Planche' },
+      { level: 4, name: 'Banded Planche' },
+      { level: 5, name: 'Straddle Planche' },
+      { level: 6, name: 'Full Planche' },
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
@@ -298,16 +294,16 @@ export const EVENTS: EventData[] = [
     name: 'Back Lever',
     domain: 'Relative Strength',
     domainNumber: 2,
-    inputMode: 'dynamic',
+    inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
     difficultyTiers: [
-      { level: 1, name: 'Inverted Hang' },
-      { level: 2, name: 'Skin the Cat Hold' },
-      { level: 3, name: 'Tuck' },
-      { level: 4, name: 'Advanced Tuck' },
-      { level: 5, name: 'One Leg' },
-      { level: 6, name: 'Straddle' },
-      { level: 7, name: 'Full Back Lever' },
+      { level: 1, name: 'Assisted Hang' },
+      { level: 2, name: 'Hang' },
+      { level: 3, name: 'Inverted Hang' },
+      { level: 4, name: 'German Hang' },
+      { level: 5, name: 'Tuck Back Lever' },
+      { level: 6, name: 'Straddle Back Lever' },
+      { level: 7, name: 'Back Lever' },
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
@@ -320,15 +316,15 @@ export const EVENTS: EventData[] = [
     name: 'Iron Cross',
     domain: 'Relative Strength',
     domainNumber: 2,
-    inputMode: 'dynamic',
+    inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
     difficultyTiers: [
-      { level: 1, name: 'Inverted Weight Hold' },
-      { level: 2, name: 'Heavy Band Assisted' },
-      { level: 3, name: 'Light Band Assisted' },
-      { level: 4, name: 'Ring Support Hold' },
+      { level: 1, name: 'Assisted Iron Cross (2 Feet)' },
+      { level: 2, name: 'Assisted Iron Cross (1 Foot)' },
+      { level: 3, name: 'Ring Top Position Hold' },
+      { level: 4, name: 'Banded Iron Cross' },
       { level: 5, name: 'Partial Iron Cross' },
-      { level: 6, name: 'Full Iron Cross' },
+      { level: 6, name: 'Iron Cross' },
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
@@ -341,15 +337,16 @@ export const EVENTS: EventData[] = [
     name: 'Front Lever',
     domain: 'Relative Strength',
     domainNumber: 2,
-    inputMode: 'dynamic',
+    inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
     difficultyTiers: [
-      { level: 1, name: 'Arch Hang' },
-      { level: 2, name: 'Tuck' },
-      { level: 3, name: 'Advanced Tuck' },
-      { level: 4, name: 'One Leg' },
-      { level: 5, name: 'Straddle' },
-      { level: 6, name: 'Full Front Lever' },
+      { level: 1, name: 'Assisted Hang' },
+      { level: 2, name: 'Hang' },
+      { level: 3, name: 'Inverted Hang' },
+      { level: 4, name: 'Tuck Front Lever' },
+      { level: 5, name: 'Banded Front Lever' },
+      { level: 6, name: '1 Leg Front Lever' },
+      { level: 7, name: 'Front Lever' },
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
@@ -362,14 +359,14 @@ export const EVENTS: EventData[] = [
     name: 'Chin Hang',
     domain: 'Relative Strength',
     domainNumber: 2,
-    inputMode: 'hold',
+    inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
     difficultyTiers: [
-      { level: 1, name: 'Two-Hand Two-Foot Assisted' },
-      { level: 2, name: 'Two-Hand One-Foot Assisted' },
+      { level: 1, name: 'Assisted Chin Hang (2 Feet)' },
+      { level: 2, name: 'Assisted Chin Hang (1 Foot)' },
       { level: 3, name: 'Two-Hand Chin Hang' },
       { level: 4, name: 'One-Hand Chin Hang' },
-      { level: 5, name: 'Chin Hang (Band Assisted)' },
+      { level: 5, name: 'Band-Assisted Chin Hang' },
       { level: 6, name: 'Hands-Free Chin Hang' },
     ],
     howToPerform: PLACEHOLDER_CONTENT,
@@ -380,17 +377,20 @@ export const EVENTS: EventData[] = [
   },
   {
     slug: 'rope-climb',
-    name: 'Rope Climb',
+    name: 'Climbing',
     domain: 'Relative Strength',
     domainNumber: 2,
-    inputMode: 'time',
+    inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
     difficultyTiers: [
-      { level: 1, name: 'Foot Assisted Rope Climb' },
-      { level: 2, name: 'Rope Climb' },
-      { level: 3, name: 'L Sit Rope Climb' },
-      { level: 4, name: 'Pegboard (feet)' },
-      { level: 5, name: 'Pegboard (no feet)' },
+      { level: 1, name: 'Leaning Rope Hold' },
+      { level: 2, name: 'Foot-Assisted Rope Hang' },
+      { level: 3, name: 'No Feet Rope Hang' },
+      { level: 4, name: 'Foot-Assisted Rope Climb' },
+      { level: 5, name: 'No Feet Rope Climb' },
+      { level: 6, name: 'L-Sit Rope Climb' },
+      { level: 7, name: 'Pegboard (feet allowed)' },
+      { level: 8, name: 'Pegboard (no feet)' },
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
@@ -402,11 +402,17 @@ export const EVENTS: EventData[] = [
   // ─── Domain 3: Muscular Endurance ─────────────────────────────────────────────
   {
     slug: 'chin-up-contest',
-    name: 'Chin Up Contest',
+    name: 'Chinup Contest',
     domain: 'Muscular Endurance',
     domainNumber: 3,
-    inputMode: 'reps',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+reps',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Ring Row' },
+      { level: 2, name: 'Elevated Ring Row' },
+      { level: 3, name: 'Banded Chinup' },
+      { level: 4, name: 'Chin Up' },
+    ],
     howToPerform: 'Start from a dead hang with palms facing you (supinated grip), hands shoulder-width apart. Pull your chin above the bar on every rep. Return to full dead hang between reps. Count total reps completed without stopping.',
     rules: 'Palms facing toward you (supinated grip). Full dead hang at the bottom of each rep — elbows fully extended. Chin must clear the bar on every rep. Kipping not allowed. No momentum from legs. Score is total reps completed in one continuous set.',
     disadvantage: {
@@ -418,11 +424,17 @@ export const EVENTS: EventData[] = [
   },
   {
     slug: 'push-up-contest',
-    name: 'Push Up Contest',
+    name: 'Pushup Contest',
     domain: 'Muscular Endurance',
     domainNumber: 3,
-    inputMode: 'reps',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+reps',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Elevated Knee Push Up' },
+      { level: 2, name: 'Knee Push Up' },
+      { level: 3, name: 'Push Up' },
+      { level: 4, name: '1 Arm Pushup' },
+    ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
@@ -434,13 +446,13 @@ export const EVENTS: EventData[] = [
     name: 'Reverse Hyper',
     domain: 'Muscular Endurance',
     domainNumber: 3,
-    inputMode: 'reps',
+    inputMode: 'difficulty+reps',
     hasDifficultyTiers: true,
     difficultyTiers: [
-      { level: 1, name: 'Knees' },
-      { level: 2, name: 'Hips' },
-      { level: 3, name: 'Belly Button' },
-      { level: 4, name: 'Chest' },
+      { level: 1, name: 'Superman Hold' },
+      { level: 2, name: 'Back Extension' },
+      { level: 3, name: 'Reverse Hyper Hold (Hips off)' },
+      { level: 4, name: 'Reverse Hyper Hold (Only Chest Touching)' },
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
@@ -453,14 +465,16 @@ export const EVENTS: EventData[] = [
     name: 'L-Sit Hold',
     domain: 'Muscular Endurance',
     domainNumber: 3,
-    inputMode: 'hold',
+    inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
     difficultyTiers: [
-      { level: 1, name: 'Foot Supported' },
-      { level: 2, name: 'One Foot Down' },
-      { level: 3, name: 'Tucked L Sit' },
-      { level: 4, name: 'One Leg Extended' },
-      { level: 5, name: 'Full L Sit' },
+      { level: 1, name: 'Support Hold (legs bent, feet touching floor)' },
+      { level: 2, name: 'Support Hold (legs straight, 1 foot touching floor)' },
+      { level: 3, name: 'Tuck Hold (both knees to chest)' },
+      { level: 4, name: 'Tucked L-Sit (one leg extended)' },
+      { level: 5, name: 'Half L-Sit (legs angled, not fully horizontal)' },
+      { level: 6, name: 'Full L-Sit (legs fully horizontal, Knees locked)' },
+      { level: 7, name: 'V-Sit (Thighs Touching Chest, Knees locked)' },
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
@@ -486,13 +500,13 @@ export const EVENTS: EventData[] = [
     name: 'Headstand',
     domain: 'Muscular Endurance',
     domainNumber: 3,
-    inputMode: 'hold',
+    inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
     difficultyTiers: [
-      { level: 1, name: 'Tripod (feet on ground)' },
+      { level: 1, name: 'Feet-Supported Tripod' },
       { level: 2, name: 'Tripod Headstand' },
       { level: 3, name: 'Forearm Headstand' },
-      { level: 4, name: 'Wall Headstand' },
+      { level: 4, name: 'Wall Headstand (No hands, wall support)' },
       { level: 5, name: 'Freestanding Headstand' },
     ],
     howToPerform: PLACEHOLDER_CONTENT,
@@ -506,16 +520,16 @@ export const EVENTS: EventData[] = [
     name: 'Finger Push Up',
     domain: 'Muscular Endurance',
     domainNumber: 3,
-    inputMode: 'reps',
+    inputMode: 'difficulty+reps',
     hasDifficultyTiers: true,
     difficultyTiers: [
-      { level: 1, name: 'Assisted Fist Pushup' },
-      { level: 2, name: 'Fist Pushup' },
+      { level: 1, name: 'Elevated Knee Finger Pushup' },
+      { level: 2, name: 'Knee Finger Pushup' },
       { level: 3, name: 'Finger Pushup' },
-      { level: 4, name: 'Four Finger' },
-      { level: 5, name: 'Three Finger' },
-      { level: 6, name: 'Two Finger' },
-      { level: 7, name: 'Thumb Only' },
+      { level: 4, name: '4 Finger Pushup' },
+      { level: 5, name: '3 Finger Pushup' },
+      { level: 6, name: '2 Finger Pushup' },
+      { level: 7, name: 'Thumb Pushup' },
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
@@ -524,12 +538,18 @@ export const EVENTS: EventData[] = [
     emoji: '👆',
   },
   {
-    slug: 'calf-raise',
-    name: 'Calf Raise',
+    slug: 'ghd-situp',
+    name: 'GHD Situp',
     domain: 'Muscular Endurance',
     domainNumber: 3,
-    inputMode: 'reps',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+reps',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Dead Bug' },
+      { level: 2, name: 'Crunch' },
+      { level: 3, name: 'Sit Up' },
+      { level: 4, name: 'GHD Situp' },
+    ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
@@ -541,7 +561,7 @@ export const EVENTS: EventData[] = [
     name: 'Leg Extension',
     domain: 'Muscular Endurance',
     domainNumber: 3,
-    inputMode: 'reps',
+    inputMode: 'strength',
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
@@ -551,17 +571,17 @@ export const EVENTS: EventData[] = [
   },
   {
     slug: 'ab-wheel-rollout',
-    name: 'Ab Wheel Rollout',
+    name: 'Ab Rollout',
     domain: 'Muscular Endurance',
     domainNumber: 3,
-    inputMode: 'reps',
+    inputMode: 'difficulty+reps',
     hasDifficultyTiers: true,
     difficultyTiers: [
-      { level: 1, name: 'Kneeling (Partial)' },
-      { level: 2, name: 'Kneeling (Full)' },
-      { level: 3, name: 'Kneeling (Elevated)' },
-      { level: 4, name: 'Standing (Band Assisted)' },
-      { level: 5, name: 'Standing' },
+      { level: 1, name: 'Kneeling Elevated Hold' },
+      { level: 2, name: 'Kneeling Ab Rollout' },
+      { level: 3, name: 'Elevated Kneeling Ab Rollout' },
+      { level: 4, name: 'Banded Ab Rollout' },
+      { level: 5, name: 'Ab Rollout' },
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
@@ -576,8 +596,17 @@ export const EVENTS: EventData[] = [
     name: 'Rear Hand Clasp',
     domain: 'Flexibility & Mobility',
     domainNumber: 4,
-    inputMode: 'flexibility',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+time',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Towel-Assisted (hands hold opposite ends of towel)' },
+      { level: 2, name: 'Block Assisted' },
+      { level: 3, name: 'Half Block Assisted' },
+      { level: 4, name: 'Finger Tips Touch' },
+      { level: 5, name: 'Finger Clasp' },
+      { level: 6, name: 'Palm Clasp' },
+      { level: 7, name: 'Butterfly Clasp' },
+    ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
@@ -589,15 +618,15 @@ export const EVENTS: EventData[] = [
     name: 'Bridge',
     domain: 'Flexibility & Mobility',
     domainNumber: 4,
-    inputMode: 'hold',
+    inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
     difficultyTiers: [
-      { level: 1, name: 'Wall Backbend' },
-      { level: 2, name: 'Deep Wall Backbend' },
-      { level: 3, name: 'Assisted Floor Bridge' },
-      { level: 4, name: 'Floor Bridge' },
+      { level: 1, name: 'Glute Bridge' },
+      { level: 2, name: 'Wall Assisted Bridge' },
+      { level: 3, name: 'Headstand Bridge' },
+      { level: 4, name: 'Bridge' },
       { level: 5, name: 'Straight Arm Bridge' },
-      { level: 6, name: 'Wheel Pose' },
+      { level: 6, name: 'Rainbow Bridge' },
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
@@ -610,14 +639,17 @@ export const EVENTS: EventData[] = [
     name: 'Forward Fold',
     domain: 'Flexibility & Mobility',
     domainNumber: 4,
-    inputMode: 'flexibility',
+    inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
     difficultyTiers: [
-      { level: 1, name: 'Forward Fold' },
-      { level: 2, name: 'To Shins' },
-      { level: 3, name: 'Touch Floor' },
-      { level: 4, name: 'Head to Knees' },
-      { level: 5, name: 'Head to Legs' },
+      { level: 1, name: 'Elevated Seated Forward Fold' },
+      { level: 2, name: 'Standing Forward Fold' },
+      { level: 3, name: 'Standing Forward Fold (knees bent)' },
+      { level: 4, name: 'Standing Forward Fold (straight legs)' },
+      { level: 5, name: 'Standing Forward Fold (finger-tips to floor)' },
+      { level: 6, name: 'Standing Forward Fold (palms to floor)' },
+      { level: 7, name: 'Standing Forward Fold (elbow to toes)' },
+      { level: 8, name: 'Full Forward Fold (head to legs)' },
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
@@ -630,15 +662,15 @@ export const EVENTS: EventData[] = [
     name: 'Needle Pose',
     domain: 'Flexibility & Mobility',
     domainNumber: 4,
-    inputMode: 'flexibility',
+    inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
     difficultyTiers: [
-      { level: 1, name: '90/90 Pose' },
-      { level: 2, name: '90/90 Lift' },
-      { level: 3, name: 'Standing Scale (Knee)' },
-      { level: 4, name: 'Standing Scale (Hip)' },
-      { level: 5, name: 'Standing Scale (High)' },
-      { level: 6, name: 'Needle Pose' },
+      { level: 1, name: 'Standing Leg Lift (below hip)' },
+      { level: 2, name: 'Standing Leg Lift (at hip height / horizontal)' },
+      { level: 3, name: 'Standing Scale (slightly above hip)' },
+      { level: 4, name: 'Standing Scale (at hip, leg fully extended)' },
+      { level: 5, name: 'Standing Scale (high, above head level)' },
+      { level: 6, name: 'Needle Pose (leg to head)' },
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
@@ -648,19 +680,18 @@ export const EVENTS: EventData[] = [
   },
   {
     slug: 'front-split',
-    name: 'Front Split',
+    name: 'Forward Split',
     domain: 'Flexibility & Mobility',
     domainNumber: 4,
-    inputMode: 'hold',
+    inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
     difficultyTiers: [
-      { level: 1, name: 'Assisted Lunge Hold' },
-      { level: 2, name: 'Lunge Hold' },
-      { level: 3, name: 'Front Split (2 Blocks)' },
-      { level: 4, name: 'Front Split (1.5 Blocks)' },
-      { level: 5, name: 'Front Split (1 Block)' },
-      { level: 6, name: 'Front Split (0.5 Block)' },
-      { level: 7, name: 'Front Split' },
+      { level: 1, name: 'Assisted Front Split (2 Blocks)' },
+      { level: 2, name: 'Assisted Front Split (1.5 Blocks)' },
+      { level: 3, name: 'Assisted Front Split (1 Block)' },
+      { level: 4, name: 'Assisted Front Split (0.5 Blocks)' },
+      { level: 5, name: 'Front Split' },
+      { level: 6, name: 'Over Split' },
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
@@ -673,8 +704,17 @@ export const EVENTS: EventData[] = [
     name: 'Middle Split',
     domain: 'Flexibility & Mobility',
     domainNumber: 4,
-    inputMode: 'flexibility',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+time',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Assisted Middle Split (2 Blocks)' },
+      { level: 2, name: 'Assisted Middle Split (1.5 Blocks)' },
+      { level: 3, name: 'Assisted Middle Split (1.25 Blocks)' },
+      { level: 4, name: 'Assisted Middle Split (1 Block)' },
+      { level: 5, name: 'Assisted Middle Split (0.75 Blocks)' },
+      { level: 6, name: 'Assisted Middle Split (0.5 Blocks)' },
+      { level: 7, name: 'Middle Split' },
+    ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
@@ -686,15 +726,17 @@ export const EVENTS: EventData[] = [
     name: 'Standing Split',
     domain: 'Flexibility & Mobility',
     domainNumber: 4,
-    inputMode: 'hold',
+    inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
     difficultyTiers: [
-      { level: 1, name: 'Ankle' },
-      { level: 2, name: 'Knee' },
-      { level: 3, name: 'Hip' },
-      { level: 4, name: 'Ribs' },
-      { level: 5, name: 'Shoulder' },
-      { level: 6, name: 'Head' },
+      { level: 1, name: 'Standing Leg Lift (Ankle height)' },
+      { level: 2, name: 'Standing Leg Lift (Knee height)' },
+      { level: 3, name: 'Standing Leg Lift (Hip height)' },
+      { level: 4, name: 'Standing Split (Hip height, knee locked)' },
+      { level: 5, name: 'Standing Split (Above hip height, hand assisted, knee locked)' },
+      { level: 6, name: 'Standing Split (Above hip height, knee locked)' },
+      { level: 7, name: 'Standing Split (Head height, hand assisted)' },
+      { level: 8, name: 'Standing Split (Head height, no hand assistance)' },
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
@@ -707,15 +749,15 @@ export const EVENTS: EventData[] = [
     name: 'Foot Behind Head',
     domain: 'Flexibility & Mobility',
     domainNumber: 4,
-    inputMode: 'hold',
+    inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
     difficultyTiers: [
-      { level: 1, name: 'Assisted Pigeon' },
-      { level: 2, name: '90/90 Stretch' },
-      { level: 3, name: 'Floor Pigeon' },
-      { level: 4, name: 'Raised Pigeon' },
-      { level: 5, name: 'Foot to Head' },
-      { level: 6, name: 'Foot Behind Head' },
+      { level: 1, name: 'Assisted Pidgeon Pose' },
+      { level: 2, name: '90/90 Pose' },
+      { level: 3, name: 'Pidgeon Pose' },
+      { level: 4, name: 'Elevated Pidgeon Pose' },
+      { level: 5, name: 'Foot to Head Pose' },
+      { level: 6, name: 'Foot Behind Head Pose' },
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
@@ -728,13 +770,13 @@ export const EVENTS: EventData[] = [
     name: 'Shoulder Dislocate',
     domain: 'Flexibility & Mobility',
     domainNumber: 4,
-    inputMode: 'flexibility',
+    inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
     difficultyTiers: [
-      { level: 1, name: 'Shoulder Width +30cm' },
-      { level: 2, name: 'Shoulder Width +20cm' },
-      { level: 3, name: 'Shoulder Width +10cm' },
-      { level: 4, name: 'Shoulder Width' },
+      { level: 1, name: 'Wide Grip (hands double shoulder-width+)' },
+      { level: 2, name: 'Moderately Wide (1.5× shoulder width)' },
+      { level: 3, name: 'Shoulder-Width Grip' },
+      { level: 4, name: 'Narrow Grip (inside shoulder width)' },
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
@@ -743,12 +785,21 @@ export const EVENTS: EventData[] = [
     emoji: '🌀',
   },
   {
-    slug: 'side-bend',
-    name: 'Side Bend',
+    slug: 'pancake',
+    name: 'Pancake',
     domain: 'Flexibility & Mobility',
     domainNumber: 4,
-    inputMode: 'flexibility',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+time',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Elevated Pancake (More than 2 blocks)' },
+      { level: 2, name: 'Elevated Pancake (2 blocks)' },
+      { level: 3, name: 'Elevated Pancake (1.5 blocks)' },
+      { level: 4, name: 'Elevated Pancake (1 block)' },
+      { level: 5, name: 'Elevated Pancake (0.5 blocks)' },
+      { level: 6, name: 'Pancake (hands to floor)' },
+      { level: 7, name: 'Pancake (head to floor)' },
+    ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
@@ -771,8 +822,8 @@ export const EVENTS: EventData[] = [
     emoji: '💥',
   },
   {
-    slug: '1-arm-snatch',
-    name: '1 Arm Snatch',
+    slug: 'one-arm-snatch',
+    name: '1A Snatch',
     domain: 'Power',
     domainNumber: 5,
     inputMode: 'strength',
@@ -798,7 +849,7 @@ export const EVENTS: EventData[] = [
   },
   {
     slug: 'javelin-throw',
-    name: 'Javelin Throw',
+    name: 'Javelin',
     domain: 'Power',
     domainNumber: 5,
     inputMode: 'distance',
@@ -811,7 +862,7 @@ export const EVENTS: EventData[] = [
   },
   {
     slug: 'shot-put',
-    name: 'Shot Put',
+    name: 'Shotput',
     domain: 'Power',
     domainNumber: 5,
     inputMode: 'distance',
@@ -823,8 +874,8 @@ export const EVENTS: EventData[] = [
     emoji: '🏋️',
   },
   {
-    slug: 'afl',
-    name: 'AFL',
+    slug: 'australian-football',
+    name: 'Australian Football',
     domain: 'Power',
     domainNumber: 5,
     inputMode: 'sport',
@@ -849,12 +900,18 @@ export const EVENTS: EventData[] = [
     emoji: '⬆️',
   },
   {
-    slug: 'glute-bridge',
-    name: 'Glute Bridge',
+    slug: 'hand-walk',
+    name: '50m Hand Walk',
     domain: 'Power',
     domainNumber: 5,
-    inputMode: 'strength',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+time',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Bear Crawl' },
+      { level: 2, name: 'Lizard Crawl' },
+      { level: 3, name: 'Handstand (multiple kickups)' },
+      { level: 4, name: 'Handstand (unbroken)' },
+    ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
@@ -891,7 +948,7 @@ export const EVENTS: EventData[] = [
   // ─── Domain 6: Aerobic Endurance ─────────────────────────────────────────────
   {
     slug: '200m-burpee-broad-jump',
-    name: '200m Burpee Broad Jump',
+    name: 'Burpee Broad Jump',
     domain: 'Aerobic Endurance',
     domainNumber: 6,
     inputMode: 'time',
@@ -933,7 +990,7 @@ export const EVENTS: EventData[] = [
   },
   {
     slug: '1k-ski-erg',
-    name: '1k Ski Erg',
+    name: 'Ski 1k',
     domain: 'Aerobic Endurance',
     domainNumber: 6,
     inputMode: 'time',
@@ -962,7 +1019,7 @@ export const EVENTS: EventData[] = [
     name: 'Iron Lungs',
     domain: 'Aerobic Endurance',
     domainNumber: 6,
-    inputMode: 'hold',
+    inputMode: 'distance',
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
@@ -975,7 +1032,7 @@ export const EVENTS: EventData[] = [
     name: '200m Carry',
     domain: 'Aerobic Endurance',
     domainNumber: 6,
-    inputMode: 'weight+time',
+    inputMode: 'time',
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
@@ -1071,7 +1128,7 @@ export const EVENTS: EventData[] = [
     name: '400m Race',
     domain: 'Speed & Agility',
     domainNumber: 7,
-    inputMode: 'time',
+    inputMode: 'sprint',
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
@@ -1136,7 +1193,7 @@ export const EVENTS: EventData[] = [
     name: 'Football Dribble',
     domain: 'Speed & Agility',
     domainNumber: 7,
-    inputMode: 'time',
+    inputMode: 'sprint',
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
@@ -1149,8 +1206,14 @@ export const EVENTS: EventData[] = [
     name: 'Repeat High Jump',
     domain: 'Speed & Agility',
     domainNumber: 7,
-    inputMode: 'distance+time',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+time',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Ankle height' },
+      { level: 2, name: 'Knee height' },
+      { level: 3, name: 'Hip height' },
+      { level: 4, name: 'Shoulder height' },
+    ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
@@ -1177,15 +1240,15 @@ export const EVENTS: EventData[] = [
     name: 'Breakdancing',
     domain: 'Body Awareness',
     domainNumber: 8,
-    inputMode: 'hold',
+    inputMode: 'difficulty+reps',
     hasDifficultyTiers: true,
     difficultyTiers: [
-      { level: 1, name: 'Toprock' },
-      { level: 2, name: 'Footwork' },
-      { level: 3, name: 'Freeze' },
-      { level: 4, name: 'Power Move' },
-      { level: 5, name: 'Combo (two elements)' },
-      { level: 6, name: 'Full Routine (all four)' },
+      { level: 1, name: 'Basic Toprock (6-step, upright)' },
+      { level: 2, name: 'Basic Footwork (6-step on floor)' },
+      { level: 3, name: 'Freeze (basic — baby freeze)' },
+      { level: 4, name: 'Power Move (windmill or head spin entry)' },
+      { level: 5, name: 'Advanced Power Move (clean windmill, flare)' },
+      { level: 6, name: 'Combined Routine (power + freeze + toprock, 30s+ performance)' },
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
@@ -1198,8 +1261,16 @@ export const EVENTS: EventData[] = [
     name: 'Trampolining',
     domain: 'Body Awareness',
     domainNumber: 8,
-    inputMode: 'sport',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+reps',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Basic Bounce' },
+      { level: 2, name: '180 Spin' },
+      { level: 3, name: '360 Spin' },
+      { level: 4, name: 'Forward Flip' },
+      { level: 5, name: 'Back Flip' },
+      { level: 6, name: 'Front Flip 180' },
+    ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
@@ -1211,14 +1282,14 @@ export const EVENTS: EventData[] = [
     name: 'Jump Rope',
     domain: 'Body Awareness',
     domainNumber: 8,
-    inputMode: 'reps',
+    inputMode: 'difficulty+reps',
     hasDifficultyTiers: true,
     difficultyTiers: [
-      { level: 1, name: 'Two-Foot Basic' },
-      { level: 2, name: 'Alternating Feet' },
-      { level: 3, name: 'Single Leg' },
-      { level: 4, name: 'Double Unders' },
-      { level: 5, name: 'Triple Unders' },
+      { level: 1, name: 'Basic Two-Foot Jump' },
+      { level: 2, name: 'Alternating Single-Foot Jump' },
+      { level: 3, name: 'Criss-Cross' },
+      { level: 4, name: 'Double Under' },
+      { level: 5, name: 'Crossover Double Under' },
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
@@ -1244,14 +1315,14 @@ export const EVENTS: EventData[] = [
     name: 'Gymnastics',
     domain: 'Body Awareness',
     domainNumber: 8,
-    inputMode: 'sport',
+    inputMode: 'difficulty+reps',
     hasDifficultyTiers: true,
     difficultyTiers: [
-      { level: 1, name: 'Log Roll' },
-      { level: 2, name: 'Forward Roll' },
-      { level: 3, name: 'Backward Roll' },
-      { level: 4, name: 'Cartwheel' },
-      { level: 5, name: 'Roundoff' },
+      { level: 1, name: 'Forward Roll' },
+      { level: 2, name: 'Backward Roll' },
+      { level: 3, name: 'Cartwheel' },
+      { level: 4, name: 'Roundoff' },
+      { level: 5, name: 'Handspring (front or back)' },
       { level: 6, name: 'One-Hand Cartwheel' },
       { level: 7, name: 'Front Handspring' },
       { level: 8, name: 'Back Handspring' },
@@ -1267,8 +1338,15 @@ export const EVENTS: EventData[] = [
     name: 'Balance Ball',
     domain: 'Body Awareness',
     domainNumber: 8,
-    inputMode: 'hold',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+time',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Seated' },
+      { level: 2, name: 'Kneeling' },
+      { level: 3, name: 'Kneeling (no hands)' },
+      { level: 4, name: '1 Leg Standing (no hands)' },
+      { level: 5, name: 'Standing' },
+    ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
@@ -1280,8 +1358,15 @@ export const EVENTS: EventData[] = [
     name: 'SKATE',
     domain: 'Body Awareness',
     domainNumber: 8,
-    inputMode: 'sport',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+reps',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: '180 Pivot' },
+      { level: 2, name: '360 Pivot' },
+      { level: 3, name: 'Ollie' },
+      { level: 4, name: 'Pop Shove It' },
+      { level: 5, name: 'Kickflip' },
+    ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
     disadvantage: PLACEHOLDER_DISADVANTAGE,
@@ -1306,13 +1391,13 @@ export const EVENTS: EventData[] = [
     name: 'Juggling',
     domain: 'Body Awareness',
     domainNumber: 8,
-    inputMode: 'reps',
+    inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
     difficultyTiers: [
-      { level: 1, name: 'Two Ball Two Hands' },
-      { level: 2, name: 'Two Ball One Hand' },
-      { level: 3, name: 'Three Ball' },
-      { level: 4, name: 'Four Ball' },
+      { level: 1, name: '2 Ball (both hands)' },
+      { level: 2, name: '2 Ball (one hand)' },
+      { level: 3, name: '3 Ball' },
+      { level: 4, name: '4 Ball' },
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
@@ -1527,7 +1612,7 @@ export const EVENTS: EventData[] = [
     name: 'Archery',
     domain: 'Aim & Precision',
     domainNumber: 10,
-    inputMode: 'reps',
+    inputMode: 'sport',
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
@@ -1540,7 +1625,7 @@ export const EVENTS: EventData[] = [
     name: 'Bowling',
     domain: 'Aim & Precision',
     domainNumber: 10,
-    inputMode: 'reps',
+    inputMode: 'sport',
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
@@ -1566,7 +1651,7 @@ export const EVENTS: EventData[] = [
     name: 'Disc Golf',
     domain: 'Aim & Precision',
     domainNumber: 10,
-    inputMode: 'reps',
+    inputMode: 'sport',
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
@@ -1579,7 +1664,7 @@ export const EVENTS: EventData[] = [
     name: 'Golf',
     domain: 'Aim & Precision',
     domainNumber: 10,
-    inputMode: 'reps',
+    inputMode: 'sport',
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
@@ -1613,13 +1698,14 @@ export function getDisadvantageOptions(eventName: string): DisadvantageOptions {
 }
 
 // ─── getBonusTargets ─────────────────────────────────────────────────────────
-// Returns the 4 bonus tiers for a given event and season PR.
-// seasonPR:
-//   - strength → best weight_kg (numeric)
-//   - time/sprint → best raw_score (negative seconds; more negative = faster)
-//   - flexibility / tiered-hold events → best difficulty_tier string e.g. "D5"
-//   - sport → null (always returns targets)
-//   - all others → null (no targets)
+// Returns 3 effort-level bonus targets for a given event and season PR.
+// seasonPR is always numeric raw_score from get_player_season_pr:
+//   - strength      → best weight_kg
+//   - time/sprint   → best raw_score (negative seconds; more negative = faster)
+//   - distance      → best distance in metres
+//   - difficulty+time  → tierIdx * 10000 + seconds  (0-based tierIdx)
+//   - difficulty+reps  → tierIdx * 10000 + reps      (0-based tierIdx)
+//   - sport         → null (targets always shown regardless)
 
 function fmtSecs(totalSecs: number): string {
   const abs = Math.abs(totalSecs)
@@ -1634,9 +1720,9 @@ export function getBonusTargets(
 ): BonusTarget[] {
   const mode = event.inputMode
 
-  // Sport events: always available, no PR needed
+  // Sport events: always show targets, no PR required
   if (mode === 'sport') {
-    return ([1, 2, 3, 4] as const).map(tier => ({
+    return ([1, 2, 3] as const).map(tier => ({
       tier,
       label: `${tier} extra game${tier > 1 ? 's' : ''} vs a new opponent`,
       detail: `${tier} additional game${tier > 1 ? 's' : ''} vs different opponent${tier > 1 ? 's' : ''}`,
@@ -1646,41 +1732,32 @@ export function getBonusTargets(
   }
 
   if (seasonPR === null) return []
+  const rawScore = typeof seasonPR === 'number' ? seasonPR : parseFloat(String(seasonPR))
+  if (isNaN(rawScore)) return []
 
   // Strength events: PR = best weight_kg
   if (mode === 'strength') {
-    const prKg = typeof seasonPR === 'number' ? seasonPR : parseFloat(String(seasonPR))
-    if (!prKg || isNaN(prKg)) return []
-    const tiers: Array<{ tier: 1|2|3|4; pct: number; reps: number }> = [
+    if (rawScore <= 0) return []
+    const specs: Array<{ tier: 1|2|3; pct: number; reps: number }> = [
       { tier: 1, pct: 0.9, reps: 3 },
       { tier: 2, pct: 0.8, reps: 5 },
       { tier: 3, pct: 0.7, reps: 8 },
-      { tier: 4, pct: 0.6, reps: 12 },
     ]
-    return tiers.map(({ tier, pct, reps }) => {
-      const targetKg = Math.round(prKg * pct)
-      return {
-        tier,
-        label: `${targetKg}kg × ${reps} reps`,
-        detail: `${targetKg}kg × ${reps} reps`,
-        points: 15 as const,
-        inputMode: 'strength',
-      }
+    return specs.map(({ tier, pct, reps }) => {
+      const kg = Math.round(rawScore * pct)
+      return { tier, label: `${kg}kg × ${reps} reps`, detail: `${kg}kg × ${reps} reps`, points: 15 as const, inputMode: 'strength' }
     })
   }
 
-  // Time/sprint events: PR = negative seconds (more negative = faster)
+  // Time / sprint events: raw_score is negative seconds (more negative = faster)
   if (mode === 'time' || mode === 'sprint') {
-    const prSecs = typeof seasonPR === 'number' ? seasonPR : parseFloat(String(seasonPR))
-    if (isNaN(prSecs)) return []
-    const tiers: Array<{ tier: 1|2|3|4; efforts: number; pct: number }> = [
+    const specs: Array<{ tier: 1|2|3; efforts: number; pct: number }> = [
       { tier: 1, efforts: 1, pct: 0.90 },
-      { tier: 2, efforts: 2, pct: 0.85 },
-      { tier: 3, efforts: 3, pct: 0.80 },
-      { tier: 4, efforts: 4, pct: 0.75 },
+      { tier: 2, efforts: 2, pct: 0.80 },
+      { tier: 3, efforts: 3, pct: 0.70 },
     ]
-    return tiers.map(({ tier, efforts, pct }) => {
-      const threshold = prSecs * pct
+    return specs.map(({ tier, efforts, pct }) => {
+      const threshold = rawScore * pct
       const timeStr = fmtSecs(threshold)
       return {
         tier,
@@ -1692,55 +1769,83 @@ export function getBonusTargets(
     })
   }
 
-  // Flexibility & tiered hold events: PR = difficulty tier string e.g. "D5"
-  const isFlexOrTieredHold =
-    mode === 'flexibility' ||
-    (event.hasDifficultyTiers && (event.domainNumber === 3 || event.domainNumber === 4))
-  if (isFlexOrTieredHold) {
-    const prTierStr = typeof seasonPR === 'string' ? seasonPR : null
-    if (!prTierStr || !prTierStr.startsWith('D')) return []
-    const prTierNum = parseInt(prTierStr.slice(1))
-    if (isNaN(prTierNum)) return []
+  // Distance events: PR = metres
+  if (mode === 'distance') {
+    if (rawScore <= 0) return []
+    const specs: Array<{ tier: 1|2|3; attempts: number; pct: number }> = [
+      { tier: 1, attempts: 1, pct: 0.90 },
+      { tier: 2, attempts: 2, pct: 0.80 },
+      { tier: 3, attempts: 3, pct: 0.70 },
+    ]
+    return specs.map(({ tier, attempts, pct }) => {
+      const dist = Math.round(rawScore * pct * 100) / 100
+      return {
+        tier,
+        label: `${attempts} attempt${attempts > 1 ? 's' : ''} at ${dist}m`,
+        detail: `${attempts} attempt${attempts > 1 ? 's' : ''} reaching ${dist}m`,
+        points: 15 as const,
+        inputMode: 'distance',
+      }
+    })
+  }
 
-    const prTierName = event.difficultyTiers?.find(t => t.level === prTierNum)?.name ?? prTierStr
-    const belowNum = prTierNum - 1
-    const belowTierName = belowNum >= 1
-      ? (event.difficultyTiers?.find(t => t.level === belowNum)?.name ?? `D${belowNum}`)
+  // difficulty+time: raw_score = tierIdx * 10000 + seconds (0-based tierIdx)
+  if (mode === 'difficulty+time' && event.hasDifficultyTiers) {
+    if (rawScore < 0) return []
+    const tierIdx = Math.floor(rawScore / 10000)
+    const tierLevel = tierIdx + 1
+    const tiers = event.difficultyTiers ?? []
+    const currentName = tiers.find(t => t.level === tierLevel)?.name ?? `D${tierLevel}`
+    const belowLevel = tierLevel - 1
+    const belowName = belowLevel >= 1
+      ? (tiers.find(t => t.level === belowLevel)?.name ?? `D${belowLevel}`)
       : null
 
     const targets: BonusTarget[] = [{
       tier: 1,
-      label: `Hold ${prTierStr} for 1 min`,
-      detail: `Hold ${prTierName} for 1 minute`,
+      label: `Hold D${tierLevel} for 1 min`,
+      detail: `Hold ${currentName} for 1 minute`,
       points: 15,
-      inputMode: 'hold',
+      inputMode: 'difficulty+time',
     }]
 
-    if (belowTierName) {
-      targets.push({
-        tier: 2,
-        label: `Hold D${belowNum} for 2 min`,
-        detail: `Hold ${belowTierName} for 2 minutes`,
-        points: 15,
-        inputMode: 'hold',
-      })
-      targets.push({
-        tier: 3,
-        label: `Hold D${belowNum} for 4 min`,
-        detail: `Hold ${belowTierName} for 4 minutes`,
-        points: 15,
-        inputMode: 'hold',
-      })
-      targets.push({
-        tier: 4,
-        label: `Hold D${belowNum} for 6 min`,
-        detail: `Hold ${belowTierName} for 6 minutes`,
-        points: 15,
-        inputMode: 'hold',
-      })
+    if (belowName) {
+      targets.push({ tier: 2, label: `Hold D${belowLevel} for 2 min`, detail: `Hold ${belowName} for 2 minutes`, points: 15, inputMode: 'difficulty+time' })
+      targets.push({ tier: 3, label: `Hold D${belowLevel} for 4 min`, detail: `Hold ${belowName} for 4 minutes`, points: 15, inputMode: 'difficulty+time' })
+    } else {
+      // At D1: all targets use current tier, progressively longer
+      targets.push({ tier: 2, label: `Hold D1 for 2 min`, detail: `Hold ${currentName} for 2 minutes`, points: 15, inputMode: 'difficulty+time' })
+      targets.push({ tier: 3, label: `Hold D1 for 4 min`, detail: `Hold ${currentName} for 4 minutes`, points: 15, inputMode: 'difficulty+time' })
     }
 
     return targets
+  }
+
+  // difficulty+reps: raw_score = tierIdx * 10000 + reps (0-based tierIdx)
+  if (mode === 'difficulty+reps' && event.hasDifficultyTiers) {
+    if (rawScore <= 0) return []
+    const tierIdx = Math.floor(rawScore / 10000)
+    const prReps = rawScore % 10000
+    if (prReps <= 0) return []
+    const tierLevel = tierIdx + 1
+    const tiers = event.difficultyTiers ?? []
+    const currentName = tiers.find(t => t.level === tierLevel)?.name ?? `D${tierLevel}`
+
+    const specs: Array<{ tier: 1|2|3; pct: number }> = [
+      { tier: 1, pct: 0.90 },
+      { tier: 2, pct: 0.80 },
+      { tier: 3, pct: 0.70 },
+    ]
+    return specs.map(({ tier, pct }) => {
+      const targetReps = Math.max(1, Math.round(prReps * pct))
+      return {
+        tier,
+        label: `${targetReps} reps at D${tierLevel}`,
+        detail: `${targetReps} reps of ${currentName}`,
+        points: 15 as const,
+        inputMode: 'difficulty+reps',
+      }
+    })
   }
 
   return []
