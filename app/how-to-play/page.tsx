@@ -140,11 +140,15 @@ const bonuses = [
   { label: 'Championship podium', points: '+500' },
 ]
 
-const multipliers = [
-  { group: 'Juniors (under 17)', mult: '×1.2' },
-  { group: 'Women (open)', mult: '×1.2' },
-  { group: 'Masters Men (40+)', mult: '×1.2' },
-  { group: 'Masters Women (40+)', mult: '×1.4' },
+const divisions = [
+  { name: 'Youth', age: 'Under 12' },
+  { name: 'Juniors', age: 'Under 17' },
+  { name: "Men's", age: '17–39' },
+  { name: "Women's", age: '17–39' },
+  { name: 'Masters Men', age: '40–59' },
+  { name: 'Masters Women', age: '40–59' },
+  { name: 'Grandmasters Men', age: '60+' },
+  { name: 'Grandmasters Women', age: '60+' },
 ]
 
 export default function HowToPlay() {
@@ -293,14 +297,14 @@ export default function HowToPlay() {
               ))}
             </div>
 
-            {/* Multipliers */}
+            {/* Divisions */}
             <div style={{ background: '#111111', border: '1px solid #1e1e1e', padding: '28px' }}>
-              <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555555', marginBottom: '20px' }}>Scoring Multipliers</div>
-              <p style={{ color: '#666', fontSize: '13px', lineHeight: 1.6, marginBottom: '16px' }}>Applied to ensure fair competition across groups with different physical baselines.</p>
-              {multipliers.map(m => (
-                <div key={m.group} className="bonus-row">
-                  <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 600, fontSize: '14px', color: '#cccccc' }}>{m.group}</span>
-                  <span style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '22px', color: '#f4a226', flexShrink: 0, marginLeft: '12px' }}>{m.mult}</span>
+              <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555555', marginBottom: '8px' }}>Divisions</div>
+              <p style={{ color: '#666', fontSize: '13px', lineHeight: 1.6, marginBottom: '16px' }}>You compete only within your own division — 1st place is awarded once per division per session. Your division is auto-calculated from your age and gender at registration.</p>
+              {divisions.map(d => (
+                <div key={d.name} className="bonus-row">
+                  <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 600, fontSize: '14px', color: '#cccccc' }}>{d.name}</span>
+                  <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', color: '#555', flexShrink: 0, marginLeft: '12px' }}>{d.age}</span>
                 </div>
               ))}
             </div>

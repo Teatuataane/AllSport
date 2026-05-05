@@ -166,30 +166,6 @@ export default function EventPage() {
           </div>
         )}
 
-        {/* Disadvantage */}
-        <div style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '20px' }}>
-          <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '22px', color: '#F9B051', marginBottom: '8px', letterSpacing: '1px' }}>Disadvantage Options</div>
-          <p style={{ color: '#666', fontSize: '13px', lineHeight: 1.5, margin: '0 0 16px', fontFamily: 'Barlow, sans-serif' }}>
-            AllSport uses a disadvantage system to keep competition fair across different body types, ages, and abilities. Players self-declare their disadvantage before competing.
-          </p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            {(['small', 'large'] as const).map(type => (
-              <div key={type} style={{ background: '#0a0a0a', borderRadius: '8px', padding: '14px' }}>
-                <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: '12px', color: '#F9B051', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '10px' }}>
-                  {type === 'small' ? 'Small' : 'Large'} Disadvantage
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  {event.disadvantage[type].map((opt, i) => (
-                    <div key={i} style={{ fontSize: '12px', color: '#888', fontFamily: 'Barlow, sans-serif', lineHeight: 1.4 }}>
-                      • {opt}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
         {/* Personal best */}
         <div style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '20px' }}>
           <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '22px', color: '#fff', marginBottom: '12px', letterSpacing: '1px' }}>Personal Best</div>

@@ -5,7 +5,6 @@ import {
   getEventBySlug,
   getEventByName,
   getEventsByDomain,
-  getDisadvantageOptions,
   getBonusTargets,
 } from '@/lib/eventData'
 
@@ -68,12 +67,6 @@ describe('EVENTS array', () => {
     }
   })
 
-  it('every event has a disadvantage object with small and large arrays of length 3', () => {
-    for (const e of EVENTS) {
-      expect(e.disadvantage.small).toHaveLength(3)
-      expect(e.disadvantage.large).toHaveLength(3)
-    }
-  })
 })
 
 // ─── DOMAIN_ORDER ─────────────────────────────────────────────────────────────
@@ -173,97 +166,6 @@ describe('getEventsByDomain', () => {
   })
 })
 
-// ─── getDisadvantageOptions ───────────────────────────────────────────────────
-
-describe('getDisadvantageOptions', () => {
-  it('returns real disadvantage options for Deadlift', () => {
-    const opts = getDisadvantageOptions('Deadlift')
-    // Deadlift has hand-written content — not placeholder
-    expect(opts.small[0]).not.toBe('Option A')
-    expect(opts.small).toHaveLength(3)
-    expect(opts.large).toHaveLength(3)
-  })
-
-  it('returns placeholder for events with placeholder disadvantage', () => {
-    const opts = getDisadvantageOptions('1 Arm Press')
-    expect(opts.small[0]).toBe('Option A')
-  })
-
-  it('returns placeholder disadvantage for unknown event name', () => {
-    const opts = getDisadvantageOptions('Not A Real Event')
-    expect(opts.small).toHaveLength(3)
-    expect(opts.large).toHaveLength(3)
-    expect(opts.small[0]).toBe('Option A')
-  })
-})
-
-// ─── effectiveScore helper (pure logic, extracted for tests) ──────────────────
-// Mirrors: function effectiveScore(r) { return r.adjusted_score != null ? r.adjusted_score : r.raw_score }
-
-describe('effectiveScore logic', () => {
-  function effectiveScore(r: { raw_score: number; adjusted_score?: number | null }): number {
-    return r.adjusted_score != null ? r.adjusted_score : r.raw_score
-  }
-
-  it('returns adjusted_score when set', () => {
-    expect(effectiveScore({ raw_score: 1.0, adjusted_score: 1.2 })).toBe(1.2)
-  })
-
-  it('returns raw_score when adjusted_score is null', () => {
-    expect(effectiveScore({ raw_score: 0.8, adjusted_score: null })).toBe(0.8)
-  })
-
-  it('returns raw_score when adjusted_score is undefined', () => {
-    expect(effectiveScore({ raw_score: 0.5 })).toBe(0.5)
-  })
-
-  it('returns adjusted_score of 0 (not raw) when explicitly set to 0', () => {
-    // 0 is not null/undefined — should return 0, not raw_score
-    expect(effectiveScore({ raw_score: 1.0, adjusted_score: 0 })).toBe(0)
-  })
-})
-
-// ─── disadvantage multiplier logic ───────────────────────────────────────────
-// Mirrors scoring page: isStrengthDomain && small → 1.2 / large → 1.5 / else → 1.0
-
-describe('disadvantage multiplier', () => {
-  function getDisadvMult(domainNum: number | null, disadvantageType: string): number {
-    const isStrengthDomain = domainNum === 1 || domainNum === 2
-    return isStrengthDomain && disadvantageType === 'small'
-      ? 1.2
-      : isStrengthDomain && disadvantageType === 'large'
-      ? 1.5
-      : 1.0
-  }
-
-  it('domain 1 + small → 1.2', () => {
-    expect(getDisadvMult(1, 'small')).toBe(1.2)
-  })
-
-  it('domain 1 + large → 1.5', () => {
-    expect(getDisadvMult(1, 'large')).toBe(1.5)
-  })
-
-  it('domain 2 + small → 1.2', () => {
-    expect(getDisadvMult(2, 'small')).toBe(1.2)
-  })
-
-  it('domain 2 + large → 1.5', () => {
-    expect(getDisadvMult(2, 'large')).toBe(1.5)
-  })
-
-  it('domain 3 + small → 1.0 (not a strength domain)', () => {
-    expect(getDisadvMult(3, 'small')).toBe(1.0)
-  })
-
-  it('domain 1 + empty string → 1.0 (no disadvantage selected)', () => {
-    expect(getDisadvMult(1, '')).toBe(1.0)
-  })
-
-  it('null domain → 1.0', () => {
-    expect(getDisadvMult(null, 'large')).toBe(1.0)
-  })
-})
 
 // ─── getBonusTargets ──────────────────────────────────────────────────────────
 

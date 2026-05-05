@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase-browser'
 import { EVENTS, getEventByName, getBonusTargets, type EventData, type BonusTarget } from '@/lib/eventData'
@@ -24,15 +24,12 @@ type Result = {
   player_name: string
   event_id: string
   raw_score: number
-  adjusted_score: number | null
   score_label: string
   placement: number | null
   placement_points: number | null
   bonus_points_total: number | null
   points_earned: number | null
   difficulty_tier: string | null
-  disadvantage_type: string | null
-  disadvantage_option: string | null
   result_type: string | null
   opponent_name: string | null
   match_score: string | null
@@ -171,7 +168,7 @@ function EventCard({
   const bonusTargets: BonusTarget[] = eventData ? getBonusTargets(eventData, seasonPR) : []
   const completedTiers = new Set(myBonuses.map(b => b.tier))
 
-  function computeScore(): { raw_score: number; score_label: string; adjusted_score?: number } | null {
+  function computeScore(): { raw_score: number; score_label: string } | null {
     const totalSecs = (parseFloat(timeMins) || 0) * 60 + (parseFloat(timeSecs) || 0)
 
     if (mode === 'strength') {
@@ -310,7 +307,6 @@ function EventCard({
         raw_score: scored.raw_score,
         score_label: scored.score_label,
       }
-      if (scored.adjusted_score != null) payload.adjusted_score = scored.adjusted_score
       if (difficultyTier) payload.difficulty_tier = difficultyTier
       if (exerciseVariation) payload.exercise_variation = exerciseVariation
       if (mode === 'strength') {
@@ -733,12 +729,42 @@ function EventCard({
 
 // ─── LeaderboardTab ───────────────────────────────────────────────────────────
 
-const ALL_DIVISIONS = [
-  'All-Divisions', 'Youth', 'Juniors', "Men's", "Women's",
+const DIVISION_ORDER = [
+  'Youth', 'Juniors', "Men's", "Women's",
   'Masters Men', 'Masters Women', 'Grandmasters Men', 'Grandmasters Women',
 ]
 
+const DIVISION_LABEL: Record<string, string> = {
+  'Youth': 'Youth (U12)',
+  'Juniors': 'Juniors (U17)',
+  "Men's": "Men's",
+  "Women's": "Women's",
+  'Masters Men': 'Masters Men (40+)',
+  'Masters Women': 'Masters Women (40+)',
+  'Grandmasters Men': 'Grandmasters Men (60+)',
+  'Grandmasters Women': 'Grandmasters Women (60+)',
+}
+
 type PlayerInfo = { division: string }
+
+function ordinal(n: number): string {
+  if (n === 1) return '1st'
+  if (n === 2) return '2nd'
+  if (n === 3) return '3rd'
+  return `${n}th`
+}
+
+function rankCircle(rank: number) {
+  const bg = rank === 1 ? '#F9B051' : rank === 2 ? '#888' : rank === 3 ? '#CD7F32' : '#1e1e1e'
+  const color = rank <= 3 ? '#000' : '#555'
+  return (
+    <div style={{
+      width: '28px', height: '28px', borderRadius: '50%', flexShrink: 0,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: '13px', fontWeight: 700, background: bg, color,
+    }}>{rank}</div>
+  )
+}
 
 function LeaderboardTab({
   events, results, playerInfoMap,
@@ -747,91 +773,177 @@ function LeaderboardTab({
   results: Result[]
   playerInfoMap: Record<string, PlayerInfo>
 }) {
-  const [division, setDivision] = useState('All-Divisions')
-  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const presentDivisions = useMemo(() =>
+    DIVISION_ORDER.filter(d =>
+      results.some(r => r.player_id && playerInfoMap[r.player_id]?.division === d)
+    ),
+    [results, playerInfoMap]
+  )
 
-  function filteredResults(eventId: string): Result[] {
-    const evRes = results.filter(r => r.event_id === eventId)
-    if (division === 'All-Divisions') return evRes
-    return evRes.filter(r => r.player_id && playerInfoMap[r.player_id]?.division === division)
+  const [division, setDivision] = useState<string>('')
+  const [expandedPlayerId, setExpandedPlayerId] = useState<string | null>(null)
+
+  // Keep active tab on a real division; default to first populated
+  useEffect(() => {
+    if (presentDivisions.length === 0) return
+    if (!presentDivisions.includes(division)) {
+      setDivision(presentDivisions[0])
+      setExpandedPlayerId(null)
+    }
+  }, [presentDivisions, division])
+
+  // Reset expansion when switching division
+  function switchDivision(d: string) {
+    setDivision(d)
+    setExpandedPlayerId(null)
   }
 
-  function rankFor(evRes: Result[]): Array<Result & { rank: number }> {
-    const sorted = [...evRes].sort((a, b) => (b.raw_score ?? 0) - (a.raw_score ?? 0))
-    let rank = 1
-    return sorted.map((r, i) => {
-      if (i > 0 && r.raw_score !== sorted[i - 1].raw_score) rank = i + 1
-      return { ...r, rank }
+  // Build ranked player list for the active division
+  const leaderboard = useMemo(() => {
+    if (!division) return []
+
+    const playerIds = [...new Set(
+      results
+        .filter(r => r.player_id && playerInfoMap[r.player_id]?.division === division)
+        .map(r => r.player_id as string)
+    )]
+    if (playerIds.length === 0) return []
+
+    const rows = playerIds.map(playerId => {
+      const playerName = results.find(r => r.player_id === playerId)?.player_name ?? playerId
+
+      let totalPlacement = 0
+      const eventBreakdown = events.map(ev => {
+        // All scored results for this event within this division
+        const scored = results.filter(r =>
+          r.event_id === ev.id &&
+          r.player_id &&
+          playerInfoMap[r.player_id]?.division === division &&
+          r.raw_score != null
+        )
+        const sorted = [...scored].sort((a, b) => (b.raw_score ?? 0) - (a.raw_score ?? 0))
+
+        const myResult = results.find(r => r.event_id === ev.id && r.player_id === playerId)
+
+        if (!myResult || myResult.raw_score == null) {
+          // No score: last place = number of scorers + 1
+          const placement = scored.length + 1
+          totalPlacement += placement
+          return { ev, scoreLabel: null, placement, noScore: true }
+        }
+
+        // Determine rank within event (ties share rank)
+        let rank = 1
+        for (let i = 0; i < sorted.length; i++) {
+          if (i > 0 && sorted[i].raw_score !== sorted[i - 1].raw_score) rank = i + 1
+          if (sorted[i].player_id === playerId) break
+        }
+        totalPlacement += rank
+        return { ev, scoreLabel: myResult.score_label, placement: rank, noScore: false }
+      })
+
+      return { playerId, playerName, totalPlacement, eventBreakdown }
     })
+
+    rows.sort((a, b) => a.totalPlacement - b.totalPlacement)
+
+    // Assign overall rank with tie handling
+    let rank = 1
+    return rows.map((row, i) => {
+      if (i > 0 && row.totalPlacement !== rows[i - 1].totalPlacement) rank = i + 1
+      return { ...row, rank }
+    })
+  }, [division, results, events, playerInfoMap])
+
+  if (presentDivisions.length === 0) {
+    return (
+      <div style={{ padding: '32px 16px', textAlign: 'center', color: '#444', fontSize: '14px' }}>
+        No scores submitted yet.
+      </div>
+    )
   }
 
   return (
     <div style={{ padding: '12px 16px' }}>
-      {/* Division filter */}
+      {/* Division tabs */}
       <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '8px', marginBottom: '16px' }}>
-        {ALL_DIVISIONS.map(d => (
-          <button key={d} onClick={() => setDivision(d)} style={{
+        {presentDivisions.map(d => (
+          <button key={d} onClick={() => switchDivision(d)} style={{
             padding: '6px 12px', border: `1px solid ${division === d ? '#2371BB' : '#222'}`,
-            borderRadius: '20px', cursor: 'pointer', whiteSpace: 'nowrap', fontSize: '12px', fontWeight: division === d ? 700 : 400,
+            borderRadius: '20px', cursor: 'pointer', whiteSpace: 'nowrap', fontSize: '12px',
+            fontWeight: division === d ? 700 : 400,
             background: division === d ? '#0d1a2e' : '#111',
             color: division === d ? '#2371BB' : '#555',
             flexShrink: 0,
-          }}>{d}</button>
+          }}>{DIVISION_LABEL[d] ?? d}</button>
         ))}
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        {events.map(ev => {
-          const evData = getEventByName(ev.event_name)
-          const evRes = filteredResults(ev.id)
-          const ranked = rankFor(evRes)
-          const leader = ranked[0]
-          const isOpen = expandedId === ev.id
-          const scoreCount = ranked.length
+      {/* Ranked player list */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        {leaderboard.map(row => {
+          const isOpen = expandedPlayerId === row.playerId
+          const isFirst = row.rank === 1
 
           return (
-            <div key={ev.id} style={{ background: '#111', borderRadius: '12px', overflow: 'hidden', border: `1px solid ${isOpen ? '#2371BB' : '#1e1e1e'}` }}>
-              <button onClick={() => setExpandedId(isOpen ? null : ev.id)} style={{
-                display: 'flex', alignItems: 'center', gap: '14px', width: '100%',
-                padding: '16px 18px', background: isOpen ? '#0d1a2e' : 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left',
-              }}>
-                <span style={{ fontSize: '24px', flexShrink: 0 }}>{evData?.emoji ?? '🏅'}</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '16px', fontWeight: 700, color: isOpen ? '#fff' : '#ccc' }}>{ev.event_name}</div>
-                  <div style={{ fontSize: '12px', color: '#555', marginTop: '2px' }}>{ev.domain_name}</div>
-                  {leader ? (
-                    <div style={{ fontSize: '13px', color: '#F9B051', marginTop: '4px', fontWeight: 600 }}>
-                      {leader.player_name} · {leader.score_label}
-                      <span style={{ color: '#555', fontWeight: 400, marginLeft: '6px' }}>{scoreCount} score{scoreCount !== 1 ? 's' : ''}</span>
-                    </div>
-                  ) : (
-                    <div style={{ fontSize: '13px', color: '#444', marginTop: '4px' }}>No scores yet</div>
-                  )}
+            <div key={row.playerId} style={{
+              background: '#111', borderRadius: '12px', overflow: 'hidden',
+              border: `1px solid ${isOpen ? '#2371BB' : isFirst ? '#2a1f00' : '#1e1e1e'}`,
+            }}>
+              {/* Collapsed row */}
+              <button
+                onClick={() => setExpandedPlayerId(isOpen ? null : row.playerId)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '14px', width: '100%',
+                  padding: '14px 18px', background: isOpen ? '#0d1a2e' : isFirst ? '#0d0a00' : 'transparent',
+                  border: 'none', cursor: 'pointer', textAlign: 'left',
+                }}
+              >
+                {rankCircle(row.rank)}
+                <div style={{ flex: 1, fontSize: '15px', fontWeight: isFirst ? 700 : 500, color: isFirst ? '#fff' : '#ccc' }}>
+                  {row.playerName}
                 </div>
-                <span style={{ color: isOpen ? '#2371BB' : '#444', fontSize: '16px', flexShrink: 0 }}>{isOpen ? '▲' : '▼'}</span>
+                <div style={{ fontSize: '13px', color: '#555', marginRight: '8px' }}>
+                  <span style={{ color: isFirst ? '#F9B051' : '#666', fontWeight: 700, fontSize: '15px' }}>
+                    {row.totalPlacement}
+                  </span>
+                  <span style={{ color: '#333', fontSize: '11px', marginLeft: '3px' }}>pts</span>
+                </div>
+                <span style={{ color: isOpen ? '#2371BB' : '#333', fontSize: '14px', flexShrink: 0 }}>
+                  {isOpen ? '▲' : '▼'}
+                </span>
               </button>
 
+              {/* Expanded event breakdown */}
               {isOpen && (
-                <div style={{ borderTop: '1px solid #1e1e1e' }}>
-                  {ranked.length === 0 ? (
-                    <div style={{ padding: '14px 18px', color: '#444', fontSize: '13px' }}>No scores yet.</div>
-                  ) : ranked.map((r, idx) => (
-                    <div key={r.id} style={{
-                      display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 18px',
-                      borderBottom: idx < ranked.length - 1 ? '1px solid #0d0d0d' : 'none',
-                      background: idx === 0 ? '#0d1a0d' : 'transparent',
+                <div style={{ borderTop: '1px solid #1a1a1a' }}>
+                  {row.eventBreakdown.map(({ ev, scoreLabel, placement, noScore }, idx) => (
+                    <div key={ev.id} style={{
+                      display: 'flex', alignItems: 'center', gap: '12px',
+                      padding: '10px 18px 10px 22px',
+                      borderBottom: idx < row.eventBreakdown.length - 1 ? '1px solid #0d0d0d' : 'none',
+                      background: placement === 1 && !noScore ? '#0d1a0d' : 'transparent',
                     }}>
-                      <div style={{
-                        width: '28px', height: '28px', borderRadius: '50%', flexShrink: 0,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: '13px', fontWeight: 700,
-                        background: r.rank === 1 ? '#F9B051' : r.rank === 2 ? '#888' : r.rank === 3 ? '#CD7F32' : '#333',
-                        color: r.rank <= 3 ? '#000' : '#fff',
-                      }}>{r.rank}</div>
-                      <div style={{ flex: 1, fontSize: '14px', color: idx === 0 ? '#fff' : '#aaa', fontWeight: idx === 0 ? 700 : 400 }}>
-                        {r.player_name}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '13px', color: noScore ? '#444' : '#aaa', fontWeight: 500 }}>
+                          {ev.event_name}
+                        </div>
                       </div>
-                      <div style={{ fontSize: '14px', fontWeight: 700, color: idx === 0 ? '#F9B051' : '#666' }}>{r.score_label}</div>
+                      {noScore ? (
+                        <div style={{ fontSize: '12px', color: '#333', fontStyle: 'italic' }}>No Score</div>
+                      ) : (
+                        <>
+                          <div style={{ fontSize: '13px', color: '#666', maxWidth: '120px', textAlign: 'right' }}>
+                            {scoreLabel}
+                          </div>
+                          <div style={{
+                            fontSize: '12px', fontWeight: 700, minWidth: '36px', textAlign: 'right',
+                            color: placement === 1 ? '#F9B051' : placement === 2 ? '#888' : placement === 3 ? '#CD7F32' : '#555',
+                          }}>
+                            {ordinal(placement)}
+                          </div>
+                        </>
+                      )}
                     </div>
                   ))}
                 </div>
