@@ -141,11 +141,14 @@ linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)
 - Minimum earn = 10 points
 - Players who joined a session but submitted no score for an event are ranked **last** for that event
 
-| Session Size | Gap | Example |
+Gap and placement points are calculated **per division** (not across total session players).
+
+| Division Size | Gap | Example |
 |---|---|---|
 | 5 players | 20 pts | 100/80/60/40/20 |
 | 10 players | 10 pts | 100/90/80/10 |
 | 20+ players | min 10 | 100/90/80/10 |
+| 1 player (solo) | — | 100 pts (automatic 1st, requires ≥1 score) |
 
 ### Bonus Points
 
@@ -159,28 +162,6 @@ linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)
 | Championship participation | +100 |
 | Championship podium finish | +500 |
 
-### Scoring Multipliers
-
-| Group | Multiplier |
-|---|---|
-| Juniors (under 17) | x1.2 |
-| Women (open) | x1.2 |
-| Masters Men (40+) | x1.2 |
-| Masters Women (40+) | x1.4 |
-
-### Disadvantage System
-
-Players self-declare a disadvantage before competing in an event when a physical advantage difference exists between them and their opponents. No reason is required — they simply declare small or large.
-
-**Mechanical effect:**
-- Domain 1 (Maximal Strength) and Domain 2 (Relative Strength): disadvantage applies a score multiplier.
-  - Small: raw_score × 1.2 → stored in `adjusted_score`
-  - Large: raw_score × 1.5 → stored in `adjusted_score`
-- All other domains: disadvantage is recorded and displayed only. No score change. Physical rule modification is agreed between players and enforced by the judge in person.
-
-**Options:** Each event has three small-disadvantage options and three large-disadvantage options defined in `lib/eventData.ts`. Players choose which option they took. Stored in `disadvantage_type` ('small'/'large') and `disadvantage_option` (the chosen option text).
-
-**Display:** Small badge on result row — "S" (small) or "L" (large) in amber (#F9B051).
 
 ---
 
@@ -227,13 +208,24 @@ F Split and M Split use distance input mode (block height from ground in cm).
 
 ## Divisions
 
-| Division | Eligibility |
-|---|---|
-| Men's | Male competitors aged 17+ |
-| Women's | Female competitors aged 17+ |
-| Juniors | All competitors aged 16 and under |
+Divisions are **auto-calculated** from `date_of_birth` + `gender` at registration. The `division` field in the `players` table stores the computed value. Division is recalculated at registration time only; changing DOB/gender post-registration requires a judge to update manually.
 
-The combined division leaderboard tab is labelled **"All-Divisions"** (not "Overall") everywhere.
+| Division | Eligibility | Tab label (in-game) |
+|---|---|---|
+| Youth | All competitors aged 11 and under | Youth (U12) |
+| Juniors | All competitors aged 12–16 | Juniors (U17) |
+| Men's | Male competitors aged 17–39 | Men's |
+| Women's | Female competitors aged 17–39 | Women's |
+| Masters Men | Male competitors aged 40–59 | Masters Men (40+) |
+| Masters Women | Female competitors aged 40–59 | Masters Women (40+) |
+| Grandmasters Men | Male competitors aged 60+ | Grandmasters Men (60+) |
+| Grandmasters Women | Female competitors aged 60+ | Grandmasters Women (60+) |
+
+`calculateDivision(dob, gender)` in `app/register/page.tsx` is the canonical implementation.
+
+**Each division competes independently.** Placement points are awarded within each division separately. In a mixed-division session, 1st place is awarded once per division. A solo player in a division automatically wins (1st, 100 pts) if they submit at least one score.
+
+The in-game leaderboard shows **only the divisions that have players in the current session** — empty division tabs are hidden.
 
 ---
 
@@ -301,7 +293,7 @@ update players set role = 'judge' where id = '[uuid]';
 | Home | / | Complete | Hero, ethos, colours, CTA. Colour progression section is a "My Colour History" button for logged-in players |
 | How To Play | /how-to-play | Complete | Rules, scoring, 10 domains. Links to /events |
 | Events Index | /events | Complete | All 100 events grouped by domain, links to detail pages |
-| Event Detail | /events/[slug] | Complete | Template page: how to perform, rules, tiers, disadvantage, personal best |
+| Event Detail | /events/[slug] | Complete | Template page: how to perform, rules, tiers, personal best |
 | Schedule | /schedule | Complete | Times correct (4:30pm Tue/Thu, 9am Sat), Championship 14 Mar 2027 |
 | Leaderboard | /leaderboard | Complete | Real data, All-Divisions tab, active session live banner |
 | Koha | /koha | Complete | Tiers, IRD rebate |
@@ -311,7 +303,7 @@ update players set role = 'judge' where id = '[uuid]';
 | Dashboard | /dashboard | Complete | Colours progress, stats, join by code, recent sessions with View Summary, My Personal Bests button |
 | Judge Panel | dashboard (JudgeCard) | Complete | Create/end/void sessions, QR code, history, real-time player count |
 | Scoring Setup | /scoring | Complete | Select 10 events, editable start time, create session |
-| Live Session | /scoring/[sessionId] | Complete | All-Divisions tab, judge edit/delete scores, difficulty tier selector, disadvantage selector, missing scores = last place, post-game popup on session end |
+| Live Session | /scoring/[sessionId] | Complete | Per-division leaderboard tabs, judge edit/delete scores, difficulty tier selector, missing scores = last place, post-game popup on session end |
 | Personal Bests | /prs | Complete | All 100 events, PR per event, expandable history, this season + previous seasons tabs |
 | Auth Callback | /auth/callback | Complete | Google OAuth handler |
 
@@ -335,12 +327,10 @@ id, created_at, session_id, domain_number, domain_name, event_name
 
 ### results
 id, created_at, player_id (nullable), session_id, event_id, score, points_earned,
-rank_in_session, notes, player_name, raw_score, score_label, adjusted_score, placement,
+rank_in_session, notes, player_name, raw_score, score_label, placement,
 exercise_variation, weight_kg, reps, time_seconds, pose_variation,
 opponent_name, match_score, result_type,
-difficulty_tier (TEXT — D1/D2/etc or null),
-disadvantage_type (TEXT — 'small'/'large' or null),
-disadvantage_option (TEXT — the chosen option or null)
+difficulty_tier (TEXT — D1/D2/etc or null)
 
 ### rankings
 id, updated_at, player_id, total_points, total_sessions, average_score,
@@ -356,7 +346,6 @@ best_score, current_rank, division, average_placement, season_year
 - raw_score for time events is stored negative (faster = higher) so rankings sort correctly
 - Players who joined a session (have any result row) but have no score for a specific event are ranked last for that event
 - Missing score players display as "No score" in expanded event lists
-- Disadvantage multipliers (×1.2 small, ×1.5 large) apply only to Domain 1 and Domain 2 events; stored in adjusted_score
 - Input modes: strength (weight+reps), reps, time (mm:ss), hold (mm:ss), difficulty+time (tier selector + seconds), difficulty+reps (tier selector + reps), distance (m/cm), flexibility (blocks, legacy), sport (win/draw/loss + opponent), sprint (ss.cs), weight+time, distance+time, dynamic (legacy)
 - difficulty+time raw_score = tierIdx * 10000 + seconds (0-based tierIdx). Used for all tiered hold events (planche, bridges, splits, etc.)
 - difficulty+reps raw_score = tierIdx * 10000 + reps (0-based tierIdx). Used for all tiered rep events. Special case: GHD Situp D4 is weight-scored (raw_score = weight_kg)
@@ -365,7 +354,7 @@ best_score, current_rank, division, average_placement, season_year
 - Pre-session timer: if started_at is in the future, shows purple "until start" countdown. Game clock begins at started_at
 - Score submission re-fetches results after upsert (realtime alone misses UPDATEs from re-submissions)
 - Post-game popup: triggers on is_active → false, dismissed per player per session via localStorage, viewable in session history thereafter
-- All-Divisions = the combined tab (previously called "Overall") — renamed everywhere
+- In-game leaderboard shows per-division ranked player list (lowest total placement score wins within division). No combined All-Divisions view.
 - Guest players: created by judges during a live session, stored in players with is_guest=true and no auth account. player_id FK to auth.users was dropped in migration 20260505 — registered players still have id=auth.uid() by construction, guests use gen_random_uuid()
 - Judge player tabs: judges see their own + family tabs by default, can add any registered player or create a guest via "+" button. Tabs persist in localStorage keyed by sessionId. Added players stored as [{id, label, isGuest}]
 - Guest player RLS: judges can insert players (is_guest=true), results (any player_id), and bonus_completions (any player_id) — covered by policies in migration 20260505
@@ -381,7 +370,7 @@ best_score, current_rank, division, average_placement, season_year
     supabase.ts                     # Basic client (legacy — DO NOT USE in new code)
     supabase-browser.ts             # Browser client (use this in ALL client components)
     supabase-server.ts              # Server client
-    eventData.ts                    # Single source of truth for all 100 events: name, slug, domain, inputMode, difficultyTiers, disadvantageOptions, howToPerform, rules
+    eventData.ts                    # Single source of truth for all 100 events: name, slug, domain, inputMode, difficultyTiers, howToPerform, rules
   app/
     page.tsx                        # Homepage — colour progression = "My Colour History" button
     layout.tsx                      # Root layout
@@ -399,7 +388,7 @@ best_score, current_rank, division, average_placement, season_year
     dashboard/page.tsx              # Colours section, My Personal Bests button, View Summary on sessions
     prs/page.tsx                    # Personal best history — all 100 events
     scoring/page.tsx
-    scoring/[sessionId]/page.tsx    # Live session — All-Divisions tab, judge edit/delete, tier selector, disadvantage, post-game popup
+    scoring/[sessionId]/page.tsx    # Live session — per-division leaderboard tabs, judge edit/delete, tier selector, post-game popup
     auth/callback/route.ts
     components/
       JudgeCard.tsx                 # Judge panel — real-time player count
@@ -411,6 +400,8 @@ best_score, current_rank, division, average_placement, season_year
       20260420_phase1.sql
       20260428_phase2.sql           # difficulty_tier, disadvantage_type, disadvantage_option columns; updated award_session_points trigger
       20260505_judge_player_management.sql  # guest players (is_guest), drop players.id FK, judge RLS for results/bonuses
+      20260510_per_division_points.sql      # per-division award_session_points trigger; no multipliers
+      20260510_drop_disadvantage_columns.sql # drop adjusted_score, disadvantage_type, disadvantage_option from results
   public/
     logo.png
 ```
@@ -425,15 +416,15 @@ best_score, current_rank, division, average_placement, season_year
 - 3-step player registration with Google OAuth
 - Player dashboard — Colours progress (bar + year tabs), stats, join by code, session history with View Summary
 - Judge panel (JudgeCard) — create/end/void sessions, QR code, real-time player count
-- Live scoring — 100-event pool, all input modes including difficulty tier selector and disadvantage selector, All-Divisions tab, judge edit/delete scores, missing scores = last place, post-game popup
+- Live scoring — 100-event pool, all input modes including difficulty tier selector, per-division leaderboard tabs, judge edit/delete scores, missing scores = last place, post-game popup
 - Post-game popup — placement, per-event breakdown, bonuses, total points, colour progression moment
 - Session history — past session summaries accessible from dashboard
 - Colour history — accessible from homepage colour progression section (logged-in players)
 - Colours section on dashboard — renamed from Grade, conditional year tabs, coloured progress bar
-- Event detail pages — /events/[slug] with how-to, rules, difficulty tiers, disadvantage options, personal best
+- Event detail pages — /events/[slug] with how-to, rules, difficulty tiers, personal best
 - Events index — /events, all 100 events grouped by domain
 - Personal bests page — /prs, all 100 events, expandable history, this season + previous seasons
-- All-Divisions tab — renamed from Overall everywhere
+- Per-division in-game leaderboard — player-ranked list (by total placement score), expandable per-event breakdown, only populated division tabs shown
 - T-Race — renamed from T-Test, now uses sport/win-loss input mode
 - Chin Hang — renamed from Chin Lift
 - Effort points system — getBonusTargets rewritten: 3 tiers (was 4), correct PR decoding from raw_score, all inputModes supported
@@ -441,7 +432,6 @@ best_score, current_rank, division, average_placement, season_year
 - All 100 events updated — correct inputMode, hasDifficultyTiers, tier names from EVENT_DEFINITIONS.md
 - 20+ event renames/slug changes — see "Event renames" section above
 - Difficulty tiers — now defined for all 100 tiered events in lib/eventData.ts
-- Disadvantage system — self-declared, recorded per result, mechanical multiplier on strength events
 - Judge score edit/delete fix — delete confirmation works correctly, leaderboard recalculates immediately
 - Judge player management — judges can add any registered player or create a guest during a live session; tabs persist across refresh via localStorage; guest players earn placement points
 - Guest players — stored in players table with is_guest=true and no auth account (players.id FK to auth.users removed); created via judge modal
@@ -452,12 +442,11 @@ best_score, current_rank, division, average_placement, season_year
 
 ## What's Next (In Priority Order)
 
-1. Populate full content (howToPerform, rules, disadvantage options) for remaining 95 events in lib/eventData.ts
+1. Populate full content (howToPerform, rules) for remaining 95 events in lib/eventData.ts
 2. Welcome email on registration (Supabase Edge Function + Resend)
 3. Judge approval flow (replace manual SQL)
 4. Player profile page — edit display prefs
-5. Disadvantage option definitions for all 100 events (currently placeholder for 95)
-6. Verify Te Reo "Kaiwāwao" is correct for judge/referee in sports context
+5. Verify Te Reo "Kaiwāwao" is correct for judge/referee in sports context
 7. Championship registration flow (6 months before March 2027)
 8. Guest player claim flow — link a guest player record to a newly registered account (optional, post-MVP)
 
@@ -470,13 +459,13 @@ best_score, current_rank, division, average_placement, season_year
 - Te reo Māori identity throughout
 - Taniwha = Black = peak grade = black belt equivalent
 - Colours reset January, history kept forever — section called "Colours" not "Grade"
-- All-Divisions = combined division tab (not "Overall")
+- In-game leaderboard: player-ranked list per division (not event-list view). No All-Divisions combined tab. Each division competes independently.
+- Division tabs: only show divisions present in the current session. Tab labels include age ranges for Youth, Juniors, Masters and Grandmasters.
 - T-Race (not T-Test) uses sport/win-loss input mode
 - Chin Hang (not Chin Lift)
 - Difficulty tiers: D1 = easiest, purely informational, stored in results.difficulty_tier as tier name string
 - difficulty+time: raw_score = tierIdx*10000 + seconds; difficulty+reps: raw_score = tierIdx*10000 + reps (both 0-based tierIdx)
 - GHD Situp D4 special case: scoring switches to weight_kg (not reps); handled in computeScore by checking event.name === 'GHD Situp' && tierIdx === 3
-- Disadvantage: self-declared by players, small/large, three options per event per level; multiplier on strength events only (×1.2 / ×1.5)
 - Missing scores: players with any result in session but no score for a specific event = last place for that event
 - Post-game popup: triggers on session close, dismissed via localStorage, viewable in session history
 - lib/eventData.ts is the single source of truth for all 100 events

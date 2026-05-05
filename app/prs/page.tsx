@@ -19,7 +19,6 @@ type PRResult = {
   id: string
   score_label: string
   raw_score: number
-  adjusted_score: number | null
   difficulty_tier: string | null
   placement: number | null
   session_date: string
@@ -29,7 +28,7 @@ type PRResult = {
 }
 
 function effectiveScore(r: PRResult): number {
-  return r.adjusted_score != null ? r.adjusted_score : r.raw_score
+  return r.raw_score
 }
 
 function sessionYear(session_date: string): number {
@@ -51,7 +50,7 @@ export default function PRsPage() {
       const { data } = await supabase
         .from('results')
         .select(`
-          id, score_label, raw_score, adjusted_score, difficulty_tier, placement,
+          id, score_label, raw_score, difficulty_tier, placement,
           session_events!inner(event_name, domain_number),
           sessions!inner(session_date, is_championship)
         `)
@@ -64,7 +63,6 @@ export default function PRsPage() {
           id: r.id,
           score_label: r.score_label,
           raw_score: r.raw_score,
-          adjusted_score: r.adjusted_score,
           difficulty_tier: r.difficulty_tier,
           placement: r.placement,
           session_date: r.sessions.session_date,

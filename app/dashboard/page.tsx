@@ -609,7 +609,7 @@ function DashboardInner() {
             )}
             {memberForm.date_of_birth && (
               <div style={{ fontSize: '11px', color: isJunior(memberForm.date_of_birth) ? '#F9B051' : '#4DB26E' }}>
-                Division: {isJunior(memberForm.date_of_birth) ? 'Juniors (×1.2 multiplier)' : memberForm.gender === 'female' ? "Women's (×1.2)" : "Men's"}
+                Division: {isJunior(memberForm.date_of_birth) ? 'Juniors' : memberForm.gender === 'female' ? "Women's" : "Men's"}
               </div>
             )}
             {memberError && <div style={{ color: '#EA4742', fontSize: '13px' }}>{memberError}</div>}
