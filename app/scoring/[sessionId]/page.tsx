@@ -399,9 +399,6 @@ function EventCard({
   }
 
   // Expanded card
-  const isTimeMode = mode === 'time' || mode === 'hold'
-  const isDynamicHold = false
-  const isDynamicReps = false
 
   return (
     <div style={{
@@ -506,15 +503,15 @@ function EventCard({
               )}
 
               {/* Reps mode — hidden when weight variation selected; difficulty+reps — hidden for weight-scored tiers */}
-              {((mode === 'reps' || isDynamicReps) && !isWeightVariation) ||
+              {(mode === 'reps' && !isWeightVariation) ||
                (mode === 'difficulty+reps' && !isWeightScoredTierByName(eventData?.name ?? '', difficultyTier))
                 ? (
                 <input type="number" value={repCount} onChange={e => setRepCount(e.target.value)}
                   placeholder="Reps" style={INP} />
               ) : null}
 
-              {/* Time / hold / weight+time / difficulty+time */}
-              {(mode === 'time' || mode === 'hold' || mode === 'weight+time' || mode === 'difficulty+time' || isDynamicHold) && (
+              {/* Time / hold / difficulty+time */}
+              {(mode === 'time' || mode === 'hold' || mode === 'difficulty+time') && (
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                   <input type="number" value={timeMins} onChange={e => setTimeMins(e.target.value)}
                     placeholder="min" style={{ ...INP, flex: 1 }} />

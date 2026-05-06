@@ -1728,14 +1728,15 @@ export function getBonusTargets(
   const mode = event.inputMode
 
   // Sport events: always show targets, no PR required
+  // Each extra game (2nd+) vs a unique (never-played) opponent = +1 effort level
   if (mode === 'sport') {
-    return ([1, 2, 3] as const).map(tier => ({
-      tier,
-      label: `${tier} extra game${tier > 1 ? 's' : ''} vs a new opponent`,
-      detail: `${tier} additional game${tier > 1 ? 's' : ''} vs different opponent${tier > 1 ? 's' : ''}`,
+    return [{
+      tier: 1 as const,
+      label: 'Extra game vs a unique opponent',
+      detail: 'Each additional game vs a new opponent = +1 effort level',
       points: 15 as const,
       inputMode: 'sport',
-    }))
+    }]
   }
 
   if (seasonPR === null) return []
@@ -1756,44 +1757,65 @@ export function getBonusTargets(
     })
   }
 
-  // Time / sprint events: raw_score is negative seconds (more negative = faster)
-  if (mode === 'time' || mode === 'sprint') {
-    const specs: Array<{ tier: 1|2|3; efforts: number; pct: number }> = [
-      { tier: 1, efforts: 1, pct: 0.90 },
-      { tier: 2, efforts: 2, pct: 0.80 },
-      { tier: 3, efforts: 3, pct: 0.70 },
-    ]
-    return specs.map(({ tier, efforts, pct }) => {
-      const threshold = rawScore * pct
-      const timeStr = fmtSecs(threshold)
-      return {
-        tier,
-        label: `${efforts} effort${efforts > 1 ? 's' : ''} under ${timeStr}`,
-        detail: `${efforts} effort${efforts > 1 ? 's' : ''}, each under ${timeStr}`,
-        points: 15 as const,
-        inputMode: mode,
-      }
-    })
+  // Sprint events: single repeatable task — each effort at ≥90% PR pace = +1
+  if (mode === 'sprint') {
+    const threshold = Math.abs(rawScore) / 0.9
+    const timeStr = fmtSecs(threshold)
+    return [{
+      tier: 1,
+      label: `Sprint in ${timeStr} or faster`,
+      detail: `Each effort within 90% of PR pace (≤${timeStr})`,
+      points: 15 as const,
+      inputMode: 'sprint',
+    }]
   }
 
-  // Distance events: PR = metres
+  // Time events: 1k endurance events get 500m/1k pace tasks; others TBC
+  if (mode === 'time') {
+    const is1k = event.slug.includes('1k') || event.name.toLowerCase().includes('1k')
+    if (is1k) {
+      const prTime = Math.abs(rawScore)
+      const threshA = prTime * 0.5 / 0.9
+      const threshB = prTime / 0.8
+      return [
+        {
+          tier: 1 as const,
+          label: `500m in ${fmtSecs(threshA)} (90% pace)`,
+          detail: `Complete 500m in ${fmtSecs(threshA)} or faster`,
+          points: 15 as const,
+          inputMode: 'time',
+        },
+        {
+          tier: 2 as const,
+          label: `1k in ${fmtSecs(threshB)} (80% pace)`,
+          detail: `Complete 1k in ${fmtSecs(threshB)} or faster`,
+          points: 15 as const,
+          inputMode: 'time',
+        },
+      ]
+    }
+    return [{
+      tier: 1 as const,
+      label: 'Effort tasks coming soon',
+      detail: 'Effort tasks for this event are being configured',
+      points: 15 as const,
+      inputMode: 'time',
+    }]
+  }
+
+  // Distance events (throws/jumps): every 3 qualifying attempts ≥90% PR = +1
   if (mode === 'distance') {
     if (rawScore <= 0) return []
-    const specs: Array<{ tier: 1|2|3; attempts: number; pct: number }> = [
-      { tier: 1, attempts: 1, pct: 0.90 },
-      { tier: 2, attempts: 2, pct: 0.80 },
-      { tier: 3, attempts: 3, pct: 0.70 },
-    ]
-    return specs.map(({ tier, attempts, pct }) => {
-      const dist = Math.round(rawScore * pct * 100) / 100
-      return {
-        tier,
-        label: `${attempts} attempt${attempts > 1 ? 's' : ''} at ${dist}m`,
-        detail: `${attempts} attempt${attempts > 1 ? 's' : ''} reaching ${dist}m`,
-        points: 15 as const,
-        inputMode: 'distance',
-      }
-    })
+    const distCm = rawScore  // raw_score for distance is in cm
+    const target = Math.round(distCm * 0.9)
+    const targetStr = target >= 100 ? `${(target / 100).toFixed(2)}m` : `${target}cm`
+    return [{
+      tier: 1 as const,
+      label: `3 attempts ≥ ${targetStr} (90% PR)`,
+      detail: `Every 3 qualifying attempts reaching ${targetStr} = +1 effort level`,
+      points: 15 as const,
+      inputMode: 'distance',
+    }]
   }
 
   // difficulty+time: raw_score = tierIdx * 10000 + seconds (0-based tierIdx)
@@ -1829,6 +1851,7 @@ export function getBonusTargets(
   }
 
   // difficulty+reps: raw_score = tierIdx * 10000 + reps (0-based tierIdx)
+  // Tasks: 70% reps at current tier / 120% reps at -1 tier / 150% reps at -2 tiers
   if (mode === 'difficulty+reps' && event.hasDifficultyTiers) {
     if (rawScore <= 0) return []
     const tierIdx = Math.floor(rawScore / 10000)
@@ -1837,22 +1860,35 @@ export function getBonusTargets(
     const tierLevel = tierIdx + 1
     const tiers = event.difficultyTiers ?? []
     const currentName = tiers.find(t => t.level === tierLevel)?.name ?? `D${tierLevel}`
+    const belowName1 = tierLevel > 1 ? (tiers.find(t => t.level === tierLevel - 1)?.name ?? `D${tierLevel - 1}`) : null
+    const belowName2 = tierLevel > 2 ? (tiers.find(t => t.level === tierLevel - 2)?.name ?? `D${tierLevel - 2}`) : null
 
-    const specs: Array<{ tier: 1|2|3; pct: number }> = [
-      { tier: 1, pct: 0.90 },
-      { tier: 2, pct: 0.80 },
-      { tier: 3, pct: 0.70 },
-    ]
-    return specs.map(({ tier, pct }) => {
-      const targetReps = Math.max(1, Math.round(prReps * pct))
-      return {
-        tier,
-        label: `${targetReps} reps at D${tierLevel}`,
-        detail: `${targetReps} reps of ${currentName}`,
-        points: 15 as const,
+    const targets: BonusTarget[] = [{
+      tier: 1,
+      label: `${Math.max(1, Math.round(prReps * 0.7))} reps at ${currentName}`,
+      detail: `${Math.max(1, Math.round(prReps * 0.7))} reps at current tier (70% of PR)`,
+      points: 15,
+      inputMode: 'difficulty+reps',
+    }]
+    if (belowName1) {
+      targets.push({
+        tier: 2,
+        label: `${Math.max(1, Math.round(prReps * 1.2))} reps at ${belowName1}`,
+        detail: `${Math.max(1, Math.round(prReps * 1.2))} reps at -1 tier (120% of PR reps)`,
+        points: 15,
         inputMode: 'difficulty+reps',
-      }
-    })
+      })
+    }
+    if (belowName2) {
+      targets.push({
+        tier: 3,
+        label: `${Math.max(1, Math.round(prReps * 1.5))} reps at ${belowName2}`,
+        detail: `${Math.max(1, Math.round(prReps * 1.5))} reps at -2 tiers (150% of PR reps)`,
+        points: 15,
+        inputMode: 'difficulty+reps',
+      })
+    }
+    return targets
   }
 
   return []
