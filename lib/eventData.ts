@@ -8,18 +8,13 @@ export type InputMode =
   | 'difficulty+time'
   | 'difficulty+reps'
   | 'distance'
-  | 'flexibility'
   | 'sport'
-  | 'weight+time'
-  | 'distance+time'
   | 'sprint'
-  | 'dynamic'
 
 export type DifficultyTier = {
   level: number
   name: string
 }
-
 
 export type EventData = {
   slug: string
@@ -45,7 +40,6 @@ export type BonusTarget = {
   inputMode: string
 }
 
-
 const PLACEHOLDER_CONTENT = 'Content coming soon.'
 
 export const EVENTS: EventData[] = [
@@ -59,6 +53,7 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '💪',
   },
@@ -83,6 +78,7 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🏋️',
   },
@@ -91,8 +87,15 @@ export const EVENTS: EventData[] = [
     name: 'Pause Dips',
     domain: 'Maximal Strength',
     domainNumber: 1,
-    inputMode: 'strength',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+reps',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Assisted Dips (2 Feet)' },
+      { level: 2, name: 'Assisted Dips (1 Foot)' },
+      { level: 3, name: 'Straight Bar Dips' },
+      { level: 4, name: 'Rings Turned Out Dip' },
+      { level: 5, name: 'Weighted RTO Dip' },
+    ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
     videoPlaceholder: true,
@@ -103,8 +106,15 @@ export const EVENTS: EventData[] = [
     name: 'Pause Chin Up',
     domain: 'Maximal Strength',
     domainNumber: 1,
-    inputMode: 'strength',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+reps',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Assisted Chins (2 Feet)' },
+      { level: 2, name: 'Assisted Chins (1 Foot)' },
+      { level: 3, name: 'Banded Chinup' },
+      { level: 4, name: 'Chinup' },
+      { level: 5, name: 'Weighted Chinup' },
+    ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
     videoPlaceholder: true,
@@ -119,6 +129,7 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🏋️',
   },
@@ -131,6 +142,7 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🏋️',
   },
@@ -139,8 +151,15 @@ export const EVENTS: EventData[] = [
     name: 'Ham Curl',
     domain: 'Maximal Strength',
     domainNumber: 1,
-    inputMode: 'strength',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+reps',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Glute Thrust' },
+      { level: 2, name: 'Yoga Ball Glute Thrust' },
+      { level: 3, name: 'Floor Slider Curl' },
+      { level: 4, name: 'Banded Nordic Curl' },
+      { level: 5, name: 'Nordic Curl' },
+    ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
     videoPlaceholder: true,
@@ -155,6 +174,7 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🏋️',
   },
@@ -167,6 +187,7 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🏋️',
   },
@@ -189,6 +210,7 @@ export const EVENTS: EventData[] = [
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🦵',
   },
@@ -209,6 +231,7 @@ export const EVENTS: EventData[] = [
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🚩',
   },
@@ -227,6 +250,7 @@ export const EVENTS: EventData[] = [
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🌀',
   },
@@ -239,6 +263,7 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🦶',
   },
@@ -259,6 +284,7 @@ export const EVENTS: EventData[] = [
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🤸',
   },
@@ -280,6 +306,7 @@ export const EVENTS: EventData[] = [
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🤸',
   },
@@ -300,6 +327,7 @@ export const EVENTS: EventData[] = [
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '✚',
   },
@@ -321,6 +349,7 @@ export const EVENTS: EventData[] = [
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🤸',
   },
@@ -341,6 +370,7 @@ export const EVENTS: EventData[] = [
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🧗',
   },
@@ -363,6 +393,7 @@ export const EVENTS: EventData[] = [
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🪢',
   },
@@ -401,6 +432,7 @@ export const EVENTS: EventData[] = [
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '💪',
   },
@@ -419,6 +451,7 @@ export const EVENTS: EventData[] = [
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🔄',
   },
@@ -440,6 +473,7 @@ export const EVENTS: EventData[] = [
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🪑',
   },
@@ -452,6 +486,7 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🦵',
   },
@@ -471,6 +506,7 @@ export const EVENTS: EventData[] = [
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🙃',
   },
@@ -492,6 +528,7 @@ export const EVENTS: EventData[] = [
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '👆',
   },
@@ -510,6 +547,7 @@ export const EVENTS: EventData[] = [
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🦵',
   },
@@ -522,6 +560,7 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🦵',
   },
@@ -541,6 +580,7 @@ export const EVENTS: EventData[] = [
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '⚙️',
   },
@@ -564,6 +604,7 @@ export const EVENTS: EventData[] = [
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🙏',
   },
@@ -584,6 +625,7 @@ export const EVENTS: EventData[] = [
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🌉',
   },
@@ -606,6 +648,7 @@ export const EVENTS: EventData[] = [
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🧘',
   },
@@ -626,6 +669,7 @@ export const EVENTS: EventData[] = [
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🪡',
   },
@@ -646,6 +690,7 @@ export const EVENTS: EventData[] = [
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🤸',
   },
@@ -667,6 +712,7 @@ export const EVENTS: EventData[] = [
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🤸',
   },
@@ -689,6 +735,7 @@ export const EVENTS: EventData[] = [
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🤸',
   },
@@ -709,6 +756,7 @@ export const EVENTS: EventData[] = [
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🦶',
   },
@@ -727,6 +775,7 @@ export const EVENTS: EventData[] = [
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🌀',
   },
@@ -748,6 +797,7 @@ export const EVENTS: EventData[] = [
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🧘',
   },
@@ -762,6 +812,7 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '💥',
   },
@@ -774,6 +825,7 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '💥',
   },
@@ -786,6 +838,7 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🦘',
   },
@@ -798,6 +851,7 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🏹',
   },
@@ -810,6 +864,7 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🏋️',
   },
@@ -822,6 +877,7 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🏉',
   },
@@ -834,12 +890,13 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '⬆️',
   },
   {
     slug: 'hand-walk',
-    name: '50m Hand Walk',
+    name: 'Hand Walk',
     domain: 'Power',
     domainNumber: 5,
     inputMode: 'difficulty+time',
@@ -847,11 +904,12 @@ export const EVENTS: EventData[] = [
     difficultyTiers: [
       { level: 1, name: 'Bear Crawl' },
       { level: 2, name: 'Lizard Crawl' },
-      { level: 3, name: 'Handstand (multiple kickups)' },
-      { level: 4, name: 'Handstand (unbroken)' },
+      { level: 3, name: 'Wall Handstand Walk' },
+      { level: 4, name: 'Handstand Walk (unbroken)' },
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🍑',
   },
@@ -864,6 +922,7 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🏋️',
   },
@@ -876,77 +935,103 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🏋️',
   },
 
   // ─── Domain 6: Aerobic Endurance ─────────────────────────────────────────────
   {
-    slug: '200m-burpee-broad-jump',
+    slug: 'burpee-broad-jump',
     name: 'Burpee Broad Jump',
     domain: 'Aerobic Endurance',
     domainNumber: 6,
-    inputMode: 'time',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+time',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: '25m' },
+      { level: 2, name: '50m' },
+      { level: 3, name: '100m' },
+    ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
     videoPlaceholder: true,
     emoji: '💨',
   },
   {
-    slug: '1k-run',
-    name: '1k Run',
+    slug: 'running',
+    name: 'Running',
     domain: 'Aerobic Endurance',
     domainNumber: 6,
-    inputMode: 'time',
-    hasDifficultyTiers: false,
-    howToPerform: 'Run 1 kilometre as fast as possible on a measured flat course or track. Start from standing. Timer starts on the judge\'s signal. Timer stops when both feet cross the finish line.',
-    rules: 'Distance must be exactly 1 kilometre on a measured course. Running shoes or bare feet allowed. No cycling, skating, or assisted movement. Must run the full distance without cutting the course. Timer starts at the judge\'s signal and stops when you cross the finish line.',
+    inputMode: 'difficulty+time',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: '250m' },
+      { level: 2, name: '500m' },
+      { level: 3, name: '1000m' },
+    ],
+    howToPerform: PLACEHOLDER_CONTENT,
+    rules: PLACEHOLDER_CONTENT,
     videoPlaceholder: true,
     emoji: '🏃',
   },
   {
-    slug: '1k-cycle',
-    name: '1k Cycle',
+    slug: 'cycling',
+    name: 'Cycling',
     domain: 'Aerobic Endurance',
     domainNumber: 6,
-    inputMode: 'time',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+time',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: '250m' },
+      { level: 2, name: '500m' },
+      { level: 3, name: '1000m' },
+    ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
     videoPlaceholder: true,
     emoji: '🚴',
   },
   {
-    slug: '1k-ski-erg',
-    name: 'Ski 1k',
+    slug: 'ski-erg',
+    name: 'Ski Erg',
     domain: 'Aerobic Endurance',
     domainNumber: 6,
-    inputMode: 'time',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+time',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: '250m' },
+      { level: 2, name: '500m' },
+      { level: 3, name: '1000m' },
+    ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
     videoPlaceholder: true,
     emoji: '⛷️',
   },
   {
-    slug: '1k-row',
-    name: '1k Row',
+    slug: 'row-erg',
+    name: 'Row Erg',
     domain: 'Aerobic Endurance',
     domainNumber: 6,
-    inputMode: 'time',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+time',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: '250m' },
+      { level: 2, name: '500m' },
+      { level: 3, name: '1000m' },
+    ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
     videoPlaceholder: true,
     emoji: '🚣',
   },
   {
-    slug: 'iron-lungs',
-    name: 'Iron Lungs',
+    slug: 'breath-hold',
+    name: 'Breath Hold',
     domain: 'Aerobic Endurance',
     domainNumber: 6,
-    inputMode: 'distance',
+    inputMode: 'time',
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
@@ -954,23 +1039,47 @@ export const EVENTS: EventData[] = [
     emoji: '🫁',
   },
   {
-    slug: '200m-carry',
-    name: '200m Carry',
+    slug: 'weighted-carry',
+    name: 'Weighted Carry',
     domain: 'Aerobic Endurance',
     domainNumber: 6,
-    inputMode: 'time',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+time',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'x0.25 BW' },
+      { level: 2, name: 'x0.5 BW' },
+      { level: 3, name: 'x1 BW' },
+    ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
     videoPlaceholder: true,
     emoji: '📦',
   },
   {
-    slug: '2k-run',
-    name: '2k Run',
+    slug: 'duck-walk',
+    name: 'Duck Walk',
     domain: 'Aerobic Endurance',
     domainNumber: 6,
-    inputMode: 'time',
+    inputMode: 'difficulty+time',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Squat Hold' },
+      { level: 2, name: 'OH Squat Hold' },
+      { level: 3, name: '25m Duck Walk' },
+      { level: 4, name: '50m Duck Walk' },
+      { level: 5, name: '100m Duck Walk' },
+    ],
+    howToPerform: PLACEHOLDER_CONTENT,
+    rules: PLACEHOLDER_CONTENT,
+    videoPlaceholder: true,
+    emoji: '🦆',
+  },
+  {
+    slug: 'sprint-repeats',
+    name: 'Sprint Repeats',
+    domain: 'Aerobic Endurance',
+    domainNumber: 6,
+    inputMode: 'sport',
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
@@ -978,8 +1087,8 @@ export const EVENTS: EventData[] = [
     emoji: '🏃',
   },
   {
-    slug: '200m-repeats',
-    name: '200m Repeats',
+    slug: '30-15-test',
+    name: '30-15 Test',
     domain: 'Aerobic Endurance',
     domainNumber: 6,
     inputMode: 'time',
@@ -987,19 +1096,7 @@ export const EVENTS: EventData[] = [
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
     videoPlaceholder: true,
-    emoji: '🏃',
-  },
-  {
-    slug: 'bronco',
-    name: 'Bronco',
-    domain: 'Aerobic Endurance',
-    domainNumber: 6,
-    inputMode: 'time',
-    hasDifficultyTiers: false,
-    howToPerform: PLACEHOLDER_CONTENT,
-    rules: PLACEHOLDER_CONTENT,
-    videoPlaceholder: true,
-    emoji: '🐴',
+    emoji: '⏱️',
   },
 
   // ─── Domain 7: Speed & Agility ───────────────────────────────────────────────
@@ -1024,6 +1121,7 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🏷️',
   },
@@ -1036,6 +1134,7 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '⚡',
   },
@@ -1048,6 +1147,7 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🏃',
   },
@@ -1060,6 +1160,7 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🚩',
   },
@@ -1072,6 +1173,7 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '⚡',
   },
@@ -1084,6 +1186,7 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '💨',
   },
@@ -1096,6 +1199,7 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🏉',
   },
@@ -1108,6 +1212,7 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '⚽',
   },
@@ -1126,6 +1231,7 @@ export const EVENTS: EventData[] = [
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '⬆️',
   },
@@ -1140,6 +1246,7 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🥋',
   },
@@ -1160,6 +1267,7 @@ export const EVENTS: EventData[] = [
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '💃',
   },
@@ -1180,6 +1288,7 @@ export const EVENTS: EventData[] = [
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🎪',
   },
@@ -1199,6 +1308,7 @@ export const EVENTS: EventData[] = [
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🪢',
   },
@@ -1211,6 +1321,7 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🤼',
   },
@@ -1233,6 +1344,7 @@ export const EVENTS: EventData[] = [
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🤸',
   },
@@ -1252,6 +1364,7 @@ export const EVENTS: EventData[] = [
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '⚖️',
   },
@@ -1271,6 +1384,7 @@ export const EVENTS: EventData[] = [
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🛹',
   },
@@ -1283,6 +1397,7 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🤺',
   },
@@ -1301,6 +1416,7 @@ export const EVENTS: EventData[] = [
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🤹',
   },
@@ -1327,6 +1443,7 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '⚾',
   },
@@ -1339,6 +1456,7 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '⚽',
   },
@@ -1351,6 +1469,7 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🎾',
   },
@@ -1363,6 +1482,7 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🏏',
   },
@@ -1375,6 +1495,7 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🏸',
   },
@@ -1387,6 +1508,7 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🏀',
   },
@@ -1399,6 +1521,7 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '⚽',
   },
@@ -1411,6 +1534,7 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🏑',
   },
@@ -1423,6 +1547,7 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🎾',
   },
@@ -1437,6 +1562,7 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🏀',
   },
@@ -1449,6 +1575,7 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🤾',
   },
@@ -1461,6 +1588,7 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🎯',
   },
@@ -1473,6 +1601,7 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🎯',
   },
@@ -1485,6 +1614,7 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🎱',
   },
@@ -1497,6 +1627,7 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🏹',
   },
@@ -1509,6 +1640,7 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🎳',
   },
@@ -1521,6 +1653,7 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🎯',
   },
@@ -1533,6 +1666,7 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '🥏',
   },
@@ -1545,6 +1679,7 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
+
     videoPlaceholder: true,
     emoji: '⛳',
   },
@@ -1568,7 +1703,6 @@ export function getEventsByDomain(): Record<string, EventData[]> {
   }
   return map
 }
-
 
 // ─── getBonusTargets ─────────────────────────────────────────────────────────
 // Returns 3 effort-level bonus targets for a given event and season PR.
