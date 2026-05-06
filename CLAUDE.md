@@ -98,38 +98,27 @@ linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)
 
 | # | Domain | Events (10) |
 |---|--------|-------------|
-| 1 | Maximal Strength | 1A Press, Deadlift, OHP, Pause Dips, Pause Chinup, Pause Squat, Zercher Dead, Ham Curl, Pause Bench, Turkish Get Up |
-| 2 | Relative Strength | 1L Squat, Flag, Windshield Wipers, Toe Lift, Planche, Back Lever, Iron Cross, Front Lever, Chin Hang, Climbing |
-| 3 | Muscular Endurance | Chinup Contest, Pushup Contest, Reverse Hyper, L Sit Hold, Tib Curl, Headstand, Finger Pushup, GHD Situp, Leg Ext, Ab Rollout |
+| 1 | Maximal Strength | 1A Press, Deadlift, OHP, Pause Dips, Pause Chin Up, Pause Squat, Zercher Dead, Ham Curl, Pause Bench, Turkish Get Up |
+| 2 | Relative Strength | 1 Leg Squat, Flag, Windshield Wipers, Toe Lift, Planche, Back Lever, Iron Cross, Front Lever, Chin Hang, Climbing |
+| 3 | Muscular Endurance | Chinup Contest, Pushup Contest, Reverse Hyper, L-Sit Hold, Tibialis Curl, Headstand, Finger Push Up, GHD Situp, Leg Extension, Ab Rollout |
 | 4 | Flexibility & Mobility | Rear Hand Clasp, Bridge, Forward Fold, Needle Pose, Forward Split, Middle Split, Standing Split, Foot Behind Head, Shoulder Dislocate, Pancake |
-| 5 | Power | Kelly Snatch, 1A Snatch, Triple Jump, Javelin, Shotput, Australian Football, Vert Jump, 50m Hand Walk, Clean & Jerk, Snatch |
-| 6 | Aerobic Endurance | Burpee Broad Jump, 1k Run, 1k Cycle, Ski 1k, 1k Row, Iron Lungs, 200m Carry, 2k Run, 200m Repeats, Bronco |
+| 5 | Power | Kelly Snatch, 1A Snatch, Triple Jump, Javelin, Shotput, Australian Football, Vertical Jump, Hand Walk, Clean & Jerk, Snatch |
+| 6 | Aerobic Endurance | Burpee Broad Jump, Running, Cycling, Ski Erg, Row Erg, Breath Hold, Weighted Carry, Duck Walk, Sprint Repeats, 30-15 Test |
 | 7 | Speed & Agility | 100m Sprint, Tag, T-Race, 400m Race, Beach Flags, 50m Sprint, 200m Sprint, Touch Rugby, Football Dribble, Repeat High Jump |
 | 8 | Body Awareness | Tae Kwon Do, Breakdancing, Trampolining, Jump Rope, Wrestling, Gymnastics, Balance Ball, SKATE, Fencing, Juggling |
 | 9 | Co-ordination | Volleyball, Baseball, Teqball, Tennis, Cricket, Badminton, Basketball, Football, Hockey, Squash |
 | 10 | Aim & Precision | Netball, Handball, Cornhole, Dodgeball, Carrom, Archery, Bowling, Darts, Disc Golf, Golf |
 
-### Event renames (from previous names)
-- "T-Test" → **T-Race** (now uses sport/win-loss input mode, not sprint timing)
+### Event renames / changes (from previous names)
+- "T-Test" → **T-Race** (sport/win-loss input mode)
 - "Chin Lift" → **Chin Hang**
 - "Turkish" → **Turkish Get Up** (strength mode, no tiers)
 - "Toe Lift" → **Toe Lift** (strength mode, no tiers)
-- "Calf Raise" → **GHD Situp** (slug: `ghd-situp`, difficulty+reps D1–D4; D4 is weight-scored)
-- "Glute Bridge" → **50m Hand Walk** (slug: `hand-walk`, difficulty+time D1–D4)
-- "Side Bend" → **Pancake** (slug: `pancake`, difficulty+time D1–D7)
-- "F Split" → **Forward Split** (slug: `front-split`, difficulty+time D1–D6)
-- "AFL" → **Australian Football** (slug: `australian-football`, sport)
-- "1 Arm Press" → **1A Press** (slug: `one-arm-press`)
-- "Overhead Press" → **OHP** (slug: `overhead-press`)
-- "Zercher Deadlift" → **Zercher Dead**
-- "Hamstring Curl" → **Ham Curl**
-- "Pause Bench Press" → **Pause Bench** (slug: `pause-bench`)
-- "Rope Climb" → **Climbing** (slug: `rope-climb`, difficulty+time D1–D8)
-- "1 Arm Snatch" → **1A Snatch** (slug: `one-arm-snatch`)
-- "Javelin Throw" → **Javelin**
-- "Shot Put" → **Shotput**
-- "200m Burpee Broad Jump" → **Burpee Broad Jump**
-- "1k Ski Erg" → **Ski 1k**
+- "Pause Dips" → **Pause Dips** (`difficulty+reps` D1–D5; D5 = Weighted RTO Dip, weight-scored)
+- "Pause Chin Up" → **Pause Chin Up** (`difficulty+reps` D1–D5; D5 = Weighted Chinup, weight-scored)
+- "Ham Curl" → **Ham Curl** (`difficulty+reps` D1–D5, was `strength`)
+- "50m Hand Walk" → **Hand Walk** (`difficulty+time` D1–D4; D3 = Wall Handstand Walk)
+- Domain 6 completely redesigned — see Domain Display Order above. Old slugs (1k-run, bronco, etc.) are legacy/orphaned in session history.
 
 ---
 
@@ -137,18 +126,15 @@ linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)
 
 ### Points Formula
 - 1st place always = 100 points
-- Gap = max(100 / players, 10)
-- Minimum earn = 10 points
+- Gap = 100 / players (no floor on gap)
+- Minimum earn = 10 points (bottom players all receive 10)
 - Players who joined a session but submitted no score for an event are ranked **last** for that event
 
-Gap and placement points are calculated **per division** (not across total session players).
-
-| Division Size | Gap | Example |
+| Session Size | Gap | Example |
 |---|---|---|
 | 5 players | 20 pts | 100/80/60/40/20 |
-| 10 players | 10 pts | 100/90/80/10 |
-| 20+ players | min 10 | 100/90/80/10 |
-| 1 player (solo) | — | 100 pts (automatic 1st, requires ≥1 score) |
+| 10 players | 10 pts | 100/90/80/70/60/50/40/30/20/10 |
+| 100 players | 1 pt | 100/99/98/.../11/10/10/10 (bottom 10 all get 10) |
 
 ### Bonus Points
 
@@ -162,8 +148,54 @@ Gap and placement points are calculated **per division** (not across total sessi
 | Championship participation | +100 |
 | Championship podium finish | +500 |
 
+### Effort Points
 
----
+Players earn effort points by completing additional volume work **during the session**, on top of their competition score. Effort points are added to the player's **Colour System total** (same bucket as placement points and bonuses).
+
+**Session cap:** 100 effort points maximum per session. Hitting the cap triggers a congratulatory notification in the UI.
+
+**Per qualifying submission: +10 points.**
+
+Tasks are generated from whichever is higher: the player's comp score this session or their all-time PR for that event.
+
+#### Tiered Skill Events (events with D1–Dn difficulty tiers)
+
+3 tasks generated per event. Fill easier tiers first (D-1, D-2, D-3 steps down from comp/PR tier). When tiers run out, substitute same tier at ×0.5 time working backwards.
+
+Time multipliers applied bottom-up to available slots: **×1.5, ×2.0, ×3.0**
+
+| Available steps down | Task 1 | Task 2 | Task 3 |
+|---|---|---|---|
+| 3+ available (e.g. D5 @ 10s) | D4 @ 15s | D3 @ 20s | D2 @ 30s |
+| 2 available (e.g. D3 @ 10s) | D3 @ 5s | D2 @ 15s | D1 @ 20s |
+| 1 available (e.g. D2 @ 10s) | D2 @ 5s | D1 @ 10s | D1 @ 20s |
+
+**Matching rule:** Tier must match exactly. Time must be ≥ required time. A harder tier does NOT substitute for an easier tier task. Each qualifying submission = +10 effort points. No per-event cap (only the 100pt session cap applies). Players may repeat the same task intensity multiple times — each qualifying submission counts separately.
+
+#### Weight + Reps Events
+3 tasks: 3 reps @90% PR / 5 reps @80% PR / 8 reps @70% PR
+
+#### Reps-Only Events
+3 tasks: 3 sets @90% PR reps / 5 sets @80% PR reps / 8 sets @70% PR reps
+
+#### Sprint Events
+3 tasks: 1 attempt @90% PR / 2 attempts @80% PR / 3 attempts @70% PR
+
+#### Hold Events
+1 task: 2-minute hold (single tier only, +10 pts)
+
+#### Long Distance Events (1k+)
+3 tasks: 1×500m @90% PR pace / 2×500m @80% PR pace / 3×500m @70% PR pace
+
+#### Sport / Win-Loss Events
++10 per extra match played (win, loss, or draw all count)
+
+#### UI — Event Module (Live Session Screen)
+Each event module displays: event name + icon, player's highest score this session, and **effort level** (0, 1, 2, 3...) = count of qualifying submissions. All submissions (comp + volume) visible within the module.
+
+#### Storage
+Effort submissions stored in a separate `effort_scores` table (not `results`). See Database Schema.
+
 
 ## Difficulty Tiers
 
@@ -208,24 +240,13 @@ F Split and M Split use distance input mode (block height from ground in cm).
 
 ## Divisions
 
-Divisions are **auto-calculated** from `date_of_birth` + `gender` at registration. The `division` field in the `players` table stores the computed value. Division is recalculated at registration time only; changing DOB/gender post-registration requires a judge to update manually.
+| Division | Eligibility |
+|---|---|
+| Men's | Male competitors aged 17+ |
+| Women's | Female competitors aged 17+ |
+| Juniors | All competitors aged 16 and under |
 
-| Division | Eligibility | Tab label (in-game) |
-|---|---|---|
-| Youth | All competitors aged 11 and under | Youth (U12) |
-| Juniors | All competitors aged 12–16 | Juniors (U17) |
-| Men's | Male competitors aged 17–39 | Men's |
-| Women's | Female competitors aged 17–39 | Women's |
-| Masters Men | Male competitors aged 40–59 | Masters Men (40+) |
-| Masters Women | Female competitors aged 40–59 | Masters Women (40+) |
-| Grandmasters Men | Male competitors aged 60+ | Grandmasters Men (60+) |
-| Grandmasters Women | Female competitors aged 60+ | Grandmasters Women (60+) |
-
-`calculateDivision(dob, gender)` in `app/register/page.tsx` is the canonical implementation.
-
-**Each division competes independently.** Placement points are awarded within each division separately. In a mixed-division session, 1st place is awarded once per division. A solo player in a division automatically wins (1st, 100 pts) if they submit at least one score.
-
-The in-game leaderboard shows **only the divisions that have players in the current session** — empty division tabs are hidden.
+The combined division leaderboard tab is labelled **"All-Divisions"** (not "Overall") everywhere.
 
 ---
 
@@ -330,7 +351,17 @@ id, created_at, player_id (nullable), session_id, event_id, score, points_earned
 rank_in_session, notes, player_name, raw_score, score_label, placement,
 exercise_variation, weight_kg, reps, time_seconds, pose_variation,
 opponent_name, match_score, result_type,
-difficulty_tier (TEXT — D1/D2/etc or null)
+difficulty_tier (TEXT — tier name string or null)
+
+### effort_scores
+id, created_at, player_id (uuid, references auth.users.id), session_id, event_id,
+difficulty_tier (TEXT — D1/D2/etc or null),
+time_seconds (INTEGER — null for non-timed events),
+weight_kg (NUMERIC — for weight+reps events),
+reps (INTEGER — for weight+reps and reps-only events),
+distance_m (NUMERIC — for sprint/distance events),
+points_awarded (INTEGER — 10 if qualifying, 0 if session cap already reached),
+is_qualifying (BOOLEAN — whether submission met task criteria)
 
 ### rankings
 id, updated_at, player_id, total_points, total_sessions, average_score,
@@ -346,18 +377,16 @@ best_score, current_rank, division, average_placement, season_year
 - raw_score for time events is stored negative (faster = higher) so rankings sort correctly
 - Players who joined a session (have any result row) but have no score for a specific event are ranked last for that event
 - Missing score players display as "No score" in expanded event lists
-- Input modes: strength (weight+reps), reps, time (mm:ss), hold (mm:ss), difficulty+time (tier selector + seconds), difficulty+reps (tier selector + reps), distance (m/cm), flexibility (blocks, legacy), sport (win/draw/loss + opponent), sprint (ss.cs), weight+time, distance+time, dynamic (legacy)
-- difficulty+time raw_score = tierIdx * 10000 + seconds (0-based tierIdx). Used for all tiered hold events (planche, bridges, splits, etc.)
-- difficulty+reps raw_score = tierIdx * 10000 + reps (0-based tierIdx). Used for all tiered rep events. Special case: GHD Situp D4 is weight-scored (raw_score = weight_kg)
-- Sprint mode: seconds + centiseconds (0–99), raw_score = -(secs*100 + cs). Used for 100m/50m/200m/400m Sprint, Football Dribble (T-Race uses sport mode)
-- Effort points (getBonusTargets): returns 3 tiers. strength = 90%×3 / 80%×5 / 70%×8 reps. time/sprint = 1/2/3 efforts within 90%/80%/70% of PR. distance = 1/2/3 attempts at 90%/80%/70% of PR. difficulty+time = hold current tier 1min / hold tier-below 2min / 4min. difficulty+reps = 90%/80%/70% of PR reps at current tier. sport = 1/2/3 extra games.
+- Input modes: `strength` (weight+reps), `reps`, `time` (mm:ss), `hold` (mm:ss), `distance` (m/cm), `sport` (win/draw/loss + opponent), `sprint` (ss.cs), `difficulty+time` (tier selector + seconds), `difficulty+reps` (tier selector + reps)
+- Sprint mode: seconds + centiseconds (0–99), raw_score = -(secs*100 + cs). Used for 100m/50m/200m Sprint (T-Race now uses sport mode)
+- Gap formula: 100 ÷ players with NO floor on gap; minimum earn of 10 applies to awarded points only (not the gap)
+- Effort points: stored in effort_scores table, added to Colour System total same as placement points; 100pt session cap; each qualifying submission = +10; hitting cap triggers congratulatory UI notification
+- Effort task generation: uses higher of comp score or all-time PR for that event; tiered events use ×1.5/×2.0/×3.0 time multipliers stepping down difficulty tiers (D-1, D-2, D-3); when tiers exhausted substitute same tier at ×0.5 time working backwards
+- Effort matching (tiered events): tier must match exactly, time ≥ required; harder tier does NOT substitute; players may repeat same intensity, each qualifying submission counts separately
 - Pre-session timer: if started_at is in the future, shows purple "until start" countdown. Game clock begins at started_at
 - Score submission re-fetches results after upsert (realtime alone misses UPDATEs from re-submissions)
 - Post-game popup: triggers on is_active → false, dismissed per player per session via localStorage, viewable in session history thereafter
-- In-game leaderboard shows per-division ranked player list (lowest total placement score wins within division). No combined All-Divisions view.
-- Guest players: created by judges during a live session, stored in players with is_guest=true and no auth account. player_id FK to auth.users was dropped in migration 20260505 — registered players still have id=auth.uid() by construction, guests use gen_random_uuid()
-- Judge player tabs: judges see their own + family tabs by default, can add any registered player or create a guest via "+" button. Tabs persist in localStorage keyed by sessionId. Added players stored as [{id, label, isGuest}]
-- Guest player RLS: judges can insert players (is_guest=true), results (any player_id), and bonus_completions (any player_id) — covered by policies in migration 20260505
+- All-Divisions = the combined tab (previously called "Overall") — renamed everywhere
 
 ---
 
@@ -382,7 +411,7 @@ best_score, current_rank, division, average_placement, season_year
     koha/page.tsx
     events/
       page.tsx                      # Event index — all 100 events by domain
-      [slug]/page.tsx               # Event detail — how to, rules, tiers, disadvantage, PB
+      [slug]/page.tsx               # Event detail — how to, rules, tiers, PB
     register/page.tsx
     login/page.tsx
     dashboard/page.tsx              # Colours section, My Personal Bests button, View Summary on sessions
@@ -398,10 +427,7 @@ best_score, current_rank, division, average_placement, season_year
   supabase/
     migrations/
       20260420_phase1.sql
-      20260428_phase2.sql           # difficulty_tier, disadvantage_type, disadvantage_option columns; updated award_session_points trigger
-      20260505_judge_player_management.sql  # guest players (is_guest), drop players.id FK, judge RLS for results/bonuses
-      20260510_per_division_points.sql      # per-division award_session_points trigger; no multipliers
-      20260510_drop_disadvantage_columns.sql # drop adjusted_score, disadvantage_type, disadvantage_option from results
+      20260428_phase2.sql           # difficulty_tier column; updated award_session_points trigger
   public/
     logo.png
 ```
@@ -424,17 +450,16 @@ best_score, current_rank, division, average_placement, season_year
 - Event detail pages — /events/[slug] with how-to, rules, difficulty tiers, personal best
 - Events index — /events, all 100 events grouped by domain
 - Personal bests page — /prs, all 100 events, expandable history, this season + previous seasons
-- Per-division in-game leaderboard — player-ranked list (by total placement score), expandable per-event breakdown, only populated division tabs shown
+- All-Divisions tab — renamed from Overall everywhere
 - T-Race — renamed from T-Test, now uses sport/win-loss input mode
 - Chin Hang — renamed from Chin Lift
-- Effort points system — getBonusTargets rewritten: 3 tiers (was 4), correct PR decoding from raw_score, all inputModes supported
-- difficulty+time and difficulty+reps InputModes — new modes for tiered hold and tiered rep events; raw_score = tierIdx*10000 + value
-- All 100 events updated — correct inputMode, hasDifficultyTiers, tier names from EVENT_DEFINITIONS.md
-- 20+ event renames/slug changes — see "Event renames" section above
-- Difficulty tiers — now defined for all 100 tiered events in lib/eventData.ts
+- Difficulty tiers — defined for all tiered events in lib/eventData.ts
+- Disadvantage system removed — dropped from DB, eventData.ts, and all UI (May 2026)
+- Domain 6 redesigned — 10 new events (Running, Cycling, Ski Erg, Row Erg, Breath Hold, Weighted Carry, Duck Walk, Sprint Repeats, 30-15 Test, Burpee Broad Jump) with difficulty+time tiers replacing fixed-distance events
+- Domain 1 updates — Pause Dips, Pause Chin Up now difficulty+reps D1–D5 (D5 weight-scored); Ham Curl now difficulty+reps D1–D5
+- Hand Walk renamed from 50m Hand Walk; D3/D4 tier names updated
+- Weight-scored tier generalised — single isWeightScoredTierByName/Idx helper covers GHD Situp D4, Pause Dips D5, Pause Chin Up D5
 - Judge score edit/delete fix — delete confirmation works correctly, leaderboard recalculates immediately
-- Judge player management — judges can add any registered player or create a guest during a live session; tabs persist across refresh via localStorage; guest players earn placement points
-- Guest players — stored in players table with is_guest=true and no auth account (players.id FK to auth.users removed); created via judge modal
 - Supabase SSR middleware, browser client, Google OAuth, RLS, points trigger — all confirmed working
 - allsport.nz live domain
 
@@ -442,13 +467,13 @@ best_score, current_rank, division, average_placement, season_year
 
 ## What's Next (In Priority Order)
 
-1. Populate full content (howToPerform, rules) for remaining 95 events in lib/eventData.ts
-2. Welcome email on registration (Supabase Edge Function + Resend)
-3. Judge approval flow (replace manual SQL)
-4. Player profile page — edit display prefs
-5. Verify Te Reo "Kaiwāwao" is correct for judge/referee in sports context
-7. Championship registration flow (6 months before March 2027)
-8. Guest player claim flow — link a guest player record to a newly registered account (optional, post-MVP)
+1. Implement effort points system (effort_scores table, task generation logic, live session UI, award trigger update)
+2. Populate full content (howToPerform, rules) for remaining 95 events in lib/eventData.ts
+4. Welcome email on registration (Supabase Edge Function + Resend)
+5. Judge approval flow (replace manual SQL)
+6. Player profile page — edit display prefs
+7. Verify Te Reo "Kaiwāwao" is correct for judge/referee in sports context
+8. Championship registration flow (6 months before March 2027)
 
 ---
 
@@ -459,13 +484,14 @@ best_score, current_rank, division, average_placement, season_year
 - Te reo Māori identity throughout
 - Taniwha = Black = peak grade = black belt equivalent
 - Colours reset January, history kept forever — section called "Colours" not "Grade"
-- In-game leaderboard: player-ranked list per division (not event-list view). No All-Divisions combined tab. Each division competes independently.
-- Division tabs: only show divisions present in the current session. Tab labels include age ranges for Youth, Juniors, Masters and Grandmasters.
+- All-Divisions = combined division tab (not "Overall")
 - T-Race (not T-Test) uses sport/win-loss input mode
 - Chin Hang (not Chin Lift)
 - Difficulty tiers: D1 = easiest, purely informational, stored in results.difficulty_tier as tier name string
-- difficulty+time: raw_score = tierIdx*10000 + seconds; difficulty+reps: raw_score = tierIdx*10000 + reps (both 0-based tierIdx)
-- GHD Situp D4 special case: scoring switches to weight_kg (not reps); handled in computeScore by checking event.name === 'GHD Situp' && tierIdx === 3
+- Weight-scored final tiers: GHD Situp D4, Pause Dips D5 (Weighted RTO Dip), Pause Chin Up D5 (Weighted Chinup) — these tiers switch input to weight_kg instead of reps
+- Domain 6 events redesigned (May 2026): old events (1k Run, Bronco, etc.) are legacy orphans in session history; new slugs are running, cycling, ski-erg, row-erg, breath-hold, weighted-carry, duck-walk, sprint-repeats, 30-15-test, burpee-broad-jump
+- disadvantage system removed entirely (dropped from DB in migration 20260510, removed from eventData.ts and all UI)
+- Disadvantage: self-declared by players, small/large, three options per event per level; multiplier on strength events only (×1.2 / ×1.5)
 - Missing scores: players with any result in session but no score for a specific event = last place for that event
 - Post-game popup: triggers on session close, dismissed via localStorage, viewable in session history
 - lib/eventData.ts is the single source of truth for all 100 events
@@ -473,10 +499,14 @@ best_score, current_rank, division, average_placement, season_year
 - Time events: raw_score stored as negative seconds so faster = higher
 - Void vs End: Void sets points_awarded_at before closing to prevent trigger firing
 - middleware.ts is mandatory — without it, Supabase sessions don't persist across page loads
+- Gap formula: 100 ÷ players, no floor on gap; minimum earn = 10 on awarded points only
+- Effort points: separate effort_scores table; 100pt session cap; +10 per qualifying submission; feeds Colour System total
+- Effort tasks: generated from higher of comp score or PR; tiered events use ×1.5/×2.0/×3.0 time multipliers stepping D-1/D-2/D-3; same-tier ×0.5 substitution when tiers exhausted
+- Effort matching: exact tier, time ≥ required; harder tier does not substitute; repeats allowed
 
 ---
 
-*Last updated: May 2026 (session 5)*
+*Last updated: May 2026 (session 6)*
 *Project started: March 2026*
 
 ## Skill routing

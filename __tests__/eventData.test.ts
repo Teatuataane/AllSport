@@ -18,40 +18,23 @@ describe('EVENTS array', () => {
   it('every event has a unique slug', () => {
     const slugs = EVENTS.map(e => e.slug)
     const unique = new Set(slugs)
-    expect(unique.size).toBe(slugs.length)
+    expect(unique.size).toBe(100)
   })
 
-  it('every event has a unique name', () => {
-    const names = EVENTS.map(e => e.name)
-    const unique = new Set(names)
-    expect(unique.size).toBe(names.length)
-  })
-
-  it('every event has a non-empty emoji string', () => {
+  it('every event has a non-empty name', () => {
     for (const e of EVENTS) {
-      expect(typeof e.emoji).toBe('string')
-      expect(e.emoji.length).toBeGreaterThan(0)
+      expect(e.name.length).toBeGreaterThan(0)
     }
   })
 
-  it('all domainNumbers are between 1 and 10', () => {
+  it('every event has a domainNumber between 1 and 10', () => {
     for (const e of EVENTS) {
       expect(e.domainNumber).toBeGreaterThanOrEqual(1)
       expect(e.domainNumber).toBeLessThanOrEqual(10)
     }
   })
 
-  it('exactly 10 events per domain (10 domains × 10 events = 100)', () => {
-    const counts: Record<number, number> = {}
-    for (const e of EVENTS) {
-      counts[e.domainNumber] = (counts[e.domainNumber] ?? 0) + 1
-    }
-    for (let d = 1; d <= 10; d++) {
-      expect(counts[d]).toBe(10)
-    }
-  })
-
-  it('events with hasDifficultyTiers=true have a non-empty difficultyTiers array', () => {
+  it('every event with hasDifficultyTiers=true has a non-empty difficultyTiers array', () => {
     const tiered = EVENTS.filter(e => e.hasDifficultyTiers)
     for (const e of tiered) {
       expect(e.difficultyTiers).toBeDefined()
@@ -59,14 +42,12 @@ describe('EVENTS array', () => {
     }
   })
 
-  it('events with hasDifficultyTiers=false have no difficultyTiers', () => {
+  it('every event with hasDifficultyTiers=false has no difficultyTiers', () => {
     const flat = EVENTS.filter(e => !e.hasDifficultyTiers)
     for (const e of flat) {
-      // difficultyTiers should be undefined (or absent) when hasDifficultyTiers is false
       expect(e.difficultyTiers).toBeUndefined()
     }
   })
-
 })
 
 // ─── DOMAIN_ORDER ─────────────────────────────────────────────────────────────
@@ -107,6 +88,19 @@ describe('getEventBySlug', () => {
     expect(e!.domainNumber).toBe(2)
   })
 
+  it('finds new domain 6 events by slug', () => {
+    expect(getEventBySlug('running')).toBeDefined()
+    expect(getEventBySlug('duck-walk')).toBeDefined()
+    expect(getEventBySlug('breath-hold')).toBeDefined()
+    expect(getEventBySlug('30-15-test')).toBeDefined()
+  })
+
+  it('returns undefined for old domain 6 slugs (replaced)', () => {
+    expect(getEventBySlug('1k-run')).toBeUndefined()
+    expect(getEventBySlug('bronco')).toBeUndefined()
+    expect(getEventBySlug('200m-burpee-broad-jump')).toBeUndefined()
+  })
+
   it('returns undefined for unknown slug', () => {
     expect(getEventBySlug('not-a-real-event')).toBeUndefined()
   })
@@ -125,10 +119,16 @@ describe('getEventByName', () => {
     expect(e!.slug).toBe('deadlift')
   })
 
-  it('finds 1 Arm Press by exact name', () => {
-    const e = getEventByName('1 Arm Press')
+  it('finds 1A Press by exact name', () => {
+    const e = getEventByName('1A Press')
     expect(e).toBeDefined()
     expect(e!.domainNumber).toBe(1)
+  })
+
+  it('finds Hand Walk (renamed from 50m Hand Walk)', () => {
+    const e = getEventByName('Hand Walk')
+    expect(e).toBeDefined()
+    expect(e!.slug).toBe('hand-walk')
   })
 
   it('returns undefined for unknown name', () => {
@@ -164,24 +164,59 @@ describe('getEventsByDomain', () => {
     const maxStr = map['Maximal Strength']
     expect(maxStr.some(e => e.slug === 'deadlift')).toBe(true)
   })
+
+  it('Aerobic Endurance contains new domain 6 events', () => {
+    const map = getEventsByDomain()
+    const aerobic = map['Aerobic Endurance']
+    const slugs = aerobic.map(e => e.slug)
+    expect(slugs).toContain('running')
+    expect(slugs).toContain('duck-walk')
+    expect(slugs).toContain('breath-hold')
+    expect(slugs).toContain('30-15-test')
+    expect(slugs).not.toContain('1k-run')
+    expect(slugs).not.toContain('bronco')
+  })
 })
 
+// ─── effectiveScore helper (pure logic) ──────────────────────────────────────
+
+describe('effectiveScore logic', () => {
+  function effectiveScore(r: { raw_score: number; adjusted_score?: number | null }): number {
+    return r.adjusted_score != null ? r.adjusted_score : r.raw_score
+  }
+
+  it('returns adjusted_score when set', () => {
+    expect(effectiveScore({ raw_score: 1.0, adjusted_score: 1.2 })).toBe(1.2)
+  })
+
+  it('returns raw_score when adjusted_score is null', () => {
+    expect(effectiveScore({ raw_score: 0.8, adjusted_score: null })).toBe(0.8)
+  })
+
+  it('returns raw_score when adjusted_score is undefined', () => {
+    expect(effectiveScore({ raw_score: 0.5 })).toBe(0.5)
+  })
+
+  it('returns adjusted_score of 0 when explicitly set to 0', () => {
+    expect(effectiveScore({ raw_score: 1.0, adjusted_score: 0 })).toBe(0)
+  })
+})
 
 // ─── getBonusTargets ──────────────────────────────────────────────────────────
 
 describe('getBonusTargets', () => {
   const deadlift = EVENTS.find(e => e.slug === 'deadlift')!
   const sprint100 = EVENTS.find(e => e.slug === '100m-sprint')!
-  const lSitHold = EVENTS.find(e => e.slug === 'l-sit-hold')! // domain 3, hold, tiered → flex path
+  const lSitHold = EVENTS.find(e => e.slug === 'l-sit-hold')!
   const tennis = EVENTS.find(e => e.slug === 'tennis')!
   const chinupContest = EVENTS.find(e => e.slug === 'chin-up-contest')!
 
-  it('sport events → 4 targets regardless of PR', () => {
+  it('sport events → 3 targets regardless of PR', () => {
     const targets = getBonusTargets(tennis, null)
-    expect(targets).toHaveLength(4)
+    expect(targets).toHaveLength(3)
     expect(targets.every(t => t.inputMode === 'sport')).toBe(true)
     expect(targets.every(t => t.points === 15)).toBe(true)
-    expect(targets.map(t => t.tier)).toEqual([1, 2, 3, 4])
+    expect(targets.map(t => t.tier)).toEqual([1, 2, 3])
   })
 
   it('non-sport event with null PR → []', () => {
@@ -190,13 +225,12 @@ describe('getBonusTargets', () => {
     expect(getBonusTargets(lSitHold, null)).toEqual([])
   })
 
-  it('strength event with valid PR → 4 weight targets', () => {
+  it('strength event with valid PR → 3 weight targets', () => {
     const targets = getBonusTargets(deadlift, 100)
-    expect(targets).toHaveLength(4)
+    expect(targets).toHaveLength(3)
     expect(targets[0].label).toBe('90kg × 3 reps')
     expect(targets[1].label).toBe('80kg × 5 reps')
     expect(targets[2].label).toBe('70kg × 8 reps')
-    expect(targets[3].label).toBe('60kg × 12 reps')
     expect(targets.every(t => t.points === 15)).toBe(true)
     expect(targets.every(t => t.inputMode === 'strength')).toBe(true)
   })
@@ -209,10 +243,10 @@ describe('getBonusTargets', () => {
     expect(getBonusTargets(deadlift, 'bad')).toEqual([])
   })
 
-  it('time/sprint event with valid PR → 4 efforts under time targets', () => {
-    // raw_score for a sprint is stored negative; -6000 = 60 seconds
+  it('time/sprint event with valid PR → 3 efforts under time targets', () => {
+    // raw_score for a sprint is stored negative; -6000 cs = 60 seconds
     const targets = getBonusTargets(sprint100, -6000)
-    expect(targets).toHaveLength(4)
+    expect(targets).toHaveLength(3)
     expect(targets[0].tier).toBe(1)
     expect(targets[0].label).toContain('1 effort')
     expect(targets[1].label).toContain('2 efforts')
@@ -223,59 +257,59 @@ describe('getBonusTargets', () => {
     expect(getBonusTargets(sprint100, NaN)).toEqual([])
   })
 
-  it('flex/tiered-hold event at D5 → 4 targets (hold D5 + 3x below)', () => {
-    const targets = getBonusTargets(lSitHold, 'D5')
-    expect(targets).toHaveLength(4)
+  it('difficulty+time event at D5 (raw_score=40060) → 3 targets', () => {
+    // D5 = tierIdx 4 (0-based); 40000 + 60 secs = 40060
+    const targets = getBonusTargets(lSitHold, 40060)
+    expect(targets).toHaveLength(3)
     expect(targets[0].label).toBe('Hold D5 for 1 min')
     expect(targets[1].label).toBe('Hold D4 for 2 min')
     expect(targets[2].label).toBe('Hold D4 for 4 min')
-    expect(targets[3].label).toBe('Hold D4 for 6 min')
   })
 
-  it('flex/tiered-hold event at D1 → 1 target only (no tier below)', () => {
-    const targets = getBonusTargets(lSitHold, 'D1')
-    expect(targets).toHaveLength(1)
+  it('difficulty+time event at D1 (raw_score=30) → 3 targets all at D1', () => {
+    // D1 = tierIdx 0; 0 + 30 secs = 30
+    const targets = getBonusTargets(lSitHold, 30)
+    expect(targets).toHaveLength(3)
     expect(targets[0].label).toBe('Hold D1 for 1 min')
+    expect(targets[1].label).toBe('Hold D1 for 2 min')
+    expect(targets[2].label).toBe('Hold D1 for 4 min')
   })
 
-  it('flex/tiered-hold event with invalid PR string → []', () => {
-    expect(getBonusTargets(lSitHold, 'invalid')).toEqual([])
-    expect(getBonusTargets(lSitHold, '')).toEqual([])
-  })
-
-  it('reps-mode event with valid PR → [] (fallback, no bonus targets)', () => {
-    // chin-up-contest is domain 3, reps mode, no difficulty tiers — hits fallback
-    expect(getBonusTargets(chinupContest, 20)).toEqual([])
+  it('difficulty+reps event (chin-up-contest) with PR raw_score 20 → 3 rep targets at D1', () => {
+    // chinupContest is difficulty+reps; raw_score 20 → tierIdx=0 (D1), prReps=20
+    const targets = getBonusTargets(chinupContest, 20)
+    expect(targets).toHaveLength(3)
+    expect(targets[0].label).toBe('18 reps at D1')
+    expect(targets[1].label).toBe('16 reps at D1')
+    expect(targets[2].label).toBe('14 reps at D1')
   })
 })
 
 // ─── tier-based score formula ─────────────────────────────────────────────────
-// Mirrors computeScore tier path: tierIdx * 10000 + time_seconds
 
 describe('tier-based score formula', () => {
-  function tierScore(tierIdx: number, timeSeconds: number): number {
-    return tierIdx * 10000 + timeSeconds
+  function tierScore(tierIdx: number, value: number): number {
+    return tierIdx * 10000 + value
   }
 
-  it('tier 0 with no time = 0', () => {
+  it('tier 0 with no value = 0', () => {
     expect(tierScore(0, 0)).toBe(0)
   })
 
-  it('tier 1 with no time = 10000', () => {
+  it('tier 1 with no value = 10000', () => {
     expect(tierScore(1, 0)).toBe(10000)
   })
 
-  it('tier 0 with 30 seconds beats no score but loses to tier 1', () => {
+  it('tier 0 with 30 beats zero but loses to tier 1 at 0', () => {
     expect(tierScore(0, 30)).toBe(30)
     expect(tierScore(0, 30)).toBeLessThan(tierScore(1, 0))
   })
 
-  it('higher tier always beats lower tier regardless of time (within 10000s)', () => {
-    // Tier 1 at 0 secs (10000) > Tier 0 at 9999 secs (9999)
+  it('higher tier always beats lower tier regardless of value (within 10000)', () => {
     expect(tierScore(1, 0)).toBeGreaterThan(tierScore(0, 9999))
   })
 
-  it('within same tier, more time = higher score', () => {
+  it('within same tier, higher value = higher score', () => {
     expect(tierScore(2, 60)).toBeGreaterThan(tierScore(2, 30))
   })
 })

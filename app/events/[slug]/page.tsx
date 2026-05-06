@@ -14,17 +14,15 @@ const DOMAIN_COLOURS: Record<number, string> = {
 }
 
 const INPUT_MODE_LABEL: Record<string, string> = {
-  strength: 'Weight lifted (kg) relative to bodyweight',
+  strength: 'Weight lifted (kg)',
   reps: 'Total repetitions',
   time: 'Time — lower is better',
   hold: 'Hold duration — longer is better',
   distance: 'Distance covered',
-  flexibility: 'Blocks from floor — fewer is better',
   sport: 'Win / Draw / Loss result',
-  'weight+time': 'Weight carried + time',
-  'distance+time': 'Distance reached + time',
   sprint: 'Time in seconds + centiseconds',
-  dynamic: 'Variation-based (hold time or reps)',
+  'difficulty+time': 'Difficulty tier + hold time',
+  'difficulty+reps': 'Difficulty tier + repetitions',
 }
 
 export default function EventPage() {

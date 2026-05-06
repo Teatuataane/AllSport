@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase-browser'
 import { EVENTS, getEventByName, getBonusTargets, type EventData, type BonusTarget } from '@/lib/eventData'
@@ -24,6 +24,7 @@ type Result = {
   player_name: string
   event_id: string
   raw_score: number
+  adjusted_score: number | null
   score_label: string
   placement: number | null
   placement_points: number | null
@@ -69,7 +70,6 @@ function formatPR(rawScore: number, inputMode: string): string {
     case 'sprint':     return fmtTime(Math.abs(rawScore))
     case 'hold':       return fmtTime(rawScore)
     case 'distance':   return rawScore >= 100 ? `${(rawScore / 100).toFixed(2)}m` : `${rawScore}cm`
-    case 'flexibility': return `${Math.abs(rawScore)} blocks`
     case 'sport':      return rawScore === 2 ? 'Win' : rawScore === 1 ? 'Draw' : 'Loss'
     case 'difficulty+time': {
       const tierIdx = Math.floor(rawScore / 10000)
@@ -168,6 +168,22 @@ function EventCard({
   const bonusTargets: BonusTarget[] = eventData ? getBonusTargets(eventData, seasonPR) : []
   const completedTiers = new Set(myBonuses.map(b => b.tier))
 
+  // Events where the final difficulty tier switches to weight-based scoring
+  function isWeightScoredTierByIdx(eventName: string, tierIdx: number): boolean {
+    return (
+      (eventName === 'GHD Situp' && tierIdx === 3) ||
+      (eventName === 'Pause Dips' && tierIdx === 4) ||
+      (eventName === 'Pause Chin Up' && tierIdx === 4)
+    )
+  }
+  function isWeightScoredTierByName(eventName: string, tierName: string): boolean {
+    return (
+      (eventName === 'GHD Situp' && tierName === 'GHD Situp') ||
+      (eventName === 'Pause Dips' && tierName === 'Weighted RTO Dip') ||
+      (eventName === 'Pause Chin Up' && tierName === 'Weighted Chinup')
+    )
+  }
+
   function computeScore(): { raw_score: number; score_label: string } | null {
     const totalSecs = (parseFloat(timeMins) || 0) * 60 + (parseFloat(timeSecs) || 0)
 
@@ -221,11 +237,11 @@ function EventCard({
       if (!difficultyTier) return null
       const tierIdx = eventData?.difficultyTiers?.findIndex(t => t.name === difficultyTier) ?? -1
       if (tierIdx < 0) return null
-      // GHD Situp D4 is weight-scored
-      if (eventData?.name === 'GHD Situp' && tierIdx === 3) {
+      // Final tier of certain events switches to weight-based scoring
+      if (isWeightScoredTierByIdx(eventData?.name ?? '', tierIdx)) {
         const w = parseFloat(weightKg) || 0
         if (!w) return null
-        return { raw_score: w, score_label: `D4 GHD Situp · ${w}kg` }
+        return { raw_score: w, score_label: `D${tierIdx + 1} ${difficultyTier} · ${w}kg` }
       }
       const r = parseInt(repCount) || 0
       if (!r) return null
@@ -237,11 +253,6 @@ function EventCard({
       if (!val) return null
       const raw_score = distanceUnit === 'm' ? Math.round(val * 100) : Math.round(val)
       return { raw_score, score_label: `${distanceVal}${distanceUnit}` }
-    }
-    if (mode === 'flexibility') {
-      const blocks = parseInt(distanceVal) || 0
-      const label = blocks === 0 ? '0 blocks (floor)' : `${blocks} block${blocks !== 1 ? 's' : ''}`
-      return { raw_score: -blocks, score_label: label }
     }
     if (mode === 'sport') {
       if (!sportResult) return null
@@ -258,32 +269,6 @@ function EventCard({
       const totalCs = Math.round(s * 100) + cs
       const label = `${Math.floor(s)}s.${cs.toString().padStart(2, '0')}`
       return { raw_score: -totalCs, score_label: label }
-    }
-    if (mode === 'weight+time') {
-      if (!weightKg || !totalSecs) return null
-      return { raw_score: -totalSecs, score_label: `${weightKg}kg · ${fmtTime(totalSecs)}` }
-    }
-    if (mode === 'distance+time') {
-      const val = parseFloat(distanceVal) || 0
-      if (!val) return null
-      const raw_score = distanceUnit === 'm' ? Math.round(val * 100) : Math.round(val)
-      const parts = [`${distanceVal}${distanceUnit}`]
-      if (totalSecs > 0) parts.push(fmtTime(totalSecs))
-      return { raw_score, score_label: parts.join(' · ') }
-    }
-    if (mode === 'dynamic') {
-      if (!exerciseVariation) return null
-      const isHold = exerciseVariation.endsWith('/ Hold')
-      if (isHold) {
-        if (!totalSecs) return null
-        const varLabel = exerciseVariation.replace(' / Hold', '')
-        return { raw_score: totalSecs, score_label: `${varLabel}: ${fmtTime(totalSecs)}` }
-      } else {
-        const r = parseInt(repCount) || 0
-        if (!r) return null
-        const varLabel = exerciseVariation.replace(' / Reps', '')
-        return { raw_score: r, score_label: `${varLabel}: ${r} reps` }
-      }
     }
     return null
   }
@@ -314,10 +299,9 @@ function EventCard({
         if (repCount) payload.reps = parseInt(repCount)
       }
       if (mode === 'reps') payload.reps = parseInt(repCount) || 0
-      if (['time', 'hold', 'weight+time', 'difficulty+time'].includes(mode) && totalSecs > 0) payload.time_seconds = totalSecs
-      if (mode === 'dynamic' && isDynamicHold && totalSecs > 0) payload.time_seconds = totalSecs
+      if (['time', 'hold', 'difficulty+time'].includes(mode) && totalSecs > 0) payload.time_seconds = totalSecs
       if (mode === 'difficulty+reps') {
-        if (eventData?.name === 'GHD Situp' && difficultyTier === 'GHD Situp') {
+        if (isWeightScoredTierByName(eventData?.name ?? '', difficultyTier)) {
           payload.weight_kg = parseFloat(weightKg) || 0
         } else {
           payload.reps = parseInt(repCount) || 0
@@ -327,8 +311,7 @@ function EventCard({
         const s = parseFloat(timeSecs) || 0; const cs = parseInt(sprintCs) || 0
         payload.time_seconds = s + cs / 100
       }
-      if (mode === 'weight+time') payload.weight_kg = parseFloat(weightKg) || 0
-      if (mode === 'distance' || mode === 'distance+time') {
+      if (mode === 'distance') {
         const val = parseFloat(distanceVal) || 0
         payload.distance_m = distanceUnit === 'm' ? val : val / 100
       }
@@ -416,9 +399,9 @@ function EventCard({
   }
 
   // Expanded card
-  const isTimeMode = mode === 'time' || mode === 'hold' || mode === 'weight+time' || mode === 'distance+time'
-  const isDynamicHold = mode === 'dynamic' && exerciseVariation?.endsWith('/ Hold')
-  const isDynamicReps = mode === 'dynamic' && exerciseVariation?.endsWith('/ Reps')
+  const isTimeMode = mode === 'time' || mode === 'hold'
+  const isDynamicHold = false
+  const isDynamicReps = false
 
   return (
     <div style={{
@@ -481,21 +464,7 @@ function EventCard({
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {/* Variation selector — dynamic events (Planche, Flag, etc.) */}
-              {mode === 'dynamic' && eventData?.difficultyTiers && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '11px', color: '#666', fontFamily: 'Barlow Condensed, sans-serif' }}>VARIATION</label>
-                  <select value={exerciseVariation} onChange={e => setExerciseVariation(e.target.value)}
-                    style={{ ...INP, fontSize: '15px' }}>
-                    <option value="">Select variation...</option>
-                    {eventData.difficultyTiers.map(t => (
-                      <option key={t.level} value={`${t.name} / Hold`}>D{t.level} — {t.name}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {/* Variation selector — events with named variations (Pause Dips, Pause Chinup, etc.) */}
+              {/* Variation selector — events with named variations */}
               {eventData?.variations && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '11px', color: '#666', fontFamily: 'Barlow Condensed, sans-serif' }}>VARIATION</label>
@@ -509,8 +478,8 @@ function EventCard({
                 </div>
               )}
 
-              {/* Difficulty tier selector — non-dynamic tiered events (Front Split, Standing Split, etc.) */}
-              {mode !== 'dynamic' && eventData?.hasDifficultyTiers && eventData.difficultyTiers && (
+              {/* Difficulty tier selector */}
+              {eventData?.hasDifficultyTiers && eventData.difficultyTiers && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '11px', color: '#666', fontFamily: 'Barlow Condensed, sans-serif' }}>DIFFICULTY TIER</label>
                   <select value={difficultyTier} onChange={e => setDifficultyTier(e.target.value)}
@@ -523,9 +492,9 @@ function EventCard({
                 </div>
               )}
 
-              {/* Strength mode — also shown when a weight variation is selected (e.g. Ring Dip) or GHD Situp D4 */}
-              {(mode === 'strength' || mode === 'weight+time' || isWeightVariation ||
-                (mode === 'difficulty+reps' && eventData?.name === 'GHD Situp' && difficultyTier === 'GHD Situp')) && (
+              {/* Strength mode — also shown when a weight variation is selected or a weight-scored difficulty tier */}
+              {(mode === 'strength' || isWeightVariation ||
+                (mode === 'difficulty+reps' && isWeightScoredTierByName(eventData?.name ?? '', difficultyTier))) && (
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <input type="number" value={weightKg} onChange={e => setWeightKg(e.target.value)}
                     placeholder="Weight (kg)" style={{ ...INP, flex: 2 }} />
@@ -536,9 +505,9 @@ function EventCard({
                 </div>
               )}
 
-              {/* Reps mode — hidden when weight variation selected; difficulty+reps — hidden for GHD Situp D4 */}
+              {/* Reps mode — hidden when weight variation selected; difficulty+reps — hidden for weight-scored tiers */}
               {((mode === 'reps' || isDynamicReps) && !isWeightVariation) ||
-               (mode === 'difficulty+reps' && !(eventData?.name === 'GHD Situp' && difficultyTier === 'GHD Situp'))
+               (mode === 'difficulty+reps' && !isWeightScoredTierByName(eventData?.name ?? '', difficultyTier))
                 ? (
                 <input type="number" value={repCount} onChange={e => setRepCount(e.target.value)}
                   placeholder="Reps" style={INP} />
@@ -567,37 +536,20 @@ function EventCard({
               )}
 
               {/* Distance mode */}
-              {(mode === 'distance' || mode === 'distance+time') && (
-                <>
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <input type="number" value={distanceVal} onChange={e => setDistanceVal(e.target.value)}
-                      placeholder="Distance" style={{ ...INP, flex: 2 }} />
-                    <div style={{ display: 'flex', borderRadius: '8px', overflow: 'hidden' }}>
-                      {(['m', 'cm'] as const).map(u => (
-                        <button key={u} onClick={() => setDistanceUnit(u)} style={{
-                          padding: '10px 16px', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px',
-                          background: distanceUnit === u ? '#2371BB' : '#1a1a1a',
-                          color: distanceUnit === u ? '#fff' : '#666',
-                        }}>{u}</button>
-                      ))}
-                    </div>
+              {mode === 'distance' && (
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <input type="number" value={distanceVal} onChange={e => setDistanceVal(e.target.value)}
+                    placeholder="Distance" style={{ ...INP, flex: 2 }} />
+                  <div style={{ display: 'flex', borderRadius: '8px', overflow: 'hidden' }}>
+                    {(['m', 'cm'] as const).map(u => (
+                      <button key={u} onClick={() => setDistanceUnit(u)} style={{
+                        padding: '10px 16px', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px',
+                        background: distanceUnit === u ? '#2371BB' : '#1a1a1a',
+                        color: distanceUnit === u ? '#fff' : '#666',
+                      }}>{u}</button>
+                    ))}
                   </div>
-                  {mode === 'distance+time' && (
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                      <input type="number" value={timeMins} onChange={e => setTimeMins(e.target.value)}
-                        placeholder="min" style={{ ...INP, flex: 1 }} />
-                      <span style={{ color: '#555', fontSize: '20px' }}>:</span>
-                      <input type="number" value={timeSecs} onChange={e => setTimeSecs(e.target.value)}
-                        placeholder="sec" style={{ ...INP, flex: 1 }} />
-                    </div>
-                  )}
-                </>
-              )}
-
-              {/* Flexibility mode */}
-              {mode === 'flexibility' && (
-                <input type="number" value={distanceVal} onChange={e => setDistanceVal(e.target.value)}
-                  placeholder="Blocks from floor (0 = floor)" style={INP} min="0" />
+                </div>
               )}
 
               {/* Sport mode */}
@@ -729,42 +681,12 @@ function EventCard({
 
 // ─── LeaderboardTab ───────────────────────────────────────────────────────────
 
-const DIVISION_ORDER = [
-  'Youth', 'Juniors', "Men's", "Women's",
+const ALL_DIVISIONS = [
+  'All-Divisions', 'Youth', 'Juniors', "Men's", "Women's",
   'Masters Men', 'Masters Women', 'Grandmasters Men', 'Grandmasters Women',
 ]
 
-const DIVISION_LABEL: Record<string, string> = {
-  'Youth': 'Youth (U12)',
-  'Juniors': 'Juniors (U17)',
-  "Men's": "Men's",
-  "Women's": "Women's",
-  'Masters Men': 'Masters Men (40+)',
-  'Masters Women': 'Masters Women (40+)',
-  'Grandmasters Men': 'Grandmasters Men (60+)',
-  'Grandmasters Women': 'Grandmasters Women (60+)',
-}
-
 type PlayerInfo = { division: string }
-
-function ordinal(n: number): string {
-  if (n === 1) return '1st'
-  if (n === 2) return '2nd'
-  if (n === 3) return '3rd'
-  return `${n}th`
-}
-
-function rankCircle(rank: number) {
-  const bg = rank === 1 ? '#F9B051' : rank === 2 ? '#888' : rank === 3 ? '#CD7F32' : '#1e1e1e'
-  const color = rank <= 3 ? '#000' : '#555'
-  return (
-    <div style={{
-      width: '28px', height: '28px', borderRadius: '50%', flexShrink: 0,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: '13px', fontWeight: 700, background: bg, color,
-    }}>{rank}</div>
-  )
-}
 
 function LeaderboardTab({
   events, results, playerInfoMap,
@@ -773,177 +695,91 @@ function LeaderboardTab({
   results: Result[]
   playerInfoMap: Record<string, PlayerInfo>
 }) {
-  const presentDivisions = useMemo(() =>
-    DIVISION_ORDER.filter(d =>
-      results.some(r => r.player_id && playerInfoMap[r.player_id]?.division === d)
-    ),
-    [results, playerInfoMap]
-  )
+  const [division, setDivision] = useState('All-Divisions')
+  const [expandedId, setExpandedId] = useState<string | null>(null)
 
-  const [division, setDivision] = useState<string>('')
-  const [expandedPlayerId, setExpandedPlayerId] = useState<string | null>(null)
-
-  // Keep active tab on a real division; default to first populated
-  useEffect(() => {
-    if (presentDivisions.length === 0) return
-    if (!presentDivisions.includes(division)) {
-      setDivision(presentDivisions[0])
-      setExpandedPlayerId(null)
-    }
-  }, [presentDivisions, division])
-
-  // Reset expansion when switching division
-  function switchDivision(d: string) {
-    setDivision(d)
-    setExpandedPlayerId(null)
+  function filteredResults(eventId: string): Result[] {
+    const evRes = results.filter(r => r.event_id === eventId)
+    if (division === 'All-Divisions') return evRes
+    return evRes.filter(r => r.player_id && playerInfoMap[r.player_id]?.division === division)
   }
 
-  // Build ranked player list for the active division
-  const leaderboard = useMemo(() => {
-    if (!division) return []
-
-    const playerIds = [...new Set(
-      results
-        .filter(r => r.player_id && playerInfoMap[r.player_id]?.division === division)
-        .map(r => r.player_id as string)
-    )]
-    if (playerIds.length === 0) return []
-
-    const rows = playerIds.map(playerId => {
-      const playerName = results.find(r => r.player_id === playerId)?.player_name ?? playerId
-
-      let totalPlacement = 0
-      const eventBreakdown = events.map(ev => {
-        // All scored results for this event within this division
-        const scored = results.filter(r =>
-          r.event_id === ev.id &&
-          r.player_id &&
-          playerInfoMap[r.player_id]?.division === division &&
-          r.raw_score != null
-        )
-        const sorted = [...scored].sort((a, b) => (b.raw_score ?? 0) - (a.raw_score ?? 0))
-
-        const myResult = results.find(r => r.event_id === ev.id && r.player_id === playerId)
-
-        if (!myResult || myResult.raw_score == null) {
-          // No score: last place = number of scorers + 1
-          const placement = scored.length + 1
-          totalPlacement += placement
-          return { ev, scoreLabel: null, placement, noScore: true }
-        }
-
-        // Determine rank within event (ties share rank)
-        let rank = 1
-        for (let i = 0; i < sorted.length; i++) {
-          if (i > 0 && sorted[i].raw_score !== sorted[i - 1].raw_score) rank = i + 1
-          if (sorted[i].player_id === playerId) break
-        }
-        totalPlacement += rank
-        return { ev, scoreLabel: myResult.score_label, placement: rank, noScore: false }
-      })
-
-      return { playerId, playerName, totalPlacement, eventBreakdown }
-    })
-
-    rows.sort((a, b) => a.totalPlacement - b.totalPlacement)
-
-    // Assign overall rank with tie handling
+  function rankFor(evRes: Result[]): Array<Result & { rank: number }> {
+    const sorted = [...evRes].sort((a, b) => (b.raw_score ?? 0) - (a.raw_score ?? 0))
     let rank = 1
-    return rows.map((row, i) => {
-      if (i > 0 && row.totalPlacement !== rows[i - 1].totalPlacement) rank = i + 1
-      return { ...row, rank }
+    return sorted.map((r, i) => {
+      if (i > 0 && r.raw_score !== sorted[i - 1].raw_score) rank = i + 1
+      return { ...r, rank }
     })
-  }, [division, results, events, playerInfoMap])
-
-  if (presentDivisions.length === 0) {
-    return (
-      <div style={{ padding: '32px 16px', textAlign: 'center', color: '#444', fontSize: '14px' }}>
-        No scores submitted yet.
-      </div>
-    )
   }
 
   return (
     <div style={{ padding: '12px 16px' }}>
-      {/* Division tabs */}
+      {/* Division filter */}
       <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '8px', marginBottom: '16px' }}>
-        {presentDivisions.map(d => (
-          <button key={d} onClick={() => switchDivision(d)} style={{
+        {ALL_DIVISIONS.map(d => (
+          <button key={d} onClick={() => setDivision(d)} style={{
             padding: '6px 12px', border: `1px solid ${division === d ? '#2371BB' : '#222'}`,
-            borderRadius: '20px', cursor: 'pointer', whiteSpace: 'nowrap', fontSize: '12px',
-            fontWeight: division === d ? 700 : 400,
+            borderRadius: '20px', cursor: 'pointer', whiteSpace: 'nowrap', fontSize: '12px', fontWeight: division === d ? 700 : 400,
             background: division === d ? '#0d1a2e' : '#111',
             color: division === d ? '#2371BB' : '#555',
             flexShrink: 0,
-          }}>{DIVISION_LABEL[d] ?? d}</button>
+          }}>{d}</button>
         ))}
       </div>
 
-      {/* Ranked player list */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        {leaderboard.map(row => {
-          const isOpen = expandedPlayerId === row.playerId
-          const isFirst = row.rank === 1
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {events.map(ev => {
+          const evData = getEventByName(ev.event_name)
+          const evRes = filteredResults(ev.id)
+          const ranked = rankFor(evRes)
+          const leader = ranked[0]
+          const isOpen = expandedId === ev.id
+          const scoreCount = ranked.length
 
           return (
-            <div key={row.playerId} style={{
-              background: '#111', borderRadius: '12px', overflow: 'hidden',
-              border: `1px solid ${isOpen ? '#2371BB' : isFirst ? '#2a1f00' : '#1e1e1e'}`,
-            }}>
-              {/* Collapsed row */}
-              <button
-                onClick={() => setExpandedPlayerId(isOpen ? null : row.playerId)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '14px', width: '100%',
-                  padding: '14px 18px', background: isOpen ? '#0d1a2e' : isFirst ? '#0d0a00' : 'transparent',
-                  border: 'none', cursor: 'pointer', textAlign: 'left',
-                }}
-              >
-                {rankCircle(row.rank)}
-                <div style={{ flex: 1, fontSize: '15px', fontWeight: isFirst ? 700 : 500, color: isFirst ? '#fff' : '#ccc' }}>
-                  {row.playerName}
+            <div key={ev.id} style={{ background: '#111', borderRadius: '12px', overflow: 'hidden', border: `1px solid ${isOpen ? '#2371BB' : '#1e1e1e'}` }}>
+              <button onClick={() => setExpandedId(isOpen ? null : ev.id)} style={{
+                display: 'flex', alignItems: 'center', gap: '14px', width: '100%',
+                padding: '16px 18px', background: isOpen ? '#0d1a2e' : 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left',
+              }}>
+                <span style={{ fontSize: '24px', flexShrink: 0 }}>{evData?.emoji ?? '🏅'}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '16px', fontWeight: 700, color: isOpen ? '#fff' : '#ccc' }}>{ev.event_name}</div>
+                  <div style={{ fontSize: '12px', color: '#555', marginTop: '2px' }}>{ev.domain_name}</div>
+                  {leader ? (
+                    <div style={{ fontSize: '13px', color: '#F9B051', marginTop: '4px', fontWeight: 600 }}>
+                      {leader.player_name} · {leader.score_label}
+                      <span style={{ color: '#555', fontWeight: 400, marginLeft: '6px' }}>{scoreCount} score{scoreCount !== 1 ? 's' : ''}</span>
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: '13px', color: '#444', marginTop: '4px' }}>No scores yet</div>
+                  )}
                 </div>
-                <div style={{ fontSize: '13px', color: '#555', marginRight: '8px' }}>
-                  <span style={{ color: isFirst ? '#F9B051' : '#666', fontWeight: 700, fontSize: '15px' }}>
-                    {row.totalPlacement}
-                  </span>
-                  <span style={{ color: '#333', fontSize: '11px', marginLeft: '3px' }}>pts</span>
-                </div>
-                <span style={{ color: isOpen ? '#2371BB' : '#333', fontSize: '14px', flexShrink: 0 }}>
-                  {isOpen ? '▲' : '▼'}
-                </span>
+                <span style={{ color: isOpen ? '#2371BB' : '#444', fontSize: '16px', flexShrink: 0 }}>{isOpen ? '▲' : '▼'}</span>
               </button>
 
-              {/* Expanded event breakdown */}
               {isOpen && (
-                <div style={{ borderTop: '1px solid #1a1a1a' }}>
-                  {row.eventBreakdown.map(({ ev, scoreLabel, placement, noScore }, idx) => (
-                    <div key={ev.id} style={{
-                      display: 'flex', alignItems: 'center', gap: '12px',
-                      padding: '10px 18px 10px 22px',
-                      borderBottom: idx < row.eventBreakdown.length - 1 ? '1px solid #0d0d0d' : 'none',
-                      background: placement === 1 && !noScore ? '#0d1a0d' : 'transparent',
+                <div style={{ borderTop: '1px solid #1e1e1e' }}>
+                  {ranked.length === 0 ? (
+                    <div style={{ padding: '14px 18px', color: '#444', fontSize: '13px' }}>No scores yet.</div>
+                  ) : ranked.map((r, idx) => (
+                    <div key={r.id} style={{
+                      display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 18px',
+                      borderBottom: idx < ranked.length - 1 ? '1px solid #0d0d0d' : 'none',
+                      background: idx === 0 ? '#0d1a0d' : 'transparent',
                     }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: '13px', color: noScore ? '#444' : '#aaa', fontWeight: 500 }}>
-                          {ev.event_name}
-                        </div>
+                      <div style={{
+                        width: '28px', height: '28px', borderRadius: '50%', flexShrink: 0,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '13px', fontWeight: 700,
+                        background: r.rank === 1 ? '#F9B051' : r.rank === 2 ? '#888' : r.rank === 3 ? '#CD7F32' : '#333',
+                        color: r.rank <= 3 ? '#000' : '#fff',
+                      }}>{r.rank}</div>
+                      <div style={{ flex: 1, fontSize: '14px', color: idx === 0 ? '#fff' : '#aaa', fontWeight: idx === 0 ? 700 : 400 }}>
+                        {r.player_name}
                       </div>
-                      {noScore ? (
-                        <div style={{ fontSize: '12px', color: '#333', fontStyle: 'italic' }}>No Score</div>
-                      ) : (
-                        <>
-                          <div style={{ fontSize: '13px', color: '#666', maxWidth: '120px', textAlign: 'right' }}>
-                            {scoreLabel}
-                          </div>
-                          <div style={{
-                            fontSize: '12px', fontWeight: 700, minWidth: '36px', textAlign: 'right',
-                            color: placement === 1 ? '#F9B051' : placement === 2 ? '#888' : placement === 3 ? '#CD7F32' : '#555',
-                          }}>
-                            {ordinal(placement)}
-                          </div>
-                        </>
-                      )}
+                      <div style={{ fontSize: '14px', fontWeight: 700, color: idx === 0 ? '#F9B051' : '#666' }}>{r.score_label}</div>
                     </div>
                   ))}
                 </div>
@@ -976,18 +812,8 @@ export default function SessionPage() {
   const [sessionEnded, setSessionEnded] = useState(false)
   const [playerInfoMap, setPlayerInfoMap] = useState<Record<string, PlayerInfo>>({})
 
-  // Judge-only: additional player tabs (registered players or guests added by the judge)
-  const [judgeAddedPlayers, setJudgeAddedPlayers] = useState<Array<{id: string, label: string, isGuest: boolean}>>([])
-  const [showAddPlayerModal, setShowAddPlayerModal] = useState(false)
-  const [playerSearch, setPlayerSearch] = useState('')
-  const [searchResults, setSearchResults] = useState<Array<{id: string, full_name: string, username: string | null, display_name: string | null, division: string | null}>>([])
-  const [guestNameInput, setGuestNameInput] = useState('')
-  const [isCreatingGuest, setIsCreatingGuest] = useState(false)
-  const [addPlayerError, setAddPlayerError] = useState('')
-
   const allPlayers = player ? [player, ...familyMembers] : []
   const activePlayer = allPlayers.find(p => p.id === activePlayerId) ?? player
-  const isJudge = (player as Record<string, unknown>)?.role === 'judge'
 
   // ── Load initial data ──────────────────────────────────────────────────────
   const loadResults = useCallback(async () => {
@@ -1026,20 +852,6 @@ export default function SessionPage() {
     }
     load()
   }, [sessionId, loadResults, loadBonuses])
-
-  // ── Judge tab persistence (localStorage) ──────────────────────────────────
-  useEffect(() => {
-    if (!sessionId || !player) return
-    const saved = localStorage.getItem(`allsport_judge_tabs_${sessionId}`)
-    if (saved) {
-      try { setJudgeAddedPlayers(JSON.parse(saved)) } catch {}
-    }
-  }, [sessionId, player])
-
-  useEffect(() => {
-    if (!sessionId) return
-    localStorage.setItem(`allsport_judge_tabs_${sessionId}`, JSON.stringify(judgeAddedPlayers))
-  }, [judgeAddedPlayers, sessionId])
 
   // ── Load player info for leaderboard ─────────────────────────────────────
   useEffect(() => {
@@ -1148,60 +960,6 @@ export default function SessionPage() {
 
   const sessionCode = (session as Record<string, unknown> | null)?.session_code as string | undefined
 
-  // ── Judge: add player tab ──────────────────────────────────────────────────
-  function addPlayerTab(id: string, label: string, isGuest: boolean) {
-    const alreadyOwn = allPlayers.some(p => p.id as string === id)
-    if (alreadyOwn) { setShowAddPlayerModal(false); return }
-    setJudgeAddedPlayers(prev => {
-      if (prev.find(p => p.id === id)) return prev
-      return [...prev, { id, label, isGuest }]
-    })
-    setActiveTab(`player-${id}`)
-    setActivePlayerId(id)
-    setExpandedEventId(null)
-    setShowAddPlayerModal(false)
-    setPlayerSearch('')
-    setSearchResults([])
-    setAddPlayerError('')
-  }
-
-  async function searchPlayers(query: string) {
-    if (!query.trim()) { setSearchResults([]); return }
-    const alreadyAdded = new Set([
-      ...(player ? [player.id as string] : []),
-      ...familyMembers.map(f => f.id as string),
-      ...judgeAddedPlayers.map(j => j.id),
-    ])
-    const { data } = await supabase
-      .from('players')
-      .select('id, full_name, username, display_name, division')
-      .eq('is_guest', false)
-      .or(`full_name.ilike.%${query}%,username.ilike.%${query}%`)
-      .limit(20)
-    if (data) {
-      setSearchResults((data as typeof searchResults).filter(p => !alreadyAdded.has(p.id)))
-    }
-  }
-
-  async function createGuestPlayer() {
-    if (!guestNameInput.trim()) return
-    setIsCreatingGuest(true)
-    setAddPlayerError('')
-    try {
-      const { data, error } = await supabase
-        .from('players')
-        .insert({ full_name: guestNameInput.trim(), is_guest: true, role: 'player' })
-        .select('id')
-        .single()
-      if (error) throw error
-      addPlayerTab(data.id, guestNameInput.trim(), true)
-      setGuestNameInput('')
-    } catch (e: unknown) {
-      setAddPlayerError(e instanceof Error ? e.message : 'Failed to add guest')
-    }
-    setIsCreatingGuest(false)
-  }
-
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a0a', color: '#fff', maxWidth: '640px', margin: '0 auto', fontFamily: 'Barlow, sans-serif' }}>
@@ -1257,24 +1015,6 @@ export default function SessionPage() {
             </button>
           )
         })}
-        {/* Judge-added player tabs */}
-        {isJudge && judgeAddedPlayers.map(jp => {
-          const tabId = `player-${jp.id}`
-          const active = activeTab === tabId
-          return (
-            <button key={jp.id} onClick={() => { setActiveTab(tabId); setActivePlayerId(jp.id); setExpandedEventId(null) }}
-              style={{
-                padding: '12px 16px', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
-                fontSize: '13px', fontWeight: active ? 700 : 400, flexShrink: 0,
-                background: active ? '#111' : 'transparent',
-                color: active ? '#fff' : '#555',
-                borderBottom: `2px solid ${active ? (jp.isGuest ? '#F9B051' : '#2371BB') : 'transparent'}`,
-              }}>
-              {jp.label}
-              {jp.isGuest && <span style={{ fontSize: '10px', color: '#F9B051', marginLeft: '4px', fontFamily: 'Barlow Condensed, sans-serif' }}>GUEST</span>}
-            </button>
-          )
-        })}
         <button onClick={() => setActiveTab('leaderboard')}
           style={{
             padding: '12px 16px', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
@@ -1285,17 +1025,6 @@ export default function SessionPage() {
           }}>
           Leaderboard
         </button>
-        {isJudge && (
-          <button onClick={() => { setShowAddPlayerModal(true); setPlayerSearch(''); setSearchResults([]); setGuestNameInput(''); setAddPlayerError('') }}
-            style={{
-              padding: '12px 16px', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
-              fontSize: '18px', fontWeight: 700, flexShrink: 0,
-              background: 'transparent', color: '#4DB26E',
-              borderBottom: '2px solid transparent',
-            }}>
-            +
-          </button>
-        )}
       </div>
 
       {/* Player tabs */}
@@ -1349,58 +1078,6 @@ export default function SessionPage() {
         )
       })}
 
-      {/* Judge-added player tabs content */}
-      {isJudge && judgeAddedPlayers.map(jp => {
-        const tabId = `player-${jp.id}`
-        if (activeTab !== tabId) return null
-        const myResults = results.filter(r => r.player_id === jp.id)
-        const myBonuses = bonusCompletions.filter(b => b.player_id === jp.id)
-
-        return (
-          <div key={jp.id} style={{ padding: '16px' }}>
-            {jp.isGuest && (
-              <div style={{ background: '#1a1200', border: '1px solid #F9B051', borderRadius: '8px', padding: '10px 14px', marginBottom: '14px', fontSize: '12px', color: '#F9B051', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.05em' }}>
-                GUEST PLAYER — scores count for session placement
-              </div>
-            )}
-            {sessionEnded && (
-              <div style={{ background: '#2e0d0d', border: '1px solid #EA4742', borderRadius: '8px', padding: '12px 16px', marginBottom: '16px', textAlign: 'center' }}>
-                <div style={{ color: '#EA4742', fontWeight: 700, fontFamily: 'Bebas Neue, cursive', fontSize: '18px' }}>Session Ended</div>
-                <div style={{ color: '#888', fontSize: '13px', marginTop: '4px' }}>Score submission is locked</div>
-              </div>
-            )}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              {events.map(ev => {
-                const myResult = myResults.find(r => r.event_id === ev.id)
-                const evBonuses = myBonuses.filter(b => b.event_id === ev.id)
-                const evData = getEventByName(ev.event_name)
-                const pr = seasonPRs[ev.id] ?? null
-
-                return (
-                  <EventCard
-                    key={ev.id}
-                    se={ev}
-                    eventData={evData}
-                    myResult={myResult}
-                    allResults={results}
-                    allEvents={events}
-                    seasonPR={pr}
-                    bonusCompletions={evBonuses}
-                    playerId={jp.id}
-                    playerName={jp.label}
-                    sessionId={sessionId as string}
-                    sessionEnded={sessionEnded}
-                    isExpanded={expandedEventId === ev.id}
-                    onToggle={() => setExpandedEventId(expandedEventId === ev.id ? null : ev.id)}
-                    onScoreSubmitted={async () => { await loadResults(); await loadBonuses() }}
-                  />
-                )
-              })}
-            </div>
-          </div>
-        )
-      })}
-
       {/* Leaderboard tab */}
       {activeTab === 'leaderboard' && (
         <LeaderboardTab events={events} results={results} playerInfoMap={playerInfoMap} />
@@ -1411,125 +1088,6 @@ export default function SessionPage() {
         <div style={{ padding: '48px 24px', textAlign: 'center' }}>
           <div style={{ color: '#555', marginBottom: '16px' }}>Log in to submit scores</div>
           <a href="/login" style={{ color: '#2371BB', fontWeight: 700, textDecoration: 'none' }}>Log in →</a>
-        </div>
-      )}
-
-      {/* Add Player modal (judge-only) */}
-      {showAddPlayerModal && isJudge && (
-        <div
-          onClick={() => setShowAddPlayerModal(false)}
-          style={{
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 50,
-            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-          }}
-        >
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{
-              background: '#111', borderRadius: '16px 16px 0 0', width: '100%', maxWidth: '640px',
-              padding: '24px 20px', maxHeight: '85vh', overflowY: 'auto',
-              border: '1px solid #1e1e1e', borderBottom: 'none',
-            }}
-          >
-            {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <div style={{ fontSize: '22px', fontWeight: 700, fontFamily: 'Bebas Neue, cursive', letterSpacing: '0.05em' }}>
-                Add Player
-              </div>
-              <button
-                onClick={() => setShowAddPlayerModal(false)}
-                style={{ background: 'none', border: 'none', color: '#888', fontSize: '22px', cursor: 'pointer', lineHeight: 1 }}
-              >×</button>
-            </div>
-
-            {/* Search registered players */}
-            <div style={{ fontSize: '10px', color: '#555', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '8px', fontFamily: 'Barlow Condensed, sans-serif' }}>
-              Search Registered Players
-            </div>
-            <input
-              autoFocus
-              value={playerSearch}
-              onChange={e => { setPlayerSearch(e.target.value); searchPlayers(e.target.value) }}
-              placeholder="Name or username..."
-              style={{
-                width: '100%', background: '#0d0d0d', border: '1px solid #2a2a2a', borderRadius: '8px',
-                padding: '12px 14px', color: '#fff', fontSize: '16px', boxSizing: 'border-box', marginBottom: '10px',
-              }}
-            />
-
-            {/* Search results */}
-            {searchResults.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '20px' }}>
-                {searchResults.map(p => {
-                  const label = p.display_name || p.username || p.full_name
-                  return (
-                    <button
-                      key={p.id}
-                      onClick={() => addPlayerTab(p.id, label, false)}
-                      style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        background: '#0d0d0d', border: '1px solid #1e1e1e', borderRadius: '8px',
-                        padding: '12px 14px', cursor: 'pointer', textAlign: 'left',
-                      }}
-                    >
-                      <div>
-                        <div style={{ fontSize: '15px', fontWeight: 700, color: '#fff' }}>{label}</div>
-                        {p.username && p.display_name && (
-                          <div style={{ fontSize: '12px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif' }}>@{p.username}</div>
-                        )}
-                      </div>
-                      {p.division && (
-                        <div style={{ fontSize: '11px', color: '#888', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.05em' }}>
-                          {p.division}
-                        </div>
-                      )}
-                    </button>
-                  )
-                })}
-              </div>
-            )}
-            {playerSearch.trim() && searchResults.length === 0 && (
-              <div style={{ color: '#555', fontSize: '13px', marginBottom: '20px' }}>No players found.</div>
-            )}
-
-            {/* Divider */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-              <div style={{ flex: 1, height: '1px', background: '#1e1e1e' }} />
-              <div style={{ fontSize: '11px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.1em' }}>OR ADD GUEST</div>
-              <div style={{ flex: 1, height: '1px', background: '#1e1e1e' }} />
-            </div>
-
-            {/* Guest player */}
-            <div style={{ fontSize: '10px', color: '#555', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '8px', fontFamily: 'Barlow Condensed, sans-serif' }}>
-              Guest Player Name
-            </div>
-            <input
-              value={guestNameInput}
-              onChange={e => { setGuestNameInput(e.target.value); setAddPlayerError('') }}
-              onKeyDown={e => { if (e.key === 'Enter' && guestNameInput.trim()) createGuestPlayer() }}
-              placeholder="Enter name..."
-              style={{
-                width: '100%', background: '#0d0d0d', border: '1px solid #2a2a2a', borderRadius: '8px',
-                padding: '12px 14px', color: '#fff', fontSize: '16px', boxSizing: 'border-box', marginBottom: '10px',
-              }}
-            />
-            {addPlayerError && (
-              <div style={{ color: '#EA4742', fontSize: '12px', marginBottom: '8px' }}>{addPlayerError}</div>
-            )}
-            <button
-              onClick={createGuestPlayer}
-              disabled={!guestNameInput.trim() || isCreatingGuest}
-              style={{
-                width: '100%', padding: '14px', borderRadius: '8px', border: 'none', fontWeight: 700,
-                fontSize: '15px', cursor: guestNameInput.trim() && !isCreatingGuest ? 'pointer' : 'not-allowed',
-                background: guestNameInput.trim() && !isCreatingGuest ? '#F9B051' : '#1a1a1a',
-                color: guestNameInput.trim() && !isCreatingGuest ? '#000' : '#555',
-                fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.05em',
-              }}
-            >
-              {isCreatingGuest ? 'Adding...' : 'Add Guest Player'}
-            </button>
-          </div>
         </div>
       )}
     </div>
