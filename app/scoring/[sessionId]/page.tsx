@@ -2,7 +2,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase-browser'
-import { EVENTS, getEventByName, getBonusTargets, type EventData, type BonusTarget } from '@/lib/eventData'
+import { EVENTS, getEventByName, type EventData } from '@/lib/eventData'
 
 const supabase = createClient()
 
@@ -24,11 +24,8 @@ type Result = {
   player_name: string
   event_id: string
   raw_score: number
-  adjusted_score: number | null
   score_label: string
   placement: number | null
-  placement_points: number | null
-  bonus_points_total: number | null
   points_earned: number | null
   difficulty_tier: string | null
   result_type: string | null
@@ -37,14 +34,8 @@ type Result = {
   weight_kg: number | null
   reps: number | null
   time_seconds: number | null
-}
-
-type BonusCompletion = {
-  id: string
-  player_id: string
-  event_id: string
-  tier: number
-  points_awarded: number
+  is_pr: boolean
+  effort_task_completions: number
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -90,6 +81,180 @@ function calcPlacementPts(rank: number, playerCount: number): number {
   return Math.max(100 - (rank - 1) * gap, 10)
 }
 
+// ─── Effort helpers ───────────────────────────────────────────────────────────
+
+function calcEffortLevel(myEventResults: Result[]): number {
+  if (myEventResults.length === 0) return 0
+  const participation = 1
+  const isPR = myEventResults.some(r => r.is_pr) ? 1 : 0
+  const taskCompletions = myEventResults.reduce((sum, r) => sum + (r.effort_task_completions || 0), 0)
+  return participation + isPR + taskCompletions
+}
+
+function calcTotalEffortLevel(allMyResults: Result[], events: SessionEvent[]): number {
+  const total = events.reduce((sum, ev) => {
+    return sum + calcEffortLevel(allMyResults.filter(r => r.event_id === ev.id))
+  }, 0)
+  return Math.min(total, 20)
+}
+
+type EffortTask = { label: string; count: number; isRepeatable: boolean }
+
+function computeEffortTasks(
+  myEventResults: Result[],
+  eventData: EventData | undefined,
+  seasonPR: number | null,
+  mode: string
+): EffortTask[] {
+  if (!eventData) return []
+
+  if (mode === 'strength') {
+    if (seasonPR === null) return []
+    const countA = myEventResults.filter(r => (r.weight_kg ?? 0) >= seasonPR * 0.9 && (r.reps ?? 0) >= 3).length
+    const countB = myEventResults.filter(r => (r.weight_kg ?? 0) >= seasonPR * 0.8 && (r.reps ?? 0) >= 5).length
+    const countC = myEventResults.filter(r => (r.weight_kg ?? 0) >= seasonPR * 0.7 && (r.reps ?? 0) >= 8).length
+    return [
+      { label: `${Math.round(seasonPR * 0.9)}kg × 3 reps`, count: countA, isRepeatable: true },
+      { label: `${Math.round(seasonPR * 0.8)}kg × 5 reps`, count: countB, isRepeatable: true },
+      { label: `${Math.round(seasonPR * 0.7)}kg × 8 reps`, count: countC, isRepeatable: true },
+    ]
+  }
+
+  if (mode === 'sprint' || mode === 'time') {
+    if (seasonPR === null) return []
+    const threshold = Math.round(seasonPR / 0.9)
+    const count = myEventResults.filter(r => r.raw_score >= threshold).length
+    const timeStr = fmtTime(Math.abs(threshold))
+    return [{ label: `Complete in ${timeStr} or faster`, count, isRepeatable: true }]
+  }
+
+  if (mode === 'distance') {
+    if (seasonPR === null) return []
+    const target = Math.round(seasonPR * 0.9)
+    const qualifying = myEventResults.filter(r => r.raw_score >= target).length
+    const completions = Math.floor(qualifying / 3)
+    const targetStr = target >= 100 ? `${(target / 100).toFixed(2)}m` : `${target}cm`
+    return [{ label: `3 throws/jumps ≥ ${targetStr} (90% PR)`, count: completions, isRepeatable: true }]
+  }
+
+  if (mode === 'sport') {
+    const usedOpponents = new Set<string>()
+    let uniqueExtra = 0
+    myEventResults.slice(1).forEach(r => {
+      const opp = r.opponent_name
+      if (opp && !usedOpponents.has(opp)) { usedOpponents.add(opp); uniqueExtra++ }
+      else if (!opp) uniqueExtra++
+    })
+    return [{ label: 'Extra game vs a unique opponent', count: uniqueExtra, isRepeatable: true }]
+  }
+
+  if (mode === 'difficulty+time') {
+    if (seasonPR === null || !eventData.difficultyTiers) return []
+    const prTierIdx = Math.floor(seasonPR / 10000)
+    const prTierName = eventData.difficultyTiers[prTierIdx]?.name ?? `D${prTierIdx + 1}`
+    const belowTierName = prTierIdx > 0 ? (eventData.difficultyTiers[prTierIdx - 1]?.name ?? `D${prTierIdx}`) : null
+    const countA = myEventResults.filter(r => {
+      const tIdx = eventData.difficultyTiers!.findIndex(t => t.name === r.difficulty_tier)
+      return tIdx >= prTierIdx && (r.time_seconds ?? 0) >= 60
+    }).length
+    const countB = myEventResults.filter(r => {
+      const tIdx = eventData.difficultyTiers!.findIndex(t => t.name === r.difficulty_tier)
+      return tIdx >= Math.max(0, prTierIdx - 1) && (r.time_seconds ?? 0) >= 120
+    }).length
+    const countC = myEventResults.filter(r => {
+      const tIdx = eventData.difficultyTiers!.findIndex(t => t.name === r.difficulty_tier)
+      return tIdx >= Math.max(0, prTierIdx - 1) && (r.time_seconds ?? 0) >= 240
+    }).length
+    const tasks: EffortTask[] = [{ label: `Hold ${prTierName} for 1 min`, count: countA, isRepeatable: false }]
+    if (belowTierName) {
+      tasks.push({ label: `Hold ${belowTierName} for 2 min`, count: countB, isRepeatable: false })
+      tasks.push({ label: `Hold ${belowTierName} for 4 min`, count: countC, isRepeatable: false })
+    }
+    return tasks
+  }
+
+  if (mode === 'difficulty+reps') {
+    if (seasonPR === null || !eventData.difficultyTiers) return []
+    const prTierIdx = Math.floor(seasonPR / 10000)
+    const prReps = seasonPR % 10000
+    const tiers = eventData.difficultyTiers
+    const t0 = tiers[prTierIdx]?.name ?? `D${prTierIdx + 1}`
+    const t1 = prTierIdx > 0 ? (tiers[prTierIdx - 1]?.name ?? `D${prTierIdx}`) : null
+    const t2 = prTierIdx > 1 ? (tiers[prTierIdx - 2]?.name ?? `D${prTierIdx - 1}`) : null
+    const target70 = Math.round(prReps * 0.7)
+    const target120 = Math.round(prReps * 1.2)
+    const target150 = Math.round(prReps * 1.5)
+    const cA = myEventResults.filter(r => tiers.findIndex(t => t.name === r.difficulty_tier) === prTierIdx && (r.reps ?? 0) >= target70).length
+    const cB = t1 ? myEventResults.filter(r => tiers.findIndex(t => t.name === r.difficulty_tier) === prTierIdx - 1 && (r.reps ?? 0) >= target120).length : 0
+    const cC = t2 ? myEventResults.filter(r => tiers.findIndex(t => t.name === r.difficulty_tier) === prTierIdx - 2 && (r.reps ?? 0) >= target150).length : 0
+    const tasks: EffortTask[] = [{ label: `${target70}+ reps at ${t0}`, count: cA, isRepeatable: true }]
+    if (t1) tasks.push({ label: `${target120}+ reps at ${t1}`, count: cB, isRepeatable: true })
+    if (t2) tasks.push({ label: `${target150}+ reps at ${t2}`, count: cC, isRepeatable: true })
+    return tasks
+  }
+
+  return []
+}
+
+function calcSubmissionEffortTasks(
+  newRawScore: number,
+  reps: number | null,
+  weightKg: number | null,
+  difficultyTierName: string | null,
+  opponentName: string | null,
+  timeSecs: number | null,
+  existingEventResults: Result[],
+  eventData: EventData | undefined,
+  seasonPR: number | null,
+  mode: string
+): number {
+  if (!eventData || seasonPR === null) return 0
+  if (mode === 'strength') {
+    const w = weightKg ?? 0; const r = reps ?? 0
+    let count = 0
+    if (w >= seasonPR * 0.9 && r >= 3) count++
+    if (w >= seasonPR * 0.8 && r >= 5) count++
+    if (w >= seasonPR * 0.7 && r >= 8) count++
+    return count
+  }
+  if (mode === 'sprint' || mode === 'time') {
+    return newRawScore >= Math.round(seasonPR / 0.9) ? 1 : 0
+  }
+  if (mode === 'distance') {
+    const target = Math.round(seasonPR * 0.9)
+    const prev = existingEventResults.filter(r => r.raw_score >= target).length
+    const next = prev + (newRawScore >= target ? 1 : 0)
+    return Math.floor(next / 3) - Math.floor(prev / 3)
+  }
+  if (mode === 'sport') {
+    if (existingEventResults.length === 0) return 0
+    const used = new Set(existingEventResults.map(r => r.opponent_name).filter(Boolean))
+    return (opponentName && !used.has(opponentName)) || !opponentName ? 1 : 0
+  }
+  if (mode === 'difficulty+time') {
+    if (!eventData.difficultyTiers || !difficultyTierName) return 0
+    const prTierIdx = Math.floor(seasonPR / 10000)
+    const tierIdx = eventData.difficultyTiers.findIndex(t => t.name === difficultyTierName)
+    const secs = timeSecs ?? 0; let count = 0
+    if (tierIdx >= prTierIdx && secs >= 60) count++
+    if (tierIdx >= Math.max(0, prTierIdx - 1) && secs >= 120) count++
+    if (tierIdx >= Math.max(0, prTierIdx - 1) && secs >= 240) count++
+    return count
+  }
+  if (mode === 'difficulty+reps') {
+    if (!eventData.difficultyTiers || !difficultyTierName) return 0
+    const prTierIdx = Math.floor(seasonPR / 10000)
+    const prReps = seasonPR % 10000
+    const tierIdx = eventData.difficultyTiers.findIndex(t => t.name === difficultyTierName)
+    const r = reps ?? 0; let count = 0
+    if (tierIdx === prTierIdx && r >= Math.round(prReps * 0.7)) count++
+    if (tierIdx === prTierIdx - 1 && r >= Math.round(prReps * 1.2)) count++
+    if (tierIdx === prTierIdx - 2 && r >= Math.round(prReps * 1.5)) count++
+    return count
+  }
+  return 0
+}
+
 // ─── Input component helpers ──────────────────────────────────────────────────
 
 const INP: React.CSSProperties = {
@@ -103,11 +268,10 @@ const INP: React.CSSProperties = {
 type EventCardProps = {
   se: SessionEvent
   eventData: EventData | undefined
-  myResult: Result | undefined
+  myResults: Result[]
   allResults: Result[]
   allEvents: SessionEvent[]
   seasonPR: number | string | null
-  bonusCompletions: BonusCompletion[]
   playerId: string
   playerName: string
   sessionId: string
@@ -118,8 +282,8 @@ type EventCardProps = {
 }
 
 function EventCard({
-  se, eventData, myResult, allResults, allEvents, seasonPR,
-  bonusCompletions, playerId, playerName, sessionId, sessionEnded,
+  se, eventData, myResults, allResults, allEvents, seasonPR,
+  playerId, playerName, sessionId, sessionEnded,
   isExpanded, onToggle, onScoreSubmitted,
 }: EventCardProps) {
   // Form state
@@ -138,35 +302,41 @@ function EventCard({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
-  // Bonus
-  const [bonusOpponent, setBonusOpponent] = useState<Record<number, string>>({})
-  const [bonusSubmitting, setBonusSubmitting] = useState<Record<number, boolean>>({})
 
   const mode = (eventData?.inputMode || se.input_mode || 'strength') as string
   const emoji = eventData?.emoji ?? '🏅'
   const isWeightVariation = !!exerciseVariation && (eventData?.weightVariations?.includes(exerciseVariation) ?? false)
 
-  // Compute current placement for this player across this event
-  const eventResults = allResults.filter(r => r.event_id === se.id)
-  const allPlayers = [...new Set(allResults.map(r => r.player_id || r.player_name))]
-  const playerCount = allPlayers.length
-  const sorted = [...eventResults].sort((a, b) => (b.raw_score ?? 0) - (a.raw_score ?? 0))
+  // Best result for this player at this event
+  const myBestResult = myResults.length > 0
+    ? myResults.reduce((best, r) => r.raw_score > best.raw_score ? r : best, myResults[0])
+    : undefined
+
+  // Effort derived
+  const seasonPRNum = typeof seasonPR === 'number' ? seasonPR : null
+  const effortLevel = calcEffortLevel(myResults)
+  const effortTasks = computeEffortTasks(myResults, eventData, seasonPRNum, mode)
+  const effortLocked = seasonPRNum === null && ['strength', 'sprint', 'time', 'distance', 'difficulty+time', 'difficulty+reps'].includes(mode)
+
+  // Compute placement using best score per player
+  const playerBestMap: Record<string, Result> = {}
+  allResults.filter(r => r.event_id === se.id).forEach(r => {
+    const key = r.player_id ?? r.player_name
+    if (!playerBestMap[key] || r.raw_score > playerBestMap[key].raw_score) playerBestMap[key] = r
+  })
+  const eventBests = Object.values(playerBestMap)
+  const playerCount = eventBests.length
+  const sorted = [...eventBests].sort((a, b) => (b.raw_score ?? 0) - (a.raw_score ?? 0))
   let myRank: number | null = null
-  if (myResult) {
+  if (myBestResult) {
     let rank = 1
     for (let i = 0; i < sorted.length; i++) {
       if (i > 0 && sorted[i].raw_score !== sorted[i - 1].raw_score) rank = i + 1
-      if (sorted[i].id === myResult.id) { myRank = rank; break }
+      const key = sorted[i].player_id ?? sorted[i].player_name
+      const myKey = myBestResult.player_id ?? myBestResult.player_name
+      if (key === myKey) { myRank = rank; break }
     }
   }
-
-  const placementPts = myRank && playerCount > 0 ? calcPlacementPts(myRank, playerCount) : null
-  const myBonuses = bonusCompletions.filter(b => b.event_id === se.id)
-  const bonusPts = myBonuses.reduce((sum, b) => sum + b.points_awarded, 0)
-  const totalPts = placementPts !== null ? placementPts + bonusPts : null
-
-  const bonusTargets: BonusTarget[] = eventData ? getBonusTargets(eventData, seasonPR) : []
-  const completedTiers = new Set(myBonuses.map(b => b.tier))
 
   // Events where the final difficulty tier switches to weight-based scoring
   function isWeightScoredTierByIdx(eventName: string, tierIdx: number): boolean {
@@ -195,7 +365,6 @@ function EventCard({
       return { raw_score: w, score_label: label }
     }
     if (mode === 'reps') {
-      // Variation requires weight (e.g. Ring Dip) — score by weight like strength
       if (isWeightVariation) {
         const w = parseFloat(weightKg) || 0
         if (!w) return null
@@ -216,7 +385,6 @@ function EventCard({
     if (mode === 'hold') {
       if (!totalSecs) return null
       const varLabel = exerciseVariation ? `${exerciseVariation}: ` : ''
-      // legacy tier-based hold scoring
       if (eventData?.difficultyTiers && difficultyTier) {
         const tierIdx = eventData.difficultyTiers.findIndex(t => t.name === difficultyTier)
         if (tierIdx >= 0) {
@@ -237,7 +405,6 @@ function EventCard({
       if (!difficultyTier) return null
       const tierIdx = eventData?.difficultyTiers?.findIndex(t => t.name === difficultyTier) ?? -1
       if (tierIdx < 0) return null
-      // Final tier of certain events switches to weight-based scoring
       if (isWeightScoredTierByIdx(eventData?.name ?? '', tierIdx)) {
         const w = parseFloat(weightKg) || 0
         if (!w) return null
@@ -321,10 +488,30 @@ function EventCard({
         if (sportScore) payload.match_score = sportScore
       }
 
-      const { error: err } = await supabase.from('results').upsert(payload, {
-        onConflict: 'player_id,session_id,event_id',
-      })
+      // Calculate is_pr and effort_task_completions
+      const newIsPR = seasonPRNum !== null && scored.raw_score > seasonPRNum && !myResults.some(r => r.is_pr)
+      const effortTaskCount = calcSubmissionEffortTasks(
+        scored.raw_score,
+        parseInt(repCount) || null,
+        parseFloat(weightKg) || null,
+        difficultyTier || null,
+        opponentName || null,
+        totalSecs || null,
+        myResults,
+        eventData,
+        seasonPRNum,
+        mode
+      )
+      payload.is_pr = newIsPR
+      payload.effort_task_completions = effortTaskCount
+
+      const { error: err } = await supabase.from('results').insert(payload)
       if (err) throw err
+
+      // Clear form after submit
+      setWeightKg(''); setRepCount(''); setTimeMins(''); setTimeSecs('')
+      setSprintCs(''); setDistanceVal(''); setSportResult(''); setSportScore(''); setOpponentName('')
+
       setSuccess(true); setTimeout(() => setSuccess(false), 2500)
       onScoreSubmitted()
     } catch (e: unknown) {
@@ -333,34 +520,13 @@ function EventCard({
     setSubmitting(false)
   }
 
-  async function handleBonusSubmit(tier: number, label: string) {
-    setBonusSubmitting(prev => ({ ...prev, [tier]: true }))
-    try {
-      const opp = bonusOpponent[tier] || null
-      const completionData: Record<string, unknown> = { label }
-      if (opp) completionData.opponent_name = opp
-
-      const { error: err } = await supabase.from('bonus_completions').insert({
-        player_id: playerId,
-        session_id: sessionId,
-        event_id: se.id,
-        result_id: myResult?.id ?? null,
-        tier,
-        points_awarded: 15,
-        completion_data: completionData,
-      })
-      if (err) throw err
-      onScoreSubmitted()
-    } catch (e: unknown) {
-      // silently fail — user can retry
-    }
-    setBonusSubmitting(prev => ({ ...prev, [tier]: false }))
-  }
-
-  async function handleBonusDelete(completionId: string) {
-    await supabase.from('bonus_completions').delete().eq('id', completionId)
+  async function handleDelete(resultId: string) {
+    await supabase.from('results').delete().eq('id', resultId)
     onScoreSubmitted()
   }
+
+  // Sort myResults best first
+  const myResultsSorted = [...myResults].sort((a, b) => b.raw_score - a.raw_score)
 
   // Collapsed card
   if (!isExpanded) {
@@ -369,7 +535,7 @@ function EventCard({
         onClick={onToggle}
         style={{
           display: 'flex', flexDirection: 'column', alignItems: 'center',
-          background: myResult ? '#0d1a0d' : '#111', border: `1px solid ${myResult ? '#4DB26E33' : '#1e1e1e'}`,
+          background: myBestResult ? '#0d1a0d' : '#111', border: `1px solid ${myBestResult ? '#4DB26E33' : '#1e1e1e'}`,
           borderRadius: '12px', padding: '16px 12px', cursor: 'pointer', width: '100%',
           gap: '6px', textAlign: 'center',
         }}
@@ -378,8 +544,8 @@ function EventCard({
         <div style={{ fontSize: '12px', fontWeight: 700, color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em', lineHeight: 1.2 }}>
           {se.event_name}
         </div>
-        <div style={{ fontSize: '16px', fontWeight: 700, color: myResult ? '#4DB26E' : '#555', fontFamily: 'Bebas Neue, cursive' }}>
-          {myResult ? myResult.score_label : '—'}
+        <div style={{ fontSize: '16px', fontWeight: 700, color: myBestResult ? '#4DB26E' : '#555', fontFamily: 'Bebas Neue, cursive' }}>
+          {myBestResult ? myBestResult.score_label : '—'}
         </div>
         {seasonPR !== null && typeof seasonPR === 'number' && (
           <div style={{ fontSize: '10px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif' }}>
@@ -391,14 +557,17 @@ function EventCard({
             PR: {seasonPR}
           </div>
         )}
-        <div style={{ fontSize: '13px', color: totalPts !== null ? '#F9B051' : '#555', fontFamily: 'Bebas Neue, cursive' }}>
-          {totalPts !== null ? `${totalPts} pts` : '— pts'}
+        <div style={{ fontSize: '13px', color: effortLevel > 0 ? '#B87DB5' : '#555', fontFamily: 'Bebas Neue, cursive' }}>
+          {effortLevel > 0 ? `Effort Level: ${effortLevel}` : '— pts'}
         </div>
       </button>
     )
   }
 
   // Expanded card
+  const isTimeMode = mode === 'time' || mode === 'hold'
+  const isDynamicHold = false
+  const isDynamicReps = false
 
   return (
     <div style={{
@@ -427,37 +596,122 @@ function EventCard({
           <div style={{ fontSize: '10px', color: '#555', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '6px', fontFamily: 'Barlow Condensed, sans-serif' }}>
             Today's Top Score
           </div>
-          {myResult ? (
+          {myBestResult ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <div style={{ fontSize: '22px', fontWeight: 700, color: '#4DB26E', fontFamily: 'Bebas Neue, cursive' }}>
-                {myResult.score_label}
+                {myBestResult.score_label}
               </div>
               {myRank && <div style={{ fontSize: '13px', color: '#888', fontFamily: 'Barlow Condensed, sans-serif' }}>#{myRank} of {playerCount}</div>}
-              {totalPts !== null && <div style={{ fontSize: '13px', color: '#F9B051', fontFamily: 'Bebas Neue, cursive' }}>{totalPts} pts</div>}
             </div>
           ) : (
             <div style={{ color: '#555', fontSize: '14px' }}>No score yet</div>
           )}
         </div>
 
-        {/* 2. SCORE HISTORY */}
-        {myResult && (
+        {/* 2. PR THIS SEASON */}
+        <div>
+          <div style={{ fontSize: '10px', color: '#555', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '6px', fontFamily: 'Barlow Condensed, sans-serif' }}>
+            PR This Season
+          </div>
+          <div style={{ fontSize: '15px', color: seasonPRNum !== null ? '#F9B051' : '#555' }}>
+            {seasonPRNum !== null ? formatPR(seasonPRNum, mode) : 'No PR yet'}
+          </div>
+        </div>
+
+        {/* 3. ALL TODAY'S SCORES */}
+        {myResults.length > 0 && (
           <div>
             <div style={{ fontSize: '10px', color: '#555', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '6px', fontFamily: 'Barlow Condensed, sans-serif' }}>
-              Score History (today)
+              All Today's Scores
             </div>
-            <div style={{ background: '#0d0d0d', borderRadius: '8px', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ fontSize: '15px', color: '#fff' }}>{myResult.score_label}</div>
-              {myResult.difficulty_tier && <div style={{ fontSize: '11px', color: '#888', fontFamily: 'Barlow Condensed, sans-serif' }}>{myResult.difficulty_tier}</div>}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {myResultsSorted.map(r => (
+                <div key={r.id} style={{
+                  background: '#0d0d0d', borderRadius: '8px', padding: '10px 14px',
+                  display: 'flex', alignItems: 'center', gap: '10px',
+                }}>
+                  <div style={{ fontSize: '15px', color: '#fff', flex: 1 }}>{r.score_label}</div>
+                  {r.is_pr && (
+                    <div style={{
+                      fontSize: '10px', fontWeight: 700, color: '#F9B051',
+                      background: '#F9B05122', borderRadius: '4px', padding: '2px 6px',
+                      fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.05em',
+                    }}>PR</div>
+                  )}
+                  {r.effort_task_completions > 0 && (
+                    <div style={{ fontSize: '12px', color: '#B87DB5', fontWeight: 700, fontFamily: 'Barlow Condensed, sans-serif' }}>
+                      +{r.effort_task_completions}
+                    </div>
+                  )}
+                  {!sessionEnded && (
+                    <button
+                      onClick={() => handleDelete(r.id)}
+                      style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: '14px', padding: '2px 6px', flexShrink: 0 }}
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         )}
 
-        {/* 3. ADD A SCORE */}
+        {/* 4. EFFORT TASKS */}
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+            <div style={{ fontSize: '10px', color: '#555', letterSpacing: '0.12em', textTransform: 'uppercase', fontFamily: 'Barlow Condensed, sans-serif' }}>
+              Effort Tasks
+            </div>
+            <div style={{ fontSize: '13px', color: '#B87DB5', fontWeight: 700, fontFamily: 'Bebas Neue, cursive' }}>
+              Level {effortLevel}
+            </div>
+          </div>
+          {effortLocked ? (
+            <div style={{ fontSize: '13px', color: '#555', fontStyle: 'italic' }}>
+              Submit a score to unlock effort tasks
+            </div>
+          ) : effortTasks.length === 0 ? (
+            <div style={{ fontSize: '13px', color: '#555', fontStyle: 'italic' }}>
+              No effort tasks for this event
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {effortTasks.map((task, i) => {
+                const done = task.isRepeatable ? task.count > 0 : task.count > 0
+                return (
+                  <div key={i} style={{
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                    background: '#0d0d0d', borderRadius: '8px', padding: '10px 14px',
+                  }}>
+                    <div style={{
+                      width: '18px', height: '18px', borderRadius: '50%', flexShrink: 0,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px',
+                      background: done ? '#B87DB5' : '#1e1e1e',
+                      color: done ? '#fff' : '#555',
+                    }}>
+                      {done ? '✓' : '○'}
+                    </div>
+                    <div style={{ flex: 1, fontSize: '13px', color: done ? '#B87DB5' : '#888', fontFamily: 'Barlow Condensed, sans-serif' }}>
+                      {task.label}
+                    </div>
+                    {task.isRepeatable && task.count > 1 && (
+                      <div style={{ fontSize: '12px', color: '#B87DB5', fontWeight: 700, fontFamily: 'Barlow Condensed, sans-serif' }}>
+                        ×{task.count}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* 5. SUBMIT SCORE */}
         {!sessionEnded && (
           <div>
             <div style={{ fontSize: '10px', color: '#555', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '10px', fontFamily: 'Barlow Condensed, sans-serif' }}>
-              {myResult ? 'Update Score' : 'Add a Score'}
+              Submit Score
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -503,15 +757,15 @@ function EventCard({
               )}
 
               {/* Reps mode — hidden when weight variation selected; difficulty+reps — hidden for weight-scored tiers */}
-              {(mode === 'reps' && !isWeightVariation) ||
+              {((mode === 'reps' || isDynamicReps) && !isWeightVariation) ||
                (mode === 'difficulty+reps' && !isWeightScoredTierByName(eventData?.name ?? '', difficultyTier))
                 ? (
                 <input type="number" value={repCount} onChange={e => setRepCount(e.target.value)}
                   placeholder="Reps" style={INP} />
               ) : null}
 
-              {/* Time / hold / difficulty+time */}
-              {(mode === 'time' || mode === 'hold' || mode === 'difficulty+time') && (
+              {/* Time / hold / weight+time / difficulty+time */}
+              {(mode === 'time' || mode === 'hold' || mode === 'weight+time' || mode === 'difficulty+time' || isDynamicHold) && (
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                   <input type="number" value={timeMins} onChange={e => setTimeMins(e.target.value)}
                     placeholder="min" style={{ ...INP, flex: 1 }} />
@@ -586,88 +840,8 @@ function EventCard({
                   color: isValid() && !submitting ? '#fff' : '#555',
                 }}
               >
-                {submitting ? 'Submitting...' : myResult ? 'Update Score' : 'Submit Score'}
+                {submitting ? 'Submitting...' : 'Submit Score'}
               </button>
-            </div>
-          </div>
-        )}
-
-        {/* 4. BONUS POINTS */}
-        {bonusTargets.length > 0 && (
-          <div>
-            <div style={{ fontSize: '10px', color: '#555', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '10px', fontFamily: 'Barlow Condensed, sans-serif' }}>
-              Bonus Points
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {bonusTargets.map(bt => {
-                const done = completedTiers.has(bt.tier)
-                const completion = myBonuses.find(b => b.tier === bt.tier)
-                return (
-                  <div key={bt.tier} style={{
-                    background: done ? '#0d1a0d' : '#0d0d0d',
-                    border: `1px solid ${done ? '#4DB26E33' : '#1e1e1e'}`,
-                    borderRadius: '8px', padding: '12px 14px',
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <div style={{
-                        width: '20px', height: '20px', borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px',
-                        background: done ? '#4DB26E' : '#1e1e1e',
-                        color: done ? '#fff' : '#555',
-                      }}>
-                        {done ? '✓' : bt.tier}
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '14px', color: done ? '#4DB26E' : '#ccc', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700 }}>{bt.label}</div>
-                      </div>
-                      <div style={{ fontSize: '13px', color: '#F9B051', fontFamily: 'Bebas Neue, cursive' }}>+15 pts</div>
-                      {done && !sessionEnded && completion && (
-                        <button onClick={() => handleBonusDelete(completion.id)}
-                          style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: '14px', padding: '2px 6px' }}>
-                          ✕
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Sport bonus: opponent input */}
-                    {mode === 'sport' && !done && !sessionEnded && (
-                      <div style={{ marginTop: '10px', display: 'flex', gap: '8px' }}>
-                        <input
-                          value={bonusOpponent[bt.tier] || ''}
-                          onChange={e => setBonusOpponent(prev => ({ ...prev, [bt.tier]: e.target.value }))}
-                          placeholder="Opponent name"
-                          style={{ flex: 1, background: '#111', border: '1px solid #333', borderRadius: '6px', padding: '8px 12px', color: '#fff', fontSize: '14px' }}
-                        />
-                        <button
-                          onClick={() => handleBonusSubmit(bt.tier, bt.label)}
-                          disabled={bonusSubmitting[bt.tier]}
-                          style={{
-                            padding: '8px 14px', borderRadius: '6px', border: 'none', fontWeight: 'bold', fontSize: '13px',
-                            background: '#F9B051', color: '#000', cursor: 'pointer',
-                          }}
-                        >
-                          {bonusSubmitting[bt.tier] ? '...' : 'Confirm'}
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Non-sport bonus: confirm button */}
-                    {mode !== 'sport' && !done && !sessionEnded && (
-                      <div style={{ marginTop: '10px' }}>
-                        <button
-                          onClick={() => handleBonusSubmit(bt.tier, bt.label)}
-                          disabled={bonusSubmitting[bt.tier]}
-                          style={{
-                            padding: '8px 14px', borderRadius: '6px', border: '1px solid #F9B051', fontWeight: 'bold', fontSize: '13px',
-                            background: 'transparent', color: '#F9B051', cursor: 'pointer',
-                          }}
-                        >
-                          {bonusSubmitting[bt.tier] ? '...' : 'Claim +15 pts'}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
             </div>
           </div>
         )}
@@ -685,6 +859,25 @@ const ALL_DIVISIONS = [
 
 type PlayerInfo = { division: string }
 
+function bestPerPlayer(evRes: Result[]): Result[] {
+  const map: Record<string, Result> = {}
+  evRes.forEach(r => {
+    const key = r.player_id ?? r.player_name
+    if (!map[key] || r.raw_score > map[key].raw_score) map[key] = r
+  })
+  return Object.values(map)
+}
+
+function rankFor(evRes: Result[]): Array<Result & { rank: number }> {
+  const bests = bestPerPlayer(evRes)
+  const sorted = [...bests].sort((a, b) => (b.raw_score ?? 0) - (a.raw_score ?? 0))
+  let rank = 1
+  return sorted.map((r, i) => {
+    if (i > 0 && r.raw_score !== sorted[i - 1].raw_score) rank = i + 1
+    return { ...r, rank }
+  })
+}
+
 function LeaderboardTab({
   events, results, playerInfoMap,
 }: {
@@ -694,6 +887,7 @@ function LeaderboardTab({
 }) {
   const [division, setDivision] = useState('All-Divisions')
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [lbTab, setLbTab] = useState<'competitive' | 'effort'>('competitive')
 
   function filteredResults(eventId: string): Result[] {
     const evRes = results.filter(r => r.event_id === eventId)
@@ -701,17 +895,35 @@ function LeaderboardTab({
     return evRes.filter(r => r.player_id && playerInfoMap[r.player_id]?.division === division)
   }
 
-  function rankFor(evRes: Result[]): Array<Result & { rank: number }> {
-    const sorted = [...evRes].sort((a, b) => (b.raw_score ?? 0) - (a.raw_score ?? 0))
-    let rank = 1
-    return sorted.map((r, i) => {
-      if (i > 0 && r.raw_score !== sorted[i - 1].raw_score) rank = i + 1
-      return { ...r, rank }
-    })
+  function effortBoard() {
+    const playerKeys = [...new Set(results.map(r => r.player_id ?? r.player_name))]
+    return playerKeys.map(key => {
+      const pr = results.filter(r => (r.player_id ?? r.player_name) === key)
+      const sample = pr[0]
+      const pid = sample.player_id
+      const div = pid ? (playerInfoMap[pid]?.division ?? '') : ''
+      if (division !== 'All-Divisions' && div !== division) return null
+      const level = Math.min(events.reduce((s, ev) => s + calcEffortLevel(pr.filter(r => r.event_id === ev.id)), 0), 20)
+      return { playerName: sample.player_name, playerId: pid, effortLevel: level }
+    }).filter(Boolean).sort((a, b) => b!.effortLevel - a!.effortLevel) as Array<{ playerName: string; playerId: string | null; effortLevel: number }>
   }
 
   return (
     <div style={{ padding: '12px 16px' }}>
+      {/* Sub-tab buttons */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+        {(['competitive', 'effort'] as const).map(tab => (
+          <button key={tab} onClick={() => setLbTab(tab)} style={{
+            padding: '8px 16px', borderRadius: '20px', border: `1px solid ${lbTab === tab ? (tab === 'effort' ? '#B87DB5' : '#2371BB') : '#222'}`,
+            cursor: 'pointer', fontSize: '13px', fontWeight: lbTab === tab ? 700 : 400,
+            background: lbTab === tab ? (tab === 'effort' ? '#1a0d1a' : '#0d1a2e') : '#111',
+            color: lbTab === tab ? (tab === 'effort' ? '#B87DB5' : '#2371BB') : '#555',
+          }}>
+            {tab === 'competitive' ? 'Competitive' : 'Effort'}
+          </button>
+        ))}
+      </div>
+
       {/* Division filter */}
       <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '8px', marginBottom: '16px' }}>
         {ALL_DIVISIONS.map(d => (
@@ -725,66 +937,103 @@ function LeaderboardTab({
         ))}
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        {events.map(ev => {
-          const evData = getEventByName(ev.event_name)
-          const evRes = filteredResults(ev.id)
-          const ranked = rankFor(evRes)
-          const leader = ranked[0]
-          const isOpen = expandedId === ev.id
-          const scoreCount = ranked.length
+      {lbTab === 'competitive' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {events.map(ev => {
+            const evData = getEventByName(ev.event_name)
+            const evRes = filteredResults(ev.id)
+            const ranked = rankFor(evRes)
+            const leader = ranked[0]
+            const isOpen = expandedId === ev.id
+            const playerCount = ranked.length
 
-          return (
-            <div key={ev.id} style={{ background: '#111', borderRadius: '12px', overflow: 'hidden', border: `1px solid ${isOpen ? '#2371BB' : '#1e1e1e'}` }}>
-              <button onClick={() => setExpandedId(isOpen ? null : ev.id)} style={{
-                display: 'flex', alignItems: 'center', gap: '14px', width: '100%',
-                padding: '16px 18px', background: isOpen ? '#0d1a2e' : 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left',
-              }}>
-                <span style={{ fontSize: '24px', flexShrink: 0 }}>{evData?.emoji ?? '🏅'}</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '16px', fontWeight: 700, color: isOpen ? '#fff' : '#ccc' }}>{ev.event_name}</div>
-                  <div style={{ fontSize: '12px', color: '#555', marginTop: '2px' }}>{ev.domain_name}</div>
-                  {leader ? (
-                    <div style={{ fontSize: '13px', color: '#F9B051', marginTop: '4px', fontWeight: 600 }}>
-                      {leader.player_name} · {leader.score_label}
-                      <span style={{ color: '#555', fontWeight: 400, marginLeft: '6px' }}>{scoreCount} score{scoreCount !== 1 ? 's' : ''}</span>
-                    </div>
-                  ) : (
-                    <div style={{ fontSize: '13px', color: '#444', marginTop: '4px' }}>No scores yet</div>
-                  )}
-                </div>
-                <span style={{ color: isOpen ? '#2371BB' : '#444', fontSize: '16px', flexShrink: 0 }}>{isOpen ? '▲' : '▼'}</span>
-              </button>
-
-              {isOpen && (
-                <div style={{ borderTop: '1px solid #1e1e1e' }}>
-                  {ranked.length === 0 ? (
-                    <div style={{ padding: '14px 18px', color: '#444', fontSize: '13px' }}>No scores yet.</div>
-                  ) : ranked.map((r, idx) => (
-                    <div key={r.id} style={{
-                      display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 18px',
-                      borderBottom: idx < ranked.length - 1 ? '1px solid #0d0d0d' : 'none',
-                      background: idx === 0 ? '#0d1a0d' : 'transparent',
-                    }}>
-                      <div style={{
-                        width: '28px', height: '28px', borderRadius: '50%', flexShrink: 0,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: '13px', fontWeight: 700,
-                        background: r.rank === 1 ? '#F9B051' : r.rank === 2 ? '#888' : r.rank === 3 ? '#CD7F32' : '#333',
-                        color: r.rank <= 3 ? '#000' : '#fff',
-                      }}>{r.rank}</div>
-                      <div style={{ flex: 1, fontSize: '14px', color: idx === 0 ? '#fff' : '#aaa', fontWeight: idx === 0 ? 700 : 400 }}>
-                        {r.player_name}
+            return (
+              <div key={ev.id} style={{ background: '#111', borderRadius: '12px', overflow: 'hidden', border: `1px solid ${isOpen ? '#2371BB' : '#1e1e1e'}` }}>
+                <button onClick={() => setExpandedId(isOpen ? null : ev.id)} style={{
+                  display: 'flex', alignItems: 'center', gap: '14px', width: '100%',
+                  padding: '16px 18px', background: isOpen ? '#0d1a2e' : 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left',
+                }}>
+                  <span style={{ fontSize: '24px', flexShrink: 0 }}>{evData?.emoji ?? '🏅'}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '16px', fontWeight: 700, color: isOpen ? '#fff' : '#ccc' }}>{ev.event_name}</div>
+                    <div style={{ fontSize: '12px', color: '#555', marginTop: '2px' }}>{ev.domain_name}</div>
+                    {leader ? (
+                      <div style={{ fontSize: '13px', color: '#F9B051', marginTop: '4px', fontWeight: 600 }}>
+                        {leader.player_name} · {leader.score_label}
+                        <span style={{ color: '#555', fontWeight: 400, marginLeft: '6px' }}>{playerCount} player{playerCount !== 1 ? 's' : ''}</span>
                       </div>
-                      <div style={{ fontSize: '14px', fontWeight: 700, color: idx === 0 ? '#F9B051' : '#666' }}>{r.score_label}</div>
-                    </div>
-                  ))}
+                    ) : (
+                      <div style={{ fontSize: '13px', color: '#444', marginTop: '4px' }}>No scores yet</div>
+                    )}
+                  </div>
+                  <span style={{ color: isOpen ? '#2371BB' : '#444', fontSize: '16px', flexShrink: 0 }}>{isOpen ? '▲' : '▼'}</span>
+                </button>
+
+                {isOpen && (
+                  <div style={{ borderTop: '1px solid #1e1e1e' }}>
+                    {ranked.length === 0 ? (
+                      <div style={{ padding: '14px 18px', color: '#444', fontSize: '13px' }}>No scores yet.</div>
+                    ) : ranked.map((r, idx) => (
+                      <div key={r.id} style={{
+                        display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 18px',
+                        borderBottom: idx < ranked.length - 1 ? '1px solid #0d0d0d' : 'none',
+                        background: idx === 0 ? '#0d1a0d' : 'transparent',
+                      }}>
+                        <div style={{
+                          width: '28px', height: '28px', borderRadius: '50%', flexShrink: 0,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: '13px', fontWeight: 700,
+                          background: r.rank === 1 ? '#F9B051' : r.rank === 2 ? '#888' : r.rank === 3 ? '#CD7F32' : '#333',
+                          color: r.rank <= 3 ? '#000' : '#fff',
+                        }}>{r.rank}</div>
+                        <div style={{ flex: 1, fontSize: '14px', color: idx === 0 ? '#fff' : '#aaa', fontWeight: idx === 0 ? 700 : 400 }}>
+                          {r.player_name}
+                        </div>
+                        <div style={{ fontSize: '14px', fontWeight: 700, color: idx === 0 ? '#F9B051' : '#666' }}>{r.score_label}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {lbTab === 'effort' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {effortBoard().length === 0 ? (
+            <div style={{ color: '#555', fontSize: '14px', textAlign: 'center', padding: '32px' }}>No effort data yet</div>
+          ) : effortBoard().map((entry, idx) => {
+            let rank = idx + 1
+            if (idx > 0) {
+              const prev = effortBoard()[idx - 1]
+              if (prev && prev.effortLevel === entry.effortLevel) rank = effortBoard().findIndex(e => e.effortLevel === entry.effortLevel) + 1
+            }
+            return (
+              <div key={entry.playerId ?? entry.playerName} style={{
+                display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px',
+                background: idx === 0 ? '#1a0d1a' : '#111', borderRadius: '10px',
+                border: `1px solid ${idx === 0 ? '#B87DB5' : '#1e1e1e'}`,
+              }}>
+                <div style={{
+                  width: '28px', height: '28px', borderRadius: '50%', flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '13px', fontWeight: 700,
+                  background: idx === 0 ? '#B87DB5' : idx === 1 ? '#888' : idx === 2 ? '#CD7F32' : '#333',
+                  color: idx <= 2 ? '#000' : '#fff',
+                }}>{rank}</div>
+                <div style={{ flex: 1, fontSize: '14px', color: idx === 0 ? '#fff' : '#aaa', fontWeight: idx === 0 ? 700 : 400 }}>
+                  {entry.playerName}
                 </div>
-              )}
-            </div>
-          )
-        })}
-      </div>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: '#B87DB5' }}>
+                  Level {entry.effortLevel}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
@@ -797,7 +1046,6 @@ export default function SessionPage() {
   const [session, setSession] = useState<Record<string, unknown> | null>(null)
   const [events, setEvents] = useState<SessionEvent[]>([])
   const [results, setResults] = useState<Result[]>([])
-  const [bonusCompletions, setBonusCompletions] = useState<BonusCompletion[]>([])
   const [player, setPlayer] = useState<Record<string, unknown> | null>(null)
   const [familyMembers, setFamilyMembers] = useState<Record<string, unknown>[]>([])
   const [activePlayerId, setActivePlayerId] = useState<string | null>(null)
@@ -816,11 +1064,6 @@ export default function SessionPage() {
   const loadResults = useCallback(async () => {
     const { data } = await supabase.from('results').select('*').eq('session_id', sessionId)
     if (data) setResults(data as Result[])
-  }, [sessionId])
-
-  const loadBonuses = useCallback(async () => {
-    const { data } = await supabase.from('bonus_completions').select('*').eq('session_id', sessionId)
-    if (data) setBonusCompletions(data as BonusCompletion[])
   }, [sessionId])
 
   useEffect(() => {
@@ -845,10 +1088,9 @@ export default function SessionPage() {
       setEvents((ev ?? []) as SessionEvent[])
 
       await loadResults()
-      await loadBonuses()
     }
     load()
-  }, [sessionId, loadResults, loadBonuses])
+  }, [sessionId, loadResults])
 
   // ── Load player info for leaderboard ─────────────────────────────────────
   useEffect(() => {
@@ -872,7 +1114,6 @@ export default function SessionPage() {
       const prs: Record<string, number | string | null> = {}
       for (const ev of events) {
         if (!ev.event_slug) {
-          // fallback: look up slug from eventData
           const evData = getEventByName(ev.event_name)
           if (!evData) { prs[ev.id] = null; continue }
           const { data } = await supabase.rpc('get_player_season_pr', {
@@ -900,8 +1141,6 @@ export default function SessionPage() {
     const ch = supabase.channel(`scoring-${sessionId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'results', filter: `session_id=eq.${sessionId}` },
         () => loadResults())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'bonus_completions', filter: `session_id=eq.${sessionId}` },
-        () => loadBonuses())
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'sessions', filter: `id=eq.${sessionId}` },
         p => {
           const updated = p.new as Record<string, unknown>
@@ -909,7 +1148,7 @@ export default function SessionPage() {
         })
       .subscribe()
     return () => { supabase.removeChannel(ch) }
-  }, [sessionId, loadResults, loadBonuses])
+  }, [sessionId, loadResults])
 
   // ── Timer ──────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -1031,7 +1270,7 @@ export default function SessionPage() {
         if (activeTab !== tabId) return null
         const pName = (p.display_name || p.username || p.full_name) as string
         const myResults = results.filter(r => r.player_id === pid)
-        const myBonuses = bonusCompletions.filter(b => b.player_id === pid)
+        const totalEffort = calcTotalEffortLevel(myResults, events)
 
         return (
           <div key={pid} style={{ padding: '16px' }}>
@@ -1042,11 +1281,17 @@ export default function SessionPage() {
               </div>
             )}
 
+            {/* Total effort level */}
+            <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+              <div style={{ fontSize: '13px', color: '#B87DB5', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700 }}>
+                Effort Level: {totalEffort} / 20
+              </div>
+            </div>
+
             {/* 2-column grid of event cards */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               {events.map(ev => {
-                const myResult = myResults.find(r => r.event_id === ev.id)
-                const evBonuses = myBonuses.filter(b => b.event_id === ev.id)
+                const evResults = results.filter(r => r.event_id === ev.id && r.player_id === pid)
                 const evData = getEventByName(ev.event_name)
                 const pr = seasonPRs[ev.id] ?? null
 
@@ -1055,18 +1300,17 @@ export default function SessionPage() {
                     key={ev.id}
                     se={ev}
                     eventData={evData}
-                    myResult={myResult}
+                    myResults={evResults}
                     allResults={results}
                     allEvents={events}
                     seasonPR={pr}
-                    bonusCompletions={evBonuses}
                     playerId={pid}
                     playerName={pName}
                     sessionId={sessionId as string}
                     sessionEnded={sessionEnded}
                     isExpanded={expandedEventId === ev.id}
                     onToggle={() => setExpandedEventId(expandedEventId === ev.id ? null : ev.id)}
-                    onScoreSubmitted={async () => { await loadResults(); await loadBonuses() }}
+                    onScoreSubmitted={async () => { await loadResults() }}
                   />
                 )
               })}
