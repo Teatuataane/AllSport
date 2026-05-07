@@ -240,13 +240,17 @@ F Split and M Split use distance input mode (block height from ground in cm).
 
 ## Divisions
 
-| Division | Eligibility |
-|---|---|
-| Men's | Male competitors aged 17+ |
-| Women's | Female competitors aged 17+ |
-| Juniors | All competitors aged 16 and under |
+| Division | Label | Eligibility |
+|---|---|---|
+| Men's | Men's | Male competitors aged 17–39 |
+| Women's | Women's | Female competitors aged 17–39 |
+| Juniors | Juniors (U17) | All competitors aged 16 and under |
+| Masters Men | Masters Men (40+) | Male competitors aged 40–59 |
+| Masters Women | Masters Women (40+) | Female competitors aged 40–59 |
+| Grandmaster Men | Grandmaster Men (60+) | Male competitors aged 60+ |
+| Grandmaster Women | Grandmaster Women (60+) | Female competitors aged 60+ |
 
-The combined division leaderboard tab is labelled **"All-Divisions"** (not "Overall") everywhere.
+The live session leaderboard has **no "All-Divisions" combined competitive tab**. The first tab is always **"Effort Level (All-Divisions)"** (effort leaderboard, all divisions). Division tabs (competitive) only appear when at least one player from that division has submitted a score.
 
 ---
 
@@ -442,7 +446,10 @@ best_score, current_rank, division, average_placement, season_year
 - 3-step player registration with Google OAuth
 - Player dashboard — Colours progress (bar + year tabs), stats, join by code, session history with View Summary
 - Judge panel (JudgeCard) — create/end/void sessions, QR code, real-time player count
-- Live scoring — 100-event pool, all input modes including difficulty tier selector, per-division leaderboard tabs, judge edit/delete scores, missing scores = last place, post-game popup
+- Live scoring — 100-event pool, all input modes including difficulty tier selector, judge edit/delete scores, missing scores = last place, post-game popup
+- Live session leaderboard — "Effort Level (All-Divisions)" tab + dynamic division tabs (competitive, player-ranked by total placement); expanded player row shows per-event score + ordinal placement; effort tasks unlock on first score submission using effectivePR = max(sessionBest, seasonPR)
+- Effort system — effort tasks generated per event, locked until comp score submitted, effectivePR baseline, reps/hold/sport/tiered modes all handled; event button always shows "Effort Level: N"
+- Divisions — 7 divisions with age labels: Men's, Women's, Juniors (U17), Masters Men (40+), Masters Women (40+), Grandmaster Men (60+), Grandmaster Women (60+)
 - Post-game popup — placement, per-event breakdown, bonuses, total points, colour progression moment
 - Session history — past session summaries accessible from dashboard
 - Colour history — accessible from homepage colour progression section (logged-in players)
@@ -467,7 +474,7 @@ best_score, current_rank, division, average_placement, season_year
 
 ## What's Next (In Priority Order)
 
-1. Implement effort points system (effort_scores table, task generation logic, live session UI, award trigger update)
+1. Effort points award trigger update (DB side — UI and task generation complete)
 2. Populate full content (howToPerform, rules) for remaining 95 events in lib/eventData.ts
 4. Welcome email on registration (Supabase Edge Function + Resend)
 5. Judge approval flow (replace manual SQL)
@@ -501,12 +508,14 @@ best_score, current_rank, division, average_placement, season_year
 - middleware.ts is mandatory — without it, Supabase sessions don't persist across page loads
 - Gap formula: 100 ÷ players, no floor on gap; minimum earn = 10 on awarded points only
 - Effort points: separate effort_scores table; 100pt session cap; +10 per qualifying submission; feeds Colour System total
-- Effort tasks: generated from higher of comp score or PR; tiered events use ×1.5/×2.0/×3.0 time multipliers stepping D-1/D-2/D-3; same-tier ×0.5 substitution when tiers exhausted
+- Effort tasks: generated from `effectivePR = max(sessionBest, seasonPR)` — if no season PR, session score becomes baseline; tiered events use ×1.5/×2.0/×3.0 time multipliers stepping D-1, D-2, D-3; reps events: 3/5/8 sets at 90%/80%/70% PR; hold events: 1 task — 2-minute hold; sport events: extra match vs unique opponent; tasks locked until at least one comp score submitted this session
 - Effort matching: exact tier, time ≥ required; harder tier does not substitute; repeats allowed
+- Live session leaderboard: single tab row — first tab always "Effort Level (All-Divisions)" (effort ranking); then division tabs (competitive ranking, lowest total placement = 1st); division tabs only visible if players from that division have scored; expanded player row shows all events with score label + ordinal placement
+- Event button collapsed label: always shows "Effort Level: N" (not "— pts")
 
 ---
 
-*Last updated: May 2026 (session 6)*
+*Last updated: May 2026 (session 7)*
 *Project started: March 2026*
 
 ## Skill routing
