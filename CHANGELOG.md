@@ -2,6 +2,16 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.3.0.2] - 2026-05-07
+
+### Fixed
+- **Leaderboard now ranks players by total session placement** — the competitive tab shows players ordered by their combined placement score across all events (lowest = 1st), not an event-by-event list. Expand any player row to see their per-event score and placement.
+- **Single-row tab bar** — the two-level Competitive / Effort split is gone. The first tab is always "Effort Level (All-Divisions)" (purple); remaining tabs are division-specific competitive views, shown only when a player from that division has submitted a score. Age labels added: Juniors (U17), Masters Men (40+), Masters Women (40+), Grandmaster Men (60+), Grandmaster Women (60+).
+- **Effort tasks unlock on first submission** — effort tasks are now locked only until the player submits their competition score for an event. The session score acts as the baseline PR when no season PR exists, so tasks generate immediately after the first submission.
+- **Event button always shows "Effort Level: N"** — unscored events no longer display "— pts"; the effort level counter starts at 0 and increments with qualifying submissions.
+- **Reps and hold mode effort tasks** — `reps` events now generate 3/5/8-set tasks at 90/80/70% PR; `hold` events generate a fixed 2-minute task.
+- **Difficulty+time task times are proportional** — tasks use ×1.5/×2.0/×3.0 multipliers on the PR hold time, stepping down D-1/D-2/D-3 tiers (previously used fixed 60/120/240s regardless of PR).
+
 ## [0.3.0.1] - 2026-04-30
 
 ### Fixed
