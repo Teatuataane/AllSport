@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase-browser'
 import { EVENTS, getEventByName, type EventData } from '@/lib/eventData'
@@ -103,34 +103,54 @@ type EffortTask = { label: string; count: number; isRepeatable: boolean }
 function computeEffortTasks(
   myEventResults: Result[],
   eventData: EventData | undefined,
-  seasonPR: number | null,
+  effectivePR: number | null,
   mode: string
 ): EffortTask[] {
   if (!eventData) return []
 
   if (mode === 'strength') {
-    if (seasonPR === null) return []
-    const countA = myEventResults.filter(r => (r.weight_kg ?? 0) >= seasonPR * 0.9 && (r.reps ?? 0) >= 3).length
-    const countB = myEventResults.filter(r => (r.weight_kg ?? 0) >= seasonPR * 0.8 && (r.reps ?? 0) >= 5).length
-    const countC = myEventResults.filter(r => (r.weight_kg ?? 0) >= seasonPR * 0.7 && (r.reps ?? 0) >= 8).length
+    if (effectivePR === null) return []
+    const countA = myEventResults.filter(r => (r.weight_kg ?? 0) >= effectivePR * 0.9 && (r.reps ?? 0) >= 3).length
+    const countB = myEventResults.filter(r => (r.weight_kg ?? 0) >= effectivePR * 0.8 && (r.reps ?? 0) >= 5).length
+    const countC = myEventResults.filter(r => (r.weight_kg ?? 0) >= effectivePR * 0.7 && (r.reps ?? 0) >= 8).length
     return [
-      { label: `${Math.round(seasonPR * 0.9)}kg × 3 reps`, count: countA, isRepeatable: true },
-      { label: `${Math.round(seasonPR * 0.8)}kg × 5 reps`, count: countB, isRepeatable: true },
-      { label: `${Math.round(seasonPR * 0.7)}kg × 8 reps`, count: countC, isRepeatable: true },
+      { label: `${Math.round(effectivePR * 0.9)}kg × 3 reps`, count: countA, isRepeatable: true },
+      { label: `${Math.round(effectivePR * 0.8)}kg × 5 reps`, count: countB, isRepeatable: true },
+      { label: `${Math.round(effectivePR * 0.7)}kg × 8 reps`, count: countC, isRepeatable: true },
     ]
   }
 
+  if (mode === 'reps') {
+    if (effectivePR === null) return []
+    const t90 = Math.round(effectivePR * 0.9)
+    const t80 = Math.round(effectivePR * 0.8)
+    const t70 = Math.round(effectivePR * 0.7)
+    const c90 = myEventResults.filter(r => (r.reps ?? r.raw_score) >= t90).length
+    const c80 = myEventResults.filter(r => (r.reps ?? r.raw_score) >= t80).length
+    const c70 = myEventResults.filter(r => (r.reps ?? r.raw_score) >= t70).length
+    return [
+      { label: `3 sets of ${t90}+ reps`, count: Math.floor(c90 / 3), isRepeatable: true },
+      { label: `5 sets of ${t80}+ reps`, count: Math.floor(c80 / 5), isRepeatable: true },
+      { label: `8 sets of ${t70}+ reps`, count: Math.floor(c70 / 8), isRepeatable: true },
+    ]
+  }
+
+  if (mode === 'hold') {
+    const count = myEventResults.filter(r => r.raw_score >= 120).length
+    return [{ label: 'Hold for 2 minutes', count, isRepeatable: false }]
+  }
+
   if (mode === 'sprint' || mode === 'time') {
-    if (seasonPR === null) return []
-    const threshold = Math.round(seasonPR / 0.9)
+    if (effectivePR === null) return []
+    const threshold = Math.round(effectivePR / 0.9)
     const count = myEventResults.filter(r => r.raw_score >= threshold).length
     const timeStr = fmtTime(Math.abs(threshold))
     return [{ label: `Complete in ${timeStr} or faster`, count, isRepeatable: true }]
   }
 
   if (mode === 'distance') {
-    if (seasonPR === null) return []
-    const target = Math.round(seasonPR * 0.9)
+    if (effectivePR === null) return []
+    const target = Math.round(effectivePR * 0.9)
     const qualifying = myEventResults.filter(r => r.raw_score >= target).length
     const completions = Math.floor(qualifying / 3)
     const targetStr = target >= 100 ? `${(target / 100).toFixed(2)}m` : `${target}cm`
@@ -149,34 +169,29 @@ function computeEffortTasks(
   }
 
   if (mode === 'difficulty+time') {
-    if (seasonPR === null || !eventData.difficultyTiers) return []
-    const prTierIdx = Math.floor(seasonPR / 10000)
-    const prTierName = eventData.difficultyTiers[prTierIdx]?.name ?? `D${prTierIdx + 1}`
-    const belowTierName = prTierIdx > 0 ? (eventData.difficultyTiers[prTierIdx - 1]?.name ?? `D${prTierIdx}`) : null
-    const countA = myEventResults.filter(r => {
-      const tIdx = eventData.difficultyTiers!.findIndex(t => t.name === r.difficulty_tier)
-      return tIdx >= prTierIdx && (r.time_seconds ?? 0) >= 60
-    }).length
-    const countB = myEventResults.filter(r => {
-      const tIdx = eventData.difficultyTiers!.findIndex(t => t.name === r.difficulty_tier)
-      return tIdx >= Math.max(0, prTierIdx - 1) && (r.time_seconds ?? 0) >= 120
-    }).length
-    const countC = myEventResults.filter(r => {
-      const tIdx = eventData.difficultyTiers!.findIndex(t => t.name === r.difficulty_tier)
-      return tIdx >= Math.max(0, prTierIdx - 1) && (r.time_seconds ?? 0) >= 240
-    }).length
-    const tasks: EffortTask[] = [{ label: `Hold ${prTierName} for 1 min`, count: countA, isRepeatable: false }]
-    if (belowTierName) {
-      tasks.push({ label: `Hold ${belowTierName} for 2 min`, count: countB, isRepeatable: false })
-      tasks.push({ label: `Hold ${belowTierName} for 4 min`, count: countC, isRepeatable: false })
-    }
+    if (effectivePR === null || !eventData.difficultyTiers) return []
+    const prTierIdx = Math.floor(effectivePR / 10000)
+    const prTimeSecs = effectivePR % 10000
+    const tiers = eventData.difficultyTiers
+    const t0 = tiers[prTierIdx]?.name ?? `D${prTierIdx + 1}`
+    const t1 = prTierIdx > 0 ? (tiers[prTierIdx - 1]?.name ?? `D${prTierIdx}`) : null
+    const t2 = prTierIdx > 1 ? (tiers[prTierIdx - 2]?.name ?? `D${prTierIdx - 1}`) : null
+    const req1 = Math.round(prTimeSecs * 1.5)
+    const req2 = Math.round(prTimeSecs * 2.0)
+    const req3 = Math.round(prTimeSecs * 3.0)
+    const countA = myEventResults.filter(r => tiers.findIndex(t => t.name === r.difficulty_tier) === prTierIdx && (r.time_seconds ?? 0) >= req1).length
+    const countB = t1 ? myEventResults.filter(r => tiers.findIndex(t => t.name === r.difficulty_tier) === prTierIdx - 1 && (r.time_seconds ?? 0) >= req2).length : 0
+    const countC = t2 ? myEventResults.filter(r => tiers.findIndex(t => t.name === r.difficulty_tier) === prTierIdx - 2 && (r.time_seconds ?? 0) >= req3).length : 0
+    const tasks: EffortTask[] = [{ label: `${t0} for ${fmtTime(req1)}`, count: countA, isRepeatable: false }]
+    if (t1) tasks.push({ label: `${t1} for ${fmtTime(req2)}`, count: countB, isRepeatable: false })
+    if (t2) tasks.push({ label: `${t2} for ${fmtTime(req3)}`, count: countC, isRepeatable: false })
     return tasks
   }
 
   if (mode === 'difficulty+reps') {
-    if (seasonPR === null || !eventData.difficultyTiers) return []
-    const prTierIdx = Math.floor(seasonPR / 10000)
-    const prReps = seasonPR % 10000
+    if (effectivePR === null || !eventData.difficultyTiers) return []
+    const prTierIdx = Math.floor(effectivePR / 10000)
+    const prReps = effectivePR % 10000
     const tiers = eventData.difficultyTiers
     const t0 = tiers[prTierIdx]?.name ?? `D${prTierIdx + 1}`
     const t1 = prTierIdx > 0 ? (tiers[prTierIdx - 1]?.name ?? `D${prTierIdx}`) : null
@@ -205,46 +220,65 @@ function calcSubmissionEffortTasks(
   timeSecs: number | null,
   existingEventResults: Result[],
   eventData: EventData | undefined,
-  seasonPR: number | null,
+  effectivePR: number | null,
   mode: string
 ): number {
-  if (!eventData || seasonPR === null) return 0
-  if (mode === 'strength') {
-    const w = weightKg ?? 0; const r = reps ?? 0
-    let count = 0
-    if (w >= seasonPR * 0.9 && r >= 3) count++
-    if (w >= seasonPR * 0.8 && r >= 5) count++
-    if (w >= seasonPR * 0.7 && r >= 8) count++
-    return count
-  }
-  if (mode === 'sprint' || mode === 'time') {
-    return newRawScore >= Math.round(seasonPR / 0.9) ? 1 : 0
-  }
-  if (mode === 'distance') {
-    const target = Math.round(seasonPR * 0.9)
-    const prev = existingEventResults.filter(r => r.raw_score >= target).length
-    const next = prev + (newRawScore >= target ? 1 : 0)
-    return Math.floor(next / 3) - Math.floor(prev / 3)
+  if (!eventData) return 0
+  if (mode === 'hold') {
+    return (timeSecs ?? 0) >= 120 ? 1 : 0
   }
   if (mode === 'sport') {
     if (existingEventResults.length === 0) return 0
     const used = new Set(existingEventResults.map(r => r.opponent_name).filter(Boolean))
     return (opponentName && !used.has(opponentName)) || !opponentName ? 1 : 0
   }
+  if (effectivePR === null) return 0
+  if (mode === 'strength') {
+    const w = weightKg ?? 0; const r = reps ?? 0
+    let count = 0
+    if (w >= effectivePR * 0.9 && r >= 3) count++
+    if (w >= effectivePR * 0.8 && r >= 5) count++
+    if (w >= effectivePR * 0.7 && r >= 8) count++
+    return count
+  }
+  if (mode === 'reps') {
+    const r = reps ?? newRawScore
+    let count = 0
+    const t90 = Math.round(effectivePR * 0.9)
+    const t80 = Math.round(effectivePR * 0.8)
+    const t70 = Math.round(effectivePR * 0.7)
+    const prev90 = existingEventResults.filter(e => (e.reps ?? e.raw_score) >= t90).length
+    const prev80 = existingEventResults.filter(e => (e.reps ?? e.raw_score) >= t80).length
+    const prev70 = existingEventResults.filter(e => (e.reps ?? e.raw_score) >= t70).length
+    if (r >= t90) count += Math.floor((prev90 + 1) / 3) - Math.floor(prev90 / 3)
+    if (r >= t80) count += Math.floor((prev80 + 1) / 5) - Math.floor(prev80 / 5)
+    if (r >= t70) count += Math.floor((prev70 + 1) / 8) - Math.floor(prev70 / 8)
+    return count
+  }
+  if (mode === 'sprint' || mode === 'time') {
+    return newRawScore >= Math.round(effectivePR / 0.9) ? 1 : 0
+  }
+  if (mode === 'distance') {
+    const target = Math.round(effectivePR * 0.9)
+    const prev = existingEventResults.filter(r => r.raw_score >= target).length
+    const next = prev + (newRawScore >= target ? 1 : 0)
+    return Math.floor(next / 3) - Math.floor(prev / 3)
+  }
   if (mode === 'difficulty+time') {
     if (!eventData.difficultyTiers || !difficultyTierName) return 0
-    const prTierIdx = Math.floor(seasonPR / 10000)
+    const prTierIdx = Math.floor(effectivePR / 10000)
+    const prTimeSecs = effectivePR % 10000
     const tierIdx = eventData.difficultyTiers.findIndex(t => t.name === difficultyTierName)
     const secs = timeSecs ?? 0; let count = 0
-    if (tierIdx >= prTierIdx && secs >= 60) count++
-    if (tierIdx >= Math.max(0, prTierIdx - 1) && secs >= 120) count++
-    if (tierIdx >= Math.max(0, prTierIdx - 1) && secs >= 240) count++
+    if (tierIdx === prTierIdx && secs >= Math.round(prTimeSecs * 1.5)) count++
+    if (tierIdx === prTierIdx - 1 && secs >= Math.round(prTimeSecs * 2.0)) count++
+    if (tierIdx === prTierIdx - 2 && secs >= Math.round(prTimeSecs * 3.0)) count++
     return count
   }
   if (mode === 'difficulty+reps') {
     if (!eventData.difficultyTiers || !difficultyTierName) return 0
-    const prTierIdx = Math.floor(seasonPR / 10000)
-    const prReps = seasonPR % 10000
+    const prTierIdx = Math.floor(effectivePR / 10000)
+    const prReps = effectivePR % 10000
     const tierIdx = eventData.difficultyTiers.findIndex(t => t.name === difficultyTierName)
     const r = reps ?? 0; let count = 0
     if (tierIdx === prTierIdx && r >= Math.round(prReps * 0.7)) count++
@@ -314,9 +348,15 @@ function EventCard({
 
   // Effort derived
   const seasonPRNum = typeof seasonPR === 'number' ? seasonPR : null
+  const sessionBestRaw = myResults.length > 0
+    ? Math.max(...myResults.map(r => r.raw_score))
+    : null
+  const effectivePR = sessionBestRaw !== null
+    ? (seasonPRNum !== null ? Math.max(sessionBestRaw, seasonPRNum) : sessionBestRaw)
+    : seasonPRNum
   const effortLevel = calcEffortLevel(myResults)
-  const effortTasks = computeEffortTasks(myResults, eventData, seasonPRNum, mode)
-  const effortLocked = seasonPRNum === null && ['strength', 'sprint', 'time', 'distance', 'difficulty+time', 'difficulty+reps'].includes(mode)
+  const effortTasks = computeEffortTasks(myResults, eventData, effectivePR, mode)
+  const effortLocked = myResults.length === 0
 
   // Compute placement using best score per player
   const playerBestMap: Record<string, Result> = {}
@@ -499,7 +539,7 @@ function EventCard({
         totalSecs || null,
         myResults,
         eventData,
-        seasonPRNum,
+        effectivePR,
         mode
       )
       payload.is_pr = newIsPR
@@ -558,7 +598,7 @@ function EventCard({
           </div>
         )}
         <div style={{ fontSize: '13px', color: effortLevel > 0 ? '#B87DB5' : '#555', fontFamily: 'Bebas Neue, cursive' }}>
-          {effortLevel > 0 ? `Effort Level: ${effortLevel}` : '— pts'}
+          {`Effort Level: ${effortLevel}`}
         </div>
       </button>
     )
@@ -852,30 +892,22 @@ function EventCard({
 
 // ─── LeaderboardTab ───────────────────────────────────────────────────────────
 
-const ALL_DIVISIONS = [
-  'All-Divisions', 'Youth', 'Juniors', "Men's", "Women's",
-  'Masters Men', 'Masters Women', 'Grandmasters Men', 'Grandmasters Women',
+const DIVISION_TABS = [
+  { key: "Men's",            label: "Men's" },
+  { key: "Women's",          label: "Women's" },
+  { key: 'Juniors',          label: 'Juniors (U17)' },
+  { key: 'Masters Men',      label: 'Masters Men (40+)' },
+  { key: 'Masters Women',    label: 'Masters Women (40+)' },
+  { key: 'Grandmaster Men',  label: 'Grandmaster Men (60+)' },
+  { key: 'Grandmaster Women',label: 'Grandmaster Women (60+)' },
 ]
 
 type PlayerInfo = { division: string }
 
-function bestPerPlayer(evRes: Result[]): Result[] {
-  const map: Record<string, Result> = {}
-  evRes.forEach(r => {
-    const key = r.player_id ?? r.player_name
-    if (!map[key] || r.raw_score > map[key].raw_score) map[key] = r
-  })
-  return Object.values(map)
-}
-
-function rankFor(evRes: Result[]): Array<Result & { rank: number }> {
-  const bests = bestPerPlayer(evRes)
-  const sorted = [...bests].sort((a, b) => (b.raw_score ?? 0) - (a.raw_score ?? 0))
-  let rank = 1
-  return sorted.map((r, i) => {
-    if (i > 0 && r.raw_score !== sorted[i - 1].raw_score) rank = i + 1
-    return { ...r, rank }
-  })
+function ordinal(n: number): string {
+  const s = ['th', 'st', 'nd', 'rd']
+  const v = n % 100
+  return n + (s[(v - 20) % 10] ?? s[v] ?? s[0])
 }
 
 function LeaderboardTab({
@@ -885,150 +917,204 @@ function LeaderboardTab({
   results: Result[]
   playerInfoMap: Record<string, PlayerInfo>
 }) {
-  const [division, setDivision] = useState('All-Divisions')
-  const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [lbTab, setLbTab] = useState<'competitive' | 'effort'>('competitive')
+  const [activeTab, setActiveTab] = useState<string>('effort')
+  const [expandedPlayerKey, setExpandedPlayerKey] = useState<string | null>(null)
 
-  function filteredResults(eventId: string): Result[] {
-    const evRes = results.filter(r => r.event_id === eventId)
-    if (division === 'All-Divisions') return evRes
-    return evRes.filter(r => r.player_id && playerInfoMap[r.player_id]?.division === division)
-  }
+  // Only show division tabs where at least one player from that division has a result
+  const visibleDivisions = useMemo(() => {
+    const divisionsWithScores = new Set(
+      results
+        .filter(r => r.player_id && playerInfoMap[r.player_id])
+        .map(r => playerInfoMap[r.player_id!].division)
+    )
+    return DIVISION_TABS.filter(dt => divisionsWithScores.has(dt.key))
+  }, [results, playerInfoMap])
 
-  function effortBoard() {
+  // Effort leaderboard — all divisions
+  const effortRows = useMemo(() => {
     const playerKeys = [...new Set(results.map(r => r.player_id ?? r.player_name))]
-    return playerKeys.map(key => {
-      const pr = results.filter(r => (r.player_id ?? r.player_name) === key)
-      const sample = pr[0]
-      const pid = sample.player_id
-      const div = pid ? (playerInfoMap[pid]?.division ?? '') : ''
-      if (division !== 'All-Divisions' && div !== division) return null
-      const level = Math.min(events.reduce((s, ev) => s + calcEffortLevel(pr.filter(r => r.event_id === ev.id)), 0), 20)
-      return { playerName: sample.player_name, playerId: pid, effortLevel: level }
-    }).filter(Boolean).sort((a, b) => b!.effortLevel - a!.effortLevel) as Array<{ playerName: string; playerId: string | null; effortLevel: number }>
-  }
+    return playerKeys
+      .map(key => {
+        const pr = results.filter(r => (r.player_id ?? r.player_name) === key)
+        const sample = pr[0]
+        const level = Math.min(
+          events.reduce((s, ev) => s + calcEffortLevel(pr.filter(r => r.event_id === ev.id)), 0),
+          20
+        )
+        return { playerKey: String(key), playerName: sample.player_name, playerId: sample.player_id, effortLevel: level }
+      })
+      .sort((a, b) => b.effortLevel - a.effortLevel)
+  }, [results, events])
+
+  // Competitive leaderboard — ranked by total placement for a given division
+  const competitiveRows = useMemo(() => {
+    if (activeTab === 'effort') return []
+    const divResults = results.filter(r => r.player_id && playerInfoMap[r.player_id]?.division === activeTab)
+    const playerIds = [...new Set(divResults.map(r => r.player_id).filter(Boolean))] as string[]
+    if (playerIds.length === 0) return []
+
+    type EventRow = { eventId: string; eventName: string; emoji: string; scoreLabel: string | null; placement: number }
+
+    const rows = playerIds.map(pid => {
+      let totalPlacement = 0
+      const eventDetails: EventRow[] = events.map(ev => {
+        const evDivRes = divResults.filter(r => r.event_id === ev.id)
+        const bestPerPlayer: Record<string, { rawScore: number; scoreLabel: string }> = {}
+        evDivRes.forEach(r => {
+          if (!r.player_id) return
+          const existing = bestPerPlayer[r.player_id]
+          if (!existing || r.raw_score > existing.rawScore) {
+            bestPerPlayer[r.player_id] = { rawScore: r.raw_score, scoreLabel: r.score_label }
+          }
+        })
+        const scorerCount = Object.keys(bestPerPlayer).length
+        const myBest = bestPerPlayer[pid]
+        const evData = getEventByName(ev.event_name)
+        if (!myBest) {
+          const placement = scorerCount + 1
+          totalPlacement += placement
+          return { eventId: ev.id, eventName: ev.event_name, emoji: evData?.emoji ?? '🏅', scoreLabel: null, placement }
+        }
+        const strictlyBetter = Object.values(bestPerPlayer).filter(b => b.rawScore > myBest.rawScore).length
+        const placement = strictlyBetter + 1
+        totalPlacement += placement
+        return { eventId: ev.id, eventName: ev.event_name, emoji: evData?.emoji ?? '🏅', scoreLabel: myBest.scoreLabel, placement }
+      })
+      const sample = divResults.find(r => r.player_id === pid)!
+      return { playerKey: pid, playerName: sample.player_name, playerId: pid, totalPlacement, eventDetails }
+    })
+
+    rows.sort((a, b) => a.totalPlacement - b.totalPlacement)
+    return rows.map(entry => ({
+      ...entry,
+      rank: 1 + rows.filter(e => e.totalPlacement < entry.totalPlacement).length,
+    }))
+  }, [activeTab, results, events, playerInfoMap])
 
   return (
     <div style={{ padding: '12px 16px' }}>
-      {/* Sub-tab buttons */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-        {(['competitive', 'effort'] as const).map(tab => (
-          <button key={tab} onClick={() => setLbTab(tab)} style={{
-            padding: '8px 16px', borderRadius: '20px', border: `1px solid ${lbTab === tab ? (tab === 'effort' ? '#B87DB5' : '#2371BB') : '#222'}`,
-            cursor: 'pointer', fontSize: '13px', fontWeight: lbTab === tab ? 700 : 400,
-            background: lbTab === tab ? (tab === 'effort' ? '#1a0d1a' : '#0d1a2e') : '#111',
-            color: lbTab === tab ? (tab === 'effort' ? '#B87DB5' : '#2371BB') : '#555',
-          }}>
-            {tab === 'competitive' ? 'Competitive' : 'Effort'}
+      {/* Single-row tab bar */}
+      <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '8px', marginBottom: '16px' }}>
+        <button
+          onClick={() => { setActiveTab('effort'); setExpandedPlayerKey(null) }}
+          style={{
+            padding: '6px 12px', borderRadius: '20px', flexShrink: 0, whiteSpace: 'nowrap',
+            border: `1px solid ${activeTab === 'effort' ? '#B87DB5' : '#222'}`,
+            fontSize: '12px', fontWeight: activeTab === 'effort' ? 700 : 400, cursor: 'pointer',
+            background: activeTab === 'effort' ? '#1a0d1a' : '#111',
+            color: activeTab === 'effort' ? '#B87DB5' : '#555',
+          }}
+        >
+          Effort Level (All-Divisions)
+        </button>
+        {visibleDivisions.map(dt => (
+          <button
+            key={dt.key}
+            onClick={() => { setActiveTab(dt.key); setExpandedPlayerKey(null) }}
+            style={{
+              padding: '6px 12px', borderRadius: '20px', flexShrink: 0, whiteSpace: 'nowrap',
+              border: `1px solid ${activeTab === dt.key ? '#2371BB' : '#222'}`,
+              fontSize: '12px', fontWeight: activeTab === dt.key ? 700 : 400, cursor: 'pointer',
+              background: activeTab === dt.key ? '#0d1a2e' : '#111',
+              color: activeTab === dt.key ? '#2371BB' : '#555',
+            }}
+          >
+            {dt.label}
           </button>
         ))}
       </div>
 
-      {/* Division filter */}
-      <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '8px', marginBottom: '16px' }}>
-        {ALL_DIVISIONS.map(d => (
-          <button key={d} onClick={() => setDivision(d)} style={{
-            padding: '6px 12px', border: `1px solid ${division === d ? '#2371BB' : '#222'}`,
-            borderRadius: '20px', cursor: 'pointer', whiteSpace: 'nowrap', fontSize: '12px', fontWeight: division === d ? 700 : 400,
-            background: division === d ? '#0d1a2e' : '#111',
-            color: division === d ? '#2371BB' : '#555',
-            flexShrink: 0,
-          }}>{d}</button>
-        ))}
-      </div>
-
-      {lbTab === 'competitive' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {events.map(ev => {
-            const evData = getEventByName(ev.event_name)
-            const evRes = filteredResults(ev.id)
-            const ranked = rankFor(evRes)
-            const leader = ranked[0]
-            const isOpen = expandedId === ev.id
-            const playerCount = ranked.length
-
+      {/* Effort tab */}
+      {activeTab === 'effort' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {effortRows.length === 0 ? (
+            <div style={{ color: '#555', fontSize: '14px', textAlign: 'center', padding: '32px' }}>No effort data yet</div>
+          ) : effortRows.map((entry, idx) => {
+            const rank = 1 + effortRows.filter(e => e.effortLevel > entry.effortLevel).length
             return (
-              <div key={ev.id} style={{ background: '#111', borderRadius: '12px', overflow: 'hidden', border: `1px solid ${isOpen ? '#2371BB' : '#1e1e1e'}` }}>
-                <button onClick={() => setExpandedId(isOpen ? null : ev.id)} style={{
-                  display: 'flex', alignItems: 'center', gap: '14px', width: '100%',
-                  padding: '16px 18px', background: isOpen ? '#0d1a2e' : 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left',
-                }}>
-                  <span style={{ fontSize: '24px', flexShrink: 0 }}>{evData?.emoji ?? '🏅'}</span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '16px', fontWeight: 700, color: isOpen ? '#fff' : '#ccc' }}>{ev.event_name}</div>
-                    <div style={{ fontSize: '12px', color: '#555', marginTop: '2px' }}>{ev.domain_name}</div>
-                    {leader ? (
-                      <div style={{ fontSize: '13px', color: '#F9B051', marginTop: '4px', fontWeight: 600 }}>
-                        {leader.player_name} · {leader.score_label}
-                        <span style={{ color: '#555', fontWeight: 400, marginLeft: '6px' }}>{playerCount} player{playerCount !== 1 ? 's' : ''}</span>
-                      </div>
-                    ) : (
-                      <div style={{ fontSize: '13px', color: '#444', marginTop: '4px' }}>No scores yet</div>
-                    )}
-                  </div>
-                  <span style={{ color: isOpen ? '#2371BB' : '#444', fontSize: '16px', flexShrink: 0 }}>{isOpen ? '▲' : '▼'}</span>
-                </button>
-
-                {isOpen && (
-                  <div style={{ borderTop: '1px solid #1e1e1e' }}>
-                    {ranked.length === 0 ? (
-                      <div style={{ padding: '14px 18px', color: '#444', fontSize: '13px' }}>No scores yet.</div>
-                    ) : ranked.map((r, idx) => (
-                      <div key={r.id} style={{
-                        display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 18px',
-                        borderBottom: idx < ranked.length - 1 ? '1px solid #0d0d0d' : 'none',
-                        background: idx === 0 ? '#0d1a0d' : 'transparent',
-                      }}>
-                        <div style={{
-                          width: '28px', height: '28px', borderRadius: '50%', flexShrink: 0,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: '13px', fontWeight: 700,
-                          background: r.rank === 1 ? '#F9B051' : r.rank === 2 ? '#888' : r.rank === 3 ? '#CD7F32' : '#333',
-                          color: r.rank <= 3 ? '#000' : '#fff',
-                        }}>{r.rank}</div>
-                        <div style={{ flex: 1, fontSize: '14px', color: idx === 0 ? '#fff' : '#aaa', fontWeight: idx === 0 ? 700 : 400 }}>
-                          {r.player_name}
-                        </div>
-                        <div style={{ fontSize: '14px', fontWeight: 700, color: idx === 0 ? '#F9B051' : '#666' }}>{r.score_label}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+              <div key={entry.playerKey} style={{
+                display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px',
+                background: rank === 1 ? '#1a0d1a' : '#111', borderRadius: '10px',
+                border: `1px solid ${rank === 1 ? '#B87DB5' : '#1e1e1e'}`,
+              }}>
+                <div style={{
+                  width: '28px', height: '28px', borderRadius: '50%', flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '13px', fontWeight: 700,
+                  background: rank === 1 ? '#B87DB5' : rank === 2 ? '#888' : rank === 3 ? '#CD7F32' : '#333',
+                  color: rank <= 3 ? '#000' : '#fff',
+                }}>{rank}</div>
+                <div style={{ flex: 1, fontSize: '14px', color: rank === 1 ? '#fff' : '#aaa', fontWeight: rank === 1 ? 700 : 400 }}>
+                  {entry.playerName}
+                </div>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: '#B87DB5' }}>
+                  Level {entry.effortLevel}
+                </div>
               </div>
             )
           })}
         </div>
       )}
 
-      {lbTab === 'effort' && (
+      {/* Competitive division tab */}
+      {activeTab !== 'effort' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {effortBoard().length === 0 ? (
-            <div style={{ color: '#555', fontSize: '14px', textAlign: 'center', padding: '32px' }}>No effort data yet</div>
-          ) : effortBoard().map((entry, idx) => {
-            let rank = idx + 1
-            if (idx > 0) {
-              const prev = effortBoard()[idx - 1]
-              if (prev && prev.effortLevel === entry.effortLevel) rank = effortBoard().findIndex(e => e.effortLevel === entry.effortLevel) + 1
-            }
+          {competitiveRows.length === 0 ? (
+            <div style={{ color: '#555', fontSize: '14px', textAlign: 'center', padding: '32px' }}>No scores yet</div>
+          ) : competitiveRows.map(entry => {
+            const isExpanded = expandedPlayerKey === entry.playerKey
             return (
-              <div key={entry.playerId ?? entry.playerName} style={{
-                display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px',
-                background: idx === 0 ? '#1a0d1a' : '#111', borderRadius: '10px',
-                border: `1px solid ${idx === 0 ? '#B87DB5' : '#1e1e1e'}`,
+              <div key={entry.playerKey} style={{
+                background: entry.rank === 1 ? '#0d1a0d' : '#111', borderRadius: '10px', overflow: 'hidden',
+                border: `1px solid ${isExpanded ? '#2371BB' : entry.rank === 1 ? '#4DB26E33' : '#1e1e1e'}`,
               }}>
-                <div style={{
-                  width: '28px', height: '28px', borderRadius: '50%', flexShrink: 0,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '13px', fontWeight: 700,
-                  background: idx === 0 ? '#B87DB5' : idx === 1 ? '#888' : idx === 2 ? '#CD7F32' : '#333',
-                  color: idx <= 2 ? '#000' : '#fff',
-                }}>{rank}</div>
-                <div style={{ flex: 1, fontSize: '14px', color: idx === 0 ? '#fff' : '#aaa', fontWeight: idx === 0 ? 700 : 400 }}>
-                  {entry.playerName}
-                </div>
-                <div style={{ fontSize: '14px', fontWeight: 700, color: '#B87DB5' }}>
-                  Level {entry.effortLevel}
-                </div>
+                <button
+                  onClick={() => setExpandedPlayerKey(isExpanded ? null : entry.playerKey)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '12px', width: '100%',
+                    padding: '12px 16px', background: 'transparent', border: 'none', cursor: 'pointer',
+                  }}
+                >
+                  <div style={{
+                    width: '28px', height: '28px', borderRadius: '50%', flexShrink: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '13px', fontWeight: 700,
+                    background: entry.rank === 1 ? '#F9B051' : entry.rank === 2 ? '#888' : entry.rank === 3 ? '#CD7F32' : '#333',
+                    color: entry.rank <= 3 ? '#000' : '#fff',
+                  }}>{entry.rank}</div>
+                  <div style={{ flex: 1, textAlign: 'left', fontSize: '14px', color: entry.rank === 1 ? '#fff' : '#aaa', fontWeight: entry.rank === 1 ? 700 : 400 }}>
+                    {entry.playerName}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif' }}>
+                    {entry.totalPlacement} placement pts
+                  </div>
+                  <span style={{ color: isExpanded ? '#2371BB' : '#444', fontSize: '14px', flexShrink: 0 }}>{isExpanded ? '▲' : '▼'}</span>
+                </button>
+
+                {isExpanded && (
+                  <div style={{ borderTop: '1px solid #1e1e1e', padding: '4px 0' }}>
+                    {entry.eventDetails.map((ed, i) => (
+                      <div key={ed.eventId} style={{
+                        display: 'flex', alignItems: 'center', gap: '10px',
+                        padding: '8px 16px',
+                        background: i % 2 === 0 ? '#0a0a0a' : 'transparent',
+                      }}>
+                        <span style={{ fontSize: '16px', flexShrink: 0 }}>{ed.emoji}</span>
+                        <div style={{ flex: 1, fontSize: '12px', color: '#666' }}>{ed.eventName}</div>
+                        <div style={{ fontSize: '13px', color: ed.scoreLabel ? '#ccc' : '#444' }}>
+                          {ed.scoreLabel ?? 'No score'}
+                        </div>
+                        <div style={{
+                          fontSize: '12px', fontWeight: 700, minWidth: '36px', textAlign: 'right',
+                          color: ed.scoreLabel ? '#F9B051' : '#444',
+                          fontFamily: 'Barlow Condensed, sans-serif',
+                        }}>
+                          {ordinal(ed.placement)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )
           })}
