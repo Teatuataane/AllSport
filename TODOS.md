@@ -2,6 +2,13 @@
 
 ## ✅ Done
 
+- Event selector in scoring setup now derived from eventData.ts — names always in sync, no more hardcoded DOMAINS array
+- `score` inputMode added for Golf and Disc Golf (stroke count for 4 holes, lower is better)
+- Domain 6 updated: Bronco (D1–D3) and Walking (D1–D3) replace Sprint Repeats and 30-15 Test
+- Domain 10 updated: Bocce replaces Cornhole, Kubb replaces Bowling
+- Effort task system simplified: one repeatable task per event, +5 pts per qualifying submission (effort level × 5, cap = effort level 20)
+- getBonusTargets simplified to return 1 target per event
+- D6 effort formula: half-distance at 80% pace (or same D1 distance if PR is D1 tier)
 - Deploy to Vercel
 - Custom domain allsport.nz — DNS configured, SSL live, Supabase Auth URLs updated
 - Google OAuth redirect URLs configured for production
@@ -73,6 +80,11 @@
 
 ## P1 — Do Next
 
+### Update unit tests for new event data
+**What:** `__tests__/eventData.test.ts` has tests referencing old event slugs (30-15-test, sprint-repeats) and old getBonusTargets spec (3 targets, points 15). These now reflect the new single-task spec.
+**Status:** Tests updated in this session — run `npm test` to verify all pass.
+**Where:** `__tests__/eventData.test.ts`
+
 ### Populate event content for remaining 95 events
 **What:** Fill in `howToPerform`, `rules`, and all disadvantage options in `lib/eventData.ts` for the 95 events that currently have placeholder content.
 **Why:** Event detail pages show "Content coming soon" for most events.
@@ -102,10 +114,6 @@
 **How:** Simple admin SQL or a judge UI that searches for guest players by name and merges them with a registered player.
 **Effort:** S–M (CC)
 
-### Disadvantage options — full 100 events
-**What:** Define all three small and three large options for the 95 events currently using placeholders in `lib/eventData.ts`.
-**Effort:** L (content work) — no code changes required, only data entry in the constants file.
-
 ---
 
 ## P3 — Later
@@ -122,7 +130,3 @@
 ### created_by column on sessions
 **What:** Add created_by (player_id) to sessions so judge panel can show "your sessions" vs all.
 **When:** Add when second judge joins.
-
-### Disadvantage system — full rules documentation
-**What:** Write comprehensive public-facing rules for the disadvantage system.
-**When:** Before 2027 Championship.

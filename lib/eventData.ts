@@ -10,6 +10,7 @@ export type InputMode =
   | 'distance'
   | 'sport'
   | 'sprint'
+  | 'score'
 
 export type DifficultyTier = {
   level: number
@@ -36,7 +37,7 @@ export type BonusTarget = {
   tier: 1 | 2 | 3
   label: string
   detail: string
-  points: 15
+  points: 5
   inputMode: string
 }
 
@@ -1075,28 +1076,38 @@ export const EVENTS: EventData[] = [
     emoji: '🦆',
   },
   {
-    slug: 'sprint-repeats',
-    name: 'Sprint Repeats',
+    slug: 'bronco',
+    name: 'Bronco',
     domain: 'Aerobic Endurance',
     domainNumber: 6,
-    inputMode: 'sport',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+time',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: '1 Lap' },
+      { level: 2, name: '3 Laps' },
+      { level: 3, name: '5 Laps' },
+    ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
     videoPlaceholder: true,
     emoji: '🏃',
   },
   {
-    slug: '30-15-test',
-    name: '30-15 Test',
+    slug: 'walking',
+    name: 'Walking',
     domain: 'Aerobic Endurance',
     domainNumber: 6,
-    inputMode: 'time',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+time',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: '250m' },
+      { level: 2, name: '500m' },
+      { level: 3, name: '1000m' },
+    ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
     videoPlaceholder: true,
-    emoji: '⏱️',
+    emoji: '🚶',
   },
 
   // ─── Domain 7: Speed & Agility ───────────────────────────────────────────────
@@ -1580,15 +1591,14 @@ export const EVENTS: EventData[] = [
     emoji: '🤾',
   },
   {
-    slug: 'cornhole',
-    name: 'Cornhole',
+    slug: 'bocce',
+    name: 'Bocce',
     domain: 'Aim & Precision',
     domainNumber: 10,
     inputMode: 'sport',
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
-
     videoPlaceholder: true,
     emoji: '🎯',
   },
@@ -1632,17 +1642,16 @@ export const EVENTS: EventData[] = [
     emoji: '🏹',
   },
   {
-    slug: 'bowling',
-    name: 'Bowling',
+    slug: 'kubb',
+    name: 'Kubb',
     domain: 'Aim & Precision',
     domainNumber: 10,
     inputMode: 'sport',
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
-
     videoPlaceholder: true,
-    emoji: '🎳',
+    emoji: '🪵',
   },
   {
     slug: 'darts',
@@ -1662,11 +1671,10 @@ export const EVENTS: EventData[] = [
     name: 'Disc Golf',
     domain: 'Aim & Precision',
     domainNumber: 10,
-    inputMode: 'sport',
+    inputMode: 'score',
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
-
     videoPlaceholder: true,
     emoji: '🥏',
   },
@@ -1675,11 +1683,10 @@ export const EVENTS: EventData[] = [
     name: 'Golf',
     domain: 'Aim & Precision',
     domainNumber: 10,
-    inputMode: 'sport',
+    inputMode: 'score',
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
-
     videoPlaceholder: true,
     emoji: '⛳',
   },
@@ -1727,15 +1734,25 @@ export function getBonusTargets(
 ): BonusTarget[] {
   const mode = event.inputMode
 
-  // Sport events: always show targets, no PR required
-  // Each extra game (2nd+) vs a unique (never-played) opponent = +1 effort level
+  // Sport events: always show one repeatable target
   if (mode === 'sport') {
     return [{
       tier: 1 as const,
-      label: 'Extra game vs a unique opponent',
-      detail: 'Each additional game vs a new opponent = +1 effort level',
-      points: 15 as const,
+      label: 'Play a game vs a new opponent',
+      detail: 'Each extra game vs any opponent = +1 effort level',
+      points: 5 as const,
       inputMode: 'sport',
+    }]
+  }
+
+  // Score events (Golf, Disc Golf): any additional 4-hole round counts
+  if (mode === 'score') {
+    return [{
+      tier: 1 as const,
+      label: 'Complete an additional 4 holes',
+      detail: 'Any additional 4-hole round = +1 effort level',
+      points: 5 as const,
+      inputMode: 'score',
     }]
   }
 
@@ -1743,115 +1760,70 @@ export function getBonusTargets(
   const rawScore = typeof seasonPR === 'number' ? seasonPR : parseFloat(String(seasonPR))
   if (isNaN(rawScore)) return []
 
-  // Strength events: PR = best weight_kg
+  // Strength: 5 reps at 80% PR weight
   if (mode === 'strength') {
     if (rawScore <= 0) return []
-    const specs: Array<{ tier: 1|2|3; pct: number; reps: number }> = [
-      { tier: 1, pct: 0.9, reps: 3 },
-      { tier: 2, pct: 0.8, reps: 5 },
-      { tier: 3, pct: 0.7, reps: 8 },
-    ]
-    return specs.map(({ tier, pct, reps }) => {
-      const kg = Math.round(rawScore * pct)
-      return { tier, label: `${kg}kg × ${reps} reps`, detail: `${kg}kg × ${reps} reps`, points: 15 as const, inputMode: 'strength' }
-    })
+    const kg = Math.round(rawScore * 0.8)
+    return [{ tier: 1 as const, label: `${kg}kg × 5 reps`, detail: `5 reps at 80% of PR weight (${kg}kg)`, points: 5 as const, inputMode: 'strength' }]
   }
 
-  // Sprint events: single repeatable task — each effort at ≥90% PR pace = +1
+  // Sprint: qualify at 80% of PR pace (raw is negative centiseconds)
   if (mode === 'sprint') {
-    const threshold = Math.abs(rawScore) / 0.9
-    const timeStr = fmtSecs(threshold)
-    return [{
-      tier: 1,
-      label: `Sprint in ${timeStr} or faster`,
-      detail: `Each effort within 90% of PR pace (≤${timeStr})`,
-      points: 15 as const,
-      inputMode: 'sprint',
-    }]
+    const threshold = Math.round(rawScore / 0.8)
+    const thresholdSecs = Math.abs(threshold) / 100
+    const s = Math.floor(thresholdSecs)
+    const cs = Math.round((thresholdSecs - s) * 100)
+    const timeStr = `${s}.${cs.toString().padStart(2, '0')}s`
+    return [{ tier: 1 as const, label: `Sprint in ${timeStr} or faster`, detail: `Each effort within 80% of PR pace`, points: 5 as const, inputMode: 'sprint' }]
   }
 
-  // Time events: 1k endurance events get 500m/1k pace tasks; others TBC
+  // Time (Breath Hold etc.): hold for 80% of PR time
   if (mode === 'time') {
-    const is1k = event.slug.includes('1k') || event.name.toLowerCase().includes('1k')
-    if (is1k) {
-      const prTime = Math.abs(rawScore)
-      const threshA = prTime * 0.5 / 0.9
-      const threshB = prTime / 0.8
-      return [
-        {
-          tier: 1 as const,
-          label: `500m in ${fmtSecs(threshA)} (90% pace)`,
-          detail: `Complete 500m in ${fmtSecs(threshA)} or faster`,
-          points: 15 as const,
-          inputMode: 'time',
-        },
-        {
-          tier: 2 as const,
-          label: `1k in ${fmtSecs(threshB)} (80% pace)`,
-          detail: `Complete 1k in ${fmtSecs(threshB)} or faster`,
-          points: 15 as const,
-          inputMode: 'time',
-        },
-      ]
-    }
-    return [{
-      tier: 1 as const,
-      label: 'Effort tasks coming soon',
-      detail: 'Effort tasks for this event are being configured',
-      points: 15 as const,
-      inputMode: 'time',
-    }]
+    if (rawScore <= 0) return []
+    const targetSecs = Math.round(rawScore * 0.8)
+    return [{ tier: 1 as const, label: `Hold for ${fmtSecs(targetSecs)} or longer`, detail: `Each effort at ≥80% of PR time`, points: 5 as const, inputMode: 'time' }]
   }
 
-  // Distance events (throws/jumps): every 3 qualifying attempts ≥90% PR = +1
+  // Distance: each attempt ≥80% of PR distance
   if (mode === 'distance') {
     if (rawScore <= 0) return []
-    const distCm = rawScore  // raw_score for distance is in cm
-    const target = Math.round(distCm * 0.9)
-    const targetStr = target >= 100 ? `${(target / 100).toFixed(2)}m` : `${target}cm`
-    return [{
-      tier: 1 as const,
-      label: `3 attempts ≥ ${targetStr} (90% PR)`,
-      detail: `Every 3 qualifying attempts reaching ${targetStr} = +1 effort level`,
-      points: 15 as const,
-      inputMode: 'distance',
-    }]
+    const targetCm = Math.round(rawScore * 0.8)
+    const targetStr = targetCm >= 100 ? `${(targetCm / 100).toFixed(2)}m` : `${targetCm}cm`
+    return [{ tier: 1 as const, label: `Throw/jump ≥ ${targetStr}`, detail: `Each attempt at ≥80% of PR distance`, points: 5 as const, inputMode: 'distance' }]
   }
 
-  // difficulty+time: raw_score = tierIdx * 10000 + seconds (0-based tierIdx)
+  // difficulty+time
   if (mode === 'difficulty+time' && event.hasDifficultyTiers) {
     if (rawScore < 0) return []
     const tierIdx = Math.floor(rawScore / 10000)
-    const tierLevel = tierIdx + 1
+    const prTimeSecs = rawScore % 10000
     const tiers = event.difficultyTiers ?? []
-    const currentName = tiers.find(t => t.level === tierLevel)?.name ?? `D${tierLevel}`
-    const belowLevel = tierLevel - 1
-    const belowName = belowLevel >= 1
-      ? (tiers.find(t => t.level === belowLevel)?.name ?? `D${belowLevel}`)
-      : null
+    const tierLevel = tierIdx + 1
 
-    const targets: BonusTarget[] = [{
-      tier: 1,
-      label: `Hold D${tierLevel} for 1 min`,
-      detail: `Hold ${currentName} for 1 minute`,
-      points: 15,
-      inputMode: 'difficulty+time',
-    }]
-
-    if (belowName) {
-      targets.push({ tier: 2, label: `Hold D${belowLevel} for 2 min`, detail: `Hold ${belowName} for 2 minutes`, points: 15, inputMode: 'difficulty+time' })
-      targets.push({ tier: 3, label: `Hold D${belowLevel} for 4 min`, detail: `Hold ${belowName} for 4 minutes`, points: 15, inputMode: 'difficulty+time' })
-    } else {
-      // At D1: all targets use current tier, progressively longer
-      targets.push({ tier: 2, label: `Hold D1 for 2 min`, detail: `Hold ${currentName} for 2 minutes`, points: 15, inputMode: 'difficulty+time' })
-      targets.push({ tier: 3, label: `Hold D1 for 4 min`, detail: `Hold ${currentName} for 4 minutes`, points: 15, inputMode: 'difficulty+time' })
+    // Domain 6: race/endurance events — distance-scaled effort
+    if (event.domainNumber === 6) {
+      if (tierIdx === 0) {
+        const tierName = tiers[0]?.name ?? 'D1'
+        const targetSecs = Math.round(prTimeSecs * 1.2)
+        return [{ tier: 1 as const, label: `Complete ${tierName} in ${fmtSecs(targetSecs)} or faster`, detail: `Same distance at 80% of PR pace`, points: 5 as const, inputMode: 'difficulty+time' }]
+      } else {
+        const belowName = tiers[tierIdx - 1]?.name ?? `D${tierIdx}`
+        const targetSecs = Math.round(prTimeSecs * 0.6)
+        return [{ tier: 1 as const, label: `Complete ${belowName} in ${fmtSecs(targetSecs)} or faster`, detail: `Half distance at 80% of PR pace`, points: 5 as const, inputMode: 'difficulty+time' }]
+      }
     }
 
-    return targets
+    // Non-D6: hold events — hold tier below for 2 minutes
+    if (tierLevel > 1) {
+      const belowName = tiers.find(t => t.level === tierLevel - 1)?.name ?? `D${tierLevel - 1}`
+      return [{ tier: 1 as const, label: `Hold ${belowName} for 2 min`, detail: `Hold D${tierLevel - 1} tier for at least 2 minutes`, points: 5 as const, inputMode: 'difficulty+time' }]
+    } else {
+      const currentName = tiers.find(t => t.level === 1)?.name ?? 'D1'
+      return [{ tier: 1 as const, label: `Hold ${currentName} for 2 min`, detail: `Hold D1 tier for at least 2 minutes`, points: 5 as const, inputMode: 'difficulty+time' }]
+    }
   }
 
-  // difficulty+reps: raw_score = tierIdx * 10000 + reps (0-based tierIdx)
-  // Tasks: 70% reps at current tier / 120% reps at -1 tier / 150% reps at -2 tiers
+  // difficulty+reps: one set at 80% PR reps, same tier
   if (mode === 'difficulty+reps' && event.hasDifficultyTiers) {
     if (rawScore <= 0) return []
     const tierIdx = Math.floor(rawScore / 10000)
@@ -1859,36 +1831,9 @@ export function getBonusTargets(
     if (prReps <= 0) return []
     const tierLevel = tierIdx + 1
     const tiers = event.difficultyTiers ?? []
-    const currentName = tiers.find(t => t.level === tierLevel)?.name ?? `D${tierLevel}`
-    const belowName1 = tierLevel > 1 ? (tiers.find(t => t.level === tierLevel - 1)?.name ?? `D${tierLevel - 1}`) : null
-    const belowName2 = tierLevel > 2 ? (tiers.find(t => t.level === tierLevel - 2)?.name ?? `D${tierLevel - 2}`) : null
-
-    const targets: BonusTarget[] = [{
-      tier: 1,
-      label: `${Math.max(1, Math.round(prReps * 0.7))} reps at ${currentName}`,
-      detail: `${Math.max(1, Math.round(prReps * 0.7))} reps at current tier (70% of PR)`,
-      points: 15,
-      inputMode: 'difficulty+reps',
-    }]
-    if (belowName1) {
-      targets.push({
-        tier: 2,
-        label: `${Math.max(1, Math.round(prReps * 1.2))} reps at ${belowName1}`,
-        detail: `${Math.max(1, Math.round(prReps * 1.2))} reps at -1 tier (120% of PR reps)`,
-        points: 15,
-        inputMode: 'difficulty+reps',
-      })
-    }
-    if (belowName2) {
-      targets.push({
-        tier: 3,
-        label: `${Math.max(1, Math.round(prReps * 1.5))} reps at ${belowName2}`,
-        detail: `${Math.max(1, Math.round(prReps * 1.5))} reps at -2 tiers (150% of PR reps)`,
-        points: 15,
-        inputMode: 'difficulty+reps',
-      })
-    }
-    return targets
+    const tierName = tiers.find(t => t.level === tierLevel)?.name ?? `D${tierLevel}`
+    const targetReps = Math.max(1, Math.round(prReps * 0.8))
+    return [{ tier: 1 as const, label: `${targetReps} reps at ${tierName}`, detail: `A qualifying set of ${targetReps} reps at D${tierLevel} (80% of PR)`, points: 5 as const, inputMode: 'difficulty+reps' }]
   }
 
   return []

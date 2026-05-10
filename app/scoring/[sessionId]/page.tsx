@@ -62,6 +62,7 @@ function formatPR(rawScore: number, inputMode: string): string {
     case 'hold':       return fmtTime(rawScore)
     case 'distance':   return rawScore >= 100 ? `${(rawScore / 100).toFixed(2)}m` : `${rawScore}cm`
     case 'sport':      return rawScore === 2 ? 'Win' : rawScore === 1 ? 'Draw' : 'Loss'
+    case 'score': return `${Math.abs(rawScore)} strokes`
     case 'difficulty+time': {
       const tierIdx = Math.floor(rawScore / 10000)
       const secs = rawScore % 10000
@@ -108,104 +109,100 @@ function computeEffortTasks(
 ): EffortTask[] {
   if (!eventData) return []
 
-  if (mode === 'strength') {
-    if (effectivePR === null) return []
-    const countA = myEventResults.filter(r => (r.weight_kg ?? 0) >= effectivePR * 0.9 && (r.reps ?? 0) >= 3).length
-    const countB = myEventResults.filter(r => (r.weight_kg ?? 0) >= effectivePR * 0.8 && (r.reps ?? 0) >= 5).length
-    const countC = myEventResults.filter(r => (r.weight_kg ?? 0) >= effectivePR * 0.7 && (r.reps ?? 0) >= 8).length
-    return [
-      { label: `${Math.round(effectivePR * 0.9)}kg × 3 reps`, count: countA, isRepeatable: true },
-      { label: `${Math.round(effectivePR * 0.8)}kg × 5 reps`, count: countB, isRepeatable: true },
-      { label: `${Math.round(effectivePR * 0.7)}kg × 8 reps`, count: countC, isRepeatable: true },
-    ]
+  if (mode === 'sport') {
+    const extras = myEventResults.slice(1).length
+    return [{ label: 'Play a game vs a new opponent', count: extras, isRepeatable: true }]
   }
 
-  if (mode === 'reps') {
-    if (effectivePR === null) return []
-    const t90 = Math.round(effectivePR * 0.9)
-    const t80 = Math.round(effectivePR * 0.8)
-    const t70 = Math.round(effectivePR * 0.7)
-    const c90 = myEventResults.filter(r => (r.reps ?? r.raw_score) >= t90).length
-    const c80 = myEventResults.filter(r => (r.reps ?? r.raw_score) >= t80).length
-    const c70 = myEventResults.filter(r => (r.reps ?? r.raw_score) >= t70).length
-    return [
-      { label: `3 sets of ${t90}+ reps`, count: Math.floor(c90 / 3), isRepeatable: true },
-      { label: `5 sets of ${t80}+ reps`, count: Math.floor(c80 / 5), isRepeatable: true },
-      { label: `8 sets of ${t70}+ reps`, count: Math.floor(c70 / 8), isRepeatable: true },
-    ]
+  if (mode === 'score') {
+    const extras = myEventResults.slice(1).length
+    return [{ label: 'Complete an additional 4 holes', count: extras, isRepeatable: true }]
   }
 
   if (mode === 'hold') {
     const count = myEventResults.filter(r => r.raw_score >= 120).length
-    return [{ label: 'Hold for 2 minutes', count, isRepeatable: false }]
+    return [{ label: 'Hold for 2 minutes', count, isRepeatable: true }]
   }
 
-  if (mode === 'sprint' || mode === 'time') {
-    if (effectivePR === null) return []
-    const threshold = Math.round(effectivePR / 0.9)
+  if (effectivePR === null) return []
+
+  if (mode === 'strength') {
+    const kg = Math.round(effectivePR * 0.8)
+    const count = myEventResults.filter(r => (r.weight_kg ?? 0) >= kg && (r.reps ?? 0) >= 5).length
+    return [{ label: `${kg}kg × 5 reps`, count, isRepeatable: true }]
+  }
+
+  if (mode === 'sprint') {
+    const threshold = Math.round(effectivePR / 0.8)
     const count = myEventResults.filter(r => r.raw_score >= threshold).length
-    const timeStr = fmtTime(Math.abs(threshold))
-    return [{ label: `Complete in ${timeStr} or faster`, count, isRepeatable: true }]
+    const thresholdSecs = Math.abs(threshold) / 100
+    const s = Math.floor(thresholdSecs)
+    const cs = Math.round((thresholdSecs - s) * 100)
+    return [{ label: `Sprint in ${s}.${cs.toString().padStart(2, '0')}s or faster`, count, isRepeatable: true }]
+  }
+
+  if (mode === 'time') {
+    const threshold = Math.round(effectivePR * 0.8)
+    const count = myEventResults.filter(r => r.raw_score >= threshold).length
+    return [{ label: `Hold for ${fmtTime(threshold)} or longer`, count, isRepeatable: true }]
   }
 
   if (mode === 'distance') {
-    if (effectivePR === null) return []
-    const target = Math.round(effectivePR * 0.9)
-    const qualifying = myEventResults.filter(r => r.raw_score >= target).length
-    const completions = Math.floor(qualifying / 3)
+    const target = Math.round(effectivePR * 0.8)
+    const count = myEventResults.filter(r => r.raw_score >= target).length
     const targetStr = target >= 100 ? `${(target / 100).toFixed(2)}m` : `${target}cm`
-    return [{ label: `3 throws/jumps ≥ ${targetStr} (90% PR)`, count: completions, isRepeatable: true }]
-  }
-
-  if (mode === 'sport') {
-    const usedOpponents = new Set<string>()
-    let uniqueExtra = 0
-    myEventResults.slice(1).forEach(r => {
-      const opp = r.opponent_name
-      if (opp && !usedOpponents.has(opp)) { usedOpponents.add(opp); uniqueExtra++ }
-      else if (!opp) uniqueExtra++
-    })
-    return [{ label: 'Extra game vs a unique opponent', count: uniqueExtra, isRepeatable: true }]
+    return [{ label: `Throw/jump ≥ ${targetStr}`, count, isRepeatable: true }]
   }
 
   if (mode === 'difficulty+time') {
-    if (effectivePR === null || !eventData.difficultyTiers) return []
+    if (!eventData.difficultyTiers) return []
     const prTierIdx = Math.floor(effectivePR / 10000)
     const prTimeSecs = effectivePR % 10000
     const tiers = eventData.difficultyTiers
-    const t0 = tiers[prTierIdx]?.name ?? `D${prTierIdx + 1}`
-    const t1 = prTierIdx > 0 ? (tiers[prTierIdx - 1]?.name ?? `D${prTierIdx}`) : null
-    const t2 = prTierIdx > 1 ? (tiers[prTierIdx - 2]?.name ?? `D${prTierIdx - 1}`) : null
-    const req1 = Math.round(prTimeSecs * 1.5)
-    const req2 = Math.round(prTimeSecs * 2.0)
-    const req3 = Math.round(prTimeSecs * 3.0)
-    const countA = myEventResults.filter(r => tiers.findIndex(t => t.name === r.difficulty_tier) === prTierIdx && (r.time_seconds ?? 0) >= req1).length
-    const countB = t1 ? myEventResults.filter(r => tiers.findIndex(t => t.name === r.difficulty_tier) === prTierIdx - 1 && (r.time_seconds ?? 0) >= req2).length : 0
-    const countC = t2 ? myEventResults.filter(r => tiers.findIndex(t => t.name === r.difficulty_tier) === prTierIdx - 2 && (r.time_seconds ?? 0) >= req3).length : 0
-    const tasks: EffortTask[] = [{ label: `${t0} for ${fmtTime(req1)}`, count: countA, isRepeatable: false }]
-    if (t1) tasks.push({ label: `${t1} for ${fmtTime(req2)}`, count: countB, isRepeatable: false })
-    if (t2) tasks.push({ label: `${t2} for ${fmtTime(req3)}`, count: countC, isRepeatable: false })
-    return tasks
+
+    // Domain 6: race events — complete half-distance (or same if D1) at 80% pace
+    if (eventData.domainNumber === 6) {
+      if (prTierIdx === 0) {
+        const tierName = tiers[0]?.name ?? 'D1'
+        const targetSecs = Math.round(prTimeSecs * 1.2)
+        const count = myEventResults.filter(r => {
+          const rTierIdx = tiers.findIndex(t => t.name === r.difficulty_tier)
+          return rTierIdx === 0 && (r.time_seconds ?? Infinity) <= targetSecs
+        }).length
+        return [{ label: `Complete ${tierName} in ${fmtTime(targetSecs)} or faster`, count, isRepeatable: true }]
+      } else {
+        const belowName = tiers[prTierIdx - 1]?.name ?? `D${prTierIdx}`
+        const targetSecs = Math.round(prTimeSecs * 0.6)
+        const count = myEventResults.filter(r => {
+          const rTierIdx = tiers.findIndex(t => t.name === r.difficulty_tier)
+          return rTierIdx === prTierIdx - 1 && (r.time_seconds ?? Infinity) <= targetSecs
+        }).length
+        return [{ label: `Complete ${belowName} in ${fmtTime(targetSecs)} or faster`, count, isRepeatable: true }]
+      }
+    }
+
+    // Non-D6: hold events — hold tier below for 2 min (or D1 for 2 min if at D1)
+    const targetTierIdx = Math.max(0, prTierIdx - 1)
+    const targetTierName = tiers[targetTierIdx]?.name ?? `D${targetTierIdx + 1}`
+    const count = myEventResults.filter(r => {
+      const rTierIdx = tiers.findIndex(t => t.name === r.difficulty_tier)
+      return rTierIdx === targetTierIdx && (r.time_seconds ?? 0) >= 120
+    }).length
+    return [{ label: `Hold ${targetTierName} for 2 min`, count, isRepeatable: true }]
   }
 
   if (mode === 'difficulty+reps') {
-    if (effectivePR === null || !eventData.difficultyTiers) return []
+    if (!eventData.difficultyTiers) return []
     const prTierIdx = Math.floor(effectivePR / 10000)
     const prReps = effectivePR % 10000
     const tiers = eventData.difficultyTiers
-    const t0 = tiers[prTierIdx]?.name ?? `D${prTierIdx + 1}`
-    const t1 = prTierIdx > 0 ? (tiers[prTierIdx - 1]?.name ?? `D${prTierIdx}`) : null
-    const t2 = prTierIdx > 1 ? (tiers[prTierIdx - 2]?.name ?? `D${prTierIdx - 1}`) : null
-    const target70 = Math.round(prReps * 0.7)
-    const target120 = Math.round(prReps * 1.2)
-    const target150 = Math.round(prReps * 1.5)
-    const cA = myEventResults.filter(r => tiers.findIndex(t => t.name === r.difficulty_tier) === prTierIdx && (r.reps ?? 0) >= target70).length
-    const cB = t1 ? myEventResults.filter(r => tiers.findIndex(t => t.name === r.difficulty_tier) === prTierIdx - 1 && (r.reps ?? 0) >= target120).length : 0
-    const cC = t2 ? myEventResults.filter(r => tiers.findIndex(t => t.name === r.difficulty_tier) === prTierIdx - 2 && (r.reps ?? 0) >= target150).length : 0
-    const tasks: EffortTask[] = [{ label: `${target70}+ reps at ${t0}`, count: cA, isRepeatable: true }]
-    if (t1) tasks.push({ label: `${target120}+ reps at ${t1}`, count: cB, isRepeatable: true })
-    if (t2) tasks.push({ label: `${target150}+ reps at ${t2}`, count: cC, isRepeatable: true })
-    return tasks
+    const tierName = tiers[prTierIdx]?.name ?? `D${prTierIdx + 1}`
+    const targetReps = Math.max(1, Math.round(prReps * 0.8))
+    const count = myEventResults.filter(r => {
+      const rTierIdx = tiers.findIndex(t => t.name === r.difficulty_tier)
+      return rTierIdx === prTierIdx && (r.reps ?? 0) >= targetReps
+    }).length
+    return [{ label: `${targetReps}+ reps at ${tierName}`, count, isRepeatable: true }]
   }
 
   return []
@@ -224,68 +221,74 @@ function calcSubmissionEffortTasks(
   mode: string
 ): number {
   if (!eventData) return 0
+
+  if (mode === 'sport') {
+    // Every submission after the first counts (vs any opponent)
+    return existingEventResults.length > 0 ? 1 : 0
+  }
+
+  if (mode === 'score') {
+    // Every submission after the first counts
+    return existingEventResults.length > 0 ? 1 : 0
+  }
+
   if (mode === 'hold') {
     return (timeSecs ?? 0) >= 120 ? 1 : 0
   }
-  if (mode === 'sport') {
-    if (existingEventResults.length === 0) return 0
-    const used = new Set(existingEventResults.map(r => r.opponent_name).filter(Boolean))
-    return (opponentName && !used.has(opponentName)) || !opponentName ? 1 : 0
-  }
+
   if (effectivePR === null) return 0
+
   if (mode === 'strength') {
-    const w = weightKg ?? 0; const r = reps ?? 0
-    let count = 0
-    if (w >= effectivePR * 0.9 && r >= 3) count++
-    if (w >= effectivePR * 0.8 && r >= 5) count++
-    if (w >= effectivePR * 0.7 && r >= 8) count++
-    return count
+    const w = weightKg ?? 0
+    const r = reps ?? 0
+    return (w >= effectivePR * 0.8 && r >= 5) ? 1 : 0
   }
-  if (mode === 'reps') {
-    const r = reps ?? newRawScore
-    let count = 0
-    const t90 = Math.round(effectivePR * 0.9)
-    const t80 = Math.round(effectivePR * 0.8)
-    const t70 = Math.round(effectivePR * 0.7)
-    const prev90 = existingEventResults.filter(e => (e.reps ?? e.raw_score) >= t90).length
-    const prev80 = existingEventResults.filter(e => (e.reps ?? e.raw_score) >= t80).length
-    const prev70 = existingEventResults.filter(e => (e.reps ?? e.raw_score) >= t70).length
-    if (r >= t90) count += Math.floor((prev90 + 1) / 3) - Math.floor(prev90 / 3)
-    if (r >= t80) count += Math.floor((prev80 + 1) / 5) - Math.floor(prev80 / 5)
-    if (r >= t70) count += Math.floor((prev70 + 1) / 8) - Math.floor(prev70 / 8)
-    return count
+
+  if (mode === 'sprint') {
+    return newRawScore >= Math.round(effectivePR / 0.8) ? 1 : 0
   }
-  if (mode === 'sprint' || mode === 'time') {
-    return newRawScore >= Math.round(effectivePR / 0.9) ? 1 : 0
+
+  if (mode === 'time') {
+    return newRawScore >= Math.round(effectivePR * 0.8) ? 1 : 0
   }
+
   if (mode === 'distance') {
-    const target = Math.round(effectivePR * 0.9)
-    const prev = existingEventResults.filter(r => r.raw_score >= target).length
-    const next = prev + (newRawScore >= target ? 1 : 0)
-    return Math.floor(next / 3) - Math.floor(prev / 3)
+    return newRawScore >= Math.round(effectivePR * 0.8) ? 1 : 0
   }
+
   if (mode === 'difficulty+time') {
     if (!eventData.difficultyTiers || !difficultyTierName) return 0
     const prTierIdx = Math.floor(effectivePR / 10000)
     const prTimeSecs = effectivePR % 10000
-    const tierIdx = eventData.difficultyTiers.findIndex(t => t.name === difficultyTierName)
-    const secs = timeSecs ?? 0; let count = 0
-    if (tierIdx === prTierIdx && secs >= Math.round(prTimeSecs * 1.5)) count++
-    if (tierIdx === prTierIdx - 1 && secs >= Math.round(prTimeSecs * 2.0)) count++
-    if (tierIdx === prTierIdx - 2 && secs >= Math.round(prTimeSecs * 3.0)) count++
-    return count
+    const tiers = eventData.difficultyTiers
+    const rTierIdx = tiers.findIndex(t => t.name === difficultyTierName)
+    const secs = timeSecs ?? 0
+
+    if (eventData.domainNumber === 6) {
+      // Race: lower time = better
+      if (prTierIdx === 0) {
+        return rTierIdx === 0 && secs > 0 && secs <= Math.round(prTimeSecs * 1.2) ? 1 : 0
+      } else {
+        return rTierIdx === prTierIdx - 1 && secs > 0 && secs <= Math.round(prTimeSecs * 0.6) ? 1 : 0
+      }
+    } else {
+      // Hold: higher time = better, target tier = max(0, prTierIdx - 1)
+      const targetTierIdx = Math.max(0, prTierIdx - 1)
+      return rTierIdx === targetTierIdx && secs >= 120 ? 1 : 0
+    }
   }
+
   if (mode === 'difficulty+reps') {
     if (!eventData.difficultyTiers || !difficultyTierName) return 0
     const prTierIdx = Math.floor(effectivePR / 10000)
     const prReps = effectivePR % 10000
-    const tierIdx = eventData.difficultyTiers.findIndex(t => t.name === difficultyTierName)
-    const r = reps ?? 0; let count = 0
-    if (tierIdx === prTierIdx && r >= Math.round(prReps * 0.7)) count++
-    if (tierIdx === prTierIdx - 1 && r >= Math.round(prReps * 1.2)) count++
-    if (tierIdx === prTierIdx - 2 && r >= Math.round(prReps * 1.5)) count++
-    return count
+    const tiers = eventData.difficultyTiers
+    const rTierIdx = tiers.findIndex(t => t.name === difficultyTierName)
+    const r = reps ?? 0
+    const targetReps = Math.max(1, Math.round(prReps * 0.8))
+    return rTierIdx === prTierIdx && r >= targetReps ? 1 : 0
   }
+
   return 0
 }
 
@@ -333,6 +336,7 @@ function EventCard({
   const [opponentName, setOpponentName] = useState('')
   const [exerciseVariation, setExerciseVariation] = useState('')
   const [difficultyTier, setDifficultyTier] = useState('')
+  const [scoreInput, setScoreInput] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
@@ -477,6 +481,14 @@ function EventCard({
       const label = `${Math.floor(s)}s.${cs.toString().padStart(2, '0')}`
       return { raw_score: -totalCs, score_label: label }
     }
+    if (mode === 'score') {
+      const strokes = parseInt(scoreInput) || 0
+      if (strokes <= 0) return null
+      return {
+        raw_score: -strokes,
+        score_label: `${strokes} strokes (4 holes)`,
+      }
+    }
     return null
   }
 
@@ -550,7 +562,7 @@ function EventCard({
 
       // Clear form after submit
       setWeightKg(''); setRepCount(''); setTimeMins(''); setTimeSecs('')
-      setSprintCs(''); setDistanceVal(''); setSportResult(''); setSportScore(''); setOpponentName('')
+      setSprintCs(''); setDistanceVal(''); setSportResult(''); setSportScore(''); setOpponentName(''); setScoreInput('')
 
       setSuccess(true); setTimeout(() => setSuccess(false), 2500)
       onScoreSubmitted()
@@ -864,6 +876,21 @@ function EventCard({
                     placeholder="Opponent name (optional)" style={{ ...INP, fontSize: '15px' }} />
                   <input value={sportScore} onChange={e => setSportScore(e.target.value)}
                     placeholder="Score e.g. 21–18 (optional)" style={{ ...INP, fontSize: '15px' }} />
+                </div>
+              )}
+
+              {/* Score mode (Golf, Disc Golf) */}
+              {mode === 'score' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '11px', color: '#666', fontFamily: 'Barlow Condensed, sans-serif' }}>STROKE COUNT (4 HOLES)</label>
+                  <input
+                    type="number"
+                    value={scoreInput}
+                    onChange={e => setScoreInput(e.target.value)}
+                    placeholder="e.g. 18"
+                    style={INP}
+                    min="1"
+                  />
                 </div>
               )}
 

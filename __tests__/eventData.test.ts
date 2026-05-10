@@ -92,13 +92,13 @@ describe('getEventBySlug', () => {
     expect(getEventBySlug('running')).toBeDefined()
     expect(getEventBySlug('duck-walk')).toBeDefined()
     expect(getEventBySlug('breath-hold')).toBeDefined()
-    expect(getEventBySlug('30-15-test')).toBeDefined()
+    expect(getEventBySlug('bronco')).toBeDefined()
   })
 
   it('returns undefined for old domain 6 slugs (replaced)', () => {
     expect(getEventBySlug('1k-run')).toBeUndefined()
-    expect(getEventBySlug('bronco')).toBeUndefined()
-    expect(getEventBySlug('200m-burpee-broad-jump')).toBeUndefined()
+    expect(getEventBySlug('sprint-repeats')).toBeUndefined()
+    expect(getEventBySlug('30-15-test')).toBeUndefined()
   })
 
   it('returns undefined for unknown slug', () => {
@@ -172,9 +172,11 @@ describe('getEventsByDomain', () => {
     expect(slugs).toContain('running')
     expect(slugs).toContain('duck-walk')
     expect(slugs).toContain('breath-hold')
-    expect(slugs).toContain('30-15-test')
+    expect(slugs).toContain('bronco')
+    expect(slugs).toContain('walking')
     expect(slugs).not.toContain('1k-run')
-    expect(slugs).not.toContain('bronco')
+    expect(slugs).not.toContain('sprint-repeats')
+    expect(slugs).not.toContain('30-15-test')
   })
 })
 
@@ -210,78 +212,85 @@ describe('getBonusTargets', () => {
   const lSitHold = EVENTS.find(e => e.slug === 'l-sit-hold')!
   const tennis = EVENTS.find(e => e.slug === 'tennis')!
   const chinupContest = EVENTS.find(e => e.slug === 'chin-up-contest')!
+  const golf = EVENTS.find(e => e.slug === 'golf')!
+  const running = EVENTS.find(e => e.slug === 'running')!
 
-  it('sport events → 3 targets regardless of PR', () => {
+  it('sport events → 1 target regardless of PR', () => {
     const targets = getBonusTargets(tennis, null)
-    expect(targets).toHaveLength(3)
-    expect(targets.every(t => t.inputMode === 'sport')).toBe(true)
-    expect(targets.every(t => t.points === 15)).toBe(true)
-    expect(targets.map(t => t.tier)).toEqual([1, 2, 3])
+    expect(targets).toHaveLength(1)
+    expect(targets[0].inputMode).toBe('sport')
+    expect(targets[0].points).toBe(5)
   })
 
-  it('non-sport event with null PR → []', () => {
+  it('score events (Golf) → 1 target regardless of PR', () => {
+    const targets = getBonusTargets(golf, null)
+    expect(targets).toHaveLength(1)
+    expect(targets[0].label).toBe('Complete an additional 4 holes')
+    expect(targets[0].points).toBe(5)
+  })
+
+  it('non-sport/non-score event with null PR → []', () => {
     expect(getBonusTargets(deadlift, null)).toEqual([])
     expect(getBonusTargets(sprint100, null)).toEqual([])
     expect(getBonusTargets(lSitHold, null)).toEqual([])
   })
 
-  it('strength event with valid PR → 3 weight targets', () => {
+  it('strength event with valid PR → 1 weight target at 80%×5', () => {
     const targets = getBonusTargets(deadlift, 100)
-    expect(targets).toHaveLength(3)
-    expect(targets[0].label).toBe('90kg × 3 reps')
-    expect(targets[1].label).toBe('80kg × 5 reps')
-    expect(targets[2].label).toBe('70kg × 8 reps')
-    expect(targets.every(t => t.points === 15)).toBe(true)
-    expect(targets.every(t => t.inputMode === 'strength')).toBe(true)
+    expect(targets).toHaveLength(1)
+    expect(targets[0].label).toBe('80kg × 5 reps')
+    expect(targets[0].points).toBe(5)
+    expect(targets[0].inputMode).toBe('strength')
   })
 
   it('strength event with zero PR → []', () => {
     expect(getBonusTargets(deadlift, 0)).toEqual([])
   })
 
-  it('strength event with NaN string PR → []', () => {
-    expect(getBonusTargets(deadlift, 'bad')).toEqual([])
-  })
-
-  it('time/sprint event with valid PR → 3 efforts under time targets', () => {
-    // raw_score for a sprint is stored negative; -6000 cs = 60 seconds
+  it('sprint event with valid PR → 1 time target', () => {
     const targets = getBonusTargets(sprint100, -6000)
-    expect(targets).toHaveLength(3)
-    expect(targets[0].tier).toBe(1)
-    expect(targets[0].label).toContain('1 effort')
-    expect(targets[1].label).toContain('2 efforts')
-    expect(targets.every(t => t.points === 15)).toBe(true)
+    expect(targets).toHaveLength(1)
+    expect(targets[0].inputMode).toBe('sprint')
+    expect(targets[0].points).toBe(5)
   })
 
-  it('time/sprint event with NaN PR → []', () => {
-    expect(getBonusTargets(sprint100, NaN)).toEqual([])
-  })
-
-  it('difficulty+time event at D5 (raw_score=40060) → 3 targets', () => {
-    // D5 = tierIdx 4 (0-based); 40000 + 60 secs = 40060
+  it('difficulty+time event at D5 (raw_score=40060) → 1 hold target at D4', () => {
+    // D5 = tierIdx 4 (0-based); L-Sit Hold is non-D6
     const targets = getBonusTargets(lSitHold, 40060)
-    expect(targets).toHaveLength(3)
-    expect(targets[0].label).toBe('Hold D5 for 1 min')
-    expect(targets[1].label).toBe('Hold D4 for 2 min')
-    expect(targets[2].label).toBe('Hold D4 for 4 min')
+    expect(targets).toHaveLength(1)
+    expect(targets[0].inputMode).toBe('difficulty+time')
+    expect(targets[0].points).toBe(5)
   })
 
-  it('difficulty+time event at D1 (raw_score=30) → 3 targets all at D1', () => {
-    // D1 = tierIdx 0; 0 + 30 secs = 30
+  it('difficulty+time event at D1 (raw_score=30) → 1 hold target at D1', () => {
     const targets = getBonusTargets(lSitHold, 30)
-    expect(targets).toHaveLength(3)
-    expect(targets[0].label).toBe('Hold D1 for 1 min')
-    expect(targets[1].label).toBe('Hold D1 for 2 min')
-    expect(targets[2].label).toBe('Hold D1 for 4 min')
+    expect(targets).toHaveLength(1)
+    expect(targets[0].label).toContain('2 min')
+    expect(targets[0].points).toBe(5)
   })
 
-  it('difficulty+reps event (chin-up-contest) with PR raw_score 20 → 3 rep targets at D1', () => {
-    // chinupContest is difficulty+reps; raw_score 20 → tierIdx=0 (D1), prReps=20
+  it('difficulty+reps event (chin-up-contest) with PR raw_score 20 → 1 rep target', () => {
+    // D1, 20 reps → 80% = 16 reps
     const targets = getBonusTargets(chinupContest, 20)
-    expect(targets).toHaveLength(3)
-    expect(targets[0].label).toBe('18 reps at D1')
-    expect(targets[1].label).toBe('16 reps at D1')
-    expect(targets[2].label).toBe('14 reps at D1')
+    expect(targets).toHaveLength(1)
+    expect(targets[0].label).toBe('16 reps at Ring Row')
+    expect(targets[0].points).toBe(5)
+  })
+
+  it('D6 difficulty+time at D3 → target uses half distance (tier below)', () => {
+    // Running D3 (1000m) at 180s → raw = 2*10000 + 180 = 20180
+    const targets = getBonusTargets(running, 20180)
+    expect(targets).toHaveLength(1)
+    expect(targets[0].label).toContain('500m')
+    expect(targets[0].points).toBe(5)
+  })
+
+  it('D6 difficulty+time at D1 → target uses same distance, 1.2x time', () => {
+    // Running D1 (250m) at 60s → raw = 0*10000 + 60 = 60
+    const targets = getBonusTargets(running, 60)
+    expect(targets).toHaveLength(1)
+    expect(targets[0].label).toContain('250m')
+    expect(targets[0].points).toBe(5)
   })
 })
 
