@@ -305,8 +305,9 @@ update players set role = 'judge' where id = '[uuid]';
 | Play | /play | Complete | Login/register landing, Google OAuth |
 | Register | /register | Complete | 3-step form, division, display prefs, junior parent fields |
 | Login | /login | Complete | Email + Google OAuth |
-| Dashboard | /dashboard | Complete | Colours progress, stats, join by code, recent sessions with View Summary, My Personal Bests button, VoteBanner |
-| Judge Panel | dashboard (JudgeCard) | Complete | Create/end/void sessions, QR code, history, real-time player count, Event Votes panel (Kōwhiringa Tūāhuatanga) |
+| Dashboard | /dashboard | Complete | Bento grid: Judge card (judge-only), Vote card (when active), Player Profile card, Colours card (points history on click), Personal Bests card, Join a Game card |
+| Judge Panel | /judge | Complete | Dedicated page — JudgeCard moved here. Create/end/void sessions, QR code, history, real-time player count, Event Votes panel (Kōwhiringa Tūāhuatanga). Judge bento card on dashboard links here. |
+| Player Profile | /profile | Complete | Icon picker (20 sport emojis), username/display name editing, leaderboard display prefs, family member management (add/remove), active profile switcher (localStorage) |
 | Scoring Setup | /scoring | Complete | Select 10 events, editable start time, create session |
 | Live Session | /scoring/[sessionId] | Complete | Per-division leaderboard tabs, judge edit/delete scores, difficulty tier selector, missing scores = last place, post-game popup on session end |
 | Personal Bests | /prs | Complete | All 100 events, PR per event, expandable history, this season + previous seasons tabs |
@@ -332,7 +333,8 @@ UNIQUE(vote_id, player_id, domain_number)
 id, created_at, full_name, email, phone, date_of_birth, address, city, region, country,
 parent_name, parent_email, parent_phone, is_active, username, division,
 role (default: player), show_full_name, show_username, show_division, show_location, display_name,
-bodyweight_kg, parent_id (uuid, references auth.users.id)
+bodyweight_kg, parent_id (uuid, references auth.users.id),
+icon (TEXT — emoji placeholder; null = show initial letter)
 
 ### sessions
 id, created_at, session_date, start_time, location, max_participants, duration_minutes,
@@ -351,6 +353,14 @@ difficulty_tier (TEXT — tier name string or null)
 
 ### effort_scores
 Dropped (migration 20260507). Effort data lives in results.effort_task_completions.
+
+### session_player_summary
+id, created_at, session_id (→ sessions ON DELETE CASCADE), player_id (→ auth.users),
+overall_placement (INTEGER — rank in division for that session),
+total_placement_points (INT), effort_points (INT), effort_level (INT)
+UNIQUE(session_id, player_id)
+Populated by award_session_points trigger when session closes. Used by /dashboard points history.
+RLS: players see own rows; judges see all.
 
 ### rankings
 id, updated_at, player_id, total_points, total_sessions, average_score,
@@ -405,7 +415,9 @@ best_score, current_rank, division, average_placement, season_year
       [slug]/page.tsx               # Event detail — how to, rules, tiers, PB
     register/page.tsx
     login/page.tsx
-    dashboard/page.tsx              # Colours section, My Personal Bests button, View Summary on sessions
+    dashboard/page.tsx              # Bento grid dashboard — 6 cards + points history modal
+    judge/page.tsx                  # Judge panel page — wraps JudgeCard, judge-role-gated
+    profile/page.tsx                # Player profile — icon picker, editing, family switcher
     prs/page.tsx                    # Personal best history — all 100 events
     scoring/page.tsx
     scoring/[sessionId]/page.tsx    # Live session — per-division leaderboard tabs, judge edit/delete, tier selector, post-game popup
@@ -425,6 +437,7 @@ best_score, current_rank, division, average_placement, season_year
       20260420_phase1.sql
       20260428_phase2.sql           # difficulty_tier column; updated award_session_points trigger
       20260513_event_voting.sql     # event_votes, event_vote_nominations, event_vote_responses tables + RLS + functions
+      20260514_dashboard_redesign.sql # players.icon, session_player_summary, get_player_top_event RPC, updated trigger
   public/
     logo.png
 ```
@@ -468,11 +481,13 @@ best_score, current_rank, division, average_placement, season_year
 
 ## What's Next (In Priority Order)
 
-1. Welcome email on registration (Supabase Edge Function + Resend)
-2. Judge approval flow (replace manual SQL)
-3. Player profile page — edit display prefs
-4. Verify Te Reo "Kaiwāwao" is correct for judge/referee in sports context
-5. Championship registration flow (6 months before March 2027)
+1. Apply DB migration 20260514 to production Supabase (run via Supabase dashboard or CLI)
+2. Welcome email on registration (Supabase Edge Function + Resend)
+3. Judge approval flow (replace manual SQL)
+4. Leaderboard icons — add player icon emoji next to name on /leaderboard and /scoring/[sessionId] (deferred until icon system is proven on dashboard)
+5. Per-event placement storage — add `event_placement` column to results + trigger update, so points history can show "1st in Deadlift" etc. (future enhancement)
+6. Designed icon set — replace emoji placeholders with branded SVG icons; infrastructure already in place (players.icon column + icon picker on /profile)
+7. Championship registration flow (6 months before March 2027)
 
 ---
 
@@ -499,7 +514,7 @@ best_score, current_rank, division, average_placement, season_year
 - Time events: raw_score stored as negative seconds so faster = higher
 - Void vs End: Void sets points_awarded_at before closing to prevent trigger firing
 - middleware.ts is mandatory — without it, Supabase sessions don't persist across page loads
-- Event voting: only one active vote at a time; judges create via JudgeCard (id="vote-panel"); players vote one domain at a time; partial saves stored with is_final=false; final submit sets all rows to is_final=true; locked after submit; votes have a set close datetime; results hidden until player has voted (spoiler-free); counts shown while open, percentages after close; judges see full breakdown with names via get_vote_details() SECURITY DEFINER function; players see anonymised bar charts; VoteBanner on dashboard shows state (not voted / partial / voted) with live countdown; judge vote history accessible in JudgeCard; player results access expires when competition begins (event_date); judge results persist permanently
+- Event voting: only one active vote at a time; judges create via JudgeCard at /judge; players vote one domain at a time; partial saves stored with is_final=false; final submit sets all rows to is_final=true; locked after submit; votes have a set close datetime; results hidden until player has voted (spoiler-free); counts shown while open, percentages after close; judges see full breakdown with names via get_vote_details() SECURITY DEFINER function; players see anonymised bar charts; VoteCard on /dashboard (bento card) shows state (not voted / partial / voted) with live countdown; judge vote history accessible in JudgeCard; player results access expires when competition begins (event_date); judge results persist permanently
 - Gap formula: 100 ÷ players, no floor on gap; minimum earn = 10 on awarded points only
 - Effort points: separate effort_scores table; 100pt session cap (= effort level 20 × 5 pts); +5 per qualifying submission; feeds Colour System total; one repeatable task per event at 80% of PR
 - Effort tasks: generated from `effectivePR = max(sessionBest, seasonPR)` — if no season PR, session score becomes baseline; one repeatable task per event; strength: 5 reps @80% PR; hold events: 2-minute hold; sport events: extra match vs any opponent; score events: additional 4-hole round; tasks locked until at least one comp score submitted this session
@@ -507,10 +522,20 @@ best_score, current_rank, division, average_placement, season_year
 - Live session leaderboard: single tab row — first tab always "Effort Level (All-Divisions)" (effort ranking); then division tabs (competitive ranking, lowest total placement = 1st); division tabs only visible if players from that division have scored; expanded player row shows all events with score label + ordinal placement
 - Event button collapsed label: always shows "Effort Level: N" (not "— pts")
 - Golf and Disc Golf use 'score' mode (stroke count for 4 holes; raw_score = -strokes; lower = better).
+- Dashboard uses "bento grid" / "hero card tiles" design pattern — full-width coloured tiles, each card visually distinct, Bebas Neue headings, 16px border-radius
+- Navbar (logged-in): Logo + Dashboard + Sign Out always visible; ALL other links hidden in hamburger. Applies globally when user is authenticated. Logged-out state unchanged (desktop links visible).
+- Player icons: emoji placeholders (20 icons in players.icon column); icon picker on /profile; future: replace with designed SVG icons and unlockable icons at each Colour threshold
+- Active family member profile: stored in localStorage key `allsport_active_player_id`; entire dashboard context (colours, ranking, top event) reflects the active profile; switching on /profile writes to localStorage and navigates to dashboard; player profile bento card shows whose data is active
+- Judge panel: moved from inline JudgeCard on dashboard to dedicated /judge page; dashboard judge bento card links there; /judge page is role-gated (non-judges redirected to /dashboard)
+- Top event: calculated via `get_player_top_event(player_id, division)` RPC — finds the event where the player's best score ranks highest (RANK() OVER) among all players in their division who have done that event
+- session_player_summary: populated by award_session_points trigger; used for /dashboard points history; historical sessions (pre-migration) fall back to calculating from results rows; per-event placement NOT stored in this table (future enhancement: add event_placement column to results)
+- Points history: accessed by tapping Colours bento card; shows per-session: date, location, overall placement, effort level, placement pts, effort pts, total; expandable to show events + scores
+- Colours bento card: full grade-colour background (e.g. Whero = red card); Taniwha = black + amber border; Mā = light grey + dark text; Uenuku = rainbow gradient
+- New player state (zero sessions): Join a Game card highlighted with green glow to guide first action
 
 ---
 
-*Last updated: May 2026 (session 8)*
+*Last updated: May 2026 (session 9)*
 *Project started: March 2026*
 
 ## Skill routing
