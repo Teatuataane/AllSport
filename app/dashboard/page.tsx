@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase-browser'
 import Link from 'next/link'
 import JudgeCard from '@/app/components/JudgeCard'
+import VoteBanner from '@/app/components/VoteBanner'
 
 const supabase = createClient()
 
@@ -341,6 +342,11 @@ function DashboardInner() {
             </span>
           </div>
         </div>
+      )}
+
+      {/* Vote banner — shown when a vote is active */}
+      {userId && player && (
+        <VoteBanner userId={userId} isJudge={player.role === 'judge'} />
       )}
 
       {/* Judge panel OR active session banner */}
