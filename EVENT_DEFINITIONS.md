@@ -41,22 +41,28 @@ Scoring formula mirrors `hold` (difficulty+time) but substitutes reps for second
 
 ## 3. Effort Task Patterns by InputMode
 
-| Mode | E1 (90%) | E2 (80%) | E3 (70%) |
-|---|---|---|---|
-| `strength` | 90% of PR weight × 3 reps | 80% of PR weight × 5 reps | 70% of PR weight × 8 reps |
-| `difficulty+time` | Hold current tier for 1 min | Hold one tier below for 2 min | Hold one tier below for 4 min |
-| `difficulty+reps` | 90% of PR reps at current tier | 80% of PR reps at current tier | 70% of PR reps at current tier |
-| `time` / `sprint` | 1 effort within 90% of PR time | 2 efforts within 80% of PR time | 3 efforts within 70% of PR time |
-| `distance` | 1 attempt at 90% of PR distance | 2 attempts at 80% of PR distance | 3 attempts at 70% of PR distance |
-| `sport` | 1 extra game vs a new opponent | 2 extra games vs new opponents | 3 extra games vs new opponents |
+| Mode | Repeatable Effort Task |
+|---|---|
+| `strength` | 5 reps at 80% of PR weight |
+| `difficulty+time` (non-D6) | Hold -1 tier for 2 min |
+| `difficulty+time` (D6) | Complete half-distance at 80% pace (or same distance if D1) |
+| `difficulty+reps` | One set at 80% of PR reps, same tier |
+| `time` | Each effort at ≥80% of PR time |
+| `sprint` | Each sprint within 80% of PR pace |
+| `distance` | Each attempt ≥80% of PR distance |
+| `sport` | Play a game vs a new opponent |
+| `score` | Complete an additional 4 holes |
 
 **Notes on `difficulty+time` effort tasks:**
-- If the player is at D1 (no tier below), generate: Hold D1 for 1 min / 2 min / 4 min instead.
 - Effort tasks are generated from the decoded PR: `tierIdx = Math.floor(rawScore / 10000)`, `value = rawScore % 10000`.
 
 **Notes on `difficulty+reps` effort tasks:**
 - PR reps decoded from raw_score: `prReps = rawScore % 10000`, `prTierIdx = Math.floor(rawScore / 10000)`.
 - Targets: `Math.round(prReps * 0.9)`, `* 0.8`, `* 0.7` — minimum 1 rep.
+
+**Notes on `score` effort tasks:**
+- Golf and Disc Golf use `score` mode. raw_score = -strokes (negative; fewer strokes = higher raw_score = better rank).
+- Effort task: any additional 4-hole round after the first = +1 effort level.
 
 ---
 
@@ -304,12 +310,12 @@ The PR display line in the scoring UI (`PR: {seasonPR}`) must also decode and fo
 | 2 | Bridge | `bridge` | difficulty+time *(fix hasDifficultyTiers: true)* | D1–D6 |
 | 3 | Forward Fold | `forward-fold` | **difficulty+time** *(was flexibility)* | D1–D8 |
 | 4 | Needle Pose | `needle-pose` | **difficulty+time** *(was flexibility)* | D1–D6 |
-| 5 | Forward Split | `front-split` | **difficulty+time** *(was hold, no tiers)* | D1–D8 |
+| 5 | Forward Split | `front-split` | **difficulty+time** *(was hold, no tiers)* | D1–D6 |
 | 6 | Middle Split | `middle-split` | **difficulty+time** *(was flexibility)* | D1–D7 |
 | 7 | Standing Split | `standing-split` | difficulty+time *(fix hasDifficultyTiers: true)* | D1–D8 |
 | 8 | Foot Behind Head | `foot-behind-head` | difficulty+time | D1–D6 |
-| 9 | Shoulder Dislocate | `shoulder-dislocate` | **difficulty+time** *(was flexibility)* | D1–D4 |
-| 10 | Pancake | `pancake` | **difficulty+time** *(was flexibility)* | D1–D7 |
+| 9 | Shoulder Dislocate | `shoulder-dislocate` | **difficulty+reps** | D1–D4 |
+| 10 | Pancake | `pancake` | **difficulty+time** | D1–D7 |
 
 **Tier Definitions — Domain 4:**
 
@@ -440,12 +446,11 @@ The PR display line in the scoring UI (`PR: {seasonPR}`) must also decode and fo
 | 6 | Breath Hold | `breath-hold` | **time** | none |
 | 7 | Weighted Carry | `weighted-carry` | **difficulty+time** | D1-D3 |
 | 8 | Duck Walk | `duck-walk` | **difficulty+time** | D1-D5 |
-| 9 | Sprint Repeats | `sprint-repeats` | **sport** | none |
-| 10 | 30-15 Test | `30-15-test` | **time** | none |
+| 9 | Bronco | `bronco` | **difficulty+time** | D1-D3 |
+| 10 | Walking | `walking` | **difficulty+time** | D1-D3 |
 
 *`difficulty+time` events: Hold current tier 1 min / hold tier-below 2 min / hold tier-below 4 min.*
-*`time` events (Breath Hold, 30-15 Test): effort tasks at 90%/80%/70% of PR time (1/2/3 efforts).*
-*`sport` (Sprint Repeats): 1/2/3 extra rounds vs new opponents.*
+*`time` events (Breath Hold): each effort at ≥80% of PR time.*
 
 **Breath Hold** — player holds their breath as long as possible. Score = time in seconds (higher is better).
 
@@ -487,6 +492,16 @@ The PR display line in the scoring UI (`PR: {seasonPR}`) must also decode and fo
 - D4: 50m Duck Walk
 - D5: 100m Duck Walk
 
+**Bronco** (D1–D3)
+- D1: 1 Lap
+- D2: 3 Laps
+- D3: 5 Laps
+
+**Walking** (D1–D3)
+- D1: 250m
+- D2: 500m
+- D3: 1000m
+
 
 ---
 
@@ -522,13 +537,13 @@ The PR display line in the scoring UI (`PR: {seasonPR}`) must also decode and fo
 | # | Name | Slug | InputMode | Tiers |
 |---|---|---|---|---|
 | 1 | Tae Kwon Do | `tae-kwon-do` | sport | none |
-| 2 | Breakdancing | `breakdancing` | **difficulty+reps** *(fix hasDifficultyTiers: true)* | D1–D6 |
-| 3 | Trampolining | `trampolining` | **difficulty+reps** *(fix hasDifficultyTiers: true)* | D1–D6 |
+| 2 | Breakdancing | `breakdancing` | **difficulty+reps** | D1–D6 |
+| 3 | Trampolining | `trampolining` | **difficulty+reps** | D1–D6 |
 | 4 | Jump Rope | `jump-rope` | **difficulty+reps** *(was reps)* | D1–D5 |
 | 5 | Wrestling | `wrestling` | sport | none |
 | 6 | Gymnastics | `gymnastics` | **difficulty+reps** *(was sport)* | D1–D8 |
 | 7 | Balance Ball | `balance-ball` | difficulty+time | D1–D5 |
-| 8 | SKATE | `skate` | **difficulty+reps** *(fix hasDifficultyTiers: true)* | D1–D5 |
+| 8 | SKATE | `skate` | **difficulty+reps** | D1–D5 |
 | 9 | Fencing | `fencing` | sport | none |
 | 10 | Juggling | `juggling` | **difficulty+time** *(was reps)* | D1–D4 |
 
@@ -590,7 +605,7 @@ The PR display line in the scoring UI (`PR: {seasonPR}`) must also decode and fo
 ---
 
 ### Domain 9 — Co-ordination
-*All events: `sport` mode. Effort tasks: 1/2/3 extra games vs new opponents.*
+*All events: `sport` mode. Effort tasks: extra games vs new opponents.*
 
 | # | Name | Slug | InputMode |
 |---|---|---|---|
@@ -608,22 +623,22 @@ The PR display line in the scoring UI (`PR: {seasonPR}`) must also decode and fo
 ---
 
 ### Domain 10 — Aim & Precision
-*All events: `sport` mode. Effort tasks: 1/2/3 extra games vs new opponents.*
+*All events: `sport` mode. Effort tasks: extra games vs new opponents.*
 
 | # | Name | Slug | InputMode |
 |---|---|---|---|
 | 1 | Netball | `netball` | sport |
 | 2 | Handball | `handball` | sport |
-| 3 | Cornhole | `cornhole` | sport |
+| 3 | Bocce | `bocce` | sport |
 | 4 | Dodgeball | `dodgeball` | sport |
 | 5 | Carrom | `carrom` | sport |
 | 6 | Archery | `archery` | sport |
-| 7 | Bowling | `bowling` | sport |
+| 7 | Kubb | `kubb` | sport |
 | 8 | Darts | `darts` | sport |
 | 9 | Disc Golf | `disc-golf` | sport |
 | 10 | Golf | `golf` | sport |
 
-*Note: Archery, Bowling, Darts, Disc Golf, and Golf are treated as competitive head-to-head events in AllSport (win/draw/loss). If a future requirement tracks individual numerical scores (e.g. pin count, stroke count), inputMode would change to `reps` (higher = better) or `time` (lower = better). For now, `sport` is correct.*
+*Note: All Domain 10 events use `sport` (win/draw/loss) mode except Golf and Disc Golf, which use `score` mode (stroke count for 4 holes, lower is better, stored as negative).*
 
 ---
 
