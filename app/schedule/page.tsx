@@ -121,11 +121,66 @@ export default function Schedule() {
         </div>
       </section>
 
-      {/* Tournament — gold */}
-      <section className="section" style={{ background: '#0d0d0d', borderTop: '3px solid #f4a226' }}>
+      {/* Selwyn Winter Jam — purple */}
+      <section className="section" style={{ background: '#0d0d0d', borderTop: '3px solid #B87DB5' }}>
         <div className="container">
           <div style={{
-            background: 'linear-gradient(135deg, #0d0800 0%, #0d0d0d 100%)',
+            background: 'linear-gradient(135deg, #0a0010 0%, #0d0d0d 100%)',
+            border: '1px solid #B87DB533',
+            padding: '56px 48px',
+            position: 'relative',
+            overflow: 'hidden',
+          }}>
+            <div style={{ position: 'absolute', top: '-60px', right: '-60px', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(184,125,181,0.08) 0%, transparent 70%)', pointerEvents: 'none' }} />
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'linear-gradient(90deg, #B87DB5, #EA4742)' }} />
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '48px', alignItems: 'center' }}>
+              <div>
+                <div className="tag">Special Event</div>
+                <h2 style={{ fontSize: 'clamp(40px, 5vw, 68px)', marginBottom: '8px', lineHeight: 1 }}>
+                  SELWYN<br /><span style={{ color: '#B87DB5' }}>WINTER JAM</span>
+                </h2>
+                <div className="divider" style={{ background: '#B87DB5' }} />
+                <p style={{ color: '#cccccc', fontSize: '16px', lineHeight: 1.8, marginBottom: '16px' }}>
+                  AllSport's first public competition — a multi-division tournament with prizes. Open to all registered players and newcomers alike. Come see what AllSport is all about, then stay and compete.
+                </p>
+                <p style={{ color: '#888888', fontSize: '15px', lineHeight: 1.8, marginBottom: '32px' }}>
+                  Entry by koha — $20 suggested contribution. Prizes across all divisions. Registration required.
+                </p>
+                <Link href="/register" className="btn btn-primary" style={{ fontSize: '18px' }}>
+                  Register to Compete
+                </Link>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ background: '#0a0a0a', border: '1px solid #B87DB533', padding: '28px 32px' }}>
+                  <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555555', marginBottom: '8px' }}>Date</div>
+                  <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '36px', color: '#B87DB5', lineHeight: 1 }}>Saturday 4 July 2026</div>
+                </div>
+                <div style={{ background: '#0a0a0a', border: '1px solid #B87DB533', padding: '28px 32px' }}>
+                  <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555555', marginBottom: '8px' }}>Location</div>
+                  <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '28px', color: '#ffffff', lineHeight: 1 }}>Selwyn District</div>
+                  <div style={{ color: '#888888', fontSize: '14px', marginTop: '4px' }}>Indoor venue — Ōtautahi, Aotearoa</div>
+                </div>
+                <div style={{ background: '#0a0a0a', border: '1px solid #B87DB533', padding: '28px 32px' }}>
+                  <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555555', marginBottom: '8px' }}>Divisions</div>
+                  <div style={{ color: '#cccccc', fontSize: '14px', lineHeight: 1.7 }}>
+                    Men's · Women's · Juniors (U17)<br />
+                    Masters Men (40+) · Masters Women (40+)<br />
+                    Grandmaster Men (60+) · Grandmaster Women (60+)
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Annual Championship — gold */}
+      <section className="section" style={{ background: '#0a0a0a', borderTop: '3px solid #f4a226' }}>
+        <div className="container">
+          <div style={{
+            background: 'linear-gradient(135deg, #0d0800 0%, #0a0a0a 100%)',
             border: '1px solid #f4a22633',
             padding: '56px 48px',
             position: 'relative',
@@ -136,16 +191,16 @@ export default function Schedule() {
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '48px', alignItems: 'center' }}>
               <div>
-                <div className="tag">Once a Year</div>
+                <div className="tag">Annual Championship</div>
                 <h2 style={{ fontSize: 'clamp(40px, 5vw, 68px)', marginBottom: '8px', lineHeight: 1 }}>
-                  THE ANNUAL<br /><span style={{ color: '#f4a226' }}>GAMES</span>
+                  THE ANNUAL<br /><span style={{ color: '#f4a226' }}>CHAMPIONSHIP</span>
                 </h2>
                 <div className="divider" style={{ background: '#f4a226' }} />
                 <p style={{ color: '#cccccc', fontSize: '16px', lineHeight: 1.8, marginBottom: '16px' }}>
-                  Once per year, the AllSport community comes together for the annual tournament — the ultimate test of all-round athletic ability. Every discipline. Full competition. Maximum mana on the line.
+                  Once per year, the AllSport community comes together for the annual Championship — the ultimate test of all-round athletic ability. Every discipline. Full competition. Maximum mana on the line.
                 </p>
                 <p style={{ color: '#888888', fontSize: '15px', lineHeight: 1.8, marginBottom: '32px' }}>
-                  Open to all registered players. Rankings, reputation, and the title of AllSport Champion decided in a single day.
+                  10 events chosen by community vote. Open to all registered players across all divisions. Rankings, reputation, and the title of AllSport Champion decided in a single day.
                 </p>
                 <Link href="/register" className="btn btn-gold" style={{ fontSize: '18px' }}>
                   Register to Compete
@@ -159,12 +214,16 @@ export default function Schedule() {
                 </div>
                 <div style={{ background: '#0a0a0a', border: '1px solid #f4a22633', padding: '28px 32px' }}>
                   <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555555', marginBottom: '8px' }}>Location</div>
-                  <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '28px', color: '#ffffff', lineHeight: 1 }}>AllSport HQ</div>
-                  <div style={{ color: '#888888', fontSize: '14px', marginTop: '4px' }}>26 Carbine Place, Sockburn, Ōtautahi</div>
+                  <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '28px', color: '#ffffff', lineHeight: 1 }}>Christchurch Public Park</div>
+                  <div style={{ color: '#888888', fontSize: '14px', marginTop: '4px' }}>Ōtautahi, Aotearoa</div>
                 </div>
                 <div style={{ background: '#0a0a0a', border: '1px solid #f4a22633', padding: '28px 32px' }}>
-                  <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555555', marginBottom: '8px' }}>Entry</div>
-                  <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '28px', color: '#ffffff', lineHeight: 1 }}>Open to all registered players</div>
+                  <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555555', marginBottom: '8px' }}>Divisions</div>
+                  <div style={{ color: '#cccccc', fontSize: '14px', lineHeight: 1.7 }}>
+                    Men's · Women's · Juniors (U17)<br />
+                    Masters Men (40+) · Masters Women (40+)<br />
+                    Grandmaster Men (60+) · Grandmaster Women (60+)
+                  </div>
                 </div>
               </div>
             </div>

@@ -604,7 +604,12 @@ function DashboardInner() {
         </div>
       </BentoCard>
 
-      {/* ── Card 7: Join a Game ─────────────────────────────────────────────── */}
+      {/* ── Card 7: Invite Friends ─────────────────────────────────────────── */}
+      {player?.referral_code && (
+        <ReferralCard userId={userId!} referralCode={player.referral_code} />
+      )}
+
+      {/* ── Card 8: Join a Game ─────────────────────────────────────────────── */}
       <div style={{
         background: hasNoSessions ? '#061a0d' : '#0d0d0d',
         border: hasNoSessions ? '1px solid #4DB26E' : '1px solid #1e1e1e',
@@ -836,6 +841,128 @@ function DashboardInner() {
               </div>
             )}
           </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Referral card ─────────────────────────────────────────────────────────────
+const REFERRAL_TIERS = [
+  { label: 'Digital Certificate', count: 1 },
+  { label: 'Sticker Pack', count: 3 },
+  { label: 'Colours T-Shirt', count: 6 },
+  { label: 'Clothing Stack', count: 12 },
+  { label: 'Personal Coaching', count: 25 },
+  { label: 'AllSport Comes To You', count: 50 },
+]
+
+function ReferralCard({ userId, referralCode }: { userId: string; referralCode: string }) {
+  const [referrals, setReferrals] = useState<any[]>([])
+  const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    supabase
+      .from('referrals')
+      .select('session_count, qualified_at')
+      .eq('referrer_id', userId)
+      .then(({ data }) => setReferrals(data || []))
+  }, [userId])
+
+  const qualified = referrals.filter(r => r.qualified_at).length
+  const pending = referrals.filter(r => !r.qualified_at).length
+  const nextTier = REFERRAL_TIERS.find(t => qualified < t.count)
+  const currentTier = [...REFERRAL_TIERS].reverse().find(t => qualified >= t.count) || null
+  const inviteUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}/join/${referralCode}`
+    : `/join/${referralCode}`
+
+  const copyLink = () => {
+    navigator.clipboard.writeText(inviteUrl)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div style={{
+      background: '#111',
+      border: '1px solid #1e1e1e',
+      borderLeft: '4px solid #4DB26E',
+      borderRadius: '16px',
+      padding: '20px 22px',
+      marginBottom: '12px',
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
+        <div>
+          <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '20px', color: '#fff', letterSpacing: '0.05em', lineHeight: 1 }}>
+            Invite Friends
+          </div>
+          <div style={{ fontSize: '11px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.05em', marginTop: '3px' }}>
+            Share your link — earn Koha rewards when they play 10 sessions
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '12px', flexShrink: 0, marginLeft: '12px' }}>
+          {pending > 0 && (
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '22px', color: '#F9B051', lineHeight: 1 }}>{pending}</div>
+              <div style={{ fontSize: '9px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.05em' }}>PENDING</div>
+            </div>
+          )}
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '22px', color: '#4DB26E', lineHeight: 1 }}>{qualified}</div>
+            <div style={{ fontSize: '9px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.05em' }}>QUALIFIED</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Link + copy button */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
+        <div style={{
+          flex: 1, background: '#0a0a0a', border: '1px solid #333', borderRadius: '10px',
+          padding: '10px 12px', fontSize: '12px', color: '#666',
+          fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.04em',
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const,
+        }}>
+          allsport.nz/join/<strong style={{ color: '#aaa' }}>{referralCode}</strong>
+        </div>
+        <button
+          onClick={copyLink}
+          style={{
+            padding: '10px 16px', borderRadius: '10px', border: 'none',
+            cursor: 'pointer', flexShrink: 0,
+            background: copied ? '#4DB26E' : '#1a1a1a',
+            color: copied ? '#fff' : '#888',
+            fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', fontWeight: 700,
+            letterSpacing: '0.05em', transition: 'all 0.2s',
+          }}
+        >
+          {copied ? 'Copied!' : 'Copy'}
+        </button>
+      </div>
+
+      {/* Tier progress */}
+      {nextTier && (
+        <div style={{ background: '#0a0a0a', borderRadius: '8px', padding: '10px 12px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+            <div style={{ fontSize: '11px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.08em' }}>
+              {currentTier ? currentTier.label.toUpperCase() : 'NO TIER YET'}
+            </div>
+            <div style={{ fontSize: '11px', color: '#4DB26E', fontFamily: 'Barlow Condensed, sans-serif' }}>
+              {qualified}/{nextTier.count} → {nextTier.label}
+            </div>
+          </div>
+          <div style={{ height: '4px', background: '#1a1a1a', borderRadius: '2px', overflow: 'hidden' }}>
+            <div style={{
+              height: '100%', borderRadius: '2px', background: '#4DB26E',
+              width: `${Math.min((qualified / nextTier.count) * 100, 100)}%`,
+              transition: 'width 0.5s ease',
+            }} />
+          </div>
+        </div>
+      )}
+      {!nextTier && qualified >= 50 && (
+        <div style={{ fontSize: '12px', color: '#4DB26E', fontFamily: 'Barlow Condensed, sans-serif', textAlign: 'center', padding: '8px 0' }}>
+          All Koha tiers unlocked via referrals
         </div>
       )}
     </div>

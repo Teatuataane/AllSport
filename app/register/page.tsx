@@ -14,17 +14,16 @@ function calculateAge(dob: string): number {
 
 function calculateDivision(dob: string, gender: string): string {
   const age = calculateAge(dob)
-  if (age <= 12) return 'Youth'
   if (age <= 16) return 'Juniors'
   if (gender === 'Female') {
     if (age < 40) return "Women's"
     if (age < 60) return 'Masters Women'
-    return 'Grandmasters Women'
+    return 'Grandmaster Women'
   }
   // Male + Other default to men's categories
   if (age < 40) return "Men's"
   if (age < 60) return 'Masters Men'
-  return 'Grandmasters Men'
+  return 'Grandmaster Men'
 }
 
 function RegisterInner() {
@@ -38,6 +37,7 @@ function RegisterInner() {
   const supabase = createClient()
 
   const pendingCode = searchParams.get('code')
+  const refCode = searchParams.get('ref')
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -135,6 +135,18 @@ function RegisterInner() {
           throw new Error(`Profile save failed: ${profileError.message}`)
         }
         console.warn('Profile insert deferred (email confirmation likely enabled):', profileError.message)
+      }
+
+      // Link referral if a ref code was passed
+      if (refCode && userId) {
+        try {
+          const { data: referrerData } = await supabase.rpc('get_referrer_by_code', { p_code: refCode.toUpperCase() })
+          if (referrerData && referrerData.length > 0) {
+            await supabase.from('referrals').insert({ referrer_id: referrerData[0].referrer_id, referred_id: userId })
+          }
+        } catch {
+          // Silently ignore — referral linking is best-effort and never blocks registration
+        }
       }
 
       if (existingUserId || newSession) {
