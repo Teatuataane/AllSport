@@ -100,6 +100,7 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
   })
   // nominations: domain_number -> Set<event_name>
   const [voteNominations, setVoteNominations] = useState<Record<number, Set<string>>>({})
+  const [expandedDomain, setExpandedDomain] = useState<number | null>(1)
   const [publishing, setPublishing] = useState(false)
 
   // Group EVENTS by domainNumber
@@ -327,17 +328,31 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
   })
 
   const toggleNomination = (domainNumber: number, eventName: string) => {
+    const current = new Set(voteNominations[domainNumber] || [])
+    const willComplete = !current.has(eventName) && current.size + 1 === voteForm.nominations_per_domain
+
     setVoteNominations(prev => {
-      const current = new Set(prev[domainNumber] || [])
-      if (current.has(eventName)) {
-        current.delete(eventName)
+      const updated = new Set(prev[domainNumber] || [])
+      if (updated.has(eventName)) {
+        updated.delete(eventName)
       } else {
-        if (current.size < voteForm.nominations_per_domain) {
-          current.add(eventName)
+        if (updated.size < voteForm.nominations_per_domain) {
+          updated.add(eventName)
         }
       }
-      return { ...prev, [domainNumber]: current }
+      return { ...prev, [domainNumber]: updated }
     })
+
+    if (willComplete) {
+      setTimeout(() => {
+        const nextDomain = DOMAINS.find(d => {
+          if (d.number <= domainNumber) return false
+          const sel = voteNominations[d.number] || new Set()
+          return sel.size < voteForm.nominations_per_domain
+        })
+        setExpandedDomain(nextDomain ? nextDomain.number : null)
+      }, 250)
+    }
   }
 
   const handlePublishVote = async () => {
@@ -883,7 +898,7 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
                   Select exactly {voteForm.nominations_per_domain} events per domain.
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '420px', overflowY: 'auto', marginBottom: '14px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
                   {DOMAINS.map(domain => {
                     const sel = voteNominations[domain.number] || new Set()
                     const isComplete = sel.size === voteForm.nominations_per_domain
@@ -897,6 +912,8 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
                         selected={sel}
                         limit={voteForm.nominations_per_domain}
                         isComplete={isComplete}
+                        isOpen={expandedDomain === domain.number}
+                        onOpenChange={(open) => setExpandedDomain(open ? domain.number : null)}
                         onToggle={(eventName) => toggleNomination(domain.number, eventName)}
                       />
                     )
@@ -1058,12 +1075,12 @@ type DomainAccordionProps = {
   selected: Set<string>
   limit: number
   isComplete: boolean
+  isOpen: boolean
+  onOpenChange: (open: boolean) => void
   onToggle: (eventName: string) => void
 }
 
-function DomainAccordion({ domain, events, selected, limit, isComplete, onToggle }: DomainAccordionProps) {
-  const [open, setOpen] = useState(false)
-
+function DomainAccordion({ domain, events, selected, limit, isComplete, isOpen, onOpenChange, onToggle }: DomainAccordionProps) {
   return (
     <div style={{
       background: '#0a0a0a',
@@ -1072,7 +1089,7 @@ function DomainAccordion({ domain, events, selected, limit, isComplete, onToggle
       overflow: 'hidden',
     }}>
       <button
-        onClick={() => setOpen(v => !v)}
+        onClick={() => onOpenChange(!isOpen)}
         style={{
           width: '100%', padding: '12px 14px', background: 'transparent',
           border: 'none', cursor: 'pointer',
@@ -1095,11 +1112,11 @@ function DomainAccordion({ domain, events, selected, limit, isComplete, onToggle
           }}>
             {selected.size}/{limit}
           </span>
-          <span style={{ color: '#555', fontSize: '12px' }}>{open ? '▲' : '▼'}</span>
+          <span style={{ color: '#555', fontSize: '12px' }}>{isOpen ? '▲' : '▼'}</span>
         </div>
       </button>
 
-      {open && (
+      {isOpen && (
         <div style={{ padding: '8px 14px 14px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
           {events.map(eventName => {
             const isSelected = selected.has(eventName)
