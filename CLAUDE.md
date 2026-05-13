@@ -475,7 +475,7 @@ best_score, current_rank, division, average_placement, season_year
 - Judge score edit/delete fix — delete confirmation works correctly, leaderboard recalculates immediately
 - Supabase SSR middleware, browser client, Google OAuth, RLS, points trigger — all confirmed working
 - allsport.nz live domain
-- Event voting system — judges create votes (name, event date, close date, 2–10 events per domain nominated), players vote step-by-step (one domain per screen, partial save, locked on final submit), spoiler-free results (hidden until voted, counts only while open, percentages after close), judge full breakdown with voter names
+- Event voting system — judges create votes (name, event date, close date, 2–10 events per domain nominated), players vote step-by-step (one domain per screen, partial save, locked on final submit), spoiler-free results (hidden until voted, counts only while open, percentages after close), judge full breakdown with voter names; nomination Step 2 uses auto-advance accordion (domain auto-closes and next incomplete domain opens when selection limit hit; 250ms delay for visual feedback; domain 1 open by default; page scrolls naturally — no inner scroll box)
 
 ---
 
@@ -515,6 +515,7 @@ best_score, current_rank, division, average_placement, season_year
 - Void vs End: Void sets points_awarded_at before closing to prevent trigger firing
 - middleware.ts is mandatory — without it, Supabase sessions don't persist across page loads
 - Event voting: only one active vote at a time; judges create via JudgeCard at /judge; players vote one domain at a time; partial saves stored with is_final=false; final submit sets all rows to is_final=true; locked after submit; votes have a set close datetime; results hidden until player has voted (spoiler-free); counts shown while open, percentages after close; judges see full breakdown with names via get_vote_details() SECURITY DEFINER function; players see anonymised bar charts; VoteCard on /dashboard (bento card) shows state (not voted / partial / voted) with live countdown; judge vote history accessible in JudgeCard; player results access expires when competition begins (event_date); judge results persist permanently
+- DomainAccordion (Step 2 of vote creation): controlled component — open state managed by parent via isOpen/onOpenChange props; no internal useState; auto-advance on completion: domain closes + next incomplete domain opens after 250ms; expandedDomain state in JudgeCard (initialized to 1); do NOT revert to uncontrolled useState(false) in DomainAccordion
 - Gap formula: 100 ÷ players, no floor on gap; minimum earn = 10 on awarded points only
 - Effort points: separate effort_scores table; 100pt session cap (= effort level 20 × 5 pts); +5 per qualifying submission; feeds Colour System total; one repeatable task per event at 80% of PR
 - Effort tasks: generated from `effectivePR = max(sessionBest, seasonPR)` — if no season PR, session score becomes baseline; one repeatable task per event; strength: 5 reps @80% PR; hold events: 2-minute hold; sport events: extra match vs any opponent; score events: additional 4-hole round; tasks locked until at least one comp score submitted this session
