@@ -5,60 +5,83 @@ import Link from 'next/link'
 const tiers = [
   {
     amount: 'Any Amount',
+    referrals: '1 referral',
     reward: 'Supporters Wall',
     desc: 'Your name goes on the AllSport supporters wall. Every contribution, no matter the size, is acknowledged.',
     icon: '🫶',
     color: '#888888',
     isBase: true,
+    referralPath: true,
   },
   {
     amount: '>$50',
-    referrals: '1 referral',
+    referrals: '3 referrals',
     reward: 'Digital Certificate',
     desc: 'A digital certificate acknowledging your koha — a formal record of your contribution to AllSport.',
     icon: '📜',
     color: '#2d9e4f',
+    referralPath: true,
   },
   {
     amount: '>$200',
-    referrals: '3 referrals',
-    reward: 'Sticker Pack + Certificate',
+    referrals: '6 referrals',
+    reward: 'Sticker Pack',
     desc: 'AllSport sticker pack plus your digital certificate. Represent the community.',
     icon: '🎁',
     color: '#2563eb',
+    referralPath: true,
   },
   {
     amount: '>$500',
-    referrals: '6 referrals',
+    referrals: '12 referrals',
     reward: 'Colours T-Shirt',
     desc: 'A t-shirt in the colour of your highest Colour achieved. Wear your mana.',
     icon: '👕',
     color: '#9333ea',
+    referralPath: true,
+  },
+  {
+    amount: '>$1,000',
+    referrals: '18 referrals',
+    reward: 'Grading Hoodie',
+    desc: 'A hoodie in the colour of your highest Colour achieved. The next level of representing your mana.',
+    icon: '🧥',
+    color: '#EA4742',
+    referralPath: true,
   },
   {
     amount: '>$2,000',
-    referrals: '12 referrals',
-    reward: 'AllSport Clothing Stack',
-    desc: 'The full AllSport clothing set — everything we produce, in your Colour.',
+    referrals: '25 referrals',
+    reward: 'Clothing Stack',
+    desc: '$2,000 worth of AllSport merch — your choice of hoodies, shirts, or any combination. In your Colour.',
     icon: '🎽',
-    color: '#e63946',
+    color: '#F9B051',
+    referralPath: true,
+  },
+  {
+    amount: '>$2,500',
+    reward: 'Personal Coaching — 20hrs',
+    desc: '20 personal coaching sessions with AllSport. One-on-one training built around your goals.',
+    icon: '🏆',
+    color: '#f4a226',
+    referralPath: false,
   },
   {
     amount: '>$5,000',
-    referrals: '25 referrals',
-    reward: 'Personal Coaching',
-    desc: '50 personal coaching sessions per year. One-on-one training built around your goals.',
+    reward: 'Personal Coaching — 50hrs',
+    desc: '50 personal coaching sessions per year. The full AllSport coaching experience.',
     icon: '🏆',
     color: '#f4a226',
+    referralPath: false,
   },
   {
     amount: '>$10,000',
-    referrals: '50 referrals',
     reward: 'AllSport Comes To You',
     desc: 'We bring AllSport to your workplace or community. Full corporate sessions, run by AllSport.',
     icon: '🌍',
     color: '#f4a226',
     isPremium: true,
+    referralPath: false,
   },
 ]
 
@@ -189,7 +212,7 @@ export default function Koha() {
           </p>
           <div style={{ background: '#0d0d0d', border: '1px solid #2371BB33', borderLeft: '4px solid #2371BB', padding: '14px 20px', marginBottom: '40px', maxWidth: '560px' }}>
             <p style={{ color: '#aaa', fontSize: '14px', lineHeight: 1.6 }}>
-              <strong style={{ color: '#fff' }}>Two paths to every tier:</strong> donate koha OR bring enough new players who complete 10 sessions. Referrals count as qualified when your referred player attends their 10th session.
+              <strong style={{ color: '#fff' }}>Two paths to tiers 1–6:</strong> donate koha OR refer enough new players. Tiers 7–9 (coaching and corporate) require a koha donation. Referrals qualify when your referred player completes their 10th session.
             </p>
           </div>
 
@@ -198,9 +221,14 @@ export default function Koha() {
             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: '#333' }} />
             <div style={{ fontSize: '32px' }}>{tiers[0].icon}</div>
             <div style={{ flex: 1, minWidth: '200px' }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '16px', flexWrap: 'wrap', marginBottom: '6px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap', marginBottom: '6px' }}>
                 <span style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '36px', color: '#888', lineHeight: 1 }}>{tiers[0].amount}</span>
                 <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: '14px', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#fff' }}>{tiers[0].reward}</span>
+                {tiers[0].referralPath && (
+                  <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#555', borderLeft: '2px solid #333', paddingLeft: '10px' }}>
+                    or {tiers[0].referrals}
+                  </span>
+                )}
               </div>
               <p style={{ color: '#666', fontSize: '14px', lineHeight: 1.6 }}>{tiers[0].desc}</p>
             </div>
@@ -214,7 +242,7 @@ export default function Koha() {
                 <div style={{ fontSize: '28px', marginBottom: '12px' }}>{tier.icon}</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '2px' }}>
                   <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '40px', color: tier.color, lineHeight: 1 }}>{tier.amount}</div>
-                  {'referrals' in tier && (
+                  {tier.referralPath && 'referrals' in tier && (
                     <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#555', borderLeft: '2px solid #333', paddingLeft: '10px' }}>
                       or {tier.referrals}
                     </div>
