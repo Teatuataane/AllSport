@@ -5,46 +5,74 @@ import Link from 'next/link'
 const tiers = [
   {
     amount: 'Any Amount',
+    referrals: '1 referral',
     reward: 'Supporters Wall',
     desc: 'Your name goes on the AllSport supporters wall. Every contribution, no matter the size, is acknowledged.',
     icon: '🫶',
     color: '#888888',
     isBase: true,
+    referralPath: true,
   },
   {
     amount: '>$50',
+    referrals: '3 referrals',
     reward: 'Digital Certificate',
     desc: 'A digital certificate acknowledging your koha — a formal record of your contribution to AllSport.',
     icon: '📜',
     color: '#2d9e4f',
+    referralPath: true,
   },
   {
     amount: '>$200',
-    reward: 'Sticker Pack + Certificate',
+    referrals: '6 referrals',
+    reward: 'Sticker Pack',
     desc: 'AllSport sticker pack plus your digital certificate. Represent the community.',
     icon: '🎁',
     color: '#2563eb',
+    referralPath: true,
   },
   {
     amount: '>$500',
-    reward: 'Grading T-Shirt',
-    desc: 'A t-shirt in the colour of your highest grade achieved. Wear your mana.',
+    referrals: '12 referrals',
+    reward: 'Colours T-Shirt',
+    desc: 'A t-shirt in the colour of your highest Colour achieved. Wear your mana.',
     icon: '👕',
     color: '#9333ea',
+    referralPath: true,
+  },
+  {
+    amount: '>$1,000',
+    referrals: '18 referrals',
+    reward: 'Grading Hoodie',
+    desc: 'A hoodie in the colour of your highest Colour achieved. The next level of representing your mana.',
+    icon: '🧥',
+    color: '#EA4742',
+    referralPath: true,
   },
   {
     amount: '>$2,000',
-    reward: 'AllSport Clothing Stack',
-    desc: 'The full AllSport clothing set — everything we produce, in your grade colours.',
+    referrals: '25 referrals',
+    reward: 'Clothing Stack',
+    desc: '$2,000 worth of AllSport merch — your choice of hoodies, shirts, or any combination. In your Colour.',
     icon: '🎽',
-    color: '#e63946',
+    color: '#F9B051',
+    referralPath: true,
+  },
+  {
+    amount: '>$2,500',
+    reward: 'Personal Coaching — 20hrs',
+    desc: '20 personal coaching sessions with AllSport. One-on-one training built around your goals.',
+    icon: '🏆',
+    color: '#f4a226',
+    referralPath: false,
   },
   {
     amount: '>$5,000',
-    reward: 'Personal Coaching',
-    desc: '50 personal coaching sessions per year. One-on-one training built around your goals.',
+    reward: 'Personal Coaching — 50hrs',
+    desc: '50 personal coaching sessions per year. The full AllSport coaching experience.',
     icon: '🏆',
     color: '#f4a226',
+    referralPath: false,
   },
   {
     amount: '>$10,000',
@@ -53,8 +81,19 @@ const tiers = [
     icon: '🌍',
     color: '#f4a226',
     isPremium: true,
+    referralPath: false,
   },
 ]
+
+const campaign = {
+  title: 'Wheels for AllSport',
+  goal: 8000,
+  milestones: [
+    { amount: 1000, label: 'Transport van', desc: 'Get AllSport sessions to parks and public venues across Ōtautahi' },
+    { amount: 3000, label: 'Equipment trailer', desc: 'Carry a full set of gear to any outdoor location in the city' },
+    { amount: 8000, label: 'Mobile AllSport setup', desc: 'A complete mobile competition kit — we come to you, anywhere' },
+  ],
+}
 
 export default function Koha() {
   return (
@@ -72,7 +111,7 @@ export default function Koha() {
         <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(#141414 1px, transparent 1px), linear-gradient(90deg, #141414 1px, transparent 1px)', backgroundSize: '80px 80px', opacity: 0.5 }} />
         <div style={{ position: 'absolute', top: '20%', right: '5%', width: '400px', height: '400px', background: 'radial-gradient(circle, rgba(45,158,79,0.07) 0%, transparent 70%)', pointerEvents: 'none' }} />
         <div className="container" style={{ position: 'relative', zIndex: 1 }}>
-          <div className="tag">Community-Led Charitable Initiative</div>
+          <div className="tag">Registered Charity CC62657</div>
           <h1 style={{ fontSize: 'clamp(56px, 8vw, 112px)', lineHeight: 0.95, marginBottom: '8px' }}>
             <span style={{
               background: 'linear-gradient(90deg, #2d9e4f, #2563eb)',
@@ -83,8 +122,40 @@ export default function Koha() {
           </h1>
           <div className="rainbow-line" style={{ width: '80px', marginBottom: '28px' }} />
           <p style={{ color: '#cccccc', fontSize: '20px', maxWidth: '640px', lineHeight: 1.7 }}>
-            AllSport is a community-led charitable initiative. We want everyone to be able to engage in sport and exercise regardless of cost. We do not set fees — we only accept koha. Only give what is reasonable for you and your whānau.
+            AllSport is a registered charity (CC62657) built on koha. We want everyone to be able to engage in sport and exercise regardless of cost. We do not set fees — we only accept koha. Only give what is reasonable for you and your whānau.
           </p>
+        </div>
+      </section>
+
+      {/* Wheels for AllSport campaign — blue */}
+      <section className="section" style={{ background: '#0d0d0d', borderTop: '3px solid #2371BB' }}>
+        <div className="container">
+          <div className="tag">Current Campaign</div>
+          <h2 style={{ fontSize: 'clamp(36px, 4vw, 56px)', marginBottom: '8px', lineHeight: 1 }}>
+            WHEELS FOR <span style={{ color: '#2371BB' }}>ALLSPORT</span>
+          </h2>
+          <div className="divider" style={{ background: '#2371BB' }} />
+          <p style={{ color: '#888888', fontSize: '16px', maxWidth: '560px', marginBottom: '40px', lineHeight: 1.7 }}>
+            AllSport is built for parks, beaches, and public spaces — not just AllSport HQ. This campaign funds the transport and equipment to take sessions anywhere in Ōtautahi.
+          </p>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px', marginBottom: '24px' }}>
+            {campaign.milestones.map(m => (
+              <div key={m.amount} style={{ background: '#111', border: '1px solid #1e1e1e', borderTop: '3px solid #2371BB', padding: '28px 24px' }}>
+                <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '48px', color: '#2371BB', lineHeight: 1, marginBottom: '4px' }}>${m.amount.toLocaleString()}</div>
+                <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: '14px', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#fff', marginBottom: '10px' }}>{m.label}</div>
+                <p style={{ color: '#666', fontSize: '13px', lineHeight: 1.6 }}>{m.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ background: '#111', border: '1px solid #2371BB33', padding: '20px 28px', display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
+            <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '40px', color: '#2371BB', lineHeight: 1 }}>$8,000 Goal</div>
+            <p style={{ color: '#888', fontSize: '14px', lineHeight: 1.6, maxWidth: '560px' }}>
+              100% of Wheels for AllSport koha goes toward transport and equipment. IRD 33% tax rebate applies — your $100 koha costs you $67.{' '}
+              <a href="mailto:tane.clement@gmail.com?subject=Wheels for AllSport" style={{ color: '#2371BB', textDecoration: 'none' }}>Get in touch to contribute →</a>
+            </p>
+          </div>
         </div>
       </section>
 
@@ -136,18 +207,28 @@ export default function Koha() {
             KOHA <span style={{ color: '#f4a226' }}>APPRECIATION</span>
           </h2>
           <div className="divider" style={{ background: '#f4a226' }} />
-          <p style={{ color: '#888888', fontSize: '16px', maxWidth: '560px', marginBottom: '48px', lineHeight: 1.7 }}>
+          <p style={{ color: '#888888', fontSize: '16px', maxWidth: '560px', marginBottom: '16px', lineHeight: 1.7 }}>
             These are gifts of gratitude — not purchases, not memberships. Every tier is our way of saying thank you for believing in what we're building.
           </p>
+          <div style={{ background: '#0d0d0d', border: '1px solid #2371BB33', borderLeft: '4px solid #2371BB', padding: '14px 20px', marginBottom: '40px', maxWidth: '560px' }}>
+            <p style={{ color: '#aaa', fontSize: '14px', lineHeight: 1.6 }}>
+              <strong style={{ color: '#fff' }}>Two paths to tiers 1–6:</strong> donate koha OR refer enough new players. Tiers 7–9 (coaching and corporate) require a koha donation. Referrals qualify when your referred player completes their 10th session.
+            </p>
+          </div>
 
           {/* Base tier — any amount, full width */}
           <div style={{ background: '#111111', border: '1px solid #1e1e1e', padding: '24px 28px', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '24px', flexWrap: 'wrap', position: 'relative', overflow: 'hidden' }}>
             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: '#333' }} />
             <div style={{ fontSize: '32px' }}>{tiers[0].icon}</div>
             <div style={{ flex: 1, minWidth: '200px' }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '16px', flexWrap: 'wrap', marginBottom: '6px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap', marginBottom: '6px' }}>
                 <span style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '36px', color: '#888', lineHeight: 1 }}>{tiers[0].amount}</span>
                 <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: '14px', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#fff' }}>{tiers[0].reward}</span>
+                {tiers[0].referralPath && (
+                  <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#555', borderLeft: '2px solid #333', paddingLeft: '10px' }}>
+                    or {tiers[0].referrals}
+                  </span>
+                )}
               </div>
               <p style={{ color: '#666', fontSize: '14px', lineHeight: 1.6 }}>{tiers[0].desc}</p>
             </div>
@@ -159,7 +240,14 @@ export default function Koha() {
               <div key={tier.amount} className={tier.isPremium ? 'tier-card-premium' : 'tier-card'}>
                 <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: tier.color }} />
                 <div style={{ fontSize: '28px', marginBottom: '12px' }}>{tier.icon}</div>
-                <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '40px', color: tier.color, lineHeight: 1, marginBottom: '2px' }}>{tier.amount}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '2px' }}>
+                  <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '40px', color: tier.color, lineHeight: 1 }}>{tier.amount}</div>
+                  {tier.referralPath && 'referrals' in tier && (
+                    <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#555', borderLeft: '2px solid #333', paddingLeft: '10px' }}>
+                      or {tier.referrals}
+                    </div>
+                  )}
+                </div>
                 <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: '14px', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#ffffff', marginBottom: '12px' }}>{tier.reward}</div>
                 <p style={{ color: '#777', fontSize: '13px', lineHeight: 1.65 }}>{tier.desc}</p>
               </div>

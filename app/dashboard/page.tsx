@@ -604,7 +604,33 @@ function DashboardInner() {
         </div>
       </BentoCard>
 
-      {/* ── Card 7: Join a Game ─────────────────────────────────────────────── */}
+      {/* ── Card 7: My Koha ──────────────────────────────────────────────── */}
+      <BentoCard href="/my-koha" style={{ marginBottom: '12px' }}>
+        <div style={{
+          background: '#111',
+          border: '1px solid #1e1e1e',
+          borderLeft: '4px solid #4DB26E',
+          borderRadius: '16px',
+          padding: '20px 22px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          minHeight: '76px',
+        }}>
+          <div>
+            <div style={{
+              fontFamily: 'Bebas Neue, cursive', fontSize: '20px',
+              color: '#fff', letterSpacing: '0.05em', lineHeight: 1,
+            }}>
+              My Koha
+            </div>
+            <div style={{ fontSize: '11px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.05em', marginTop: '3px' }}>
+              Donations, referrals &amp; tier status
+            </div>
+          </div>
+          <div style={{ color: '#4DB26E', fontSize: '22px' }}>→</div>
+        </div>
+      </BentoCard>
+
+      {/* ── Card 8: Join a Game ─────────────────────────────────────────────── */}
       <div style={{
         background: hasNoSessions ? '#061a0d' : '#0d0d0d',
         border: hasNoSessions ? '1px solid #4DB26E' : '1px solid #1e1e1e',

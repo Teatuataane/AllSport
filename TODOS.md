@@ -75,25 +75,60 @@
 - Difficulty tier labels on session event listings (e.g. "Planche D1–D7")
 - Judge player management — judges can add any registered player or create a guest during a live session via "+" button; tabs persist in localStorage; guest players get real player_id, earn placement points, appear on leaderboard
 - Guest players — stored in players table with is_guest=true, no auth account; players.id FK to auth.users dropped (migration 20260505); RLS updated so judges can insert players/results/bonuses for any player
+- Bento dashboard redesign — 6 hero cards: Judge (judge-only → links to /judge), Vote (when active), Player Profile, Colours (points history modal on tap), Personal Bests, Join a Game
+- /judge page — dedicated judge panel, role-gated; wraps JudgeCard; create/end/void sessions, QR code, Event Votes panel (Kōwhiringa Tūāhuatanga)
+- /profile page — icon picker (20 sport emojis), username/display name editing, leaderboard display prefs, family member management, active profile switcher (localStorage)
+- Event voting system — judges create votes via /judge; players vote step-by-step (one domain per screen); partial save (is_final=false); locked on final submit; spoiler-free results; counts while open, percentages after close; judge full breakdown with voter names; VoteBanner on dashboard
+- session_player_summary table — populated by award_session_points trigger; dashboard points history; per-session: date, placement, effort level, points breakdown
 
 ---
 
 ## P1 — Do Next
 
-### Update unit tests for new event data
-**What:** `__tests__/eventData.test.ts` has tests referencing old event slugs (30-15-test, sprint-repeats) and old getBonusTargets spec (3 targets, points 15). These now reflect the new single-task spec.
-**Status:** Tests updated in this session — run `npm test` to verify all pass.
-**Where:** `__tests__/eventData.test.ts`
+### Referral system — DB migration
+**What:** Add `referral_code` (TEXT UNIQUE) to `players`, create `referrals` table (referrer_id, referred_id, session_count, qualified_at), add trigger on `session_player_summary INSERT` to increment session_count and set qualified_at when threshold (10) is reached.
+**Migration file:** `supabase/migrations/20260515_referral_system.sql`
+**Notes:** Generate referral_code as 6-char alphanumeric via `substring(md5(random()::text), 1, 6)` or a custom function. Backfill existing players.
 
-### Populate event content for remaining 95 events
-**What:** Fill in `howToPerform`, `rules`, and all disadvantage options in `lib/eventData.ts` for the 95 events that currently have placeholder content.
-**Why:** Event detail pages show "Content coming soon" for most events.
-**Effort:** L (content work, not code) — can be done incrementally, one domain at a time.
-**Where:** `lib/eventData.ts`
+### Referral system — /join/[code] landing page
+**What:** Public page at `/join/[code]`. Fetches the referrer's display name, shows an AllSport intro block, and a Register CTA that pre-fills the referral code in the registration form.
+**Design:** Dark background, rainbow stripe, logo, "You've been invited to AllSport by [name]", brief 3-line sport description, big red Register button.
+**Where:** `app/join/[code]/page.tsx`
+
+### Referral system — dashboard "Invite Friends" section
+**What:** New section within the dashboard (or a dedicated bento card) showing: player's referral code, one-tap copy link button, count of pending referrals (session_count < 10), count of qualified referrals, and a progress bar toward next Koha tier.
+**Where:** `app/dashboard/page.tsx`
+
+### Referral system — /koha referral tier display
+**What:** Update /koha page to show both paths (donation + referral) for each Koha tier in a clear two-column format.
+**Where:** `app/koha/page.tsx`
+
+### Funding campaign block on /koha
+**What:** Add a "Wheels for AllSport" campaign section at the top of /koha. Shows: campaign name, goal ($8,000), hardcoded current amount, progress bar, three milestone markers ($1k first event kit / $3k trailer deposit / $8k full goal), short description of why equipment mobility matters.
+**Where:** `app/koha/page.tsx`
+**Notes:** Start with a hardcoded `currentAmount` constant. Update it manually or wire to Supabase when multiple campaigns exist.
+
+### Partners page — DB migration
+**What:** Create `partners` table (club_name, sport, description, website_url, logo_url, is_active, display_order). Add `partner_id` (uuid → partners, null) to `sessions`.
+**Migration file:** `supabase/migrations/20260515_partners.sql`
+**RLS:** Public read; judge INSERT/UPDATE.
+
+### Partners page — /supporters page
+**What:** New public page at `/supporters`. Two sections: (1) Koha supporters wall — existing supporter names; (2) Partner Clubs — card grid, each card shows club logo, name, sport, short description, website link.
+**Where:** `app/supporters/page.tsx`
+**Design:** Same dark bento aesthetic. Empty state for Partner Clubs section: "Partnerships coming soon."
+
+### Partners page — partner badge on /schedule
+**What:** When a session has a `partner_id` set, show the partner club name/logo as a badge on that session card.
+**Where:** `app/schedule/page.tsx`
 
 ---
 
 ## P2 — Soon
+
+### Update unit tests for new event data
+**What:** `__tests__/eventData.test.ts` has tests referencing old event slugs (30-15-test, sprint-repeats) and old getBonusTargets spec (3 targets, points 15). These now reflect the new single-task spec.
+**Where:** `__tests__/eventData.test.ts`
 
 ### Welcome email on registration
 **What:** Send a branded welcome email when a new player registers — their username, division, next session times, and a link back to their dashboard.
@@ -104,19 +139,24 @@
 **What:** Judges can be assigned via the app rather than running `UPDATE players SET role = 'judge'` manually.
 **Effort:** M (CC)
 
-### Player profile page
-**What:** Players can view and edit their display name, division, privacy settings, and grade history.
-**Effort:** M (CC)
-**Where:** New route `/profile` or modal from dashboard.
-
 ### Guest player claim flow
 **What:** A guest player who later creates an account can claim their previous session results. Judge or admin links the guest `player_id` to the new account.
 **How:** Simple admin SQL or a judge UI that searches for guest players by name and merges them with a registered player.
 **Effort:** S–M (CC)
 
+### Populate event content for remaining 95 events
+**What:** Fill in `howToPerform` and `rules` in `lib/eventData.ts` for the 95 events that currently have placeholder content.
+**Why:** Event detail pages show "Content coming soon" for most events.
+**Effort:** L (content work, not code) — can be done incrementally, one domain at a time.
+**Where:** `lib/eventData.ts`
+
 ---
 
 ## P3 — Later
+
+### Leaderboard icons
+**What:** Add player icon emoji next to name on /leaderboard and /scoring/[sessionId].
+**When:** After icon system is proven stable on /dashboard.
 
 ### Verify Te Reo "Kaiwāwao"
 **What:** Confirm "Kaiwāwao" is correct and culturally appropriate for judge/referee in a sports context.
@@ -130,3 +170,37 @@
 ### created_by column on sessions
 **What:** Add created_by (player_id) to sessions so judge panel can show "your sessions" vs all.
 **When:** Add when second judge joins.
+
+### Per-event placement storage
+**What:** Add `event_placement` column to results + trigger update, so points history can show "1st in Deadlift" etc.
+**When:** Future enhancement — wait for session volume to justify the complexity.
+
+---
+
+## Non-code — Budget & Growth Actions
+
+### Book professional content session ($600)
+**What:** Hire a photographer/videographer for one AllSport session. Capture stills + short Reels footage.
+**Why:** Primary asset for grant applications (Sport NZ, CCC), partnership pitches, and social media growth. Highest leverage spend.
+**When:** Before the next milestone session or first club partnership session.
+
+### Buy session materials ($300)
+**What:** Retractable pull-up banner ($150), cones/markers ($100), tape measure set ($50).
+**Why:** Makes sessions look credible to first-time visitors and venue partners.
+
+### Stock referral reward packs ($400)
+**What:** Pre-print ~20 sticker packs for Tier 3 referral rewards.
+**Why:** Rewards need to be ready at launch — delays kill referral momentum.
+
+### Apply for Sport NZ Aktive community sport fund
+**What:** Submit a funding application for equipment/transport costs.
+**Why:** Registered charitable status makes AllSport eligible. Content assets (above) strengthen the application.
+**When:** After content session is complete.
+
+### Apply for Christchurch City Council community funding
+**What:** CCC runs community sport funding rounds annually.
+**Why:** Eligible as a charitable org based in Ōtautahi.
+
+### Approach first club partner
+**What:** Identify 2–3 local clubs whose sport overlaps with AllSport events (e.g. a volleyball club, a track & field club). Pitch the partnership model: AllSport runs a session for their community, their sport is one of the 10 events, AllSport gains ongoing access to their facility.
+**When:** After /supporters page is live (gives you something to show them).

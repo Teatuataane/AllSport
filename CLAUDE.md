@@ -261,17 +261,74 @@ Taniwha = Black = singular peak grade = equivalent to black belt.
 
 ## Koha System
 
-| Amount | Acknowledgement |
-|---|---|
-| Any amount | Name on supporters wall |
-| > $50 | Digital certificate |
-| > $200 | Sticker pack + certificate |
-| > $500 | Grading T-shirt |
-| > $2,000 | AllSport clothing stack |
-| > $5,000 | Personal coaching — 50 sessions/year |
-| > $10,000 | AllSport comes to you (corporate sessions) |
+Two paths to any tier — donate OR earn through referrals (either path alone is sufficient).
+
+| Tier | Reward | Koha donation | Referral path |
+|---|---|---|---|
+| 1 | Name on supporters wall | Any koha | 1 qualified referral |
+| 2 | Digital certificate | >$50 | 3 qualified referrals |
+| 3 | Sticker pack + certificate | >$200 | 6 qualified referrals |
+| 4 | Grading T-shirt | >$500 | 12 qualified referrals |
+| 5 | AllSport clothing stack | >$2,000 | 25 qualified referrals |
+| 6 | Personal coaching — 50 sessions/year | >$5,000 | 50 qualified referrals |
+| 7 | AllSport comes to you (corporate) | >$10,000 | Corporate path only — no referral equivalent |
+
+**Qualified referral:** a friend the player invited who has completed 10 AllSport sessions.
 
 IRD 33% tax rebate applies to all koha.
+
+---
+
+## Referral System
+
+**Purpose:** Systematic player growth. Current players earn Koha tier recognition by inviting friends who stick.
+
+**Mechanic:**
+- Every player has a unique 6-character referral code stored in `players.referral_code` (auto-generated on registration)
+- Shareable invite link: `allsport.nz/join/[CODE]`
+- `/join/[code]` landing page: introduces AllSport, shows "You've been invited by [display name]", single Register CTA with code pre-filled
+- Registration captures referral code → stored in `referrals` table
+- Referral qualifies when referred player's session count hits 10
+- Referrer's koha tier advances based on qualified referral count (alternative path to donation)
+
+**Dashboard integration:** "Invite Friends" section on /dashboard shows code, one-tap copy link, pending referrals (< 10 sessions), qualified count, progress to next Koha tier.
+
+**DB tables:**
+- `players.referral_code` TEXT UNIQUE — auto-generated 6-char alphanumeric code, set on registration
+- `referrals`: id, created_at, referrer_id (→ auth.users), referred_id (→ auth.users), session_count (INT default 0), qualified_at (TIMESTAMPTZ null — set when session_count hits 10)
+- Trigger on `session_player_summary INSERT`: find the new player's referrer row, increment session_count, set qualified_at if threshold reached
+
+**Notification:** referrer gets an in-app notification when a referral qualifies (session 10 of the referred player).
+
+---
+
+## Funding Campaign
+
+**"Wheels for AllSport" — Vehicle & Trailer Fund.** Displayed as a campaign block at the top of /koha.
+
+**Target:** $8,000
+
+**Milestones:**
+- $1,000 — First Event Kit (cones, bibs, measuring equipment)
+- $3,000 — Trailer deposit
+- $8,000 — Full goal (trailer + equipment mobility)
+
+**Implementation:** Hardcoded campaign display initially; `campaign_amount` updated manually via Supabase dashboard. No DB table needed until multiple campaigns exist.
+
+**Why this matters:** Equipment mobility unlocks park sessions, club partnership activations, and ultimately doubles or triples our session capacity.
+
+---
+
+## Club Partnerships
+
+**Model:** AllSport runs a session at a partner club's facility. The club's sport is always included as one of the 10 events (giving their community a confident entry point). In exchange, AllSport gains access to their facilities and equipment for public sessions.
+
+**Partners DB table:** `partners` — id, created_at, club_name, sport, description, website_url, logo_url, is_active (BOOLEAN), display_order (INT)
+RLS: public read, judge write.
+
+**Visibility in app:**
+- `/supporters` page — two sections: Koha supporters wall (existing), Partner Clubs (new card grid)
+- `/schedule` — partner badge appears on sessions hosted at a partner venue (`sessions.partner_id` FK to partners)
 
 ---
 
@@ -314,6 +371,9 @@ update players set role = 'judge' where id = '[uuid]';
 | Vote | /vote/[voteId] | Complete | Step-by-step voting flow, one domain per screen, partial save, review screen, locked on submit |
 | Vote Results | /vote/[voteId]/results | Complete | Spoiler-free until voted, bar chart per domain, counts only while open / percentages on close, judge full breakdown |
 | Auth Callback | /auth/callback | Complete | Google OAuth handler |
+| Invite Landing | /join/[code] | Planned | Public page — introduces AllSport, shows inviter name, Register CTA with referral code pre-filled |
+| Supporters | /supporters | Planned | Two sections: Koha supporters wall + Partner Clubs card grid |
+| Koha (enhanced) | /koha | Planned update | Add "Wheels for AllSport" campaign block at top — progress bar, milestone markers, target $8,000 |
 
 ---
 
@@ -334,12 +394,24 @@ id, created_at, full_name, email, phone, date_of_birth, address, city, region, c
 parent_name, parent_email, parent_phone, is_active, username, division,
 role (default: player), show_full_name, show_username, show_division, show_location, display_name,
 bodyweight_kg, parent_id (uuid, references auth.users.id),
-icon (TEXT — emoji placeholder; null = show initial letter)
+icon (TEXT — emoji placeholder; null = show initial letter),
+referral_code (TEXT UNIQUE — 6-char alphanumeric, auto-generated on registration)
+
+### referrals
+id, created_at, referrer_id (uuid → auth.users), referred_id (uuid → auth.users),
+session_count (INT default 0), qualified_at (TIMESTAMPTZ null — set when session_count = 10)
+UNIQUE(referred_id) — each player can only have one referrer
+Trigger on session_player_summary INSERT: increment session_count for referred player's referrer row; set qualified_at when threshold reached.
+
+### partners
+id, created_at, club_name (TEXT), sport (TEXT), description (TEXT), website_url (TEXT),
+logo_url (TEXT), is_active (BOOLEAN default true), display_order (INT default 0)
+RLS: public read; judge write.
 
 ### sessions
 id, created_at, session_date, start_time, location, max_participants, duration_minutes,
 is_tournament, is_championship, is_active, started_at, ended_at, session_code, notes,
-points_awarded_at
+points_awarded_at, partner_id (uuid → partners null — set when session is hosted at a partner venue)
 
 ### session_events
 id, created_at, session_id, domain_number, domain_name, event_name
@@ -422,6 +494,9 @@ best_score, current_rank, division, average_placement, season_year
     scoring/page.tsx
     scoring/[sessionId]/page.tsx    # Live session — per-division leaderboard tabs, judge edit/delete, tier selector, post-game popup
     auth/callback/route.ts
+    join/
+      [code]/page.tsx               # Invite landing — shows inviter name, Register CTA pre-filled with referral code
+    supporters/page.tsx             # Koha supporters wall + Partner Clubs card grid
     vote/
       [voteId]/
         page.tsx                    # Step-by-step voting flow, one domain per screen, partial save
@@ -482,12 +557,15 @@ best_score, current_rank, division, average_placement, season_year
 ## What's Next (In Priority Order)
 
 1. Apply DB migration 20260514 to production Supabase (run via Supabase dashboard or CLI)
-2. Welcome email on registration (Supabase Edge Function + Resend)
-3. Judge approval flow (replace manual SQL)
-4. Leaderboard icons — add player icon emoji next to name on /leaderboard and /scoring/[sessionId] (deferred until icon system is proven on dashboard)
-5. Per-event placement storage — add `event_placement` column to results + trigger update, so points history can show "1st in Deadlift" etc. (future enhancement)
-6. Designed icon set — replace emoji placeholders with branded SVG icons; infrastructure already in place (players.icon column + icon picker on /profile)
-7. Championship registration flow (6 months before March 2027)
+2. **Referral system** — DB migration (referral_code on players, referrals table, trigger), /join/[code] invite landing, dashboard "Invite Friends" section, /koha referral tier display
+3. **Funding campaign block** — update /koha with "Wheels for AllSport" campaign section (hardcoded, progress bar, milestones)
+4. **Partners page** — DB migration (partners table, partner_id on sessions), /supporters page, partner badge on /schedule
+5. Welcome email on registration (Supabase Edge Function + Resend)
+6. Judge approval flow (replace manual SQL)
+7. Leaderboard icons — add player icon emoji next to name on /leaderboard and /scoring/[sessionId] (deferred until icon system is proven on dashboard)
+8. Per-event placement storage — add `event_placement` column to results + trigger update, so points history can show "1st in Deadlift" etc. (future enhancement)
+9. Designed icon set — replace emoji placeholders with branded SVG icons; infrastructure already in place (players.icon column + icon picker on /profile)
+10. Championship registration flow (6 months before March 2027)
 
 ---
 
@@ -533,10 +611,16 @@ best_score, current_rank, division, average_placement, season_year
 - Points history: accessed by tapping Colours bento card; shows per-session: date, location, overall placement, effort level, placement pts, effort pts, total; expandable to show events + scores
 - Colours bento card: full grade-colour background (e.g. Whero = red card); Taniwha = black + amber border; Mā = light grey + dark text; Uenuku = rainbow gradient
 - New player state (zero sessions): Join a Game card highlighted with green glow to guide first action
+- Referral system: each player has a unique 6-char referral_code; shareable via allsport.nz/join/[CODE]; qualified referral = referred player has completed 10 sessions; referrer earns Koha tier progression as alternative path to donation; tiers: 1/3/6/12/25/50 qualified referrals for tiers 1–6; Tier 7 (corporate) has no referral path
+- Koha tiers: two paths (donate OR referrals) — either path alone unlocks the tier; both paths display on /koha
+- Funding campaign "Wheels for AllSport": $8,000 target (trailer + equipment mobility); milestones at $1k, $3k, $8k; hardcoded initially, displayed as campaign block at top of /koha
+- Club partnerships: AllSport runs sessions at partner clubs (club's sport always included in the 10 events); in exchange gains facility + equipment access; partners visible on /supporters page and as badge on /schedule; sessions.partner_id links to partners table
+- /supporters page: two sections — Koha supporters wall (existing) + Partner Clubs (new card grid with logo, sport, description, website link)
+- Budget allocation (2026, $2k): $600 professional content session (photographer/videographer), $300 session materials (banner, cones, tape), $400 sticker pack stock for referral Tier 3 rewards, $700 reserve for first partnership activation
 
 ---
 
-*Last updated: May 2026 (session 9)*
+*Last updated: May 2026 (session 10)*
 *Project started: March 2026*
 
 ## Skill routing
