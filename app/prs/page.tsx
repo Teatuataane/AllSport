@@ -31,6 +31,17 @@ function effectiveScore(r: PRResult): number {
   return r.raw_score
 }
 
+function sportWDL(results: PRResult[]): string {
+  const w = results.filter(r => r.raw_score === 2).length
+  const d = results.filter(r => r.raw_score === 1).length
+  const l = results.filter(r => r.raw_score === 0).length
+  const parts: string[] = []
+  if (w > 0) parts.push(`${w}W`)
+  if (d > 0) parts.push(`${d}D`)
+  if (l > 0) parts.push(`${l}L`)
+  return parts.join(' ') || 'No results'
+}
+
 function sessionYear(session_date: string): number {
   return parseInt(session_date.slice(0, 4), 10)
 }
@@ -209,9 +220,9 @@ export default function PRsPage() {
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                               <div style={{ textAlign: 'right' }}>
                                 <div style={{ fontSize: '16px', fontWeight: 700, color: '#4DB26E', fontFamily: 'Barlow, sans-serif' }}>
-                                  {pb.score_label}
+                                  {event.inputMode === 'sport' ? sportWDL(eventResults) : pb.score_label}
                                 </div>
-                                {pb.difficulty_tier && (
+                                {pb.difficulty_tier && event.inputMode !== 'sport' && (
                                   <div style={{ fontSize: '11px', color: '#B87DB5', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700 }}>
                                     {pb.difficulty_tier}
                                   </div>
@@ -227,8 +238,15 @@ export default function PRsPage() {
                         {/* Expanded history */}
                         {isExpanded && pb && (
                           <div style={{ borderTop: '1px solid #1e1e1e', padding: '8px 14px 12px' }}>
-                            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', color: '#555', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px' }}>
-                              All results — {eventResults.length} session{eventResults.length !== 1 ? 's' : ''}
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                              <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', color: '#555', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                                {event.inputMode === 'sport' ? `${eventResults.length} match${eventResults.length !== 1 ? 'es' : ''}` : `All results — ${eventResults.length} session${eventResults.length !== 1 ? 's' : ''}`}
+                              </div>
+                              {event.inputMode === 'sport' && (
+                                <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '16px', color: '#4DB26E', letterSpacing: '0.05em' }}>
+                                  {sportWDL(eventResults)}
+                                </div>
+                              )}
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                               {eventResults.map((r, i) => {

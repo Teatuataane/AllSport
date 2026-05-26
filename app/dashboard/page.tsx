@@ -220,6 +220,7 @@ function DashboardInner() {
     }
   }, [searchParams])
 
+  // Fire auto-join once the player is confirmed loaded (auth ready)
   useEffect(() => {
     if (pendingAutoJoin && !loading) {
       setPendingAutoJoin(null)
@@ -239,8 +240,8 @@ function DashboardInner() {
         .ilike('session_code', code)
         .maybeSingle()
       if (error) throw new Error(`Session lookup failed: ${error.message}`)
-      if (!sess) throw new Error(`No session found with code "${code}". Ask the judge to confirm the code.`)
-      if (!sess.is_active) throw new Error(`Session "${code}" has ended.`)
+      if (!sess) throw new Error(`No session found with code "${code}". Ask the Kaiwhakawā to confirm the code on their screen.`)
+      if (!sess.is_active) throw new Error(`Session "${code}" has ended. Ask your Kaiwhakawā to start a new one.`)
       window.location.href = `/scoring/${sess.id}`
     } catch (e: any) {
       setJoinError(e.message)
@@ -651,7 +652,7 @@ function DashboardInner() {
           fontFamily: 'Barlow Condensed, sans-serif',
           letterSpacing: '0.05em', marginBottom: '14px',
         }}>
-          Enter the 6-digit code shown on the judge screen
+          Enter the 6-digit code shown on the Kaiwhakawā screen
         </div>
 
         {joinError && (

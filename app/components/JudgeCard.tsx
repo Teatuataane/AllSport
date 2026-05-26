@@ -469,10 +469,10 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
           <div>
             <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '22px', color: '#2371BB', letterSpacing: '0.05em', lineHeight: 1 }}>
-              Kaiwāwao
+              Kaiwhakawā
             </div>
             <div style={{ fontSize: '11px', color: '#555', marginTop: '2px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.08em' }}>
-              JUDGE PANEL
+              KAIWHAKAWĀ PANEL
             </div>
           </div>
           {!hasActive && (

@@ -78,8 +78,20 @@ function formatPR(rawScore: number, inputMode: string): string {
 }
 
 function calcPlacementPts(rank: number, playerCount: number): number {
-  const gap = Math.max(Math.floor(100 / playerCount), 10)
+  // No floor on gap — minimum 10 applies to earned points only
+  const gap = 100 / playerCount
   return Math.max(100 - (rank - 1) * gap, 10)
+}
+
+function sportWDL(results: Result[]): string {
+  const w = results.filter(r => r.raw_score === 2).length
+  const d = results.filter(r => r.raw_score === 1).length
+  const l = results.filter(r => r.raw_score === 0).length
+  const parts: string[] = []
+  if (w > 0) parts.push(`${w}W`)
+  if (d > 0) parts.push(`${d}D`)
+  if (l > 0) parts.push(`${l}L`)
+  return parts.join(' ') || '–'
 }
 
 // ─── Effort helpers ───────────────────────────────────────────────────────────
@@ -314,6 +326,7 @@ type EventCardProps = {
   sessionId: string
   sessionEnded: boolean
   isExpanded: boolean
+  isJudge?: boolean
   onToggle: () => void
   onScoreSubmitted: () => void
 }
@@ -321,7 +334,7 @@ type EventCardProps = {
 function EventCard({
   se, eventData, myResults, allResults, allEvents, seasonPR,
   playerId, playerName, sessionId, sessionEnded,
-  isExpanded, onToggle, onScoreSubmitted,
+  isExpanded, isJudge = false, onToggle, onScoreSubmitted,
 }: EventCardProps) {
   // Form state
   const [weightKg, setWeightKg] = useState('')
@@ -340,6 +353,7 @@ function EventCard({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+  const [editingResult, setEditingResult] = useState<Result | null>(null)
 
   const mode = (eventData?.inputMode || se.input_mode || 'strength') as string
   const emoji = eventData?.emoji ?? '🏅'
@@ -557,12 +571,18 @@ function EventCard({
       payload.is_pr = newIsPR
       payload.effort_task_completions = effortTaskCount
 
-      const { error: err } = await supabase.from('results').insert(payload)
-      if (err) throw err
+      let dbErr
+      if (editingResult) {
+        ;({ error: dbErr } = await supabase.from('results').update(payload).eq('id', editingResult.id))
+      } else {
+        ;({ error: dbErr } = await supabase.from('results').insert(payload))
+      }
+      if (dbErr) throw dbErr
 
       // Clear form after submit
       setWeightKg(''); setRepCount(''); setTimeMins(''); setTimeSecs('')
       setSprintCs(''); setDistanceVal(''); setSportResult(''); setSportScore(''); setOpponentName(''); setScoreInput('')
+      setEditingResult(null)
 
       setSuccess(true); setTimeout(() => setSuccess(false), 2500)
       onScoreSubmitted()
@@ -572,7 +592,47 @@ function EventCard({
     setSubmitting(false)
   }
 
+  function prefillFromResult(r: Result) {
+    const m = mode
+    setEditingResult(r)
+    if (r.difficulty_tier) setDifficultyTier(r.difficulty_tier)
+    if (m === 'strength') {
+      setWeightKg(String(r.weight_kg ?? ''))
+      setRepCount(String(r.reps ?? ''))
+    } else if (m === 'reps') {
+      setRepCount(String(r.reps ?? ''))
+    } else if (m === 'difficulty+reps') {
+      if (r.weight_kg) setWeightKg(String(r.weight_kg))
+      else setRepCount(String(r.reps ?? ''))
+    } else if (m === 'time' || m === 'hold') {
+      const secs = r.time_seconds ?? 0
+      setTimeMins(String(Math.floor(secs / 60)))
+      setTimeSecs(String(Math.round(secs % 60)))
+    } else if (m === 'difficulty+time') {
+      const secs = r.time_seconds ?? 0
+      setTimeMins(String(Math.floor(secs / 60)))
+      setTimeSecs(String(Math.round(secs % 60)))
+    } else if (m === 'sprint') {
+      const totalCs = Math.abs(r.raw_score)
+      setTimeSecs(String(Math.floor(totalCs / 100)))
+      setSprintCs(String(totalCs % 100))
+    } else if (m === 'distance') {
+      const raw = r.raw_score
+      if (raw >= 100) { setDistanceVal((raw / 100).toFixed(2)); setDistanceUnit('m') }
+      else { setDistanceVal(String(raw)); setDistanceUnit('cm') }
+    } else if (m === 'sport') {
+      setSportResult((r.result_type as 'win' | 'draw' | 'loss') || '')
+      setOpponentName(r.opponent_name ?? '')
+      setSportScore(r.match_score ?? '')
+    } else if (m === 'score') {
+      setScoreInput(String(Math.abs(r.raw_score)))
+    }
+    // Scroll the card into view
+    if (!isExpanded) onToggle()
+  }
+
   async function handleDelete(resultId: string) {
+    if (editingResult?.id === resultId) setEditingResult(null)
     await supabase.from('results').delete().eq('id', resultId)
     onScoreSubmitted()
   }
@@ -597,7 +657,7 @@ function EventCard({
           {se.event_name}
         </div>
         <div style={{ fontSize: '16px', fontWeight: 700, color: myBestResult ? '#4DB26E' : '#555', fontFamily: 'Bebas Neue, cursive' }}>
-          {myBestResult ? myBestResult.score_label : '—'}
+          {myBestResult ? (mode === 'sport' ? sportWDL(myResults) : myBestResult.score_label) : '—'}
         </div>
         {seasonPR !== null && typeof seasonPR === 'number' && (
           <div style={{ fontSize: '10px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif' }}>
@@ -673,13 +733,22 @@ function EventCard({
         {/* 3. ALL TODAY'S SCORES */}
         {myResults.length > 0 && (
           <div>
-            <div style={{ fontSize: '10px', color: '#555', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '6px', fontFamily: 'Barlow Condensed, sans-serif' }}>
-              All Today's Scores
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+              <div style={{ fontSize: '10px', color: '#555', letterSpacing: '0.12em', textTransform: 'uppercase', fontFamily: 'Barlow Condensed, sans-serif' }}>
+                All Today's Scores
+              </div>
+              {mode === 'sport' && (
+                <div style={{ fontSize: '14px', fontWeight: 700, color: '#4DB26E', fontFamily: 'Bebas Neue, cursive', letterSpacing: '0.05em' }}>
+                  {sportWDL(myResults)}
+                </div>
+              )}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               {myResultsSorted.map(r => (
                 <div key={r.id} style={{
-                  background: '#0d0d0d', borderRadius: '8px', padding: '10px 14px',
+                  background: editingResult?.id === r.id ? '#0d1a2d' : '#0d0d0d',
+                  border: `1px solid ${editingResult?.id === r.id ? '#2371BB55' : 'transparent'}`,
+                  borderRadius: '8px', padding: '10px 14px',
                   display: 'flex', alignItems: 'center', gap: '10px',
                 }}>
                   <div style={{ fontSize: '15px', color: '#fff', flex: 1 }}>{r.score_label}</div>
@@ -695,13 +764,23 @@ function EventCard({
                       +{r.effort_task_completions}
                     </div>
                   )}
-                  {!sessionEnded && (
-                    <button
-                      onClick={() => handleDelete(r.id)}
-                      style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: '14px', padding: '2px 6px', flexShrink: 0 }}
-                    >
-                      ✕
-                    </button>
+                  {!sessionEnded && (isJudge || true) && (
+                    <>
+                      <button
+                        onClick={() => prefillFromResult(r)}
+                        title="Edit this score"
+                        style={{ background: 'none', border: '1px solid #2371BB44', borderRadius: '4px', color: '#2371BB', cursor: 'pointer', fontSize: '11px', padding: '2px 8px', flexShrink: 0, fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700 }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(r.id)}
+                        title="Delete this score"
+                        style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: '14px', padding: '2px 6px', flexShrink: 0 }}
+                      >
+                        ✕
+                      </button>
+                    </>
                   )}
                 </div>
               ))}
@@ -762,8 +841,16 @@ function EventCard({
         {/* 5. SUBMIT SCORE */}
         {!sessionEnded && (
           <div>
-            <div style={{ fontSize: '10px', color: '#555', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '10px', fontFamily: 'Barlow Condensed, sans-serif' }}>
-              Submit Score
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+              <div style={{ fontSize: '10px', color: editingResult ? '#2371BB' : '#555', letterSpacing: '0.12em', textTransform: 'uppercase', fontFamily: 'Barlow Condensed, sans-serif' }}>
+                {editingResult ? 'Editing Score' : 'Submit Score'}
+              </div>
+              {editingResult && (
+                <button onClick={() => { setEditingResult(null); setWeightKg(''); setRepCount(''); setTimeMins(''); setTimeSecs(''); setSprintCs(''); setDistanceVal(''); setSportResult(''); setSportScore(''); setOpponentName(''); setDifficultyTier(''); setScoreInput('') }}
+                  style={{ fontSize: '11px', color: '#555', background: 'none', border: '1px solid #333', borderRadius: '4px', padding: '2px 8px', cursor: 'pointer', fontFamily: 'Barlow Condensed, sans-serif' }}>
+                  Cancel
+                </button>
+              )}
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -907,7 +994,7 @@ function EventCard({
                   color: isValid() && !submitting ? '#fff' : '#555',
                 }}
               >
-                {submitting ? 'Submitting...' : 'Submit Score'}
+                {submitting ? 'Saving...' : editingResult ? 'Save Changes' : 'Submit Score'}
               </button>
             </div>
           </div>
@@ -980,7 +1067,7 @@ function LeaderboardTab({
     const playerIds = [...new Set(divResults.map(r => r.player_id).filter(Boolean))] as string[]
     if (playerIds.length === 0) return []
 
-    type EventRow = { eventId: string; eventName: string; emoji: string; scoreLabel: string | null; placement: number }
+    type EventRow = { eventId: string; eventName: string; emoji: string; scoreLabel: string | null; displayLabel: string | null; placement: number }
 
     const rows = playerIds.map(pid => {
       let totalPlacement = 0
@@ -997,15 +1084,20 @@ function LeaderboardTab({
         const scorerCount = Object.keys(bestPerPlayer).length
         const myBest = bestPerPlayer[pid]
         const evData = getEventByName(ev.event_name)
+        const isSport = evData?.inputMode === 'sport'
         if (!myBest) {
           const placement = scorerCount + 1
           totalPlacement += placement
-          return { eventId: ev.id, eventName: ev.event_name, emoji: evData?.emoji ?? '🏅', scoreLabel: null, placement }
+          return { eventId: ev.id, eventName: ev.event_name, emoji: evData?.emoji ?? '🏅', scoreLabel: null, displayLabel: null, placement }
         }
         const strictlyBetter = Object.values(bestPerPlayer).filter(b => b.rawScore > myBest.rawScore).length
         const placement = strictlyBetter + 1
         totalPlacement += placement
-        return { eventId: ev.id, eventName: ev.event_name, emoji: evData?.emoji ?? '🏅', scoreLabel: myBest.scoreLabel, placement }
+        // For sport events show W/D/L summary; otherwise show the best score label
+        const displayLabel = isSport
+          ? sportWDL(evDivRes.filter(r => r.player_id === pid))
+          : myBest.scoreLabel
+        return { eventId: ev.id, eventName: ev.event_name, emoji: evData?.emoji ?? '🏅', scoreLabel: myBest.scoreLabel, displayLabel, placement }
       })
       const sample = divResults.find(r => r.player_id === pid)!
       return { playerKey: pid, playerName: sample.player_name, playerId: pid, totalPlacement, eventDetails }
@@ -1113,7 +1205,7 @@ function LeaderboardTab({
                     {entry.playerName}
                   </div>
                   <div style={{ fontSize: '12px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif' }}>
-                    {entry.totalPlacement} placement pts
+                    {ordinal(entry.rank)} of {competitiveRows.length}
                   </div>
                   <span style={{ color: isExpanded ? '#2371BB' : '#444', fontSize: '14px', flexShrink: 0 }}>{isExpanded ? '▲' : '▼'}</span>
                 </button>
@@ -1128,8 +1220,8 @@ function LeaderboardTab({
                       }}>
                         <span style={{ fontSize: '16px', flexShrink: 0 }}>{ed.emoji}</span>
                         <div style={{ flex: 1, fontSize: '12px', color: '#666' }}>{ed.eventName}</div>
-                        <div style={{ fontSize: '13px', color: ed.scoreLabel ? '#ccc' : '#444' }}>
-                          {ed.scoreLabel ?? 'No score'}
+                        <div style={{ fontSize: '13px', color: ed.displayLabel ? '#ccc' : '#444' }}>
+                          {ed.displayLabel ?? 'No score'}
                         </div>
                         <div style={{
                           fontSize: '12px', fontWeight: 700, minWidth: '36px', textAlign: 'right',
@@ -1169,6 +1261,11 @@ export default function SessionPage() {
   const [preSessionSecsLeft, setPreSessionSecsLeft] = useState<number | null>(null)
   const [sessionEnded, setSessionEnded] = useState(false)
   const [playerInfoMap, setPlayerInfoMap] = useState<Record<string, PlayerInfo>>({})
+  // Judge mode
+  const [isJudge, setIsJudge] = useState(false)
+  const [judgeTargetId, setJudgeTargetId] = useState<string>('')
+  const [sessionPlayers, setSessionPlayers] = useState<{ id: string; name: string }[]>([])
+  const [judgePRs, setJudgePRs] = useState<Record<string, number | string | null>>({})
 
   const allPlayers = player ? [player, ...familyMembers] : []
   const activePlayer = allPlayers.find(p => p.id === activePlayerId) ?? player
@@ -1190,6 +1287,10 @@ export default function SessionPage() {
           const { data: children } = await supabase.from('players')
             .select('*').eq('parent_id', authUser.id).order('full_name')
           setFamilyMembers((children ?? []) as Record<string, unknown>[])
+          // Judge mode: load all session players
+          if ((p as Record<string, unknown>).role === 'judge') {
+            setIsJudge(true)
+          }
         }
       }
       const { data: s } = await supabase.from('sessions').select('*').eq('id', sessionId).single()
@@ -1210,11 +1311,16 @@ export default function SessionPage() {
     if (results.length === 0) return
     const ids = [...new Set(results.map(r => r.player_id).filter(Boolean))] as string[]
     if (ids.length === 0) return
-    supabase.from('players').select('id, division').in('id', ids).then(({ data }) => {
+    supabase.from('players').select('id, division, display_name, username, full_name').in('id', ids).then(({ data }) => {
       if (!data) return
       const map: Record<string, PlayerInfo> = {}
       data.forEach(p => { map[p.id] = { division: p.division ?? '' } })
       setPlayerInfoMap(map)
+      // For judge mode: build session players list
+      setSessionPlayers(data.map(p => ({
+        id: p.id,
+        name: (p.display_name || p.username || p.full_name || 'Unknown') as string,
+      })))
     })
   }, [results])
 
@@ -1248,6 +1354,28 @@ export default function SessionPage() {
     }
     loadPRs()
   }, [activePlayerId, events])
+
+  // ── Load PRs for judge's selected player ─────────────────────────────────
+  useEffect(() => {
+    if (!isJudge || !judgeTargetId || events.length === 0) return
+    const year = new Date().getFullYear()
+    async function loadJudgePRs() {
+      const prs: Record<string, number | string | null> = {}
+      for (const ev of events) {
+        const evData = getEventByName(ev.event_name)
+        const slug = ev.event_slug || evData?.slug
+        if (!slug) { prs[ev.id] = null; continue }
+        const { data } = await supabase.rpc('get_player_season_pr', {
+          p_player_id: judgeTargetId,
+          p_event_slug: slug,
+          p_season_year: year,
+        })
+        prs[ev.id] = data as number | null
+      }
+      setJudgePRs(prs)
+    }
+    loadJudgePRs()
+  }, [isJudge, judgeTargetId, events])
 
   // ── Realtime subscriptions ─────────────────────────────────────────────────
   useEffect(() => {
@@ -1374,6 +1502,18 @@ export default function SessionPage() {
           }}>
           Leaderboard
         </button>
+        {isJudge && (
+          <button onClick={() => setActiveTab('judge-mode')}
+            style={{
+              padding: '12px 16px', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
+              fontSize: '13px', fontWeight: activeTab === 'judge-mode' ? 700 : 400, flexShrink: 0,
+              background: activeTab === 'judge-mode' ? '#111' : 'transparent',
+              color: activeTab === 'judge-mode' ? '#EA4742' : '#555',
+              borderBottom: `2px solid ${activeTab === 'judge-mode' ? '#EA4742' : 'transparent'}`,
+            }}>
+            Kaiwhakawā
+          </button>
+        )}
       </div>
 
       {/* Player tabs */}
@@ -1431,6 +1571,89 @@ export default function SessionPage() {
           </div>
         )
       })}
+
+      {/* Judge mode tab */}
+      {activeTab === 'judge-mode' && isJudge && (
+        <div style={{ padding: '16px' }}>
+          {/* Header */}
+          <div style={{ marginBottom: '16px' }}>
+            <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '22px', color: '#EA4742', letterSpacing: '0.05em' }}>
+              Kaiwhakawā
+            </div>
+            <div style={{ fontSize: '11px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.08em', marginBottom: '12px' }}>
+              SCORE FOR ANY PLAYER
+            </div>
+            {sessionEnded && (
+              <div style={{ background: '#2e0d0d', border: '1px solid #EA4742', borderRadius: '8px', padding: '10px 14px', marginBottom: '12px', color: '#EA4742', fontSize: '13px' }}>
+                Session ended — scoring locked
+              </div>
+            )}
+            <select
+              value={judgeTargetId}
+              onChange={e => { setJudgeTargetId(e.target.value); setExpandedEventId(null) }}
+              style={{
+                width: '100%', background: '#0d0d0d', border: '1px solid #EA474244',
+                borderRadius: '8px', padding: '12px 14px', color: judgeTargetId ? '#fff' : '#666',
+                fontSize: '15px', fontFamily: 'Barlow, sans-serif',
+              }}
+            >
+              <option value="">Select a player to score for...</option>
+              {sessionPlayers.map(sp => (
+                <option key={sp.id} value={sp.id}>{sp.name}</option>
+              ))}
+            </select>
+            {sessionPlayers.length === 0 && (
+              <div style={{ fontSize: '12px', color: '#555', marginTop: '8px', fontFamily: 'Barlow, sans-serif' }}>
+                No players have joined yet — players appear here once they submit a score.
+              </div>
+            )}
+          </div>
+
+          {/* Event grid for selected player */}
+          {judgeTargetId && (() => {
+            const sp = sessionPlayers.find(s => s.id === judgeTargetId)
+            if (!sp) return null
+            const judgeMyResults = results.filter(r => r.player_id === judgeTargetId)
+            const totalEffort = calcTotalEffortLevel(judgeMyResults, events)
+            return (
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#fff' }}>{sp.name}</div>
+                  <div style={{ fontSize: '13px', color: '#B87DB5', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700 }}>
+                    Effort Level: {totalEffort} / 20
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  {events.map(ev => {
+                    const evResults = results.filter(r => r.event_id === ev.id && r.player_id === judgeTargetId)
+                    const evData = getEventByName(ev.event_name)
+                    const pr = judgePRs[ev.id] ?? null
+                    return (
+                      <EventCard
+                        key={ev.id}
+                        se={ev}
+                        eventData={evData}
+                        myResults={evResults}
+                        allResults={results}
+                        allEvents={events}
+                        seasonPR={pr}
+                        playerId={judgeTargetId}
+                        playerName={sp.name}
+                        sessionId={sessionId as string}
+                        sessionEnded={sessionEnded}
+                        isJudge={true}
+                        isExpanded={expandedEventId === `judge-${ev.id}`}
+                        onToggle={() => setExpandedEventId(expandedEventId === `judge-${ev.id}` ? null : `judge-${ev.id}`)}
+                        onScoreSubmitted={async () => { await loadResults() }}
+                      />
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })()}
+        </div>
+      )}
 
       {/* Leaderboard tab */}
       {activeTab === 'leaderboard' && (
