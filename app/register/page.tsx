@@ -14,17 +14,16 @@ function calculateAge(dob: string): number {
 
 function calculateDivision(dob: string, gender: string): string {
   const age = calculateAge(dob)
-  if (age <= 12) return 'Youth'
   if (age <= 16) return 'Juniors'
   if (gender === 'Female') {
     if (age < 40) return "Women's"
     if (age < 60) return 'Masters Women'
-    return 'Grandmasters Women'
+    return 'Grandmaster Women'
   }
   // Male + Other default to men's categories
   if (age < 40) return "Men's"
   if (age < 60) return 'Masters Men'
-  return 'Grandmasters Men'
+  return 'Grandmaster Men'
 }
 
 function RegisterInner() {

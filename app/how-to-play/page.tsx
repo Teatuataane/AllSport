@@ -9,56 +9,56 @@ const domains = [
     icon: '🏋️',
     color: '#e63946',
     desc: 'How much can you lift? Absolute strength tested to its limit.',
-    events: ['1A Press', 'Deadlift', 'OHP', 'Pause Dips', 'Pause Chinup', 'Pause Squat', 'Zercher Dead', 'Ham Curl', 'Pause Bench', 'Turkish'],
+    events: ['1A Press', 'Deadlift', 'OHP', 'Pause Dips', 'Pause Chin Up', 'Pause Squat', 'Zercher Dead', 'Ham Curl', 'Pause Bench', 'Turkish Get Up'],
   },
   {
     name: 'Relative Strength',
     icon: '💪',
     color: '#f4a226',
     desc: 'Strength relative to your bodyweight. Calisthenics, skills, and feats.',
-    events: ['1L Squat', 'Flag', 'Windshield Wipers', 'Toe Lift', 'Planche', 'Back Lever', 'Iron Cross', 'Front Lever', 'Chin Lift', 'Climbing'],
+    events: ['1 Leg Squat', 'Flag', 'Windshield Wipers', 'Toe Lift', 'Planche', 'Back Lever', 'Iron Cross', 'Front Lever', 'Chin Hang', 'Climbing'],
   },
   {
     name: 'Muscular Endurance',
     icon: '🔄',
     color: '#f7e03c',
     desc: 'How long can you keep going? Sustained output under fatigue.',
-    events: ['Chinup Contest', 'Pushup Contest', 'Reverse Hyper', 'L Sit Hold', 'Tib Curl', 'Headstand', 'Finger Pushup', 'Calf Raise', 'Leg Ext', 'Ab Rollout'],
+    events: ['Chinup Contest', 'Pushup Contest', 'Reverse Hyper', 'L-Sit Hold', 'Tibialis Curl', 'Headstand', 'Finger Push Up', 'GHD Situp', 'Leg Extension', 'Ab Rollout'],
   },
   {
     name: 'Flexibility & Mobility',
     icon: '🤸',
     color: '#2d9e4f',
     desc: 'The range you have is the range you can use.',
-    events: ['Rear Hand Clasp', 'Bridge', 'Forward Fold', 'Needle Pose', 'F Split', 'M Split', 'Standing Split', 'Foot Behind Head Pose', 'Shoulder Dislocate', 'Side Bend'],
+    events: ['Rear Hand Clasp', 'Bridge', 'Forward Fold', 'Needle Pose', 'Forward Split', 'Middle Split', 'Standing Split', 'Foot Behind Head', 'Shoulder Dislocate', 'Pancake'],
   },
   {
     name: 'Power',
     icon: '⚡',
     color: '#2563eb',
     desc: 'Strength applied fast. Explosiveness through full range of motion.',
-    events: ['Kelly Snatch', '1A Snatch', 'Triple Jump', 'Javelin', 'Shotput', 'AFL', 'Vert Jump', 'Glute Bridge', 'Clean & Jerk', 'Snatch'],
+    events: ['Kelly Snatch', '1A Snatch', 'Triple Jump', 'Javelin', 'Shotput', 'Australian Football', 'Vertical Jump', 'Hand Walk', 'Clean & Jerk', 'Snatch'],
   },
   {
     name: 'Aerobic Endurance',
     icon: '🫀',
     color: '#9333ea',
     desc: 'Keep going, even when it hurts. The engine that runs everything else.',
-    events: ['Burpee Broad Jump', '1k Run', '1k Cycle', 'Ski 1k', '1k Row', 'Iron Lungs', '200m Carry', '2k Run', '200m Repeats', 'Bronco'],
+    events: ['Burpee Broad Jump', 'Running', 'Cycling', 'Ski Erg', 'Row Erg', 'Breath Hold', 'Weighted Carry', 'Duck Walk', 'Bronco', 'Walking'],
   },
   {
     name: 'Speed & Agility',
     icon: '🏃',
     color: '#e63946',
     desc: 'React faster, move better, change direction without losing a step.',
-    events: ['100m Sprint', 'Tag', 'T Race', '400m Race', 'Beach Flags', '50m Sprint', '200m Sprint', 'Touch Rugby', 'Football Dribble', 'Repeat High Jump'],
+    events: ['100m Sprint', 'Tag', 'T-Race', '400m Race', 'Beach Flags', '50m Sprint', '200m Sprint', 'Touch Rugby', 'Football Dribble', 'Repeat High Jump'],
   },
   {
     name: 'Body Awareness',
     icon: '🥋',
     color: '#f4a226',
     desc: 'Control your body in space. Without control there is no grace.',
-    events: ['Tae Kwon Do', 'Breakdancing', 'Trampolining', 'Jump Rope', 'Wrestling', 'Gymnastics', 'Balance Ball', 'Skate', 'Fencing', 'Juggling'],
+    events: ['Tae Kwon Do', 'Breakdancing', 'Trampolining', 'Jump Rope', 'Wrestling', 'Gymnastics', 'Balance Ball', 'SKATE', 'Fencing', 'Juggling'],
   },
   {
     name: 'Co-ordination',
@@ -72,7 +72,7 @@ const domains = [
     icon: '🎯',
     color: '#2563eb',
     desc: 'When you shoot, it hits. Accuracy and composure under pressure.',
-    events: ['Netball', 'Handball', 'Cornhole', 'Dodgeball', 'Carrom', 'Archery', 'Bowling', 'Darts', 'Disc Golf', 'Golf'],
+    events: ['Netball', 'Handball', 'Bocce', 'Dodgeball', 'Carrom', 'Archery', 'Kubb', 'Darts', 'Disc Golf', 'Golf'],
   },
 ]
 
@@ -130,25 +130,23 @@ const steps = [
   },
 ]
 
-const bonuses = [
-  { label: 'Attend a session', points: '+10' },
-  { label: 'Set a personal best', points: '+10 per event' },
-  { label: 'Top performance in an event', points: '+10 per division' },
-  { label: 'First session ever', points: '+10' },
-  { label: 'Consistency streak (4 of last 5)', points: '+10' },
-  { label: 'Championship participation', points: '+100' },
-  { label: 'Championship podium', points: '+500' },
+const effortRules = [
+  { label: 'Strength events', rule: '5 reps at 80% of your PR weight' },
+  { label: 'Hold / timed events', rule: 'Hold for 2 minutes (or at target difficulty)' },
+  { label: 'Sport / match events', rule: 'Play an extra match vs any opponent' },
+  { label: 'Sprint events', rule: 'Each sprint within 80% of PR pace' },
+  { label: 'Distance events', rule: 'Each attempt ≥80% of PR distance' },
+  { label: 'Score events (Golf/Disc Golf)', rule: 'Complete an additional 4-hole round' },
 ]
 
 const divisions = [
-  { name: 'Youth', age: 'Under 12' },
-  { name: 'Juniors', age: 'Under 17' },
   { name: "Men's", age: '17–39' },
   { name: "Women's", age: '17–39' },
+  { name: 'Juniors', age: '16 and under' },
   { name: 'Masters Men', age: '40–59' },
   { name: 'Masters Women', age: '40–59' },
-  { name: 'Grandmasters Men', age: '60+' },
-  { name: 'Grandmasters Women', age: '60+' },
+  { name: 'Grandmaster Men', age: '60+' },
+  { name: 'Grandmaster Women', age: '60+' },
 ]
 
 export default function HowToPlay() {
@@ -286,15 +284,22 @@ export default function HowToPlay() {
               </div>
             </div>
 
-            {/* Bonuses */}
+            {/* Effort Points */}
             <div style={{ background: '#111111', border: '1px solid #1e1e1e', padding: '28px' }}>
-              <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555555', marginBottom: '20px' }}>Bonus Points</div>
-              {bonuses.map(b => (
-                <div key={b.label} className="bonus-row">
-                  <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 600, fontSize: '14px', color: '#cccccc' }}>{b.label}</span>
-                  <span style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '18px', color: '#2d9e4f', flexShrink: 0, marginLeft: '12px' }}>{b.points}</span>
+              <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555555', marginBottom: '8px' }}>Effort Points</div>
+              <p style={{ color: '#888', fontSize: '13px', lineHeight: 1.65, marginBottom: '16px' }}>
+                After submitting your competition score, unlock repeatable effort tasks. Each qualifying extra effort earns <strong style={{ color: '#2d9e4f' }}>+5 points</strong> (up to 100 per session).
+              </p>
+              {effortRules.map(r => (
+                <div key={r.label} className="bonus-row">
+                  <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 600, fontSize: '13px', color: '#cccccc' }}>{r.label}</span>
+                  <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', color: '#555', flexShrink: 0, marginLeft: '12px', textAlign: 'right' as const, maxWidth: '120px' }}>{r.rule}</span>
                 </div>
               ))}
+              <div style={{ marginTop: '16px', padding: '12px', background: '#0a0a0a', border: '1px solid #1e1e1e' }}>
+                <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', color: '#555', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '4px' }}>Session cap</div>
+                <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '32px', color: '#2d9e4f' }}>100 Points</div>
+              </div>
             </div>
 
             {/* Divisions */}

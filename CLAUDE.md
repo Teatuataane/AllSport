@@ -261,17 +261,74 @@ Taniwha = Black = singular peak grade = equivalent to black belt.
 
 ## Koha System
 
-| Amount | Acknowledgement |
-|---|---|
-| Any amount | Name on supporters wall |
-| > $50 | Digital certificate |
-| > $200 | Sticker pack + certificate |
-| > $500 | Grading T-shirt |
-| > $2,000 | AllSport clothing stack |
-| > $5,000 | Personal coaching — 50 sessions/year |
-| > $10,000 | AllSport comes to you (corporate sessions) |
+Two paths to any tier — donate OR earn through referrals (either path alone is sufficient).
+
+| Tier | Reward | Koha donation | Referral path |
+|---|---|---|---|
+| 1 | Name on supporters wall | Any koha | 1 qualified referral |
+| 2 | Digital certificate | >$50 | 3 qualified referrals |
+| 3 | Sticker pack + certificate | >$200 | 6 qualified referrals |
+| 4 | Grading T-shirt | >$500 | 12 qualified referrals |
+| 5 | AllSport clothing stack | >$2,000 | 25 qualified referrals |
+| 6 | Personal coaching — 50 sessions/year | >$5,000 | 50 qualified referrals |
+| 7 | AllSport comes to you (corporate) | >$10,000 | Corporate path only — no referral equivalent |
+
+**Qualified referral:** a friend the player invited who has completed 10 AllSport sessions.
 
 IRD 33% tax rebate applies to all koha.
+
+---
+
+## Referral System
+
+**Purpose:** Systematic player growth. Current players earn Koha tier recognition by inviting friends who stick.
+
+**Mechanic:**
+- Every player has a unique 6-character referral code stored in `players.referral_code` (auto-generated on registration)
+- Shareable invite link: `allsport.nz/join/[CODE]`
+- `/join/[code]` landing page: introduces AllSport, shows "You've been invited by [display name]", single Register CTA with code pre-filled
+- Registration captures referral code → stored in `referrals` table
+- Referral qualifies when referred player's session count hits 10
+- Referrer's koha tier advances based on qualified referral count (alternative path to donation)
+
+**Dashboard integration:** "Invite Friends" section on /dashboard shows code, one-tap copy link, pending referrals (< 10 sessions), qualified count, progress to next Koha tier.
+
+**DB tables:**
+- `players.referral_code` TEXT UNIQUE — auto-generated 6-char alphanumeric code, set on registration
+- `referrals`: id, created_at, referrer_id (→ auth.users), referred_id (→ auth.users), session_count (INT default 0), qualified_at (TIMESTAMPTZ null — set when session_count hits 10)
+- Trigger on `session_player_summary INSERT`: find the new player's referrer row, increment session_count, set qualified_at if threshold reached
+
+**Notification:** referrer gets an in-app notification when a referral qualifies (session 10 of the referred player).
+
+---
+
+## Funding Campaign
+
+**"Wheels for AllSport" — Vehicle & Trailer Fund.** Displayed as a campaign block at the top of /koha.
+
+**Target:** $8,000
+
+**Milestones:**
+- $1,000 — First Event Kit (cones, bibs, measuring equipment)
+- $3,000 — Trailer deposit
+- $8,000 — Full goal (trailer + equipment mobility)
+
+**Implementation:** Hardcoded campaign display initially; `campaign_amount` updated manually via Supabase dashboard. No DB table needed until multiple campaigns exist.
+
+**Why this matters:** Equipment mobility unlocks park sessions, club partnership activations, and ultimately doubles or triples our session capacity.
+
+---
+
+## Club Partnerships
+
+**Model:** AllSport runs a session at a partner club's facility. The club's sport is always included as one of the 10 events (giving their community a confident entry point). In exchange, AllSport gains access to their facilities and equipment for public sessions.
+
+**Partners DB table:** `partners` — id, created_at, club_name, sport, description, website_url, logo_url, is_active (BOOLEAN), display_order (INT)
+RLS: public read, judge write.
+
+**Visibility in app:**
+- `/supporters` page — two sections: Koha supporters wall (existing), Partner Clubs (new card grid)
+- `/schedule` — partner badge appears on sessions hosted at a partner venue (`sessions.partner_id` FK to partners)
 
 ---
 
@@ -305,27 +362,56 @@ update players set role = 'judge' where id = '[uuid]';
 | Play | /play | Complete | Login/register landing, Google OAuth |
 | Register | /register | Complete | 3-step form, division, display prefs, junior parent fields |
 | Login | /login | Complete | Email + Google OAuth |
-| Dashboard | /dashboard | Complete | Colours progress, stats, join by code, recent sessions with View Summary, My Personal Bests button |
-| Judge Panel | dashboard (JudgeCard) | Complete | Create/end/void sessions, QR code, history, real-time player count |
+| Dashboard | /dashboard | Complete | Bento grid: Judge card (judge-only), Vote card (when active), Player Profile card, Colours card (points history on click), Personal Bests card, Join a Game card |
+| Judge Panel | /judge | Complete | Dedicated page — JudgeCard moved here. Create/end/void sessions, QR code, history, real-time player count, Event Votes panel (Kōwhiringa Tūāhuatanga). Judge bento card on dashboard links here. |
+| Player Profile | /profile | Complete | Icon picker (20 sport emojis), username/display name editing, leaderboard display prefs, family member management (add/remove), active profile switcher (localStorage) |
 | Scoring Setup | /scoring | Complete | Select 10 events, editable start time, create session |
 | Live Session | /scoring/[sessionId] | Complete | Per-division leaderboard tabs, Kaiwhakawā mode (player picker + score/edit/delete for any player), difficulty tier selector, sport W/D/L display, missing scores = last place, post-game popup on session end |
 | Personal Bests | /prs | Complete | All 100 events, PR per event, expandable history, this season + previous seasons tabs |
+| Vote | /vote/[voteId] | Complete | Step-by-step voting flow, one domain per screen, partial save, review screen, locked on submit |
+| Vote Results | /vote/[voteId]/results | Complete | Spoiler-free until voted, bar chart per domain, counts only while open / percentages on close, judge full breakdown |
 | Auth Callback | /auth/callback | Complete | Google OAuth handler |
+| Invite Landing | /join/[code] | Planned | Public page — introduces AllSport, shows inviter name, Register CTA with referral code pre-filled |
+| Supporters | /supporters | Planned | Two sections: Koha supporters wall + Partner Clubs card grid |
+| Koha (enhanced) | /koha | Planned update | Add "Wheels for AllSport" campaign block at top — progress bar, milestone markers, target $8,000 |
 
 ---
 
 ## Database Schema
 
+### event_votes
+id, created_at, created_by (uuid → auth.users), name, event_date (DATE), voting_closes_at (TIMESTAMPTZ), is_active (BOOLEAN), nominations_per_domain (INTEGER, 2–10)
+
+### event_vote_nominations
+id, created_at, vote_id (→ event_votes ON DELETE CASCADE), domain_number (1–10), domain_name, event_name
+
+### event_vote_responses
+id, created_at, vote_id (→ event_votes ON DELETE CASCADE), player_id (→ auth.users), domain_number (1–10), chosen_event (TEXT), is_final (BOOLEAN)
+UNIQUE(vote_id, player_id, domain_number)
+
 ### players
 id, created_at, full_name, email, phone, date_of_birth, address, city, region, country,
 parent_name, parent_email, parent_phone, is_active, username, division,
 role (default: player), show_full_name, show_username, show_division, show_location, display_name,
-bodyweight_kg, parent_id (uuid, references auth.users.id)
+bodyweight_kg, parent_id (uuid, references auth.users.id),
+icon (TEXT — emoji placeholder; null = show initial letter),
+referral_code (TEXT UNIQUE — 6-char alphanumeric, auto-generated on registration)
+
+### referrals
+id, created_at, referrer_id (uuid → auth.users), referred_id (uuid → auth.users),
+session_count (INT default 0), qualified_at (TIMESTAMPTZ null — set when session_count = 10)
+UNIQUE(referred_id) — each player can only have one referrer
+Trigger on session_player_summary INSERT: increment session_count for referred player's referrer row; set qualified_at when threshold reached.
+
+### partners
+id, created_at, club_name (TEXT), sport (TEXT), description (TEXT), website_url (TEXT),
+logo_url (TEXT), is_active (BOOLEAN default true), display_order (INT default 0)
+RLS: public read; judge write.
 
 ### sessions
 id, created_at, session_date, start_time, location, max_participants, duration_minutes,
 is_tournament, is_championship, is_active, started_at, ended_at, session_code, notes,
-points_awarded_at
+points_awarded_at, partner_id (uuid → partners null — set when session is hosted at a partner venue)
 
 ### session_events
 id, created_at, session_id, domain_number, domain_name, event_name
@@ -339,6 +425,14 @@ difficulty_tier (TEXT — tier name string or null)
 
 ### effort_scores
 Dropped (migration 20260507). Effort data lives in results.effort_task_completions.
+
+### session_player_summary
+id, created_at, session_id (→ sessions ON DELETE CASCADE), player_id (→ auth.users),
+overall_placement (INTEGER — rank in division for that session),
+total_placement_points (INT), effort_points (INT), effort_level (INT)
+UNIQUE(session_id, player_id)
+Populated by award_session_points trigger when session closes. Used by /dashboard points history.
+RLS: players see own rows; judges see all.
 
 ### rankings
 id, updated_at, player_id, total_points, total_sessions, average_score,
@@ -393,13 +487,23 @@ best_score, current_rank, division, average_placement, season_year
       [slug]/page.tsx               # Event detail — how to, rules, tiers, PB
     register/page.tsx
     login/page.tsx
-    dashboard/page.tsx              # Colours section, My Personal Bests button, View Summary on sessions
+    dashboard/page.tsx              # Bento grid dashboard — 6 cards + points history modal
+    judge/page.tsx                  # Judge panel page — wraps JudgeCard, judge-role-gated
+    profile/page.tsx                # Player profile — icon picker, editing, family switcher
     prs/page.tsx                    # Personal best history — all 100 events
     scoring/page.tsx
     scoring/[sessionId]/page.tsx    # Live session — per-division leaderboard tabs, judge edit/delete, tier selector, post-game popup
     auth/callback/route.ts
+    join/
+      [code]/page.tsx               # Invite landing — shows inviter name, Register CTA pre-filled with referral code
+    supporters/page.tsx             # Koha supporters wall + Partner Clubs card grid
+    vote/
+      [voteId]/
+        page.tsx                    # Step-by-step voting flow, one domain per screen, partial save
+        results/page.tsx            # Bar chart results, spoiler-free until voted, judge full view
     components/
-      JudgeCard.tsx                 # Judge panel — real-time player count
+      JudgeCard.tsx                 # Judge panel — sessions + Event Votes (Kōwhiringa Tūāhuatanga)
+      VoteBanner.tsx                # Dashboard banner — vote state + live countdown + CTA
   components/
     Navbar.tsx
     Footer.tsx
@@ -412,6 +516,8 @@ best_score, current_rank, division, average_placement, season_year
       20260510_per_division_points.sql
       20260512_effort_system.sql
       20260513_drop_effort_scores.sql
+      20260513_event_voting.sql     # event_votes, event_vote_nominations, event_vote_responses tables + RLS + functions
+      20260514_dashboard_redesign.sql # players.icon, session_player_summary, get_player_top_event RPC, updated trigger
       20260526_fix_points_trigger.sql  # Remove bonus system; fix gap formula — run in Supabase SQL Editor
   public/
     logo.png
@@ -453,21 +559,23 @@ best_score, current_rank, division, average_placement, season_year
 - Judge score edit/delete fix — delete confirmation works correctly, leaderboard recalculates immediately
 - Supabase SSR middleware, browser client, Google OAuth, RLS, points trigger — all confirmed working
 - allsport.nz live domain
+- Event voting system — judges create votes (name, event date, close date, 2–10 events per domain nominated), players vote step-by-step (one domain per screen, partial save, locked on final submit), spoiler-free results (hidden until voted, counts only while open, percentages after close), judge full breakdown with voter names; nomination Step 2 uses auto-advance accordion (domain auto-closes and next incomplete domain opens when selection limit hit; 250ms delay for visual feedback; domain 1 open by default; page scrolls naturally — no inner scroll box)
 
 ---
 
 ## What's Next (In Priority Order)
 
-1. Welcome email on registration (Supabase Edge Function + Resend)
-2. Judge approval flow (replace manual SQL)
-3. Player profile page — edit display prefs
-4. **Breakdancing tiers** — change from `difficulty+reps` to `difficulty+time` with new tier descriptions (awaiting tier content from Tane)
-5. **Referral system** — DB migration (referral_code on players, referrals table, trigger), /join/[code] invite landing, dashboard "Invite Friends" section, /koha referral tier display
-6. **Funding campaign block** — update /koha with "Wheels for AllSport" campaign section (hardcoded, progress bar, milestones)
-7. **Partners page** — DB migration (partners table, partner_id on sessions), /supporters page, partner badge on /schedule
-8. Welcome email on registration (Supabase Edge Function + Resend)
-9. Judge approval flow (replace manual SQL)
-10. Championship registration flow (6 months before March 2027)
+1. Apply DB migration 20260526 to production Supabase — **run `20260526_fix_points_trigger.sql` in Supabase SQL Editor** (fixes 140pt bug)
+2. **Breakdancing tiers** — change from `difficulty+reps` to `difficulty+time` with new tier descriptions (awaiting tier content from Tane)
+3. **Referral system** — DB migration (referral_code on players, referrals table, trigger), /join/[code] invite landing, dashboard "Invite Friends" section, /koha referral tier display
+4. **Funding campaign block** — update /koha with "Wheels for AllSport" campaign section (hardcoded, progress bar, milestones)
+5. **Partners page** — DB migration (partners table, partner_id on sessions), /supporters page, partner badge on /schedule
+6. Welcome email on registration (Supabase Edge Function + Resend)
+7. Kaiwhakawā approval flow (replace manual SQL)
+8. Leaderboard icons — add player icon emoji next to name on /leaderboard and /scoring/[sessionId] (deferred until icon system is proven on dashboard)
+9. Per-event placement storage — add `event_placement` column to results + trigger update, so points history can show "1st in Deadlift" etc. (future enhancement)
+10. Designed icon set — replace emoji placeholders with branded SVG icons; infrastructure already in place (players.icon column + icon picker on /profile)
+11. Championship registration flow (6 months before March 2027)
 
 ---
 
@@ -495,6 +603,8 @@ best_score, current_rank, division, average_placement, season_year
 - Time events: raw_score stored as negative seconds so faster = higher
 - Void vs End: Void sets points_awarded_at before closing to prevent trigger firing
 - middleware.ts is mandatory — without it, Supabase sessions don't persist across page loads
+- Event voting: only one active vote at a time; Kaiwhakawā create via JudgeCard at /judge; players vote one domain at a time; partial saves stored with is_final=false; final submit sets all rows to is_final=true; locked after submit; votes have a set close datetime; results hidden until player has voted (spoiler-free); counts shown while open, percentages after close; Kaiwhakawā see full breakdown with names via get_vote_details() SECURITY DEFINER function; players see anonymised bar charts; VoteCard on /dashboard (bento card) shows state (not voted / partial / voted) with live countdown; Kaiwhakawā vote history accessible in JudgeCard; player results access expires when competition begins (event_date); Kaiwhakawā results persist permanently
+- DomainAccordion (Step 2 of vote creation): controlled component — open state managed by parent via isOpen/onOpenChange props; no internal useState; auto-advance on completion: domain closes + next incomplete domain opens after 250ms; expandedDomain state in JudgeCard (initialized to 1); do NOT revert to uncontrolled useState(false) in DomainAccordion
 - Gap formula: 100 ÷ players, NO floor on gap; minimum 10 pts applies only to the final awarded amount (GREATEST(pts, 10)). Bug was in trigger + client calcPlacementPts — both fixed May 2026.
 - Bonus system removed (May 2026): all session bonuses (attendance, PB, top performance, first session, streak, championship) removed from award_session_points trigger. Total = placement_pts + effort_pts only
 - Effort points: separate effort_scores table; 100pt session cap (= effort level 20 × 5 pts); +5 per qualifying submission; feeds Colour System total; one repeatable task per event at 80% of PR
@@ -503,10 +613,26 @@ best_score, current_rank, division, average_placement, season_year
 - Live session leaderboard: single tab row — first tab always "Effort Level (All-Divisions)" (effort ranking); then division tabs (competitive ranking, lowest total placement = 1st); division tabs only visible if players from that division have scored; expanded player row shows all events with score label + ordinal placement
 - Event button collapsed label: always shows "Effort Level: N" (not "— pts")
 - Golf and Disc Golf use 'score' mode (stroke count for 4 holes; raw_score = -strokes; lower = better).
+- Dashboard uses "bento grid" / "hero card tiles" design pattern — full-width coloured tiles, each card visually distinct, Bebas Neue headings, 16px border-radius
+- Navbar (logged-in): Logo + Dashboard + Sign Out always visible; ALL other links hidden in hamburger. Applies globally when user is authenticated. Logged-out state unchanged (desktop links visible).
+- Player icons: emoji placeholders (20 icons in players.icon column); icon picker on /profile; future: replace with designed SVG icons and unlockable icons at each Colour threshold
+- Active family member profile: stored in localStorage key `allsport_active_player_id`; entire dashboard context (colours, ranking, top event) reflects the active profile; switching on /profile writes to localStorage and navigates to dashboard; player profile bento card shows whose data is active
+- Judge panel: moved from inline JudgeCard on dashboard to dedicated /judge page; dashboard judge bento card links there; /judge page is role-gated (non-judges redirected to /dashboard)
+- Top event: calculated via `get_player_top_event(player_id, division)` RPC — finds the event where the player's best score ranks highest (RANK() OVER) among all players in their division who have done that event
+- session_player_summary: populated by award_session_points trigger; used for /dashboard points history; historical sessions (pre-migration) fall back to calculating from results rows; per-event placement NOT stored in this table (future enhancement: add event_placement column to results)
+- Points history: accessed by tapping Colours bento card; shows per-session: date, location, overall placement, effort level, placement pts, effort pts, total; expandable to show events + scores
+- Colours bento card: full grade-colour background (e.g. Whero = red card); Taniwha = black + amber border; Mā = light grey + dark text; Uenuku = rainbow gradient
+- New player state (zero sessions): Join a Game card highlighted with green glow to guide first action
+- Referral system: each player has a unique 6-char referral_code; shareable via allsport.nz/join/[CODE]; qualified referral = referred player has completed 10 sessions; referrer earns Koha tier progression as alternative path to donation; tiers: 1/3/6/12/25/50 qualified referrals for tiers 1–6; Tier 7 (corporate) has no referral path
+- Koha tiers: two paths (donate OR referrals) — either path alone unlocks the tier; both paths display on /koha
+- Funding campaign "Wheels for AllSport": $8,000 target (trailer + equipment mobility); milestones at $1k, $3k, $8k; hardcoded initially, displayed as campaign block at top of /koha
+- Club partnerships: AllSport runs sessions at partner clubs (club's sport always included in the 10 events); in exchange gains facility + equipment access; partners visible on /supporters page and as badge on /schedule; sessions.partner_id links to partners table
+- /supporters page: two sections — Koha supporters wall (existing) + Partner Clubs (new card grid with logo, sport, description, website link)
+- Budget allocation (2026, $2k): $600 professional content session (photographer/videographer), $300 session materials (banner, cones, tape), $400 sticker pack stock for referral Tier 3 rewards, $700 reserve for first partnership activation
 
 ---
 
-*Last updated: May 2026 (session 8)*
+*Last updated: May 2026 (session 10)*
 *Project started: March 2026*
 
 ## Skill routing
