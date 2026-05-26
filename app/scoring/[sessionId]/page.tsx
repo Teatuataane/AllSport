@@ -321,7 +321,7 @@ type EventCardProps = {
   allResults: Result[]
   allEvents: SessionEvent[]
   seasonPR: number | string | null
-  playerId: string
+  playerId: string | null
   playerName: string
   sessionId: string
   sessionEnded: boolean
@@ -520,7 +520,7 @@ function EventCard({
       const payload: Record<string, unknown> = {
         session_id: sessionId,
         event_id: se.id,
-        player_id: playerId,
+        player_id: playerId || null,
         player_name: playerName,
         raw_score: scored.raw_score,
         score_label: scored.score_label,
@@ -1264,6 +1264,8 @@ export default function SessionPage() {
   // Judge mode
   const [isJudge, setIsJudge] = useState(false)
   const [judgeTargetId, setJudgeTargetId] = useState<string>('')
+  const [judgeMode, setJudgeMode] = useState<'account' | 'guest'>('account')
+  const [judgeGuestName, setJudgeGuestName] = useState('')
   const [sessionPlayers, setSessionPlayers] = useState<{ id: string; name: string }[]>([])
   const [judgePRs, setJudgePRs] = useState<Record<string, number | string | null>>({})
 
@@ -1588,62 +1590,115 @@ export default function SessionPage() {
                 Session ended — scoring locked
               </div>
             )}
-            <select
-              value={judgeTargetId}
-              onChange={e => { setJudgeTargetId(e.target.value); setExpandedEventId(null) }}
-              style={{
-                width: '100%', background: '#0d0d0d', border: '1px solid #EA474244',
-                borderRadius: '8px', padding: '12px 14px', color: judgeTargetId ? '#fff' : '#666',
-                fontSize: '15px', fontFamily: 'Barlow, sans-serif',
-              }}
-            >
-              <option value="">Select a player to score for...</option>
-              {sessionPlayers.map(sp => (
-                <option key={sp.id} value={sp.id}>{sp.name}</option>
+
+            {/* Mode toggle: Account player vs Guest */}
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+              {(['account', 'guest'] as const).map(m => (
+                <button
+                  key={m}
+                  onClick={() => { setJudgeMode(m); setJudgeTargetId(''); setJudgeGuestName(''); setExpandedEventId(null) }}
+                  style={{
+                    flex: 1, padding: '8px 0', borderRadius: '8px', border: 'none',
+                    cursor: 'pointer', fontFamily: 'Barlow Condensed, sans-serif',
+                    fontSize: '13px', fontWeight: 700, letterSpacing: '0.06em',
+                    background: judgeMode === m ? '#EA4742' : '#1a1a1a',
+                    color: judgeMode === m ? '#fff' : '#555',
+                  }}
+                >
+                  {m === 'account' ? 'REGISTERED PLAYER' : 'GUEST PLAYER'}
+                </button>
               ))}
-            </select>
-            {sessionPlayers.length === 0 && (
-              <div style={{ fontSize: '12px', color: '#555', marginTop: '8px', fontFamily: 'Barlow, sans-serif' }}>
-                No players have joined yet — players appear here once they submit a score.
-              </div>
+            </div>
+
+            {judgeMode === 'account' ? (
+              <>
+                <select
+                  value={judgeTargetId}
+                  onChange={e => { setJudgeTargetId(e.target.value); setExpandedEventId(null) }}
+                  style={{
+                    width: '100%', background: '#0d0d0d', border: '1px solid #EA474244',
+                    borderRadius: '8px', padding: '12px 14px', color: judgeTargetId ? '#fff' : '#666',
+                    fontSize: '15px', fontFamily: 'Barlow, sans-serif',
+                  }}
+                >
+                  <option value="">Select a player to score for...</option>
+                  {sessionPlayers.map(sp => (
+                    <option key={sp.id} value={sp.id}>{sp.name}</option>
+                  ))}
+                </select>
+                {sessionPlayers.length === 0 && (
+                  <div style={{ fontSize: '12px', color: '#555', marginTop: '8px', fontFamily: 'Barlow, sans-serif' }}>
+                    No registered players yet — switch to Guest Player to score anyone by name.
+                  </div>
+                )}
+              </>
+            ) : (
+              <input
+                type="text"
+                placeholder="Enter player name..."
+                value={judgeGuestName}
+                onChange={e => { setJudgeGuestName(e.target.value); setExpandedEventId(null) }}
+                style={{
+                  width: '100%', background: '#0d0d0d', border: '1px solid #EA474244',
+                  borderRadius: '8px', padding: '12px 14px', color: '#fff',
+                  fontSize: '15px', fontFamily: 'Barlow, sans-serif',
+                  boxSizing: 'border-box',
+                }}
+              />
             )}
           </div>
 
           {/* Event grid for selected player */}
-          {judgeTargetId && (() => {
-            const sp = sessionPlayers.find(s => s.id === judgeTargetId)
-            if (!sp) return null
-            const judgeMyResults = results.filter(r => r.player_id === judgeTargetId)
+          {(() => {
+            const isAccountMode = judgeMode === 'account'
+            const activeId = isAccountMode ? judgeTargetId : null
+            const activeName = isAccountMode
+              ? (sessionPlayers.find(s => s.id === judgeTargetId)?.name ?? '')
+              : judgeGuestName.trim()
+            if (!activeName) return null
+
+            const judgeMyResults = isAccountMode
+              ? results.filter(r => r.player_id === activeId)
+              : results.filter(r => !r.player_id && r.player_name === activeName)
             const totalEffort = calcTotalEffortLevel(judgeMyResults, events)
+
             return (
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#fff' }}>{sp.name}</div>
+                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#fff' }}>
+                    {activeName}
+                    {!isAccountMode && (
+                      <span style={{ fontSize: '11px', color: '#EA4742', marginLeft: '8px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.06em' }}>GUEST</span>
+                    )}
+                  </div>
                   <div style={{ fontSize: '13px', color: '#B87DB5', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700 }}>
                     Effort Level: {totalEffort} / 20
                   </div>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                   {events.map(ev => {
-                    const evResults = results.filter(r => r.event_id === ev.id && r.player_id === judgeTargetId)
+                    const evResults = isAccountMode
+                      ? results.filter(r => r.event_id === ev.id && r.player_id === activeId)
+                      : results.filter(r => r.event_id === ev.id && !r.player_id && r.player_name === activeName)
                     const evData = getEventByName(ev.event_name)
-                    const pr = judgePRs[ev.id] ?? null
+                    const pr = isAccountMode ? (judgePRs[ev.id] ?? null) : null
+                    const cardKey = isAccountMode ? `judge-${ev.id}` : `judge-guest-${ev.id}`
                     return (
                       <EventCard
-                        key={ev.id}
+                        key={cardKey}
                         se={ev}
                         eventData={evData}
                         myResults={evResults}
                         allResults={results}
                         allEvents={events}
                         seasonPR={pr}
-                        playerId={judgeTargetId}
-                        playerName={sp.name}
+                        playerId={activeId}
+                        playerName={activeName}
                         sessionId={sessionId as string}
                         sessionEnded={sessionEnded}
                         isJudge={true}
-                        isExpanded={expandedEventId === `judge-${ev.id}`}
-                        onToggle={() => setExpandedEventId(expandedEventId === `judge-${ev.id}` ? null : `judge-${ev.id}`)}
+                        isExpanded={expandedEventId === cardKey}
+                        onToggle={() => setExpandedEventId(expandedEventId === cardKey ? null : cardKey)}
                         onScoreSubmitted={async () => { await loadResults() }}
                       />
                     )
