@@ -699,36 +699,40 @@ function DashboardInner() {
 
       {/* ── Points History Modal ─────────────────────────────────────────────── */}
       {showHistory && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(10,10,10,0.97)',
-          zIndex: 400, display: 'flex', flexDirection: 'column',
-        }}>
-          {/* Sticky header — always visible */}
+        <>
+          {/* Fixed header bar — always on screen regardless of scroll */}
           <div style={{
-            flexShrink: 0, background: 'rgba(10,10,10,0.98)',
-            borderBottom: '1px solid #1a1a1a', padding: '20px 16px 16px',
+            position: 'fixed', top: 0, left: 0, right: 0, zIndex: 500,
+            background: '#0a0a0a', borderBottom: '1px solid #222',
+            padding: '14px 16px',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           }}>
-            <div style={{ maxWidth: '520px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ maxWidth: '520px', width: '100%', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
-                <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '28px', letterSpacing: '0.05em', lineHeight: 1 }}>
+                <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '26px', letterSpacing: '0.05em', lineHeight: 1, color: '#fff' }}>
                   Points History
                 </div>
-                <div style={{ fontSize: '11px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.1em', marginTop: '2px' }}>
+                <div style={{ fontSize: '11px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.1em', marginTop: '1px' }}>
                   {displayName.toUpperCase()} · {selectedYear}
                 </div>
               </div>
               <button onClick={() => setShowHistory(false)} style={{
                 background: '#1a1a1a', border: '1px solid #333', borderRadius: '10px',
-                color: '#888', cursor: 'pointer', padding: '10px 16px',
-                fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: 700,
-                minHeight: '44px',
+                color: '#ccc', cursor: 'pointer', padding: '10px 18px',
+                fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: 700,
+                minHeight: '44px', flexShrink: 0,
               }}>
                 ← Back
               </button>
             </div>
           </div>
-          {/* Scrollable content */}
-          <div style={{ flex: 1, overflowY: 'auto' }}>
+
+          {/* Scrollable overlay — sits behind the fixed header */}
+          <div style={{
+            position: 'fixed', inset: 0, background: 'rgba(10,10,10,0.97)',
+            zIndex: 400, overflowY: 'auto',
+            paddingTop: '72px', /* clears the fixed header */
+          }}>
           <div style={{ maxWidth: '520px', margin: '0 auto', padding: '24px 16px 40px' }}>
 
             {/* Year tabs */}
@@ -871,8 +875,8 @@ function DashboardInner() {
               </div>
             )}
           </div>
-          </div>{/* end scroll wrapper */}
-        </div>
+          </div>{/* end scrollable overlay */}
+        </>
       )}
     </div>
   )

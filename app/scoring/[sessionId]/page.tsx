@@ -1318,13 +1318,24 @@ export default function SessionPage() {
       const map: Record<string, PlayerInfo> = {}
       data.forEach(p => { map[p.id] = { division: p.division ?? '' } })
       setPlayerInfoMap(map)
-      // For judge mode: build session players list
-      setSessionPlayers(data.map(p => ({
-        id: p.id,
-        name: (p.display_name || p.username || p.full_name || 'Unknown') as string,
-      })))
     })
   }, [results])
+
+  // ── Load ALL registered players for judge dropdown ─────────────────────────
+  useEffect(() => {
+    if (!isJudge) return
+    supabase
+      .from('players')
+      .select('id, display_name, username, full_name')
+      .order('display_name', { ascending: true })
+      .then(({ data }) => {
+        if (!data) return
+        setSessionPlayers(data.map(p => ({
+          id: p.id,
+          name: (p.display_name || p.username || p.full_name || 'Unknown') as string,
+        })))
+      })
+  }, [isJudge])
 
   // ── Load season PRs for active player ─────────────────────────────────────
   useEffect(() => {
