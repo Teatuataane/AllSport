@@ -165,7 +165,7 @@ function RegisterInner() {
         <p style={{ color: '#888', marginBottom: '24px' }}>Click that link, then come back to log in and join the session.</p>
         <a href="/login" style={{ background: '#2371BB', color: '#fff', padding: '12px 32px', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', display: 'inline-block' }}>Go to Login</a>
         <div style={{ marginTop: '16px', fontSize: '12px', color: '#444' }}>
-          Tip: ask the judge to disable email confirmation in Supabase to skip this step.
+          Tip: ask the Kaiwhakawā to disable email confirmation in Supabase to skip this step.
         </div>
       </div>
     </div>
@@ -226,7 +226,7 @@ function RegisterInner() {
             </div>
             {form.gender === 'Other' && (
               <div style={{ marginTop: '8px', fontSize: '12px', color: '#555' }}>
-                You'll be placed in the Men's or Grandmasters equivalent by default. A judge can reassign you to any division before your first session.
+                You'll be placed in the Men's or Grandmasters equivalent by default. A Kaiwhakawā can reassign you to any division before your first session.
               </div>
             )}
           </div>

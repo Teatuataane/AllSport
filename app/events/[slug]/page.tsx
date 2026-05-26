@@ -30,6 +30,7 @@ export default function EventPage() {
   const event = getEventBySlug(slug)
   const [player, setPlayer] = useState<any>(null)
   const [personalBest, setPersonalBest] = useState<any>(null)
+  const [sportRecord, setSportRecord] = useState<{ w: number; d: number; l: number } | null>(null)
   const [loadingPB, setLoadingPB] = useState(true)
 
   useEffect(() => {
@@ -47,14 +48,31 @@ export default function EventPage() {
           .eq('event_name', event.name)
         const eventIds = (seData || []).map((e: any) => e.id)
         if (eventIds.length > 0) {
-          const { data } = await supabase
-            .from('results')
-            .select('score_label, placement, raw_score, sessions(session_date)')
-            .eq('player_id', user.id)
-            .in('event_id', eventIds)
-            .order('raw_score', { ascending: false })
-            .limit(1)
-          if (data && data.length > 0) setPersonalBest(data[0])
+          if (event.inputMode === 'sport') {
+            // For sport events load all results to show W/D/L record
+            const { data } = await supabase
+              .from('results')
+              .select('score_label, placement, raw_score, sessions(session_date)')
+              .eq('player_id', user.id)
+              .in('event_id', eventIds)
+            if (data && data.length > 0) {
+              setPersonalBest(data[0])
+              setSportRecord({
+                w: data.filter((r: any) => r.raw_score === 2).length,
+                d: data.filter((r: any) => r.raw_score === 1).length,
+                l: data.filter((r: any) => r.raw_score === 0).length,
+              })
+            }
+          } else {
+            const { data } = await supabase
+              .from('results')
+              .select('score_label, placement, raw_score, sessions(session_date)')
+              .eq('player_id', user.id)
+              .in('event_id', eventIds)
+              .order('raw_score', { ascending: false })
+              .limit(1)
+            if (data && data.length > 0) setPersonalBest(data[0])
+          }
         }
       }
       setLoadingPB(false)
@@ -176,10 +194,23 @@ export default function EventPage() {
             </div>
           ) : personalBest ? (
             <div>
-              <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#4DB26E' }}>{personalBest.score_label}</div>
-              {personalBest.sessions?.session_date && (
-                <div style={{ fontSize: '12px', color: '#555', marginTop: '4px', fontFamily: 'Barlow, sans-serif' }}>
-                  {new Date(personalBest.sessions.session_date).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })}
+              {sportRecord ? (
+                <div>
+                  <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#4DB26E', fontFamily: 'Bebas Neue, cursive', letterSpacing: '0.05em' }}>
+                    {[sportRecord.w > 0 && `${sportRecord.w}W`, sportRecord.d > 0 && `${sportRecord.d}D`, sportRecord.l > 0 && `${sportRecord.l}L`].filter(Boolean).join(' ')}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#555', marginTop: '4px', fontFamily: 'Barlow, sans-serif' }}>
+                    {sportRecord.w + sportRecord.d + sportRecord.l} match{sportRecord.w + sportRecord.d + sportRecord.l !== 1 ? 'es' : ''} played
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#4DB26E' }}>{personalBest.score_label}</div>
+                  {personalBest.sessions?.session_date && (
+                    <div style={{ fontSize: '12px', color: '#555', marginTop: '4px', fontFamily: 'Barlow, sans-serif' }}>
+                      {new Date(personalBest.sessions.session_date).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

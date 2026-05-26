@@ -308,7 +308,7 @@ update players set role = 'judge' where id = '[uuid]';
 | Dashboard | /dashboard | Complete | Colours progress, stats, join by code, recent sessions with View Summary, My Personal Bests button |
 | Judge Panel | dashboard (JudgeCard) | Complete | Create/end/void sessions, QR code, history, real-time player count |
 | Scoring Setup | /scoring | Complete | Select 10 events, editable start time, create session |
-| Live Session | /scoring/[sessionId] | Complete | Per-division leaderboard tabs, judge edit/delete scores, difficulty tier selector, missing scores = last place, post-game popup on session end |
+| Live Session | /scoring/[sessionId] | Complete | Per-division leaderboard tabs, Kaiwhakawā mode (player picker + score/edit/delete for any player), difficulty tier selector, sport W/D/L display, missing scores = last place, post-game popup on session end |
 | Personal Bests | /prs | Complete | All 100 events, PR per event, expandable history, this season + previous seasons tabs |
 | Auth Callback | /auth/callback | Complete | Google OAuth handler |
 
@@ -407,6 +407,12 @@ best_score, current_rank, division, average_placement, season_year
     migrations/
       20260420_phase1.sql
       20260428_phase2.sql           # difficulty_tier column; updated award_session_points trigger
+      20260505_judge_player_management.sql
+      20260510_drop_disadvantage_columns.sql
+      20260510_per_division_points.sql
+      20260512_effort_system.sql
+      20260513_drop_effort_scores.sql
+      20260526_fix_points_trigger.sql  # Remove bonus system; fix gap formula — run in Supabase SQL Editor
   public/
     logo.png
 ```
@@ -420,8 +426,11 @@ best_score, current_rank, division, average_placement, season_year
 - Full public website (5 pages)
 - 3-step player registration with Google OAuth
 - Player dashboard — Colours progress (bar + year tabs), stats, join by code, session history with View Summary
-- Judge panel (JudgeCard) — create/end/void sessions, QR code, real-time player count
-- Live scoring — 100-event pool, all input modes including difficulty tier selector, judge edit/delete scores, missing scores = last place, post-game popup
+- Kaiwhakawā panel (JudgeCard) — create/end/void sessions, QR code, real-time player count. Te reo term "Kaiwhakawā" used everywhere in display text (DB role value stays as `judge`)
+- Live scoring — 100-event pool, all input modes including difficulty tier selector, Kaiwhakawā edit/delete/score-for-any-player, score edit (pre-fill form + UPDATE), missing scores = last place, post-game popup
+- Sport results displayed as W/D/L (Wins/Draws/Losses) everywhere: live session event card + collapsed label, leaderboard expanded row, /prs page, /events/[slug] personal best. Format: "3W 1D 2L"
+- Leaderboard competitive rows show "Nth of N" division rank context (e.g. "1st of 3")
+- Points trigger fixed (May 2026): removed bonus system (was causing 140pts for 1st instead of 100); fixed gap formula (no floor on gap — min 10 applies to earned pts only). Migration: 20260526_fix_points_trigger.sql
 - Live session leaderboard — "Effort Level (All-Divisions)" tab + dynamic division tabs (competitive, player-ranked by total placement); expanded player row shows per-event score + ordinal placement; effort tasks unlock on first score submission using effectivePR = max(sessionBest, seasonPR)
 - Effort system — effort tasks generated per event, locked until comp score submitted, effectivePR baseline, reps/hold/sport/tiered modes all handled; event button always shows "Effort Level: N"; award trigger correct (×10 per task, cap 100)
 - Divisions — 7 divisions with age labels: Men's, Women's, Juniors (U17), Masters Men (40+), Masters Women (40+), Grandmaster Men (60+), Grandmaster Women (60+)
@@ -452,8 +461,13 @@ best_score, current_rank, division, average_placement, season_year
 1. Welcome email on registration (Supabase Edge Function + Resend)
 2. Judge approval flow (replace manual SQL)
 3. Player profile page — edit display prefs
-4. Verify Te Reo "Kaiwāwao" is correct for judge/referee in sports context
-5. Championship registration flow (6 months before March 2027)
+4. **Breakdancing tiers** — change from `difficulty+reps` to `difficulty+time` with new tier descriptions (awaiting tier content from Tane)
+5. **Referral system** — DB migration (referral_code on players, referrals table, trigger), /join/[code] invite landing, dashboard "Invite Friends" section, /koha referral tier display
+6. **Funding campaign block** — update /koha with "Wheels for AllSport" campaign section (hardcoded, progress bar, milestones)
+7. **Partners page** — DB migration (partners table, partner_id on sessions), /supporters page, partner badge on /schedule
+8. Welcome email on registration (Supabase Edge Function + Resend)
+9. Judge approval flow (replace manual SQL)
+10. Championship registration flow (6 months before March 2027)
 
 ---
 
@@ -465,6 +479,7 @@ best_score, current_rank, division, average_placement, season_year
 - Taniwha = Black = peak grade = black belt equivalent
 - Colours reset January, history kept forever — section called "Colours" not "Grade"
 - All-Divisions = combined division tab (not "Overall")
+- Kaiwhakawā = the correct te reo Māori term for judge/referee in a sports context. Used throughout display text; DB role value stays as `judge` for simplicity
 - T-Race (not T-Test) uses sport/win-loss input mode
 - Chin Hang (not Chin Lift)
 - Difficulty tiers: D1 = easiest, purely informational, stored in results.difficulty_tier as tier name string
@@ -480,7 +495,8 @@ best_score, current_rank, division, average_placement, season_year
 - Time events: raw_score stored as negative seconds so faster = higher
 - Void vs End: Void sets points_awarded_at before closing to prevent trigger firing
 - middleware.ts is mandatory — without it, Supabase sessions don't persist across page loads
-- Gap formula: 100 ÷ players, no floor on gap; minimum earn = 10 on awarded points only
+- Gap formula: 100 ÷ players, NO floor on gap; minimum 10 pts applies only to the final awarded amount (GREATEST(pts, 10)). Bug was in trigger + client calcPlacementPts — both fixed May 2026.
+- Bonus system removed (May 2026): all session bonuses (attendance, PB, top performance, first session, streak, championship) removed from award_session_points trigger. Total = placement_pts + effort_pts only
 - Effort points: separate effort_scores table; 100pt session cap (= effort level 20 × 5 pts); +5 per qualifying submission; feeds Colour System total; one repeatable task per event at 80% of PR
 - Effort tasks: generated from `effectivePR = max(sessionBest, seasonPR)` — if no season PR, session score becomes baseline; one repeatable task per event; strength: 5 reps @80% PR; hold events: 2-minute hold; sport events: extra match vs any opponent; score events: additional 4-hole round; tasks locked until at least one comp score submitted this session
 - Effort matching: exact tier, time ≥ required; harder tier does not substitute; repeats allowed

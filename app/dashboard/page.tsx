@@ -198,11 +198,11 @@ function DashboardInner() {
       if (error) throw new Error(`Session lookup failed: ${error.message}`)
 
       if (!sess) {
-        throw new Error(`No session found with code "${code}". Ask the judge to confirm the code on their screen.`)
+        throw new Error(`No session found with code "${code}". Ask the Kaiwhakawā to confirm the code on their screen.`)
       }
 
       if (!sess.is_active) {
-        throw new Error(`Session "${code}" has ended. Ask your judge to start a new one.`)
+        throw new Error(`Session "${code}" has ended. Ask your Kaiwhakawā to start a new one.`)
       }
 
       console.log('[AllSport] Navigating to session:', sess.id)
@@ -514,7 +514,7 @@ function DashboardInner() {
       {/* Join a session */}
       <div style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '20px', marginBottom: '16px' }}>
         <div style={{ fontWeight: 'bold', fontSize: '15px', marginBottom: '4px' }}>Join a Session</div>
-        <div style={{ fontSize: '12px', color: '#555', marginBottom: '16px' }}>Enter the 6-digit code shown on the judge screen</div>
+        <div style={{ fontSize: '12px', color: '#555', marginBottom: '16px' }}>Enter the 6-digit code shown on the Kaiwhakawā screen</div>
         {joinError && (
           <div
             ref={el => el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })}
