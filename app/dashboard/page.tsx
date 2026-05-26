@@ -382,14 +382,14 @@ function DashboardInner() {
                 fontFamily: 'Bebas Neue, cursive', fontSize: '22px',
                 color: '#2371BB', letterSpacing: '0.06em', lineHeight: 1,
               }}>
-                Kaiwāwao
+                Kaiwhakawā
               </div>
               <div style={{
                 fontSize: '11px', color: '#4a7ab5',
                 fontFamily: 'Barlow Condensed, sans-serif',
                 letterSpacing: '0.1em', marginTop: '3px',
               }}>
-                JUDGE PANEL · Start session or create vote
+                KAIWHAKAWĀ PANEL · Start session or create vote
               </div>
             </div>
             <div style={{ color: '#2371BB', fontSize: '24px', marginLeft: '16px' }}>→</div>
@@ -701,11 +701,14 @@ function DashboardInner() {
       {showHistory && (
         <div style={{
           position: 'fixed', inset: 0, background: 'rgba(10,10,10,0.97)',
-          zIndex: 400, overflowY: 'auto',
+          zIndex: 400, display: 'flex', flexDirection: 'column',
         }}>
-          <div style={{ maxWidth: '520px', margin: '0 auto', padding: '24px 16px 40px' }}>
-            {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+          {/* Sticky header — always visible */}
+          <div style={{
+            flexShrink: 0, background: 'rgba(10,10,10,0.98)',
+            borderBottom: '1px solid #1a1a1a', padding: '20px 16px 16px',
+          }}>
+            <div style={{ maxWidth: '520px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
                 <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '28px', letterSpacing: '0.05em', lineHeight: 1 }}>
                   Points History
@@ -718,10 +721,15 @@ function DashboardInner() {
                 background: '#1a1a1a', border: '1px solid #333', borderRadius: '10px',
                 color: '#888', cursor: 'pointer', padding: '10px 16px',
                 fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: 700,
+                minHeight: '44px',
               }}>
-                Close
+                ← Back
               </button>
             </div>
+          </div>
+          {/* Scrollable content */}
+          <div style={{ flex: 1, overflowY: 'auto' }}>
+          <div style={{ maxWidth: '520px', margin: '0 auto', padding: '24px 16px 40px' }}>
 
             {/* Year tabs */}
             <div style={{ display: 'flex', gap: '6px', marginBottom: '20px' }}>
@@ -863,6 +871,7 @@ function DashboardInner() {
               </div>
             )}
           </div>
+          </div>{/* end scroll wrapper */}
         </div>
       )}
     </div>
