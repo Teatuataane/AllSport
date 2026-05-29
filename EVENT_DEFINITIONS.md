@@ -29,7 +29,8 @@ Scoring formula mirrors `hold` (difficulty+time) but substitutes reps for second
 | `dynamic` | `difficulty+time` | Flag, Planche, Back Lever, Iron Cross, Front Lever |
 | `flexibility` | `difficulty+time` | Rear Hand Clasp, Forward Fold, Needle Pose, Middle Split, Shoulder Dislocate, Side Bend |
 | `hold` (no tiers) → `difficulty+time` | Fix `hasDifficultyTiers: true` | Headstand, Bridge, Standing Split, Breakdancing |
-| `reps` | `difficulty+reps` | 1 Leg Squat, Windshield Wipers, Chin Up Contest, Push Up Contest, Reverse Hyper, Finger Push Up, Ab Wheel Rollout, Jump Rope, Juggling, Gymnastics |
+| `reps` | `difficulty+reps` | 1 Leg Squat, Windshield Wipers, Chin Up Contest, Push Up Contest, Finger Push Up, Ab Wheel Rollout, Jump Rope, Juggling, Gymnastics |
+| `difficulty+reps` | `difficulty+time` | Reverse Hyper (D2 renamed to Back Extension Hold) |
 | `reps` | `strength` | Pause Dips, Pause Chin Up |
 | `reps` | `difficulty+reps` (special D4) | Calf Raise → renamed GHD Situp |
 | `reps` | `strength` | Leg Extension |
@@ -101,7 +102,7 @@ The PR display line in the scoring UI (`PR: {seasonPR}`) must also decode and fo
 |---|---|---|---|---|
 | 1 | 1A Press | `one-arm-press` | strength | none |
 | 2 | Deadlift | `deadlift` | strength | none |
-| 3 | OHP | `overhead-press` | strength | none |
+| 3 | Clean & Press | `clean-and-press` | strength | none |
 | 4 | Pause Dips | `pause-dips` | **difficulty+reps** (D5 weight-scored) | D1–D5 |
 | 5 | Pause Chin Up | `pause-chin-up` | **difficulty+reps** (D5 weight-scored) | D1–D5 |
 | 6 | Pause Squat | `pause-squat` | strength | none |
@@ -232,7 +233,7 @@ The PR display line in the scoring UI (`PR: {seasonPR}`) must also decode and fo
 |---|---|---|---|---|
 | 1 | Chinup Contest | `chin-up-contest` | **difficulty+reps** *(was reps)* | D1–D4 |
 | 2 | Pushup Contest | `push-up-contest` | **difficulty+reps** *(was reps)* | D1–D4 |
-| 3 | Reverse Hyper | `reverse-hyper` | **difficulty+reps** *(was reps)* | D1–D4 |
+| 3 | Reverse Hyper | `reverse-hyper` | **difficulty+time** *(was difficulty+reps)* | D1–D4 |
 | 4 | L-Sit Hold | `l-sit-hold` | difficulty+time | D1–D7 |
 | 5 | Tibialis Curl | `tibialis-curl` | strength | none |
 | 6 | Headstand | `headstand` | difficulty+time *(fix hasDifficultyTiers: true)* | D1–D5 |
@@ -255,9 +256,9 @@ The PR display line in the scoring UI (`PR: {seasonPR}`) must also decode and fo
 - D3: Push Up
 - D4: 1 Arm Pushup
 
-**Reverse Hyper** (D1–D4)
+**Reverse Hyper** (D1–D4) — `difficulty+time`, max hold
 - D1: Superman Hold
-- D2: Back Extension
+- D2: Back Extension Hold
 - D3: Reverse Hyper Hold (Hips off)
 - D4: Reverse Hyper Hold (Only Chest Touching)
 

@@ -9,7 +9,7 @@ const domains = [
     icon: '🏋️',
     color: '#e63946',
     desc: 'How much can you lift? Absolute strength tested to its limit.',
-    events: ['1A Press', 'Deadlift', 'OHP', 'Pause Dips', 'Pause Chin Up', 'Pause Squat', 'Zercher Dead', 'Ham Curl', 'Pause Bench', 'Turkish Get Up'],
+    events: ['1A Press', 'Deadlift', 'Clean & Press', 'Pause Dips', 'Pause Chin Up', 'Pause Squat', 'Zercher Dead', 'Ham Curl', 'Pause Bench', 'Turkish Get Up'],
   },
   {
     name: 'Relative Strength',

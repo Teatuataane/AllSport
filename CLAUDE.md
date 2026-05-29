@@ -98,7 +98,7 @@ linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)
 
 | # | Domain | Events (10) |
 |---|--------|-------------|
-| 1 | Maximal Strength | 1A Press, Deadlift, OHP, Pause Dips, Pause Chin Up, Pause Squat, Zercher Dead, Ham Curl, Pause Bench, Turkish Get Up |
+| 1 | Maximal Strength | 1A Press, Deadlift, Clean & Press, Pause Dips, Pause Chin Up, Pause Squat, Zercher Dead, Ham Curl, Pause Bench, Turkish Get Up |
 | 2 | Relative Strength | 1 Leg Squat, Flag, Windshield Wipers, Toe Lift, Planche, Back Lever, Iron Cross, Front Lever, Chin Hang, Climbing |
 | 3 | Muscular Endurance | Chinup Contest, Pushup Contest, Reverse Hyper, L-Sit Hold, Tibialis Curl, Headstand, Finger Push Up, GHD Situp, Leg Extension, Ab Rollout |
 | 4 | Flexibility & Mobility | Rear Hand Clasp, Bridge, Forward Fold, Needle Pose, Forward Split, Middle Split, Standing Split, Foot Behind Head, Shoulder Dislocate, Pancake |
@@ -122,6 +122,8 @@ linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)
 - "Bowling" → **Kubb** (sport mode)
 - "Sprint Repeats" → **Bronco** (`difficulty+time` D1–D3)
 - "30-15 Test" → **Walking** (`difficulty+time` D1–D3)
+- "OHP" → **Clean & Press** (`strength` mode, slug: `clean-and-press`)
+- "Reverse Hyper" → now `difficulty+time` *(was `difficulty+reps`)*; D2 renamed from "Back Extension" to "Back Extension Hold"
 - Domain 6 completely redesigned — see Domain Display Order above. Old slugs (1k-run, sprint-repeats, 30-15-test, etc.) are legacy/orphaned in session history.
 
 ---
