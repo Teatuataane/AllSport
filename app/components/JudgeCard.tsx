@@ -38,14 +38,14 @@ type JudgeCardProps = {
 
 const DOMAINS = [
   { number: 1, name: 'Maximal Strength' },
-  { number: 2, name: 'Relative Strength' },
-  { number: 3, name: 'Muscular Endurance' },
-  { number: 4, name: 'Flexibility & Mobility' },
-  { number: 5, name: 'Power' },
+  { number: 2, name: 'Calisthenics' },
+  { number: 3, name: 'Power' },
+  { number: 4, name: 'Speed' },
+  { number: 5, name: 'Anaerobic Endurance' },
   { number: 6, name: 'Aerobic Endurance' },
-  { number: 7, name: 'Speed & Agility' },
+  { number: 7, name: 'Flexibility' },
   { number: 8, name: 'Body Awareness' },
-  { number: 9, name: 'Co-ordination' },
+  { number: 9, name: 'Coordination' },
   { number: 10, name: 'Aim & Precision' },
 ]
 

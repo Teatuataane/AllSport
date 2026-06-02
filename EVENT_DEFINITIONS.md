@@ -134,7 +134,7 @@ The PR display line in the scoring UI (`PR: {seasonPR}`) must also decode and fo
 - D5: Nordic Curl
 ---
 
-### Domain 2 — Relative Strength
+### Domain 2 — Calisthenics
 
 | # | Name | Slug | InputMode | Tiers |
 |---|---|---|---|---|
@@ -227,7 +227,7 @@ The PR display line in the scoring UI (`PR: {seasonPR}`) must also decode and fo
 
 ---
 
-### Domain 3 — Muscular Endurance
+### Domain 5 — Anaerobic Endurance
 
 | # | Name | Slug | InputMode | Tiers |
 |---|---|---|---|---|
@@ -302,7 +302,7 @@ The PR display line in the scoring UI (`PR: {seasonPR}`) must also decode and fo
 
 ---
 
-### Domain 4 — Flexibility & Mobility
+### Domain 7 — Flexibility
 *All events switch to `difficulty+time`. Effort tasks: Hold current tier 1 min, tier-below 2 min, tier-below 4 min.*
 
 | # | Name | Slug | InputMode | Tiers |
@@ -506,7 +506,7 @@ The PR display line in the scoring UI (`PR: {seasonPR}`) must also decode and fo
 
 ---
 
-### Domain 7 — Speed & Agility
+### Domain 4 — Speed
 
 | # | Name | Slug | InputMode | Tiers |
 |---|---|---|---|---|
@@ -605,7 +605,7 @@ The PR display line in the scoring UI (`PR: {seasonPR}`) must also decode and fo
 
 ---
 
-### Domain 9 — Co-ordination
+### Domain 9 — Coordination
 *All events: `sport` mode. Effort tasks: extra games vs new opponents.*
 
 | # | Name | Slug | InputMode |

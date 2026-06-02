@@ -99,15 +99,23 @@ linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)
 | # | Domain | Events (10) |
 |---|--------|-------------|
 | 1 | Maximal Strength | 1A Press, Deadlift, Clean & Press, Pause Dips, Pause Chin Up, Pause Squat, Zercher Dead, Ham Curl, Pause Bench, Turkish Get Up |
-| 2 | Relative Strength | 1 Leg Squat, Flag, Windshield Wipers, Toe Lift, Planche, Back Lever, Iron Cross, Front Lever, Chin Hang, Climbing |
-| 3 | Muscular Endurance | Chinup Contest, Pushup Contest, Reverse Hyper, L-Sit Hold, Tibialis Curl, Headstand, Finger Push Up, GHD Situp, Leg Extension, Ab Rollout |
-| 4 | Flexibility & Mobility | Rear Hand Clasp, Bridge, Forward Fold, Needle Pose, Forward Split, Middle Split, Standing Split, Foot Behind Head, Shoulder Dislocate, Pancake |
-| 5 | Power | Kelly Snatch, 1A Snatch, Triple Jump, Javelin, Shotput, Australian Football, Vertical Jump, Hand Walk, Clean & Jerk, Snatch |
+| 2 | Calisthenics | 1 Leg Squat, Flag, Windshield Wipers, Toe Lift, Planche, Back Lever, Iron Cross, Front Lever, Chin Hang, Climbing |
+| 3 | Power | Kelly Snatch, 1A Snatch, Triple Jump, Javelin, Shotput, Australian Football, Vertical Jump, Hand Walk, Clean & Jerk, Snatch |
+| 4 | Speed | 100m Sprint, Tag, T-Race, 400m Race, Beach Flags, 50m Sprint, 200m Sprint, Touch Rugby, Football Dribble, Repeat High Jump |
+| 5 | Anaerobic Endurance | Chinup Contest, Pushup Contest, Reverse Hyper, L-Sit Hold, Tibialis Curl, Headstand, Finger Push Up, GHD Situp, Leg Extension, Ab Rollout |
 | 6 | Aerobic Endurance | Burpee Broad Jump, Running, Cycling, Ski Erg, Row Erg, Breath Hold, Weighted Carry, Duck Walk, Bronco, Walking |
-| 7 | Speed & Agility | 100m Sprint, Tag, T-Race, 400m Race, Beach Flags, 50m Sprint, 200m Sprint, Touch Rugby, Football Dribble, Repeat High Jump |
+| 7 | Flexibility | Rear Hand Clasp, Bridge, Forward Fold, Needle Pose, Forward Split, Middle Split, Standing Split, Foot Behind Head, Shoulder Dislocate, Pancake |
 | 8 | Body Awareness | Tae Kwon Do, Breakdancing, Trampolining, Jump Rope, Wrestling, Gymnastics, Balance Ball, SKATE, Fencing, Juggling |
-| 9 | Co-ordination | Volleyball, Baseball, Teqball, Tennis, Cricket, Badminton, Basketball, Football, Hockey, Squash |
+| 9 | Coordination | Volleyball, Baseball, Teqball, Tennis, Cricket, Badminton, Basketball, Football, Hockey, Squash |
 | 10 | Aim & Precision | Netball, Handball, Bocce, Dodgeball, Carrom, Archery, Kubb, Darts, Disc Golf, Golf |
+
+### Domain renames / reorder (June 2026)
+- "Relative Strength" (was #2) → **Calisthenics** (#2) — name change only
+- "Power" (was #5) → **Power** (#3) — renumbered
+- "Speed & Agility" (was #7) → **Speed** (#4) — name + renumbered
+- "Muscular Endurance" (was #3) → **Anaerobic Endurance** (#5) — name + renumbered
+- "Flexibility & Mobility" (was #4) → **Flexibility** (#7) — name + renumbered
+- "Co-ordination" (was #9) → **Coordination** (#9) — name only
 
 ### Event renames / changes (from previous names)
 - "T-Test" → **T-Race** (sport/win-loss input mode)

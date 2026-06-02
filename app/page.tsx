@@ -11,28 +11,28 @@ const domains = [
     events: ['1A Press', 'Deadlift', 'Clean & Press', 'Pause Dips', 'Pause Chin Up', 'Pause Squat', 'Zercher Dead', 'Ham Curl', 'Pause Bench', 'Turkish Get Up'],
   },
   {
-    name: 'Relative Strength',
+    name: 'Calisthenics',
     icon: '💪',
     color: '#f4a226',
     events: ['1 Leg Squat', 'Flag', 'Windshield Wipers', 'Toe Lift', 'Planche', 'Back Lever', 'Iron Cross', 'Front Lever', 'Chin Hang', 'Climbing'],
   },
   {
-    name: 'Muscular Endurance',
-    icon: '🔄',
-    color: '#f7e03c',
-    events: ['Chinup Contest', 'Pushup Contest', 'Reverse Hyper', 'L-Sit Hold', 'Tibialis Curl', 'Headstand', 'Finger Push Up', 'GHD Situp', 'Leg Extension', 'Ab Rollout'],
-  },
-  {
-    name: 'Flexibility & Mobility',
-    icon: '🤸',
-    color: '#2d9e4f',
-    events: ['Rear Hand Clasp', 'Bridge', 'Forward Fold', 'Needle Pose', 'Forward Split', 'Middle Split', 'Standing Split', 'Foot Behind Head', 'Shoulder Dislocate', 'Pancake'],
-  },
-  {
     name: 'Power',
     icon: '⚡',
-    color: '#2563eb',
+    color: '#f7e03c',
     events: ['Kelly Snatch', '1A Snatch', 'Triple Jump', 'Javelin', 'Shotput', 'Australian Football', 'Vertical Jump', 'Hand Walk', 'Clean & Jerk', 'Snatch'],
+  },
+  {
+    name: 'Speed',
+    icon: '🏃',
+    color: '#2d9e4f',
+    events: ['100m Sprint', 'Tag', 'T-Race', '400m Race', 'Beach Flags', '50m Sprint', '200m Sprint', 'Touch Rugby', 'Football Dribble', 'Repeat High Jump'],
+  },
+  {
+    name: 'Anaerobic Endurance',
+    icon: '🔄',
+    color: '#2563eb',
+    events: ['Chinup Contest', 'Pushup Contest', 'Reverse Hyper', 'L-Sit Hold', 'Tibialis Curl', 'Headstand', 'Finger Push Up', 'GHD Situp', 'Leg Extension', 'Ab Rollout'],
   },
   {
     name: 'Aerobic Endurance',
@@ -41,10 +41,10 @@ const domains = [
     events: ['Burpee Broad Jump', 'Running', 'Cycling', 'Ski Erg', 'Row Erg', 'Breath Hold', 'Weighted Carry', 'Duck Walk', 'Bronco', 'Walking'],
   },
   {
-    name: 'Speed & Agility',
-    icon: '🏃',
+    name: 'Flexibility',
+    icon: '🤸',
     color: '#e63946',
-    events: ['100m Sprint', 'Tag', 'T-Race', '400m Race', 'Beach Flags', '50m Sprint', '200m Sprint', 'Touch Rugby', 'Football Dribble', 'Repeat High Jump'],
+    events: ['Rear Hand Clasp', 'Bridge', 'Forward Fold', 'Needle Pose', 'Forward Split', 'Middle Split', 'Standing Split', 'Foot Behind Head', 'Shoulder Dislocate', 'Pancake'],
   },
   {
     name: 'Body Awareness',
@@ -53,7 +53,7 @@ const domains = [
     events: ['Tae Kwon Do', 'Breakdancing', 'Trampolining', 'Jump Rope', 'Wrestling', 'Gymnastics', 'Balance Ball', 'SKATE', 'Fencing', 'Juggling'],
   },
   {
-    name: 'Co-ordination',
+    name: 'Coordination',
     icon: '🏐',
     color: '#2d9e4f',
     events: ['Volleyball', 'Baseball', 'Teqball', 'Tennis', 'Cricket', 'Badminton', 'Basketball', 'Football', 'Hockey', 'Squash'],
