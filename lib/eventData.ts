@@ -193,11 +193,11 @@ export const EVENTS: EventData[] = [
     emoji: '🏋️',
   },
 
-  // ─── Domain 2: Relative Strength ─────────────────────────────────────────────
+  // ─── Domain 2: Calisthenics ──────────────────────────────────────────────────
   {
     slug: '1-leg-squat',
     name: '1 Leg Squat',
-    domain: 'Relative Strength',
+    domain: 'Calisthenics',
     domainNumber: 2,
     inputMode: 'difficulty+reps',
     hasDifficultyTiers: true,
@@ -218,7 +218,7 @@ export const EVENTS: EventData[] = [
   {
     slug: 'flag',
     name: 'Flag',
-    domain: 'Relative Strength',
+    domain: 'Calisthenics',
     domainNumber: 2,
     inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
@@ -239,7 +239,7 @@ export const EVENTS: EventData[] = [
   {
     slug: 'windshield-wipers',
     name: 'Windshield Wipers',
-    domain: 'Relative Strength',
+    domain: 'Calisthenics',
     domainNumber: 2,
     inputMode: 'difficulty+reps',
     hasDifficultyTiers: true,
@@ -258,7 +258,7 @@ export const EVENTS: EventData[] = [
   {
     slug: 'toe-lift',
     name: 'Toe Lift',
-    domain: 'Relative Strength',
+    domain: 'Calisthenics',
     domainNumber: 2,
     inputMode: 'strength',
     hasDifficultyTiers: false,
@@ -271,7 +271,7 @@ export const EVENTS: EventData[] = [
   {
     slug: 'planche',
     name: 'Planche',
-    domain: 'Relative Strength',
+    domain: 'Calisthenics',
     domainNumber: 2,
     inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
@@ -292,7 +292,7 @@ export const EVENTS: EventData[] = [
   {
     slug: 'back-lever',
     name: 'Back Lever',
-    domain: 'Relative Strength',
+    domain: 'Calisthenics',
     domainNumber: 2,
     inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
@@ -314,7 +314,7 @@ export const EVENTS: EventData[] = [
   {
     slug: 'iron-cross',
     name: 'Iron Cross',
-    domain: 'Relative Strength',
+    domain: 'Calisthenics',
     domainNumber: 2,
     inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
@@ -335,7 +335,7 @@ export const EVENTS: EventData[] = [
   {
     slug: 'front-lever',
     name: 'Front Lever',
-    domain: 'Relative Strength',
+    domain: 'Calisthenics',
     domainNumber: 2,
     inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
@@ -357,7 +357,7 @@ export const EVENTS: EventData[] = [
   {
     slug: 'chin-hang',
     name: 'Chin Hang',
-    domain: 'Relative Strength',
+    domain: 'Calisthenics',
     domainNumber: 2,
     inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
@@ -378,7 +378,7 @@ export const EVENTS: EventData[] = [
   {
     slug: 'rope-climb',
     name: 'Climbing',
-    domain: 'Relative Strength',
+    domain: 'Calisthenics',
     domainNumber: 2,
     inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
@@ -399,12 +399,12 @@ export const EVENTS: EventData[] = [
     emoji: '🪢',
   },
 
-  // ─── Domain 3: Muscular Endurance ─────────────────────────────────────────────
+  // ─── Domain 5: Anaerobic Endurance ───────────────────────────────────────────
   {
     slug: 'chin-up-contest',
     name: 'Chinup Contest',
-    domain: 'Muscular Endurance',
-    domainNumber: 3,
+    domain: 'Anaerobic Endurance',
+    domainNumber: 5,
     inputMode: 'difficulty+reps',
     hasDifficultyTiers: true,
     difficultyTiers: [
@@ -421,8 +421,8 @@ export const EVENTS: EventData[] = [
   {
     slug: 'push-up-contest',
     name: 'Pushup Contest',
-    domain: 'Muscular Endurance',
-    domainNumber: 3,
+    domain: 'Anaerobic Endurance',
+    domainNumber: 5,
     inputMode: 'difficulty+reps',
     hasDifficultyTiers: true,
     difficultyTiers: [
@@ -440,8 +440,8 @@ export const EVENTS: EventData[] = [
   {
     slug: 'reverse-hyper',
     name: 'Reverse Hyper',
-    domain: 'Muscular Endurance',
-    domainNumber: 3,
+    domain: 'Anaerobic Endurance',
+    domainNumber: 5,
     inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
     difficultyTiers: [
@@ -459,8 +459,8 @@ export const EVENTS: EventData[] = [
   {
     slug: 'l-sit-hold',
     name: 'L-Sit Hold',
-    domain: 'Muscular Endurance',
-    domainNumber: 3,
+    domain: 'Anaerobic Endurance',
+    domainNumber: 5,
     inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
     difficultyTiers: [
@@ -481,8 +481,8 @@ export const EVENTS: EventData[] = [
   {
     slug: 'tibialis-curl',
     name: 'Tibialis Curl',
-    domain: 'Muscular Endurance',
-    domainNumber: 3,
+    domain: 'Anaerobic Endurance',
+    domainNumber: 5,
     inputMode: 'strength',
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
@@ -494,8 +494,8 @@ export const EVENTS: EventData[] = [
   {
     slug: 'headstand',
     name: 'Headstand',
-    domain: 'Muscular Endurance',
-    domainNumber: 3,
+    domain: 'Anaerobic Endurance',
+    domainNumber: 5,
     inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
     difficultyTiers: [
@@ -514,8 +514,8 @@ export const EVENTS: EventData[] = [
   {
     slug: 'finger-push-up',
     name: 'Finger Push Up',
-    domain: 'Muscular Endurance',
-    domainNumber: 3,
+    domain: 'Anaerobic Endurance',
+    domainNumber: 5,
     inputMode: 'difficulty+reps',
     hasDifficultyTiers: true,
     difficultyTiers: [
@@ -536,8 +536,8 @@ export const EVENTS: EventData[] = [
   {
     slug: 'ghd-situp',
     name: 'GHD Situp',
-    domain: 'Muscular Endurance',
-    domainNumber: 3,
+    domain: 'Anaerobic Endurance',
+    domainNumber: 5,
     inputMode: 'difficulty+reps',
     hasDifficultyTiers: true,
     difficultyTiers: [
@@ -555,8 +555,8 @@ export const EVENTS: EventData[] = [
   {
     slug: 'leg-extension',
     name: 'Leg Extension',
-    domain: 'Muscular Endurance',
-    domainNumber: 3,
+    domain: 'Anaerobic Endurance',
+    domainNumber: 5,
     inputMode: 'strength',
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
@@ -568,8 +568,8 @@ export const EVENTS: EventData[] = [
   {
     slug: 'ab-wheel-rollout',
     name: 'Ab Rollout',
-    domain: 'Muscular Endurance',
-    domainNumber: 3,
+    domain: 'Anaerobic Endurance',
+    domainNumber: 5,
     inputMode: 'difficulty+reps',
     hasDifficultyTiers: true,
     difficultyTiers: [
@@ -586,12 +586,12 @@ export const EVENTS: EventData[] = [
     emoji: '⚙️',
   },
 
-  // ─── Domain 4: Flexibility & Mobility ────────────────────────────────────────
+  // ─── Domain 7: Flexibility ────────────────────────────────────────────────────
   {
     slug: 'rear-hand-clasp',
     name: 'Rear Hand Clasp',
-    domain: 'Flexibility & Mobility',
-    domainNumber: 4,
+    domain: 'Flexibility',
+    domainNumber: 7,
     inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
     difficultyTiers: [
@@ -612,8 +612,8 @@ export const EVENTS: EventData[] = [
   {
     slug: 'bridge',
     name: 'Bridge',
-    domain: 'Flexibility & Mobility',
-    domainNumber: 4,
+    domain: 'Flexibility',
+    domainNumber: 7,
     inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
     difficultyTiers: [
@@ -633,8 +633,8 @@ export const EVENTS: EventData[] = [
   {
     slug: 'forward-fold',
     name: 'Forward Fold',
-    domain: 'Flexibility & Mobility',
-    domainNumber: 4,
+    domain: 'Flexibility',
+    domainNumber: 7,
     inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
     difficultyTiers: [
@@ -656,8 +656,8 @@ export const EVENTS: EventData[] = [
   {
     slug: 'needle-pose',
     name: 'Needle Pose',
-    domain: 'Flexibility & Mobility',
-    domainNumber: 4,
+    domain: 'Flexibility',
+    domainNumber: 7,
     inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
     difficultyTiers: [
@@ -677,8 +677,8 @@ export const EVENTS: EventData[] = [
   {
     slug: 'front-split',
     name: 'Forward Split',
-    domain: 'Flexibility & Mobility',
-    domainNumber: 4,
+    domain: 'Flexibility',
+    domainNumber: 7,
     inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
     difficultyTiers: [
@@ -698,8 +698,8 @@ export const EVENTS: EventData[] = [
   {
     slug: 'middle-split',
     name: 'Middle Split',
-    domain: 'Flexibility & Mobility',
-    domainNumber: 4,
+    domain: 'Flexibility',
+    domainNumber: 7,
     inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
     difficultyTiers: [
@@ -720,8 +720,8 @@ export const EVENTS: EventData[] = [
   {
     slug: 'standing-split',
     name: 'Standing Split',
-    domain: 'Flexibility & Mobility',
-    domainNumber: 4,
+    domain: 'Flexibility',
+    domainNumber: 7,
     inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
     difficultyTiers: [
@@ -743,8 +743,8 @@ export const EVENTS: EventData[] = [
   {
     slug: 'foot-behind-head',
     name: 'Foot Behind Head',
-    domain: 'Flexibility & Mobility',
-    domainNumber: 4,
+    domain: 'Flexibility',
+    domainNumber: 7,
     inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
     difficultyTiers: [
@@ -764,8 +764,8 @@ export const EVENTS: EventData[] = [
   {
     slug: 'shoulder-dislocate',
     name: 'Shoulder Dislocate',
-    domain: 'Flexibility & Mobility',
-    domainNumber: 4,
+    domain: 'Flexibility',
+    domainNumber: 7,
     inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
     difficultyTiers: [
@@ -783,8 +783,8 @@ export const EVENTS: EventData[] = [
   {
     slug: 'pancake',
     name: 'Pancake',
-    domain: 'Flexibility & Mobility',
-    domainNumber: 4,
+    domain: 'Flexibility',
+    domainNumber: 7,
     inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
     difficultyTiers: [
@@ -803,12 +803,12 @@ export const EVENTS: EventData[] = [
     emoji: '🧘',
   },
 
-  // ─── Domain 5: Power ─────────────────────────────────────────────────────────
+  // ─── Domain 3: Power ─────────────────────────────────────────────────────────
   {
     slug: 'kelly-snatch',
     name: 'Kelly Snatch',
     domain: 'Power',
-    domainNumber: 5,
+    domainNumber: 3,
     inputMode: 'strength',
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
@@ -821,7 +821,7 @@ export const EVENTS: EventData[] = [
     slug: 'one-arm-snatch',
     name: '1A Snatch',
     domain: 'Power',
-    domainNumber: 5,
+    domainNumber: 3,
     inputMode: 'strength',
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
@@ -834,7 +834,7 @@ export const EVENTS: EventData[] = [
     slug: 'triple-jump',
     name: 'Triple Jump',
     domain: 'Power',
-    domainNumber: 5,
+    domainNumber: 3,
     inputMode: 'distance',
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
@@ -847,7 +847,7 @@ export const EVENTS: EventData[] = [
     slug: 'javelin-throw',
     name: 'Javelin',
     domain: 'Power',
-    domainNumber: 5,
+    domainNumber: 3,
     inputMode: 'distance',
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
@@ -860,7 +860,7 @@ export const EVENTS: EventData[] = [
     slug: 'shot-put',
     name: 'Shotput',
     domain: 'Power',
-    domainNumber: 5,
+    domainNumber: 3,
     inputMode: 'distance',
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
@@ -873,7 +873,7 @@ export const EVENTS: EventData[] = [
     slug: 'australian-football',
     name: 'Australian Football',
     domain: 'Power',
-    domainNumber: 5,
+    domainNumber: 3,
     inputMode: 'sport',
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
@@ -886,7 +886,7 @@ export const EVENTS: EventData[] = [
     slug: 'vertical-jump',
     name: 'Vertical Jump',
     domain: 'Power',
-    domainNumber: 5,
+    domainNumber: 3,
     inputMode: 'distance',
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
@@ -899,7 +899,7 @@ export const EVENTS: EventData[] = [
     slug: 'hand-walk',
     name: 'Hand Walk',
     domain: 'Power',
-    domainNumber: 5,
+    domainNumber: 3,
     inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
     difficultyTiers: [
@@ -918,7 +918,7 @@ export const EVENTS: EventData[] = [
     slug: 'clean-and-jerk',
     name: 'Clean & Jerk',
     domain: 'Power',
-    domainNumber: 5,
+    domainNumber: 3,
     inputMode: 'strength',
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
@@ -931,7 +931,7 @@ export const EVENTS: EventData[] = [
     slug: 'snatch',
     name: 'Snatch',
     domain: 'Power',
-    domainNumber: 5,
+    domainNumber: 3,
     inputMode: 'strength',
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
@@ -1110,12 +1110,12 @@ export const EVENTS: EventData[] = [
     emoji: '🚶',
   },
 
-  // ─── Domain 7: Speed & Agility ───────────────────────────────────────────────
+  // ─── Domain 4: Speed ────────────────────────────────────────────────────────────
   {
     slug: '100m-sprint',
     name: '100m Sprint',
-    domain: 'Speed & Agility',
-    domainNumber: 7,
+    domain: 'Speed',
+    domainNumber: 4,
     inputMode: 'sprint',
     hasDifficultyTiers: false,
     howToPerform: 'Sprint 100 metres from a standing start on a measured straight course. React to the judge\'s signal to start. Sprint at full speed to the finish line. Timer is recorded in seconds and centiseconds.',
@@ -1126,8 +1126,8 @@ export const EVENTS: EventData[] = [
   {
     slug: 'tag',
     name: 'Tag',
-    domain: 'Speed & Agility',
-    domainNumber: 7,
+    domain: 'Speed',
+    domainNumber: 4,
     inputMode: 'sport',
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
@@ -1139,8 +1139,8 @@ export const EVENTS: EventData[] = [
   {
     slug: 't-race',
     name: 'T-Race',
-    domain: 'Speed & Agility',
-    domainNumber: 7,
+    domain: 'Speed',
+    domainNumber: 4,
     inputMode: 'sport',
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
@@ -1152,8 +1152,8 @@ export const EVENTS: EventData[] = [
   {
     slug: '400m-race',
     name: '400m Race',
-    domain: 'Speed & Agility',
-    domainNumber: 7,
+    domain: 'Speed',
+    domainNumber: 4,
     inputMode: 'sprint',
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
@@ -1165,8 +1165,8 @@ export const EVENTS: EventData[] = [
   {
     slug: 'beach-flags',
     name: 'Beach Flags',
-    domain: 'Speed & Agility',
-    domainNumber: 7,
+    domain: 'Speed',
+    domainNumber: 4,
     inputMode: 'sport',
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
@@ -1178,8 +1178,8 @@ export const EVENTS: EventData[] = [
   {
     slug: '50m-sprint',
     name: '50m Sprint',
-    domain: 'Speed & Agility',
-    domainNumber: 7,
+    domain: 'Speed',
+    domainNumber: 4,
     inputMode: 'sprint',
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
@@ -1191,8 +1191,8 @@ export const EVENTS: EventData[] = [
   {
     slug: '200m-sprint',
     name: '200m Sprint',
-    domain: 'Speed & Agility',
-    domainNumber: 7,
+    domain: 'Speed',
+    domainNumber: 4,
     inputMode: 'sprint',
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
@@ -1204,8 +1204,8 @@ export const EVENTS: EventData[] = [
   {
     slug: 'touch-rugby',
     name: 'Touch Rugby',
-    domain: 'Speed & Agility',
-    domainNumber: 7,
+    domain: 'Speed',
+    domainNumber: 4,
     inputMode: 'sport',
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
@@ -1217,8 +1217,8 @@ export const EVENTS: EventData[] = [
   {
     slug: 'football-dribble',
     name: 'Football Dribble',
-    domain: 'Speed & Agility',
-    domainNumber: 7,
+    domain: 'Speed',
+    domainNumber: 4,
     inputMode: 'sprint',
     hasDifficultyTiers: false,
     howToPerform: PLACEHOLDER_CONTENT,
@@ -1230,8 +1230,8 @@ export const EVENTS: EventData[] = [
   {
     slug: 'repeat-high-jump',
     name: 'Repeat High Jump',
-    domain: 'Speed & Agility',
-    domainNumber: 7,
+    domain: 'Speed',
+    domainNumber: 4,
     inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
     difficultyTiers: [
@@ -1433,11 +1433,11 @@ export const EVENTS: EventData[] = [
     emoji: '🤹',
   },
 
-  // ─── Domain 9: Co-ordination ─────────────────────────────────────────────────
+  // ─── Domain 9: Coordination ──────────────────────────────────────────────────
   {
     slug: 'volleyball',
     name: 'Volleyball',
-    domain: 'Co-ordination',
+    domain: 'Coordination',
     domainNumber: 9,
     inputMode: 'sport',
     hasDifficultyTiers: false,
@@ -1449,7 +1449,7 @@ export const EVENTS: EventData[] = [
   {
     slug: 'baseball',
     name: 'Baseball',
-    domain: 'Co-ordination',
+    domain: 'Coordination',
     domainNumber: 9,
     inputMode: 'sport',
     hasDifficultyTiers: false,
@@ -1462,7 +1462,7 @@ export const EVENTS: EventData[] = [
   {
     slug: 'teqball',
     name: 'Teqball',
-    domain: 'Co-ordination',
+    domain: 'Coordination',
     domainNumber: 9,
     inputMode: 'sport',
     hasDifficultyTiers: false,
@@ -1475,7 +1475,7 @@ export const EVENTS: EventData[] = [
   {
     slug: 'tennis',
     name: 'Tennis',
-    domain: 'Co-ordination',
+    domain: 'Coordination',
     domainNumber: 9,
     inputMode: 'sport',
     hasDifficultyTiers: false,
@@ -1488,7 +1488,7 @@ export const EVENTS: EventData[] = [
   {
     slug: 'cricket',
     name: 'Cricket',
-    domain: 'Co-ordination',
+    domain: 'Coordination',
     domainNumber: 9,
     inputMode: 'sport',
     hasDifficultyTiers: false,
@@ -1501,7 +1501,7 @@ export const EVENTS: EventData[] = [
   {
     slug: 'badminton',
     name: 'Badminton',
-    domain: 'Co-ordination',
+    domain: 'Coordination',
     domainNumber: 9,
     inputMode: 'sport',
     hasDifficultyTiers: false,
@@ -1514,7 +1514,7 @@ export const EVENTS: EventData[] = [
   {
     slug: 'basketball',
     name: 'Basketball',
-    domain: 'Co-ordination',
+    domain: 'Coordination',
     domainNumber: 9,
     inputMode: 'sport',
     hasDifficultyTiers: false,
@@ -1527,7 +1527,7 @@ export const EVENTS: EventData[] = [
   {
     slug: 'football',
     name: 'Football',
-    domain: 'Co-ordination',
+    domain: 'Coordination',
     domainNumber: 9,
     inputMode: 'sport',
     hasDifficultyTiers: false,
@@ -1540,7 +1540,7 @@ export const EVENTS: EventData[] = [
   {
     slug: 'hockey',
     name: 'Hockey',
-    domain: 'Co-ordination',
+    domain: 'Coordination',
     domainNumber: 9,
     inputMode: 'sport',
     hasDifficultyTiers: false,
@@ -1553,7 +1553,7 @@ export const EVENTS: EventData[] = [
   {
     slug: 'squash',
     name: 'Squash',
-    domain: 'Co-ordination',
+    domain: 'Coordination',
     domainNumber: 9,
     inputMode: 'sport',
     hasDifficultyTiers: false,
@@ -1843,13 +1843,13 @@ export function getBonusTargets(
 // Ordered domain list for consistent display
 export const DOMAIN_ORDER = [
   'Maximal Strength',
-  'Relative Strength',
-  'Muscular Endurance',
-  'Flexibility & Mobility',
+  'Calisthenics',
   'Power',
+  'Speed',
+  'Anaerobic Endurance',
   'Aerobic Endurance',
-  'Speed & Agility',
+  'Flexibility',
   'Body Awareness',
-  'Co-ordination',
+  'Coordination',
   'Aim & Precision',
 ]

@@ -2,6 +2,7 @@
 
 ## ✅ Done
 
+- Domain rename (June 2026): Relative Strength → Calisthenics, Muscular Endurance → Anaerobic Endurance, Flexibility & Mobility → Flexibility, Speed & Agility → Speed, Co-ordination → Coordination. New order: Maximal Strength / Calisthenics / Power / Speed / Anaerobic Endurance / Aerobic Endurance / Flexibility / Body Awareness / Coordination / Aim & Precision. Updated lib/eventData.ts, all app pages, and DB migration 20260602_rename_domains.sql
 - Event selector in scoring setup now derived from eventData.ts — names always in sync, no more hardcoded DOMAINS array
 - `score` inputMode added for Golf and Disc Golf (stroke count for 4 holes, lower is better)
 - Domain 6 updated: Bronco (D1–D3) and Walking (D1–D3) replace Sprint Repeats and 30-15 Test
