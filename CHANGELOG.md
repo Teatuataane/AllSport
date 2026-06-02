@@ -2,6 +2,13 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.3.0.2] - 2026-06-02
+
+### Changed
+- **Domain names and order clarified across the entire app** — five domains renamed and four renumbered. New canonical order: Maximal Strength (1), Calisthenics (2), Power (3), Speed (4), Anaerobic Endurance (5), Aerobic Endurance (6), Flexibility (7), Body Awareness (8), Coordination (9), Aim & Precision (10). Old names (Relative Strength, Muscular Endurance, Flexibility & Mobility, Speed & Agility, Co-ordination) are retired.
+- Updated all pages: homepage, How To Play, scoring setup, event voting, and judge panel now show the new names and order.
+- DB migration `20260602_rename_domains.sql` backfills all historical session and vote data to the new domain numbers and names.
+
 ## [0.3.0.2] - 2026-05-07
 
 ### Fixed
