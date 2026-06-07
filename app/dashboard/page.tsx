@@ -95,12 +95,11 @@ function DashboardInner() {
   const [topEvent, setTopEvent] = useState<{ event_name: string; player_rank: number; total_players: number } | null>(null)
 
   // Active session (non-judges)
-  const [activeSession, setActiveSession] = useState<any>(null)
+  const [activeSession, setActiveSession] = useState<any>(null)   // player already has results in this session
+  const [anyActiveSession, setAnyActiveSession] = useState<any>(null) // any currently running session
 
   // Join game
-  const [sessionCode, setSessionCode] = useState('')
   const [joinError, setJoinError] = useState('')
-  const [joining, setJoining] = useState(false)
   const [pendingAutoJoin, setPendingAutoJoin] = useState<string | null>(null)
 
   // Colours history modal
@@ -185,42 +184,43 @@ function DashboardInner() {
     loadTopEvent()
   }, [activePlayerId, activePlayer?.division])
 
-  // ── Active session (non-judge) ───────────────────────────────────────────────
+  // ── Active session detection ─────────────────────────────────────────────────
   useEffect(() => {
     if (!userId) return
     const checkActive = async () => {
-      const { data: result } = await supabase
-        .from('results')
-        .select('session_id')
-        .eq('player_id', userId)
-        .limit(1)
-      if (result && result.length > 0) {
-        const { data: sess } = await supabase
-          .from('sessions')
-          .select('*')
-          .eq('id', result[0].session_id)
-          .eq('is_active', true)
-          .maybeSingle()
-        setActiveSession(sess)
+      // Find any currently running session
+      const { data: anyActive } = await supabase
+        .from('sessions')
+        .select('*')
+        .eq('is_active', true)
+        .maybeSingle()
+      setAnyActiveSession(anyActive)
+
+      if (anyActive) {
+        // Check if this player already has a result in this session
+        const { data: result } = await supabase
+          .from('results')
+          .select('id')
+          .eq('player_id', userId)
+          .eq('session_id', anyActive.id)
+          .limit(1)
+        if (result && result.length > 0) setActiveSession(anyActive)
       }
     }
     checkActive()
   }, [userId])
 
-  // ── Auto-join from QR / ?code= ───────────────────────────────────────────────
+  // ── Auto-join from QR / ?code= (silent, no UI — QR code fallback) ───────────
   useEffect(() => {
     const codeFromUrl = searchParams.get('code')
     const codeFromStorage = typeof window !== 'undefined' ? localStorage.getItem('pending_session_code') : null
     const code = codeFromUrl || codeFromStorage
     if (code) {
-      const upper = code.toUpperCase()
-      setSessionCode(upper)
-      setPendingAutoJoin(upper)
+      setPendingAutoJoin(code.toUpperCase())
       if (codeFromStorage) localStorage.removeItem('pending_session_code')
     }
   }, [searchParams])
 
-  // Fire auto-join once the player is confirmed loaded (auth ready)
   useEffect(() => {
     if (pendingAutoJoin && !loading) {
       setPendingAutoJoin(null)
@@ -228,11 +228,8 @@ function DashboardInner() {
     }
   }, [pendingAutoJoin, loading])
 
-  // ── Join handler ─────────────────────────────────────────────────────────────
-  const handleJoinByCode = async (codeOverride?: string) => {
-    const code = (codeOverride ?? sessionCode).trim().toUpperCase()
-    if (!code) return
-    setJoining(true); setJoinError('')
+  const handleJoinByCode = async (code: string) => {
+    setJoinError('')
     try {
       const { data: sess, error } = await supabase
         .from('sessions')
@@ -241,11 +238,10 @@ function DashboardInner() {
         .maybeSingle()
       if (error) throw new Error(`Session lookup failed: ${error.message}`)
       if (!sess) throw new Error(`No session found with code "${code}". Ask the Kaiwhakawā to confirm the code on their screen.`)
-      if (!sess.is_active) throw new Error(`Session "${code}" has ended. Ask your Kaiwhakawā to start a new one.`)
+      if (!sess.is_active) throw new Error(`Session "${code}" has ended.`)
       window.location.href = `/scoring/${sess.id}`
     } catch (e: any) {
       setJoinError(e.message)
-      setJoining(false)
     }
   }
 
@@ -632,70 +628,64 @@ function DashboardInner() {
       </BentoCard>
 
       {/* ── Card 8: Join a Game ─────────────────────────────────────────────── */}
-      <div style={{
-        background: hasNoSessions ? '#061a0d' : '#0d0d0d',
-        border: hasNoSessions ? '1px solid #4DB26E' : '1px solid #1e1e1e',
-        borderLeft: `4px solid ${hasNoSessions ? '#4DB26E' : '#333'}`,
-        borderRadius: '16px',
-        padding: '20px 22px',
-        ...(hasNoSessions ? { boxShadow: '0 0 20px #4DB26E18' } : {}),
-      }}>
+      {!isJudge && !activeSession && (
         <div style={{
-          fontFamily: 'Bebas Neue, cursive', fontSize: '20px',
-          color: hasNoSessions ? '#4DB26E' : '#fff',
-          letterSpacing: '0.05em', marginBottom: '4px', lineHeight: 1,
+          background: anyActiveSession && hasNoSessions ? '#061a0d' : anyActiveSession ? '#0a120a' : '#0d0d0d',
+          border: anyActiveSession ? `1px solid ${hasNoSessions ? '#4DB26E' : '#2a4a2a'}` : '1px solid #1e1e1e',
+          borderLeft: `4px solid ${anyActiveSession ? '#4DB26E' : '#222'}`,
+          borderRadius: '16px',
+          padding: '20px 22px',
+          ...(anyActiveSession && hasNoSessions ? { boxShadow: '0 0 24px #4DB26E22' } : {}),
         }}>
-          {hasNoSessions ? 'Join Your First Game' : 'Join a Game'}
-        </div>
-        <div style={{
-          fontSize: '11px', color: '#555',
-          fontFamily: 'Barlow Condensed, sans-serif',
-          letterSpacing: '0.05em', marginBottom: '14px',
-        }}>
-          Enter the 6-digit code shown on the Kaiwhakawā screen
-        </div>
-
-        {joinError && (
           <div style={{
-            background: '#2e0d0d', border: '2px solid #EA4742',
-            borderRadius: '8px', padding: '12px 14px', marginBottom: '12px',
-            color: '#EA4742', fontSize: '13px', fontWeight: 'bold', lineHeight: 1.4,
+            fontFamily: 'Bebas Neue, cursive', fontSize: '20px',
+            color: anyActiveSession ? (hasNoSessions ? '#4DB26E' : '#6ecf8a') : '#333',
+            letterSpacing: '0.05em', marginBottom: '4px', lineHeight: 1,
           }}>
-            ⚠ {joinError}
+            {anyActiveSession
+              ? (hasNoSessions ? 'Join Your First Game' : 'Join a Game')
+              : 'No Session Running'}
           </div>
-        )}
+          <div style={{
+            fontSize: '11px', color: '#555',
+            fontFamily: 'Barlow Condensed, sans-serif',
+            letterSpacing: '0.05em', marginBottom: anyActiveSession ? '14px' : 0,
+          }}>
+            {anyActiveSession
+              ? anyActiveSession.location || 'AllSport HQ'
+              : 'Sessions run Tue & Thu 4:30pm, Sat 9:00am'}
+          </div>
 
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <input
-            value={sessionCode}
-            onChange={e => setSessionCode(e.target.value.toUpperCase())}
-            placeholder="ABC123"
-            maxLength={6}
-            style={{
-              flex: 1, background: '#0a0a0a',
-              border: '1px solid #333', borderRadius: '10px',
-              padding: '13px', color: '#fff', fontSize: '22px',
-              fontWeight: 'bold', letterSpacing: '6px',
-              textAlign: 'center', boxSizing: 'border-box' as const,
-            }}
-            onKeyDown={e => e.key === 'Enter' && handleJoinByCode()}
-          />
-          <button
-            onClick={() => handleJoinByCode()}
-            disabled={sessionCode.trim().length < 6 || joining}
-            style={{
-              padding: '13px 22px', borderRadius: '10px', border: 'none',
-              cursor: sessionCode.trim().length < 6 ? 'not-allowed' : 'pointer',
-              background: sessionCode.trim().length >= 6 ? '#EA4742' : '#1a1a1a',
-              color: sessionCode.trim().length >= 6 ? '#fff' : '#444',
-              fontWeight: 'bold', fontSize: '14px', fontFamily: 'Bebas Neue, cursive',
-              letterSpacing: '0.05em',
-            }}
-          >
-            {joining ? '...' : 'JOIN'}
-          </button>
+          {anyActiveSession && (
+            <>
+              {joinError && (
+                <div style={{
+                  background: '#2e0d0d', border: '1px solid #EA4742',
+                  borderRadius: '8px', padding: '10px 14px', marginBottom: '12px',
+                  color: '#EA4742', fontSize: '12px', lineHeight: 1.4,
+                }}>
+                  ⚠ {joinError}
+                </div>
+              )}
+              <button
+                onClick={() => { window.location.href = `/scoring/${anyActiveSession.id}` }}
+                style={{
+                  width: '100%', padding: '15px', borderRadius: '10px', border: 'none',
+                  cursor: 'pointer',
+                  background: hasNoSessions
+                    ? 'linear-gradient(135deg, #2d7d46, #4DB26E)'
+                    : '#1a3d22',
+                  color: '#fff', fontWeight: 'bold', fontSize: '18px',
+                  fontFamily: 'Bebas Neue, cursive', letterSpacing: '0.08em',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                }}
+              >
+                Join Session Now →
+              </button>
+            </>
+          )}
         </div>
-      </div>
+      )}
 
       {/* ── Points History Modal ─────────────────────────────────────────────── */}
       {showHistory && (
