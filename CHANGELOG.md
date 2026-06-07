@@ -2,6 +2,19 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.3.1.0] - 2026-06-08
+
+### Changed
+- **Live session in-game screen redesigned** — top banner now shows the player's current division placement (ordinal) and time remaining side by side, replacing the removed join-code display.
+- **Event cards collapsed view updated** — now shows Score, Division rank for that specific event (with medal colours for top 3), and Effort Level. Personal record removed from collapsed view.
+- **Event cards expanded view** — "Today's Top Score" is now the player's own session best; "All Today's Scores" shows the player's own submissions only.
+- **Live session leaderboard replaced** — tab-based system replaced by three simultaneous sections: Men's, Women's, and Juniors. No effort leaderboard (effort shown on event buttons only).
+- **Leaderboard top 3 expandable** — tap any top-3 row to see all event scores and ordinal placements. "Show all" expands ranks 4+.
+- **Logged-in player pinned** — current player appears pinned below top 3 with their actual rank and a "YOU" label.
+- **Masters/Grandmaster toggle per gender section** — replacing the section outright rather than adding extra rows.
+- **Junior age year chips** — exact age shown (not cumulative U-age), only ages present in the session; combinable with event filter.
+- **Event filter** — replaces overall ranking with event-specific flat list; age + event filters work together.
+
 ## [0.3.0.2] - 2026-06-02
 
 ### Changed

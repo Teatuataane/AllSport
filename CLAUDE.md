@@ -502,7 +502,7 @@ best_score, current_rank, division, average_placement, season_year
     profile/page.tsx                # Player profile — icon picker, editing, family switcher
     prs/page.tsx                    # Personal best history — all 100 events
     scoring/page.tsx
-    scoring/[sessionId]/page.tsx    # Live session — per-division leaderboard tabs, judge edit/delete, tier selector, post-game popup
+    scoring/[sessionId]/page.tsx    # Live session — banner (div placement + timer), event cards (score/div rank/EL), new leaderboard (3-section, Masters toggle, age chips, event filter)
     auth/callback/route.ts
     join/
       [code]/page.tsx               # Invite landing — shows inviter name, Register CTA pre-filled with referral code
@@ -547,7 +547,7 @@ best_score, current_rank, division, average_placement, season_year
 - Sport results displayed as W/D/L (Wins/Draws/Losses) everywhere: live session event card + collapsed label, leaderboard expanded row, /prs page, /events/[slug] personal best. Format: "3W 1D 2L"
 - Leaderboard competitive rows show "Nth of N" division rank context (e.g. "1st of 3")
 - Points trigger fixed (May 2026): removed bonus system (was causing 140pts for 1st instead of 100); fixed gap formula (no floor on gap — min 10 applies to earned pts only). Migration: 20260526_fix_points_trigger.sql
-- Live session leaderboard — "Effort Level (All-Divisions)" tab + dynamic division tabs (competitive, player-ranked by total placement); expanded player row shows per-event score + ordinal placement; effort tasks unlock on first score submission using effectivePR = max(sessionBest, seasonPR)
+- Live session leaderboard — redesigned (June 2026): three simultaneous sections (Men's, Women's, Juniors); top 3 expandable per section; each top-3 row tappable to show all event scores + placements; logged-in player pinned below top 3 showing actual rank; Masters/Grandmaster toggle per gender section; Junior age-group chips (exact age); event filter dropdown (session events only, replaces overall ranking with event-specific flat list); age + event filters combinable; effort leaderboard removed (effort shown on event buttons only)
 - Effort system — effort tasks generated per event, locked until comp score submitted, effectivePR baseline, reps/hold/sport/tiered modes all handled; event button always shows "Effort Level: N"; award trigger correct (×10 per task, cap 100)
 - Divisions — 7 divisions with age labels: Men's, Women's, Juniors (U17), Masters Men (40+), Masters Women (40+), Grandmaster Men (60+), Grandmaster Women (60+)
 - Post-game popup — placement, per-event breakdown, bonuses, total points, colour progression moment
@@ -582,7 +582,7 @@ best_score, current_rank, division, average_placement, season_year
 5. **Partners page** — DB migration (partners table, partner_id on sessions), /supporters page, partner badge on /schedule
 6. Welcome email on registration (Supabase Edge Function + Resend)
 7. Kaiwhakawā approval flow (replace manual SQL)
-8. Leaderboard icons — add player icon emoji next to name on /leaderboard and /scoring/[sessionId] (deferred until icon system is proven on dashboard)
+8. Leaderboard icons — add player icon emoji next to name on /leaderboard (deferred until icon system is proven on dashboard; live session leaderboard uses new 3-section layout)
 9. Per-event placement storage — add `event_placement` column to results + trigger update, so points history can show "1st in Deadlift" etc. (future enhancement)
 10. Designed icon set — replace emoji placeholders with branded SVG icons; infrastructure already in place (players.icon column + icon picker on /profile)
 11. Championship registration flow (6 months before March 2027)
@@ -639,10 +639,14 @@ best_score, current_rank, division, average_placement, season_year
 - Club partnerships: AllSport runs sessions at partner clubs (club's sport always included in the 10 events); in exchange gains facility + equipment access; partners visible on /supporters page and as badge on /schedule; sessions.partner_id links to partners table
 - /supporters page: two sections — Koha supporters wall (existing) + Partner Clubs (new card grid with logo, sport, description, website link)
 - Budget allocation (2026, $2k): $600 professional content session (photographer/videographer), $300 session materials (banner, cones, tape), $400 sticker pack stock for referral Tier 3 rewards, $700 reserve for first partnership activation
+- Live session banner (June 2026): replaces join code display; shows division placement (ordinal) + time remaining side by side; "—" when no scores submitted yet; division label shown as status text above the placement value
+- Live session event cards (June 2026): collapsed shows Score / Div rank (event-specific within division, medal colours for top 3) / EL; expanded shows Today's Top Score (own best), Personal Record This Season, All Today's Scores (own submissions); join code removed entirely (feature removed)
+- Live session leaderboard (June 2026): 3-section layout (Men's, Women's, Juniors) replaces tab system; no Effort leaderboard; top 3 expandable (taps to show all event scores + ordinal placements); rest expandable via "Show all" button; logged-in player pinned below top 3 with actual rank + "YOU" label; Masters/Grandmaster toggle per gender (replaces that section's division); Junior age chips filter by exact age year group; event filter (session events only) replaces overall ranking with event-specific flat list; age + event filters combinable
+- Junior age filter: exact age (year group), not cumulative U-age; computed from players.date_of_birth; chips show only ages present in session
 
 ---
 
-*Last updated: May 2026 (session 10)*
+*Last updated: June 2026 (session 13 — live session UX redesign)*
 *Project started: March 2026*
 
 ## Skill routing
