@@ -919,27 +919,218 @@ function EventCard({
   )
 }
 
-// ─── LeaderboardTab ───────────────────────────────────────────────────────────
+// ─── Division pool constants ──────────────────────────────────────────────────
 
-type MensDivKey = "Men's" | 'Masters Men' | 'Grandmaster Men'
-type WomensDivKey = "Women's" | 'Masters Women' | 'Grandmaster Women'
-
-const MENS_OPTIONS: MensDivKey[] = ["Men's", 'Masters Men', 'Grandmaster Men']
-const WOMENS_OPTIONS: WomensDivKey[] = ["Women's", 'Masters Women', 'Grandmaster Women']
-
-function sectionLabel(key: string): string {
-  const labels: Record<string, string> = {
-    "Men's": "Men's", 'Masters Men': 'Masters (Men)', 'Grandmaster Men': 'Grandmaster (Men)',
-    "Women's": "Women's", 'Masters Women': 'Masters (Women)', 'Grandmaster Women': 'Grandmaster (Women)',
-    'Juniors': 'Juniors',
-  }
-  return labels[key] ?? key
-}
+const MENS_DIVS = ["Men's", 'Masters Men', 'Grandmaster Men']
+const WOMENS_DIVS = ["Women's", 'Masters Women', 'Grandmaster Women']
 
 function medalBg(rank: number): string {
   return rank === 1 ? '#F9B051' : rank === 2 ? '#C0C0C0' : rank === 3 ? '#CD7F32' : '#2a2a2a'
 }
 function medalColor(rank: number): string { return rank <= 3 ? '#000' : '#aaa' }
+
+// ─── JudgeSummaryTab ──────────────────────────────────────────────────────────
+
+function JudgeSummaryTab({
+  events, results, playerInfoMap, onScoreChanged,
+}: {
+  events: SessionEvent[]
+  results: Result[]
+  playerInfoMap: Record<string, PlayerInfo>
+  onScoreChanged: () => void
+}) {
+  const [expandedPlayerId, setExpandedPlayerId] = useState<string | null>(null)
+  const [editingKey, setEditingKey] = useState<string | null>(null)
+
+  function getPoolResults(pool: 'mens' | 'womens' | 'juniors') {
+    return results.filter(r => {
+      if (!r.player_id) return false
+      const info = playerInfoMap[r.player_id]
+      if (!info) return false
+      if (pool === 'mens') return MENS_DIVS.includes(info.division)
+      if (pool === 'womens') return WOMENS_DIVS.includes(info.division)
+      return info.division === 'Juniors'
+    })
+  }
+
+  function computeSummaryRows(pool: 'mens' | 'womens' | 'juniors') {
+    const poolResults = getPoolResults(pool)
+    const playerIds = [...new Set(poolResults.map(r => r.player_id).filter(Boolean))] as string[]
+    if (playerIds.length === 0) return []
+
+    const rows = playerIds.map(pid => {
+      let totalPlacement = 0
+      const eventDetails = events.map(ev => {
+        const evRes = poolResults.filter(r => r.event_id === ev.id)
+        const best: Record<string, { rawScore: number; scoreLabel: string }> = {}
+        evRes.forEach(r => {
+          if (!r.player_id) return
+          const ex = best[r.player_id]
+          if (!ex || r.raw_score > ex.rawScore) best[r.player_id] = { rawScore: r.raw_score, scoreLabel: r.score_label }
+        })
+        const scorerCount = Object.keys(best).length
+        const myBest = best[pid]
+        const evData = getEventByName(ev.event_name)
+        const isSport = evData?.inputMode === 'sport'
+        if (!myBest) {
+          totalPlacement += scorerCount + 1
+          return { eventId: ev.id, eventName: ev.event_name, emoji: evData?.emoji ?? '🏅', displayLabel: null as string | null, placement: scorerCount + 1, hasScore: false }
+        }
+        const placement = 1 + Object.values(best).filter(b => b.rawScore > myBest.rawScore).length
+        totalPlacement += placement
+        const displayLabel = isSport
+          ? sportWDL(poolResults.filter(r => r.player_id === pid && r.event_id === ev.id))
+          : myBest.scoreLabel
+        return { eventId: ev.id, eventName: ev.event_name, emoji: evData?.emoji ?? '🏅', displayLabel, placement, hasScore: true }
+      })
+      const sample = poolResults.find(r => r.player_id === pid)!
+      const division = playerInfoMap[pid]?.division ?? ''
+      return { playerId: pid, playerName: sample.player_name, totalPlacement, eventDetails, division }
+    })
+    rows.sort((a, b) => a.totalPlacement - b.totalPlacement)
+    return rows.map((e, _, arr) => ({ ...e, rank: 1 + arr.filter(x => x.totalPlacement < e.totalPlacement).length }))
+  }
+
+  async function handleDelete(resultId: string) {
+    await supabase.from('results').delete().eq('id', resultId)
+    setEditingKey(null)
+    onScoreChanged()
+  }
+
+  function renderSummarySection(pool: 'mens' | 'womens' | 'juniors', title: string) {
+    const rows = computeSummaryRows(pool)
+    const poolResults = getPoolResults(pool)
+    return (
+      <div style={{ marginBottom: '28px' }}>
+        <div style={{ fontSize: '16px', fontWeight: 700, color: '#fff', fontFamily: 'Bebas Neue, cursive', letterSpacing: '0.08em', marginBottom: '10px', borderBottom: '1px solid #1e1e1e', paddingBottom: '8px' }}>
+          {title}
+        </div>
+        {rows.length === 0 ? (
+          <div style={{ color: '#555', fontSize: '13px', padding: '8px 0', fontFamily: 'Barlow Condensed, sans-serif' }}>No scores submitted</div>
+        ) : (
+          rows.map(entry => {
+            const isExpanded = expandedPlayerId === entry.playerId
+            return (
+              <div key={entry.playerId} style={{ marginBottom: '6px' }}>
+                <button
+                  onClick={() => setExpandedPlayerId(isExpanded ? null : entry.playerId)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '10px', width: '100%',
+                    padding: '10px 14px',
+                    background: isExpanded ? '#0d1a2e' : '#111',
+                    border: `1px solid ${isExpanded ? '#2371BB' : '#1e1e1e'}`,
+                    borderRadius: isExpanded ? '10px 10px 0 0' : '10px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <div style={{
+                    width: '26px', height: '26px', borderRadius: '50%', flexShrink: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '12px', fontWeight: 700,
+                    background: medalBg(entry.rank), color: medalColor(entry.rank),
+                  }}>{entry.rank}</div>
+                  <div style={{ flex: 1, textAlign: 'left' }}>
+                    <div style={{ fontSize: '14px', fontWeight: 700, color: '#fff' }}>{entry.playerName}</div>
+                    {['Masters Men', 'Masters Women', 'Grandmaster Men', 'Grandmaster Women'].includes(entry.division) && (
+                      <div style={{ fontSize: '10px', color: '#B87DB5', fontFamily: 'Barlow Condensed, sans-serif' }}>{entry.division}</div>
+                    )}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', flexShrink: 0, marginRight: '4px' }}>
+                    {entry.totalPlacement}pts
+                  </div>
+                  <span style={{ color: isExpanded ? '#2371BB' : '#444', fontSize: '12px' }}>{isExpanded ? '▲' : '▼'}</span>
+                </button>
+
+                {isExpanded && (
+                  <div style={{ background: '#0a0a0a', border: '1px solid #2371BB', borderTop: 'none', borderRadius: '0 0 10px 10px', overflow: 'hidden' }}>
+                    {entry.eventDetails.map((ed, i) => {
+                      const editKey = `${entry.playerId}-${ed.eventId}`
+                      const isEditingThis = editingKey === editKey
+                      const eventResults = poolResults.filter(r => r.player_id === entry.playerId && r.event_id === ed.eventId)
+                      return (
+                        <div key={ed.eventId} style={{ borderBottom: i < entry.eventDetails.length - 1 ? '1px solid #111' : 'none' }}>
+                          <div style={{
+                            display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 14px',
+                            background: isEditingThis ? '#0d1a2e' : i % 2 === 0 ? '#0a0a0a' : '#0d0d0d',
+                          }}>
+                            <span style={{ fontSize: '14px', flexShrink: 0 }}>{ed.emoji}</span>
+                            <div style={{ flex: 1, fontSize: '11px', color: '#666', fontFamily: 'Barlow Condensed, sans-serif' }}>{ed.eventName}</div>
+                            <div style={{ fontSize: '12px', color: ed.displayLabel ? '#ccc' : '#333', minWidth: '60px', textAlign: 'right' }}>
+                              {ed.displayLabel ?? '—'}
+                            </div>
+                            <div style={{ fontSize: '11px', fontWeight: 700, minWidth: '28px', textAlign: 'right', color: ed.hasScore ? '#F9B051' : '#333', fontFamily: 'Barlow Condensed, sans-serif' }}>
+                              {ordinal(ed.placement)}
+                            </div>
+                            <button
+                              onClick={() => setEditingKey(isEditingThis ? null : editKey)}
+                              style={{
+                                background: 'none',
+                                border: `1px solid ${isEditingThis ? '#EA474244' : '#2371BB33'}`,
+                                borderRadius: '4px', color: isEditingThis ? '#EA4742' : '#2371BB',
+                                cursor: 'pointer', fontSize: '11px', padding: '2px 8px',
+                                fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, flexShrink: 0,
+                              }}
+                            >
+                              {isEditingThis ? 'Close' : 'Edit'}
+                            </button>
+                          </div>
+                          {isEditingThis && (
+                            <div style={{ padding: '12px 14px', background: '#0d1020', borderTop: '1px solid #1e1e1e' }}>
+                              {eventResults.length > 0 ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '10px' }}>
+                                  <div style={{ fontSize: '10px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.08em', marginBottom: '4px' }}>SUBMITTED SCORES</div>
+                                  {eventResults.map(r => (
+                                    <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#111', borderRadius: '8px', padding: '8px 12px' }}>
+                                      <div style={{ flex: 1, fontSize: '14px', color: '#fff' }}>{r.score_label}</div>
+                                      {r.difficulty_tier && (
+                                        <div style={{ fontSize: '10px', color: '#B87DB5', fontFamily: 'Barlow Condensed, sans-serif' }}>{r.difficulty_tier}</div>
+                                      )}
+                                      <button
+                                        onClick={() => handleDelete(r.id)}
+                                        style={{
+                                          background: '#EA474222', border: '1px solid #EA474244',
+                                          borderRadius: '4px', color: '#EA4742', cursor: 'pointer',
+                                          fontSize: '11px', padding: '3px 10px',
+                                          fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700,
+                                        }}
+                                      >Delete</button>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div style={{ fontSize: '13px', color: '#555', marginBottom: '10px' }}>No score submitted yet</div>
+                              )}
+                              <div style={{ fontSize: '11px', color: '#444', fontFamily: 'Barlow Condensed, sans-serif' }}>
+                                To add or update a score, use the Kaiwhakawā tab and select {entry.playerName}.
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )
+          })
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ padding: '12px 16px' }}>
+      <div style={{ fontSize: '11px', color: '#EA4742', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.1em', marginBottom: '16px', fontWeight: 700 }}>
+        GAME SUMMARY — ALL PLAYERS
+      </div>
+      {renderSummarySection('mens', "Men's")}
+      {renderSummarySection('womens', "Women's")}
+      {renderSummarySection('juniors', 'Juniors')}
+    </div>
+  )
+}
+
+// ─── LeaderboardTab ───────────────────────────────────────────────────────────
 
 function LeaderboardTab({
   events, results, playerInfoMap, currentPlayerId, currentPlayerDivision,
@@ -950,8 +1141,8 @@ function LeaderboardTab({
   currentPlayerId: string | null
   currentPlayerDivision: string | null
 }) {
-  const [menDiv, setMenDiv] = useState<MensDivKey>("Men's")
-  const [womenDiv, setWomenDiv] = useState<WomensDivKey>("Women's")
+  const [menFilter, setMenFilter] = useState<'Masters Men' | 'Grandmaster Men' | null>(null)
+  const [womenFilter, setWomenFilter] = useState<'Masters Women' | 'Grandmaster Women' | null>(null)
   const [juniorAge, setJuniorAge] = useState<number | null>(null)
   const [eventFilterId, setEventFilterId] = useState<string | null>(null)
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({})
@@ -968,16 +1159,19 @@ function LeaderboardTab({
     return [...ages].sort((a, b) => a - b)
   }, [results, playerInfoMap])
 
-  function getDivResults(divKey: string, ageFilter: number | null) {
+  function getPoolResults(pool: 'mens' | 'womens' | 'juniors', filter: string | null, ageFilter: number | null) {
     return results.filter(r => {
       if (!r.player_id) return false
       const info = playerInfoMap[r.player_id]
-      if (!info || info.division !== divKey) return false
-      if (divKey === 'Juniors' && ageFilter !== null) {
-        if (!info.date_of_birth) return true
-        return getAge(info.date_of_birth) === ageFilter
+      if (!info) return false
+      if (pool === 'mens') return filter ? info.division === filter : MENS_DIVS.includes(info.division)
+      if (pool === 'womens') return filter ? info.division === filter : WOMENS_DIVS.includes(info.division)
+      if (pool === 'juniors') {
+        if (info.division !== 'Juniors') return false
+        if (ageFilter !== null) return info.date_of_birth ? getAge(info.date_of_birth) === ageFilter : true
+        return true
       }
-      return true
+      return false
     })
   }
 
@@ -987,20 +1181,22 @@ function LeaderboardTab({
   }
   type CompRow = {
     playerKey: string; playerName: string; playerId: string
-    totalPlacement: number; rank: number; eventDetails: EventDetail[]
+    totalPlacement: number; rank: number
+    subDivision?: string; subDivisionRank?: number
+    eventDetails: EventDetail[]
   }
 
-  function computeRows(divKey: string, ageFilter: number | null): CompRow[] {
-    const divResults = getDivResults(divKey, ageFilter)
-    const playerIds = [...new Set(divResults.map(r => r.player_id).filter(Boolean))] as string[]
+  function computeRows(pool: 'mens' | 'womens' | 'juniors', filter: string | null, ageFilter: number | null): CompRow[] {
+    const poolResults = getPoolResults(pool, filter, ageFilter)
+    const playerIds = [...new Set(poolResults.map(r => r.player_id).filter(Boolean))] as string[]
     if (playerIds.length === 0) return []
 
     const rows = playerIds.map(pid => {
       let totalPlacement = 0
       const eventDetails: EventDetail[] = events.map(ev => {
-        const evDivRes = divResults.filter(r => r.event_id === ev.id)
+        const evPoolRes = poolResults.filter(r => r.event_id === ev.id)
         const best: Record<string, { rawScore: number; scoreLabel: string }> = {}
-        evDivRes.forEach(r => {
+        evPoolRes.forEach(r => {
           if (!r.player_id) return
           const ex = best[r.player_id]
           if (!ex || r.raw_score > ex.rawScore) best[r.player_id] = { rawScore: r.raw_score, scoreLabel: r.score_label }
@@ -1016,23 +1212,44 @@ function LeaderboardTab({
         const placement = 1 + Object.values(best).filter(b => b.rawScore > myBest.rawScore).length
         totalPlacement += placement
         const displayLabel = isSport
-          ? sportWDL(divResults.filter(r => r.player_id === pid && r.event_id === ev.id))
+          ? sportWDL(poolResults.filter(r => r.player_id === pid && r.event_id === ev.id))
           : myBest.scoreLabel
         return { eventId: ev.id, eventName: ev.event_name, emoji: evData?.emoji ?? '🏅', scoreLabel: myBest.scoreLabel, displayLabel, placement }
       })
-      const sample = divResults.find(r => r.player_id === pid)!
+      const sample = poolResults.find(r => r.player_id === pid)!
       return { playerKey: pid, playerName: sample.player_name, playerId: pid, totalPlacement, eventDetails }
     })
+
     rows.sort((a, b) => a.totalPlacement - b.totalPlacement)
-    return rows.map((e, _, arr) => ({ ...e, rank: 1 + arr.filter(x => x.totalPlacement < e.totalPlacement).length }))
+    const ranked: CompRow[] = rows.map((e, _, arr) => ({
+      ...e,
+      rank: 1 + arr.filter(x => x.totalPlacement < e.totalPlacement).length,
+    }))
+
+    // Compute sub-division ranks when showing full unfiltered pool
+    if (!filter && (pool === 'mens' || pool === 'womens')) {
+      const subDivDefs = pool === 'mens'
+        ? [{ key: 'Masters Men', label: 'Masters' }, { key: 'Grandmaster Men', label: '60+' }]
+        : [{ key: 'Masters Women', label: 'Masters' }, { key: 'Grandmaster Women', label: '60+' }]
+      for (const { key, label } of subDivDefs) {
+        const subRows = ranked.filter(r => playerInfoMap[r.playerId]?.division === key)
+        subRows.sort((a, b) => a.totalPlacement - b.totalPlacement)
+        subRows.forEach((r, _, arr) => {
+          r.subDivision = label
+          r.subDivisionRank = 1 + arr.filter(x => x.totalPlacement < r.totalPlacement).length
+        })
+      }
+    }
+
+    return ranked
   }
 
   type EventRow = { playerKey: string; playerName: string; playerId: string | null; rawScore: number; label: string; rank: number }
 
-  function computeEventRows(eventId: string, divKey: string, ageFilter: number | null): EventRow[] {
-    const divResults = getDivResults(divKey, ageFilter).filter(r => r.event_id === eventId)
+  function computeEventRows(eventId: string, pool: 'mens' | 'womens' | 'juniors', filter: string | null, ageFilter: number | null): EventRow[] {
+    const poolResults = getPoolResults(pool, filter, ageFilter).filter(r => r.event_id === eventId)
     const best: Record<string, { name: string; rawScore: number; label: string; playerId: string | null }> = {}
-    divResults.forEach(r => {
+    poolResults.forEach(r => {
       const key = String(r.player_id ?? r.player_name)
       const ex = best[key]
       if (!ex || r.raw_score > ex.rawScore) best[key] = { name: r.player_name, rawScore: r.raw_score, label: r.score_label, playerId: r.player_id }
@@ -1042,7 +1259,6 @@ function LeaderboardTab({
     return rows.map((r, _, arr) => ({ ...r, rank: 1 + arr.filter(o => o.rawScore > r.rawScore).length }))
   }
 
-  // Chip button style
   function chipStyle(active: boolean): React.CSSProperties {
     return {
       padding: '4px 10px', borderRadius: '16px', border: `1px solid ${active ? '#2371BB' : '#222'}`,
@@ -1076,9 +1292,19 @@ function LeaderboardTab({
             fontSize: '12px', fontWeight: 700,
             background: medalBg(entry.rank), color: medalColor(entry.rank),
           }}>{entry.rank}</div>
-          <div style={{ flex: 1, textAlign: 'left', fontSize: '14px', fontWeight: entry.rank <= 3 ? 700 : 400, color: isMe ? '#7ab4ff' : entry.rank <= 3 ? '#fff' : '#aaa' }}>
-            {entry.playerName}
-            {isMe && <span style={{ fontSize: '10px', color: '#555', marginLeft: '6px', fontFamily: 'Barlow Condensed, sans-serif' }}>YOU</span>}
+          <div style={{ flex: 1, textAlign: 'left' }}>
+            <div style={{ fontSize: '14px', fontWeight: entry.rank <= 3 ? 700 : 400, color: isMe ? '#7ab4ff' : entry.rank <= 3 ? '#fff' : '#aaa' }}>
+              {entry.playerName}
+              {isMe && <span style={{ fontSize: '10px', color: '#555', marginLeft: '6px', fontFamily: 'Barlow Condensed, sans-serif' }}>YOU</span>}
+            </div>
+            {entry.subDivision && entry.subDivisionRank && (
+              <div style={{ fontSize: '10px', color: '#B87DB5', fontFamily: 'Barlow Condensed, sans-serif', marginTop: '1px' }}>
+                {ordinal(entry.subDivisionRank)} {entry.subDivision}
+              </div>
+            )}
+          </div>
+          <div style={{ fontSize: '12px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', flexShrink: 0, marginRight: canExpand ? '4px' : '0' }}>
+            {entry.totalPlacement}pts
           </div>
           {canExpand && <span style={{ color: isEx ? '#2371BB' : '#444', fontSize: '12px' }}>{isEx ? '▲' : '▼'}</span>}
         </button>
@@ -1106,13 +1332,16 @@ function LeaderboardTab({
     )
   }
 
-  // Section component
-  function renderSection(divKey: string, ageFilter: number | null, sectionId: string) {
+  function renderSection(pool: 'mens' | 'womens' | 'juniors', filter: string | null, ageFilter: number | null, sectionId: string) {
     const isExpanded = expandedSections[sectionId] ?? false
-    const isMyDiv = currentPlayerDivision === divKey
+    const isMyPool = pool === 'mens'
+      ? MENS_DIVS.includes(currentPlayerDivision ?? '')
+      : pool === 'womens'
+        ? WOMENS_DIVS.includes(currentPlayerDivision ?? '')
+        : currentPlayerDivision === 'Juniors'
 
     if (eventFilterId) {
-      const evRows = computeEventRows(eventFilterId, divKey, ageFilter)
+      const evRows = computeEventRows(eventFilterId, pool, filter, ageFilter)
       if (evRows.length === 0) return null
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -1139,18 +1368,17 @@ function LeaderboardTab({
       )
     }
 
-    const rows = computeRows(divKey, ageFilter)
+    const rows = computeRows(pool, filter, ageFilter)
     if (rows.length === 0) return null
 
     const top3 = rows.slice(0, 3)
     const rest = rows.slice(3)
-    const myRow = isMyDiv && currentPlayerId ? rows.find(r => r.playerId === currentPlayerId) : undefined
+    const myRow = isMyPool && currentPlayerId ? rows.find(r => r.playerId === currentPlayerId) : undefined
     const myRowIsBelow = myRow && myRow.rank > 3 && !isExpanded
 
     return (
       <div>
         {top3.map(e => renderCompRow(e, e.playerId === currentPlayerId))}
-
         {rest.length > 0 && (
           <button
             onClick={() => setExpandedSections(s => ({ ...s, [sectionId]: !s[sectionId] }))}
@@ -1164,9 +1392,7 @@ function LeaderboardTab({
             {isExpanded ? '▲ Show less' : `▼ Show all (${rest.length} more)`}
           </button>
         )}
-
         {isExpanded && rest.map(e => renderCompRow(e, e.playerId === currentPlayerId))}
-
         {myRowIsBelow && (
           <>
             <div style={{ textAlign: 'center', color: '#333', fontSize: '11px', margin: '4px 0', letterSpacing: '3px' }}>• • •</div>
@@ -1176,12 +1402,6 @@ function LeaderboardTab({
       </div>
     )
   }
-
-  const sections = [
-    { id: 'mens', divKey: menDiv, ageFilter: null as number | null },
-    { id: 'womens', divKey: womenDiv, ageFilter: null as number | null },
-    { id: 'juniors', divKey: 'Juniors', ageFilter: juniorAge },
-  ]
 
   const selectedEvent = eventFilterId ? events.find(e => e.id === eventFilterId) : null
 
@@ -1211,86 +1431,61 @@ function LeaderboardTab({
         )}
       </div>
 
-      {/* Men's section */}
-      {(() => {
-        const content = renderSection(menDiv, null, 'mens')
-        if (!content) return null
-        return (
-          <div style={{ marginBottom: '24px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-              <div style={{ fontSize: '15px', fontWeight: 700, color: '#fff', fontFamily: 'Bebas Neue, cursive', letterSpacing: '0.08em' }}>
-                {sectionLabel(menDiv)}
-              </div>
-              <div style={{ display: 'flex', gap: '6px' }}>
-                {MENS_OPTIONS.map(opt => (
-                  <button key={opt} onClick={() => { setMenDiv(opt); setExpandedPlayerKey(null) }} style={chipStyle(menDiv === opt)}>
-                    {opt === "Men's" ? "Men's" : opt === 'Masters Men' ? 'Masters' : '60+'}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {content}
+      {/* Men's section — always shown */}
+      <div style={{ marginBottom: '24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+          <div style={{ fontSize: '15px', fontWeight: 700, color: '#fff', fontFamily: 'Bebas Neue, cursive', letterSpacing: '0.08em' }}>
+            {menFilter === 'Masters Men' ? 'Masters (Men)' : menFilter === 'Grandmaster Men' ? '60+ (Men)' : "Men's"}
           </div>
-        )
-      })()}
-
-      {/* Women's section */}
-      {(() => {
-        const content = renderSection(womenDiv, null, 'womens')
-        if (!content) return null
-        return (
-          <div style={{ marginBottom: '24px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-              <div style={{ fontSize: '15px', fontWeight: 700, color: '#fff', fontFamily: 'Bebas Neue, cursive', letterSpacing: '0.08em' }}>
-                {sectionLabel(womenDiv)}
-              </div>
-              <div style={{ display: 'flex', gap: '6px' }}>
-                {WOMENS_OPTIONS.map(opt => (
-                  <button key={opt} onClick={() => { setWomenDiv(opt); setExpandedPlayerKey(null) }} style={chipStyle(womenDiv === opt)}>
-                    {opt === "Women's" ? "Women's" : opt === 'Masters Women' ? 'Masters' : '60+'}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {content}
+          <div style={{ display: 'flex', gap: '6px' }}>
+            <button onClick={() => { setMenFilter(null); setExpandedPlayerKey(null) }} style={chipStyle(menFilter === null)}>All</button>
+            <button onClick={() => { setMenFilter(menFilter === 'Masters Men' ? null : 'Masters Men'); setExpandedPlayerKey(null) }} style={chipStyle(menFilter === 'Masters Men')}>Masters</button>
+            <button onClick={() => { setMenFilter(menFilter === 'Grandmaster Men' ? null : 'Grandmaster Men'); setExpandedPlayerKey(null) }} style={chipStyle(menFilter === 'Grandmaster Men')}>60+</button>
           </div>
-        )
-      })()}
-
-      {/* Juniors section */}
-      {(() => {
-        const content = renderSection('Juniors', juniorAge, 'juniors')
-        if (!content) return null
-        return (
-          <div style={{ marginBottom: '24px' }}>
-            <div style={{ marginBottom: '10px' }}>
-              <div style={{ fontSize: '15px', fontWeight: 700, color: '#fff', fontFamily: 'Bebas Neue, cursive', letterSpacing: '0.08em', marginBottom: '8px' }}>
-                {juniorAge !== null ? `Juniors — Age ${juniorAge}` : 'Juniors'}
-              </div>
-              {juniorAges.length > 0 && (
-                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                  <button onClick={() => { setJuniorAge(null); setExpandedPlayerKey(null) }} style={chipStyle(juniorAge === null)}>All</button>
-                  {juniorAges.map(age => (
-                    <button key={age} onClick={() => { setJuniorAge(age === juniorAge ? null : age); setExpandedPlayerKey(null) }} style={chipStyle(juniorAge === age)}>
-                      Age {age}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-            {content}
-          </div>
-        )
-      })()}
-
-      {sections.every(s => {
-        const r = eventFilterId ? computeEventRows(eventFilterId, s.divKey, s.ageFilter) : computeRows(s.divKey, s.ageFilter)
-        return r.length === 0
-      }) && (
-        <div style={{ color: '#555', fontSize: '14px', textAlign: 'center', padding: '40px 0' }}>
-          No scores submitted yet
         </div>
-      )}
+        {renderSection('mens', menFilter, null, 'mens') ?? (
+          <div style={{ color: '#555', fontSize: '13px', padding: '12px 0', fontFamily: 'Barlow Condensed, sans-serif' }}>No scores yet</div>
+        )}
+      </div>
+
+      {/* Women's section — always shown */}
+      <div style={{ marginBottom: '24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+          <div style={{ fontSize: '15px', fontWeight: 700, color: '#fff', fontFamily: 'Bebas Neue, cursive', letterSpacing: '0.08em' }}>
+            {womenFilter === 'Masters Women' ? 'Masters (Women)' : womenFilter === 'Grandmaster Women' ? '60+ (Women)' : "Women's"}
+          </div>
+          <div style={{ display: 'flex', gap: '6px' }}>
+            <button onClick={() => { setWomenFilter(null); setExpandedPlayerKey(null) }} style={chipStyle(womenFilter === null)}>All</button>
+            <button onClick={() => { setWomenFilter(womenFilter === 'Masters Women' ? null : 'Masters Women'); setExpandedPlayerKey(null) }} style={chipStyle(womenFilter === 'Masters Women')}>Masters</button>
+            <button onClick={() => { setWomenFilter(womenFilter === 'Grandmaster Women' ? null : 'Grandmaster Women'); setExpandedPlayerKey(null) }} style={chipStyle(womenFilter === 'Grandmaster Women')}>60+</button>
+          </div>
+        </div>
+        {renderSection('womens', womenFilter, null, 'womens') ?? (
+          <div style={{ color: '#555', fontSize: '13px', padding: '12px 0', fontFamily: 'Barlow Condensed, sans-serif' }}>No scores yet</div>
+        )}
+      </div>
+
+      {/* Juniors section — always shown */}
+      <div style={{ marginBottom: '24px' }}>
+        <div style={{ marginBottom: '10px' }}>
+          <div style={{ fontSize: '15px', fontWeight: 700, color: '#fff', fontFamily: 'Bebas Neue, cursive', letterSpacing: '0.08em', marginBottom: '8px' }}>
+            {juniorAge !== null ? `Juniors — Age ${juniorAge}` : 'Juniors'}
+          </div>
+          {juniorAges.length > 0 && (
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+              <button onClick={() => { setJuniorAge(null); setExpandedPlayerKey(null) }} style={chipStyle(juniorAge === null)}>All</button>
+              {juniorAges.map(age => (
+                <button key={age} onClick={() => { setJuniorAge(age === juniorAge ? null : age); setExpandedPlayerKey(null) }} style={chipStyle(juniorAge === age)}>
+                  Age {age}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        {renderSection('juniors', null, juniorAge, 'juniors') ?? (
+          <div style={{ color: '#555', fontSize: '13px', padding: '12px 0', fontFamily: 'Barlow Condensed, sans-serif' }}>No scores yet</div>
+        )}
+      </div>
     </div>
   )
 }
@@ -1474,6 +1669,12 @@ export default function SessionPage() {
     return () => { supabase.removeChannel(ch) }
   }, [sessionId, loadResults])
 
+  // Polling fallback — refreshes every 15s in case realtime drops
+  useEffect(() => {
+    const id = setInterval(loadResults, 15000)
+    return () => clearInterval(id)
+  }, [loadResults])
+
   // ── Timer ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     const s = session as Record<string, unknown> | null
@@ -1593,6 +1794,18 @@ export default function SessionPage() {
               borderBottom: `2px solid ${activeTab === 'judge-mode' ? '#EA4742' : 'transparent'}`,
             }}>
             Kaiwhakawā
+          </button>
+        )}
+        {isJudge && (
+          <button onClick={() => setActiveTab('judge-summary')}
+            style={{
+              padding: '12px 16px', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
+              fontSize: '13px', fontWeight: activeTab === 'judge-summary' ? 700 : 400, flexShrink: 0,
+              background: activeTab === 'judge-summary' ? '#111' : 'transparent',
+              color: activeTab === 'judge-summary' ? '#EA4742' : '#555',
+              borderBottom: `2px solid ${activeTab === 'judge-summary' ? '#EA4742' : 'transparent'}`,
+            }}>
+            Summary
           </button>
         )}
       </div>
@@ -1791,6 +2004,16 @@ export default function SessionPage() {
           playerInfoMap={playerInfoMap}
           currentPlayerId={activePlayerId}
           currentPlayerDivision={activePlayerDivision}
+        />
+      )}
+
+      {/* Judge Summary tab */}
+      {activeTab === 'judge-summary' && isJudge && (
+        <JudgeSummaryTab
+          events={events}
+          results={results}
+          playerInfoMap={playerInfoMap}
+          onScoreChanged={loadResults}
         />
       )}
 
