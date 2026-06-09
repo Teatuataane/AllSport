@@ -2,6 +2,18 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.3.2.0] - 2026-06-10
+
+### Fixed
+- **Women's / Masters Women now appear on the leaderboard** — root cause was that the Masters/Grandmaster chips switched the entire ranking pool, making any player registered as "Masters Women" invisible unless the chip was toggled. All women (Women's + Masters Women + Grandmaster Women) now rank together in a unified pool. Same fix applied to Men's.
+- **Leaderboard auto-refreshes without manual page reload** — added a 15-second polling fallback alongside the existing realtime subscription so scores appear automatically.
+- **Men's, Women's, and Juniors sections always visible** — previously hidden entirely when no scores were submitted. Now always rendered with a "No scores yet" placeholder.
+
+### Added
+- **Total placement score on every leaderboard row** — each player row now shows their cumulative placement score (e.g. `9pts`), the sum of ordinal event placements (lower = better).
+- **Masters/Grandmaster sub-division rank badge** — when viewing the full Men's or Women's pool, Masters and Grandmaster players show a secondary rank label (e.g. "1st Masters") below their overall rank.
+- **Judge Game Summary tab** — a new "Summary" tab (visible to Kaiwhakawā only) shows all three divisions with all players ranked by total placement score. Each player is expandable to see all event scores and ordinal placements. Judges can delete any score directly from this view, live or post-session.
+
 ## [0.3.1.0] - 2026-06-08
 
 ### Changed
