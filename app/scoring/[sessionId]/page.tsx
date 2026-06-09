@@ -974,8 +974,8 @@ function LeaderboardTab({
       const info = playerInfoMap[r.player_id]
       if (!info || info.division !== divKey) return false
       if (divKey === 'Juniors' && ageFilter !== null) {
-        const age = info.date_of_birth ? getAge(info.date_of_birth) : null
-        return age === ageFilter
+        if (!info.date_of_birth) return true
+        return getAge(info.date_of_birth) === ageFilter
       }
       return true
     })

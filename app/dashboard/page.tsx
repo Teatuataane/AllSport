@@ -692,7 +692,7 @@ function DashboardInner() {
         <>
           {/* Fixed header bar — always on screen regardless of scroll */}
           <div style={{
-            position: 'fixed', top: 0, left: 0, right: 0, zIndex: 500,
+            position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1100,
             background: '#0a0a0a', borderBottom: '1px solid #222',
             padding: '14px 16px',
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -720,7 +720,7 @@ function DashboardInner() {
           {/* Scrollable overlay — sits behind the fixed header */}
           <div style={{
             position: 'fixed', inset: 0, background: 'rgba(10,10,10,0.97)',
-            zIndex: 400, overflowY: 'auto',
+            zIndex: 1050, overflowY: 'auto',
             paddingTop: '72px', /* clears the fixed header */
           }}>
           <div style={{ maxWidth: '520px', margin: '0 auto', padding: '24px 16px 40px' }}>
