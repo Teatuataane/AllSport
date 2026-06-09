@@ -542,7 +542,7 @@ best_score, current_rank, division, average_placement, season_year
 - Full public website (5 pages)
 - 3-step player registration with Google OAuth
 - Player dashboard — Colours progress (bar + year tabs), stats, join by code, session history with View Summary
-- Kaiwhakawā panel (JudgeCard) — create/end/void sessions, QR code, real-time player count. Te reo term "Kaiwhakawā" used everywhere in display text (DB role value stays as `judge`)
+- Kaiwhakawā panel (JudgeCard) — tabbed (Sessions / Votes / Players); Sessions tab: create/end/void sessions, QR code, real-time player count; Votes tab: Kōwhiringa Tūāhuatanga vote management; Players tab: Tāngata — all players sorted by current-year points, tap to expand session history. Te reo term "Kaiwhakawā" used everywhere in display text (DB role value stays as `judge`)
 - Live scoring — 100-event pool, all input modes including difficulty tier selector, Kaiwhakawā edit/delete/score-for-any-player, score edit (pre-fill form + UPDATE), missing scores = last place, post-game popup
 - Sport results displayed as W/D/L (Wins/Draws/Losses) everywhere: live session event card + collapsed label, leaderboard expanded row, /prs page, /events/[slug] personal best. Format: "3W 1D 2L"
 - Leaderboard competitive rows show "Nth of N" division rank context (e.g. "1st of 3")
@@ -576,8 +576,11 @@ best_score, current_rank, division, average_placement, season_year
 
 ## What's Next (In Priority Order)
 
-1. Apply DB migration 20260526 to production Supabase — **run `20260526_fix_points_trigger.sql` in Supabase SQL Editor** (fixes 140pt bug)
-2. **Breakdancing tiers** — change from `difficulty+reps` to `difficulty+time` with new tier descriptions (awaiting tier content from Tane)
+1. Apply DB migrations to production Supabase (SQL Editor):
+   - `20260526_fix_points_trigger.sql` — fixes 140pt scoring bug
+   - `20260610_historic_points.sql` — Salvador +800, Rodrigo +1500, Zeke +1500 (2025 season)
+2. **Felix's date of birth** — once known, run `UPDATE players SET date_of_birth = 'YYYY-MM-DD' WHERE full_name ILIKE '%Felix%'` in Supabase SQL Editor; code already handles null DOB gracefully (Felix shows in all age-filtered views until DOB is set)
+3. **Breakdancing tiers** — change from `difficulty+reps` to `difficulty+time` with new tier descriptions (awaiting tier content from Tane)
 3. **Referral system** — DB migration (referral_code on players, referrals table, trigger), /join/[code] invite landing, dashboard "Invite Friends" section, /koha referral tier display
 4. **Funding campaign block** — update /koha with "Wheels for AllSport" campaign section (hardcoded, progress bar, milestones)
 5. **Partners page** — DB migration (partners table, partner_id on sessions), /supporters page, partner badge on /schedule
@@ -643,16 +646,19 @@ best_score, current_rank, division, average_placement, season_year
 - Live session banner (June 2026): replaces join code display; shows division placement (ordinal) + time remaining side by side; "—" when no scores submitted yet; division label shown as status text above the placement value
 - Live session event cards (June 2026): collapsed shows Score / Div rank (event-specific within division, medal colours for top 3) / EL; expanded shows Today's Top Score (own best), Personal Record This Season, All Today's Scores (own submissions); join code removed entirely (feature removed)
 - Live session leaderboard (June 2026): 3-section layout (Men's, Women's, Juniors) replaces tab system; no Effort leaderboard; top 3 expandable (taps to show all event scores + ordinal placements); rest expandable via "Show all" button; logged-in player pinned below top 3 with actual rank + "YOU" label; Masters/Grandmaster chips are FILTERS within the full pool (not pool switchers); Junior age chips filter by exact age year group; event filter (session events only) replaces overall ranking with event-specific flat list; age + event filters combinable
-- Junior age filter: exact age (year group), not cumulative U-age; computed from players.date_of_birth; chips show only ages present in session
+- Junior age filter: exact age (year group), not cumulative U-age; computed from players.date_of_birth; chips show only ages present in session; null-DOB Juniors always appear in the section regardless of which age chip is selected
 - Unified division pools: Men's section = Men's + Masters Men + Grandmaster Men all ranked together; Women's = Women's + Masters Women + Grandmaster Women all ranked together; Masters/Grandmaster players show a secondary sub-division rank label (e.g. "1st Masters") below their name when the full pool is displayed
 - Total placement score: displayed on every leaderboard row as "{N}pts" — this is the sum of ordinal event placements (lower = better), not colour system points; helps players see exactly how far they are from moving up/down
 - All three leaderboard sections (Men's, Women's, Juniors) always render, even with zero scores — show "No scores yet" placeholder
 - Leaderboard auto-refresh: 15-second polling fallback added alongside existing realtime subscription; leaderboard updates without manual page refresh
 - Judge Summary tab: "Summary" tab appears in the tab bar for judges, alongside Kaiwhakawā; shows all 3 divisions with all players ranked; each player expandable to see all 10 event scores + ordinal placements; Edit/Delete buttons per submitted score (delete works live and post-session); "To add or update a score, use the Kaiwhakawā tab" guidance shown in edit panel
+- Dashboard Points History modal: z-index 1050/1100 (above Navbar at 1001) — back button always visible
+- Historic points migration: `supabase/migrations/20260610_historic_points.sql` — adds Salvador +800, Rodrigo +1500, Zeke +1500 to 2025 rankings; run in Supabase SQL Editor
+- JudgeCard tab bar: Sessions / Votes / Players tabs; default tab is Sessions; switching to Players auto-loads player list; ordinal helper `ordinalJC` used inside JudgeCard to avoid naming conflict
 
 ---
 
-*Last updated: June 2026 (session 14 — leaderboard bug fixes + judge summary tab)*
+*Last updated: June 2026 (session 14 — leaderboard bug fixes, back button fix, Felix null-DOB, historic points SQL, Players tab in Kaiwhakawā)*
 *Project started: March 2026*
 
 ## Skill routing

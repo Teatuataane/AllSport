@@ -1168,7 +1168,7 @@ function LeaderboardTab({
       if (pool === 'womens') return filter ? info.division === filter : WOMENS_DIVS.includes(info.division)
       if (pool === 'juniors') {
         if (info.division !== 'Juniors') return false
-        if (ageFilter !== null) return info.date_of_birth ? getAge(info.date_of_birth) === ageFilter : false
+        if (ageFilter !== null) return info.date_of_birth ? getAge(info.date_of_birth) === ageFilter : true
         return true
       }
       return false

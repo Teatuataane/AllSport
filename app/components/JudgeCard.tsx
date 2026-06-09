@@ -89,6 +89,14 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
   const [voteError, setVoteError] = useState('')
   const [now, setNow] = useState(Date.now())
 
+  // Tab + Players state
+  const [judgeTab, setJudgeTab] = useState<'sessions' | 'votes' | 'players'>('sessions')
+  const [playersList, setPlayersList] = useState<{ id: string; name: string; division: string; totalPoints: number; sessions: number; icon: string | null }[]>([])
+  const [playersLoading, setPlayersLoading] = useState(false)
+  const [expandedPlayerId, setExpandedPlayerId] = useState<string | null>(null)
+  const [playerHistory, setPlayerHistory] = useState<Record<string, any[]>>({})
+  const [playerHistoryLoading, setPlayerHistoryLoading] = useState<Record<string, boolean>>({})
+
   // Create vote form state
   const [showCreateVote, setShowCreateVote] = useState(false)
   const [createStep, setCreateStep] = useState(1) // 1: details, 2: nominations, 3: review
@@ -433,6 +441,48 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
     setClosingVote(false)
   }
 
+  const loadPlayersList = async () => {
+    setPlayersLoading(true)
+    const currentYear = new Date().getFullYear()
+    const [playersRes, rankingsRes] = await Promise.all([
+      supabase.from('players').select('id, display_name, username, full_name, division, icon').eq('is_active', true).order('display_name', { ascending: true }),
+      supabase.from('rankings').select('player_id, total_points, total_sessions').eq('season_year', currentYear),
+    ])
+    const rankMap: Record<string, number> = {}
+    const sessMap: Record<string, number> = {}
+    rankingsRes.data?.forEach(r => { rankMap[r.player_id] = r.total_points; sessMap[r.player_id] = r.total_sessions })
+    const entries = (playersRes.data || []).map(p => ({
+      id: p.id,
+      name: (p.display_name || p.username || p.full_name || 'Unknown') as string,
+      division: (p.division || '') as string,
+      totalPoints: rankMap[p.id] ?? 0,
+      sessions: sessMap[p.id] ?? 0,
+      icon: p.icon as string | null,
+    }))
+    entries.sort((a, b) => b.totalPoints - a.totalPoints)
+    setPlayersList(entries)
+    setPlayersLoading(false)
+  }
+
+  const loadPlayerHistory = async (playerId: string) => {
+    if (playerHistory[playerId]) return
+    setPlayerHistoryLoading(prev => ({ ...prev, [playerId]: true }))
+    const { data } = await supabase
+      .from('session_player_summary')
+      .select('session_id, total_placement_points, effort_points, effort_level, overall_placement, sessions(session_date, location)')
+      .eq('player_id', playerId)
+      .order('created_at', { ascending: false })
+      .limit(20)
+    setPlayerHistory(prev => ({ ...prev, [playerId]: data || [] }))
+    setPlayerHistoryLoading(prev => ({ ...prev, [playerId]: false }))
+  }
+
+  function ordinalJC(n: number) {
+    const s = ['th', 'st', 'nd', 'rd']
+    const v = n % 100
+    return n + (s[(v - 20) % 10] || s[v] || s[0])
+  }
+
   return (
     <>
       {/* Fullscreen QR overlay */}
@@ -460,8 +510,36 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
         </div>
       )}
 
+      {/* ─── TAB BAR ───────────────────────────────────────────────────────── */}
+      <div style={{ display: 'flex', gap: '4px', marginBottom: '12px' }}>
+        {(['sessions', 'votes', 'players'] as const).map(tab => {
+          const labels: Record<string, string> = { sessions: 'Sessions', votes: 'Votes', players: 'Players' }
+          const active = judgeTab === tab
+          return (
+            <button
+              key={tab}
+              onClick={() => {
+                setJudgeTab(tab)
+                if (tab === 'players' && playersList.length === 0) loadPlayersList()
+              }}
+              style={{
+                flex: 1, padding: '10px 0', borderRadius: '8px', border: 'none',
+                cursor: 'pointer', fontFamily: 'Bebas Neue, cursive', fontSize: '15px',
+                letterSpacing: '0.08em', minHeight: '40px',
+                background: active ? '#1e3a5f' : '#111',
+                color: active ? '#fff' : '#555',
+                borderBottom: `2px solid ${active ? '#2371BB' : 'transparent'}`,
+                transition: 'all 0.15s',
+              }}
+            >
+              {labels[tab]}
+            </button>
+          )
+        })}
+      </div>
+
       {/* ─── SESSION PANEL ─────────────────────────────────────────────────── */}
-      <div style={{
+      {judgeTab === 'sessions' && <div style={{
         background: '#111', border: '1px solid #1e3a5f', borderRadius: '12px',
         padding: '20px', marginBottom: '20px',
       }}>
@@ -690,10 +768,10 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
             )}
           </>
         )}
-      </div>
+      </div>}
 
       {/* ─── EVENT VOTES PANEL ─────────────────────────────────────────────── */}
-      <div id="vote-panel" style={{
+      {judgeTab === 'votes' && <div id="vote-panel" style={{
         background: '#111', border: '1px solid #1e3a5f', borderRadius: '12px',
         padding: '20px', marginBottom: '20px',
       }}>
@@ -1063,7 +1141,156 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
             </div>
           </div>
         )}
-      </div>
+      </div>}
+
+      {/* ─── PLAYERS PANEL ─────────────────────────────────────────────────── */}
+      {judgeTab === 'players' && (
+        <div style={{
+          background: '#111', border: '1px solid #1e3a5f', borderRadius: '12px',
+          padding: '20px', marginBottom: '20px',
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+            <div>
+              <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '22px', color: '#4DB26E', letterSpacing: '0.05em', lineHeight: 1 }}>
+                Tāngata
+              </div>
+              <div style={{ fontSize: '11px', color: '#555', marginTop: '2px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.08em' }}>
+                ALL PLAYERS · {new Date().getFullYear()} POINTS
+              </div>
+            </div>
+            <button
+              onClick={loadPlayersList}
+              style={{
+                padding: '8px 14px', borderRadius: '8px', border: '1px solid #333',
+                background: '#1a1a1a', color: '#888', cursor: 'pointer',
+                fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px',
+                letterSpacing: '0.05em',
+              }}
+            >
+              Refresh
+            </button>
+          </div>
+
+          {playersLoading ? (
+            <div style={{ color: '#555', fontSize: '13px', fontFamily: 'Barlow, sans-serif', textAlign: 'center', padding: '20px 0' }}>
+              Loading players...
+            </div>
+          ) : playersList.length === 0 ? (
+            <div style={{ color: '#444', fontSize: '13px', fontFamily: 'Barlow, sans-serif', textAlign: 'center', padding: '20px 0' }}>
+              No players found
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {playersList.map((p, i) => {
+                const isExpanded = expandedPlayerId === p.id
+                const history = playerHistory[p.id]
+                const histLoading = playerHistoryLoading[p.id]
+                return (
+                  <div key={p.id} style={{
+                    background: '#0a0a0a', border: '1px solid #1e1e1e', borderRadius: '10px', overflow: 'hidden',
+                  }}>
+                    <button
+                      onClick={async () => {
+                        if (isExpanded) {
+                          setExpandedPlayerId(null)
+                        } else {
+                          setExpandedPlayerId(p.id)
+                          await loadPlayerHistory(p.id)
+                        }
+                      }}
+                      style={{
+                        width: '100%', padding: '12px 14px', background: 'transparent',
+                        border: 'none', cursor: 'pointer', textAlign: 'left' as const,
+                        display: 'flex', alignItems: 'center', gap: '10px',
+                      }}
+                    >
+                      <div style={{
+                        width: '26px', height: '26px', borderRadius: '50%', flexShrink: 0,
+                        background: '#1e1e1e', display: 'flex', alignItems: 'center',
+                        justifyContent: 'center', fontSize: p.icon ? '14px' : '11px',
+                        color: '#888', fontWeight: 700, fontFamily: 'Barlow Condensed, sans-serif',
+                      }}>
+                        {p.icon || p.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: '14px', color: '#fff', fontWeight: 600, fontFamily: 'Barlow, sans-serif' }}>
+                          {p.name}
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#555', marginTop: '1px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.05em' }}>
+                          {p.division || 'No division'} · {p.sessions} session{p.sessions !== 1 ? 's' : ''}
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <div style={{ fontSize: '16px', fontWeight: 700, color: '#4DB26E', fontFamily: 'Barlow, sans-serif' }}>
+                          {p.totalPoints}
+                        </div>
+                        <div style={{ fontSize: '10px', color: '#444', fontFamily: 'Barlow Condensed, sans-serif' }}>pts</div>
+                      </div>
+                      <span style={{ color: isExpanded ? '#4DB26E' : '#333', fontSize: '11px', flexShrink: 0 }}>
+                        {isExpanded ? '▲' : '▼'}
+                      </span>
+                    </button>
+
+                    {isExpanded && (
+                      <div style={{ borderTop: '1px solid #1e1e1e', padding: '12px 14px' }}>
+                        {histLoading ? (
+                          <div style={{ color: '#555', fontSize: '12px', fontFamily: 'Barlow, sans-serif', textAlign: 'center', padding: '8px 0' }}>
+                            Loading history...
+                          </div>
+                        ) : !history || history.length === 0 ? (
+                          <div style={{ color: '#444', fontSize: '12px', fontFamily: 'Barlow, sans-serif', textAlign: 'center', padding: '8px 0' }}>
+                            No sessions yet
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <div style={{ fontSize: '10px', color: '#444', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.1em', marginBottom: '4px' }}>
+                              SESSION HISTORY
+                            </div>
+                            {history.map((s: any) => {
+                              const sess = s.sessions
+                              const total = (s.total_placement_points || 0) + (s.effort_points || 0)
+                              return (
+                                <div key={s.session_id} style={{
+                                  display: 'grid', gridTemplateColumns: '1fr auto auto',
+                                  gap: '8px', alignItems: 'center',
+                                  padding: '8px 0', borderBottom: '1px solid #1a1a1a',
+                                }}>
+                                  <div>
+                                    <div style={{ fontSize: '12px', color: '#ccc', fontFamily: 'Barlow, sans-serif' }}>
+                                      {sess?.location || 'Session'}
+                                    </div>
+                                    <div style={{ fontSize: '11px', color: '#444', marginTop: '1px', fontFamily: 'Barlow Condensed, sans-serif' }}>
+                                      {sess?.session_date
+                                        ? new Date(sess.session_date).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })
+                                        : ''}
+                                      {s.overall_placement ? ` · ${ordinalJC(s.overall_placement)} place` : ''}
+                                    </div>
+                                  </div>
+                                  <div style={{ textAlign: 'center' }}>
+                                    <div style={{ fontSize: '11px', color: '#888', fontFamily: 'Barlow Condensed, sans-serif' }}>
+                                      EL {s.effort_level ?? 0}
+                                    </div>
+                                  </div>
+                                  <div style={{ textAlign: 'right' }}>
+                                    <div style={{ fontSize: '14px', fontWeight: 700, color: '#4DB26E', fontFamily: 'Barlow, sans-serif' }}>
+                                      +{total}
+                                    </div>
+                                    <div style={{ fontSize: '10px', color: '#444', fontFamily: 'Barlow Condensed, sans-serif' }}>pts</div>
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
     </>
   )
 }
