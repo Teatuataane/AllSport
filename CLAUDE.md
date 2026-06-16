@@ -96,18 +96,18 @@ linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)
 
 ### Domain Display Order
 
-| # | Domain | Events (10) |
-|---|--------|-------------|
+| # | Domain | Events |
+|---|--------|--------|
 | 1 | Maximal Strength | 1A Press, Deadlift, Clean & Press, Pause Dips, Pause Chin Up, Pause Squat, Zercher Dead, Ham Curl, Pause Bench, Turkish Get Up |
 | 2 | Calisthenics | 1 Leg Squat, Flag, Windshield Wipers, Toe Lift, Planche, Back Lever, Iron Cross, Front Lever, Chin Hang, Climbing |
 | 3 | Power | Kelly Snatch, 1A Snatch, Triple Jump, Javelin, Shotput, Australian Football, Vertical Jump, Hand Walk, Clean & Jerk, Snatch |
-| 4 | Speed | 100m Sprint, Tag, T-Race, 400m Race, Beach Flags, 50m Sprint, 200m Sprint, Touch Rugby, Football Dribble, Repeat High Jump |
+| 4 | Speed | 100m Sprint, Tag, T-Race, 400m Race, Beach Flags, 50m Sprint, 200m Sprint, Touch Rugby, Football Dribble, Repeat High Jump, Rats & Rabbits, Speed Chess |
 | 5 | Anaerobic Endurance | Chinup Contest, Pushup Contest, Reverse Hyper, L-Sit Hold, Tibialis Curl, Headstand, Finger Push Up, GHD Situp, Leg Extension, Ab Rollout |
 | 6 | Aerobic Endurance | Burpee Broad Jump, Running, Cycling, Ski Erg, Row Erg, Breath Hold, Weighted Carry, Duck Walk, Bronco, Walking |
 | 7 | Flexibility | Rear Hand Clasp, Bridge, Forward Fold, Needle Pose, Forward Split, Middle Split, Standing Split, Foot Behind Head, Shoulder Dislocate, Pancake |
-| 8 | Body Awareness | Tae Kwon Do, Breakdancing, Trampolining, Jump Rope, Wrestling, Gymnastics, Balance Ball, SKATE, Fencing, Juggling |
+| 8 | Body Awareness | Tae Kwon Do, Breakdancing, Trampolining, Jump Rope, Wrestling, Gymnastics, Balance Ball, SKATE, Fencing, Juggling, Foot Juggling |
 | 9 | Coordination | Volleyball, Baseball, Teqball, Tennis, Cricket, Badminton, Basketball, Football, Hockey, Squash |
-| 10 | Aim & Precision | Netball, Handball, Bocce, Dodgeball, Carrom, Archery, Kubb, Darts, Disc Golf, Golf |
+| 10 | Aim & Precision | Netball, Bocce, Dodgeball, Carrom, Archery, Kubb, Darts, Disc Golf, Golf, Ultimate Frisbee |
 
 ### Domain renames / reorder (June 2026)
 - "Relative Strength" (was #2) → **Calisthenics** (#2) — name change only
@@ -133,6 +133,14 @@ linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)
 - "OHP" → **Clean & Press** (`strength` mode, slug: `clean-and-press`)
 - "Reverse Hyper" → now `difficulty+time` *(was `difficulty+reps`)*; D2 renamed from "Back Extension" to "Back Extension Hold"
 - Domain 6 completely redesigned — see Domain Display Order above. Old slugs (1k-run, sprint-repeats, 30-15-test, etc.) are legacy/orphaned in session history.
+
+### New events added (June 2026)
+- **Foot Juggling** → Body Awareness, `difficulty+reps`, D1: 1 Bounce (one bounce allowed between touches), D2: No Bounce (pure keepy-uppies); slug: `foot-juggling`
+- **Ultimate Frisbee** → Aim & Precision, `sport` mode (win/draw/loss); replaces Handball (fully removed — historical results unaffected, event name stored as string); slug: `ultimate-frisbee`
+- **Rats & Rabbits** → Speed, `sport` mode; 1v1 reaction game, first to 3 wins (win by 2); slug: `rats-and-rabbits`
+- **Speed Chess** → Speed, `sport` mode; 3 min each, half pieces (trial format — subject to change after trialling); slug: `speed-chess`
+
+**Note:** Domain event pools are no longer capped at 10. Pools can grow freely — one event is still drawn per domain per session.
 
 ---
 
@@ -217,6 +225,7 @@ Full tier data defined in `lib/eventData.ts`. Summary:
 | Jump Rope | D1–D5 |
 | Gymnastics | D1–D8 |
 | Juggling | D1–D4 |
+| Foot Juggling | D1–D2 (D1: 1 Bounce, D2: No Bounce) |
 | Ab Rollout | D1–D5 |
 | Chin Hang | D1–D6 |
 | Breakdancing | D1–D6 |
@@ -608,6 +617,10 @@ best_score, current_rank, division, average_placement, season_year
 - Weight-scored final tiers: GHD Situp D4, Pause Dips D5 (Weighted RTO Dip), Pause Chin Up D5 (Weighted Chinup) — these tiers switch input to weight_kg instead of reps
 - Domain 6 events redesigned (May 2026): old events (1k Run, Sprint Repeats, 30-15 Test, etc.) are legacy orphans in session history; new slugs are running, cycling, ski-erg, row-erg, breath-hold, weighted-carry, duck-walk, bronco, walking, burpee-broad-jump
 - Domain 10 updated (May 2026): Cornhole → Bocce, Bowling → Kubb
+- Domain event pools not capped at 10 (June 2026): no technical limit on pool size; one event still drawn per domain per session; pools can grow or shrink freely
+- Handball removed from Aim & Precision (June 2026): replaced by Ultimate Frisbee; historical results unaffected (event name stored as string in results table)
+- Rats & Rabbits (Speed): 1v1, caller shouts team name, named player chases, other runs to safe zone; first to 3 wins (win by 2 required); `sport` mode
+- Speed Chess (Speed): 3 min each, half pieces; trial format subject to change; `sport` mode
 - disadvantage system removed entirely (dropped from DB in migration 20260510, removed from eventData.ts and all UI)
 - Disadvantage: self-declared by players, small/large, three options per event per level; multiplier on strength events only (×1.2 / ×1.5)
 - Missing scores: players with any result in session but no score for a specific event = last place for that event
@@ -658,7 +671,7 @@ best_score, current_rank, division, average_placement, season_year
 
 ---
 
-*Last updated: June 2026 (session 14 — leaderboard bug fixes, back button fix, Felix null-DOB, historic points SQL, Players tab in Kaiwhakawā)*
+*Last updated: June 2026 (session 15 — new events: Foot Juggling, Ultimate Frisbee, Rats & Rabbits, Speed Chess; Handball removed; domain pools uncapped)*
 *Project started: March 2026*
 
 ## Skill routing
