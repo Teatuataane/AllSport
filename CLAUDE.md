@@ -579,7 +579,8 @@ best_score, current_rank, division, average_placement, season_year
 1. Apply DB migrations to production Supabase (SQL Editor):
    - `20260526_fix_points_trigger.sql` — fixes 140pt scoring bug
    - `20260610_historic_points.sql` — Salvador +800, Rodrigo +1500, Zeke +1500 (2025 season)
-2. **Felix's date of birth** — once known, run `UPDATE players SET date_of_birth = 'YYYY-MM-DD' WHERE full_name ILIKE '%Felix%'` in Supabase SQL Editor; code already handles null DOB gracefully (Felix shows in all age-filtered views until DOB is set)
+   - `20260617_fix_youth_division.sql` — fixes Felix + any other 'Youth' → 'Juniors'
+2. **Felix's date of birth** — DOB is set (2016-12-19). Division was 'Youth' (legacy value); migration `20260617_fix_youth_division.sql` updates all 'Youth' → 'Juniors'. Code also treats 'Youth' as 'Juniors' in both leaderboard pool filters as a fallback.
 3. **Breakdancing tiers** — change from `difficulty+reps` to `difficulty+time` with new tier descriptions (awaiting tier content from Tane)
 3. **Referral system** — DB migration (referral_code on players, referrals table, trigger), /join/[code] invite landing, dashboard "Invite Friends" section, /koha referral tier display
 4. **Funding campaign block** — update /koha with "Wheels for AllSport" campaign section (hardcoded, progress bar, milestones)
@@ -622,8 +623,8 @@ best_score, current_rank, division, average_placement, season_year
 - Gap formula: 100 ÷ players, NO floor on gap; minimum 10 pts applies only to the final awarded amount (GREATEST(pts, 10)). Bug was in trigger + client calcPlacementPts — both fixed May 2026.
 - Bonus system removed (May 2026): all session bonuses (attendance, PB, top performance, first session, streak, championship) removed from award_session_points trigger. Total = placement_pts + effort_pts only
 - Effort points: separate effort_scores table; 100pt session cap (= effort level 20 × 5 pts); +5 per qualifying submission; feeds Colour System total; one repeatable task per event at 80% of PR
-- Effort tasks: generated from `effectivePR = max(sessionBest, seasonPR)` — if no season PR, session score becomes baseline; one repeatable task per event; strength: 5 reps @80% PR; hold events: 2-minute hold; sport events: extra match vs any opponent; score events: additional 4-hole round; tasks locked until at least one comp score submitted this session
-- Effort matching: exact tier, time ≥ required; harder tier does not substitute; repeats allowed
+- Effort tasks: generated from `effectivePR = max(sessionBest, seasonPR)` — season PRs loaded via bulk results query (NOT the get_player_season_pr RPC which broke on empty event_slug); task shown in expanded card before first submission (greyed out) if season PR known; task rules by mode: strength → 5 reps @80% PR weight; distance Power domain (#3, throws/jumps) → 3 attempts ≥ 80% = 1 task completion; distance other domains → 1 attempt ≥ 80%; time/sprint/reps/hold → 80% of PR; difficulty+time/difficulty+reps → 80% of PR at same tier; sport → 1 extra game vs new opponent; score (Golf/Disc Golf) → 1 extra 4-hole round
+- Effort matching: exact tier required for tiered events; harder tier does NOT substitute; repeats allowed; Power throws need 3 qualifying per task completion
 - Live session leaderboard: single tab row — first tab always "Effort Level (All-Divisions)" (effort ranking); then division tabs (competitive ranking, lowest total placement = 1st); division tabs only visible if players from that division have scored; expanded player row shows all events with score label + ordinal placement
 - Event button collapsed label: always shows "Effort Level: N" (not "— pts")
 - Golf and Disc Golf use 'score' mode (stroke count for 4 holes; raw_score = -strokes; lower = better).
@@ -658,7 +659,7 @@ best_score, current_rank, division, average_placement, season_year
 
 ---
 
-*Last updated: June 2026 (session 14 — leaderboard bug fixes, back button fix, Felix null-DOB, historic points SQL, Players tab in Kaiwhakawā)*
+*Last updated: June 2026 (session 15 — Felix division fix, PR loading via bulk query, effort task UI + Power throws rule)*
 *Project started: March 2026*
 
 ## Skill routing
