@@ -1246,6 +1246,30 @@ export const EVENTS: EventData[] = [
     videoPlaceholder: true,
     emoji: '⬆️',
   },
+  {
+    slug: 'rats-and-rabbits',
+    name: 'Rats & Rabbits',
+    domain: 'Speed',
+    domainNumber: 4,
+    inputMode: 'sport',
+    hasDifficultyTiers: false,
+    howToPerform: 'Face your opponent in a line, back to back. A judge calls either "Rats!" or "Rabbits!". If your team is called, you chase — if your team is not called, you run to your safe zone. First to tag the opponent\'s back scores the point. Play to first to 3 points, win by 2.',
+    rules: 'Players stand back to back in the centre. Judge calls "Rats!" or "Rabbits!" — named team chases, other team runs to their safe zone. A point is scored if the chaser tags the runner before they reach the safe zone. First to 3 points wins (must win by 2). Record as a win or loss. Match must be witnessed by the judge.',
+    videoPlaceholder: true,
+    emoji: '🐀',
+  },
+  {
+    slug: 'speed-chess',
+    name: 'Speed Chess',
+    domain: 'Speed',
+    domainNumber: 4,
+    inputMode: 'sport',
+    hasDifficultyTiers: false,
+    howToPerform: 'Play a game of chess against your opponent using only half the pieces (remove one side\'s pieces as agreed before the match). Each player has 3 minutes on the clock. Move fast — if your clock runs out, you lose.',
+    rules: 'Half pieces only — remove one colour\'s pieces symmetrically as agreed before the match. Each player has 3 minutes. Standard chess rules apply. Losing on time counts as a loss. Checkmate or resignation also ends the game. Trial format — time control and piece count subject to change after trialling. Record as win, draw, or loss.',
+    videoPlaceholder: true,
+    emoji: '♟️',
+  },
 
   // ─── Domain 8: Body Awareness ─────────────────────────────────────────────────
   {
@@ -1432,6 +1456,22 @@ export const EVENTS: EventData[] = [
     videoPlaceholder: true,
     emoji: '🤹',
   },
+  {
+    slug: 'foot-juggling',
+    name: 'Foot Juggling',
+    domain: 'Body Awareness',
+    domainNumber: 8,
+    inputMode: 'difficulty+reps',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: '1 Bounce' },
+      { level: 2, name: 'No Bounce' },
+    ],
+    howToPerform: 'Keep a football (soccer ball) in the air using only your feet, knees, and legs. D1: the ball may bounce once between each touch. D2: no bounces allowed — pure keepy-uppies only. Count how many consecutive touches you complete before the ball hits the ground (or for D1, before you fail to control a bounce).',
+    rules: 'Use a standard soccer ball. Touches must be below the waist — no hands or arms. D1: one ground bounce is allowed between each touch. D2: no bounces allowed. Count consecutive touches. Submit your best total from one continuous attempt. Must be witnessed by a judge or filmed.',
+    videoPlaceholder: true,
+    emoji: '⚽',
+  },
 
   // ─── Domain 9: Coordination ──────────────────────────────────────────────────
   {
@@ -1579,19 +1619,6 @@ export const EVENTS: EventData[] = [
     emoji: '🏀',
   },
   {
-    slug: 'handball',
-    name: 'Handball',
-    domain: 'Aim & Precision',
-    domainNumber: 10,
-    inputMode: 'sport',
-    hasDifficultyTiers: false,
-    howToPerform: PLACEHOLDER_CONTENT,
-    rules: PLACEHOLDER_CONTENT,
-
-    videoPlaceholder: true,
-    emoji: '🤾',
-  },
-  {
     slug: 'bocce',
     name: 'Bocce',
     domain: 'Aim & Precision',
@@ -1690,6 +1717,18 @@ export const EVENTS: EventData[] = [
     rules: PLACEHOLDER_CONTENT,
     videoPlaceholder: true,
     emoji: '⛳',
+  },
+  {
+    slug: 'ultimate-frisbee',
+    name: 'Ultimate Frisbee',
+    domain: 'Aim & Precision',
+    domainNumber: 10,
+    inputMode: 'sport',
+    hasDifficultyTiers: false,
+    howToPerform: 'Play a game of Ultimate Frisbee against your opponent or opposing team. Move the disc down the field by passing — no running with the disc. Score by catching the disc in the opposing end zone. Standard Ultimate Frisbee rules apply.',
+    rules: 'Standard Ultimate Frisbee rules apply. No running with the disc — pivot and pass only. Disc changes possession on incomplete passes, interceptions, or out-of-bounds. Score by catching in the end zone. Match format (score target or time limit) agreed before play. Record as a win, draw, or loss. Must be witnessed by a judge.',
+    videoPlaceholder: true,
+    emoji: '🥏',
   },
 ]
 
