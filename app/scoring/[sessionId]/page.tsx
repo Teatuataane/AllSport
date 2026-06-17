@@ -55,9 +55,9 @@ function fmtCountdown(secs: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
-function formatPR(rawScore: number, inputMode: string): string {
+function formatPR(rawScore: number, inputMode: string, slug?: string): string {
   switch (inputMode) {
-    case 'strength':   return `${rawScore} kg`
+    case 'strength':   return slug === 'shoulder-dislocate' ? `${Math.abs(rawScore)}cm` : `${rawScore} kg`
     case 'reps':       return `${rawScore} reps`
     case 'time':
     case 'sprint':     return fmtTime(Math.abs(rawScore))
@@ -138,18 +138,23 @@ function computeEffortTasks(
   }
   if (mode === 'score') {
     const extras = myEventResults.slice(1).length
-    return [{ label: 'Complete an additional 4 holes', count: extras, isRepeatable: true }]
+    return [{ label: 'Complete an additional 4-hole round', count: extras, isRepeatable: true }]
   }
   if (mode === 'hold') {
     const count = myEventResults.filter(r => r.raw_score >= 120).length
-    return [{ label: 'Hold for 2 minutes', count, isRepeatable: true }]
+    return [{ label: 'Hold for at least 2 minutes', count, isRepeatable: true }]
   }
   if (effectivePR === null) return []
 
   if (mode === 'strength') {
+    if (eventData.slug === 'shoulder-dislocate') {
+      const targetCm = Math.round(Math.abs(effectivePR) * 0.8)
+      const count = myEventResults.filter(r => (r.weight_kg ?? Infinity) <= targetCm && (r.reps ?? 0) >= 5).length
+      return [{ label: `Achieve ≤${targetCm}cm grip width for 5 reps`, count, isRepeatable: true }]
+    }
     const kg = Math.round(effectivePR * 0.8)
     const count = myEventResults.filter(r => (r.weight_kg ?? 0) >= kg && (r.reps ?? 0) >= 5).length
-    return [{ label: `${kg}kg × 5 reps`, count, isRepeatable: true }]
+    return [{ label: `Lift ${kg}kg for 5 reps`, count, isRepeatable: true }]
   }
   if (mode === 'sprint') {
     const threshold = Math.round(effectivePR / 0.8)
@@ -157,18 +162,18 @@ function computeEffortTasks(
     const thresholdSecs = Math.abs(threshold) / 100
     const s = Math.floor(thresholdSecs)
     const cs = Math.round((thresholdSecs - s) * 100)
-    return [{ label: `Sprint in ${s}.${cs.toString().padStart(2, '0')}s or faster`, count, isRepeatable: true }]
+    return [{ label: `Complete in ${s}.${cs.toString().padStart(2, '0')}s or faster`, count, isRepeatable: true }]
   }
   if (mode === 'time') {
     const threshold = Math.round(effectivePR * 0.8)
     const count = myEventResults.filter(r => r.raw_score >= threshold).length
-    return [{ label: `Hold for ${fmtTime(threshold)} or longer`, count, isRepeatable: true }]
+    return [{ label: `Complete in ${fmtTime(Math.abs(threshold))} or faster`, count, isRepeatable: true }]
   }
   if (mode === 'distance') {
     const target = Math.round(effectivePR * 0.8)
     const count = myEventResults.filter(r => r.raw_score >= target).length
     const targetStr = target >= 100 ? `${(target / 100).toFixed(2)}m` : `${target}cm`
-    return [{ label: `Throw/jump ≥ ${targetStr}`, count, isRepeatable: true }]
+    return [{ label: `Achieve at least ${targetStr}`, count, isRepeatable: true }]
   }
   if (mode === 'difficulty+time') {
     if (!eventData.difficultyTiers) return []
@@ -200,7 +205,7 @@ function computeEffortTasks(
       const rTierIdx = tiers.findIndex(t => t.name === r.difficulty_tier)
       return rTierIdx === targetTierIdx && (r.time_seconds ?? 0) >= 120
     }).length
-    return [{ label: `Hold ${targetTierName} for 2 min`, count, isRepeatable: true }]
+    return [{ label: `Hold ${targetTierName} for at least 2 minutes`, count, isRepeatable: true }]
   }
   if (mode === 'difficulty+reps') {
     if (!eventData.difficultyTiers) return []
@@ -213,7 +218,7 @@ function computeEffortTasks(
       const rTierIdx = tiers.findIndex(t => t.name === r.difficulty_tier)
       return rTierIdx === prTierIdx && (r.reps ?? 0) >= targetReps
     }).length
-    return [{ label: `${targetReps}+ reps at ${tierName}`, count, isRepeatable: true }]
+    return [{ label: `Complete ${targetReps}+ reps at ${tierName}`, count, isRepeatable: true }]
   }
   return []
 }
@@ -238,6 +243,10 @@ function calcSubmissionEffortTasks(
   if (mode === 'strength') {
     const w = weightKg ?? 0
     const r = reps ?? 0
+    if (eventData.slug === 'shoulder-dislocate') {
+      const targetCm = Math.round(Math.abs(effectivePR) * 0.8)
+      return (w > 0 && w <= targetCm && r >= 5) ? 1 : 0
+    }
     return (w >= effectivePR * 0.8 && r >= 5) ? 1 : 0
   }
   if (mode === 'sprint') return newRawScore >= Math.round(effectivePR / 0.8) ? 1 : 0
@@ -387,6 +396,10 @@ function EventCard({
       const w = parseFloat(weightKg) || 0
       if (!w) return null
       const r = parseInt(repCount) || 0
+      if (eventData?.slug === 'shoulder-dislocate') {
+        const label = r > 0 ? `${w}cm × ${r} rep${r !== 1 ? 's' : ''}` : `${w}cm`
+        return { raw_score: -w, score_label: label }
+      }
       const label = r > 0 ? `${w}kg × ${r} rep${r !== 1 ? 's' : ''}` : `${w}kg`
       return { raw_score: w, score_label: label }
     }
@@ -682,7 +695,7 @@ function EventCard({
             Personal Record This Season
           </div>
           <div style={{ fontSize: '15px', color: seasonPRNum !== null ? '#F9B051' : '#555' }}>
-            {seasonPRNum !== null ? formatPR(seasonPRNum, mode) : 'No PR yet'}
+            {seasonPRNum !== null ? formatPR(seasonPRNum, mode, eventData?.slug) : 'No PR yet'}
           </div>
         </div>
 
@@ -826,7 +839,7 @@ function EventCard({
               {(mode === 'strength' || isWeightVariation ||
                 (mode === 'difficulty+reps' && isWeightScoredTierByName(eventData?.name ?? '', difficultyTier))) && (
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <input type="number" value={weightKg} onChange={e => setWeightKg(e.target.value)} placeholder="Weight (kg)" style={{ ...INP, flex: 2 }} />
+                  <input type="number" value={weightKg} onChange={e => setWeightKg(e.target.value)} placeholder={eventData?.slug === 'shoulder-dislocate' ? 'Grip width (cm)' : 'Weight (kg)'} style={{ ...INP, flex: 2 }} />
                   {(mode === 'strength' || isWeightVariation) && (
                     <input type="number" value={repCount} onChange={e => setRepCount(e.target.value)} placeholder="Reps" style={{ ...INP, flex: 1 }} />
                   )}
@@ -1236,6 +1249,24 @@ function LeaderboardTab({
         subRows.sort((a, b) => a.totalPlacement - b.totalPlacement)
         subRows.forEach((r, _, arr) => {
           r.subDivision = label
+          r.subDivisionRank = 1 + arr.filter(x => x.totalPlacement < r.totalPlacement).length
+        })
+      }
+    }
+    if (!ageFilter && pool === 'juniors') {
+      const getAgeGroup = (dob: string | null | undefined): string | null => {
+        if (!dob) return null
+        const age = getAge(dob)
+        if (age <= 9) return 'U10'
+        if (age <= 11) return 'U12'
+        if (age <= 13) return 'U14'
+        return 'U16'
+      }
+      for (const group of ['U10', 'U12', 'U14', 'U16']) {
+        const groupRows = ranked.filter(r => getAgeGroup(playerInfoMap[r.playerId]?.date_of_birth) === group)
+        groupRows.sort((a, b) => a.totalPlacement - b.totalPlacement)
+        groupRows.forEach((r, _, arr) => {
+          r.subDivision = group
           r.subDivisionRank = 1 + arr.filter(x => x.totalPlacement < r.totalPlacement).length
         })
       }

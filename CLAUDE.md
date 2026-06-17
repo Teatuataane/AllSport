@@ -96,9 +96,9 @@ linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)
 
 ### Domain Display Order
 
-| # | Domain | Events (10) |
-|---|--------|-------------|
-| 1 | Maximal Strength | 1A Press, Deadlift, Clean & Press, Pause Dips, Pause Chin Up, Pause Squat, Zercher Dead, Ham Curl, Pause Bench, Turkish Get Up |
+| # | Domain | Events |
+|---|--------|--------|
+| 1 | Maximal Strength | 1A Press, Deadlift, Clean & Press, Pause Dips, Pause Chin Up, Pause Squat, Zercher Dead, Ham Curl, Pause Bench, Turkish Get Up, Sandbag to Shoulder |
 | 2 | Calisthenics | 1 Leg Squat, Flag, Windshield Wipers, Toe Lift, Planche, Back Lever, Iron Cross, Front Lever, Chin Hang, Climbing |
 | 3 | Power | Kelly Snatch, 1A Snatch, Triple Jump, Javelin, Shotput, Australian Football, Vertical Jump, Hand Walk, Clean & Jerk, Snatch |
 | 4 | Speed | 100m Sprint, Tag, T-Race, 400m Race, Beach Flags, 50m Sprint, 200m Sprint, Touch Rugby, Football Dribble, Repeat High Jump |
@@ -132,7 +132,12 @@ linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)
 - "30-15 Test" → **Walking** (`difficulty+time` D1–D3)
 - "OHP" → **Clean & Press** (`strength` mode, slug: `clean-and-press`)
 - "Reverse Hyper" → now `difficulty+time` *(was `difficulty+reps`)*; D2 renamed from "Back Extension" to "Back Extension Hold"
+- **Weighted Carry** — tiers changed from bodyweight multiples (x0.25/x0.5/x1 BW) to fixed weights D1–D6: "5kg — 200m" through "100kg — 200m". Distance always 200m.
+- **Shoulder Dislocate** — changed from `difficulty+time` D1–D4 (grip-width tiers) to repurposed `strength` mode: cm measurement, no tiers. See Difficulty Tiers note.
 - Domain 6 completely redesigned — see Domain Display Order above. Old slugs (1k-run, sprint-repeats, 30-15-test, etc.) are legacy/orphaned in session history.
+
+### New events added (June 2026 session 16)
+- **Sandbag to Shoulder** → Maximal Strength, `difficulty+reps`, D1–D6 (5/10/25/50/80/100kg); slug: `sandbag-to-shoulder`. Bar set at player's shoulder height; one rep = sandbag fully clears bar and lands on other side; player moves around to retrieve.
 
 ---
 
@@ -213,7 +218,8 @@ Full tier data defined in `lib/eventData.ts`. Summary:
 | Needle Pose | D1–D6 |
 | Standing Split | D1–D6 (+ hold time in seconds) |
 | Foot Behind Head | D1–D6 |
-| Shoulder Dislocate | D1–D4 |
+| Weighted Carry | D1–D6 (5kg/10kg/25kg/50kg/80kg/100kg, all 200m) |
+| Sandbag to Shoulder | D1–D6 (5kg/10kg/25kg/50kg/80kg/100kg) |
 | Jump Rope | D1–D5 |
 | Gymnastics | D1–D8 |
 | Juggling | D1–D4 |
@@ -222,9 +228,11 @@ Full tier data defined in `lib/eventData.ts`. Summary:
 | Breakdancing | D1–D6 |
 | 1 Leg Squat | D1–D6 |
 
-Events without tiers (objective measure): all lifts, sprints, throws, jumps, rows, runs, cycles, sport/racket events, aim events, Toe Lift, Turkish Get Up, F Split, M Split.
+Events without tiers (objective measure): all lifts, sprints, throws, jumps, rows, runs, cycles, sport/racket events, aim events, Toe Lift, Turkish Get Up, Shoulder Dislocate, F Split, M Split.
 
 F Split and M Split use distance input mode (block height from ground in cm).
+
+**Shoulder Dislocate** — repurposed `strength` mode: grip width stored in `weight_kg` (cm), reps in `reps`, raw_score = −grip_width_cm (narrower = higher score = better rank). UI label reads "Grip width (cm)" not "Weight (kg)". PR display shows Xcm. Effort task: ≤80% of PR grip width (cm) for 5 reps. No difficulty tiers.
 
 ---
 
@@ -234,7 +242,7 @@ F Split and M Split use distance input mode (block height from ground in cm).
 |---|---|---|
 | Men's | Men's | Male competitors aged 17–39 |
 | Women's | Women's | Female competitors aged 17–39 |
-| Juniors | Juniors (U17) | All competitors aged 16 and under |
+| Juniors | Juniors (U17) | All competitors aged 16 and under — leaderboard shows age-group winner badges (U10/U12/U14/U16) |
 | Masters Men | Masters Men (40+) | Male competitors aged 40–59 |
 | Masters Women | Masters Women (40+) | Female competitors aged 40–59 |
 | Grandmaster Men | Grandmaster Men (60+) | Male competitors aged 60+ |
@@ -606,6 +614,11 @@ best_score, current_rank, division, average_placement, season_year
 - Chin Hang (not Chin Lift)
 - Difficulty tiers: D1 = easiest, purely informational, stored in results.difficulty_tier as tier name string
 - Weight-scored final tiers: GHD Situp D4, Pause Dips D5 (Weighted RTO Dip), Pause Chin Up D5 (Weighted Chinup) — these tiers switch input to weight_kg instead of reps
+- "Banded" in tier names (e.g. "Banded Iron Cross", "Banded Front Lever") always means heavy band — no light/medium variants; single tier entry only
+- Shoulder Dislocate: repurposed `strength` mode — weight_kg stores grip width in cm, raw_score = −weight_kg (narrower = better rank); UI placeholder "Grip width (cm)"; formatPR shows Xcm; effort task: ≤80% of PR grip width for 5 reps (inverted check: weight_kg ≤ targetCm)
+- Sandbag to Shoulder: `difficulty+reps`, D1–D6 (5/10/25/50/80/100kg); slug `sandbag-to-shoulder`; bar at player's shoulder height; one rep = sandbag fully clears bar; player retrieves from other side
+- Weighted Carry: tiers updated to fixed weights — D1–D6: "5kg — 200m" through "100kg — 200m" (was bodyweight multiples x0.25/x0.5/x1)
+- Effort task labels (June 2026 session 16): all modes use conversational sentence style — e.g. "Lift ${kg}kg for 5 reps" (was "${kg}kg × 5 reps"), "Achieve at least ${X}m" (was "Throw/jump ≥ X"), "Complete ${targetReps}+ reps at ${tierName}" (was "${n}+ reps at…"), "Complete in X or faster" (was "Hold for X or longer"), "Hold for at least 2 minutes" (was "Hold for 2 minutes")
 - Domain 6 events redesigned (May 2026): old events (1k Run, Sprint Repeats, 30-15 Test, etc.) are legacy orphans in session history; new slugs are running, cycling, ski-erg, row-erg, breath-hold, weighted-carry, duck-walk, bronco, walking, burpee-broad-jump
 - Domain 10 updated (May 2026): Cornhole → Bocce, Bowling → Kubb
 - disadvantage system removed entirely (dropped from DB in migration 20260510, removed from eventData.ts and all UI)
@@ -647,6 +660,7 @@ best_score, current_rank, division, average_placement, season_year
 - Live session event cards (June 2026): collapsed shows Score / Div rank (event-specific within division, medal colours for top 3) / EL; expanded shows Today's Top Score (own best), Personal Record This Season, All Today's Scores (own submissions); join code removed entirely (feature removed)
 - Live session leaderboard (June 2026): 3-section layout (Men's, Women's, Juniors) replaces tab system; no Effort leaderboard; top 3 expandable (taps to show all event scores + ordinal placements); rest expandable via "Show all" button; logged-in player pinned below top 3 with actual rank + "YOU" label; Masters/Grandmaster chips are FILTERS within the full pool (not pool switchers); Junior age chips filter by exact age year group; event filter (session events only) replaces overall ranking with event-specific flat list; age + event filters combinable
 - Junior age filter: exact age (year group), not cumulative U-age; computed from players.date_of_birth; chips show only ages present in session; null-DOB Juniors always appear in the section regardless of which age chip is selected
+- Junior age-group badges: Juniors pool uses one combined ranking (lowest total placement = 1st overall); age-group winner badges shown as secondary label ("1st U14") using U10 (0–9), U12 (10–11), U14 (12–13), U16 (14–16) brackets; null-DOB juniors get no age-group badge; same pattern as Masters/Grandmaster sub-division labels
 - Unified division pools: Men's section = Men's + Masters Men + Grandmaster Men all ranked together; Women's = Women's + Masters Women + Grandmaster Women all ranked together; Masters/Grandmaster players show a secondary sub-division rank label (e.g. "1st Masters") below their name when the full pool is displayed
 - Total placement score: displayed on every leaderboard row as "{N}pts" — this is the sum of ordinal event placements (lower = better), not colour system points; helps players see exactly how far they are from moving up/down
 - All three leaderboard sections (Men's, Women's, Juniors) always render, even with zero scores — show "No scores yet" placeholder
@@ -658,7 +672,7 @@ best_score, current_rank, division, average_placement, season_year
 
 ---
 
-*Last updated: June 2026 (session 14 — leaderboard bug fixes, back button fix, Felix null-DOB, historic points SQL, Players tab in Kaiwhakawā)*
+*Last updated: June 2026 (session 16 — Weighted Carry tiers to fixed weights D1–D6; Sandbag to Shoulder new event (Domain 1); Shoulder Dislocate to strength/cm mode; Juniors age-group badges U10–U16; effort task language standardised to conversational sentences)*
 *Project started: March 2026*
 
 ## Skill routing
