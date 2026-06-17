@@ -171,9 +171,12 @@ function computeEffortTasks(
   }
   if (mode === 'distance') {
     const target = Math.round(effectivePR * 0.8)
-    const count = myEventResults.filter(r => r.raw_score >= target).length
     const targetStr = target >= 100 ? `${(target / 100).toFixed(2)}m` : `${target}cm`
-    return [{ label: `Achieve at least ${targetStr}`, count, isRepeatable: true }]
+    const qualifyingCount = myEventResults.filter(r => r.raw_score >= target).length
+    if (eventData.domainNumber === 3) {
+      return [{ label: `Complete 3 attempts ≥ ${targetStr}`, count: Math.floor(qualifyingCount / 3), isRepeatable: true }]
+    }
+    return [{ label: `Achieve at least ${targetStr}`, count: qualifyingCount, isRepeatable: true }]
   }
   if (mode === 'difficulty+time') {
     if (!eventData.difficultyTiers) return []
@@ -251,7 +254,13 @@ function calcSubmissionEffortTasks(
   }
   if (mode === 'sprint') return newRawScore >= Math.round(effectivePR / 0.8) ? 1 : 0
   if (mode === 'time') return newRawScore >= Math.round(effectivePR * 0.8) ? 1 : 0
-  if (mode === 'distance') return newRawScore >= Math.round(effectivePR * 0.8) ? 1 : 0
+  if (mode === 'distance') {
+    const target = Math.round(effectivePR * 0.8)
+    if (eventData.domainNumber !== 3) return newRawScore >= target ? 1 : 0
+    const qualifyingBefore = existingEventResults.filter(r => r.raw_score >= target).length
+    const qualifyingAfter = qualifyingBefore + (newRawScore >= target ? 1 : 0)
+    return Math.floor(qualifyingAfter / 3) - Math.floor(qualifyingBefore / 3)
+  }
   if (mode === 'difficulty+time') {
     if (!eventData.difficultyTiers || !difficultyTierName) return 0
     const prTierIdx = Math.floor(effectivePR / 10000)
@@ -762,7 +771,19 @@ function EventCard({
             </div>
           </div>
           {effortLocked ? (
-            <div style={{ fontSize: '13px', color: '#555', fontStyle: 'italic' }}>Submit a score to unlock effort tasks</div>
+            effortTasks.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ fontSize: '12px', color: '#555', fontStyle: 'italic', marginBottom: '2px' }}>Submit a score first, then aim for:</div>
+                {effortTasks.map((task, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#0d0d0d', borderRadius: '8px', padding: '10px 14px', opacity: 0.5 }}>
+                    <div style={{ width: '18px', height: '18px', borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', background: '#1e1e1e', color: '#555' }}>○</div>
+                    <div style={{ flex: 1, fontSize: '13px', color: '#888', fontFamily: 'Barlow Condensed, sans-serif' }}>{task.label}</div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ fontSize: '13px', color: '#555', fontStyle: 'italic' }}>Submit a score to unlock effort tasks</div>
+            )
           ) : effortTasks.length === 0 ? (
             <div style={{ fontSize: '13px', color: '#555', fontStyle: 'italic' }}>No effort tasks for this event</div>
           ) : (
@@ -962,7 +983,7 @@ function JudgeSummaryTab({
       if (!info) return false
       if (pool === 'mens') return MENS_DIVS.includes(info.division)
       if (pool === 'womens') return WOMENS_DIVS.includes(info.division)
-      return info.division === 'Juniors'
+      return info.division === 'Juniors' || info.division === 'Youth'
     })
   }
 
@@ -1180,7 +1201,7 @@ function LeaderboardTab({
       if (pool === 'mens') return filter ? info.division === filter : MENS_DIVS.includes(info.division)
       if (pool === 'womens') return filter ? info.division === filter : WOMENS_DIVS.includes(info.division)
       if (pool === 'juniors') {
-        if (info.division !== 'Juniors') return false
+        if (info.division !== 'Juniors' && info.division !== 'Youth') return false
         if (ageFilter !== null) return info.date_of_birth ? getAge(info.date_of_birth) === ageFilter : true
         return true
       }
@@ -1649,18 +1670,23 @@ export default function SessionPage() {
     if (!activePlayerId || events.length === 0) return
     const year = new Date().getFullYear()
     async function loadPRs() {
-      const prs: Record<string, number | string | null> = {}
-      for (const ev of events) {
-        const evData = getEventByName(ev.event_name)
-        const slug = ev.event_slug || evData?.slug
-        if (!slug) { prs[ev.id] = null; continue }
-        const { data } = await supabase.rpc('get_player_season_pr', {
-          p_player_id: activePlayerId,
-          p_event_slug: slug,
-          p_season_year: year,
-        })
-        prs[ev.id] = data as number | null
+      const { data } = await supabase
+        .from('results')
+        .select('raw_score, session_events!inner(event_name, input_mode), sessions!inner(session_date)')
+        .eq('player_id', activePlayerId)
+        .not('raw_score', 'is', null)
+      const byName: Record<string, number> = {}
+      for (const r of (data ?? []) as any[]) {
+        if (!r.sessions?.session_date || new Date(r.sessions.session_date).getFullYear() !== year) continue
+        const evName = r.session_events?.event_name
+        const inputMode: string = r.session_events?.input_mode ?? ''
+        if (!evName || r.raw_score === null) continue
+        const isMin = ['time', 'sprint'].includes(inputMode)
+        const existing = byName[evName]
+        if (existing === undefined || (isMin ? r.raw_score < existing : r.raw_score > existing)) byName[evName] = r.raw_score
       }
+      const prs: Record<string, number | string | null> = {}
+      events.forEach(ev => { prs[ev.id] = byName[ev.event_name] ?? null })
       setSeasonPRs(prs)
     }
     loadPRs()
@@ -1671,18 +1697,23 @@ export default function SessionPage() {
     if (!isJudge || !judgeTargetId || events.length === 0) return
     const year = new Date().getFullYear()
     async function loadJudgePRs() {
-      const prs: Record<string, number | string | null> = {}
-      for (const ev of events) {
-        const evData = getEventByName(ev.event_name)
-        const slug = ev.event_slug || evData?.slug
-        if (!slug) { prs[ev.id] = null; continue }
-        const { data } = await supabase.rpc('get_player_season_pr', {
-          p_player_id: judgeTargetId,
-          p_event_slug: slug,
-          p_season_year: year,
-        })
-        prs[ev.id] = data as number | null
+      const { data } = await supabase
+        .from('results')
+        .select('raw_score, session_events!inner(event_name, input_mode), sessions!inner(session_date)')
+        .eq('player_id', judgeTargetId)
+        .not('raw_score', 'is', null)
+      const byName: Record<string, number> = {}
+      for (const r of (data ?? []) as any[]) {
+        if (!r.sessions?.session_date || new Date(r.sessions.session_date).getFullYear() !== year) continue
+        const evName = r.session_events?.event_name
+        const inputMode: string = r.session_events?.input_mode ?? ''
+        if (!evName || r.raw_score === null) continue
+        const isMin = ['time', 'sprint'].includes(inputMode)
+        const existing = byName[evName]
+        if (existing === undefined || (isMin ? r.raw_score < existing : r.raw_score > existing)) byName[evName] = r.raw_score
       }
+      const prs: Record<string, number | string | null> = {}
+      events.forEach(ev => { prs[ev.id] = byName[ev.event_name] ?? null })
       setJudgePRs(prs)
     }
     loadJudgePRs()

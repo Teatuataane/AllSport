@@ -101,13 +101,13 @@ linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)
 | 1 | Maximal Strength | 1A Press, Deadlift, Clean & Press, Pause Dips, Pause Chin Up, Pause Squat, Zercher Dead, Ham Curl, Pause Bench, Turkish Get Up, Sandbag to Shoulder |
 | 2 | Calisthenics | 1 Leg Squat, Flag, Windshield Wipers, Toe Lift, Planche, Back Lever, Iron Cross, Front Lever, Chin Hang, Climbing |
 | 3 | Power | Kelly Snatch, 1A Snatch, Triple Jump, Javelin, Shotput, Australian Football, Vertical Jump, Hand Walk, Clean & Jerk, Snatch |
-| 4 | Speed | 100m Sprint, Tag, T-Race, 400m Race, Beach Flags, 50m Sprint, 200m Sprint, Touch Rugby, Football Dribble, Repeat High Jump |
+| 4 | Speed | 100m Sprint, Tag, T-Race, 400m Race, Beach Flags, 50m Sprint, 200m Sprint, Touch Rugby, Football Dribble, Repeat High Jump, Rats & Rabbits, Speed Chess |
 | 5 | Anaerobic Endurance | Chinup Contest, Pushup Contest, Reverse Hyper, L-Sit Hold, Tibialis Curl, Headstand, Finger Push Up, GHD Situp, Leg Extension, Ab Rollout |
 | 6 | Aerobic Endurance | Burpee Broad Jump, Running, Cycling, Ski Erg, Row Erg, Breath Hold, Weighted Carry, Duck Walk, Bronco, Walking |
 | 7 | Flexibility | Rear Hand Clasp, Bridge, Forward Fold, Needle Pose, Forward Split, Middle Split, Standing Split, Foot Behind Head, Shoulder Dislocate, Pancake |
-| 8 | Body Awareness | Tae Kwon Do, Breakdancing, Trampolining, Jump Rope, Wrestling, Gymnastics, Balance Ball, SKATE, Fencing, Juggling |
+| 8 | Body Awareness | Tae Kwon Do, Breakdancing, Trampolining, Jump Rope, Wrestling, Gymnastics, Balance Ball, SKATE, Fencing, Juggling, Foot Juggling |
 | 9 | Coordination | Volleyball, Baseball, Teqball, Tennis, Cricket, Badminton, Basketball, Football, Hockey, Squash |
-| 10 | Aim & Precision | Netball, Handball, Bocce, Dodgeball, Carrom, Archery, Kubb, Darts, Disc Golf, Golf |
+| 10 | Aim & Precision | Netball, Bocce, Dodgeball, Carrom, Archery, Kubb, Darts, Disc Golf, Golf, Ultimate Frisbee |
 
 ### Domain renames / reorder (June 2026)
 - "Relative Strength" (was #2) → **Calisthenics** (#2) — name change only
@@ -135,6 +135,14 @@ linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)
 - **Weighted Carry** — tiers changed from bodyweight multiples (x0.25/x0.5/x1 BW) to fixed weights D1–D6: "5kg — 200m" through "100kg — 200m". Distance always 200m.
 - **Shoulder Dislocate** — changed from `difficulty+time` D1–D4 (grip-width tiers) to repurposed `strength` mode: cm measurement, no tiers. See Difficulty Tiers note.
 - Domain 6 completely redesigned — see Domain Display Order above. Old slugs (1k-run, sprint-repeats, 30-15-test, etc.) are legacy/orphaned in session history.
+
+### New events added (June 2026)
+- **Foot Juggling** → Body Awareness, `difficulty+reps`, D1: 1 Bounce (one bounce allowed between touches), D2: No Bounce (pure keepy-uppies); slug: `foot-juggling`
+- **Ultimate Frisbee** → Aim & Precision, `sport` mode (win/draw/loss); replaces Handball (fully removed — historical results unaffected, event name stored as string); slug: `ultimate-frisbee`
+- **Rats & Rabbits** → Speed, `sport` mode; 1v1 reaction game, first to 3 wins (win by 2); slug: `rats-and-rabbits`
+- **Speed Chess** → Speed, `sport` mode; 3 min each, half pieces (trial format — subject to change after trialling); slug: `speed-chess`
+
+**Note:** Domain event pools are no longer capped at 10. Pools can grow freely — one event is still drawn per domain per session.
 
 ### New events added (June 2026 session 16)
 - **Sandbag to Shoulder** → Maximal Strength, `difficulty+reps`, D1–D6 (5/10/25/50/80/100kg); slug: `sandbag-to-shoulder`. Bar set at player's shoulder height; one rep = sandbag fully clears bar and lands on other side; player moves around to retrieve.
@@ -223,6 +231,7 @@ Full tier data defined in `lib/eventData.ts`. Summary:
 | Jump Rope | D1–D5 |
 | Gymnastics | D1–D8 |
 | Juggling | D1–D4 |
+| Foot Juggling | D1–D2 (D1: 1 Bounce, D2: No Bounce) |
 | Ab Rollout | D1–D5 |
 | Chin Hang | D1–D6 |
 | Breakdancing | D1–D6 |
@@ -587,7 +596,8 @@ best_score, current_rank, division, average_placement, season_year
 1. Apply DB migrations to production Supabase (SQL Editor):
    - `20260526_fix_points_trigger.sql` — fixes 140pt scoring bug
    - `20260610_historic_points.sql` — Salvador +800, Rodrigo +1500, Zeke +1500 (2025 season)
-2. **Felix's date of birth** — once known, run `UPDATE players SET date_of_birth = 'YYYY-MM-DD' WHERE full_name ILIKE '%Felix%'` in Supabase SQL Editor; code already handles null DOB gracefully (Felix shows in all age-filtered views until DOB is set)
+   - `20260617_fix_youth_division.sql` — fixes Felix + any other 'Youth' → 'Juniors'
+2. **Felix's date of birth** — DOB is set (2016-12-19). Division was 'Youth' (legacy value); migration `20260617_fix_youth_division.sql` updates all 'Youth' → 'Juniors'. Code also treats 'Youth' as 'Juniors' in both leaderboard pool filters as a fallback.
 3. **Breakdancing tiers** — change from `difficulty+reps` to `difficulty+time` with new tier descriptions (awaiting tier content from Tane)
 3. **Referral system** — DB migration (referral_code on players, referrals table, trigger), /join/[code] invite landing, dashboard "Invite Friends" section, /koha referral tier display
 4. **Funding campaign block** — update /koha with "Wheels for AllSport" campaign section (hardcoded, progress bar, milestones)
@@ -621,6 +631,10 @@ best_score, current_rank, division, average_placement, season_year
 - Effort task labels (June 2026 session 16): all modes use conversational sentence style — e.g. "Lift ${kg}kg for 5 reps" (was "${kg}kg × 5 reps"), "Achieve at least ${X}m" (was "Throw/jump ≥ X"), "Complete ${targetReps}+ reps at ${tierName}" (was "${n}+ reps at…"), "Complete in X or faster" (was "Hold for X or longer"), "Hold for at least 2 minutes" (was "Hold for 2 minutes")
 - Domain 6 events redesigned (May 2026): old events (1k Run, Sprint Repeats, 30-15 Test, etc.) are legacy orphans in session history; new slugs are running, cycling, ski-erg, row-erg, breath-hold, weighted-carry, duck-walk, bronco, walking, burpee-broad-jump
 - Domain 10 updated (May 2026): Cornhole → Bocce, Bowling → Kubb
+- Domain event pools not capped at 10 (June 2026): no technical limit on pool size; one event still drawn per domain per session; pools can grow or shrink freely
+- Handball removed from Aim & Precision (June 2026): replaced by Ultimate Frisbee; historical results unaffected (event name stored as string in results table)
+- Rats & Rabbits (Speed): 1v1, caller shouts team name, named player chases, other runs to safe zone; first to 3 wins (win by 2 required); `sport` mode
+- Speed Chess (Speed): 3 min each, half pieces; trial format subject to change; `sport` mode
 - disadvantage system removed entirely (dropped from DB in migration 20260510, removed from eventData.ts and all UI)
 - Disadvantage: self-declared by players, small/large, three options per event per level; multiplier on strength events only (×1.2 / ×1.5)
 - Missing scores: players with any result in session but no score for a specific event = last place for that event
@@ -635,8 +649,8 @@ best_score, current_rank, division, average_placement, season_year
 - Gap formula: 100 ÷ players, NO floor on gap; minimum 10 pts applies only to the final awarded amount (GREATEST(pts, 10)). Bug was in trigger + client calcPlacementPts — both fixed May 2026.
 - Bonus system removed (May 2026): all session bonuses (attendance, PB, top performance, first session, streak, championship) removed from award_session_points trigger. Total = placement_pts + effort_pts only
 - Effort points: separate effort_scores table; 100pt session cap (= effort level 20 × 5 pts); +5 per qualifying submission; feeds Colour System total; one repeatable task per event at 80% of PR
-- Effort tasks: generated from `effectivePR = max(sessionBest, seasonPR)` — if no season PR, session score becomes baseline; one repeatable task per event; strength: 5 reps @80% PR; hold events: 2-minute hold; sport events: extra match vs any opponent; score events: additional 4-hole round; tasks locked until at least one comp score submitted this session
-- Effort matching: exact tier, time ≥ required; harder tier does not substitute; repeats allowed
+- Effort tasks: generated from `effectivePR = max(sessionBest, seasonPR)` — season PRs loaded via bulk results query (NOT the get_player_season_pr RPC which broke on empty event_slug); task shown in expanded card before first submission (greyed out) if season PR known; task rules by mode: strength → 5 reps @80% PR weight; distance Power domain (#3, throws/jumps) → 3 attempts ≥ 80% = 1 task completion; distance other domains → 1 attempt ≥ 80%; time/sprint/reps/hold → 80% of PR; difficulty+time/difficulty+reps → 80% of PR at same tier; sport → 1 extra game vs new opponent; score (Golf/Disc Golf) → 1 extra 4-hole round
+- Effort matching: exact tier required for tiered events; harder tier does NOT substitute; repeats allowed; Power throws need 3 qualifying per task completion
 - Live session leaderboard: single tab row — first tab always "Effort Level (All-Divisions)" (effort ranking); then division tabs (competitive ranking, lowest total placement = 1st); division tabs only visible if players from that division have scored; expanded player row shows all events with score label + ordinal placement
 - Event button collapsed label: always shows "Effort Level: N" (not "— pts")
 - Golf and Disc Golf use 'score' mode (stroke count for 4 holes; raw_score = -strokes; lower = better).
