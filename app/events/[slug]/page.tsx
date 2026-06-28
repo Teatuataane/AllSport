@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase-browser'
 import { getEventBySlug } from '@/lib/eventData'
+import { formatNZDate } from '@/lib/dates'
 
 const supabase = createClient()
 
@@ -208,7 +209,7 @@ export default function EventPage() {
                   <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#4DB26E' }}>{personalBest.score_label}</div>
                   {personalBest.sessions?.session_date && (
                     <div style={{ fontSize: '12px', color: '#555', marginTop: '4px', fontFamily: 'Barlow, sans-serif' }}>
-                      {new Date(personalBest.sessions.session_date).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      {formatNZDate(personalBest.sessions.session_date)}
                     </div>
                   )}
                 </div>

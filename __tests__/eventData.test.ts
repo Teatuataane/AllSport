@@ -11,14 +11,14 @@ import {
 // ─── EVENTS array integrity ───────────────────────────────────────────────────
 
 describe('EVENTS array', () => {
-  it('contains exactly 100 events', () => {
-    expect(EVENTS).toHaveLength(100)
+  it('contains exactly 104 events', () => {
+    expect(EVENTS).toHaveLength(104)
   })
 
   it('every event has a unique slug', () => {
     const slugs = EVENTS.map(e => e.slug)
     const unique = new Set(slugs)
-    expect(unique.size).toBe(100)
+    expect(unique.size).toBe(EVENTS.length)
   })
 
   it('every event has a non-empty name', () => {
@@ -125,8 +125,8 @@ describe('getEventByName', () => {
     expect(e!.domainNumber).toBe(1)
   })
 
-  it('finds Hand Walk (renamed from 50m Hand Walk)', () => {
-    const e = getEventByName('Hand Walk')
+  it('finds Handbalance (slug still hand-walk after rename)', () => {
+    const e = getEventByName('Handbalance')
     expect(e).toBeDefined()
     expect(e!.slug).toBe('hand-walk')
   })
@@ -148,15 +148,15 @@ describe('getEventsByDomain', () => {
     expect(Object.keys(map)).toHaveLength(10)
   })
 
-  it('Maximal Strength has 10 events', () => {
+  it('Maximal Strength has 11 events', () => {
     const map = getEventsByDomain()
-    expect(map['Maximal Strength']).toHaveLength(10)
+    expect(map['Maximal Strength']).toHaveLength(11)
   })
 
   it('every event appears in exactly one domain bucket', () => {
     const map = getEventsByDomain()
     const total = Object.values(map).reduce((sum, arr) => sum + arr.length, 0)
-    expect(total).toBe(100)
+    expect(total).toBe(EVENTS.length)
   })
 
   it('domain buckets contain the correct event objects (spot-check Deadlift)', () => {

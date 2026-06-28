@@ -909,23 +909,24 @@ export const EVENTS: EventData[] = [
     emoji: '⬆️',
   },
   {
+    // slug stays 'hand-walk' so historical results remain linked
     slug: 'hand-walk',
-    name: 'Hand Walk',
+    name: 'Handbalance',
     domain: 'Power',
     domainNumber: 3,
     inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
     difficultyTiers: [
-      { level: 1, name: 'Bear Crawl' },
-      { level: 2, name: 'Lizard Crawl' },
-      { level: 3, name: 'Wall Handstand Walk' },
-      { level: 4, name: 'Handstand Walk (unbroken)' },
+      { level: 1, name: 'Pushup Hold' },
+      { level: 2, name: 'Elevated Pushup Hold' },
+      { level: 3, name: 'Wall Handstand' },
+      { level: 4, name: 'Freestanding Handstand' },
     ],
     howToPerform: PLACEHOLDER_CONTENT,
     rules: PLACEHOLDER_CONTENT,
 
     videoPlaceholder: true,
-    emoji: '🍑',
+    emoji: '🤸',
   },
   {
     slug: 'clean-and-jerk',
@@ -1756,6 +1757,36 @@ export function getEventBySlug(slug: string): EventData | undefined {
 
 export function getEventByName(name: string): EventData | undefined {
   return EVENTS.find(e => e.name === name)
+}
+
+// ─── difficulty+time encoding ────────────────────────────────────────────────
+// raw_score is encoded as: tierIdx * DT_CAP + within-tier term (0-based tierIdx).
+// Two semantics share this mode:
+//   • HOLDS (longer wins)   → within-tier term = seconds            (more = better)
+//   • TIMED EFFORTS (faster wins) → within-tier term = DT_CAP - seconds (faster = better)
+// Either way a higher tier always outranks a lower one, and a higher raw_score is
+// always better — so every ranker (client + SQL trigger) can sort raw_score DESC.
+export const DT_CAP = 10000
+
+// Events where finishing FASTER is better (timed efforts), not holding LONGER.
+// Duck Walk is intentionally excluded (mixed hold/walk tiers) — pending tier redesign.
+export const TIMED_EFFORT_SLUGS = new Set<string>([
+  'running', 'cycling', 'ski-erg', 'row-erg', 'weighted-carry',
+  'bronco', 'walking', 'burpee-broad-jump', 'climbing', 'repeat-high-jump',
+])
+
+export function isTimedEffort(slug?: string | null): boolean {
+  return !!slug && TIMED_EFFORT_SLUGS.has(slug)
+}
+
+export function encodeDiffTime(tierIdx: number, secs: number, fasterWins: boolean): number {
+  return tierIdx * DT_CAP + (fasterWins ? DT_CAP - secs : secs)
+}
+
+export function decodeDiffTime(rawScore: number, fasterWins: boolean): { tierIdx: number; secs: number } {
+  const tierIdx = Math.floor(rawScore / DT_CAP)
+  const rem = rawScore % DT_CAP
+  return { tierIdx, secs: fasterWins ? DT_CAP - rem : rem }
 }
 
 export function getEventsByDomain(): Record<string, EventData[]> {

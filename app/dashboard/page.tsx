@@ -2,6 +2,7 @@
 import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase-browser'
+import { formatNZDate } from '@/lib/dates'
 import Link from 'next/link'
 
 const supabase = createClient()
@@ -789,9 +790,7 @@ function DashboardInner() {
                             )}
                           </div>
                           <div style={{ fontSize: '12px', color: '#555', marginTop: '2px', fontFamily: 'Barlow Condensed, sans-serif' }}>
-                            {sess?.session_date
-                              ? new Date(sess.session_date).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })
-                              : ''}
+                            {formatNZDate(sess?.session_date)}
                             {s.overall_placement ? ` · ${ordinal(s.overall_placement)} place` : ''}
                           </div>
                         </div>
@@ -857,6 +856,18 @@ function DashboardInner() {
                               ))}
                             </div>
                           )}
+
+                          <Link
+                            href={`/games/${sid}`}
+                            style={{
+                              display: 'block', marginTop: '14px', textAlign: 'center',
+                              padding: '10px', borderRadius: '8px', background: '#0a0a0a',
+                              border: '1px solid #2371BB', color: '#2371BB', textDecoration: 'none',
+                              fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', letterSpacing: '0.08em',
+                            }}
+                          >
+                            VIEW FULL GAME — ALL PLAYERS
+                          </Link>
                         </div>
                       )}
                     </div>

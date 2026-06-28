@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase-browser'
 import { EVENTS, DOMAIN_ORDER, getEventsByDomain } from '@/lib/eventData'
+import { formatNZDate } from '@/lib/dates'
 
 const supabase = createClient()
 
@@ -251,7 +252,7 @@ export default function PRsPage() {
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                               {eventResults.map((r, i) => {
                                 const isBest = i === 0
-                                const date = new Date(r.session_date).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })
+                                const date = formatNZDate(r.session_date)
                                 return (
                                   <div
                                     key={r.id}

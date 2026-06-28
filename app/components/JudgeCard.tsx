@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase-browser'
 import { QRCodeSVG } from 'qrcode.react'
 import Link from 'next/link'
 import { EVENTS } from '@/lib/eventData'
+import { formatNZDate } from '@/lib/dates'
 
 type Session = {
   id: string
@@ -750,7 +751,7 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
                         <div style={{ fontSize: '13px', color: '#888', fontFamily: 'Barlow, sans-serif' }}>{sess.location}</div>
                         <div style={{ fontSize: '11px', color: '#444', marginTop: '2px', fontFamily: 'Barlow, sans-serif' }}>
                           {sess.session_date
-                            ? new Date(sess.session_date).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })
+                            ? formatNZDate(sess.session_date)
                             : ''}
                         </div>
                       </div>
@@ -1261,7 +1262,7 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
                                     </div>
                                     <div style={{ fontSize: '11px', color: '#444', marginTop: '1px', fontFamily: 'Barlow Condensed, sans-serif' }}>
                                       {sess?.session_date
-                                        ? new Date(sess.session_date).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })
+                                        ? formatNZDate(sess.session_date)
                                         : ''}
                                       {s.overall_placement ? ` · ${ordinalJC(s.overall_placement)} place` : ''}
                                     </div>

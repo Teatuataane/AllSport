@@ -100,7 +100,7 @@ linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)
 |---|--------|--------|
 | 1 | Maximal Strength | 1A Press, Deadlift, Clean & Press, Pause Dips, Pause Chin Up, Pause Squat, Zercher Dead, Ham Curl, Pause Bench, Turkish Get Up, Sandbag to Shoulder |
 | 2 | Calisthenics | 1 Leg Squat, Flag, Windshield Wipers, Toe Lift, Planche, Back Lever, Iron Cross, Front Lever, Chin Hang, Climbing |
-| 3 | Power | Kelly Snatch, 1A Snatch, Triple Jump, Javelin, Shotput, Australian Football, Vertical Jump, Hand Walk, Clean & Jerk, Snatch |
+| 3 | Power | Kelly Snatch, 1A Snatch, Triple Jump, Javelin, Shotput, Australian Football, Vertical Jump, Handbalance, Clean & Jerk, Snatch |
 | 4 | Speed | 100m Sprint, Tag, T-Race, 400m Race, Beach Flags, 50m Sprint, 200m Sprint, Touch Rugby, Football Dribble, Repeat High Jump, Rats & Rabbits, Speed Chess |
 | 5 | Anaerobic Endurance | Chinup Contest, Pushup Contest, Reverse Hyper, L-Sit Hold, Tibialis Curl, Headstand, Finger Push Up, GHD Situp, Leg Extension, Ab Rollout |
 | 6 | Aerobic Endurance | Burpee Broad Jump, Running, Cycling, Ski Erg, Row Erg, Breath Hold, Weighted Carry, Duck Walk, Bronco, Walking |
@@ -126,6 +126,7 @@ linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)
 - "Pause Chin Up" → **Pause Chin Up** (`difficulty+reps` D1–D5; D5 = Weighted Chinup, weight-scored)
 - "Ham Curl" → **Ham Curl** (`difficulty+reps` D1–D5, was `strength`)
 - "50m Hand Walk" → **Hand Walk** (`difficulty+time` D1–D4; D3 = Wall Handstand Walk)
+- "Hand Walk" → **Handbalance** (June 2026 session 18 — slug stays `hand-walk` so history survives). Tiers renamed for clarity: D1 Pushup Hold, D2 Elevated Pushup Hold, D3 Wall Handstand, D4 Freestanding Handstand. Stays a hold event (longer time wins).
 - "Cornhole" → **Bocce** (sport mode)
 - "Bowling" → **Kubb** (sport mode)
 - "Sprint Repeats" → **Bronco** (`difficulty+time` D1–D3)
@@ -146,6 +147,17 @@ linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)
 
 ### New events added (June 2026 session 16)
 - **Sandbag to Shoulder** → Maximal Strength, `difficulty+reps`, D1–D6 (5/10/25/50/80/100kg); slug: `sandbag-to-shoulder`. Bar set at player's shoulder height; one rep = sandbag fully clears bar and lands on other side; player moves around to retrieve.
+
+### Bug fixes & changes (June 2026 session 18)
+- **Hand Walk → Handbalance** rename (see Event renames above).
+- **Timed-effort events now rank by FASTEST time** — `difficulty+time` carries two semantics: HOLDS (longer time wins) and TIMED EFFORTS (faster time wins). Previously every `difficulty+time` event ranked longer time as better, so e.g. Running 4:20 beat 4:19. The 10 timed-effort events (Running, Cycling, Ski Erg, Row Erg, Weighted Carry, Bronco, Walking, Burpee Broad Jump, Climbing, Repeat High Jump) now rank faster as better. Rule: a higher difficulty tier always outranks a lower one; within a tier, faster wins. See "difficulty+time encoding" below. **Duck Walk is intentionally excluded** (mixed hold + walk tiers) — pending tier redesign (see What's Next).
+- **Overall placement fix** — the points trigger now ranks each scored player across EVERY session event; a missed event = last place in the division (= number of players in that division who played the session). Previously only scored events were summed, so playing fewer events gave an unfairly low (better) total.
+- **Points doubling fix** — production was running a stale award function that summed `points_earned` (duplicated across every event row); season total is now placement + effort, added once. Fixed in migration `20260629_fix_placement_and_timed_events.sql`.
+- **Date off-by-one fix** — DATE columns ('YYYY-MM-DD') were parsed as UTC midnight, rendering the previous day in behind-UTC contexts. New `lib/dates.ts` (`parseLocalDate` / `formatNZDate`) parses dates in local time. Applied to all session-date renders.
+- **Game review page** — new `/games/[sessionId]` full all-player report (every division, event, score + placement, standings), linked from dashboard session history; any logged-in player. Placements computed live from `raw_score` (so the encoding + missing-event fixes reflect for past games too).
+
+#### difficulty+time encoding
+`raw_score = tierIdx * 10000 + within-tier term` (0-based tierIdx). HOLDS use `within-tier = seconds` (more = better); TIMED EFFORTS use `within-tier = 10000 - seconds` (faster = better). Either way a higher tier always outranks a lower one AND a higher `raw_score` is always better, so every ranker (client leaderboard + SQL trigger, both sort `raw_score` DESC) works without per-event branching. Helpers `isTimedEffort` / `encodeDiffTime` / `decodeDiffTime` and the `TIMED_EFFORT_SLUGS` set live in `lib/eventData.ts`. `time_seconds` is still stored raw (un-inverted) for effort-task matching.
 
 ---
 
@@ -397,6 +409,7 @@ update players set role = 'judge' where id = '[uuid]';
 | Personal Bests | /prs | Complete | All 100 events, PR per event, expandable history, this season + previous seasons tabs |
 | Vote | /vote/[voteId] | Complete | Step-by-step voting flow, one domain per screen, partial save, review screen, locked on submit |
 | Vote Results | /vote/[voteId]/results | Complete | Spoiler-free until voted, bar chart per domain, counts only while open / percentages on close, judge full breakdown |
+| Game Review | /games/[sessionId] | Complete | Full all-player game report — every division, every event with score + placement, division standings. Linked from dashboard session history. Any logged-in player. Placements computed live from raw_score |
 | Auth Callback | /auth/callback | Complete | Google OAuth handler |
 | Invite Landing | /join/[code] | Planned | Public page — introduces AllSport, shows inviter name, Register CTA with referral code pre-filled |
 | Supporters | /supporters | Planned | Two sections: Koha supporters wall + Partner Clubs card grid |
@@ -476,6 +489,7 @@ best_score, current_rank, division, average_placement, season_year
 - Players who joined a session (have any result row) but have no score for a specific event are ranked last for that event
 - Missing score players display as "No score" in expanded event lists
 - Input modes: `strength` (weight+reps), `reps`, `time` (mm:ss), `hold` (mm:ss), `distance` (m/cm), `sport` (win/draw/loss + opponent), `sprint` (ss.cs), `difficulty+time` (tier selector + seconds), `difficulty+reps` (tier selector + reps), `score` (stroke count for 4 holes, stored as negative integer)
+- `difficulty+time` has two semantics: HOLDS (longer time wins) and TIMED EFFORTS (faster time wins, `TIMED_EFFORT_SLUGS` in eventData.ts). Encoding inverts the within-tier term for timed efforts so `raw_score` DESC always means "better" — see difficulty+time encoding note above. Duck Walk excluded (mixed tiers, pending redesign)
 - Sprint mode: seconds + centiseconds (0–99), raw_score = -(secs*100 + cs). Used for 100m/50m/200m Sprint (T-Race now uses sport mode)
 - Score mode: stroke count for 4 holes, raw_score = -strokes (negative; fewer strokes = higher raw_score = better rank). Used for Golf and Disc Golf.
 - Gap formula: 100 ÷ players with NO floor on gap; minimum earn of 10 applies to awarded points only (not the gap)
@@ -499,7 +513,8 @@ best_score, current_rank, division, average_placement, season_year
     supabase.ts                     # Basic client (legacy — DO NOT USE in new code)
     supabase-browser.ts             # Browser client (use this in ALL client components)
     supabase-server.ts              # Server client
-    eventData.ts                    # Single source of truth for all 100 events: name, slug, domain, inputMode, difficultyTiers, howToPerform, rules
+    eventData.ts                    # Single source of truth for all events + difficulty+time encode/decode helpers (encodeDiffTime/decodeDiffTime/isTimedEffort, TIMED_EFFORT_SLUGS)
+    dates.ts                        # parseLocalDate / formatNZDate — parse DATE columns in local time (avoids off-by-one)
   app/
     page.tsx                        # Homepage — colour progression = "My Colour History" button
     layout.tsx                      # Root layout
@@ -520,6 +535,7 @@ best_score, current_rank, division, average_placement, season_year
     prs/page.tsx                    # Personal best history — all 100 events
     scoring/page.tsx
     scoring/[sessionId]/page.tsx    # Live session — banner (div placement + timer), event cards (score/div rank/EL), new leaderboard (3-section, Masters toggle, age chips, event filter)
+    games/[sessionId]/page.tsx      # Game review — full all-player report (divisions, events, scores, placements, standings); computed live from raw_score
     auth/callback/route.ts
     join/
       [code]/page.tsx               # Invite landing — shows inviter name, Register CTA pre-filled with referral code
@@ -546,6 +562,7 @@ best_score, current_rank, division, average_placement, season_year
       20260513_event_voting.sql     # event_votes, event_vote_nominations, event_vote_responses tables + RLS + functions
       20260514_dashboard_redesign.sql # players.icon, session_player_summary, get_player_top_event RPC, updated trigger
       20260526_fix_points_trigger.sql  # Remove bonus system; fix gap formula — run in Supabase SQL Editor
+      20260629_fix_placement_and_timed_events.sql  # Overall placement (missing event = last in division), points-doubling fix, timed-event raw_score re-encode — supersedes 20260526/b; run ONCE in Supabase SQL Editor
   public/
     logo.png
 ```
@@ -594,7 +611,7 @@ best_score, current_rank, division, average_placement, season_year
 ## What's Next (In Priority Order)
 
 1. Apply DB migrations to production Supabase (SQL Editor):
-   - `20260526_fix_points_trigger.sql` — fixes 140pt scoring bug
+   - `20260629_fix_placement_and_timed_events.sql` — **run ONCE**: fixes overall placement (missing event = last in division), points doubling, and re-encodes timed-event raw_score. Supersedes `20260526`/`20260526b` (self-contained — no need to run those first). The one-time raw_score re-encode must not be run twice.
    - `20260610_historic_points.sql` — Salvador +800, Rodrigo +1500, Zeke +1500 (2025 season)
    - `20260617_fix_youth_division.sql` — fixes Felix + any other 'Youth' → 'Juniors'
 2. **Felix's date of birth** — DOB is set (2016-12-19). Division was 'Youth' (legacy value); migration `20260617_fix_youth_division.sql` updates all 'Youth' → 'Juniors'. Code also treats 'Youth' as 'Juniors' in both leaderboard pool filters as a fallback.
@@ -608,6 +625,9 @@ best_score, current_rank, division, average_placement, season_year
 9. Per-event placement storage — add `event_placement` column to results + trigger update, so points history can show "1st in Deadlift" etc. (future enhancement)
 10. Designed icon set — replace emoji placeholders with branded SVG icons; infrastructure already in place (players.icon column + icon picker on /profile)
 11. Championship registration flow (6 months before March 2027)
+12. **Testing suite (deferred)** — extract the scoring logic (raw_score per input mode, placement ranking incl. missing=last, gap/points formula, effort) into a pure `lib/scoring.ts`, point the live session at it, and add vitest unit tests. **Plus** database-level tests (pgTAP or a seeded test DB) that exercise the actual `award_session_points` trigger, since the real placement+points math runs server-side. Goal: catch scoring regressions before a game.
+13. **Duck Walk tier redesign** — currently excluded from the timed-effort (faster-wins) set because D1/D2 are static holds (longer wins) and D3–D5 are distance walks (faster wins). A single event can't carry both directions; redesign the tiers (likely split holds from walks) then add to `TIMED_EFFORT_SLUGS` if appropriate.
+14. **Season-PR direction bug (time/sprint)** — in `scoring/[sessionId]/page.tsx` the season-PR loader treats `time`/`sprint` as "min raw_score is best", but those store negative raw_score (faster = higher), so it currently picks the *slowest* as the PR. Should use max raw_score like everything else. Low-impact (sessionBest still drives effort baseline) but should be fixed.
 
 ---
 
@@ -628,6 +648,12 @@ best_score, current_rank, division, average_placement, season_year
 - Shoulder Dislocate: repurposed `strength` mode — weight_kg stores grip width in cm, raw_score = −weight_kg (narrower = better rank); UI placeholder "Grip width (cm)"; formatPR shows Xcm; effort task: ≤80% of PR grip width for 5 reps (inverted check: weight_kg ≤ targetCm)
 - Sandbag to Shoulder: `difficulty+reps`, D1–D6 (5/10/25/50/80/100kg); slug `sandbag-to-shoulder`; bar at player's shoulder height; one rep = sandbag fully clears bar; player retrieves from other side
 - Weighted Carry: tiers updated to fixed weights — D1–D6: "5kg — 200m" through "100kg — 200m" (was bodyweight multiples x0.25/x0.5/x1)
+- Handbalance (session 18): renamed from Hand Walk; slug stays `hand-walk` so historical results stay linked. Tiers: D1 Pushup Hold, D2 Elevated Pushup Hold, D3 Wall Handstand, D4 Freestanding Handstand. Hold event (longer time wins)
+- Timed-effort events (session 18): 10 `difficulty+time` events rank FASTER as better (Running, Cycling, Ski Erg, Row Erg, Weighted Carry, Bronco, Walking, Burpee Broad Jump, Climbing, Repeat High Jump). Encoding inverts the within-tier seconds term (`10000 - secs`) so `raw_score` DESC still means best everywhere; higher tier always beats lower tier. `TIMED_EFFORT_SLUGS` + `encodeDiffTime`/`decodeDiffTime`/`isTimedEffort` in eventData.ts. Duck Walk excluded (mixed tiers). `time_seconds` stored un-inverted for effort matching
+- Overall placement (session 18): trigger ranks every scored player across ALL session events; a missed event = last place in the division (= number of division players who played the session). Fixes "win while playing fewer events". The live leaderboard already penalised missing events client-side; this fixed the server trigger (awarded placement + points)
+- Points doubling (session 18): root cause was a stale prod award function summing per-row `points_earned` (duplicated across every event row → ×event count). Corrected trigger computes season total as placement + effort once. Migration `20260629_fix_placement_and_timed_events.sql`
+- Dates (session 18): DATE columns parsed in local time via `lib/dates.ts` (`parseLocalDate`/`formatNZDate`) to stop the UTC off-by-one (19th showing as 18th)
+- Game review (session 18): `/games/[sessionId]` is a read-only full-game report for any logged-in player; placements computed live from `raw_score` (not the stored placement), so it reflects the encoding + missing-event fixes for past games too; mirrors the trigger's 7-division structure
 - Effort task labels (June 2026 session 16): all modes use conversational sentence style — e.g. "Lift ${kg}kg for 5 reps" (was "${kg}kg × 5 reps"), "Achieve at least ${X}m" (was "Throw/jump ≥ X"), "Complete ${targetReps}+ reps at ${tierName}" (was "${n}+ reps at…"), "Complete in X or faster" (was "Hold for X or longer"), "Hold for at least 2 minutes" (was "Hold for 2 minutes")
 - Domain 6 events redesigned (May 2026): old events (1k Run, Sprint Repeats, 30-15 Test, etc.) are legacy orphans in session history; new slugs are running, cycling, ski-erg, row-erg, breath-hold, weighted-carry, duck-walk, bronco, walking, burpee-broad-jump
 - Domain 10 updated (May 2026): Cornhole → Bocce, Bowling → Kubb
@@ -686,7 +712,7 @@ best_score, current_rank, division, average_placement, season_year
 
 ---
 
-*Last updated: June 2026 (session 16 — Weighted Carry tiers to fixed weights D1–D6; Sandbag to Shoulder new event (Domain 1); Shoulder Dislocate to strength/cm mode; Juniors age-group badges U10–U16; effort task language standardised to conversational sentences)*
+*Last updated: June 2026 (session 18 — Hand Walk → Handbalance; timed-effort events (Running etc.) now rank fastest-wins via inverted difficulty+time encoding; overall-placement fix (missing event = last in division); points-doubling fix; date off-by-one fix (lib/dates.ts); new /games/[sessionId] full game-review page; migration 20260629; stale eventData tests refreshed)*
 *Project started: March 2026*
 
 ## Skill routing
