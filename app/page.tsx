@@ -20,7 +20,7 @@ const domains = [
     name: 'Power',
     icon: '⚡',
     color: '#f7e03c',
-    events: ['Kelly Snatch', '1A Snatch', 'Triple Jump', 'Javelin', 'Shotput', 'Australian Football', 'Vertical Jump', 'Hand Walk', 'Clean & Jerk', 'Snatch'],
+    events: ['Kelly Snatch', '1A Snatch', 'Triple Jump', 'Javelin', 'Shotput', 'Australian Football', 'Vertical Jump', 'Handbalance', 'Clean & Jerk', 'Snatch'],
   },
   {
     name: 'Speed',

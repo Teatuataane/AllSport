@@ -2,7 +2,8 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase-browser'
-import { getEventByName, type EventData } from '@/lib/eventData'
+import { getEventByName, isTimedEffort, encodeDiffTime, decodeDiffTime, type EventData } from '@/lib/eventData'
+import { parseLocalDate } from '@/lib/dates'
 
 const supabase = createClient()
 
@@ -66,8 +67,7 @@ function formatPR(rawScore: number, inputMode: string, slug?: string): string {
     case 'sport':      return rawScore === 2 ? 'Win' : rawScore === 1 ? 'Draw' : 'Loss'
     case 'score':      return `${Math.abs(rawScore)} strokes`
     case 'difficulty+time': {
-      const tierIdx = Math.floor(rawScore / 10000)
-      const secs = rawScore % 10000
+      const { tierIdx, secs } = decodeDiffTime(rawScore, isTimedEffort(slug))
       return `D${tierIdx + 1} · ${fmtTime(secs)}`
     }
     case 'difficulty+reps': {
@@ -180,10 +180,10 @@ function computeEffortTasks(
   }
   if (mode === 'difficulty+time') {
     if (!eventData.difficultyTiers) return []
-    const prTierIdx = Math.floor(effectivePR / 10000)
-    const prTimeSecs = effectivePR % 10000
+    const fasterWins = isTimedEffort(eventData.slug)
+    const { tierIdx: prTierIdx, secs: prTimeSecs } = decodeDiffTime(effectivePR, fasterWins)
     const tiers = eventData.difficultyTiers
-    if (eventData.domainNumber === 6) {
+    if (fasterWins) {
       if (prTierIdx === 0) {
         const tierName = tiers[0]?.name ?? 'D1'
         const targetSecs = Math.round(prTimeSecs * 1.2)
@@ -263,12 +263,12 @@ function calcSubmissionEffortTasks(
   }
   if (mode === 'difficulty+time') {
     if (!eventData.difficultyTiers || !difficultyTierName) return 0
-    const prTierIdx = Math.floor(effectivePR / 10000)
-    const prTimeSecs = effectivePR % 10000
+    const fasterWins = isTimedEffort(eventData.slug)
+    const { tierIdx: prTierIdx, secs: prTimeSecs } = decodeDiffTime(effectivePR, fasterWins)
     const tiers = eventData.difficultyTiers
     const rTierIdx = tiers.findIndex(t => t.name === difficultyTierName)
     const secs = timeSecs ?? 0
-    if (eventData.domainNumber === 6) {
+    if (fasterWins) {
       if (prTierIdx === 0) return rTierIdx === 0 && secs > 0 && secs <= Math.round(prTimeSecs * 1.2) ? 1 : 0
       else return rTierIdx === prTierIdx - 1 && secs > 0 && secs <= Math.round(prTimeSecs * 0.6) ? 1 : 0
     } else {
@@ -446,7 +446,7 @@ function EventCard({
       if (!difficultyTier || !totalSecs) return null
       const tierIdx = eventData?.difficultyTiers?.findIndex(t => t.name === difficultyTier) ?? -1
       if (tierIdx < 0) return null
-      const rawScore = tierIdx * 10000 + totalSecs
+      const rawScore = encodeDiffTime(tierIdx, totalSecs, isTimedEffort(eventData?.slug))
       return { raw_score: rawScore, score_label: `D${tierIdx + 1} ${difficultyTier} · ${fmtTime(totalSecs)}` }
     }
     if (mode === 'difficulty+reps') {
@@ -1677,7 +1677,7 @@ export default function SessionPage() {
         .not('raw_score', 'is', null)
       const byName: Record<string, number> = {}
       for (const r of (data ?? []) as any[]) {
-        if (!r.sessions?.session_date || new Date(r.sessions.session_date).getFullYear() !== year) continue
+        if (!r.sessions?.session_date || parseLocalDate(r.sessions.session_date).getFullYear() !== year) continue
         const evName = r.session_events?.event_name
         const inputMode: string = r.session_events?.input_mode ?? ''
         if (!evName || r.raw_score === null) continue
@@ -1704,7 +1704,7 @@ export default function SessionPage() {
         .not('raw_score', 'is', null)
       const byName: Record<string, number> = {}
       for (const r of (data ?? []) as any[]) {
-        if (!r.sessions?.session_date || new Date(r.sessions.session_date).getFullYear() !== year) continue
+        if (!r.sessions?.session_date || parseLocalDate(r.sessions.session_date).getFullYear() !== year) continue
         const evName = r.session_events?.event_name
         const inputMode: string = r.session_events?.input_mode ?? ''
         if (!evName || r.raw_score === null) continue

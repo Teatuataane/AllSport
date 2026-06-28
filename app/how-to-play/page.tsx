@@ -23,7 +23,7 @@ const domains = [
     icon: '⚡',
     color: '#f7e03c',
     desc: 'Strength applied fast. Explosiveness through full range of motion.',
-    events: ['Kelly Snatch', '1A Snatch', 'Triple Jump', 'Javelin', 'Shotput', 'Australian Football', 'Vertical Jump', 'Hand Walk', 'Clean & Jerk', 'Snatch'],
+    events: ['Kelly Snatch', '1A Snatch', 'Triple Jump', 'Javelin', 'Shotput', 'Australian Football', 'Vertical Jump', 'Handbalance', 'Clean & Jerk', 'Snatch'],
   },
   {
     name: 'Speed',
