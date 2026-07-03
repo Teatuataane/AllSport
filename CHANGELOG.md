@@ -2,6 +2,22 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.3.3.0] - 2026-07-03
+
+### Changed
+- **Homepage redesigned** — new hero headline "One Sport, Every Sport." over the true brand rainbow, refreshed copy (better at everything / one sport for everyone / play solo or with whānau), and a koha-only badge.
+- **Landing page pulled onto the official brand palette** — replaced the off-brand hero and section colours (#e63946, #2563eb, #9333ea, yellow) with the canonical tokens (#EA4742, #2371BB, #B87DB5) and the pink-inclusive six-colour rainbow. Scoped to the landing page; global tokens are unchanged.
+- **Event pools refreshed** to current lists (Sandbag to Shoulder, Ultimate Frisbee, Rats & Rabbits, Speed Chess, Foot Juggling).
+- **Colour ladder** now shows the point threshold for each grade (0–499 … 10,000+).
+- **Metadata title and description** updated to the new tagline.
+
+### Added
+- **Session times band** on the homepage — Tuesday and Thursday 4:30pm, Saturday 9am at 26 Carbine Place, Sockburn, with a link to the full schedule.
+- **"How it works" stat row** (10 disciplines · 100 minutes · lowest total wins) folded into the What Is AllSport section.
+
+### Removed
+- **Clunky "One session, all of you" format section** — replaced by the inline stat row above.
+
 ## [0.3.2.0] - 2026-06-10
 
 ### Fixed

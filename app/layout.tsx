@@ -4,8 +4,8 @@ import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 
 export const metadata: Metadata = {
-  title: 'AllSport — Play EVERYTHING',
-  description: 'AllSport is the first sport designed to test your ability at every form of athleticism. Based in Christchurch, NZ.',
+  title: 'AllSport — One Sport, Every Sport',
+  description: 'One sport that makes you better at everything. AllSport tests strength, speed, flexibility, coordination and endurance — trained together, every session. Koha-based, Ōtautahi Aotearoa.',
   icons: {
     icon: '/logo.png',
     apple: '/logo.png',
