@@ -58,46 +58,41 @@ function PlayPageInner() {
   }
 
   const inputStyle = {
-    width: '100%', background: '#111', border: '1px solid #333',
-    borderRadius: '8px', padding: '14px', color: '#fff',
-    fontSize: '15px', boxSizing: 'border-box' as const,
+    width: '100%', background: 'var(--surface-2)', border: '1px solid var(--border-strong)',
+    borderRadius: '10px', padding: '14px', color: 'var(--white)',
+    fontSize: '16px', outline: 'none', boxSizing: 'border-box' as const,
+    transition: 'border-color 0.2s, box-shadow 0.2s',
   }
-  const labelStyle = { fontSize: '12px', color: '#888', display: 'block', marginBottom: '6px' }
+  const labelStyle = {
+    fontSize: '12px', color: 'var(--grey)', display: 'block', marginBottom: '6px',
+    fontFamily: 'var(--font-label)', fontWeight: 600, letterSpacing: '0.12em',
+    textTransform: 'uppercase' as const,
+  }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0a0a0a', color: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--dark)', color: 'var(--white)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+      <style>{`input:focus { border-color: var(--blue) !important; box-shadow: 0 0 0 3px rgba(35,113,187,0.35); }`}</style>
       <div style={{ marginBottom: '40px', textAlign: 'center' }}>
         <img src="/logo.png" alt="AllSport" style={{ height: '80px', marginBottom: '12px' }} />
-        <div style={{ fontFamily: 'var(--font-bebas)', fontSize: '36px', letterSpacing: '4px' }}>
-          ALL<span style={{ color: '#EA4742' }}>SPORT</span>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: '36px', letterSpacing: '0.09em' }}>
+          ALL<span style={{ color: 'var(--red)' }}>SPORT</span>
         </div>
       </div>
 
       <div style={{ width: '100%', maxWidth: '400px' }}>
-        <div style={{ height: '3px', background: 'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)', borderRadius: '2px 2px 0 0' }} />
+        <div style={{ height: '4px', background: 'var(--rainbow)', borderRadius: '2px 2px 0 0' }} />
 
-        <div style={{ background: '#111', border: '1px solid #1e1e1e', borderTop: 'none', borderRadius: '0 0 12px 12px', padding: '28px' }}>
-          {/* Tabs */}
-          <div style={{ display: 'flex', marginBottom: '24px', background: '#0a0a0a', borderRadius: '8px', padding: '4px' }}>
-            {(['login', 'register'] as const).map(m => (
-              <button key={m} onClick={() => { setMode(m); setError('') }} style={{
-                flex: 1, padding: '10px', border: 'none', borderRadius: '6px', cursor: 'pointer',
-                background: mode === m ? '#2371BB' : 'transparent',
-                color: mode === m ? '#fff' : '#555',
-                fontWeight: 'bold', fontSize: '13px', letterSpacing: '1px',
-                fontFamily: 'var(--font-barlow-condensed)',
-              }}>
-                {m === 'login' ? 'LOG IN' : 'REGISTER'}
-              </button>
-            ))}
-          </div>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderTop: 'none', borderRadius: '0 0 12px 12px', padding: '28px' }}>
 
-          {/* Google button — shown on both tabs */}
+          {/* Google — the primary way in, on both tabs */}
           <button onClick={handleGoogle} disabled={googleLoading} style={{
-            width: '100%', padding: '13px', borderRadius: '8px', border: '1px solid #333',
-            background: '#fff', color: '#000', fontWeight: 'bold', fontSize: '14px',
+            width: '100%', padding: '15px', borderRadius: '999px', border: 'none',
+            background: 'var(--white)', color: '#1a1a1a', fontWeight: 700, fontSize: '15px',
+            fontFamily: 'var(--font-body)',
             cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
             gap: '10px', marginBottom: '16px', boxSizing: 'border-box' as const,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+            opacity: googleLoading ? 0.7 : 1,
           }}>
             <svg width="18" height="18" viewBox="0 0 48 48">
               <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
@@ -106,20 +101,36 @@ function PlayPageInner() {
               <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
               <path fill="none" d="M0 0h48v48H0z"/>
             </svg>
-            {googleLoading ? 'Connecting...' : `${mode === 'login' ? 'Log in' : 'Register'} with Google`}
+            {googleLoading ? 'Connecting...' : 'Continue with Google'}
           </button>
 
           {/* Divider */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-            <div style={{ flex: 1, height: '1px', background: '#222' }} />
-            <span style={{ color: '#555', fontSize: '12px' }}>or</span>
-            <div style={{ flex: 1, height: '1px', background: '#222' }} />
+            <div style={{ flex: 1, height: '1px', background: 'var(--border-strong)' }} />
+            <span style={{ color: '#555', fontSize: '12px', fontFamily: 'var(--font-label)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>or</span>
+            <div style={{ flex: 1, height: '1px', background: 'var(--border-strong)' }} />
+          </div>
+
+          {/* Tabs — email paths */}
+          <div style={{ display: 'flex', marginBottom: '20px', background: 'var(--dark)', borderRadius: '999px', padding: '4px', border: '1px solid var(--border)' }}>
+            {(['login', 'register'] as const).map(m => (
+              <button key={m} onClick={() => { setMode(m); setError('') }} style={{
+                flex: 1, padding: '10px', border: 'none', borderRadius: '999px', cursor: 'pointer',
+                background: mode === m ? 'var(--blue)' : 'transparent',
+                color: mode === m ? 'var(--white)' : '#555',
+                fontWeight: 700, fontSize: '13px', letterSpacing: '0.08em',
+                fontFamily: 'var(--font-label)', textTransform: 'uppercase' as const,
+                transition: 'all 0.15s',
+              }}>
+                {m === 'login' ? 'Log In' : 'Register'}
+              </button>
+            ))}
           </div>
 
           {mode === 'login' ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
-                <label style={labelStyle}>EMAIL</label>
+                <label style={labelStyle}>Email</label>
                 <input
                   type="email" value={email} onChange={e => setEmail(e.target.value)}
                   placeholder="your@email.com" style={inputStyle}
@@ -127,32 +138,30 @@ function PlayPageInner() {
                 />
               </div>
               <div>
-                <label style={labelStyle}>PASSWORD</label>
+                <label style={labelStyle}>Password</label>
                 <input
                   type="password" value={password} onChange={e => setPassword(e.target.value)}
                   placeholder="••••••••" style={inputStyle}
                   onKeyDown={e => e.key === 'Enter' && handleLogin()}
                 />
               </div>
-              {error && <p style={{ color: '#EA4742', fontSize: '13px', margin: 0 }}>{error}</p>}
-              <button onClick={handleLogin} disabled={!email || !password || loading} style={{
-                padding: '14px', borderRadius: '8px', border: 'none', fontWeight: 'bold',
-                fontSize: '15px', cursor: 'pointer',
-                background: email && password ? '#EA4742' : '#222',
-                color: email && password ? '#fff' : '#555',
+              {error && <p style={{ color: 'var(--red)', fontSize: '13px', margin: 0 }}>{error}</p>}
+              <button onClick={handleLogin} disabled={!email || !password || loading} className="btn btn-primary" style={{
+                width: '100%', padding: '14px', fontSize: '15px',
+                opacity: email && password ? 1 : 0.4,
+                cursor: email && password ? 'pointer' : 'not-allowed',
+                boxShadow: email && password ? undefined : 'none',
               }}>
                 {loading ? 'Logging in...' : 'Log In →'}
               </button>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center' }}>
-              <p style={{ color: '#888', fontSize: '14px', textAlign: 'center', margin: 0 }}>
+              <p style={{ color: 'var(--grey)', fontSize: '14px', textAlign: 'center', margin: 0 }}>
                 Create your AllSport account to track scores, earn colours, and compete on the leaderboard.
               </p>
-              <Link href={pendingCode ? `/register?code=${pendingCode}` : '/register'} style={{
-                display: 'block', width: '100%', padding: '14px', borderRadius: '8px',
-                background: '#2371BB', color: '#fff', textAlign: 'center',
-                textDecoration: 'none', fontWeight: 'bold', fontSize: '15px',
+              <Link href={pendingCode ? `/register?code=${pendingCode}` : '/register'} className="btn btn-blue" style={{
+                display: 'flex', width: '100%', padding: '14px', fontSize: '15px',
                 boxSizing: 'border-box' as const,
               }}>
                 Create Account with Email →
