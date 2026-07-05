@@ -128,9 +128,9 @@ export default function PRsPage() {
           </Link>
           <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '12px' }}>
             <div>
-              <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '36px', color: '#fff', lineHeight: 1 }}>My Personal Bests</div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '36px', color: '#fff', lineHeight: 1 }}>My Personal Bests</div>
               {!loading && (
-                <div style={{ color: '#555', fontSize: '13px', marginTop: '4px', fontFamily: 'Barlow, sans-serif' }}>
+                <div style={{ color: '#555', fontSize: '13px', marginTop: '4px', fontFamily: 'var(--font-body)' }}>
                   {totalPBs} / {totalEvents} events {tab === 'season' ? `in ${CURRENT_YEAR}` : 'all time'}
                 </div>
               )}
@@ -143,7 +143,7 @@ export default function PRsPage() {
                   onClick={() => setTab(t)}
                   style={{
                     padding: '6px 14px', borderRadius: '6px', border: 'none', cursor: 'pointer',
-                    fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: '12px',
+                    fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '12px',
                     letterSpacing: '0.08em', textTransform: 'uppercase',
                     background: tab === t ? '#2371BB' : '#111',
                     color: tab === t ? '#fff' : '#555',
@@ -160,7 +160,7 @@ export default function PRsPage() {
 
       <div style={{ maxWidth: '680px', margin: '0 auto', padding: '24px 16px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
         {loading ? (
-          <div style={{ color: '#555', fontSize: '14px', fontFamily: 'Barlow, sans-serif', textAlign: 'center', paddingTop: '48px' }}>Loading your results…</div>
+          <div style={{ color: '#555', fontSize: '14px', fontFamily: 'var(--font-body)', textAlign: 'center', paddingTop: '48px' }}>Loading your results…</div>
         ) : (
           DOMAIN_ORDER.map((domain, domainIdx) => {
             const domainNumber = domainIdx + 1
@@ -172,7 +172,7 @@ export default function PRsPage() {
                 {/* Domain heading */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
                   <div style={{ width: '4px', height: '20px', borderRadius: '2px', background: colour, flexShrink: 0 }} />
-                  <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '20px', color: colour, letterSpacing: '1px' }}>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '20px', color: colour, letterSpacing: '1px' }}>
                     {domainNumber}. {domain.toUpperCase()}
                   </div>
                 </div>
@@ -202,16 +202,16 @@ export default function PRsPage() {
                           }}
                         >
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                            <div style={{ fontSize: '14px', fontWeight: 600, color: pb ? '#fff' : '#444', fontFamily: 'Barlow, sans-serif' }}>
+                            <div style={{ fontSize: '14px', fontWeight: 600, color: pb ? '#fff' : '#444', fontFamily: 'var(--font-body)' }}>
                               {event.name}
                               {event.hasDifficultyTiers && event.difficultyTiers && (
-                                <span style={{ marginLeft: '8px', fontSize: '11px', color: '#B87DB5', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700 }}>
+                                <span style={{ marginLeft: '8px', fontSize: '11px', color: '#B87DB5', fontFamily: 'var(--font-label)', fontWeight: 700 }}>
                                   D1–D{event.difficultyTiers.length}
                                 </span>
                               )}
                             </div>
                             {pb && (
-                              <div style={{ fontSize: '11px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                              <div style={{ fontSize: '11px', color: '#555', fontFamily: 'var(--font-label)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                                 {event.inputMode}
                               </div>
                             )}
@@ -220,11 +220,11 @@ export default function PRsPage() {
                           {pb ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                               <div style={{ textAlign: 'right' }}>
-                                <div style={{ fontSize: '16px', fontWeight: 700, color: '#4DB26E', fontFamily: 'Barlow, sans-serif' }}>
+                                <div style={{ fontSize: '16px', fontWeight: 700, color: '#4DB26E', fontFamily: 'var(--font-body)' }}>
                                   {event.inputMode === 'sport' ? sportWDL(eventResults) : pb.score_label}
                                 </div>
                                 {pb.difficulty_tier && event.inputMode !== 'sport' && (
-                                  <div style={{ fontSize: '11px', color: '#B87DB5', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700 }}>
+                                  <div style={{ fontSize: '11px', color: '#B87DB5', fontFamily: 'var(--font-label)', fontWeight: 700 }}>
                                     {pb.difficulty_tier}
                                   </div>
                                 )}
@@ -232,7 +232,7 @@ export default function PRsPage() {
                               <div style={{ color: '#333', fontSize: '14px', transform: isExpanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}>›</div>
                             </div>
                           ) : (
-                            <div style={{ fontSize: '12px', color: '#333', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.05em' }}>No result</div>
+                            <div style={{ fontSize: '12px', color: '#333', fontFamily: 'var(--font-label)', letterSpacing: '0.05em' }}>No result</div>
                           )}
                         </button>
 
@@ -240,11 +240,11 @@ export default function PRsPage() {
                         {isExpanded && pb && (
                           <div style={{ borderTop: '1px solid #1e1e1e', padding: '8px 14px 12px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                              <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', color: '#555', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                              <div style={{ fontFamily: 'var(--font-label)', fontSize: '11px', color: '#555', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
                                 {event.inputMode === 'sport' ? `${eventResults.length} match${eventResults.length !== 1 ? 'es' : ''}` : `All results — ${eventResults.length} session${eventResults.length !== 1 ? 's' : ''}`}
                               </div>
                               {event.inputMode === 'sport' && (
-                                <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '16px', color: '#4DB26E', letterSpacing: '0.05em' }}>
+                                <div style={{ fontFamily: 'var(--font-display)', fontSize: '16px', color: '#4DB26E', letterSpacing: '0.05em' }}>
                                   {sportWDL(eventResults)}
                                 </div>
                               )}
@@ -266,24 +266,24 @@ export default function PRsPage() {
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                       {isBest && (
                                         <div style={{
-                                          fontFamily: 'Barlow Condensed, sans-serif', fontSize: '10px', fontWeight: 700,
+                                          fontFamily: 'var(--font-label)', fontSize: '10px', fontWeight: 700,
                                           color: colour, background: colour + '22', border: `1px solid ${colour}44`,
                                           padding: '2px 6px', borderRadius: '4px', letterSpacing: '0.05em', textTransform: 'uppercase',
                                         }}>PB</div>
                                       )}
-                                      <div style={{ fontSize: '12px', color: '#555', fontFamily: 'Barlow, sans-serif' }}>{date}</div>
+                                      <div style={{ fontSize: '12px', color: '#555', fontFamily: 'var(--font-body)' }}>{date}</div>
                                       {r.is_championship && (
-                                        <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '10px', fontWeight: 700, color: '#F9B051', background: '#F9B05122', border: '1px solid #F9B05144', padding: '2px 6px', borderRadius: '4px', letterSpacing: '0.05em' }}>
+                                        <div style={{ fontFamily: 'var(--font-label)', fontSize: '10px', fontWeight: 700, color: '#F9B051', background: '#F9B05122', border: '1px solid #F9B05144', padding: '2px 6px', borderRadius: '4px', letterSpacing: '0.05em' }}>
                                           CHAMP
                                         </div>
                                       )}
                                       {r.difficulty_tier && (
-                                        <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '10px', fontWeight: 700, color: '#B87DB5', background: '#B87DB522', border: '1px solid #B87DB544', padding: '2px 6px', borderRadius: '4px' }}>
+                                        <div style={{ fontFamily: 'var(--font-label)', fontSize: '10px', fontWeight: 700, color: '#B87DB5', background: '#B87DB522', border: '1px solid #B87DB544', padding: '2px 6px', borderRadius: '4px' }}>
                                           {r.difficulty_tier}
                                         </div>
                                       )}
                                     </div>
-                                    <div style={{ fontSize: '14px', fontWeight: isBest ? 700 : 400, color: isBest ? '#4DB26E' : '#888', fontFamily: 'Barlow, sans-serif' }}>
+                                    <div style={{ fontSize: '14px', fontWeight: isBest ? 700 : 400, color: isBest ? '#4DB26E' : '#888', fontFamily: 'var(--font-body)' }}>
                                       {r.score_label}
                                     </div>
                                   </div>
@@ -292,7 +292,7 @@ export default function PRsPage() {
                             </div>
                             <Link
                               href={`/events/${event.slug}`}
-                              style={{ display: 'block', marginTop: '10px', fontSize: '12px', color: '#2371BB', fontFamily: 'Barlow, sans-serif', textDecoration: 'none' }}
+                              style={{ display: 'block', marginTop: '10px', fontSize: '12px', color: '#2371BB', fontFamily: 'var(--font-body)', textDecoration: 'none' }}
                             >
                               View event details →
                             </Link>

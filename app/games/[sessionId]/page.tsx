@@ -84,38 +84,38 @@ export default function GameReviewPage() {
   }, [sessionId])
 
   if (loading) {
-    return <Shell><div style={{ color: '#555', fontFamily: 'Barlow, sans-serif' }}>Loading game…</div></Shell>
+    return <Shell><div style={{ color: '#555', fontFamily: 'var(--font-body)' }}>Loading game…</div></Shell>
   }
   if (!session) {
-    return <Shell><div style={{ color: '#555', fontFamily: 'Barlow, sans-serif' }}>Game not found.</div></Shell>
+    return <Shell><div style={{ color: '#555', fontFamily: 'var(--font-body)' }}>Game not found.</div></Shell>
   }
 
   return (
     <Shell>
       <div style={{ marginBottom: '28px' }}>
-        <Link href="/dashboard" style={{ color: '#2371BB', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', textDecoration: 'none' }}>
+        <Link href="/dashboard" style={{ color: '#2371BB', fontFamily: 'var(--font-label)', fontSize: '14px', textDecoration: 'none' }}>
           ← Back to dashboard
         </Link>
         <h1 style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: '40px', margin: '12px 0 4px', color: '#fff', letterSpacing: '0.02em' }}>
           Game Review
           {session.is_championship && (
-            <span style={{ color: '#F9B051', fontSize: '14px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.1em', marginLeft: '12px' }}>CHAMPIONSHIP</span>
+            <span style={{ color: '#F9B051', fontSize: '14px', fontFamily: 'var(--font-label)', letterSpacing: '0.1em', marginLeft: '12px' }}>CHAMPIONSHIP</span>
           )}
           {session.is_active && (
-            <span style={{ color: '#4DB26E', fontSize: '14px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.1em', marginLeft: '12px' }}>LIVE</span>
+            <span style={{ color: '#4DB26E', fontSize: '14px', fontFamily: 'var(--font-label)', letterSpacing: '0.1em', marginLeft: '12px' }}>LIVE</span>
           )}
         </h1>
-        <div style={{ color: '#888', fontFamily: 'Barlow, sans-serif', fontSize: '15px' }}>
+        <div style={{ color: '#888', fontFamily: 'var(--font-body)', fontSize: '15px' }}>
           {formatNZDate(session.session_date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
           {session.location ? ` · ${session.location}` : ''}
         </div>
-        <div style={{ color: '#555', fontFamily: 'Barlow, sans-serif', fontSize: '13px', marginTop: '4px' }}>
+        <div style={{ color: '#555', fontFamily: 'var(--font-body)', fontSize: '13px', marginTop: '4px' }}>
           {events.length} event{events.length !== 1 ? 's' : ''} · placements computed from submitted scores (lower total = better; a missed event = last in division)
         </div>
       </div>
 
       {report.length === 0 && (
-        <div style={{ color: '#555', fontFamily: 'Barlow, sans-serif' }}>No scores were submitted for this game.</div>
+        <div style={{ color: '#555', fontFamily: 'var(--font-body)' }}>No scores were submitted for this game.</div>
       )}
 
       {report.map(div => (
@@ -123,7 +123,7 @@ export default function GameReviewPage() {
           <h2 style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: '26px', color: '#fff', margin: '0 0 4px', letterSpacing: '0.03em' }}>
             {div.division}
           </h2>
-          <div style={{ color: '#555', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', letterSpacing: '0.08em', marginBottom: '12px' }}>
+          <div style={{ color: '#555', fontFamily: 'var(--font-label)', fontSize: '12px', letterSpacing: '0.08em', marginBottom: '12px' }}>
             {div.participants} PLAYER{div.participants !== 1 ? 'S' : ''}
           </div>
 
@@ -140,10 +140,10 @@ export default function GameReviewPage() {
                   <div style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: '24px', color: medal, minWidth: '40px' }}>
                     {ordinal(s.rank)}
                   </div>
-                  <div style={{ flex: 1, color: '#fff', fontFamily: 'Barlow, sans-serif', fontWeight: 600, fontSize: '16px' }}>
+                  <div style={{ flex: 1, color: '#fff', fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: '16px' }}>
                     {s.name}
                   </div>
-                  <div style={{ color: '#888', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', letterSpacing: '0.05em' }}>
+                  <div style={{ color: '#888', fontFamily: 'var(--font-label)', fontSize: '14px', letterSpacing: '0.05em' }}>
                     {s.totalPlacement} pts
                   </div>
                   <div style={{ color: '#555', fontSize: '12px' }}>{isOpen ? '▲' : '▼'}</div>
@@ -153,13 +153,13 @@ export default function GameReviewPage() {
                   <div style={{ borderTop: '1px solid #1e1e1e', padding: '4px 16px 12px' }}>
                     {s.events.map(ec => (
                       <div key={ec.eventId} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', borderBottom: '1px solid #161616' }}>
-                        <div style={{ flex: 1, color: ec.hasScore ? '#ddd' : '#555', fontFamily: 'Barlow, sans-serif', fontSize: '14px' }}>
+                        <div style={{ flex: 1, color: ec.hasScore ? '#ddd' : '#555', fontFamily: 'var(--font-body)', fontSize: '14px' }}>
                           {ec.eventName}
                         </div>
-                        <div style={{ color: ec.hasScore ? '#aaa' : '#444', fontFamily: 'Barlow, sans-serif', fontSize: '13px', minWidth: '120px', textAlign: 'right' }}>
+                        <div style={{ color: ec.hasScore ? '#aaa' : '#444', fontFamily: 'var(--font-body)', fontSize: '13px', minWidth: '120px', textAlign: 'right' }}>
                           {ec.hasScore ? ec.scoreLabel : 'No score'}
                         </div>
-                        <div style={{ color: '#666', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', minWidth: '50px', textAlign: 'right' }}>
+                        <div style={{ color: '#666', fontFamily: 'var(--font-label)', fontSize: '13px', minWidth: '50px', textAlign: 'right' }}>
                           {ordinal(ec.placement)}
                         </div>
                       </div>

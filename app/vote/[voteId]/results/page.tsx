@@ -163,7 +163,7 @@ export default function VoteResultsPage() {
   if (loading || !vote) {
     return (
       <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ color: '#555', fontFamily: 'Barlow, sans-serif' }}>Loading results...</div>
+        <div style={{ color: '#555', fontFamily: 'var(--font-body)' }}>Loading results...</div>
       </div>
     )
   }
@@ -194,27 +194,27 @@ export default function VoteResultsPage() {
       <div style={{ padding: '20px 16px' }}>
         <Link href="/dashboard" style={{
           fontSize: '12px', color: '#555', textDecoration: 'none',
-          fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.05em',
+          fontFamily: 'var(--font-label)', letterSpacing: '0.05em',
           display: 'inline-block', marginBottom: '16px',
         }}>
           ← Back to Dashboard
         </Link>
 
-        <div style={{ fontSize: '11px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.1em', marginBottom: '4px' }}>
+        <div style={{ fontSize: '11px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.1em', marginBottom: '4px' }}>
           EVENT VOTE RESULTS · {formattedDate}
         </div>
-        <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '26px', letterSpacing: '0.05em', color: '#fff', lineHeight: 1.1, marginBottom: '12px' }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: '26px', letterSpacing: '0.05em', color: '#fff', lineHeight: 1.1, marginBottom: '12px' }}>
           {vote.name}
         </div>
 
         {/* Meta row */}
         <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '6px' }}>
-          <div style={{ fontSize: '12px', color: '#888', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.05em' }}>
+          <div style={{ fontSize: '12px', color: '#888', fontFamily: 'var(--font-label)', letterSpacing: '0.05em' }}>
             {totalVoters} player{totalVoters !== 1 ? 's' : ''} voted
           </div>
           <div style={{
             fontSize: '12px',
-            fontFamily: 'Barlow Condensed, sans-serif',
+            fontFamily: 'var(--font-label)',
             letterSpacing: '0.05em',
             color: isOpen ? '#F9B051' : '#4DB26E',
             fontWeight: 700,
@@ -236,7 +236,7 @@ export default function VoteResultsPage() {
           }}>
             <div style={{ fontSize: '32px', marginBottom: '12px' }}>🔒</div>
             <div style={{
-              fontFamily: 'Bebas Neue, cursive',
+              fontFamily: 'var(--font-display)',
               fontSize: '24px',
               letterSpacing: '0.05em',
               color: '#fff',
@@ -244,7 +244,7 @@ export default function VoteResultsPage() {
             }}>
               Results Hidden Until You Vote
             </div>
-            <div style={{ fontSize: '13px', color: '#888', fontFamily: 'Barlow, sans-serif', marginBottom: '20px' }}>
+            <div style={{ fontSize: '13px', color: '#888', fontFamily: 'var(--font-body)', marginBottom: '20px' }}>
               {totalVoters} player{totalVoters !== 1 ? 's' : ''} have already voted.
               Cast your vote to see how everyone chose.
             </div>
@@ -255,7 +255,7 @@ export default function VoteResultsPage() {
                 borderRadius: '10px',
                 background: 'linear-gradient(90deg, #B87DB5, #2371BB)',
                 color: '#fff',
-                fontFamily: 'Bebas Neue, cursive',
+                fontFamily: 'var(--font-display)',
                 fontSize: '18px',
                 letterSpacing: '0.1em',
                 textDecoration: 'none',
@@ -298,10 +298,10 @@ export default function VoteResultsPage() {
               }}>
                 {/* Domain header */}
                 <div style={{ marginBottom: '14px' }}>
-                  <div style={{ fontSize: '11px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.08em', marginBottom: '2px' }}>
+                  <div style={{ fontSize: '11px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.08em', marginBottom: '2px' }}>
                     DOMAIN {domain.number}
                   </div>
-                  <div style={{ fontSize: '15px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, color: '#ccc', letterSpacing: '0.03em' }}>
+                  <div style={{ fontSize: '15px', fontFamily: 'var(--font-label)', fontWeight: 700, color: '#ccc', letterSpacing: '0.03em' }}>
                     {domain.name}
                   </div>
                 </div>
@@ -324,7 +324,7 @@ export default function VoteResultsPage() {
                               )}
                               <span style={{
                                 fontSize: '13px',
-                                fontFamily: 'Barlow, sans-serif',
+                                fontFamily: 'var(--font-body)',
                                 color: isMyPick ? '#B87DB5' : '#ccc',
                                 fontWeight: isMyPick ? 600 : 400,
                               }}>
@@ -332,11 +332,11 @@ export default function VoteResultsPage() {
                               </span>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <span style={{ fontSize: '12px', color: '#888', fontFamily: 'Barlow Condensed, sans-serif' }}>
+                              <span style={{ fontSize: '12px', color: '#888', fontFamily: 'var(--font-label)' }}>
                                 {count}
                               </span>
                               {!isOpen && (
-                                <span style={{ fontSize: '11px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif' }}>
+                                <span style={{ fontSize: '11px', color: '#555', fontFamily: 'var(--font-label)' }}>
                                   {pct}%
                                 </span>
                               )}
@@ -363,7 +363,7 @@ export default function VoteResultsPage() {
                       <div style={{
                         fontSize: '10px',
                         color: '#F9B051',
-                        fontFamily: 'Barlow Condensed, sans-serif',
+                        fontFamily: 'var(--font-label)',
                         letterSpacing: '0.1em',
                       }}>
                         JUDGE VIEW — not visible to players
@@ -376,7 +376,7 @@ export default function VoteResultsPage() {
                           color: '#555',
                           cursor: 'pointer',
                           fontSize: '12px',
-                          fontFamily: 'Barlow Condensed, sans-serif',
+                          fontFamily: 'var(--font-label)',
                           letterSpacing: '0.05em',
                           padding: '2px 6px',
                         }}
@@ -397,14 +397,14 @@ export default function VoteResultsPage() {
                             alignItems: 'center',
                           }}>
                             <div>
-                              <div style={{ fontSize: '12px', color: '#ccc', fontFamily: 'Barlow, sans-serif' }}>
+                              <div style={{ fontSize: '12px', color: '#ccc', fontFamily: 'var(--font-body)' }}>
                                 {detail.display_name || detail.username || 'Unknown'}
                               </div>
-                              <div style={{ fontSize: '10px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', marginTop: '1px' }}>
+                              <div style={{ fontSize: '10px', color: '#555', fontFamily: 'var(--font-label)', marginTop: '1px' }}>
                                 {detail.division || '—'} · {new Date(detail.created_at).toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit' })}
                               </div>
                             </div>
-                            <div style={{ fontSize: '12px', color: '#B87DB5', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, textAlign: 'right', maxWidth: '50%' }}>
+                            <div style={{ fontSize: '12px', color: '#B87DB5', fontFamily: 'var(--font-label)', fontWeight: 700, textAlign: 'right', maxWidth: '50%' }}>
                               {detail.chosen_event}
                             </div>
                           </div>

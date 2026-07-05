@@ -47,13 +47,13 @@ type EnrichedPlayer = {
 
 function getGrade(points: number): { name: string; color: string } {
   if (points >= 10000) return { name: 'Taniwha', color: '#ffffff' }
-  if (points >= 8000) return { name: 'Uenuku', color: '#f4a226' }
-  if (points >= 6000) return { name: 'Poroporo', color: '#9333ea' }
-  if (points >= 5000) return { name: 'Kahurangi', color: '#2563eb' }
-  if (points >= 4000) return { name: 'Kākāriki', color: '#2d9e4f' }
-  if (points >= 3000) return { name: 'Kōwhai', color: '#f7e03c' }
-  if (points >= 2000) return { name: 'Karaka', color: '#f4a226' }
-  if (points >= 1000) return { name: 'Whero', color: '#e63946' }
+  if (points >= 8000) return { name: 'Uenuku', color: '#F9B051' }
+  if (points >= 6000) return { name: 'Poroporo', color: '#B87DB5' }
+  if (points >= 5000) return { name: 'Kahurangi', color: '#2371BB' }
+  if (points >= 4000) return { name: 'Kākāriki', color: '#4DB26E' }
+  if (points >= 3000) return { name: 'Kōwhai', color: '#F9E051' }
+  if (points >= 2000) return { name: 'Karaka', color: '#F9B051' }
+  if (points >= 1000) return { name: 'Whero', color: '#EA4742' }
   if (points >= 500) return { name: 'Kiwikiwi', color: '#888888' }
   return { name: 'Mā', color: '#e8e8e8' }
 }
@@ -73,24 +73,22 @@ const DIVISION_MAP: Record<string, string> = {
 const grades = [
   { name: 'Mā', meaning: 'White', color: '#e8e8e8', points: '0 pts' },
   { name: 'Kiwikiwi', meaning: 'Grey', color: '#888888', points: '500 pts' },
-  { name: 'Whero', meaning: 'Red', color: '#e63946', points: '1,000 pts' },
-  { name: 'Karaka', meaning: 'Orange', color: '#f4a226', points: '2,000 pts' },
-  { name: 'Kōwhai', meaning: 'Yellow', color: '#f7e03c', points: '3,000 pts' },
-  { name: 'Kākāriki', meaning: 'Green', color: '#2d9e4f', points: '4,000 pts' },
-  { name: 'Kahurangi', meaning: 'Blue', color: '#2563eb', points: '5,000 pts' },
-  { name: 'Poroporo', meaning: 'Purple', color: '#9333ea', points: '6,000 pts' },
-  { name: 'Uenuku', meaning: 'Rainbow', color: '#f4a226', points: '8,000 pts' },
+  { name: 'Whero', meaning: 'Red', color: '#EA4742', points: '1,000 pts' },
+  { name: 'Karaka', meaning: 'Orange', color: '#F9B051', points: '2,000 pts' },
+  { name: 'Kōwhai', meaning: 'Yellow', color: '#F9E051', points: '3,000 pts' },
+  { name: 'Kākāriki', meaning: 'Green', color: '#4DB26E', points: '4,000 pts' },
+  { name: 'Kahurangi', meaning: 'Blue', color: '#2371BB', points: '5,000 pts' },
+  { name: 'Poroporo', meaning: 'Purple', color: '#B87DB5', points: '6,000 pts' },
+  { name: 'Uenuku', meaning: 'Rainbow', color: '#F9B051', points: '8,000 pts' },
   { name: 'Taniwha', meaning: 'The Highest', color: '#ffffff', points: '10,000+ pts' },
 ]
-
-const medals: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' }
 
 const tabs = [
   { key: 'all-divisions', label: 'All-Divisions', color: '#F9B051' },
   { key: 'youth', label: 'Youth', color: '#B87DB5' },
-  { key: 'juniors', label: 'Juniors', color: '#2d9e4f' },
-  { key: 'mens', label: "Men's", color: '#2563eb' },
-  { key: 'womens', label: "Women's", color: '#e63946' },
+  { key: 'juniors', label: 'Juniors', color: '#4DB26E' },
+  { key: 'mens', label: "Men's", color: '#2371BB' },
+  { key: 'womens', label: "Women's", color: '#EA4742' },
   { key: 'masters-men', label: 'Masters Men', color: '#4DB26E' },
   { key: 'masters-women', label: 'Masters Women', color: '#EA4742' },
   { key: 'grandmasters-men', label: 'Grandmasters Men', color: '#888888' },
@@ -111,8 +109,8 @@ function LeaderboardTable({ data, accentColor, loading }: { data: EnrichedPlayer
   if (data.length === 0) {
     return (
       <div style={{ textAlign: 'center', padding: '80px 0', color: '#444' }}>
-        <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '32px', marginBottom: '8px' }}>No rankings yet</div>
-        <p style={{ fontFamily: 'Barlow, sans-serif', fontSize: '15px' }}>Rankings appear once sessions begin.</p>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: '32px', marginBottom: '8px' }}>No rankings yet</div>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: '15px' }}>Rankings appear once sessions begin.</p>
       </div>
     )
   }
@@ -125,55 +123,57 @@ function LeaderboardTable({ data, accentColor, loading }: { data: EnrichedPlayer
           {/* 2nd */}
           <div style={{ background: '#111111', border: '1px solid #c0c0c022', padding: '24px 16px', textAlign: 'center', marginTop: '28px', position: 'relative' }}>
             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: '#c0c0c0' }} />
-            <div style={{ fontSize: '24px', marginBottom: '6px' }}>🥈</div>
-            <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '44px', color: '#c0c0c0', lineHeight: 1 }}>2</div>
-            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: '14px', color: '#ffffff', marginTop: '6px' }}>{data[1]?.username ?? '—'}</div>
-            <div style={{ color: data[1]?.color, fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '3px' }}>{data[1]?.name}</div>
-            <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '24px', color: '#666666', marginTop: '8px' }}>{data[1]?.totalPoints} pts</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '44px', color: '#c0c0c0', lineHeight: 1 }}>2</div>
+            <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '14px', color: '#ffffff', marginTop: '6px' }}>{data[1]?.username ?? '—'}</div>
+            <div style={{ color: data[1]?.color, fontFamily: 'var(--font-label)', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '3px' }}>{data[1]?.name}</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', color: '#666666', marginTop: '8px' }}>{data[1]?.totalPoints} pts</div>
           </div>
           {/* 1st */}
           <div style={{ background: 'linear-gradient(180deg, #0d0505 0%, #111111 100%)', border: `1px solid ${accentColor}44`, padding: '32px 16px 24px', textAlign: 'center', position: 'relative' }}>
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: `linear-gradient(90deg, ${accentColor}, #f4a226)` }} />
-            <div style={{ fontSize: '24px', marginBottom: '6px' }}>🥇</div>
-            <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '56px', color: accentColor, lineHeight: 1 }}>1</div>
-            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: '16px', color: '#ffffff', marginTop: '6px' }}>{data[0]?.username ?? '—'}</div>
-            <div style={{ color: data[0]?.color, fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '3px' }}>{data[0]?.name}</div>
-            <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '28px', color: accentColor, marginTop: '8px' }}>{data[0]?.totalPoints} pts</div>
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: `linear-gradient(90deg, ${accentColor}, var(--amber))` }} />
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '56px', color: accentColor, lineHeight: 1 }}>1</div>
+            <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '16px', color: '#ffffff', marginTop: '6px' }}>{data[0]?.username ?? '—'}</div>
+            <div style={{ color: data[0]?.color, fontFamily: 'var(--font-label)', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '3px' }}>{data[0]?.name}</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '28px', color: accentColor, marginTop: '8px' }}>{data[0]?.totalPoints} pts</div>
           </div>
           {/* 3rd */}
           <div style={{ background: '#111111', border: '1px solid #cd7f3222', padding: '24px 16px', textAlign: 'center', marginTop: '28px', position: 'relative' }}>
             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: '#cd7f32' }} />
-            <div style={{ fontSize: '24px', marginBottom: '6px' }}>🥉</div>
-            <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '44px', color: '#cd7f32', lineHeight: 1 }}>3</div>
-            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: '14px', color: '#ffffff', marginTop: '6px' }}>{data[2]?.username ?? '—'}</div>
-            <div style={{ color: data[2]?.color, fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '3px' }}>{data[2]?.name}</div>
-            <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '24px', color: '#666666', marginTop: '8px' }}>{data[2]?.totalPoints} pts</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '44px', color: '#cd7f32', lineHeight: 1 }}>3</div>
+            <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '14px', color: '#ffffff', marginTop: '6px' }}>{data[2]?.username ?? '—'}</div>
+            <div style={{ color: data[2]?.color, fontFamily: 'var(--font-label)', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '3px' }}>{data[2]?.name}</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', color: '#666666', marginTop: '8px' }}>{data[2]?.totalPoints} pts</div>
           </div>
         </div>
       )}
 
-      {/* Table header */}
-      <div style={{ display: 'grid', gridTemplateColumns: '56px 1fr 90px 110px 110px 160px', gap: '16px', padding: '10px 24px' }}>
-        {['#', 'Player', 'Sessions', 'Avg Place', 'Total Pts', 'Colour'].map(h => (
-          <div key={h} style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#444444' }}>{h}</div>
-        ))}
-      </div>
-
-      {/* Rows */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-        {data.map(player => (
-          <div key={player.rank} style={{ display: 'grid', gridTemplateColumns: '56px 1fr 90px 110px 110px 160px', gap: '16px', padding: '14px 24px', alignItems: 'center', border: '1px solid', borderColor: player.rank === 1 ? `${accentColor}22` : '#1a1a1a', background: '#0d0d0d' }}>
-            <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '22px', color: player.rank <= 3 ? player.color : '#333333' }}>{medals[player.rank] || player.rank}</div>
-            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: '16px', color: '#ffffff' }}>{player.username}</div>
-            <div style={{ color: '#555555', fontSize: '15px', fontFamily: 'Barlow Condensed, sans-serif' }}>{player.sessions}</div>
-            <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '22px', color: accentColor }}>{player.avgPlacement > 0 ? player.avgPlacement.toFixed(1) : '—'}</div>
-            <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '22px', color: '#ffffff' }}>{player.totalPoints}</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: player.name === 'Uenuku' ? 'linear-gradient(135deg, #e63946, #f4a226, #2d9e4f, #2563eb, #9333ea)' : player.color, flexShrink: 0 }} />
-              <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: '13px', color: player.color }}>{player.name}</span>
-            </div>
+      {/* Table — horizontally scrollable on narrow screens */}
+      <div style={{ overflowX: 'auto' }}>
+        <div style={{ minWidth: '640px' }}>
+          {/* Table header */}
+          <div style={{ display: 'grid', gridTemplateColumns: '56px 1fr 90px 130px 110px 160px', gap: '16px', padding: '10px 24px' }}>
+            {['#', 'Player', 'Sessions', 'Avg Place (low = best)', 'Season Pts', 'Colour'].map(h => (
+              <div key={h} style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#444444' }}>{h}</div>
+            ))}
           </div>
-        ))}
+
+          {/* Rows */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+            {data.map(player => (
+              <div key={player.rank} style={{ display: 'grid', gridTemplateColumns: '56px 1fr 90px 130px 110px 160px', gap: '16px', padding: '14px 24px', alignItems: 'center', border: '1px solid', borderColor: player.rank === 1 ? `${accentColor}22` : '#1a1a1a', background: '#0d0d0d', borderRadius: '8px' }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', color: player.rank <= 3 ? player.color : '#333333' }}>{player.rank}</div>
+                <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '16px', color: '#ffffff' }}>{player.username}</div>
+                <div style={{ color: '#555555', fontSize: '15px', fontFamily: 'var(--font-label)' }}>{player.sessions}</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', color: accentColor }}>{player.avgPlacement > 0 ? player.avgPlacement.toFixed(1) : '—'}</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', color: '#ffffff' }}>{player.totalPoints}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: player.name === 'Uenuku' ? 'var(--rainbow)' : player.color, flexShrink: 0 }} />
+                  <span style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '13px', color: player.color }}>{player.name}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </>
   )
@@ -301,7 +301,7 @@ export default function Leaderboard() {
       <style>{`
         .rank-pill { display: flex; align-items: center; gap: 10px; padding: 10px 16px; background: #0d0d0d; border: 1px solid #1a1a1a; transition: background 0.2s; }
         .rank-pill:hover { background: #111111; }
-        .tab-btn { font-family: 'Bebas Neue', cursive; font-size: 22px; letter-spacing: 0.08em; padding: 12px 32px; cursor: pointer; border: 1px solid #1e1e1e; background: #0d0d0d; color: #555555; transition: all 0.2s; }
+        .tab-btn { font-family: var(--font-display); font-size: 22px; letter-spacing: 0.08em; padding: 12px 32px; cursor: pointer; border: 1px solid #1e1e1e; background: #0d0d0d; color: #555555; transition: all 0.2s; }
         .tab-btn:hover { color: #ffffff; border-color: #333; }
         .tab-btn.active { color: #ffffff; }
       `}</style>
@@ -313,7 +313,7 @@ export default function Leaderboard() {
           <div className="tag">2026 Season</div>
           <h1 style={{ fontSize: 'clamp(56px, 8vw, 112px)', lineHeight: 0.95, marginBottom: '8px' }}>
             LEADER<br />
-            <span style={{ background: 'linear-gradient(90deg, #2563eb, #9333ea)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>BOARD</span>
+            <span className="rainbow-text">BOARD</span>
           </h1>
           <div className="rainbow-line" style={{ width: '80px', marginBottom: '28px' }} />
           <p style={{ color: '#cccccc', fontSize: '20px', maxWidth: '560px', lineHeight: 1.7 }}>
@@ -346,25 +346,25 @@ export default function Leaderboard() {
               {sessionLeader ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '32px', flexWrap: 'wrap' }}>
                   <div>
-                    <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#555', marginBottom: '2px' }}>Current Leader</div>
-                    <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '28px', color: '#ffffff', lineHeight: 1 }}>{sessionLeader.name}</div>
+                    <div style={{ fontFamily: 'var(--font-label)', fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#555', marginBottom: '2px' }}>Current Leader</div>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '28px', color: '#ffffff', lineHeight: 1 }}>{sessionLeader.name}</div>
                   </div>
                   <div>
-                    <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#555', marginBottom: '2px' }}>Total Placement</div>
-                    <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '28px', color: '#4DB26E', lineHeight: 1 }}>{sessionLeader.totalPlacement}</div>
+                    <div style={{ fontFamily: 'var(--font-label)', fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#555', marginBottom: '2px' }}>Total Placement</div>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '28px', color: '#4DB26E', lineHeight: 1 }}>{sessionLeader.totalPlacement}</div>
                   </div>
                   <div>
-                    <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#555', marginBottom: '2px' }}>Events Done</div>
-                    <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '28px', color: '#888', lineHeight: 1 }}>{sessionLeader.eventsCompleted} / 10</div>
+                    <div style={{ fontFamily: 'var(--font-label)', fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#555', marginBottom: '2px' }}>Events Done</div>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '28px', color: '#888', lineHeight: 1 }}>{sessionLeader.eventsCompleted} / 10</div>
                   </div>
                 </div>
               ) : (
-                <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '15px', color: '#555' }}>No scores recorded yet — session underway</div>
+                <div style={{ fontFamily: 'var(--font-label)', fontSize: '15px', color: '#555' }}>No scores recorded yet — session underway</div>
               )}
 
               {activeSession.is_championship && (
                 <div className="tag" style={{ margin: 0, color: '#F9B051', borderColor: '#F9B05122', background: '#F9B05111' }}>
-                  🏆 Championship
+                  Championship
                 </div>
               )}
             </div>
@@ -384,20 +384,38 @@ export default function Leaderboard() {
             ))}
           </div>
           <div className="tag">{activeTabData.label}</div>
-          <h2 style={{ fontSize: 'clamp(32px, 4vw, 48px)', marginBottom: '32px' }}>
+          <h2 style={{ fontSize: 'clamp(32px, 4vw, 48px)', marginBottom: '16px' }}>
             <span style={{ color: activeTabData.color }}>{activeTabData.label.toUpperCase()}</span> RANKINGS
           </h2>
+
+          {/* How the numbers work — comprehension helper */}
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '18px 22px', marginBottom: '32px', maxWidth: '780px', position: 'relative', overflow: 'hidden' }}>
+            <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: '4px', background: 'var(--rainbow)' }} />
+            <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--grey-light)', marginBottom: '8px', paddingLeft: '12px' }}>How to read this board</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px 24px', paddingLeft: '12px' }}>
+              <p style={{ color: 'var(--grey)', fontSize: '13px', lineHeight: 1.6, margin: 0 }}>
+                <strong style={{ color: 'var(--white)' }}>Season points</strong> — every session earns points per event: 1st place = 100, dropping by a gap based on session size (minimum 10). Effort work adds up to 100 more per session.
+              </p>
+              <p style={{ color: 'var(--grey)', fontSize: '13px', lineHeight: 1.6, margin: 0 }}>
+                <strong style={{ color: 'var(--white)' }}>Avg place</strong> — your average finishing position within your division; lower is better. In-session, the lowest total placement across all 10 events wins.
+              </p>
+              <p style={{ color: 'var(--grey)', fontSize: '13px', lineHeight: 1.6, margin: 0 }}>
+                <strong style={{ color: 'var(--white)' }}>Colour</strong> — your grade for the year, earned from total season points. Thresholds are in the Colour Key below. Points reset each January.
+              </p>
+            </div>
+          </div>
+
           <LeaderboardTable data={tabData} accentColor={activeTabData.color} loading={loading} />
         </div>
       </section>
 
       {/* Grade key */}
       <section className="section" style={{ background: '#0a0a0a' }}>
-        <div style={{ height: '3px', background: 'linear-gradient(90deg, #e63946, #f4a226, #f7e03c, #2d9e4f, #2563eb, #9333ea)', marginTop: '-80px', marginBottom: '80px' }} />
+        <div style={{ height: '3px', background: 'var(--rainbow)', marginTop: '-80px', marginBottom: '80px' }} />
         <div className="container">
           <div className="tag">Colour Thresholds</div>
           <h2 style={{ fontSize: 'clamp(36px, 4vw, 56px)', marginBottom: '8px' }}>
-            COLOUR <span style={{ background: 'linear-gradient(90deg, #e63946, #9333ea)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>KEY</span>
+            COLOUR <span className="rainbow-text">KEY</span>
           </h2>
           <div className="rainbow-line" style={{ width: '60px', marginBottom: '16px' }} />
           <p style={{ color: '#888888', fontSize: '15px', maxWidth: '560px', marginBottom: '40px', lineHeight: 1.7 }}>
@@ -406,17 +424,17 @@ export default function Leaderboard() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '8px' }}>
             {grades.map(grade => (
               <div key={grade.name} className="rank-pill">
-                <div style={{ width: '28px', height: '18px', borderRadius: '3px', flexShrink: 0, background: grade.name === 'Uenuku' ? 'linear-gradient(135deg, #e63946, #f4a226, #2d9e4f, #2563eb, #9333ea)' : grade.name === 'Taniwha' ? '#111111' : grade.color, border: grade.name === 'Taniwha' ? '1px solid #555' : 'none', boxShadow: `0 0 5px ${grade.color}44` }} />
+                <div style={{ width: '28px', height: '18px', borderRadius: '3px', flexShrink: 0, background: grade.name === 'Uenuku' ? 'var(--rainbow)' : grade.name === 'Taniwha' ? '#111111' : grade.color, border: grade.name === 'Taniwha' ? '1px solid #555' : 'none', boxShadow: `0 0 5px ${grade.color}44` }} />
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '18px', color: grade.color, lineHeight: 1 }}>{grade.name}</div>
-                  <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#444444' }}>{grade.meaning}</div>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', color: grade.color, lineHeight: 1 }}>{grade.name}</div>
+                  <div style={{ fontFamily: 'var(--font-label)', fontSize: '11px', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#444444' }}>{grade.meaning}</div>
                 </div>
-                <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '16px', color: '#555555' }}>{grade.points}</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '16px', color: '#555555' }}>{grade.points}</div>
               </div>
             ))}
           </div>
           <div style={{ marginTop: '24px' }}>
-            <Link href="/koha" style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: '14px', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#2d9e4f', borderBottom: '1px solid #2d9e4f', paddingBottom: '2px' }}>
+            <Link href="/koha" style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '14px', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--green)', borderBottom: '1px solid var(--green)', paddingBottom: '2px' }}>
               Learn about Koha rewards for grade achievers →
             </Link>
           </div>
@@ -427,7 +445,7 @@ export default function Leaderboard() {
       <section style={{ padding: '80px 0', background: '#000000', textAlign: 'center', borderTop: '1px solid #1a1a1a' }}>
         <div className="container">
           <h2 style={{ fontSize: 'clamp(40px, 6vw, 72px)', marginBottom: '16px' }}>
-            GET ON THE <span style={{ background: 'linear-gradient(90deg, #2563eb, #9333ea)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>BOARD</span>
+            GET ON THE <span className="rainbow-text">BOARD</span>
           </h2>
           <div className="rainbow-line" style={{ width: '60px', margin: '0 auto 24px' }} />
           <p style={{ color: '#888888', fontSize: '16px', maxWidth: '400px', margin: '0 auto 32px', lineHeight: 1.7 }}>

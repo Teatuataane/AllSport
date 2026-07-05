@@ -314,7 +314,7 @@ function DashboardInner() {
   // ── Derived values ────────────────────────────────────────────────────────────
   if (loading) return (
     <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ color: '#555', fontFamily: 'Barlow, sans-serif' }}>Loading...</div>
+      <div style={{ color: '#555', fontFamily: 'var(--font-body)' }}>Loading...</div>
     </div>
   )
 
@@ -376,14 +376,14 @@ function DashboardInner() {
           }}>
             <div>
               <div style={{
-                fontFamily: 'Bebas Neue, cursive', fontSize: '22px',
+                fontFamily: 'var(--font-display)', fontSize: '22px',
                 color: '#2371BB', letterSpacing: '0.06em', lineHeight: 1,
               }}>
                 Kaiwhakawā
               </div>
               <div style={{
                 fontSize: '11px', color: '#4a7ab5',
-                fontFamily: 'Barlow Condensed, sans-serif',
+                fontFamily: 'var(--font-label)',
                 letterSpacing: '0.1em', marginTop: '3px',
               }}>
                 KAIWHAKAWĀ PANEL · Start session or create vote
@@ -406,10 +406,10 @@ function DashboardInner() {
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           }}>
             <div>
-              <div style={{ color: '#4DB26E', fontWeight: 'bold', fontSize: '14px', fontFamily: 'Bebas Neue, cursive', letterSpacing: '0.06em' }}>
+              <div style={{ color: '#4DB26E', fontWeight: 'bold', fontSize: '14px', fontFamily: 'var(--font-display)', letterSpacing: '0.06em' }}>
                 Session in Progress
               </div>
-              <div style={{ color: '#888', fontSize: '12px', marginTop: '2px', fontFamily: 'Barlow, sans-serif' }}>
+              <div style={{ color: '#888', fontSize: '12px', marginTop: '2px', fontFamily: 'var(--font-body)' }}>
                 {activeSession.location} — tap to return
               </div>
             </div>
@@ -443,7 +443,7 @@ function DashboardInner() {
           }}>
             {icon || (
               <span style={{
-                fontFamily: 'Bebas Neue, cursive', fontSize: '26px',
+                fontFamily: 'var(--font-display)', fontSize: '26px',
                 color: grade.borderColour,
               }}>
                 {displayName[0].toUpperCase()}
@@ -454,7 +454,7 @@ function DashboardInner() {
           {/* Info */}
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{
-              fontFamily: 'Bebas Neue, cursive', fontSize: '22px',
+              fontFamily: 'var(--font-display)', fontSize: '22px',
               letterSpacing: '0.04em', color: '#fff', lineHeight: 1,
               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
             }}>
@@ -462,7 +462,7 @@ function DashboardInner() {
             </div>
             <div style={{
               fontSize: '12px', color: '#666',
-              fontFamily: 'Barlow Condensed, sans-serif',
+              fontFamily: 'var(--font-label)',
               letterSpacing: '0.05em', marginTop: '4px',
             }}>
               {activePlayer.division}
@@ -474,8 +474,8 @@ function DashboardInner() {
                 background: '#1a1a1a', border: `1px solid ${grade.borderColour}44`,
                 borderRadius: '6px', padding: '3px 10px',
               }}>
-                <span style={{ fontSize: '10px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.08em' }}>TOP EVENT</span>
-                <span style={{ fontSize: '11px', color: '#ccc', fontFamily: 'Barlow, sans-serif', fontWeight: 600 }}>
+                <span style={{ fontSize: '10px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.08em' }}>TOP EVENT</span>
+                <span style={{ fontSize: '11px', color: '#ccc', fontFamily: 'var(--font-body)', fontWeight: 600 }}>
                   {topEvent.event_name}
                 </span>
                 {topEvent.total_players > 1 && (
@@ -506,14 +506,14 @@ function DashboardInner() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
             <div>
               <div style={{
-                fontFamily: 'Bebas Neue, cursive', fontSize: '28px',
+                fontFamily: 'var(--font-display)', fontSize: '28px',
                 color: grade.textColour, letterSpacing: '0.05em', lineHeight: 1,
               }}>
                 {grade.name}
               </div>
               <div style={{
                 fontSize: '11px', color: grade.textColour,
-                opacity: 0.6, fontFamily: 'Barlow Condensed, sans-serif',
+                opacity: 0.6, fontFamily: 'var(--font-label)',
                 letterSpacing: '0.1em', marginTop: '2px',
               }}>
                 COLOURS · TAP FOR HISTORY
@@ -523,7 +523,7 @@ function DashboardInner() {
               <div style={{ fontSize: '30px', fontWeight: 'bold', color: grade.textColour, lineHeight: 1 }}>
                 {points.toLocaleString()}
               </div>
-              <div style={{ fontSize: '11px', color: grade.textColour, opacity: 0.6, fontFamily: 'Barlow Condensed, sans-serif' }}>
+              <div style={{ fontSize: '11px', color: grade.textColour, opacity: 0.6, fontFamily: 'var(--font-label)' }}>
                 pts · {selectedYear}
               </div>
             </div>
@@ -535,7 +535,7 @@ function DashboardInner() {
               <div style={{
                 display: 'flex', justifyContent: 'space-between',
                 fontSize: '10px', color: grade.textColour, opacity: 0.7,
-                fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '5px',
+                fontFamily: 'var(--font-label)', marginBottom: '5px',
               }}>
                 <span style={{ fontWeight: 700 }}>{grade.name}</span>
                 <span>{nextGrade.name} — {(nextGrade.threshold - points).toLocaleString()} pts to go</span>
@@ -549,7 +549,7 @@ function DashboardInner() {
               </div>
             </>
           ) : (
-            <div style={{ fontSize: '12px', color: grade.textColour, opacity: 0.8, fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.05em' }}>
+            <div style={{ fontSize: '12px', color: grade.textColour, opacity: 0.8, fontFamily: 'var(--font-label)', letterSpacing: '0.05em' }}>
               Taniwha — Peak Grade
             </div>
           )}
@@ -562,7 +562,7 @@ function DashboardInner() {
                 onClick={e => { e.stopPropagation(); setSelectedYear(y) }}
                 style={{
                   padding: '4px 12px', borderRadius: '5px', border: 'none',
-                  cursor: 'pointer', fontSize: '11px', fontFamily: 'Barlow Condensed, sans-serif',
+                  cursor: 'pointer', fontSize: '11px', fontFamily: 'var(--font-label)',
                   background: selectedYear === y ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.15)',
                   color: grade.textColour,
                   opacity: selectedYear === y ? 1 : 0.5,
@@ -589,12 +589,12 @@ function DashboardInner() {
         }}>
           <div>
             <div style={{
-              fontFamily: 'Bebas Neue, cursive', fontSize: '20px',
+              fontFamily: 'var(--font-display)', fontSize: '20px',
               color: '#fff', letterSpacing: '0.05em', lineHeight: 1,
             }}>
               My Personal Bests
             </div>
-            <div style={{ fontSize: '11px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.05em', marginTop: '3px' }}>
+            <div style={{ fontSize: '11px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.05em', marginTop: '3px' }}>
               All 100 events — your best scores
             </div>
           </div>
@@ -615,12 +615,12 @@ function DashboardInner() {
         }}>
           <div>
             <div style={{
-              fontFamily: 'Bebas Neue, cursive', fontSize: '20px',
+              fontFamily: 'var(--font-display)', fontSize: '20px',
               color: '#fff', letterSpacing: '0.05em', lineHeight: 1,
             }}>
               My Koha
             </div>
-            <div style={{ fontSize: '11px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.05em', marginTop: '3px' }}>
+            <div style={{ fontSize: '11px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.05em', marginTop: '3px' }}>
               Donations, referrals &amp; tier status
             </div>
           </div>
@@ -639,7 +639,7 @@ function DashboardInner() {
           ...(anyActiveSession && hasNoSessions ? { boxShadow: '0 0 24px #4DB26E22' } : {}),
         }}>
           <div style={{
-            fontFamily: 'Bebas Neue, cursive', fontSize: '20px',
+            fontFamily: 'var(--font-display)', fontSize: '20px',
             color: anyActiveSession ? (hasNoSessions ? '#4DB26E' : '#6ecf8a') : '#333',
             letterSpacing: '0.05em', marginBottom: '4px', lineHeight: 1,
           }}>
@@ -649,7 +649,7 @@ function DashboardInner() {
           </div>
           <div style={{
             fontSize: '11px', color: '#555',
-            fontFamily: 'Barlow Condensed, sans-serif',
+            fontFamily: 'var(--font-label)',
             letterSpacing: '0.05em', marginBottom: anyActiveSession ? '14px' : 0,
           }}>
             {anyActiveSession
@@ -677,7 +677,7 @@ function DashboardInner() {
                     ? 'linear-gradient(135deg, #2d7d46, #4DB26E)'
                     : '#1a3d22',
                   color: '#fff', fontWeight: 'bold', fontSize: '18px',
-                  fontFamily: 'Bebas Neue, cursive', letterSpacing: '0.08em',
+                  fontFamily: 'var(--font-display)', letterSpacing: '0.08em',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
                 }}
               >
@@ -700,17 +700,17 @@ function DashboardInner() {
           }}>
             <div style={{ maxWidth: '520px', width: '100%', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
-                <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '26px', letterSpacing: '0.05em', lineHeight: 1, color: '#fff' }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '26px', letterSpacing: '0.05em', lineHeight: 1, color: '#fff' }}>
                   Points History
                 </div>
-                <div style={{ fontSize: '11px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.1em', marginTop: '1px' }}>
+                <div style={{ fontSize: '11px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.1em', marginTop: '1px' }}>
                   {displayName.toUpperCase()} · {selectedYear}
                 </div>
               </div>
               <button onClick={() => setShowHistory(false)} style={{
                 background: '#1a1a1a', border: '1px solid #333', borderRadius: '10px',
                 color: '#ccc', cursor: 'pointer', padding: '10px 18px',
-                fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: 700,
+                fontFamily: 'var(--font-label)', fontSize: '14px', fontWeight: 700,
                 minHeight: '44px', flexShrink: 0,
               }}>
                 ← Back
@@ -734,7 +734,7 @@ function DashboardInner() {
                   cursor: 'pointer', fontSize: '12px',
                   background: selectedYear === y ? '#2371BB' : '#1a1a1a',
                   color: selectedYear === y ? '#fff' : '#555',
-                  fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.05em',
+                  fontFamily: 'var(--font-label)', letterSpacing: '0.05em',
                 }}>
                   {y}
                 </button>
@@ -742,11 +742,11 @@ function DashboardInner() {
             </div>
 
             {historyLoading ? (
-              <div style={{ color: '#555', textAlign: 'center', padding: '40px 0', fontFamily: 'Barlow, sans-serif' }}>
+              <div style={{ color: '#555', textAlign: 'center', padding: '40px 0', fontFamily: 'var(--font-body)' }}>
                 Loading history...
               </div>
             ) : historySessions.length === 0 ? (
-              <div style={{ color: '#444', textAlign: 'center', padding: '40px 0', fontFamily: 'Barlow, sans-serif' }}>
+              <div style={{ color: '#444', textAlign: 'center', padding: '40px 0', fontFamily: 'var(--font-body)' }}>
                 No sessions found for {selectedYear}
               </div>
             ) : (
@@ -784,12 +784,12 @@ function DashboardInner() {
                           <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#fff' }}>
                             {sess?.location || 'Session'}
                             {sess?.is_championship && (
-                              <span style={{ color: '#F9B051', marginLeft: '8px', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.1em' }}>
+                              <span style={{ color: '#F9B051', marginLeft: '8px', fontSize: '10px', fontFamily: 'var(--font-label)', letterSpacing: '0.1em' }}>
                                 CHAMPIONSHIP
                               </span>
                             )}
                           </div>
-                          <div style={{ fontSize: '12px', color: '#555', marginTop: '2px', fontFamily: 'Barlow Condensed, sans-serif' }}>
+                          <div style={{ fontSize: '12px', color: '#555', marginTop: '2px', fontFamily: 'var(--font-label)' }}>
                             {formatNZDate(sess?.session_date)}
                             {s.overall_placement ? ` · ${ordinal(s.overall_placement)} place` : ''}
                           </div>
@@ -798,7 +798,7 @@ function DashboardInner() {
                           <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#4DB26E' }}>
                             +{totalPts}
                           </div>
-                          <div style={{ fontSize: '10px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif' }}>
+                          <div style={{ fontSize: '10px', color: '#555', fontFamily: 'var(--font-label)' }}>
                             pts total
                           </div>
                         </div>
@@ -822,19 +822,19 @@ function DashboardInner() {
                                 textAlign: 'center',
                               }}>
                                 <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#fff' }}>{stat.value}</div>
-                                <div style={{ fontSize: '10px', color: '#555', marginTop: '2px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.05em' }}>{stat.label}</div>
+                                <div style={{ fontSize: '10px', color: '#555', marginTop: '2px', fontFamily: 'var(--font-label)', letterSpacing: '0.05em' }}>{stat.label}</div>
                               </div>
                             ))}
                           </div>
 
                           {/* Events */}
                           {!evData ? (
-                            <div style={{ color: '#555', fontSize: '12px', fontFamily: 'Barlow, sans-serif', textAlign: 'center', padding: '8px 0' }}>
+                            <div style={{ color: '#555', fontSize: '12px', fontFamily: 'var(--font-body)', textAlign: 'center', padding: '8px 0' }}>
                               Loading events...
                             </div>
                           ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                              <div style={{ fontSize: '10px', color: '#444', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.1em', marginBottom: '6px' }}>
+                              <div style={{ fontSize: '10px', color: '#444', fontFamily: 'var(--font-label)', letterSpacing: '0.1em', marginBottom: '6px' }}>
                                 EVENTS
                               </div>
                               {evData.map((ev: any) => (
@@ -842,13 +842,13 @@ function DashboardInner() {
                                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                                   padding: '6px 0', borderBottom: '1px solid #1a1a1a',
                                 }}>
-                                  <span style={{ fontSize: '12px', color: '#ccc', fontFamily: 'Barlow, sans-serif' }}>
+                                  <span style={{ fontSize: '12px', color: '#ccc', fontFamily: 'var(--font-body)' }}>
                                     {ev.event_name}
                                   </span>
                                   <span style={{
                                     fontSize: '12px',
                                     color: ev.result ? '#4DB26E' : '#444',
-                                    fontFamily: 'Barlow Condensed, sans-serif',
+                                    fontFamily: 'var(--font-label)',
                                   }}>
                                     {ev.result ? ev.result.score_label : 'No score'}
                                   </span>
@@ -863,7 +863,7 @@ function DashboardInner() {
                               display: 'block', marginTop: '14px', textAlign: 'center',
                               padding: '10px', borderRadius: '8px', background: '#0a0a0a',
                               border: '1px solid #2371BB', color: '#2371BB', textDecoration: 'none',
-                              fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', letterSpacing: '0.08em',
+                              fontFamily: 'var(--font-label)', fontSize: '13px', letterSpacing: '0.08em',
                             }}
                           >
                             VIEW FULL GAME — ALL PLAYERS
@@ -955,20 +955,20 @@ function VoteCard({ userId, isJudge }: { userId: string; isJudge: boolean }) {
         <div style={{ padding: '18px 22px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <div style={{
-              fontFamily: 'Bebas Neue, cursive', fontSize: '20px',
+              fontFamily: 'var(--font-display)', fontSize: '20px',
               color: '#fff', letterSpacing: '0.05em', lineHeight: 1,
             }}>
               {vote.name}
             </div>
             <div style={{
               fontSize: '11px', color: '#888',
-              fontFamily: 'Barlow Condensed, sans-serif', marginTop: '3px',
+              fontFamily: 'var(--font-label)', marginTop: '3px',
             }}>
               {new Date(vote.event_date).toLocaleDateString('en-NZ', { day: 'numeric', month: 'long', year: 'numeric' })}
             </div>
             <div style={{
               fontSize: '12px', fontWeight: 700, marginTop: '6px',
-              fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.05em',
+              fontFamily: 'var(--font-label)', letterSpacing: '0.05em',
               color: voteState === 'voted' ? '#4DB26E' : '#F9B051',
             }}>
               {voteState === 'voted'
