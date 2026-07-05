@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 
-const RAINBOW = 'linear-gradient(90deg,#EA4742,#F9B051,#F397C0,#B87DB5,#2371BB,#4DB26E)'
+const RAINBOW = 'var(--rainbow)'
 
 const rainbowText: React.CSSProperties = {
   background: RAINBOW,
@@ -87,8 +87,8 @@ export default function Home() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '64px', alignItems: 'center' }}>
             <div>
               <div className="lp-tag">Ōtautahi · Aotearoa</div>
-              <h1 style={{ fontSize: 'clamp(52px, 8vw, 104px)', fontFamily: 'Bebas Neue, cursive', lineHeight: 0.9, letterSpacing: '0.03em', color: '#fff', margin: '18px 0 2px' }}>ONE SPORT,</h1>
-              <h1 style={{ fontSize: 'clamp(52px, 8vw, 104px)', fontFamily: 'Bebas Neue, cursive', lineHeight: 0.9, letterSpacing: '0.03em', marginBottom: '26px', whiteSpace: 'nowrap', ...rainbowText }}>EVERY SPORT.</h1>
+              <h1 style={{ fontSize: 'clamp(52px, 8vw, 104px)', fontFamily: 'var(--font-display)', lineHeight: 0.9, letterSpacing: '0.03em', color: '#fff', margin: '18px 0 2px' }}>ONE SPORT,</h1>
+              <h1 style={{ fontSize: 'clamp(52px, 8vw, 104px)', fontFamily: 'var(--font-display)', lineHeight: 0.9, letterSpacing: '0.03em', marginBottom: '26px', whiteSpace: 'nowrap', ...rainbowText }}>EVERY SPORT.</h1>
 
               <div className="lp-rainbow-line" style={{ width: '88px', marginBottom: '26px' }} />
 
@@ -102,7 +102,7 @@ export default function Home() {
                 The best part? No experience needed. Scale to any level and ability. Play solo or together with whānau!
               </p>
 
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.14em', fontSize: '12px', fontWeight: 700, color: '#4DB26E', border: '1px solid rgba(77,178,110,0.4)', background: 'rgba(77,178,110,0.08)', padding: '6px 14px', borderRadius: '999px', marginBottom: '28px' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontFamily: 'var(--font-label)', textTransform: 'uppercase', letterSpacing: '0.14em', fontSize: '12px', fontWeight: 700, color: '#4DB26E', border: '1px solid rgba(77,178,110,0.4)', background: 'rgba(77,178,110,0.08)', padding: '6px 14px', borderRadius: '999px', marginBottom: '28px' }}>
                 <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#4DB26E' }} />
                 Koha only — free, always
               </div>
@@ -114,16 +114,16 @@ export default function Home() {
 
               <div style={{ display: 'flex', gap: 0, borderTop: '1px solid #1e1e1e', flexWrap: 'wrap' }}>
                 <div style={{ padding: '24px 40px 0 0', marginRight: '40px', borderRight: '1px solid #1e1e1e' }}>
-                  <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '54px', lineHeight: 1, background: 'linear-gradient(90deg,#EA4742,#F9B051)', WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>10</div>
-                  <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', letterSpacing: '0.18em', textTransform: 'uppercase', color: '#666', marginTop: '4px' }}>Disciplines</div>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '54px', lineHeight: 1, background: 'linear-gradient(90deg,#EA4742,#F9B051)', WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>10</div>
+                  <div style={{ fontFamily: 'var(--font-label)', fontSize: '12px', letterSpacing: '0.18em', textTransform: 'uppercase', color: '#666', marginTop: '4px' }}>Disciplines</div>
                 </div>
                 <div style={{ padding: '24px 40px 0 0', marginRight: '40px', borderRight: '1px solid #1e1e1e' }}>
-                  <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '54px', lineHeight: 1, background: 'linear-gradient(90deg,#4DB26E,#2371BB)', WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>100+</div>
-                  <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', letterSpacing: '0.18em', textTransform: 'uppercase', color: '#666', marginTop: '4px' }}>Events</div>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '54px', lineHeight: 1, background: 'linear-gradient(90deg,#4DB26E,#2371BB)', WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>100+</div>
+                  <div style={{ fontFamily: 'var(--font-label)', fontSize: '12px', letterSpacing: '0.18em', textTransform: 'uppercase', color: '#666', marginTop: '4px' }}>Events</div>
                 </div>
                 <div style={{ padding: '24px 0 0 0' }}>
-                  <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '54px', lineHeight: 1, background: 'linear-gradient(90deg,#2371BB,#B87DB5)', WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>0</div>
-                  <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', letterSpacing: '0.18em', textTransform: 'uppercase', color: '#666', marginTop: '4px' }}>Experience needed</div>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '54px', lineHeight: 1, background: 'linear-gradient(90deg,#2371BB,#B87DB5)', WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>0</div>
+                  <div style={{ fontFamily: 'var(--font-label)', fontSize: '12px', letterSpacing: '0.18em', textTransform: 'uppercase', color: '#666', marginTop: '4px' }}>Experience needed</div>
                 </div>
               </div>
             </div>
@@ -141,7 +141,7 @@ export default function Home() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '64px', alignItems: 'start' }}>
             <div>
               <div className="lp-tag">What is AllSport</div>
-              <h2 style={{ fontFamily: 'Bebas Neue, cursive', fontSize: 'clamp(40px, 5vw, 66px)', lineHeight: 0.9, letterSpacing: '0.03em', margin: '18px 0 8px', color: '#fff' }}>
+              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(40px, 5vw, 66px)', lineHeight: 0.9, letterSpacing: '0.03em', margin: '18px 0 8px', color: '#fff' }}>
                 DESIGNED TO IMPROVE YOU<br />AT <span style={{ color: '#EA4742' }}>EVERY SPORT.</span>
               </h2>
               <div className="lp-rainbow-line" style={{ width: '60px', margin: '18px 0 28px' }} />
@@ -159,8 +159,8 @@ export default function Home() {
                   { n: 'Lowest', l: 'Total placement wins', c: '#4DB26E' },
                 ].map((s) => (
                   <div key={s.l}>
-                    <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '38px', lineHeight: 1, color: s.c }}>{s.n}</div>
-                    <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', letterSpacing: '0.14em', textTransform: 'uppercase', color: '#666', marginTop: '4px' }}>{s.l}</div>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '38px', lineHeight: 1, color: s.c }}>{s.n}</div>
+                    <div style={{ fontFamily: 'var(--font-label)', fontSize: '12px', letterSpacing: '0.14em', textTransform: 'uppercase', color: '#666', marginTop: '4px' }}>{s.l}</div>
                   </div>
                 ))}
               </div>
@@ -175,8 +175,8 @@ export default function Home() {
                   <div key={domain.name} className="lp-domain" onClick={() => setExpandedDomain(isOpen ? null : domain.name)}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '14px 18px' }}>
                       <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: domain.color, flexShrink: 0 }} />
-                      <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: '14px', letterSpacing: '0.08em', textTransform: 'uppercase', flex: 1, color: isOpen ? domain.color : '#cccccc' }}>{domain.name}</span>
-                      <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', color: '#555', letterSpacing: '0.06em' }}>{domain.events.length} events</span>
+                      <span style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '14px', letterSpacing: '0.08em', textTransform: 'uppercase', flex: 1, color: isOpen ? domain.color : '#cccccc' }}>{domain.name}</span>
+                      <span style={{ fontFamily: 'var(--font-label)', fontSize: '12px', color: '#555', letterSpacing: '0.06em' }}>{domain.events.length} events</span>
                       <span style={{ color: '#444', fontSize: '12px' }}>{isOpen ? '▴' : '▾'}</span>
                     </div>
                     {isOpen && (
@@ -202,7 +202,7 @@ export default function Home() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '64px', alignItems: 'start' }}>
             <div>
               <div className="lp-tag">The Colour System</div>
-              <h2 style={{ fontFamily: 'Bebas Neue, cursive', fontSize: 'clamp(44px, 6vw, 72px)', lineHeight: 0.9, letterSpacing: '0.03em', margin: '18px 0 10px', color: '#fff' }}>
+              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(44px, 6vw, 72px)', lineHeight: 0.9, letterSpacing: '0.03em', margin: '18px 0 10px', color: '#fff' }}>
                 EARN YOUR<br /><span style={rainbowText}>COLOURS</span>
               </h2>
               <div className="lp-rainbow-line" style={{ width: '60px', marginBottom: '28px' }} />
@@ -224,9 +224,9 @@ export default function Home() {
                 return (
                   <div key={r.te} className="lp-rank">
                     <span style={{ width: '12px', height: '12px', borderRadius: '50%', flexShrink: 0, background: bg, border: r.te === 'Taniwha' ? '1px solid #555' : 'none' }} />
-                    <span style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '22px', minWidth: '150px', letterSpacing: '0.04em', color: teColor }}>{r.te}</span>
-                    <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#555' }}>{r.en}</span>
-                    <span style={{ marginLeft: 'auto', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', color: '#444', letterSpacing: '0.06em' }}>{r.p} pts</span>
+                    <span style={{ fontFamily: 'var(--font-display)', fontSize: '22px', minWidth: '150px', letterSpacing: '0.04em', color: teColor }}>{r.te}</span>
+                    <span style={{ fontFamily: 'var(--font-label)', fontSize: '12px', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#555' }}>{r.en}</span>
+                    <span style={{ marginLeft: 'auto', fontFamily: 'var(--font-label)', fontSize: '13px', color: '#444', letterSpacing: '0.06em' }}>{r.p} pts</span>
                   </div>
                 )
               })}
@@ -240,7 +240,7 @@ export default function Home() {
         <div className="container">
           <div style={{ textAlign: 'center', maxWidth: '620px', margin: '0 auto 44px' }}>
             <div className="lp-tag">Our kaupapa</div>
-            <h2 style={{ fontFamily: 'Bebas Neue, cursive', fontSize: 'clamp(34px, 4.5vw, 52px)', lineHeight: 0.9, letterSpacing: '0.03em', marginTop: '18px' }}>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(34px, 4.5vw, 52px)', lineHeight: 0.9, letterSpacing: '0.03em', marginTop: '18px' }}>
               MAHI <span style={{ color: '#333' }}>·</span> MAURI <span style={{ color: '#333' }}>·</span> <span style={{ color: '#4DB26E' }}>MANA</span>
             </h2>
             <p style={{ color: '#888', fontSize: '16px', marginTop: '16px', lineHeight: 1.7 }}>
@@ -251,8 +251,8 @@ export default function Home() {
             {ethos.map((e) => (
               <div key={e.word} style={{ background: '#0d0d0d', padding: '34px 30px' }}>
                 <div style={{ width: '26px', height: '4px', borderRadius: '2px', background: e.color, marginBottom: '18px' }} />
-                <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '34px', letterSpacing: '0.04em', color: e.color }}>{e.word}</div>
-                <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', letterSpacing: '0.18em', textTransform: 'uppercase', color: '#666', margin: '4px 0 14px' }}>{e.mean}</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '34px', letterSpacing: '0.04em', color: e.color }}>{e.word}</div>
+                <div style={{ fontFamily: 'var(--font-label)', fontSize: '12px', letterSpacing: '0.18em', textTransform: 'uppercase', color: '#666', margin: '4px 0 14px' }}>{e.mean}</div>
                 <p style={{ color: '#888', fontSize: '15px', lineHeight: 1.7 }}>{e.desc}</p>
               </div>
             ))}
@@ -265,7 +265,7 @@ export default function Home() {
         <div className="container">
           <div style={{ textAlign: 'center', marginBottom: '44px' }}>
             <div className="lp-tag">Train with us</div>
-            <h2 style={{ fontFamily: 'Bebas Neue, cursive', fontSize: 'clamp(40px, 5vw, 64px)', lineHeight: 0.9, letterSpacing: '0.03em', marginTop: '18px' }}>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(40px, 5vw, 64px)', lineHeight: 0.9, letterSpacing: '0.03em', marginTop: '18px' }}>
               SESSIONS IN <span style={{ color: '#F9B051' }}>ŌTAUTAHI</span>
             </h2>
             <p style={{ color: '#888', fontSize: '15px', marginTop: '16px', letterSpacing: '0.02em' }}>AllSport HQ · 26 Carbine Place, Sockburn</p>
@@ -273,8 +273,8 @@ export default function Home() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px', maxWidth: '900px', margin: '0 auto' }}>
             {sessions.map((s) => (
               <div key={s.day} style={{ display: 'flex', alignItems: 'center', gap: '20px', padding: '22px 26px', background: '#111', border: '1px solid #1e1e1e', borderRadius: '10px' }}>
-                <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '30px', letterSpacing: '0.04em', minWidth: '150px', color: s.color }}>{s.day}</div>
-                <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '17px', letterSpacing: '0.06em', color: '#cccccc' }}>{s.time}</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '30px', letterSpacing: '0.04em', minWidth: '150px', color: s.color }}>{s.day}</div>
+                <div style={{ fontFamily: 'var(--font-label)', fontSize: '17px', letterSpacing: '0.06em', color: '#cccccc' }}>{s.time}</div>
               </div>
             ))}
           </div>
@@ -290,7 +290,7 @@ export default function Home() {
         <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: '600px', height: '600px', background: 'radial-gradient(circle, rgba(184,125,181,0.1) 0%, transparent 70%)', pointerEvents: 'none' }} />
         <div className="container" style={{ position: 'relative', zIndex: 1 }}>
           <div className="lp-tag">Mahi. Mauri. Mana.</div>
-          <h2 style={{ fontFamily: 'Bebas Neue, cursive', fontSize: 'clamp(48px, 8vw, 92px)', lineHeight: 0.9, letterSpacing: '0.03em', margin: '18px 0 22px', color: '#fff' }}>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(48px, 8vw, 92px)', lineHeight: 0.9, letterSpacing: '0.03em', margin: '18px 0 22px', color: '#fff' }}>
             READY TO <span style={{ color: '#B87DB5' }}>PLAY?</span>
           </h2>
           <div className="lp-rainbow-line" style={{ width: '88px', margin: '0 auto 30px' }} />

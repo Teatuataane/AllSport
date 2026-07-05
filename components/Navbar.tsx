@@ -52,55 +52,65 @@ export default function Navbar() {
 
   const isLoggedIn = !authLoading && !!user
 
+  const hamburgerBar = (transform: string, opacity = 1): React.CSSProperties => ({
+    display: 'block', width: 22, height: 2,
+    background: menuOpen && transform !== 'mid' ? 'var(--red)' : 'var(--white)',
+    transition: 'all 0.2s',
+    transform: menuOpen ? transform : 'none',
+    opacity,
+  })
+
   return (
     <>
-      {/* Rainbow stripe */}
+      {/* Rainbow stripe — the brand's signature edge */}
       <div style={{
-        height: '4px',
-        background: 'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)',
+        height: 5,
+        background: 'var(--rainbow)',
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1001,
       }} />
 
       <nav style={{
-        position: 'fixed', top: '4px', left: 0, right: 0, zIndex: 1000,
-        background: '#000', borderBottom: '1px solid #1e1e1e',
-        padding: '0 20px', height: '60px',
+        position: 'fixed', top: 5, left: 0, right: 0, zIndex: 1000,
+        background: 'rgba(10,10,10,0.82)',
+        backdropFilter: 'blur(14px)',
+        WebkitBackdropFilter: 'blur(14px)',
+        borderBottom: '1px solid var(--border)',
+        padding: '0 20px', height: 60,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       }}>
         {/* Logo */}
         <Link href={isLoggedIn ? '/dashboard' : '/'} style={{
-          display: 'flex', alignItems: 'center', gap: '10px',
-          textDecoration: 'none', flexShrink: 0,
+          display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0,
         }}>
-          <img src="/logo.png" alt="AllSport" style={{ height: '36px' }} />
+          <img src="/logo.png" alt="AllSport" style={{ height: 38 }} />
           <span style={{
-            fontFamily: 'var(--font-bebas)', fontSize: '22px',
-            color: '#fff', letterSpacing: '2px',
+            fontFamily: 'var(--font-display)', fontSize: 22,
+            color: 'var(--white)', letterSpacing: '0.09em', lineHeight: 1,
           }}>
-            ALL<span style={{ color: '#EA4742' }}>SPORT</span>
+            ALL<span style={{ color: 'var(--red)' }}>SPORT</span>
           </span>
         </Link>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
           {!authLoading && (isLoggedIn ? (
             <>
               <Link href="/dashboard" style={{
-                background: '#2371BB', color: '#fff',
-                padding: '8px 18px', borderRadius: '6px',
-                textDecoration: 'none',
-                fontFamily: 'var(--font-barlow-condensed)',
-                fontSize: '13px', fontWeight: 'bold', letterSpacing: '1px',
+                background: 'var(--blue)', color: 'var(--white)',
+                padding: '9px 20px', borderRadius: 999,
+                fontFamily: 'var(--font-label)',
+                fontSize: 13, fontWeight: 600, letterSpacing: '0.08em',
+                lineHeight: 1, boxShadow: 'var(--glow-blue)',
               }}>
                 DASHBOARD
               </Link>
 
               <button onClick={handleSignOut} style={{
-                background: 'transparent', border: '1px solid #333',
-                borderRadius: '4px', cursor: 'pointer',
-                fontFamily: 'var(--font-barlow-condensed)',
-                fontSize: '12px', fontWeight: 'bold',
-                letterSpacing: '1px', color: '#888',
-                padding: '6px 12px',
+                background: 'transparent', border: '1px solid var(--border-strong)',
+                borderRadius: 999, cursor: 'pointer',
+                fontFamily: 'var(--font-label)',
+                fontSize: 12, fontWeight: 600,
+                letterSpacing: '0.08em', color: 'var(--grey)',
+                padding: '8px 14px', lineHeight: 1,
               }}>
                 SIGN OUT
               </button>
@@ -111,39 +121,26 @@ export default function Navbar() {
                 aria-label="Menu"
                 style={{
                   background: 'transparent', border: 'none',
-                  cursor: 'pointer', padding: '6px',
+                  cursor: 'pointer', padding: 6,
                   display: 'flex', flexDirection: 'column',
-                  gap: '5px', alignItems: 'center', justifyContent: 'center',
+                  gap: 5, alignItems: 'center', justifyContent: 'center',
                 }}
               >
-                <span style={{
-                  display: 'block', width: '22px', height: '2px',
-                  background: menuOpen ? '#EA4742' : '#fff',
-                  transition: 'all 0.2s',
-                  transform: menuOpen ? 'rotate(45deg) translate(5px, 5px)' : 'none',
-                }} />
-                <span style={{
-                  display: 'block', width: '22px', height: '2px',
-                  background: '#fff', transition: 'all 0.2s',
-                  opacity: menuOpen ? 0 : 1,
-                }} />
-                <span style={{
-                  display: 'block', width: '22px', height: '2px',
-                  background: menuOpen ? '#EA4742' : '#fff',
-                  transition: 'all 0.2s',
-                  transform: menuOpen ? 'rotate(-45deg) translate(5px, -5px)' : 'none',
-                }} />
+                <span style={hamburgerBar('rotate(45deg) translate(5px, 5px)')} />
+                <span style={hamburgerBar('mid', menuOpen ? 0 : 1)} />
+                <span style={hamburgerBar('rotate(-45deg) translate(5px, -5px)')} />
               </button>
             </>
           ) : (
             <>
               {/* Desktop links — logged-out only */}
-              <div className="desktop-nav" style={{ display: 'flex', alignItems: 'center', gap: '24px', marginRight: '12px' }}>
+              <div className="desktop-nav" style={{ display: 'flex', alignItems: 'center', gap: 24, marginRight: 12 }}>
                 {publicLinks.map(link => (
                   <Link key={link.href} href={link.href} style={{
-                    fontFamily: 'var(--font-barlow-condensed)', fontSize: '13px',
-                    letterSpacing: '1px', color: pathname === link.href ? '#fff' : '#888',
-                    textDecoration: 'none', fontWeight: 'bold',
+                    fontFamily: 'var(--font-label)', fontSize: 13,
+                    letterSpacing: '0.1em', fontWeight: 600,
+                    color: pathname === link.href ? 'var(--white)' : 'var(--grey)',
+                    transition: 'color 200ms',
                   }}>
                     {link.label}
                   </Link>
@@ -151,11 +148,11 @@ export default function Navbar() {
               </div>
 
               <Link href="/play" style={{
-                background: '#EA4742', color: '#fff',
-                padding: '8px 24px', borderRadius: '6px',
-                textDecoration: 'none',
-                fontFamily: 'var(--font-barlow-condensed)',
-                fontSize: '14px', fontWeight: 'bold', letterSpacing: '2px',
+                background: 'var(--red)', color: 'var(--white)',
+                padding: '9px 24px', borderRadius: 999,
+                fontFamily: 'var(--font-label)',
+                fontSize: 14, fontWeight: 600, letterSpacing: '0.1em',
+                lineHeight: 1, boxShadow: 'var(--glow-red)',
               }}>
                 PLAY NOW
               </Link>
@@ -167,24 +164,13 @@ export default function Navbar() {
                 aria-label="Toggle menu"
                 style={{
                   display: 'none', background: 'transparent', border: 'none',
-                  cursor: 'pointer', padding: '6px', flexDirection: 'column',
-                  gap: '5px', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', padding: 6, flexDirection: 'column',
+                  gap: 5, alignItems: 'center', justifyContent: 'center',
                 }}
               >
-                <span style={{
-                  display: 'block', width: '22px', height: '2px',
-                  background: menuOpen ? '#EA4742' : '#fff', transition: 'all 0.2s',
-                  transform: menuOpen ? 'rotate(45deg) translate(5px, 5px)' : 'none',
-                }} />
-                <span style={{
-                  display: 'block', width: '22px', height: '2px',
-                  background: '#fff', transition: 'all 0.2s', opacity: menuOpen ? 0 : 1,
-                }} />
-                <span style={{
-                  display: 'block', width: '22px', height: '2px',
-                  background: menuOpen ? '#EA4742' : '#fff', transition: 'all 0.2s',
-                  transform: menuOpen ? 'rotate(-45deg) translate(5px, -5px)' : 'none',
-                }} />
+                <span style={hamburgerBar('rotate(45deg) translate(5px, 5px)')} />
+                <span style={hamburgerBar('mid', menuOpen ? 0 : 1)} />
+                <span style={hamburgerBar('rotate(-45deg) translate(5px, -5px)')} />
               </button>
             </>
           ))}
@@ -194,8 +180,11 @@ export default function Navbar() {
       {/* Dropdown menu */}
       {menuOpen && (
         <div style={{
-          position: 'fixed', top: '64px', left: 0, right: 0, zIndex: 999,
-          background: '#000', borderBottom: '1px solid #1e1e1e',
+          position: 'fixed', top: 65, left: 0, right: 0, zIndex: 999,
+          background: 'rgba(10,10,10,0.96)',
+          backdropFilter: 'blur(14px)',
+          WebkitBackdropFilter: 'blur(14px)',
+          borderBottom: '1px solid var(--border)',
           display: 'flex', flexDirection: 'column',
         }}>
           {(isLoggedIn ? loggedInMenuLinks : publicLinks).map(link => (
@@ -204,11 +193,10 @@ export default function Navbar() {
               href={link.href}
               onClick={() => setMenuOpen(false)}
               style={{
-                padding: '16px 24px', borderBottom: '1px solid #111',
-                fontFamily: 'var(--font-barlow-condensed)',
-                fontSize: '16px', fontWeight: 'bold', letterSpacing: '1px',
-                color: pathname === link.href ? '#EA4742' : '#ccc',
-                textDecoration: 'none',
+                padding: '16px 24px', borderBottom: '1px solid var(--surface)',
+                fontFamily: 'var(--font-label)',
+                fontSize: 16, fontWeight: 600, letterSpacing: '0.08em',
+                color: pathname === link.href ? 'var(--red)' : 'var(--grey-light)',
               }}
             >
               {link.label}
@@ -218,7 +206,7 @@ export default function Navbar() {
       )}
 
       {/* Spacer */}
-      <div style={{ height: '64px' }} />
+      <div style={{ height: 65 }} />
     </>
   )
 }
