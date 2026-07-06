@@ -1,9 +1,14 @@
 'use client'
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase-browser'
-import { getEventByName, isTimedEffort, encodeDiffTime, decodeDiffTime, type EventData } from '@/lib/eventData'
+import { getEventByName, isTimedEffort, decodeDiffTime, type EventData } from '@/lib/eventData'
 import { parseLocalDate } from '@/lib/dates'
+import EventIcon, { domainColor } from '@/components/EventIcon'
+import {
+  fmtTime, computeScoreVals, valsFromResult, valsFromRaw,
+  isWeightScoredTierByName, EMPTY_VALS, type EntryVals,
+} from '@/lib/scoring'
 
 const supabase = createClient()
 
@@ -42,13 +47,6 @@ type Result = {
 type PlayerInfo = { division: string; date_of_birth?: string | null }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function fmtTime(totalSecs: number): string {
-  const abs = Math.abs(totalSecs)
-  const m = Math.floor(abs / 60)
-  const s = Math.round(abs % 60)
-  return `${m}:${s.toString().padStart(2, '0')}`
-}
 
 function fmtCountdown(secs: number): string {
   const m = Math.floor(secs / 60)
@@ -297,6 +295,89 @@ const INP: React.CSSProperties = {
   width: '100%', boxSizing: 'border-box',
 }
 
+// Builds the results payload and inserts (or updates) it, including PR flag and
+// effort-task credit. Returns an error message, or null on success.
+async function submitEntry(args: {
+  sessionId: string
+  eventId: string
+  playerId: string | null
+  playerName: string
+  mode: string
+  eventData: EventData | undefined
+  v: EntryVals
+  myResults: Result[]
+  seasonPRNum: number | null
+  effectivePR: number | null
+  editingResultId: string | null
+}): Promise<string | null> {
+  const { sessionId, eventId, playerId, playerName, mode, eventData, v, myResults, seasonPRNum, effectivePR, editingResultId } = args
+  const scored = computeScoreVals(mode, eventData, v)
+  if (!scored) return 'Enter a valid score first'
+  try {
+    const totalSecs = (parseFloat(v.timeMins) || 0) * 60 + (parseFloat(v.timeSecs) || 0)
+    const payload: Record<string, unknown> = {
+      session_id: sessionId, event_id: eventId, player_id: playerId || null,
+      player_name: playerName, raw_score: scored.raw_score, score_label: scored.score_label,
+    }
+    const isWeightVariation = !!v.exerciseVariation && (eventData?.weightVariations?.includes(v.exerciseVariation) ?? false)
+    if (v.difficultyTier) payload.difficulty_tier = v.difficultyTier
+    if (v.exerciseVariation) payload.exercise_variation = v.exerciseVariation
+    if (mode === 'strength') {
+      payload.weight_kg = parseFloat(v.weightKg) || 0
+      if (v.repCount) payload.reps = parseInt(v.repCount)
+    }
+    if (mode === 'reps') {
+      if (isWeightVariation) payload.weight_kg = parseFloat(v.weightKg) || 0
+      payload.reps = parseInt(v.repCount) || 0
+    }
+    if (['time', 'hold', 'difficulty+time'].includes(mode) && totalSecs > 0) payload.time_seconds = totalSecs
+    if (mode === 'difficulty+reps') {
+      if (isWeightScoredTierByName(eventData?.name ?? '', v.difficultyTier)) {
+        payload.weight_kg = parseFloat(v.weightKg) || 0
+      } else {
+        payload.reps = parseInt(v.repCount) || 0
+      }
+    }
+    if (mode === 'sprint') {
+      const s = parseFloat(v.timeSecs) || 0; const cs = parseInt(v.sprintCs) || 0
+      payload.time_seconds = s + cs / 100
+    }
+    if (mode === 'distance') {
+      const val = parseFloat(v.distanceVal) || 0
+      payload.distance_m = v.distanceUnit === 'm' ? val : val / 100
+    }
+    if (mode === 'sport') {
+      payload.result_type = v.sportResult
+      if (v.opponentName) payload.opponent_name = v.opponentName
+      if (v.sportScore) payload.match_score = v.sportScore
+    }
+
+    // When editing, judge PR/effort against the OTHER rows — including the row
+    // being edited would wipe its own PR flag and double-count effort credit.
+    const priorResults = editingResultId ? myResults.filter(r => r.id !== editingResultId) : myResults
+    const newIsPR = seasonPRNum !== null && scored.raw_score > seasonPRNum && !priorResults.some(r => r.is_pr)
+    const effortTaskCount = calcSubmissionEffortTasks(
+      scored.raw_score, parseInt(v.repCount) || null, parseFloat(v.weightKg) || null,
+      v.difficultyTier || null, v.opponentName || null, totalSecs || null,
+      priorResults, eventData, effectivePR, mode
+    )
+    payload.is_pr = newIsPR
+    payload.effort_task_completions = effortTaskCount
+
+    if (editingResultId) {
+      const { data, error: dbErr } = await supabase.from('results').update(payload).eq('id', editingResultId).select('id')
+      if (dbErr) throw dbErr
+      if (!data || data.length === 0) throw new Error('This score was deleted by a kaiwhakawā — close and submit it as a new score')
+    } else {
+      const { error: dbErr } = await supabase.from('results').insert(payload)
+      if (dbErr) throw dbErr
+    }
+    return null
+  } catch (e: unknown) {
+    return e instanceof Error ? e.message : 'Submission failed'
+  }
+}
+
 // ─── EventCard ────────────────────────────────────────────────────────────────
 
 type EventCardProps = {
@@ -341,6 +422,7 @@ function EventCard({
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const [editingResult, setEditingResult] = useState<Result | null>(null)
+  const inFlight = useRef(false)
 
   const mode = (eventData?.inputMode || se.input_mode || 'strength') as string
   const emoji = eventData?.emoji ?? '🏅'
@@ -384,182 +466,38 @@ function EventCard({
     }
   }
 
-  function isWeightScoredTierByIdx(eventName: string, tierIdx: number): boolean {
-    return (
-      (eventName === 'GHD Situp' && tierIdx === 3) ||
-      (eventName === 'Pause Dips' && tierIdx === 4) ||
-      (eventName === 'Pause Chin Up' && tierIdx === 4)
-    )
-  }
-  function isWeightScoredTierByName(eventName: string, tierName: string): boolean {
-    return (
-      (eventName === 'GHD Situp' && tierName === 'GHD Situp') ||
-      (eventName === 'Pause Dips' && tierName === 'Weighted RTO Dip') ||
-      (eventName === 'Pause Chin Up' && tierName === 'Weighted Chinup')
-    )
+  const entryVals: EntryVals = {
+    weightKg, repCount, timeMins, timeSecs, sprintCs, distanceVal, distanceUnit,
+    sportResult, sportScore, opponentName, exerciseVariation, difficultyTier, scoreInput,
   }
 
   function computeScore(): { raw_score: number; score_label: string } | null {
-    const totalSecs = (parseFloat(timeMins) || 0) * 60 + (parseFloat(timeSecs) || 0)
-    if (mode === 'strength') {
-      const w = parseFloat(weightKg) || 0
-      if (!w) return null
-      const r = parseInt(repCount) || 0
-      if (eventData?.slug === 'shoulder-dislocate') {
-        const label = r > 0 ? `${w}cm × ${r} rep${r !== 1 ? 's' : ''}` : `${w}cm`
-        return { raw_score: -w, score_label: label }
-      }
-      const label = r > 0 ? `${w}kg × ${r} rep${r !== 1 ? 's' : ''}` : `${w}kg`
-      return { raw_score: w, score_label: label }
-    }
-    if (mode === 'reps') {
-      if (isWeightVariation) {
-        const w = parseFloat(weightKg) || 0
-        if (!w) return null
-        const r = parseInt(repCount) || 0
-        const varLabel = exerciseVariation ? `${exerciseVariation}: ` : ''
-        const label = r > 0 ? `${varLabel}${w}kg × ${r} rep${r !== 1 ? 's' : ''}` : `${varLabel}${w}kg`
-        return { raw_score: w, score_label: label }
-      }
-      const r = parseInt(repCount) || 0
-      if (!r) return null
-      const varLabel = exerciseVariation ? `${exerciseVariation}: ` : ''
-      return { raw_score: r, score_label: `${varLabel}${r} reps` }
-    }
-    if (mode === 'time') {
-      if (!totalSecs) return null
-      return { raw_score: -totalSecs, score_label: fmtTime(totalSecs) }
-    }
-    if (mode === 'hold') {
-      if (!totalSecs) return null
-      const varLabel = exerciseVariation ? `${exerciseVariation}: ` : ''
-      if (eventData?.difficultyTiers && difficultyTier) {
-        const tierIdx = eventData.difficultyTiers.findIndex(t => t.name === difficultyTier)
-        if (tierIdx >= 0) {
-          const rawScore = tierIdx * 10000 + totalSecs
-          return { raw_score: rawScore, score_label: `D${tierIdx + 1} ${difficultyTier} · ${fmtTime(totalSecs)}` }
-        }
-      }
-      return { raw_score: totalSecs, score_label: `${varLabel}${fmtTime(totalSecs)}` }
-    }
-    if (mode === 'difficulty+time') {
-      if (!difficultyTier || !totalSecs) return null
-      const tierIdx = eventData?.difficultyTiers?.findIndex(t => t.name === difficultyTier) ?? -1
-      if (tierIdx < 0) return null
-      const rawScore = encodeDiffTime(tierIdx, totalSecs, isTimedEffort(eventData?.slug))
-      return { raw_score: rawScore, score_label: `D${tierIdx + 1} ${difficultyTier} · ${fmtTime(totalSecs)}` }
-    }
-    if (mode === 'difficulty+reps') {
-      if (!difficultyTier) return null
-      const tierIdx = eventData?.difficultyTiers?.findIndex(t => t.name === difficultyTier) ?? -1
-      if (tierIdx < 0) return null
-      if (isWeightScoredTierByIdx(eventData?.name ?? '', tierIdx)) {
-        const w = parseFloat(weightKg) || 0
-        if (!w) return null
-        return { raw_score: w, score_label: `D${tierIdx + 1} ${difficultyTier} · ${w}kg` }
-      }
-      const r = parseInt(repCount) || 0
-      if (!r) return null
-      const rawScore = tierIdx * 10000 + r
-      return { raw_score: rawScore, score_label: `D${tierIdx + 1} ${difficultyTier} · ${r} reps` }
-    }
-    if (mode === 'distance') {
-      const val = parseFloat(distanceVal) || 0
-      if (!val) return null
-      const raw_score = distanceUnit === 'm' ? Math.round(val * 100) : Math.round(val)
-      return { raw_score, score_label: `${distanceVal}${distanceUnit}` }
-    }
-    if (mode === 'sport') {
-      if (!sportResult) return null
-      const raw_score = sportResult === 'win' ? 2 : sportResult === 'draw' ? 1 : 0
-      let label = sportResult.charAt(0).toUpperCase() + sportResult.slice(1)
-      if (opponentName) label += ` vs ${opponentName}`
-      if (sportScore) label += ` (${sportScore})`
-      return { raw_score, score_label: label }
-    }
-    if (mode === 'sprint') {
-      const s = parseFloat(timeSecs) || 0
-      const cs = parseInt(sprintCs) || 0
-      if (!s && !cs) return null
-      const totalCs = Math.round(s * 100) + cs
-      const label = `${Math.floor(s)}s.${cs.toString().padStart(2, '0')}`
-      return { raw_score: -totalCs, score_label: label }
-    }
-    if (mode === 'score') {
-      const strokes = parseInt(scoreInput) || 0
-      if (strokes <= 0) return null
-      return { raw_score: -strokes, score_label: `${strokes} strokes (4 holes)` }
-    }
-    return null
+    return computeScoreVals(mode, eventData, entryVals)
   }
 
   function isValid(): boolean { return computeScore() !== null }
 
   async function handleSubmit() {
     if (sessionEnded) return
-    const scored = computeScore()
-    if (!scored) return
+    if (!computeScore()) return
+    if (inFlight.current) return // ref guard — React state alone lets a double-tap insert twice
+    inFlight.current = true
     setSubmitting(true); setError('')
-    try {
-      const totalSecs = (parseFloat(timeMins) || 0) * 60 + (parseFloat(timeSecs) || 0)
-      const payload: Record<string, unknown> = {
-        session_id: sessionId, event_id: se.id, player_id: playerId || null,
-        player_name: playerName, raw_score: scored.raw_score, score_label: scored.score_label,
-      }
-      if (difficultyTier) payload.difficulty_tier = difficultyTier
-      if (exerciseVariation) payload.exercise_variation = exerciseVariation
-      if (mode === 'strength') {
-        payload.weight_kg = parseFloat(weightKg) || 0
-        if (repCount) payload.reps = parseInt(repCount)
-      }
-      if (mode === 'reps') payload.reps = parseInt(repCount) || 0
-      if (['time', 'hold', 'difficulty+time'].includes(mode) && totalSecs > 0) payload.time_seconds = totalSecs
-      if (mode === 'difficulty+reps') {
-        if (isWeightScoredTierByName(eventData?.name ?? '', difficultyTier)) {
-          payload.weight_kg = parseFloat(weightKg) || 0
-        } else {
-          payload.reps = parseInt(repCount) || 0
-        }
-      }
-      if (mode === 'sprint') {
-        const s = parseFloat(timeSecs) || 0; const cs = parseInt(sprintCs) || 0
-        payload.time_seconds = s + cs / 100
-      }
-      if (mode === 'distance') {
-        const val = parseFloat(distanceVal) || 0
-        payload.distance_m = distanceUnit === 'm' ? val : val / 100
-      }
-      if (mode === 'sport') {
-        payload.result_type = sportResult
-        if (opponentName) payload.opponent_name = opponentName
-        if (sportScore) payload.match_score = sportScore
-      }
-
-      const newIsPR = seasonPRNum !== null && scored.raw_score > seasonPRNum && !myResults.some(r => r.is_pr)
-      const effortTaskCount = calcSubmissionEffortTasks(
-        scored.raw_score, parseInt(repCount) || null, parseFloat(weightKg) || null,
-        difficultyTier || null, opponentName || null, totalSecs || null,
-        myResults, eventData, effectivePR, mode
-      )
-      payload.is_pr = newIsPR
-      payload.effort_task_completions = effortTaskCount
-
-      let dbErr
-      if (editingResult) {
-        ;({ error: dbErr } = await supabase.from('results').update(payload).eq('id', editingResult.id))
-      } else {
-        ;({ error: dbErr } = await supabase.from('results').insert(payload))
-      }
-      if (dbErr) throw dbErr
-
+    const errMsg = await submitEntry({
+      sessionId, eventId: se.id, playerId, playerName,
+      mode, eventData, v: entryVals, myResults, seasonPRNum, effectivePR,
+      editingResultId: editingResult?.id ?? null,
+    })
+    if (errMsg) {
+      setError(errMsg)
+    } else {
       setWeightKg(''); setRepCount(''); setTimeMins(''); setTimeSecs('')
       setSprintCs(''); setDistanceVal(''); setSportResult(''); setSportScore('')
       setOpponentName(''); setScoreInput(''); setEditingResult(null)
       setSuccess(true); setTimeout(() => setSuccess(false), 2500)
       onScoreSubmitted()
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Submission failed')
     }
+    inFlight.current = false
     setSubmitting(false)
   }
 
@@ -950,6 +888,583 @@ function EventCard({
         )}
       </div>
     </div>
+  )
+}
+
+// ─── Quick-entry sheet (player scoring redesign) ──────────────────────────────
+
+const QES_LBL: React.CSSProperties = {
+  fontSize: '11px', color: '#777', letterSpacing: '0.14em', textTransform: 'uppercase',
+  fontFamily: 'Barlow Condensed, sans-serif', margin: '16px 2px 8px',
+}
+const QES_CHIP: React.CSSProperties = {
+  fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.08em',
+  fontSize: '13px', color: '#fff', background: '#161616', border: '1px solid #2a2a2a',
+  borderRadius: '999px', padding: '9px 14px', cursor: 'pointer', flexShrink: 0,
+}
+
+function StepBtn({ children, onClick, disabled }: { children: React.ReactNode; onClick: () => void; disabled?: boolean }) {
+  return (
+    <button onClick={onClick} disabled={disabled} style={{
+      width: '56px', minHeight: '56px', flexShrink: 0, borderRadius: '14px',
+      background: '#181818', border: '1px solid #2a2a2a', color: disabled ? '#444' : '#fff',
+      fontSize: '26px', fontFamily: 'Bebas Neue, cursive', cursor: disabled ? 'default' : 'pointer',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}>{children}</button>
+  )
+}
+
+const QES_INP: React.CSSProperties = {
+  flex: 1, minWidth: 0, background: '#0d0d0d', border: '1px solid #2a2a2a', borderRadius: '14px',
+  color: '#fff', fontSize: '30px', fontFamily: 'Bebas Neue, cursive', textAlign: 'center',
+  padding: '10px 4px', boxSizing: 'border-box',
+}
+
+type QuickEntrySheetProps = {
+  se: SessionEvent
+  eventData: EventData | undefined
+  myResults: Result[]
+  allResults: Result[]
+  seasonPR: number | string | null
+  playerId: string | null
+  playerName: string
+  sessionId: string
+  sessionEnded: boolean
+  onClose: () => void
+  onSubmitted: (label: string) => void
+  onDeleted: () => void
+}
+
+function QuickEntrySheet({
+  se, eventData, myResults, allResults, seasonPR,
+  playerId, playerName, sessionId, sessionEnded,
+  onClose, onSubmitted, onDeleted,
+}: QuickEntrySheetProps) {
+  const mode = (eventData?.inputMode || se.input_mode || 'strength') as string
+  const isDislocate = eventData?.slug === 'shoulder-dislocate'
+  const seasonPRNum = typeof seasonPR === 'number' ? seasonPR : null
+  const myBestResult = myResults.length > 0
+    ? myResults.reduce((best, r) => r.raw_score > best.raw_score ? r : best, myResults[0])
+    : undefined
+  const sessionBestRaw = myResults.length > 0 ? Math.max(...myResults.map(r => r.raw_score)) : null
+  const effectivePR = sessionBestRaw !== null
+    ? (seasonPRNum !== null ? Math.max(sessionBestRaw, seasonPRNum) : sessionBestRaw)
+    : seasonPRNum
+  const effortLevel = calcEffortLevel(myResults)
+  const effortTasks = computeEffortTasks(myResults, eventData, effectivePR, mode)
+
+  const [v, setV] = useState<EntryVals>(() => {
+    let init: EntryVals = { ...EMPTY_VALS }
+    if (myBestResult) init = { ...init, ...valsFromResult(mode, myBestResult) }
+    else if (seasonPRNum !== null) init = { ...init, ...valsFromRaw(mode, eventData, seasonPRNum) }
+    if (mode === 'sport') init = { ...init, sportResult: '', opponentName: '', sportScore: '' }
+    return init
+  })
+  const [showHow, setShowHow] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
+  const [editingResult, setEditingResult] = useState<Result | null>(null)
+  const inFlight = useRef(false)
+
+  const set = (patch: Partial<EntryVals>) => setV(prev => ({ ...prev, ...patch }))
+
+  // Lock body scroll while the sheet is open
+  useEffect(() => {
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prev }
+  }, [])
+
+  function bumpNum(field: 'weightKg' | 'repCount' | 'distanceVal' | 'scoreInput', delta: number, min = 0) {
+    const cur = parseFloat(v[field]) || 0
+    const next = Math.max(min, Math.round((cur + delta) * 100) / 100)
+    set({ [field]: String(next) } as Partial<EntryVals>)
+  }
+  function bumpTime(delta: number) {
+    const t = Math.max(0, (parseFloat(v.timeMins) || 0) * 60 + (parseFloat(v.timeSecs) || 0) + delta)
+    set({ timeMins: String(Math.floor(t / 60)), timeSecs: String(Math.round(t % 60)) })
+  }
+
+  const scored = computeScoreVals(mode, eventData, v)
+  const canSubmit = scored !== null && !submitting && !sessionEnded
+
+  async function handleSheetSubmit() {
+    if (!canSubmit || !scored) return
+    if (inFlight.current) return // ref guard — React state alone lets a double-tap insert twice
+    inFlight.current = true
+    setSubmitting(true); setError('')
+    const errMsg = await submitEntry({
+      sessionId, eventId: se.id, playerId, playerName,
+      mode, eventData, v, myResults, seasonPRNum, effectivePR,
+      editingResultId: editingResult?.id ?? null,
+    })
+    inFlight.current = false
+    setSubmitting(false)
+    if (errMsg) { setError(errMsg); return }
+    setEditingResult(null)
+    onSubmitted(scored.score_label)
+  }
+
+  async function handleSheetDelete(resultId: string) {
+    if (editingResult?.id === resultId) setEditingResult(null)
+    const { error: delErr } = await supabase.from('results').delete().eq('id', resultId)
+    if (delErr) { setError(delErr.message); return }
+    onDeleted()
+  }
+
+  // Quick-pick chips: pre-fill from last submission / season PR
+  const quickPicks: { label: string; patch: Partial<EntryVals> }[] = []
+  if (mode !== 'sport') {
+    if (myBestResult) quickPicks.push({ label: `Today · ${myBestResult.score_label}`, patch: valsFromResult(mode, myBestResult) })
+    if (seasonPRNum !== null) {
+      quickPicks.push({ label: `PR · ${formatPR(seasonPRNum, mode, eventData?.slug)}`, patch: valsFromRaw(mode, eventData, seasonPRNum) })
+      if (mode === 'strength' && !isDislocate) {
+        quickPicks.push({ label: `PR +2.5kg`, patch: { weightKg: String(seasonPRNum + 2.5) } })
+      }
+    }
+  }
+
+  // Opponent quick picks for sport mode: everyone else with a result this session
+  const opponentPicks = mode === 'sport'
+    ? [...new Set(allResults.map(r => r.player_name).filter(n => n && n !== playerName))].slice(0, 6)
+    : []
+
+  const tiers = eventData?.difficultyTiers ?? []
+  const showTierChips = (mode === 'difficulty+time' || mode === 'difficulty+reps' || (mode === 'hold' && tiers.length > 0)) && tiers.length > 0
+  const weightScored = mode === 'difficulty+reps' && isWeightScoredTierByName(eventData?.name ?? '', v.difficultyTier)
+  const showWeight = mode === 'strength' || weightScored
+  const showReps = mode === 'strength' || mode === 'reps' || (mode === 'difficulty+reps' && !weightScored)
+  const showTime = mode === 'time' || mode === 'hold' || mode === 'difficulty+time'
+  const domainC = domainColor(se.domain_number)
+  const contentMissing = !eventData || eventData.howToPerform === 'Content coming soon.'
+  const myResultsSorted = [...myResults].sort((a, b) => b.raw_score - a.raw_score)
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 100 }}>
+      <style>{`@keyframes qesUp { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>
+      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(3px)' }} />
+      <div style={{
+        position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)',
+        width: 'min(640px, 100vw)', maxHeight: '88dvh', display: 'flex', flexDirection: 'column',
+        background: '#141414', border: '1px solid #2a2a2a', borderBottom: 'none',
+        borderRadius: '24px 24px 0 0', overflow: 'hidden', animation: 'qesUp 0.28s cubic-bezier(0.16,1,0.3,1)',
+      }}>
+        <div style={{ height: '4px', flexShrink: 0, background: 'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)' }} />
+
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '14px 16px 10px', flexShrink: 0 }}>
+          <EventIcon slug={se.event_slug || eventData?.slug || ''} emoji={eventData?.emoji} domainNumber={se.domain_number} size={46} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '26px', lineHeight: 1, color: '#fff', letterSpacing: '0.03em' }}>{se.event_name}</div>
+            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.12em', marginTop: '3px' }}>
+              {se.domain_name}{effortLevel > 0 ? ` · Effort level ${effortLevel}` : ''}
+            </div>
+          </div>
+          <button onClick={() => setShowHow(h => !h)} style={{
+            height: '38px', padding: '0 12px', borderRadius: '10px', cursor: 'pointer',
+            background: showHow ? '#2371BB26' : '#181818', border: `1px solid ${showHow ? '#2371BB' : '#2a2a2a'}`,
+            color: showHow ? '#fff' : '#999', fontFamily: 'Barlow Condensed, sans-serif',
+            fontSize: '13px', letterSpacing: '0.1em', fontWeight: 600,
+          }}>HOW TO</button>
+          <button onClick={onClose} style={{
+            width: '38px', height: '38px', borderRadius: '10px', cursor: 'pointer', flexShrink: 0,
+            background: '#181818', border: '1px solid #2a2a2a', color: '#999', fontSize: '15px',
+          }}>✕</button>
+        </div>
+
+        {/* Body */}
+        <div style={{ overflowY: 'auto', padding: '0 16px 20px' }}>
+          {showHow ? (
+            <div>
+              <div style={{ ...QES_LBL, color: '#F9B051' }}>How to perform</div>
+              <p style={{ fontSize: '14.5px', lineHeight: 1.6, color: '#ccc', fontWeight: 300, margin: 0 }}>
+                {contentMissing ? 'Content coming soon — ask your kaiwhakawā for a demo.' : eventData!.howToPerform}
+              </p>
+              <div style={{ ...QES_LBL, color: '#F9B051' }}>Rules & standards</div>
+              <p style={{ fontSize: '14.5px', lineHeight: 1.6, color: '#ccc', fontWeight: 300, margin: 0 }}>
+                {contentMissing || eventData!.rules === 'Content coming soon.' ? 'Content coming soon.' : eventData!.rules}
+              </p>
+              {tiers.length > 0 && (
+                <>
+                  <div style={{ ...QES_LBL, color: '#F9B051' }}>Difficulty tiers</div>
+                  {tiers.map(t => (
+                    <div key={t.level} style={{ display: 'flex', gap: '10px', padding: '8px 0', borderBottom: '1px solid #1e1e1e', fontSize: '13.5px' }}>
+                      <span style={{ fontFamily: 'Barlow Condensed, sans-serif', color: '#4DB26E', width: '30px', flexShrink: 0, fontWeight: 600 }}>D{t.level}</span>
+                      <span style={{ color: '#ccc', fontWeight: 300 }}>{t.name}</span>
+                    </div>
+                  ))}
+                </>
+              )}
+              <button onClick={() => setShowHow(false)} style={{
+                width: '100%', marginTop: '18px', height: '50px', borderRadius: '999px',
+                border: '1px solid #2a2a2a', background: '#181818', color: '#fff', cursor: 'pointer',
+                fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '14px',
+              }}>Back to scoring</button>
+            </div>
+          ) : (
+            <div>
+              {/* Session best + PR hints */}
+              <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
+                <div style={{ flex: 1, background: '#101010', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '9px 12px' }}>
+                  <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '10.5px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.12em' }}>Today's best</div>
+                  <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '19px', color: myBestResult ? '#4DB26E' : '#444', marginTop: '2px' }}>
+                    {myBestResult ? (mode === 'sport' ? sportWDL(myResults) : myBestResult.score_label) : '—'}
+                  </div>
+                </div>
+                <div style={{ flex: 1, background: '#101010', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '9px 12px' }}>
+                  <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '10.5px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.12em' }}>Season PR</div>
+                  <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '19px', color: seasonPRNum !== null ? '#F9B051' : '#444', marginTop: '2px' }}>
+                    {seasonPRNum !== null ? formatPR(seasonPRNum, mode, eventData?.slug) : '—'}
+                  </div>
+                </div>
+              </div>
+
+              {sessionEnded ? (
+                <div style={{ background: '#2e0d0d', border: '1px solid #EA4742', borderRadius: '10px', padding: '12px 14px', marginTop: '14px', color: '#EA4742', fontSize: '13px' }}>
+                  Session ended — scoring locked
+                </div>
+              ) : (
+                <>
+                  {editingResult && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#0d1a2d', border: '1px solid #2371BB55', borderRadius: '10px', padding: '8px 12px', marginTop: '14px' }}>
+                      <span style={{ fontSize: '12.5px', color: '#2371BB', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Editing: {editingResult.score_label}</span>
+                      <button onClick={() => { setEditingResult(null); setV({ ...EMPTY_VALS }) }} style={{ fontSize: '12px', color: '#888', background: 'none', border: '1px solid #333', borderRadius: '6px', padding: '3px 10px', cursor: 'pointer' }}>Cancel</button>
+                    </div>
+                  )}
+
+                  {/* Variation selector (rare) */}
+                  {eventData?.variations && (
+                    <>
+                      <div style={QES_LBL}>Variation</div>
+                      <select value={v.exerciseVariation} onChange={e => set({ exerciseVariation: e.target.value })} style={{ ...INP, fontSize: '15px' }}>
+                        <option value="">Select variation...</option>
+                        {eventData.variations.map((va, i) => (
+                          <option key={va} value={va}>D{i + 1} — {va}{eventData.weightVariations?.includes(va) ? ' (weight + reps)' : ''}</option>
+                        ))}
+                      </select>
+                    </>
+                  )}
+
+                  {/* Difficulty tier chips */}
+                  {showTierChips && (
+                    <>
+                      <div style={QES_LBL}>Difficulty tier — tap How To for descriptions</div>
+                      <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px' }}>
+                        {tiers.map(t => {
+                          const sel = v.difficultyTier === t.name
+                          return (
+                            <button key={t.level} onClick={() => set({ difficultyTier: t.name })} style={{
+                              flexShrink: 0, minWidth: '64px', padding: '8px 11px', borderRadius: '12px', cursor: 'pointer', textAlign: 'center',
+                              background: sel ? '#4DB26E1f' : '#161616', border: `1px solid ${sel ? '#4DB26E' : '#2a2a2a'}`,
+                            }}>
+                              <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: 600, color: sel ? '#4DB26E' : '#fff' }}>D{t.level}</div>
+                              <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', color: sel ? '#4DB26E' : '#888', textTransform: 'uppercase', letterSpacing: '0.04em', maxWidth: '110px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.name}</div>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </>
+                  )}
+
+                  {/* Weight stepper */}
+                  {showWeight && (
+                    <>
+                      <div style={QES_LBL}>{isDislocate ? 'Grip width (cm)' : 'Weight (kg)'}</div>
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        <StepBtn onClick={() => bumpNum('weightKg', isDislocate ? -1 : -2.5)}>−</StepBtn>
+                        <input type="number" inputMode="decimal" value={v.weightKg} onChange={e => set({ weightKg: e.target.value })} placeholder="0" style={QES_INP} />
+                        <StepBtn onClick={() => bumpNum('weightKg', isDislocate ? 1 : 2.5)}>+</StepBtn>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Reps stepper */}
+                  {showReps && (
+                    <>
+                      <div style={QES_LBL}>Reps</div>
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        <StepBtn onClick={() => bumpNum('repCount', -1, 0)}>−</StepBtn>
+                        <input type="number" inputMode="numeric" value={v.repCount} onChange={e => set({ repCount: e.target.value })} placeholder="0" style={QES_INP} />
+                        <StepBtn onClick={() => bumpNum('repCount', 1)}>+</StepBtn>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Time stepper (min:sec, ±5s) */}
+                  {showTime && (
+                    <>
+                      <div style={QES_LBL}>{mode === 'time' || isTimedEffort(eventData?.slug) ? 'Time' : 'Hold time'}</div>
+                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <StepBtn onClick={() => bumpTime(-5)}>−</StepBtn>
+                        <input type="number" inputMode="numeric" value={v.timeMins} onChange={e => set({ timeMins: e.target.value })} placeholder="min" style={QES_INP} />
+                        <span style={{ color: '#555', fontSize: '26px', fontFamily: 'Bebas Neue, cursive' }}>:</span>
+                        <input type="number" inputMode="numeric" value={v.timeSecs} onChange={e => set({ timeSecs: e.target.value })} placeholder="sec" style={QES_INP} />
+                        <StepBtn onClick={() => bumpTime(5)}>+</StepBtn>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Sprint (sec.cs) */}
+                  {mode === 'sprint' && (
+                    <>
+                      <div style={QES_LBL}>Time (seconds . centiseconds)</div>
+                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <input type="number" inputMode="numeric" value={v.timeSecs} onChange={e => set({ timeSecs: e.target.value })} placeholder="sec" style={QES_INP} />
+                        <span style={{ color: '#555', fontSize: '26px', fontFamily: 'Bebas Neue, cursive' }}>.</span>
+                        <input type="number" inputMode="numeric" value={v.sprintCs} onChange={e => set({ sprintCs: e.target.value })} placeholder="cs" min={0} max={99} style={QES_INP} />
+                      </div>
+                    </>
+                  )}
+
+                  {/* Distance */}
+                  {mode === 'distance' && (
+                    <>
+                      <div style={QES_LBL}>Distance</div>
+                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <input type="number" inputMode="decimal" value={v.distanceVal} onChange={e => set({ distanceVal: e.target.value })} placeholder="0" style={QES_INP} />
+                        <div style={{ display: 'flex', borderRadius: '12px', overflow: 'hidden', flexShrink: 0 }}>
+                          {(['m', 'cm'] as const).map(u => (
+                            <button key={u} onClick={() => set({ distanceUnit: u })} style={{
+                              padding: '14px 18px', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '15px',
+                              background: v.distanceUnit === u ? '#2371BB' : '#1a1a1a',
+                              color: v.distanceUnit === u ? '#fff' : '#666',
+                            }}>{u}</button>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Sport: W/D/L + opponent quick picks */}
+                  {mode === 'sport' && (
+                    <>
+                      <div style={QES_LBL}>Result</div>
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        {(['win', 'draw', 'loss'] as const).map(r => {
+                          const colors = { win: '#4DB26E', draw: '#F9B051', loss: '#EA4742' }
+                          const active = v.sportResult === r
+                          return (
+                            <button key={r} onClick={() => set({ sportResult: r })} style={{
+                              flex: 1, padding: '18px 0', border: `2px solid ${active ? colors[r] : '#222'}`,
+                              borderRadius: '14px', cursor: 'pointer', fontFamily: 'Bebas Neue, cursive', fontSize: '20px',
+                              letterSpacing: '0.05em', background: active ? colors[r] + '22' : '#111',
+                              color: active ? colors[r] : '#555',
+                            }}>{r.toUpperCase()}</button>
+                          )
+                        })}
+                      </div>
+                      <div style={QES_LBL}>Opponent</div>
+                      {opponentPicks.length > 0 && (
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                          {opponentPicks.map(n => (
+                            <button key={n} onClick={() => set({ opponentName: n })} style={{
+                              ...QES_CHIP,
+                              borderColor: v.opponentName === n ? '#2371BB' : '#2a2a2a',
+                              background: v.opponentName === n ? '#2371BB' : '#161616',
+                            }}>{n}</button>
+                          ))}
+                        </div>
+                      )}
+                      <input value={v.opponentName} onChange={e => set({ opponentName: e.target.value })} placeholder="Opponent name (optional)" style={{ ...INP, fontSize: '15px' }} />
+                      <input value={v.sportScore} onChange={e => set({ sportScore: e.target.value })} placeholder="Score e.g. 21–18 (optional)" style={{ ...INP, fontSize: '15px', marginTop: '8px' }} />
+                    </>
+                  )}
+
+                  {/* Golf/Disc Golf strokes */}
+                  {mode === 'score' && (
+                    <>
+                      <div style={QES_LBL}>Stroke count (4 holes)</div>
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        <StepBtn onClick={() => bumpNum('scoreInput', -1, 1)}>−</StepBtn>
+                        <input type="number" inputMode="numeric" value={v.scoreInput} onChange={e => set({ scoreInput: e.target.value })} placeholder="e.g. 18" style={QES_INP} />
+                        <StepBtn onClick={() => bumpNum('scoreInput', 1)}>+</StepBtn>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Quick picks */}
+                  {quickPicks.length > 0 && (
+                    <>
+                      <div style={QES_LBL}>Quick pick</div>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        {quickPicks.map(qp => (
+                          <button key={qp.label} onClick={() => set(qp.patch)} style={{ ...QES_CHIP, borderColor: '#F9B05155', color: '#F9B051' }}>{qp.label}</button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+
+                  {error && <div style={{ color: '#EA4742', fontSize: '13px', marginTop: '12px' }}>{error}</div>}
+
+                  <button onClick={handleSheetSubmit} disabled={!canSubmit} style={{
+                    width: '100%', marginTop: '18px', height: '58px', border: 'none', borderRadius: '999px',
+                    cursor: canSubmit ? 'pointer' : 'default',
+                    background: canSubmit ? 'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)' : '#1a1a1a',
+                    color: canSubmit ? '#0a0a0a' : '#555',
+                    fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase',
+                    letterSpacing: '0.12em', fontSize: '16px', fontWeight: 600,
+                  }}>
+                    {submitting ? 'Saving...' : scored ? `${editingResult ? 'Save' : 'Submit'} — ${scored.score_label}` : 'Enter your score'}
+                  </button>
+                </>
+              )}
+
+              {/* Today's submissions */}
+              {myResults.length > 0 && (
+                <>
+                  <div style={{ ...QES_LBL, display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Today's scores</span>
+                    {mode === 'sport' && <span style={{ color: '#4DB26E' }}>{sportWDL(myResults)}</span>}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {myResultsSorted.map(r => (
+                      <div key={r.id} style={{
+                        background: editingResult?.id === r.id ? '#0d1a2d' : '#101010',
+                        border: `1px solid ${editingResult?.id === r.id ? '#2371BB55' : '#1e1e1e'}`,
+                        borderRadius: '10px', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '10px',
+                      }}>
+                        <div style={{ fontSize: '15px', color: '#fff', flex: 1 }}>{r.score_label}</div>
+                        {r.is_pr && (
+                          <div style={{ fontSize: '10px', fontWeight: 700, color: '#F9B051', background: '#F9B05122', borderRadius: '4px', padding: '2px 6px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.05em' }}>PR</div>
+                        )}
+                        {r.effort_task_completions > 0 && (
+                          <div style={{ fontSize: '12px', color: '#B87DB5', fontWeight: 700, fontFamily: 'Barlow Condensed, sans-serif' }}>+{r.effort_task_completions}</div>
+                        )}
+                        {!sessionEnded && (
+                          <>
+                            <button onClick={() => { setEditingResult(r); setV({ ...EMPTY_VALS, ...valsFromResult(mode, r) }) }}
+                              style={{ background: 'none', border: '1px solid #2371BB44', borderRadius: '4px', color: '#2371BB', cursor: 'pointer', fontSize: '11px', padding: '2px 8px', flexShrink: 0, fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700 }}>Edit</button>
+                            <button onClick={() => handleSheetDelete(r.id)}
+                              style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: '14px', padding: '2px 6px', flexShrink: 0 }}>✕</button>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {/* Effort tasks */}
+              <div style={{ ...QES_LBL, display: 'flex', justifyContent: 'space-between' }}>
+                <span>Effort tasks — +5 pts each</span>
+                <span style={{ color: '#B87DB5' }}>Level {effortLevel}</span>
+              </div>
+              {myResults.length === 0 ? (
+                effortTasks.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div style={{ fontSize: '12px', color: '#666', fontStyle: 'italic' }}>Submit a score first, then aim for:</div>
+                    {effortTasks.map((task, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#101010', borderRadius: '10px', padding: '10px 14px', opacity: 0.5 }}>
+                        <div style={{ width: '18px', height: '18px', borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', background: '#1e1e1e', color: '#555' }}>○</div>
+                        <div style={{ flex: 1, fontSize: '13px', color: '#888', fontFamily: 'Barlow Condensed, sans-serif' }}>{task.label}</div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ fontSize: '13px', color: '#555', fontStyle: 'italic' }}>Submit a score to unlock effort tasks</div>
+                )
+              ) : effortTasks.length === 0 ? (
+                <div style={{ fontSize: '13px', color: '#555', fontStyle: 'italic' }}>No effort tasks for this event</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {effortTasks.map((task, i) => {
+                    const done = task.count > 0
+                    return (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#101010', borderRadius: '10px', padding: '10px 14px' }}>
+                        <div style={{ width: '18px', height: '18px', borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', background: done ? '#B87DB5' : '#1e1e1e', color: done ? '#fff' : '#555' }}>
+                          {done ? '✓' : '○'}
+                        </div>
+                        <div style={{ flex: 1, fontSize: '13px', color: done ? '#B87DB5' : '#888', fontFamily: 'Barlow Condensed, sans-serif' }}>{task.label}</div>
+                        {task.isRepeatable && task.count > 1 && (
+                          <div style={{ fontSize: '12px', color: '#B87DB5', fontWeight: 700, fontFamily: 'Barlow Condensed, sans-serif' }}>×{task.count}</div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Event list row (player redesign) ─────────────────────────────────────────
+
+function eventDivisionRank(
+  seId: string, allResults: Result[], playerInfoMap: Record<string, PlayerInfo>,
+  playerDivision: string | null | undefined, myBestRaw: number | null
+): { label: string; color: string } {
+  if (!playerDivision || myBestRaw === null) return { label: '', color: '#555' }
+  const divEventResults = allResults.filter(r =>
+    r.event_id === seId && r.player_id && playerInfoMap[r.player_id]?.division === playerDivision
+  )
+  const bestPerDiv: Record<string, number> = {}
+  divEventResults.forEach(r => {
+    if (!r.player_id) return
+    const ex = bestPerDiv[r.player_id]
+    if (ex === undefined || r.raw_score > ex) bestPerDiv[r.player_id] = r.raw_score
+  })
+  const rank = 1 + Object.values(bestPerDiv).filter(b => b > myBestRaw).length
+  const color = rank === 1 ? '#F9B051' : rank === 2 ? '#C0C0C0' : rank === 3 ? '#CD7F32' : '#888'
+  return { label: `${ordinal(rank)} in event`, color }
+}
+
+function EventListRow({
+  se, eventData, myResults, allResults, playerInfoMap, playerDivision, onOpen,
+}: {
+  se: SessionEvent
+  eventData: EventData | undefined
+  myResults: Result[]
+  allResults: Result[]
+  playerInfoMap: Record<string, PlayerInfo>
+  playerDivision: string | null | undefined
+  onOpen: () => void
+}) {
+  const mode = (eventData?.inputMode || se.input_mode || 'strength') as string
+  const myBestResult = myResults.length > 0
+    ? myResults.reduce((best, r) => r.raw_score > best.raw_score ? r : best, myResults[0])
+    : undefined
+  const effortLevel = calcEffortLevel(myResults)
+  const rank = eventDivisionRank(se.id, allResults, playerInfoMap, playerDivision, myBestResult?.raw_score ?? null)
+  const todo = !myBestResult
+
+  return (
+    <button onClick={onOpen} style={{
+      width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '12px',
+      padding: '12px 14px', marginBottom: '8px', borderRadius: '16px', cursor: 'pointer',
+      background: todo ? 'linear-gradient(180deg, rgba(35,113,187,0.10), #111 70%)' : '#111',
+      border: `1px solid ${todo ? '#1c3a5e' : '#1e1e1e'}`,
+      color: '#fff', fontFamily: 'Barlow, sans-serif',
+    }}>
+      <EventIcon slug={se.event_slug || eventData?.slug || ''} emoji={eventData?.emoji} domainNumber={se.domain_number} size={46} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '19px', letterSpacing: '0.03em', lineHeight: 1 }}>{se.event_name}</div>
+        <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '3px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {se.domain_name}
+          {effortLevel > 0 && (
+            <span style={{ fontSize: '10.5px', color: '#B87DB5', border: '1px solid #B87DB566', borderRadius: '999px', padding: '0 7px' }}>EL {effortLevel}</span>
+          )}
+        </div>
+      </div>
+      {todo ? (
+        <span style={{
+          fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.1em',
+          fontSize: '12px', color: '#fff', background: '#2371BB', borderRadius: '999px', padding: '6px 12px', flexShrink: 0, fontWeight: 500,
+        }}>Tap to score</span>
+      ) : (
+        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+          <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '18px', color: '#4DB26E' }}>
+            {mode === 'sport' ? sportWDL(myResults) : myBestResult!.score_label}
+          </div>
+          <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', color: rank.color, textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: '2px' }}>
+            {rank.label}
+          </div>
+        </div>
+      )}
+    </button>
   )
 }
 
@@ -1556,6 +2071,8 @@ export default function SessionPage() {
   const [seasonPRs, setSeasonPRs] = useState<Record<string, number | string | null>>({})
   const [activeTab, setActiveTab] = useState<string>('leaderboard')
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null)
+  const [sheetEventId, setSheetEventId] = useState<string | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
   const [timeLeft, setTimeLeft] = useState<number | null>(null)
   const [preSessionSecsLeft, setPreSessionSecsLeft] = useState<number | null>(null)
   const [sessionEnded, setSessionEnded] = useState(false)
@@ -1668,6 +2185,7 @@ export default function SessionPage() {
   // ── Load season PRs for active player ─────────────────────────────────────
   useEffect(() => {
     if (!activePlayerId || events.length === 0) return
+    setSeasonPRs({}) // clear immediately so a family-tab switch never shows the previous player's PRs
     const year = new Date().getFullYear()
     async function loadPRs() {
       const { data } = await supabase
@@ -1679,11 +2197,11 @@ export default function SessionPage() {
       for (const r of (data ?? []) as any[]) {
         if (!r.sessions?.session_date || parseLocalDate(r.sessions.session_date).getFullYear() !== year) continue
         const evName = r.session_events?.event_name
-        const inputMode: string = r.session_events?.input_mode ?? ''
         if (!evName || r.raw_score === null) continue
-        const isMin = ['time', 'sprint'].includes(inputMode)
+        // Higher raw_score is always better — time/sprint store negative seconds,
+        // so max still picks the fastest (min would pick the SLOWEST as "PR")
         const existing = byName[evName]
-        if (existing === undefined || (isMin ? r.raw_score < existing : r.raw_score > existing)) byName[evName] = r.raw_score
+        if (existing === undefined || r.raw_score > existing) byName[evName] = r.raw_score
       }
       const prs: Record<string, number | string | null> = {}
       events.forEach(ev => { prs[ev.id] = byName[ev.event_name] ?? null })
@@ -1706,11 +2224,10 @@ export default function SessionPage() {
       for (const r of (data ?? []) as any[]) {
         if (!r.sessions?.session_date || parseLocalDate(r.sessions.session_date).getFullYear() !== year) continue
         const evName = r.session_events?.event_name
-        const inputMode: string = r.session_events?.input_mode ?? ''
         if (!evName || r.raw_score === null) continue
-        const isMin = ['time', 'sprint'].includes(inputMode)
+        // Higher raw_score is always better (see player PR loader above)
         const existing = byName[evName]
-        if (existing === undefined || (isMin ? r.raw_score < existing : r.raw_score > existing)) byName[evName] = r.raw_score
+        if (existing === undefined || r.raw_score > existing) byName[evName] = r.raw_score
       }
       const prs: Record<string, number | string | null> = {}
       events.forEach(ev => { prs[ev.id] = byName[ev.event_name] ?? null })
@@ -1824,7 +2341,7 @@ export default function SessionPage() {
           const tabId = `player-${pid}`
           const active = activeTab === tabId
           return (
-            <button key={pid} onClick={() => { setActiveTab(tabId); setActivePlayerId(pid); setExpandedEventId(null) }}
+            <button key={pid} onClick={() => { setActiveTab(tabId); setActivePlayerId(pid); setExpandedEventId(null); setSheetEventId(null) }}
               style={{
                 padding: '12px 16px', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
                 fontSize: '13px', fontWeight: active ? 700 : 400, flexShrink: 0,
@@ -1836,7 +2353,7 @@ export default function SessionPage() {
             </button>
           )
         })}
-        <button onClick={() => setActiveTab('leaderboard')}
+        <button onClick={() => { setActiveTab('leaderboard'); setSheetEventId(null) }}
           style={{
             padding: '12px 16px', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
             fontSize: '13px', fontWeight: activeTab === 'leaderboard' ? 700 : 400, flexShrink: 0,
@@ -1881,6 +2398,16 @@ export default function SessionPage() {
         const pDivision = (p.division as string | null) ?? null
         const myResults = results.filter(r => r.player_id === pid)
         const totalEffort = calcTotalEffortLevel(myResults, events)
+        const scoredIds = new Set(events.filter(ev => myResults.some(r => r.event_id === ev.id)).map(ev => ev.id))
+        const todoEvents = events.filter(ev => !scoredIds.has(ev.id))
+        const doneEvents = events.filter(ev => scoredIds.has(ev.id))
+        const sheetEvent = sheetEventId ? events.find(e => e.id === sheetEventId) : undefined
+        const sectionLabel = (text: string) => (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '16px 4px 8px', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11.5px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.14em' }}>
+            <span style={{ width: '14px', height: '3px', borderRadius: '2px', background: 'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)' }} />
+            {text}
+          </div>
+        )
 
         return (
           <div key={pid} style={{ padding: '16px' }}>
@@ -1891,42 +2418,95 @@ export default function SessionPage() {
               </div>
             )}
 
-            <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-              <div style={{ fontSize: '13px', color: '#B87DB5', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700 }}>
-                Effort Level: {totalEffort} / 20
+            {/* Session progress */}
+            <div style={{ marginBottom: '4px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '6px' }}>
+                <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11.5px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.12em' }}>
+                  <span style={{ color: '#fff', fontWeight: 600 }}>{doneEvents.length}</span> of {events.length} events scored
+                </div>
+                <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11.5px', color: '#B87DB5', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 600 }}>
+                  Effort level {totalEffort} / 20
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '3px' }}>
+                {events.map(ev => (
+                  <div key={ev.id} style={{
+                    flex: 1, height: '8px', borderRadius: '99px',
+                    background: scoredIds.has(ev.id) ? domainColor(ev.domain_number) : '#1e1e1e',
+                    transition: 'background 0.3s',
+                  }} />
+                ))}
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              {events.map(ev => {
-                const evResults = results.filter(r => r.event_id === ev.id && r.player_id === pid)
-                const evData = getEventByName(ev.event_name)
-                const pr = seasonPRs[ev.id] ?? null
-                return (
-                  <EventCard
-                    key={ev.id}
-                    se={ev}
-                    eventData={evData}
-                    myResults={evResults}
-                    allResults={results}
-                    allEvents={events}
-                    seasonPR={pr}
-                    playerId={pid}
-                    playerName={pName}
-                    playerDivision={pDivision}
-                    playerInfoMap={playerInfoMap}
-                    sessionId={sessionId as string}
-                    sessionEnded={sessionEnded}
-                    isExpanded={expandedEventId === ev.id}
-                    onToggle={() => setExpandedEventId(expandedEventId === ev.id ? null : ev.id)}
-                    onScoreSubmitted={async () => { await loadResults() }}
-                  />
-                )
-              })}
-            </div>
+            {/* Still to play */}
+            {todoEvents.length > 0 && sectionLabel(`Still to play — ${todoEvents.length} event${todoEvents.length === 1 ? '' : 's'}`)}
+            {todoEvents.map(ev => (
+              <EventListRow
+                key={ev.id}
+                se={ev}
+                eventData={getEventByName(ev.event_name)}
+                myResults={results.filter(r => r.event_id === ev.id && r.player_id === pid)}
+                allResults={results}
+                playerInfoMap={playerInfoMap}
+                playerDivision={pDivision}
+                onOpen={() => setSheetEventId(ev.id)}
+              />
+            ))}
+
+            {/* Scored */}
+            {doneEvents.length > 0 && sectionLabel('Scored')}
+            {doneEvents.map(ev => (
+              <EventListRow
+                key={ev.id}
+                se={ev}
+                eventData={getEventByName(ev.event_name)}
+                myResults={results.filter(r => r.event_id === ev.id && r.player_id === pid)}
+                allResults={results}
+                playerInfoMap={playerInfoMap}
+                playerDivision={pDivision}
+                onOpen={() => setSheetEventId(ev.id)}
+              />
+            ))}
+
+            {/* Quick-entry sheet */}
+            {sheetEvent && (
+              <QuickEntrySheet
+                key={sheetEvent.id}
+                se={sheetEvent}
+                eventData={getEventByName(sheetEvent.event_name)}
+                myResults={results.filter(r => r.event_id === sheetEvent.id && r.player_id === pid)}
+                allResults={results}
+                seasonPR={seasonPRs[sheetEvent.id] ?? null}
+                playerId={pid}
+                playerName={pName}
+                sessionId={sessionId as string}
+                sessionEnded={sessionEnded}
+                onClose={() => setSheetEventId(null)}
+                onSubmitted={async (label) => {
+                  setSheetEventId(null)
+                  setToast(`${sheetEvent.event_name} — ${label}`)
+                  setTimeout(() => setToast(null), 3000)
+                  await loadResults()
+                }}
+                onDeleted={async () => { await loadResults() }}
+              />
+            )}
           </div>
         )
       })}
+
+      {/* Score-submitted toast */}
+      {toast && (
+        <div style={{
+          position: 'fixed', bottom: '20px', left: '50%', transform: 'translateX(-50%)',
+          width: 'min(600px, calc(100vw - 32px))', zIndex: 200,
+          background: '#161616', border: '1px solid #2a2a2a', borderLeft: '4px solid #4DB26E',
+          borderRadius: '12px', padding: '13px 16px', boxShadow: '0 24px 60px rgba(0,0,0,0.6)',
+        }}>
+          <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '18px', color: '#fff' }}>Score in — {toast}</div>
+        </div>
+      )}
 
       {/* Judge mode tab */}
       {activeTab === 'judge-mode' && isJudge && (
