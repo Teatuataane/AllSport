@@ -152,7 +152,7 @@ function LeaderboardTable({ data, accentColor, loading }: { data: EnrichedPlayer
         <div style={{ minWidth: '640px' }}>
           {/* Table header */}
           <div style={{ display: 'grid', gridTemplateColumns: '56px 1fr 90px 130px 110px 160px', gap: '16px', padding: '10px 24px' }}>
-            {['#', 'Player', 'Sessions', 'Avg Place (low = best)', 'Season Pts', 'Colour'].map(h => (
+            {['#', 'Player', 'Sessions', 'Avg Place', 'Season Pts', 'Colour'].map(h => (
               <div key={h} style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#444444' }}>{h}</div>
             ))}
           </div>
