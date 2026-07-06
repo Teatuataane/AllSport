@@ -10,17 +10,23 @@ const DOMAIN_COLOURS = [
 
 export default function EventsIndex() {
   const byDomain = getEventsByDomain()
+  const totalEvents = EVENTS.length
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0a0a0a', color: '#fff' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--dark)', color: 'var(--white)' }}>
+      <style>{`
+        .event-row { transition: border-color 0.15s, background 0.15s; }
+        .event-row:hover { border-color: var(--border-strong) !important; background: #161616 !important; }
+      `}</style>
       {/* Header */}
-      <div style={{ background: '#000', borderBottom: '1px solid #1a1a1a', padding: '24px' }}>
+      <div style={{ background: 'var(--black)', borderBottom: '1px solid var(--border)', padding: '24px', position: 'relative' }}>
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: 'var(--rainbow)' }} />
         <div style={{ maxWidth: '680px', margin: '0 auto' }}>
-          <Link href="/how-to-play" style={{ color: '#555', fontSize: '12px', textDecoration: 'none', display: 'block', marginBottom: '8px' }}>
+          <Link href="/how-to-play" style={{ color: '#555', fontSize: '12px', display: 'block', marginBottom: '8px', fontFamily: 'var(--font-label)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
             ← How To Play
           </Link>
-          <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '40px', color: '#fff', lineHeight: 1 }}>All Events</div>
-          <div style={{ color: '#555', fontSize: '13px', marginTop: '6px' }}>100 events across 10 domains</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: '40px', color: 'var(--white)', lineHeight: 1 }}>ALL EVENTS</div>
+          <div style={{ color: '#555', fontSize: '13px', marginTop: '6px' }}>{totalEvents} events across {DOMAIN_ORDER.length} domains</div>
         </div>
       </div>
 
@@ -32,7 +38,7 @@ export default function EventsIndex() {
             <div key={domain} style={{ marginBottom: '24px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
                 <div style={{ width: '4px', height: '20px', borderRadius: '2px', background: colour, flexShrink: 0 }} />
-                <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '20px', color: colour, letterSpacing: '1px' }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '20px', color: colour, letterSpacing: '0.05em' }}>
                   {domainIdx + 1}. {domain.toUpperCase()}
                 </div>
               </div>
@@ -41,25 +47,25 @@ export default function EventsIndex() {
                   <Link
                     key={ev.slug}
                     href={`/events/${ev.slug}`}
+                    className="event-row"
                     style={{
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                      background: '#111', borderRadius: '8px', padding: '12px 14px',
-                      textDecoration: 'none', border: '1px solid #1e1e1e',
-                      transition: 'border-color 0.15s',
+                      background: 'var(--surface)', borderRadius: '10px', padding: '12px 14px',
+                      border: '1px solid var(--border)',
                     }}
                   >
                     <div>
-                      <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#fff' }}>{ev.name}</div>
-                      <div style={{ fontSize: '11px', color: '#555', marginTop: '2px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      <div style={{ fontWeight: 'bold', fontSize: '14px', color: 'var(--white)' }}>{ev.name}</div>
+                      <div style={{ fontSize: '11px', color: '#555', marginTop: '2px', textTransform: 'uppercase', letterSpacing: '0.5px', fontFamily: 'var(--font-label)' }}>
                         {ev.inputMode}
                         {ev.hasDifficultyTiers && ev.difficultyTiers && (
-                          <span style={{ marginLeft: '8px', color: '#B87DB5' }}>
+                          <span style={{ marginLeft: '8px', color: 'var(--purple)' }}>
                             D1–D{ev.difficultyTiers.length}
                           </span>
                         )}
                       </div>
                     </div>
-                    <div style={{ color: '#333', fontSize: '14px' }}>→</div>
+                    <div style={{ color: '#444', fontSize: '14px' }}>→</div>
                   </Link>
                 ))}
               </div>

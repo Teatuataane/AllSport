@@ -79,8 +79,14 @@ linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)
 
 ### Design Principles
 - Dark backgrounds throughout
-- Rainbow stripe at top of navbar
+- Rainbow stripe at top of navbar (5px, `var(--rainbow)`)
 - Logo in navbar (left) and hero (right, floating)
+- No emoji in UI — rainbow ticks/dots and the crest carry the energy
+- Pill buttons (Barlow Condensed uppercase), 16px-radius cards with hairline borders, optional rainbow top stripe
+
+### Tokens & UI kit (July 2026 session 19)
+- `app/globals.css` `:root` is the single source of truth for tokens — canonical brand palette (matches this doc), semantic colours, `--rainbow`, `--grade-*` colours, `--font-display/body/label`, radii, shadows/glows, motion. Legacy aliases (`--gold`, `--surface2`, `--font-bebas`, grade short names like `--whero`) are kept for older pages — use the canonical names in new code.
+- `components/ui.tsx` — shared brand primitives: Button, Card, Badge, Tag, Input, Select, Dialog, RainbowText, RainbowRule, SectionLabel, StatBlock, plus `buttonStyle`/`inputFieldStyle` helpers and the `RAINBOW` const. Use these (or the `.btn`/`.tag`/`.rainbow-*` classes in globals.css) instead of ad-hoc inline styles for new UI.
 
 ---
 
@@ -548,8 +554,9 @@ best_score, current_rank, division, average_placement, season_year
       JudgeCard.tsx                 # Judge panel — sessions + Event Votes (Kōwhiringa Tūāhuatanga)
       VoteBanner.tsx                # Dashboard banner — vote state + live countdown + CTA
   components/
-    Navbar.tsx
-    Footer.tsx
+    Navbar.tsx                      # Glass sticky nav, 5px rainbow edge, pill CTAs
+    Footer.tsx                      # Rainbow rule, HQ address + session times
+    ui.tsx                          # Shared brand UI kit — Button, Card, Badge, Tag, Input, Select, Dialog, RainbowText, RainbowRule, SectionLabel, StatBlock
   supabase/
     migrations/
       20260420_phase1.sql
@@ -712,7 +719,8 @@ best_score, current_rank, division, average_placement, season_year
 
 ---
 
-*Last updated: June 2026 (session 18 — Hand Walk → Handbalance; timed-effort events (Running etc.) now rank fastest-wins via inverted difficulty+time encoding; overall-placement fix (missing event = last in division); points-doubling fix; date off-by-one fix (lib/dates.ts); new /games/[sessionId] full game-review page; migration 20260629; stale eventData tests refreshed)*
+*Last updated: July 2026 (session 19 — true-brand UI rollout: globals.css rewritten on the canonical token palette (with legacy aliases), shared UI kit in components/ui.tsx, Navbar/Footer rebuilt, all public pages rebuilt on the kit (canonical event lists, computed counts, no emoji), player pages reskinned (fonts + brand hexes), Google OAuth primary on login/play/register, leaderboard comprehension explainer + brand grade colours + mobile scroll, register flow polish. Excluded per scope: scoring/[sessionId] live session, /judge + JudgeCard, /scoring setup)*
+*Previous: June 2026 (session 18 — Hand Walk → Handbalance; timed-effort events (Running etc.) now rank fastest-wins via inverted difficulty+time encoding; overall-placement fix (missing event = last in division); points-doubling fix; date off-by-one fix (lib/dates.ts); new /games/[sessionId] full game-review page; migration 20260629; stale eventData tests refreshed)*
 *Project started: March 2026*
 
 ## Skill routing
