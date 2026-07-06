@@ -159,6 +159,14 @@ linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)
 #### difficulty+time encoding
 `raw_score = tierIdx * 10000 + within-tier term` (0-based tierIdx). HOLDS use `within-tier = seconds` (more = better); TIMED EFFORTS use `within-tier = 10000 - seconds` (faster = better). Either way a higher tier always outranks a lower one AND a higher `raw_score` is always better, so every ranker (client leaderboard + SQL trigger, both sort `raw_score` DESC) works without per-event branching. Helpers `isTimedEffort` / `encodeDiffTime` / `decodeDiffTime` and the `TIMED_EFFORT_SLUGS` set live in `lib/eventData.ts`. `time_seconds` is still stored raw (un-inverted) for effort-task matching.
 
+### Live session redesign (July 2026 session 19)
+- **Player event UI redesigned** — the 2-column collapsed event card grid is replaced (for player tabs only) by: a session progress header (10 domain-coloured segments fill as events are scored + "N of 10 events scored" + effort level), an event list split into **"Still to play"** (blue-tinted rows with "Tap to score" chip) and **"Scored"** (score + "Nth in event" division rank on the right), and a **quick-entry bottom sheet** that opens on row tap.
+- **Quick-entry sheet** (`QuickEntrySheet` in `scoring/[sessionId]/page.tsx`) — pre-filled from today's best submission (or season PR), big +/− steppers (weight ±2.5kg, reps ±1, time ±5s, strokes ±1), quick-pick chips ("Today · X", "PR · X", "PR +2.5kg"), tier chip selector (replaces `<select>`), W/D/L buttons + opponent quick-pick chips (other players with results this session) for sport mode, submit button restates the exact score ("Submit — 120kg × 3"). Sheet also contains Today's best / Season PR hints, today's submissions (edit/delete), and effort tasks. **HOW TO button** flips the sheet to `howToPerform` + `rules` + full tier list from eventData (graceful "Content coming soon" fallback). Green success toast on submit.
+- **Judge flows unchanged** — Kaiwhakawā + Summary tabs still use the original `EventCard` grid.
+- **Shared entry logic extracted** — `computeScoreVals(mode, eventData, EntryVals)` and `submitEntry(...)` (payload build + PR flag + effort credit + insert/update) are now module-scope in `scoring/[sessionId]/page.tsx`, used by BOTH `EventCard` and `QuickEntrySheet` — one code path for all raw_score encodings. (Step toward backlog item "extract scoring into lib/scoring.ts".) Side fix: `reps`-mode weight variations now also store `weight_kg` (previously dropped).
+- **Event pictogram system** — new `components/EventIcon.tsx`: renders `/public/event-icons/{slug}.png` as a CSS mask filled with the domain colour (so black Canva silhouette exports work on the dark theme automatically); probes each icon once per page load; falls back to the event's `emoji` until an icon exists. `domainColor(domainNumber)` exported from the same file. All 104 event icons exported from Canva (transparent 1000×1000 RGBA PNGs, named by slug) live in `public/event-icons/` — full coverage, verified rendering through the mask. Note: CSS `mask-image` is fetched with CORS, so icons must stay same-origin (they are — served from /public).
+- **Event how-to content drafted** — all 94 events that had `howToPerform`/`rules` = "Content coming soon." now have full drafted content in `lib/eventData.ts` (Deadlift entry was the voice reference; imperative sentences, concrete judge standards, tier/declare rules for tiered events, W/D/L + effort note for sport events). PENDING TĀNE'S REVIEW — flagged as invented/uncertain: Toe Lift (interpreted as weighted toe/forefoot raise), Kelly Snatch (interpreted as single DB/KB ground-to-overhead), Repeat High Jump (rep count assumed kaiwhakawā-set), Australian Football / Tag / Netball (formats deferred to kaiwhakawā on the day). The `PLACEHOLDER_CONTENT` const remains in eventData.ts for future new events.
+
 ---
 
 ## Scoring, Points & Bonuses
@@ -534,7 +542,7 @@ best_score, current_rank, division, average_placement, season_year
     profile/page.tsx                # Player profile — icon picker, editing, family switcher
     prs/page.tsx                    # Personal best history — all 100 events
     scoring/page.tsx
-    scoring/[sessionId]/page.tsx    # Live session — banner (div placement + timer), event cards (score/div rank/EL), new leaderboard (3-section, Masters toggle, age chips, event filter)
+    scoring/[sessionId]/page.tsx    # Live session — banner (div placement + timer), player event list + quick-entry sheet (session 19), judge EventCard grid, leaderboard (3-section, Masters toggle, age chips, event filter)
     games/[sessionId]/page.tsx      # Game review — full all-player report (divisions, events, scores, placements, standings); computed live from raw_score
     auth/callback/route.ts
     join/
@@ -550,6 +558,9 @@ best_score, current_rank, division, average_placement, season_year
   components/
     Navbar.tsx
     Footer.tsx
+    EventIcon.tsx                   # Event pictogram tile — CSS-mask of /event-icons/{slug}.png in domain colour, emoji fallback
+  public/
+    event-icons/                    # Canva silhouette exports, transparent PNG named {slug}.png (see README.md inside)
   supabase/
     migrations/
       20260420_phase1.sql
@@ -627,7 +638,9 @@ best_score, current_rank, division, average_placement, season_year
 11. Championship registration flow (6 months before March 2027)
 12. **Testing suite (deferred)** — extract the scoring logic (raw_score per input mode, placement ranking incl. missing=last, gap/points formula, effort) into a pure `lib/scoring.ts`, point the live session at it, and add vitest unit tests. **Plus** database-level tests (pgTAP or a seeded test DB) that exercise the actual `award_session_points` trigger, since the real placement+points math runs server-side. Goal: catch scoring regressions before a game.
 13. **Duck Walk tier redesign** — currently excluded from the timed-effort (faster-wins) set because D1/D2 are static holds (longer wins) and D3–D5 are distance walks (faster wins). A single event can't carry both directions; redesign the tiers (likely split holds from walks) then add to `TIMED_EFFORT_SLUGS` if appropriate.
-14. **Season-PR direction bug (time/sprint)** — in `scoring/[sessionId]/page.tsx` the season-PR loader treats `time`/`sprint` as "min raw_score is best", but those store negative raw_score (faster = higher), so it currently picks the *slowest* as the PR. Should use max raw_score like everything else. Low-impact (sessionBest still drives effort baseline) but should be fixed.
+14. ~~Season-PR direction bug (time/sprint)~~ — FIXED July 2026 session 19: both PR loaders now always take max raw_score (time/sprint store negative seconds, so max = fastest).
+15. **Breath Hold ranking direction** — Breath Hold uses `time` mode (raw_score = −secs, faster = better), which ranks SHORTER holds as better. Should be `hold` mode (longer wins) + a decision on re-encoding any existing negative breath-hold raw_scores (mirror the 20260629 re-encode approach). Effort task label ("Complete in X or faster") is also wrong for this event.
+16. **Review drafted event content (session 19)** — Tāne to review the 94 drafted howToPerform/rules entries in lib/eventData.ts, especially the flagged ones: Toe Lift, Kelly Snatch, Repeat High Jump, Australian Football, Tag, Netball.
 
 ---
 
@@ -712,7 +725,7 @@ best_score, current_rank, division, average_placement, season_year
 
 ---
 
-*Last updated: June 2026 (session 18 — Hand Walk → Handbalance; timed-effort events (Running etc.) now rank fastest-wins via inverted difficulty+time encoding; overall-placement fix (missing event = last in division); points-doubling fix; date off-by-one fix (lib/dates.ts); new /games/[sessionId] full game-review page; migration 20260629; stale eventData tests refreshed)*
+*Last updated: July 2026 (session 19 — live session player UI redesign: quick-entry bottom sheet with steppers/quick-picks/tier chips, Still to play/Scored list split, session progress bar, HOW TO in sheet; EventIcon pictogram system with Canva PNG mask pipeline (public/event-icons/); shared computeScoreVals/submitEntry extraction)*
 *Project started: March 2026*
 
 ## Skill routing
