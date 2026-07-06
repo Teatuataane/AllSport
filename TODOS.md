@@ -81,6 +81,7 @@
 - /profile page — icon picker (20 sport emojis), username/display name editing, leaderboard display prefs, family member management, active profile switcher (localStorage)
 - Event voting system — judges create votes via /judge; players vote step-by-step (one domain per screen); partial save (is_final=false); locked on final submit; spoiler-free results; counts while open, percentages after close; judge full breakdown with voter names; VoteBanner on dashboard
 - session_player_summary table — populated by award_session_points trigger; dashboard points history; per-session: date, placement, effort level, points breakdown
+- Event content populated — howToPerform + rules written for all 94 placeholder events in lib/eventData.ts (pending Tāne's review of flagged events: Toe Lift, Kelly Snatch, Repeat High Jump, Australian Football, Tag, Netball). **Completed:** v0.4.0.0 (2026-07-05)
 
 ---
 
@@ -144,12 +145,6 @@
 **What:** A guest player who later creates an account can claim their previous session results. Judge or admin links the guest `player_id` to the new account.
 **How:** Simple admin SQL or a judge UI that searches for guest players by name and merges them with a registered player.
 **Effort:** S–M (CC)
-
-### Populate event content for remaining 95 events
-**What:** Fill in `howToPerform` and `rules` in `lib/eventData.ts` for the 95 events that currently have placeholder content.
-**Why:** Event detail pages show "Content coming soon" for most events.
-**Effort:** L (content work, not code) — can be done incrementally, one domain at a time.
-**Where:** `lib/eventData.ts`
 
 ---
 

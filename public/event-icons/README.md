@@ -1,0 +1,117 @@
+# Event icons — Canva export convention
+
+Drop one PNG per event in this folder and it appears automatically in the app (live session, and anywhere else EventIcon is used). No code change needed.
+
+**Export rules:**
+- Transparent background, solid single-colour silhouette (black is fine — the app recolours it to the domain colour via CSS mask, so it will show correctly on the dark theme)
+- Square-ish crop, subject filling most of the canvas
+- At least 256×256 px
+- Filename = event slug exactly, e.g. `deadlift.png`, `100m-sprint.png`
+- Until an event has an icon, the app shows the event's emoji as a fallback
+
+**All event slugs:**
+
+- `one-arm-press.png`
+- `deadlift.png`
+- `clean-and-press.png`
+- `pause-dips.png`
+- `pause-chin-up.png`
+- `pause-squat.png`
+- `zercher-deadlift.png`
+- `hamstring-curl.png`
+- `pause-bench.png`
+- `turkish-get-up.png`
+- `sandbag-to-shoulder.png`
+- `1-leg-squat.png`
+- `flag.png`
+- `windshield-wipers.png`
+- `toe-lift.png`
+- `planche.png`
+- `back-lever.png`
+- `iron-cross.png`
+- `front-lever.png`
+- `chin-hang.png`
+- `rope-climb.png`
+- `chin-up-contest.png`
+- `push-up-contest.png`
+- `reverse-hyper.png`
+- `l-sit-hold.png`
+- `tibialis-curl.png`
+- `headstand.png`
+- `finger-push-up.png`
+- `ghd-situp.png`
+- `leg-extension.png`
+- `ab-wheel-rollout.png`
+- `rear-hand-clasp.png`
+- `bridge.png`
+- `forward-fold.png`
+- `needle-pose.png`
+- `front-split.png`
+- `middle-split.png`
+- `standing-split.png`
+- `foot-behind-head.png`
+- `shoulder-dislocate.png`
+- `pancake.png`
+- `kelly-snatch.png`
+- `one-arm-snatch.png`
+- `triple-jump.png`
+- `javelin-throw.png`
+- `shot-put.png`
+- `australian-football.png`
+- `vertical-jump.png`
+- `hand-walk.png`
+- `clean-and-jerk.png`
+- `snatch.png`
+- `burpee-broad-jump.png`
+- `running.png`
+- `cycling.png`
+- `ski-erg.png`
+- `row-erg.png`
+- `breath-hold.png`
+- `weighted-carry.png`
+- `duck-walk.png`
+- `bronco.png`
+- `walking.png`
+- `100m-sprint.png`
+- `tag.png`
+- `t-race.png`
+- `400m-race.png`
+- `beach-flags.png`
+- `50m-sprint.png`
+- `200m-sprint.png`
+- `touch-rugby.png`
+- `football-dribble.png`
+- `repeat-high-jump.png`
+- `rats-and-rabbits.png`
+- `speed-chess.png`
+- `tae-kwon-do.png`
+- `breakdancing.png`
+- `trampolining.png`
+- `jump-rope.png`
+- `wrestling.png`
+- `gymnastics.png`
+- `balance-ball.png`
+- `skate.png`
+- `fencing.png`
+- `juggling.png`
+- `foot-juggling.png`
+- `volleyball.png`
+- `baseball.png`
+- `teqball.png`
+- `tennis.png`
+- `cricket.png`
+- `badminton.png`
+- `basketball.png`
+- `football.png`
+- `hockey.png`
+- `squash.png`
+- `netball.png`
+- `bocce.png`
+- `dodgeball.png`
+- `carrom.png`
+- `archery.png`
+- `kubb.png`
+- `darts.png`
+- `disc-golf.png`
+- `golf.png`
+- `ultimate-frisbee.png`

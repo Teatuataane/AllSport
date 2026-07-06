@@ -2,6 +2,20 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.4.0.0] - 2026-07-05
+
+### Added
+- **Quick-entry score sheet** — tapping an event in a live session now opens a bottom sheet pre-filled from your best score today (or your season PR), with big +/− steppers (weight ±2.5kg, reps ±1, time ±5s), one-tap quick picks ("Today · 120kg × 3", "PR · 140kg", "PR +2.5kg"), a tier chip selector, and Win/Draw/Loss buttons with opponent quick-picks. The submit button always restates exactly what you're submitting. Most scores now go in without ever opening the keyboard.
+- **How To at the point of play** — a HOW TO button inside the score sheet flips to how-to-perform instructions, rules and standards, and the full difficulty tier list for the event you're about to play.
+- **Event how-to content for all 104 events** — 94 events that previously said "Content coming soon" now have written how-to-perform and rules content, covering judge standards, tier declaration, and scoring direction for every event.
+- **Event pictograms** — every event now shows a silhouette icon in its domain colour across the live session screen, replacing domain numbers. Icons live in `public/event-icons/{slug}.png` and are recoloured automatically for the dark theme; events without an icon fall back to their emoji.
+- **Session progress bar** — the live session screen shows ten domain-coloured segments that fill as you score events, plus your effort level.
+- **Scoring unit tests** — the raw_score encoding logic for every input mode is now extracted to `lib/scoring.ts` with 28 unit tests (including the timed-effort inversion and Shoulder Dislocate's narrower-is-better encoding).
+
+### Changed
+- **Live session event grid replaced by a "Still to play" / "Scored" list** — unplayed events are highlighted with a "Tap to score" prompt; scored events show your score and your live "Nth in event" division rank. Judge tabs (Kaiwhakawā and Summary) keep the original card layout.
+- **Score entry logic unified** — the judge card and the new player sheet now share one code path for all score encodings, so they can never drift apart.
+
 ## [0.3.3.0] - 2026-07-03
 
 ### Changed
