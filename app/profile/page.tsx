@@ -195,7 +195,7 @@ export default function ProfilePage() {
 
   if (loading) return (
     <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ color: '#555', fontFamily: 'Barlow, sans-serif' }}>Loading...</div>
+      <div style={{ color: '#555', fontFamily: 'var(--font-body)' }}>Loading...</div>
     </div>
   )
 
@@ -218,16 +218,16 @@ export default function ProfilePage() {
           <Link href="/dashboard" style={{
             background: '#111', border: '1px solid #2a2a2a', borderRadius: '8px',
             padding: '8px 14px', color: '#888', textDecoration: 'none',
-            fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px',
+            fontFamily: 'var(--font-label)', fontSize: '13px',
             fontWeight: 700, letterSpacing: '0.05em',
           }}>
             ← Dashboard
           </Link>
           <div>
-            <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '26px', letterSpacing: '0.05em', lineHeight: 1 }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '26px', letterSpacing: '0.05em', lineHeight: 1 }}>
               Profile
             </div>
-            <div style={{ fontSize: '11px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.1em' }}>
+            <div style={{ fontSize: '11px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.1em' }}>
               {player.division} · {player.city || 'Ōtautahi'}
             </div>
           </div>
@@ -247,25 +247,25 @@ export default function ProfilePage() {
               border: `2px solid ${grade.borderColour}44`,
             }}>
               {form.icon || (
-                <span style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '28px', color: grade.borderColour }}>
+                <span style={{ fontFamily: 'var(--font-display)', fontSize: '28px', color: grade.borderColour }}>
                   {displayName[0].toUpperCase()}
                 </span>
               )}
             </div>
             <div>
-              <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '20px', letterSpacing: '0.04em' }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '20px', letterSpacing: '0.04em' }}>
                 {displayName}
               </div>
               <div style={{
                 fontSize: '11px', color: '#555',
-                fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.08em',
+                fontFamily: 'var(--font-label)', letterSpacing: '0.08em',
               }}>
                 {grade.name} · {player.division}
               </div>
               {form.icon && (
                 <button onClick={() => setForm(f => ({ ...f, icon: '' }))} style={{
                   marginTop: '4px', background: 'none', border: 'none', cursor: 'pointer',
-                  color: '#555', fontSize: '11px', fontFamily: 'Barlow Condensed, sans-serif',
+                  color: '#555', fontSize: '11px', fontFamily: 'var(--font-label)',
                   letterSpacing: '0.05em', padding: 0,
                 }}>
                   Remove icon
@@ -274,7 +274,7 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <div style={{ fontSize: '11px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.1em', marginBottom: '10px' }}>
+          <div style={{ fontSize: '11px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.1em', marginBottom: '10px' }}>
             CHOOSE YOUR ICON
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
@@ -301,13 +301,13 @@ export default function ProfilePage() {
           background: '#111', border: '1px solid #1e1e1e',
           borderRadius: '16px', padding: '22px', marginBottom: '16px',
         }}>
-          <div style={{ fontSize: '11px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.1em', marginBottom: '16px' }}>
+          <div style={{ fontSize: '11px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.1em', marginBottom: '16px' }}>
             PROFILE DETAILS
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div>
-              <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '5px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.08em' }}>
+              <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '5px', fontFamily: 'var(--font-label)', letterSpacing: '0.08em' }}>
                 USERNAME (leaderboard)
               </label>
               <input
@@ -317,13 +317,13 @@ export default function ProfilePage() {
                   width: '100%', boxSizing: 'border-box', background: '#0a0a0a',
                   border: '1px solid #2a2a2a', borderRadius: '10px',
                   padding: '11px 14px', color: '#fff', fontSize: '15px',
-                  fontFamily: 'Barlow, sans-serif',
+                  fontFamily: 'var(--font-body)',
                 }}
               />
             </div>
 
             <div>
-              <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '5px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.08em' }}>
+              <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '5px', fontFamily: 'var(--font-label)', letterSpacing: '0.08em' }}>
                 DISPLAY NAME (optional — defaults to username)
               </label>
               <input
@@ -333,14 +333,14 @@ export default function ProfilePage() {
                   width: '100%', boxSizing: 'border-box', background: '#0a0a0a',
                   border: '1px solid #2a2a2a', borderRadius: '10px',
                   padding: '11px 14px', color: '#fff', fontSize: '15px',
-                  fontFamily: 'Barlow, sans-serif',
+                  fontFamily: 'var(--font-body)',
                 }}
               />
             </div>
 
             {/* Display prefs */}
             <div>
-              <div style={{ fontSize: '11px', color: '#666', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.08em', marginBottom: '10px' }}>
+              <div style={{ fontSize: '11px', color: '#666', fontFamily: 'var(--font-label)', letterSpacing: '0.08em', marginBottom: '10px' }}>
                 LEADERBOARD DISPLAY
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -362,7 +362,7 @@ export default function ProfilePage() {
                       onChange={e => setForm(f => ({ ...f, [key]: e.target.checked }))}
                       style={{ accentColor: '#2371BB', width: '16px', height: '16px' }}
                     />
-                    <span style={{ fontSize: '13px', color: '#ccc', fontFamily: 'Barlow, sans-serif' }}>
+                    <span style={{ fontSize: '13px', color: '#ccc', fontFamily: 'var(--font-body)' }}>
                       {label}
                     </span>
                   </label>
@@ -372,7 +372,7 @@ export default function ProfilePage() {
           </div>
 
           {saveError && (
-            <div style={{ color: '#EA4742', fontSize: '13px', marginTop: '12px', fontFamily: 'Barlow, sans-serif' }}>
+            <div style={{ color: '#EA4742', fontSize: '13px', marginTop: '12px', fontFamily: 'var(--font-body)' }}>
               {saveError}
             </div>
           )}
@@ -385,7 +385,7 @@ export default function ProfilePage() {
               padding: '13px', borderRadius: '10px', border: 'none',
               background: saved ? '#4DB26E' : '#2371BB',
               color: '#fff', cursor: saving ? 'not-allowed' : 'pointer',
-              fontFamily: 'Bebas Neue, cursive', fontSize: '16px',
+              fontFamily: 'var(--font-display)', fontSize: '16px',
               letterSpacing: '0.08em', opacity: saving ? 0.7 : 1,
               transition: 'background 0.2s',
             }}
@@ -399,7 +399,7 @@ export default function ProfilePage() {
           background: '#111', border: '1px solid #1e1e1e',
           borderRadius: '16px', padding: '22px', marginBottom: '16px',
         }}>
-          <div style={{ fontSize: '11px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.1em', marginBottom: '14px' }}>
+          <div style={{ fontSize: '11px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.1em', marginBottom: '14px' }}>
             ACTIVE PROFILE
           </div>
 
@@ -422,7 +422,7 @@ export default function ProfilePage() {
               border: `1px solid ${grade.borderColour}44`,
             }}>
               {form.icon || (
-                <span style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '16px', color: grade.borderColour }}>
+                <span style={{ fontFamily: 'var(--font-display)', fontSize: '16px', color: grade.borderColour }}>
                   {displayName[0].toUpperCase()}
                 </span>
               )}
@@ -430,16 +430,16 @@ export default function ProfilePage() {
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#fff' }}>
                 {displayName}
-                <span style={{ marginLeft: '6px', fontSize: '10px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif' }}>
+                <span style={{ marginLeft: '6px', fontSize: '10px', color: '#555', fontFamily: 'var(--font-label)' }}>
                   (you)
                 </span>
               </div>
-              <div style={{ fontSize: '11px', color: '#555', marginTop: '1px', fontFamily: 'Barlow Condensed, sans-serif' }}>
+              <div style={{ fontSize: '11px', color: '#555', marginTop: '1px', fontFamily: 'var(--font-label)' }}>
                 {player.division}
               </div>
             </div>
             {activePlayerId === player.id && (
-              <div style={{ fontSize: '11px', color: '#2371BB', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700 }}>
+              <div style={{ fontSize: '11px', color: '#2371BB', fontFamily: 'var(--font-label)', fontWeight: 700 }}>
                 ACTIVE
               </div>
             )}
@@ -469,20 +469,20 @@ export default function ProfilePage() {
                     fontSize: '20px', background: '#111', border: '1px solid #2a2a2a',
                   }}>
                     {m.icon || (
-                      <span style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '16px', color: '#555' }}>
+                      <span style={{ fontFamily: 'var(--font-display)', fontSize: '16px', color: '#555' }}>
                         {mName[0].toUpperCase()}
                       </span>
                     )}
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#fff' }}>{mName}</div>
-                    <div style={{ fontSize: '11px', color: '#555', marginTop: '1px', fontFamily: 'Barlow Condensed, sans-serif' }}>
+                    <div style={{ fontSize: '11px', color: '#555', marginTop: '1px', fontFamily: 'var(--font-label)' }}>
                       {m.division}
                       {m.date_of_birth ? ` · born ${new Date(m.date_of_birth).getFullYear()}` : ''}
                     </div>
                   </div>
                   {isActive && (
-                    <div style={{ fontSize: '11px', color: '#2371BB', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700 }}>
+                    <div style={{ fontSize: '11px', color: '#2371BB', fontFamily: 'var(--font-label)', fontWeight: 700 }}>
                       ACTIVE
                     </div>
                   )}
@@ -510,7 +510,7 @@ export default function ProfilePage() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: showAddMember ? '18px' : '0' }}>
             <div>
               <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#fff' }}>Whānau</div>
-              <div style={{ fontSize: '11px', color: '#555', marginTop: '2px', fontFamily: 'Barlow Condensed, sans-serif' }}>
+              <div style={{ fontSize: '11px', color: '#555', marginTop: '2px', fontFamily: 'var(--font-label)' }}>
                 Add family members to submit scores for them
               </div>
             </div>
@@ -521,7 +521,7 @@ export default function ProfilePage() {
                 color: '#fff', border: 'none', borderRadius: '8px',
                 padding: '8px 14px', fontSize: '13px', fontWeight: 'bold',
                 cursor: 'pointer', flexShrink: 0,
-                fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.05em',
+                fontFamily: 'var(--font-label)', letterSpacing: '0.05em',
               }}
             >
               {showAddMember ? 'Cancel' : '+ Add'}
@@ -531,7 +531,7 @@ export default function ProfilePage() {
           {showAddMember && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div>
-                <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '5px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.08em' }}>
+                <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '5px', fontFamily: 'var(--font-label)', letterSpacing: '0.08em' }}>
                   FULL NAME
                 </label>
                 <input
@@ -542,12 +542,12 @@ export default function ProfilePage() {
                     width: '100%', boxSizing: 'border-box', background: '#0a0a0a',
                     border: '1px solid #2a2a2a', borderRadius: '10px',
                     padding: '11px 14px', color: '#fff', fontSize: '14px',
-                    fontFamily: 'Barlow, sans-serif',
+                    fontFamily: 'var(--font-body)',
                   }}
                 />
               </div>
               <div>
-                <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '5px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.08em' }}>
+                <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '5px', fontFamily: 'var(--font-label)', letterSpacing: '0.08em' }}>
                   USERNAME
                 </label>
                 <input
@@ -558,12 +558,12 @@ export default function ProfilePage() {
                     width: '100%', boxSizing: 'border-box', background: '#0a0a0a',
                     border: '1px solid #2a2a2a', borderRadius: '10px',
                     padding: '11px 14px', color: '#fff', fontSize: '14px',
-                    fontFamily: 'Barlow, sans-serif',
+                    fontFamily: 'var(--font-body)',
                   }}
                 />
               </div>
               <div>
-                <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '5px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.08em' }}>
+                <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '5px', fontFamily: 'var(--font-label)', letterSpacing: '0.08em' }}>
                   DATE OF BIRTH
                 </label>
                 <input
@@ -574,13 +574,13 @@ export default function ProfilePage() {
                     width: '100%', boxSizing: 'border-box', background: '#0a0a0a',
                     border: '1px solid #2a2a2a', borderRadius: '10px',
                     padding: '11px 14px', color: '#fff', fontSize: '14px',
-                    fontFamily: 'Barlow, sans-serif',
+                    fontFamily: 'var(--font-body)',
                   }}
                 />
               </div>
               {memberForm.date_of_birth && !isJuniorDob(memberForm.date_of_birth) && (
                 <div>
-                  <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '8px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.08em' }}>
+                  <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '8px', fontFamily: 'var(--font-label)', letterSpacing: '0.08em' }}>
                     GENDER
                   </label>
                   <div style={{ display: 'flex', gap: '8px' }}>
@@ -590,7 +590,7 @@ export default function ProfilePage() {
                         border: `1px solid ${memberForm.gender === g ? '#2371BB' : '#2a2a2a'}`,
                         background: memberForm.gender === g ? '#0d1a2e' : 'transparent',
                         color: memberForm.gender === g ? '#fff' : '#555',
-                        cursor: 'pointer', fontSize: '13px', fontFamily: 'Barlow, sans-serif',
+                        cursor: 'pointer', fontSize: '13px', fontFamily: 'var(--font-body)',
                       }}>
                         {g === 'male' ? "Men's" : "Women's"}
                       </button>
@@ -599,11 +599,11 @@ export default function ProfilePage() {
                 </div>
               )}
               {memberForm.date_of_birth && (
-                <div style={{ fontSize: '11px', color: isJuniorDob(memberForm.date_of_birth) ? '#F9B051' : '#4DB26E', fontFamily: 'Barlow Condensed, sans-serif' }}>
+                <div style={{ fontSize: '11px', color: isJuniorDob(memberForm.date_of_birth) ? '#F9B051' : '#4DB26E', fontFamily: 'var(--font-label)' }}>
                   Division: {isJuniorDob(memberForm.date_of_birth) ? 'Juniors' : memberForm.gender === 'female' ? "Women's" : "Men's"}
                 </div>
               )}
-              {memberError && <div style={{ color: '#EA4742', fontSize: '13px', fontFamily: 'Barlow, sans-serif' }}>{memberError}</div>}
+              {memberError && <div style={{ color: '#EA4742', fontSize: '13px', fontFamily: 'var(--font-body)' }}>{memberError}</div>}
               <button
                 onClick={handleAddMember}
                 disabled={addingMember || !memberForm.full_name || !memberForm.username || !memberForm.date_of_birth}
@@ -611,7 +611,7 @@ export default function ProfilePage() {
                   background: memberForm.full_name && memberForm.username && memberForm.date_of_birth ? '#2371BB' : '#1a1a1a',
                   color: memberForm.full_name && memberForm.username && memberForm.date_of_birth ? '#fff' : '#444',
                   border: 'none', borderRadius: '10px', padding: '13px',
-                  fontFamily: 'Bebas Neue, cursive', fontSize: '16px', letterSpacing: '0.08em',
+                  fontFamily: 'var(--font-display)', fontSize: '16px', letterSpacing: '0.08em',
                   cursor: 'pointer', marginTop: '4px',
                 }}
               >

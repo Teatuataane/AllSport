@@ -218,7 +218,7 @@ export default function VotePage() {
   if (loading || !vote) {
     return (
       <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ color: '#555', fontFamily: 'Barlow, sans-serif' }}>Loading...</div>
+        <div style={{ color: '#555', fontFamily: 'var(--font-body)' }}>Loading...</div>
       </div>
     )
   }
@@ -237,10 +237,10 @@ export default function VotePage() {
 
       {/* Vote header */}
       <div style={{ padding: '20px 16px 0' }}>
-        <div style={{ fontSize: '11px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.1em', marginBottom: '4px' }}>
+        <div style={{ fontSize: '11px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.1em', marginBottom: '4px' }}>
           EVENT VOTE · {formattedDate}
         </div>
-        <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '26px', letterSpacing: '0.05em', color: '#fff', lineHeight: 1.1, marginBottom: '20px' }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: '26px', letterSpacing: '0.05em', color: '#fff', lineHeight: 1.1, marginBottom: '20px' }}>
           {vote.name}
         </div>
 
@@ -250,7 +250,7 @@ export default function VotePage() {
             <div style={{
               fontSize: '12px',
               color: '#888',
-              fontFamily: 'Barlow Condensed, sans-serif',
+              fontFamily: 'var(--font-label)',
               letterSpacing: '0.05em',
               marginBottom: '8px',
             }}>
@@ -296,10 +296,10 @@ export default function VotePage() {
       {/* Review screen */}
       {showReview ? (
         <div style={{ padding: '0 16px' }}>
-          <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '28px', letterSpacing: '0.05em', color: '#fff', marginBottom: '6px' }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: '28px', letterSpacing: '0.05em', color: '#fff', marginBottom: '6px' }}>
             Review Your Vote
           </div>
-          <div style={{ fontSize: '12px', color: '#EA4742', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.05em', marginBottom: '20px' }}>
+          <div style={{ fontSize: '12px', color: '#EA4742', fontFamily: 'var(--font-label)', letterSpacing: '0.05em', marginBottom: '20px' }}>
             Your vote is locked after submission and cannot be changed.
           </div>
 
@@ -315,14 +315,14 @@ export default function VotePage() {
                 alignItems: 'center',
               }}>
                 <div>
-                  <div style={{ fontSize: '11px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.08em', marginBottom: '2px' }}>
+                  <div style={{ fontSize: '11px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.08em', marginBottom: '2px' }}>
                     DOMAIN {domain.number}
                   </div>
-                  <div style={{ fontSize: '12px', color: '#888', fontFamily: 'Barlow, sans-serif' }}>
+                  <div style={{ fontSize: '12px', color: '#888', fontFamily: 'var(--font-body)' }}>
                     {domain.name}
                   </div>
                 </div>
-                <div style={{ fontSize: '14px', color: '#B87DB5', fontWeight: 'bold', fontFamily: 'Barlow Condensed, sans-serif', textAlign: 'right', maxWidth: '55%' }}>
+                <div style={{ fontSize: '14px', color: '#B87DB5', fontWeight: 'bold', fontFamily: 'var(--font-label)', textAlign: 'right', maxWidth: '55%' }}>
                   {selections[domain.number] || '—'}
                 </div>
               </div>
@@ -333,7 +333,7 @@ export default function VotePage() {
             <div style={{
               background: '#2e0d0d', border: '1px solid #EA4742', borderRadius: '8px',
               padding: '10px 14px', color: '#EA4742', fontSize: '13px',
-              fontFamily: 'Barlow, sans-serif', marginBottom: '16px',
+              fontFamily: 'var(--font-body)', marginBottom: '16px',
             }}>
               {error}
             </div>
@@ -347,7 +347,7 @@ export default function VotePage() {
                 flex: 1, padding: '14px', borderRadius: '10px',
                 border: '1px solid #333', background: 'transparent',
                 color: '#888', cursor: 'pointer', fontSize: '14px',
-                fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.05em',
+                fontFamily: 'var(--font-label)', letterSpacing: '0.05em',
                 fontWeight: 700,
               }}
             >
@@ -362,7 +362,7 @@ export default function VotePage() {
                 background: submitting ? '#333' : 'linear-gradient(90deg, #B87DB5, #2371BB)',
                 color: '#fff', cursor: submitting ? 'not-allowed' : 'pointer',
                 fontSize: '16px',
-                fontFamily: 'Bebas Neue, cursive', letterSpacing: '0.1em',
+                fontFamily: 'var(--font-display)', letterSpacing: '0.1em',
                 opacity: submitting ? 0.6 : 1,
               }}
             >
@@ -374,13 +374,13 @@ export default function VotePage() {
         /* Domain voting screen */
         <div style={{ padding: '0 16px' }}>
           <div style={{ marginBottom: '20px' }}>
-            <div style={{ fontSize: '11px', color: '#B87DB5', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.1em', marginBottom: '4px' }}>
+            <div style={{ fontSize: '11px', color: '#B87DB5', fontFamily: 'var(--font-label)', letterSpacing: '0.1em', marginBottom: '4px' }}>
               DOMAIN {currentDomain.number}
             </div>
-            <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '28px', letterSpacing: '0.05em', color: '#fff', lineHeight: 1.1, marginBottom: '6px' }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '28px', letterSpacing: '0.05em', color: '#fff', lineHeight: 1.1, marginBottom: '6px' }}>
               {currentDomain.name}
             </div>
-            <div style={{ fontSize: '13px', color: '#888', fontFamily: 'Barlow, sans-serif' }}>
+            <div style={{ fontSize: '13px', color: '#888', fontFamily: 'var(--font-body)' }}>
               Which event should we play?
             </div>
           </div>
@@ -388,7 +388,7 @@ export default function VotePage() {
           {/* Radio cards */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px' }}>
             {nominationsForDomain.length === 0 ? (
-              <div style={{ color: '#555', fontSize: '13px', fontFamily: 'Barlow, sans-serif', padding: '20px', textAlign: 'center' }}>
+              <div style={{ color: '#555', fontSize: '13px', fontFamily: 'var(--font-body)', padding: '20px', textAlign: 'center' }}>
                 No events nominated for this domain yet.
               </div>
             ) : (
@@ -429,7 +429,7 @@ export default function VotePage() {
                     </div>
                     <div style={{
                       fontSize: '16px',
-                      fontFamily: 'Barlow, sans-serif',
+                      fontFamily: 'var(--font-body)',
                       color: isSelected ? '#fff' : '#ccc',
                       fontWeight: isSelected ? 600 : 400,
                     }}>
@@ -445,7 +445,7 @@ export default function VotePage() {
             <div style={{
               background: '#2e0d0d', border: '1px solid #EA4742', borderRadius: '8px',
               padding: '10px 14px', color: '#EA4742', fontSize: '13px',
-              fontFamily: 'Barlow, sans-serif', marginBottom: '16px',
+              fontFamily: 'var(--font-body)', marginBottom: '16px',
             }}>
               {error}
             </div>
@@ -459,7 +459,7 @@ export default function VotePage() {
                   flex: 1, padding: '14px', borderRadius: '10px',
                   border: '1px solid #333', background: 'transparent',
                   color: '#888', cursor: 'pointer', fontSize: '14px',
-                  fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.05em',
+                  fontFamily: 'var(--font-label)', letterSpacing: '0.05em',
                   fontWeight: 700,
                 }}
               >
@@ -476,7 +476,7 @@ export default function VotePage() {
                 color: selectedForCurrent ? '#fff' : '#555',
                 cursor: selectedForCurrent && !submitting ? 'pointer' : 'not-allowed',
                 fontSize: '16px',
-                fontFamily: 'Bebas Neue, cursive', letterSpacing: '0.1em',
+                fontFamily: 'var(--font-display)', letterSpacing: '0.1em',
                 opacity: submitting ? 0.6 : 1,
               }}
             >

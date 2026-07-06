@@ -8,14 +8,14 @@ const supabase = createClient()
 
 const TIERS = [
   { tier: 1, reward: 'Supporters Wall', icon: '🫶', color: '#888888', donationMin: 0, referralsNeeded: 1, referralPath: true },
-  { tier: 2, reward: 'Digital Certificate', icon: '📜', color: '#2d9e4f', donationMin: 50, referralsNeeded: 3, referralPath: true },
-  { tier: 3, reward: 'Sticker Pack', icon: '🎁', color: '#2563eb', donationMin: 200, referralsNeeded: 6, referralPath: true },
-  { tier: 4, reward: 'Colours T-Shirt', icon: '👕', color: '#9333ea', donationMin: 500, referralsNeeded: 12, referralPath: true },
+  { tier: 2, reward: 'Digital Certificate', icon: '📜', color: '#4DB26E', donationMin: 50, referralsNeeded: 3, referralPath: true },
+  { tier: 3, reward: 'Sticker Pack', icon: '🎁', color: '#2371BB', donationMin: 200, referralsNeeded: 6, referralPath: true },
+  { tier: 4, reward: 'Colours T-Shirt', icon: '👕', color: '#B87DB5', donationMin: 500, referralsNeeded: 12, referralPath: true },
   { tier: 5, reward: 'Grading Hoodie', icon: '🧥', color: '#EA4742', donationMin: 1000, referralsNeeded: 18, referralPath: true },
   { tier: 6, reward: 'Clothing Stack', icon: '🎽', color: '#F9B051', donationMin: 2000, referralsNeeded: 25, referralPath: true },
-  { tier: 7, reward: 'Personal Coaching — 20hrs', icon: '🏆', color: '#f4a226', donationMin: 2500, referralsNeeded: null, referralPath: false },
-  { tier: 8, reward: 'Personal Coaching — 50hrs', icon: '🏆', color: '#f4a226', donationMin: 5000, referralsNeeded: null, referralPath: false },
-  { tier: 9, reward: 'AllSport Comes To You', icon: '🌍', color: '#f4a226', donationMin: 10000, referralsNeeded: null, referralPath: false },
+  { tier: 7, reward: 'Personal Coaching — 20hrs', icon: '🏆', color: '#F9B051', donationMin: 2500, referralsNeeded: null, referralPath: false },
+  { tier: 8, reward: 'Personal Coaching — 50hrs', icon: '🏆', color: '#F9B051', donationMin: 5000, referralsNeeded: null, referralPath: false },
+  { tier: 9, reward: 'AllSport Comes To You', icon: '🌍', color: '#F9B051', donationMin: 10000, referralsNeeded: null, referralPath: false },
 ]
 
 function getCurrentTier(totalDonated: number, qualifiedReferrals: number) {
@@ -177,7 +177,7 @@ export default function MyKoha() {
 
   if (loading) return (
     <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ color: '#555', fontFamily: 'Barlow, sans-serif' }}>Loading...</div>
+      <div style={{ color: '#555', fontFamily: 'var(--font-body)' }}>Loading...</div>
     </div>
   )
 
@@ -192,7 +192,7 @@ export default function MyKoha() {
           padding: 12px 14px;
           color: #fff;
           font-size: 14px;
-          font-family: Barlow, sans-serif;
+          font-family: var(--font-body);
           box-sizing: border-box;
           outline: none;
         }
@@ -253,10 +253,10 @@ export default function MyKoha() {
               background: '#111', border: '1px solid #1e1e1e',
               borderTop: '3px solid #4DB26E', borderRadius: '12px', padding: '20px 22px',
             }}>
-              <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '44px', color: '#4DB26E', lineHeight: 1 }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '44px', color: '#4DB26E', lineHeight: 1 }}>
                 ${totalDonated.toLocaleString()}
               </div>
-              <div style={{ fontSize: '11px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.1em', marginTop: '4px' }}>
+              <div style={{ fontSize: '11px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.1em', marginTop: '4px' }}>
                 TOTAL DONATED
               </div>
             </div>
@@ -264,10 +264,10 @@ export default function MyKoha() {
               background: '#111', border: '1px solid #1e1e1e',
               borderTop: '3px solid #F9B051', borderRadius: '12px', padding: '20px 22px',
             }}>
-              <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '44px', color: '#F9B051', lineHeight: 1 }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '44px', color: '#F9B051', lineHeight: 1 }}>
                 {qualifiedReferrals}
               </div>
-              <div style={{ fontSize: '11px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.1em', marginTop: '4px' }}>
+              <div style={{ fontSize: '11px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.1em', marginTop: '4px' }}>
                 QUALIFIED REFERRALS
               </div>
             </div>
@@ -284,10 +284,10 @@ export default function MyKoha() {
             }}>
               <div style={{ fontSize: '40px', flexShrink: 0 }}>{currentTier.icon}</div>
               <div>
-                <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', letterSpacing: '0.12em', color: currentTier.color, marginBottom: '4px' }}>
+                <div style={{ fontFamily: 'var(--font-label)', fontSize: '11px', letterSpacing: '0.12em', color: currentTier.color, marginBottom: '4px' }}>
                   TIER {currentTier.tier} — CURRENT
                 </div>
-                <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '28px', color: '#fff', lineHeight: 1 }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '28px', color: '#fff', lineHeight: 1 }}>
                   {currentTier.reward}
                 </div>
               </div>
@@ -297,7 +297,7 @@ export default function MyKoha() {
               background: '#111', border: '1px solid #333',
               borderRadius: '16px', padding: '24px 28px',
               marginBottom: '20px', maxWidth: '480px',
-              color: '#555', fontFamily: 'Barlow, sans-serif', fontSize: '14px',
+              color: '#555', fontFamily: 'var(--font-body)', fontSize: '14px',
             }}>
               No tier yet — donate any amount or refer 1 player who completes 10 sessions to reach Tier 1.
             </div>
@@ -311,7 +311,7 @@ export default function MyKoha() {
               borderRadius: '12px', padding: '20px 22px', maxWidth: '480px',
             }}>
               <div style={{
-                fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px',
+                fontFamily: 'var(--font-label)', fontSize: '11px',
                 letterSpacing: '0.1em', color: '#555', marginBottom: '8px',
               }}>
                 NEXT: TIER {nextTier.tier} — {nextTier.reward.toUpperCase()}
@@ -321,7 +321,7 @@ export default function MyKoha() {
               <div style={{ marginBottom: '10px' }}>
                 <div style={{
                   display: 'flex', justifyContent: 'space-between',
-                  fontSize: '12px', color: '#888', fontFamily: 'Barlow Condensed, sans-serif',
+                  fontSize: '12px', color: '#888', fontFamily: 'var(--font-label)',
                   marginBottom: '5px',
                 }}>
                   <span>Donation path</span>
@@ -344,7 +344,7 @@ export default function MyKoha() {
                 <div>
                   <div style={{
                     display: 'flex', justifyContent: 'space-between',
-                    fontSize: '12px', color: '#888', fontFamily: 'Barlow Condensed, sans-serif',
+                    fontSize: '12px', color: '#888', fontFamily: 'var(--font-label)',
                     marginBottom: '5px',
                   }}>
                     <span>Referral path</span>
@@ -364,7 +364,7 @@ export default function MyKoha() {
               )}
 
               {!nextTier.referralPath && (
-                <div style={{ fontSize: '12px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', marginTop: '8px' }}>
+                <div style={{ fontSize: '12px', color: '#555', fontFamily: 'var(--font-label)', marginTop: '8px' }}>
                   Tier {nextTier.tier} requires a donation of ${nextTier.donationMin.toLocaleString()}+. No referral path.
                 </div>
               )}
@@ -373,9 +373,9 @@ export default function MyKoha() {
 
           {!nextTier && currentTier && (
             <div style={{
-              background: '#111', border: '1px solid #f4a22633',
+              background: '#111', border: '1px solid rgba(249,176,81,0.2)',
               borderRadius: '12px', padding: '20px 22px', maxWidth: '480px',
-              color: '#f4a226', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px',
+              color: '#F9B051', fontFamily: 'var(--font-label)', fontSize: '14px',
             }}>
               Maximum tier reached — thank you for your incredible support of AllSport.
             </div>
@@ -405,14 +405,14 @@ export default function MyKoha() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '16px' }}>
                 <div style={{ fontSize: '24px' }}>🔒</div>
                 <div>
-                  <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', letterSpacing: '0.1em', color: '#555', marginBottom: '3px' }}>
+                  <div style={{ fontFamily: 'var(--font-label)', fontSize: '11px', letterSpacing: '0.1em', color: '#555', marginBottom: '3px' }}>
                     YOUR REFERRER — PERMANENT
                   </div>
-                  <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '22px', color: '#fff', lineHeight: 1 }}>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', color: '#fff', lineHeight: 1 }}>
                     {referrerPlayer?.display_name || referrerPlayer?.username || 'AllSport Player'}
                   </div>
                   {referrerPlayer?.username && (
-                    <div style={{ fontSize: '12px', color: '#555', fontFamily: 'Barlow, sans-serif', marginTop: '2px' }}>
+                    <div style={{ fontSize: '12px', color: '#555', fontFamily: 'var(--font-body)', marginTop: '2px' }}>
                       @{referrerPlayer.username}
                     </div>
                   )}
@@ -423,7 +423,7 @@ export default function MyKoha() {
               <div style={{ background: '#0a0a0a', borderRadius: '10px', padding: '14px 16px' }}>
                 <div style={{
                   display: 'flex', justifyContent: 'space-between',
-                  fontSize: '12px', color: '#888', fontFamily: 'Barlow Condensed, sans-serif',
+                  fontSize: '12px', color: '#888', fontFamily: 'var(--font-label)',
                   marginBottom: '6px',
                 }}>
                   <span>Sessions completed</span>
@@ -440,7 +440,7 @@ export default function MyKoha() {
                   }} />
                 </div>
                 {myReferral.session_count < 10 && (
-                  <div style={{ fontSize: '11px', color: '#444', fontFamily: 'Barlow Condensed, sans-serif', marginTop: '6px' }}>
+                  <div style={{ fontSize: '11px', color: '#444', fontFamily: 'var(--font-label)', marginTop: '6px' }}>
                     {10 - myReferral.session_count} more session{10 - myReferral.session_count !== 1 ? 's' : ''} to qualify your referrer
                   </div>
                 )}
@@ -453,7 +453,7 @@ export default function MyKoha() {
                 <div style={{
                   background: '#0d1f0d', border: '1px solid #4DB26E',
                   borderRadius: '10px', padding: '14px 16px', marginBottom: '16px',
-                  color: '#4DB26E', fontFamily: 'Barlow, sans-serif', fontSize: '14px',
+                  color: '#4DB26E', fontFamily: 'var(--font-body)', fontSize: '14px',
                 }}>
                   Referrer nominated successfully.
                 </div>
@@ -465,14 +465,14 @@ export default function MyKoha() {
                   background: '#111', border: '1px solid #4DB26E',
                   borderRadius: '14px', padding: '22px 24px',
                 }}>
-                  <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '18px', color: '#fff', marginBottom: '6px' }}>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', color: '#fff', marginBottom: '6px' }}>
                     Confirm Nomination
                   </div>
-                  <p style={{ color: '#888', fontSize: '14px', fontFamily: 'Barlow, sans-serif', lineHeight: 1.6, marginBottom: '16px' }}>
+                  <p style={{ color: '#888', fontSize: '14px', fontFamily: 'var(--font-body)', lineHeight: 1.6, marginBottom: '16px' }}>
                     Nominate <strong style={{ color: '#fff' }}>{selectedCandidate.display_name || selectedCandidate.username}</strong> as your referrer? This is permanent and cannot be changed.
                   </p>
                   {nominateError && (
-                    <div style={{ color: '#EA4742', fontSize: '13px', marginBottom: '12px', fontFamily: 'Barlow, sans-serif' }}>
+                    <div style={{ color: '#EA4742', fontSize: '13px', marginBottom: '12px', fontFamily: 'var(--font-body)' }}>
                       {nominateError}
                     </div>
                   )}
@@ -482,7 +482,7 @@ export default function MyKoha() {
                       style={{
                         flex: 1, padding: '11px', borderRadius: '8px',
                         border: '1px solid #333', background: 'transparent',
-                        color: '#888', cursor: 'pointer', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700,
+                        color: '#888', cursor: 'pointer', fontFamily: 'var(--font-label)', fontWeight: 700,
                       }}
                     >
                       Cancel
@@ -494,7 +494,7 @@ export default function MyKoha() {
                         flex: 2, padding: '11px', borderRadius: '8px',
                         border: 'none', background: '#4DB26E',
                         color: '#fff', cursor: 'pointer',
-                        fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: '14px',
+                        fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '14px',
                       }}
                     >
                       {nominating ? 'Saving...' : 'Confirm'}
@@ -504,7 +504,7 @@ export default function MyKoha() {
               ) : (
                 /* Search input */
                 <div>
-                  <div style={{ marginBottom: '8px', fontSize: '13px', color: '#888', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.05em' }}>
+                  <div style={{ marginBottom: '8px', fontSize: '13px', color: '#888', fontFamily: 'var(--font-label)', letterSpacing: '0.05em' }}>
                     Search by username
                   </div>
                   <input
@@ -514,7 +514,7 @@ export default function MyKoha() {
                     placeholder="Start typing a username..."
                   />
                   {searchLoading && (
-                    <div style={{ fontSize: '12px', color: '#555', padding: '10px 0', fontFamily: 'Barlow, sans-serif' }}>
+                    <div style={{ fontSize: '12px', color: '#555', padding: '10px 0', fontFamily: 'var(--font-body)' }}>
                       Searching...
                     </div>
                   )}
@@ -530,11 +530,11 @@ export default function MyKoha() {
                           onClick={() => { setSelectedCandidate(p); setSearchTerm(''); setSearchResults([]) }}
                         >
                           <div>
-                            <div style={{ color: '#fff', fontSize: '14px', fontFamily: 'Barlow, sans-serif', fontWeight: 600 }}>
+                            <div style={{ color: '#fff', fontSize: '14px', fontFamily: 'var(--font-body)', fontWeight: 600 }}>
                               {p.display_name || p.username}
                             </div>
                             {p.username && (
-                              <div style={{ color: '#555', fontSize: '11px', fontFamily: 'Barlow Condensed, sans-serif' }}>
+                              <div style={{ color: '#555', fontSize: '11px', fontFamily: 'var(--font-label)' }}>
                                 @{p.username}
                               </div>
                             )}
@@ -544,11 +544,11 @@ export default function MyKoha() {
                     </div>
                   )}
                   {searchTerm.length >= 2 && !searchLoading && searchResults.length === 0 && (
-                    <div style={{ fontSize: '13px', color: '#444', padding: '10px 0', fontFamily: 'Barlow, sans-serif' }}>
+                    <div style={{ fontSize: '13px', color: '#444', padding: '10px 0', fontFamily: 'var(--font-body)' }}>
                       No players found.
                     </div>
                   )}
-                  <div style={{ fontSize: '12px', color: '#444', marginTop: '10px', fontFamily: 'Barlow Condensed, sans-serif', lineHeight: 1.5 }}>
+                  <div style={{ fontSize: '12px', color: '#444', marginTop: '10px', fontFamily: 'var(--font-label)', lineHeight: 1.5 }}>
                     Optional — only nominate someone if they genuinely introduced you to AllSport.
                   </div>
                 </div>
@@ -577,11 +577,11 @@ export default function MyKoha() {
               background: '#111', border: '1px solid #1e1e1e',
               borderRadius: '10px', padding: '12px 20px',
             }}>
-              <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', color: '#F9B051' }}>
+              <span style={{ fontFamily: 'var(--font-label)', fontSize: '13px', color: '#F9B051' }}>
                 <strong>{qualifiedReferralsList.length}</strong> qualified
               </span>
               <span style={{ color: '#333' }}>·</span>
-              <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', color: '#888' }}>
+              <span style={{ fontFamily: 'var(--font-label)', fontSize: '13px', color: '#888' }}>
                 <strong>{pendingReferralsList.length}</strong> pending
               </span>
             </div>
@@ -591,7 +591,7 @@ export default function MyKoha() {
             <div style={{
               background: '#111', border: '1px solid #1e1e1e',
               borderRadius: '12px', padding: '28px 24px', maxWidth: '480px',
-              color: '#555', fontFamily: 'Barlow, sans-serif', fontSize: '14px', textAlign: 'center',
+              color: '#555', fontFamily: 'var(--font-body)', fontSize: '14px', textAlign: 'center',
             }}>
               No referrals yet. Share your AllSport invite link to grow the community.
             </div>
@@ -600,7 +600,7 @@ export default function MyKoha() {
               {/* Qualified */}
               {qualifiedReferralsList.length > 0 && (
                 <>
-                  <div style={{ fontSize: '11px', color: '#F9B051', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.1em', marginTop: '4px', marginBottom: '4px' }}>
+                  <div style={{ fontSize: '11px', color: '#F9B051', fontFamily: 'var(--font-label)', letterSpacing: '0.1em', marginTop: '4px', marginBottom: '4px' }}>
                     QUALIFIED
                   </div>
                   {qualifiedReferralsList.map(r => (
@@ -612,7 +612,7 @@ export default function MyKoha() {
               {/* Pending */}
               {pendingReferralsList.length > 0 && (
                 <>
-                  <div style={{ fontSize: '11px', color: '#888', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.1em', marginTop: qualifiedReferralsList.length > 0 ? '12px' : '4px', marginBottom: '4px' }}>
+                  <div style={{ fontSize: '11px', color: '#888', fontFamily: 'var(--font-label)', letterSpacing: '0.1em', marginTop: qualifiedReferralsList.length > 0 ? '12px' : '4px', marginBottom: '4px' }}>
                     PENDING
                   </div>
                   {pendingReferralsList.map(r => (
@@ -631,7 +631,7 @@ export default function MyKoha() {
           <div className="tag">Support the kaupapa</div>
           <h2 style={{ fontSize: 'clamp(36px, 5vw, 72px)', marginBottom: '8px' }}>
             SUPPORT THE <span style={{
-              background: 'linear-gradient(90deg, #2d9e4f, #2371BB)',
+              background: 'linear-gradient(90deg, #4DB26E, #2371BB)',
               WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
             }}>KAUPAPA</span>
           </h2>
@@ -646,34 +646,34 @@ export default function MyKoha() {
             borderRadius: '14px', padding: '28px 32px', maxWidth: '440px',
             margin: '0 auto 24px', textAlign: 'left',
           }}>
-            <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '20px', color: '#fff', marginBottom: '16px', letterSpacing: '0.05em' }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '20px', color: '#fff', marginBottom: '16px', letterSpacing: '0.05em' }}>
               Bank Transfer
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div>
-                <div style={{ fontSize: '11px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.1em', marginBottom: '2px' }}>ACCOUNT NAME</div>
-                <div style={{ color: '#fff', fontFamily: 'Barlow, sans-serif', fontSize: '15px' }}>AllSport Aotearoa</div>
+                <div style={{ fontSize: '11px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.1em', marginBottom: '2px' }}>ACCOUNT NAME</div>
+                <div style={{ color: '#fff', fontFamily: 'var(--font-body)', fontSize: '15px' }}>AllSport Aotearoa</div>
               </div>
               <div>
-                <div style={{ fontSize: '11px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.1em', marginBottom: '2px' }}>BANK DETAILS</div>
-                <div style={{ color: '#888', fontFamily: 'Barlow, sans-serif', fontSize: '14px' }}>Contact Tane for bank details</div>
+                <div style={{ fontSize: '11px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.1em', marginBottom: '2px' }}>BANK DETAILS</div>
+                <div style={{ color: '#888', fontFamily: 'var(--font-body)', fontSize: '14px' }}>Contact Tane for bank details</div>
               </div>
               <div>
-                <div style={{ fontSize: '11px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.1em', marginBottom: '2px' }}>REFERENCE</div>
-                <div style={{ color: '#888', fontFamily: 'Barlow, sans-serif', fontSize: '14px' }}>Your name or username</div>
+                <div style={{ fontSize: '11px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.1em', marginBottom: '2px' }}>REFERENCE</div>
+                <div style={{ color: '#888', fontFamily: 'var(--font-body)', fontSize: '14px' }}>Your name or username</div>
               </div>
             </div>
           </div>
 
           {/* IRD callout */}
           <div style={{
-            background: '#111', border: '1px solid #f4a22633',
+            background: '#111', border: '1px solid rgba(249,176,81,0.2)',
             borderRadius: '12px', padding: '18px 24px', maxWidth: '440px',
             margin: '0 auto 24px', display: 'flex', alignItems: 'center', gap: '14px', textAlign: 'left',
           }}>
             <div style={{ fontSize: '24px', flexShrink: 0 }}>💸</div>
             <div>
-              <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '18px', color: '#f4a226', marginBottom: '2px' }}>IRD 33% Tax Rebate</div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', color: '#F9B051', marginBottom: '2px' }}>IRD 33% Tax Rebate</div>
               <p style={{ color: '#aaa', fontSize: '13px', lineHeight: 1.6, margin: 0 }}>
                 Your koha qualifies for a 33% IRD tax credit. Your $100 contribution effectively costs $67.
               </p>
@@ -681,7 +681,7 @@ export default function MyKoha() {
           </div>
 
           <Link href="/koha" style={{
-            color: '#2371BB', fontFamily: 'Barlow Condensed, sans-serif',
+            color: '#2371BB', fontFamily: 'var(--font-label)',
             fontSize: '14px', letterSpacing: '0.08em', textDecoration: 'none',
           }}>
             View full tier breakdown on /koha →
@@ -704,7 +704,7 @@ function ReferralRow({ referral }: { referral: any }) {
       display: 'flex', alignItems: 'center', gap: '14px',
     }}>
       <div style={{ flex: 1 }}>
-        <div style={{ color: '#fff', fontSize: '14px', fontFamily: 'Barlow, sans-serif', fontWeight: 600 }}>
+        <div style={{ color: '#fff', fontSize: '14px', fontFamily: 'var(--font-body)', fontWeight: 600 }}>
           {name}
         </div>
         {/* Progress bar */}
@@ -715,7 +715,7 @@ function ReferralRow({ referral }: { referral: any }) {
               width: `${Math.min((sc / 10) * 100, 100)}%`,
             }} />
           </div>
-          <div style={{ fontSize: '10px', color: '#444', fontFamily: 'Barlow Condensed, sans-serif', marginTop: '3px' }}>
+          <div style={{ fontSize: '10px', color: '#444', fontFamily: 'var(--font-label)', marginTop: '3px' }}>
             {sc}/10 sessions
           </div>
         </div>
@@ -725,7 +725,7 @@ function ReferralRow({ referral }: { referral: any }) {
           background: '#F9B05122', border: '1px solid #F9B051',
           borderRadius: '6px', padding: '4px 10px',
           fontSize: '10px', color: '#F9B051',
-          fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, letterSpacing: '0.08em',
+          fontFamily: 'var(--font-label)', fontWeight: 700, letterSpacing: '0.08em',
           flexShrink: 0,
         }}>
           QUALIFIED

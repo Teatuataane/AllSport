@@ -128,7 +128,7 @@ export default function VoteBanner({ userId, isJudge }: VoteBannerProps) {
         {/* Vote name + date */}
         <div style={{ marginBottom: '10px' }}>
           <div style={{
-            fontFamily: 'Bebas Neue, cursive',
+            fontFamily: 'var(--font-display)',
             fontSize: '20px',
             color: '#fff',
             letterSpacing: '0.05em',
@@ -140,7 +140,7 @@ export default function VoteBanner({ userId, isJudge }: VoteBannerProps) {
             fontSize: '12px',
             color: '#888',
             marginTop: '3px',
-            fontFamily: 'Barlow Condensed, sans-serif',
+            fontFamily: 'var(--font-label)',
             letterSpacing: '0.05em',
           }}>
             Event date: {formattedDate}
@@ -150,7 +150,7 @@ export default function VoteBanner({ userId, isJudge }: VoteBannerProps) {
         {/* Countdown */}
         <div style={{
           fontSize: '13px',
-          fontFamily: 'Barlow Condensed, sans-serif',
+          fontFamily: 'var(--font-label)',
           letterSpacing: '0.08em',
           color: voteState === 'voted' ? '#4DB26E' : '#F9B051',
           marginBottom: '14px',
@@ -166,7 +166,7 @@ export default function VoteBanner({ userId, isJudge }: VoteBannerProps) {
               <div style={{
                 fontSize: '13px',
                 color: '#4DB26E',
-                fontFamily: 'Barlow Condensed, sans-serif',
+                fontFamily: 'var(--font-label)',
                 letterSpacing: '0.05em',
                 fontWeight: 700,
               }}>
@@ -179,7 +179,7 @@ export default function VoteBanner({ userId, isJudge }: VoteBannerProps) {
                 background: '#1a0d2e',
                 color: '#B87DB5',
                 fontSize: '13px',
-                fontFamily: 'Barlow Condensed, sans-serif',
+                fontFamily: 'var(--font-label)',
                 fontWeight: 700,
                 letterSpacing: '0.05em',
                 textDecoration: 'none',
@@ -196,7 +196,7 @@ export default function VoteBanner({ userId, isJudge }: VoteBannerProps) {
               background: 'linear-gradient(90deg, #B87DB5, #2371BB)',
               color: '#fff',
               fontSize: '14px',
-              fontFamily: 'Bebas Neue, cursive',
+              fontFamily: 'var(--font-display)',
               letterSpacing: '0.1em',
               textDecoration: 'none',
               display: 'inline-block',
@@ -211,7 +211,7 @@ export default function VoteBanner({ userId, isJudge }: VoteBannerProps) {
               background: 'linear-gradient(90deg, #B87DB5, #2371BB)',
               color: '#fff',
               fontSize: '14px',
-              fontFamily: 'Bebas Neue, cursive',
+              fontFamily: 'var(--font-display)',
               letterSpacing: '0.1em',
               textDecoration: 'none',
               display: 'inline-block',
@@ -225,7 +225,7 @@ export default function VoteBanner({ userId, isJudge }: VoteBannerProps) {
               fontSize: '12px',
               color: '#555',
               textDecoration: 'none',
-              fontFamily: 'Barlow Condensed, sans-serif',
+              fontFamily: 'var(--font-label)',
               letterSpacing: '0.05em',
               borderBottom: '1px solid #333',
               paddingBottom: '1px',
