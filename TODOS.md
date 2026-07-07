@@ -82,6 +82,7 @@
 - Event voting system — judges create votes via /judge; players vote step-by-step (one domain per screen); partial save (is_final=false); locked on final submit; spoiler-free results; counts while open, percentages after close; judge full breakdown with voter names; VoteBanner on dashboard
 - session_player_summary table — populated by award_session_points trigger; dashboard points history; per-session: date, placement, effort level, points breakdown
 - Event content populated — howToPerform + rules written for all 94 placeholder events in lib/eventData.ts (pending Tāne's review of flagged events: Toe Lift, Kelly Snatch, Repeat High Jump, Australian Football, Tag, Netball). **Completed:** v0.4.0.0 (2026-07-05)
+- July 2026 design review (DR-1..10) — session-end takeover + milestones, PR/new-event/effort toasts, effort-cap + full-house one-time moments, players land on own tab, rank-improvement flash, My 100 dashboard card, next-session countdown, /leaderboard cleanup (avg place migration 20260707, Youth tab removed, Grandmaster tab keys fixed, Felix duplicate merged, copy corrected). **Completed:** v0.4.1.0 (2026-07-07)
 
 ---
 
