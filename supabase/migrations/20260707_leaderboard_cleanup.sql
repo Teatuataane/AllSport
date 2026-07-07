@@ -30,6 +30,8 @@ BEGIN
     AND EXTRACT(YEAR FROM s.session_date)::INT = v_year
     AND sps.overall_placement IS NOT NULL;
 
+  -- If rankings.average_placement is INTEGER (schema created pre-migrations),
+  -- the assignment drops the decimal — cosmetic only; /leaderboard renders either.
   UPDATE rankings
   SET average_placement = ROUND(v_avg, 1)
   WHERE player_id = NEW.player_id AND season_year = v_year;

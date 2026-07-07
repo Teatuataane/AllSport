@@ -2371,6 +2371,8 @@ export default function SessionPage() {
       const t = setTimeout(() => setRankFlash(null), 2600)
       return () => clearTimeout(t)
     }
+    // Rank changed without improving (or dropped) — never leave a stale flash up
+    setRankFlash(null)
   }, [myDivisionPlacement?.rank, activePlayerId])
 
   // ── Load initial data ──────────────────────────────────────────────────────
@@ -2859,7 +2861,7 @@ export default function SessionPage() {
             {toast.isPR
               ? <><span style={{ color: '#F9B051' }}>NEW PR</span> — {toast.eventName} — {toast.label}</>
               : toast.isNewEvent
-                ? <><span style={{ color: '#7ab4ff' }}>New event unlocked</span> — {toast.eventName}! — {toast.label}</>
+                ? <><span style={{ color: '#7ab4ff' }}>New event unlocked</span> — {toast.eventName}! <span style={{ color: '#aaa' }}>{toast.label}</span></>
                 : <>Score in — {toast.eventName} — {toast.label}</>}
             {toast.effortCredit > 0 && (
               <span style={{ color: '#B87DB5', marginLeft: '10px', fontSize: '15px' }}>+{toast.effortCredit} effort</span>
