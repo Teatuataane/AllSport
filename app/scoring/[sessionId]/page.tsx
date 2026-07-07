@@ -2298,7 +2298,8 @@ export default function SessionPage() {
   const [activeTab, setActiveTab] = useState<string>('leaderboard')
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null)
   const [sheetEventId, setSheetEventId] = useState<string | null>(null)
-  const [toast, setToast] = useState<{ eventName: string; label: string; isPR: boolean; effortCredit: number } | null>(null)
+  const [toast, setToast] = useState<{ eventName: string; label: string; isPR: boolean; isNewEvent: boolean; effortCredit: number } | null>(null)
+  const [playedEventNames, setPlayedEventNames] = useState<Set<string> | null>(null) // all-time, for "new event unlocked"
   const [effortMaxToast, setEffortMaxToast] = useState(false)
   const [fullHousePulseId, setFullHousePulseId] = useState<string | null>(null)
   const [endTakeoverDismissed, setEndTakeoverDismissed] = useState(true) // assume dismissed until localStorage is checked
@@ -2355,6 +2356,22 @@ export default function SessionPage() {
     const rank = 1 + placements.filter(p => p.total < myEntry.total).length
     return { rank, divisionName: myDivision, playerCount: playerIds.length }
   }, [activePlayerId, results, events, playerInfoMap])
+
+  // ── DR-10: flash the banner ordinal when a new result improves division rank ─
+  // No flash on first paint, on player switch, or on rank drops.
+  const prevRankRef = useRef<{ pid: string | null; rank: number | null }>({ pid: null, rank: null })
+  const [rankFlash, setRankFlash] = useState<{ from: number; to: number } | null>(null)
+  useEffect(() => {
+    const rank = myDivisionPlacement?.rank ?? null
+    const prev = prevRankRef.current
+    prevRankRef.current = { pid: activePlayerId, rank }
+    if (prev.pid !== activePlayerId) { setRankFlash(null); return }
+    if (prev.rank !== null && rank !== null && rank < prev.rank) {
+      setRankFlash({ from: prev.rank, to: rank })
+      const t = setTimeout(() => setRankFlash(null), 2600)
+      return () => clearTimeout(t)
+    }
+  }, [myDivisionPlacement?.rank, activePlayerId])
 
   // ── Load initial data ──────────────────────────────────────────────────────
   const loadResults = useCallback(async () => {
@@ -2484,6 +2501,26 @@ export default function SessionPage() {
     return () => clearInterval(id)
   }, [loadResults])
 
+  // ── All-time played events for the active player (new-event-unlocked toast) ─
+  // Loaded once per player; includes this session's earlier submissions, so only
+  // a genuinely first-ever score for an event counts as "new".
+  useEffect(() => {
+    if (!activePlayerId) { setPlayedEventNames(null); return }
+    setPlayedEventNames(null)
+    supabase
+      .from('results')
+      .select('session_events!inner(event_name)')
+      .eq('player_id', activePlayerId)
+      .then(({ data }) => {
+        const names = new Set<string>()
+        for (const r of (data ?? []) as any[]) {
+          const n = r.session_events?.event_name
+          if (n) names.add(n)
+        }
+        setPlayedEventNames(names)
+      })
+  }, [activePlayerId])
+
   // ── Session-end takeover: dismissed per player per session via localStorage ─
   useEffect(() => {
     if (!sessionEnded || !activePlayerId) return
@@ -2574,6 +2611,7 @@ export default function SessionPage() {
         @keyframes toastPop { 0% { transform: translateX(-50%) scale(0.92); opacity: 0; } 60% { transform: translateX(-50%) scale(1.04); } 100% { transform: translateX(-50%) scale(1); opacity: 1; } }
         @keyframes barShimmer { from { left: -45%; } to { left: 105%; } }
         @keyframes takeoverUp { from { transform: translateY(6%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes rankImprove { 0% { transform: translateY(45%); opacity: 0; } 40% { transform: translateY(0); opacity: 1; } 55% { color: #F9E051; } 100% { color: #fff; } }
       `}</style>
 
       {/* Top banner — Placement + Timer */}
@@ -2584,7 +2622,15 @@ export default function SessionPage() {
               {bannerStatusLabel}
             </div>
             <div style={{ fontSize: '32px', fontWeight: 700, fontFamily: 'Bebas Neue, cursive', letterSpacing: '0.05em', lineHeight: 1 }}>
-              {myDivisionPlacement ? ordinal(myDivisionPlacement.rank) : '—'}
+              {rankFlash ? (
+                <span style={{ display: 'inline-block', animation: 'rankImprove 1.4s cubic-bezier(0.16,1,0.3,1)' }}>
+                  <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: '22px' }}>{ordinal(rankFlash.from)}</span>
+                  <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: '22px', margin: '0 6px' }}>→</span>
+                  {ordinal(rankFlash.to)}
+                </span>
+              ) : (
+                myDivisionPlacement ? ordinal(myDivisionPlacement.rank) : '—'
+              )}
             </div>
           </div>
           <div style={{ textAlign: 'right' }}>
@@ -2766,8 +2812,10 @@ export default function SessionPage() {
                 onClose={() => setSheetEventId(null)}
                 onSubmitted={async (label, meta) => {
                   setSheetEventId(null)
-                  setToast({ eventName: sheetEvent.event_name, label, isPR: meta.isPR, effortCredit: meta.effortCredit })
-                  setTimeout(() => setToast(null), meta.isPR ? 4000 : 3000)
+                  const isNewEvent = playedEventNames !== null && !playedEventNames.has(sheetEvent.event_name)
+                  if (isNewEvent) setPlayedEventNames(prev => new Set(prev).add(sheetEvent.event_name))
+                  setToast({ eventName: sheetEvent.event_name, label, isPR: meta.isPR, isNewEvent, effortCredit: meta.effortCredit })
+                  setTimeout(() => setToast(null), meta.isPR || isNewEvent ? 4000 : 3000)
                   await loadResults()
                 }}
                 onDeleted={async () => { await loadResults() }}
@@ -2793,16 +2841,16 @@ export default function SessionPage() {
         />
       )}
 
-      {/* Score-submitted toast — green for a normal score, gold/rainbow pop for a PR */}
+      {/* Score-submitted toast — PR (gold/rainbow pop) beats new-event-unlocked beats normal green */}
       {toast && (
         <div style={{
           position: 'fixed', bottom: '20px', left: '50%', transform: 'translateX(-50%)',
           width: 'min(600px, calc(100vw - 32px))', zIndex: 200, overflow: 'hidden',
           background: '#161616',
-          border: `1px solid ${toast.isPR ? '#F9B05155' : '#2a2a2a'}`,
-          borderLeft: `4px solid ${toast.isPR ? '#F9B051' : '#4DB26E'}`,
+          border: `1px solid ${toast.isPR ? '#F9B05155' : toast.isNewEvent ? '#2371BB55' : '#2a2a2a'}`,
+          borderLeft: `4px solid ${toast.isPR ? '#F9B051' : toast.isNewEvent ? '#2371BB' : '#4DB26E'}`,
           borderRadius: '12px', padding: '13px 16px', boxShadow: '0 24px 60px rgba(0,0,0,0.6)',
-          animation: toast.isPR ? 'toastPop 0.45s cubic-bezier(0.16,1,0.3,1)' : undefined,
+          animation: toast.isPR || toast.isNewEvent ? 'toastPop 0.45s cubic-bezier(0.16,1,0.3,1)' : undefined,
         }}>
           {toast.isPR && (
             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)' }} />
@@ -2810,7 +2858,9 @@ export default function SessionPage() {
           <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '18px', color: '#fff' }}>
             {toast.isPR
               ? <><span style={{ color: '#F9B051' }}>NEW PR</span> — {toast.eventName} — {toast.label}</>
-              : <>Score in — {toast.eventName} — {toast.label}</>}
+              : toast.isNewEvent
+                ? <><span style={{ color: '#7ab4ff' }}>New event unlocked</span> — {toast.eventName}! — {toast.label}</>
+                : <>Score in — {toast.eventName} — {toast.label}</>}
             {toast.effortCredit > 0 && (
               <span style={{ color: '#B87DB5', marginLeft: '10px', fontSize: '15px' }}>+{toast.effortCredit} effort</span>
             )}

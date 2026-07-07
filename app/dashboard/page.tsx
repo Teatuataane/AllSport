@@ -3,6 +3,8 @@ import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase-browser'
 import { formatNZDate } from '@/lib/dates'
+import { EVENTS } from '@/lib/eventData'
+import { domainColor } from '@/components/EventIcon'
 import Link from 'next/link'
 
 const supabase = createClient()
@@ -124,6 +126,9 @@ function DashboardInner() {
   // Top event
   const [topEvent, setTopEvent] = useState<{ event_name: string; player_rank: number; total_players: number } | null>(null)
 
+  // My 100 — distinct event names ever played (null while loading)
+  const [playedEvents, setPlayedEvents] = useState<Set<string> | null>(null)
+
   // Active session (non-judges)
   const [activeSession, setActiveSession] = useState<any>(null)   // player already has results in this session
   const [anyActiveSession, setAnyActiveSession] = useState<any>(null) // any currently running session
@@ -199,6 +204,24 @@ function DashboardInner() {
     }
     loadRanking()
   }, [activePlayerId, selectedYear])
+
+  // ── My 100: lifetime event coverage ─────────────────────────────────────────
+  useEffect(() => {
+    if (!activePlayerId) return
+    setPlayedEvents(null)
+    supabase
+      .from('results')
+      .select('session_events!inner(event_name)')
+      .eq('player_id', activePlayerId)
+      .then(({ data }) => {
+        const names = new Set<string>()
+        for (const r of (data ?? []) as any[]) {
+          const n = r.session_events?.event_name
+          if (n) names.add(n)
+        }
+        setPlayedEvents(names)
+      })
+  }, [activePlayerId])
 
   // ── Top event ───────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -368,6 +391,16 @@ function DashboardInner() {
   const isJudge = player.role === 'judge'
   const hasNoSessions = !ranking || ranking.total_sessions === 0
   const nextSession = nextScheduledSession()
+
+  // My 100 coverage per domain — event names stored as strings, so legacy
+  // orphan names simply don't match; that's fine
+  const my100 = Array.from({ length: 10 }, (_, i) => {
+    const domainNum = i + 1
+    const domainEvents = EVENTS.filter(e => e.domainNumber === domainNum)
+    const played = playedEvents ? domainEvents.filter(e => playedEvents.has(e.name)).length : 0
+    return { domainNum, played }
+  })
+  const my100Total = Math.min(100, my100.reduce((s, d) => s + d.played, 0))
   const icon = activePlayer.icon || null
   const displayName = activePlayer.display_name || activePlayer.username || '?'
 
@@ -629,6 +662,44 @@ function DashboardInner() {
             </div>
           </div>
           <div style={{ color: '#2371BB', fontSize: '22px' }}>→</div>
+        </div>
+      </BentoCard>
+
+      {/* ── Card 6b: My 100 — lifetime event coverage ────────────────────────── */}
+      <BentoCard href="/prs" style={{ marginBottom: '12px' }}>
+        <div style={{
+          background: '#111',
+          border: '1px solid #1e1e1e',
+          borderLeft: '4px solid #F397C0',
+          borderRadius: '16px',
+          padding: '20px 22px',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+            <div>
+              <div style={{
+                fontFamily: 'var(--font-display)', fontSize: '20px',
+                color: '#fff', letterSpacing: '0.05em', lineHeight: 1,
+              }}>
+                My 100
+              </div>
+              <div style={{ fontSize: '11px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.05em', marginTop: '3px' }}>
+                {playedEvents ? `${my100Total} of 100 events played` : 'Loading your events…'}
+              </div>
+            </div>
+            <div style={{ color: '#F397C0', fontSize: '22px' }}>→</div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {my100.map(d => (
+              <div key={d.domainNum} style={{ display: 'flex', gap: '6px' }}>
+                {Array.from({ length: 10 }, (_, i) => (
+                  <div key={i} style={{
+                    flex: 1, height: '10px', borderRadius: '99px',
+                    background: i < Math.min(d.played, 10) ? domainColor(d.domainNum) : '#1e1e1e',
+                  }} />
+                ))}
+              </div>
+            ))}
+          </div>
         </div>
       </BentoCard>
 
