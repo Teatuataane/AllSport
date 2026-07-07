@@ -595,6 +595,7 @@ best_score, current_rank, division, average_placement, season_year
       20260514_dashboard_redesign.sql # players.icon, session_player_summary, get_player_top_event RPC, updated trigger
       20260526_fix_points_trigger.sql  # Remove bonus system; fix gap formula — run in Supabase SQL Editor
       20260629_fix_placement_and_timed_events.sql  # Overall placement (missing event = last in division), points-doubling fix, timed-event raw_score re-encode — supersedes 20260526/b; run ONCE in Supabase SQL Editor
+      20260707_leaderboard_cleanup.sql  # average_placement trigger + backfill, merge orphaned 'Youth' rankings rows — run in Supabase SQL Editor
   public/
     logo.png
 ```
@@ -639,6 +640,8 @@ best_score, current_rank, division, average_placement, season_year
 - Event voting system — judges create votes (name, event date, close date, 2–10 events per domain nominated), players vote step-by-step (one domain per screen, partial save, locked on final submit), spoiler-free results (hidden until voted, counts only while open, percentages after close), judge full breakdown with voter names; nomination Step 2 uses auto-advance accordion (domain auto-closes and next incomplete domain opens when selection limit hit; 250ms delay for visual feedback; domain 1 open by default; page scrolls naturally — no inner scroll box)
 - Design review celebration pass (July 2026 session 20) — [DR-3] players land on their own tab, [DR-2] PR toast variant (+effort credit line), [DR-8] one-time effort-cap toast, [DR-9] one-time full-house shimmer + "All 10 events played" label
 - Session-end takeover (July 2026 session 20) — [DR-1] full-screen end-of-session moment (placement, points, PRs, animated colour progress, game report link; localStorage dismissal) + [DR-7] 10th/25th/50th session milestones with referral note on the 10th
+- Leaderboard cleanup (July 2026 session 20) — [DR-4] rankings.average_placement now populated by trigger + backfill (migration `20260707_leaderboard_cleanup.sql`), legacy Youth tab removed, Grandmaster tab keys fixed ('Grandmasters …' never matched the DB's 'Grandmaster …' so those tabs were always empty), Felix's duplicate Youth rankings row merged, hero + Colour Key copy corrected (colours are earned the moment a threshold is crossed; points reset each January)
+- Dashboard next-session countdown (July 2026 session 20) — [DR-5] Card 8 with no session running now shows "Next session: {weekday} {time}" + "in {n} hours/days" computed from the fixed schedule in NZ time (`nextScheduledSession` in dashboard/page.tsx); active-session Join state unchanged
 
 ---
 
@@ -648,6 +651,7 @@ best_score, current_rank, division, average_placement, season_year
    - `20260629_fix_placement_and_timed_events.sql` — **run ONCE**: fixes overall placement (missing event = last in division), points doubling, and re-encodes timed-event raw_score. Supersedes `20260526`/`20260526b` (self-contained — no need to run those first). The one-time raw_score re-encode must not be run twice.
    - `20260610_historic_points.sql` — Salvador +800, Rodrigo +1500, Zeke +1500 (2025 season)
    - `20260617_fix_youth_division.sql` — fixes Felix + any other 'Youth' → 'Juniors'
+   - `20260707_leaderboard_cleanup.sql` — populates rankings.average_placement (new trigger + backfill) and merges Felix's orphaned 'Youth' 2026 rankings row (610 pts) into his 'Juniors' row (260 pts) so he stops appearing twice on /leaderboard
 2. **Felix's date of birth** — DOB is set (2016-12-19). Division was 'Youth' (legacy value); migration `20260617_fix_youth_division.sql` updates all 'Youth' → 'Juniors'. Code also treats 'Youth' as 'Juniors' in both leaderboard pool filters as a fallback.
 3. **Breakdancing tiers** — change from `difficulty+reps` to `difficulty+time` with new tier descriptions (awaiting tier content from Tane)
 3. **Referral system** — DB migration (referral_code on players, referrals table, trigger), /join/[code] invite landing, dashboard "Invite Friends" section, /koha referral tier display
@@ -664,7 +668,7 @@ best_score, current_rank, division, average_placement, season_year
 14. ~~Season-PR direction bug (time/sprint)~~ — FIXED July 2026 session 19: both PR loaders now always take max raw_score (time/sprint store negative seconds, so max = fastest).
 15. **Breath Hold ranking direction** — Breath Hold uses `time` mode (raw_score = −secs, faster = better), which ranks SHORTER holds as better. Should be `hold` mode (longer wins) + a decision on re-encoding any existing negative breath-hold raw_scores (mirror the 20260629 re-encode approach). Effort task label ("Complete in X or faster") is also wrong for this event.
 16. **Review drafted event content (session 19)** — Tāne to review the 94 drafted howToPerform/rules entries in lib/eventData.ts, especially the flagged ones: Toe Lift, Kelly Snatch, Repeat High Jump, Australian Football, Tag, Netball.
-17. **July 2026 design review (session 20)** — ~~[DR-2] PR toast~~, ~~[DR-3] default to own tab~~, ~~[DR-8] effort cap moment~~, ~~[DR-9] full-house pulse~~ DONE (Phase 1); ~~[DR-1] session-end takeover~~, ~~[DR-7] session-count milestones~~ DONE (Phase 2). Remaining: [DR-4] /leaderboard cleanup (avg place, Youth tab, Felix duplicate, hero copy) + [DR-5] dashboard next-session countdown (Phase 3); [DR-6] "My 100" coverage card + new-event-unlocked toast + [DR-10] placement-change flash (Phase 4).
+17. **July 2026 design review (session 20)** — ~~[DR-2] PR toast~~, ~~[DR-3] default to own tab~~, ~~[DR-8] effort cap moment~~, ~~[DR-9] full-house pulse~~ DONE (Phase 1); ~~[DR-1] session-end takeover~~, ~~[DR-7] session-count milestones~~ DONE (Phase 2); ~~[DR-4] /leaderboard cleanup~~, ~~[DR-5] dashboard next-session countdown~~ DONE (Phase 3 — DB side needs `20260707_leaderboard_cleanup.sql` run in the SQL Editor). Remaining: [DR-6] "My 100" coverage card + new-event-unlocked toast + [DR-10] placement-change flash (Phase 4).
 
 ---
 

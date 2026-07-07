@@ -60,14 +60,13 @@ function getGrade(points: number): { name: string; color: string } {
 
 const DIVISION_MAP: Record<string, string> = {
   'all-divisions': '',
-  youth: 'Youth',
   juniors: 'Juniors',
   mens: "Men's",
   womens: "Women's",
   'masters-men': 'Masters Men',
   'masters-women': 'Masters Women',
-  'grandmasters-men': 'Grandmasters Men',
-  'grandmasters-women': 'Grandmasters Women',
+  'grandmaster-men': 'Grandmaster Men',
+  'grandmaster-women': 'Grandmaster Women',
 }
 
 const grades = [
@@ -85,14 +84,13 @@ const grades = [
 
 const tabs = [
   { key: 'all-divisions', label: 'All-Divisions', color: '#F9B051' },
-  { key: 'youth', label: 'Youth', color: '#B87DB5' },
   { key: 'juniors', label: 'Juniors', color: '#4DB26E' },
   { key: 'mens', label: "Men's", color: '#2371BB' },
   { key: 'womens', label: "Women's", color: '#EA4742' },
   { key: 'masters-men', label: 'Masters Men', color: '#4DB26E' },
   { key: 'masters-women', label: 'Masters Women', color: '#EA4742' },
-  { key: 'grandmasters-men', label: 'Grandmasters Men', color: '#888888' },
-  { key: 'grandmasters-women', label: 'Grandmasters Women', color: '#F397C0' },
+  { key: 'grandmaster-men', label: 'Grandmaster Men', color: '#888888' },
+  { key: 'grandmaster-women', label: 'Grandmaster Women', color: '#F397C0' },
 ]
 
 function LeaderboardTable({ data, accentColor, loading }: { data: EnrichedPlayer[]; accentColor: string; loading: boolean }) {
@@ -317,7 +315,7 @@ export default function Leaderboard() {
           </h1>
           <div className="rainbow-line" style={{ width: '80px', marginBottom: '28px' }} />
           <p style={{ color: '#cccccc', fontSize: '20px', maxWidth: '560px', lineHeight: 1.7 }}>
-            Current season standings across all divisions. Points accumulate throughout the year — colours are awarded at year end. Leaderboard resets each January.
+            Current season standings across all divisions. Points accumulate throughout the year — the moment you cross a threshold, that colour is yours. Points reset each January.
           </p>
         </div>
       </section>
@@ -419,7 +417,7 @@ export default function Leaderboard() {
           </h2>
           <div className="rainbow-line" style={{ width: '60px', marginBottom: '16px' }} />
           <p style={{ color: '#888888', fontSize: '15px', maxWidth: '560px', marginBottom: '40px', lineHeight: 1.7 }}>
-            Collect points every time you play. Your total at year end determines your grade. Grades reset each January — your history is kept forever.
+            Collect points every time you play. Cross a threshold and that colour is yours straight away. Points reset each January — your colour history is kept forever.
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '8px' }}>
             {grades.map(grade => (

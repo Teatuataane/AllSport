@@ -46,6 +46,35 @@ function ordinal(n: number): string {
   return n + (s[(v - 20) % 10] || s[v] || s[0])
 }
 
+// Next session from the fixed weekly schedule — Tue & Thu 4:30pm, Sat 9:00am, NZ time.
+// Works on NZ wall-clock minutes so it's correct wherever the device is.
+function nextScheduledSession(now = new Date()): { label: string; relative: string } {
+  const SLOTS = [
+    { dow: 2, mins: 16 * 60 + 30, label: 'Tuesday 4:30pm' },
+    { dow: 4, mins: 16 * 60 + 30, label: 'Thursday 4:30pm' },
+    { dow: 6, mins: 9 * 60, label: 'Saturday 9:00am' },
+  ]
+  const parts = new Intl.DateTimeFormat('en-NZ', {
+    timeZone: 'Pacific/Auckland', weekday: 'short', hour: 'numeric', minute: 'numeric', hourCycle: 'h23',
+  }).formatToParts(now)
+  const get = (t: string) => parts.find(p => p.type === t)?.value ?? '0'
+  const dowIdx = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(get('weekday'))
+  const nowMins = parseInt(get('hour')) * 60 + parseInt(get('minute'))
+  let best = { label: SLOTS[0].label, delta: Infinity }
+  for (const s of SLOTS) {
+    let delta = ((s.dow - dowIdx + 7) % 7) * 1440 + (s.mins - nowMins)
+    if (delta <= 0) delta += 7 * 1440
+    if (delta < best.delta) best = { label: s.label, delta }
+  }
+  const hrs = Math.round(best.delta / 60)
+  const relative = best.delta < 60
+    ? `in ${best.delta} minute${best.delta === 1 ? '' : 's'}`
+    : best.delta < 48 * 60
+      ? `in ${hrs} hour${hrs === 1 ? '' : 's'}`
+      : `in ${Math.round(best.delta / 1440)} days`
+  return { label: best.label, relative }
+}
+
 // ── Bento card wrapper ────────────────────────────────────────────────────────
 function BentoCard({
   onClick, href, children, style = {},
@@ -338,6 +367,7 @@ function DashboardInner() {
 
   const isJudge = player.role === 'judge'
   const hasNoSessions = !ranking || ranking.total_sessions === 0
+  const nextSession = nextScheduledSession()
   const icon = activePlayer.icon || null
   const displayName = activePlayer.display_name || activePlayer.username || '?'
 
@@ -628,24 +658,24 @@ function DashboardInner() {
         </div>
       </BentoCard>
 
-      {/* ── Card 8: Join a Game ─────────────────────────────────────────────── */}
+      {/* ── Card 8: Join a Game / next session countdown ────────────────────── */}
       {!isJudge && !activeSession && (
         <div style={{
           background: anyActiveSession && hasNoSessions ? '#061a0d' : anyActiveSession ? '#0a120a' : '#0d0d0d',
           border: anyActiveSession ? `1px solid ${hasNoSessions ? '#4DB26E' : '#2a4a2a'}` : '1px solid #1e1e1e',
-          borderLeft: `4px solid ${anyActiveSession ? '#4DB26E' : '#222'}`,
+          borderLeft: `4px solid ${anyActiveSession ? '#4DB26E' : '#2371BB'}`,
           borderRadius: '16px',
           padding: '20px 22px',
           ...(anyActiveSession && hasNoSessions ? { boxShadow: '0 0 24px #4DB26E22' } : {}),
         }}>
           <div style={{
             fontFamily: 'var(--font-display)', fontSize: '20px',
-            color: anyActiveSession ? (hasNoSessions ? '#4DB26E' : '#6ecf8a') : '#333',
+            color: anyActiveSession ? (hasNoSessions ? '#4DB26E' : '#6ecf8a') : '#fff',
             letterSpacing: '0.05em', marginBottom: '4px', lineHeight: 1,
           }}>
             {anyActiveSession
               ? (hasNoSessions ? 'Join Your First Game' : 'Join a Game')
-              : 'No Session Running'}
+              : `Next session: ${nextSession.label}`}
           </div>
           <div style={{
             fontSize: '11px', color: '#555',
@@ -654,7 +684,7 @@ function DashboardInner() {
           }}>
             {anyActiveSession
               ? anyActiveSession.location || 'AllSport HQ'
-              : 'Sessions run Tue & Thu 4:30pm, Sat 9:00am'}
+              : <><span style={{ color: '#7ab4ff' }}>{nextSession.relative}</span> · Tue &amp; Thu 4:30pm — Sat 9:00am</>}
           </div>
 
           {anyActiveSession && (
