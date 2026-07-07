@@ -296,7 +296,10 @@ const INP: React.CSSProperties = {
 }
 
 // Builds the results payload and inserts (or updates) it, including PR flag and
-// effort-task credit. Returns an error message, or null on success.
+// effort-task credit. Returns { error } on failure; on success error is null and
+// isPR / effortCredit describe the submission so the caller can pick the right toast.
+type SubmitOutcome = { error: string | null; isPR: boolean; effortCredit: number }
+
 async function submitEntry(args: {
   sessionId: string
   eventId: string
@@ -309,10 +312,10 @@ async function submitEntry(args: {
   seasonPRNum: number | null
   effectivePR: number | null
   editingResultId: string | null
-}): Promise<string | null> {
+}): Promise<SubmitOutcome> {
   const { sessionId, eventId, playerId, playerName, mode, eventData, v, myResults, seasonPRNum, effectivePR, editingResultId } = args
   const scored = computeScoreVals(mode, eventData, v)
-  if (!scored) return 'Enter a valid score first'
+  if (!scored) return { error: 'Enter a valid score first', isPR: false, effortCredit: 0 }
   try {
     const totalSecs = (parseFloat(v.timeMins) || 0) * 60 + (parseFloat(v.timeSecs) || 0)
     const payload: Record<string, unknown> = {
@@ -372,9 +375,9 @@ async function submitEntry(args: {
       const { error: dbErr } = await supabase.from('results').insert(payload)
       if (dbErr) throw dbErr
     }
-    return null
+    return { error: null, isPR: newIsPR, effortCredit: effortTaskCount * 5 }
   } catch (e: unknown) {
-    return e instanceof Error ? e.message : 'Submission failed'
+    return { error: e instanceof Error ? e.message : 'Submission failed', isPR: false, effortCredit: 0 }
   }
 }
 
@@ -483,13 +486,13 @@ function EventCard({
     if (inFlight.current) return // ref guard — React state alone lets a double-tap insert twice
     inFlight.current = true
     setSubmitting(true); setError('')
-    const errMsg = await submitEntry({
+    const outcome = await submitEntry({
       sessionId, eventId: se.id, playerId, playerName,
       mode, eventData, v: entryVals, myResults, seasonPRNum, effectivePR,
       editingResultId: editingResult?.id ?? null,
     })
-    if (errMsg) {
-      setError(errMsg)
+    if (outcome.error) {
+      setError(outcome.error)
     } else {
       setWeightKg(''); setRepCount(''); setTimeMins(''); setTimeSecs('')
       setSprintCs(''); setDistanceVal(''); setSportResult(''); setSportScore('')
@@ -931,7 +934,7 @@ type QuickEntrySheetProps = {
   sessionId: string
   sessionEnded: boolean
   onClose: () => void
-  onSubmitted: (label: string) => void
+  onSubmitted: (label: string, meta: { isPR: boolean; effortCredit: number }) => void
   onDeleted: () => void
 }
 
@@ -993,16 +996,16 @@ function QuickEntrySheet({
     if (inFlight.current) return // ref guard — React state alone lets a double-tap insert twice
     inFlight.current = true
     setSubmitting(true); setError('')
-    const errMsg = await submitEntry({
+    const outcome = await submitEntry({
       sessionId, eventId: se.id, playerId, playerName,
       mode, eventData, v, myResults, seasonPRNum, effectivePR,
       editingResultId: editingResult?.id ?? null,
     })
     inFlight.current = false
     setSubmitting(false)
-    if (errMsg) { setError(errMsg); return }
+    if (outcome.error) { setError(outcome.error); return }
     setEditingResult(null)
-    onSubmitted(scored.score_label)
+    onSubmitted(scored.score_label, { isPR: outcome.isPR, effortCredit: outcome.effortCredit })
   }
 
   async function handleSheetDelete(resultId: string) {
@@ -2057,6 +2060,229 @@ function LeaderboardTab({
   )
 }
 
+// ─── Session-end takeover (DR-1) + session milestones (DR-7) ──────────────────
+
+const RAINBOW_G = 'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)'
+
+// Colour thresholds — same values as the dashboard Colours card.
+const GRADES: { name: string; colour: string; threshold: number }[] = [
+  { name: 'Mā',        colour: '#f0f0f0', threshold: 0 },
+  { name: 'Kiwikiwi',  colour: '#888888', threshold: 500 },
+  { name: 'Whero',     colour: '#EA4742', threshold: 1000 },
+  { name: 'Karaka',    colour: '#F9B051', threshold: 2000 },
+  { name: 'Kōwhai',    colour: '#FFE566', threshold: 3000 },
+  { name: 'Kākāriki',  colour: '#4DB26E', threshold: 4000 },
+  { name: 'Kahurangi', colour: '#2371BB', threshold: 5000 },
+  { name: 'Poroporo',  colour: '#B87DB5', threshold: 6000 },
+  { name: 'Uenuku',    colour: RAINBOW_G, threshold: 8000 },
+  { name: 'Taniwha',   colour: '#F9B051', threshold: 10000 }, // black card — amber accent keeps the bar visible
+]
+
+type EndSummary = { overall_placement: number; total_placement_points: number; effort_points: number }
+
+function SessionEndTakeover({
+  sessionId, playerId, events, myResults, divisionPlacement, onDismiss,
+}: {
+  sessionId: string
+  playerId: string
+  events: SessionEvent[]
+  myResults: Result[]
+  divisionPlacement: { rank: number; divisionName: string; playerCount: number } | null
+  onDismiss: () => void
+}) {
+  const [summary, setSummary] = useState<EndSummary | null>(null)
+  const [sessionCount, setSessionCount] = useState<number | null>(null)
+  const [seasonTotal, setSeasonTotal] = useState<number | null>(null)
+  const [loaded, setLoaded] = useState(false)
+  const [barAnimated, setBarAnimated] = useState(false)
+
+  // Lock body scroll while the takeover is open (same pattern as the sheet)
+  useEffect(() => {
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prev }
+  }, [])
+
+  useEffect(() => {
+    async function load() {
+      const [sumRes, cntRes, rankRes] = await Promise.all([
+        supabase.from('session_player_summary')
+          .select('overall_placement, total_placement_points, effort_points')
+          .eq('session_id', sessionId).eq('player_id', playerId).maybeSingle(),
+        supabase.from('session_player_summary')
+          .select('*', { count: 'exact', head: true })
+          .eq('player_id', playerId),
+        supabase.from('rankings')
+          .select('total_points')
+          .eq('player_id', playerId).eq('season_year', new Date().getFullYear()).maybeSingle(),
+      ])
+      setSummary((sumRes.data as EndSummary | null) ?? null)
+      setSessionCount(cntRes.count ?? 0)
+      setSeasonTotal((rankRes.data as { total_points: number } | null)?.total_points ?? null)
+      setLoaded(true)
+    }
+    load()
+  }, [sessionId, playerId])
+
+  // Kick off the colour-bar fill animation once the numbers are in
+  useEffect(() => {
+    if (!loaded) return
+    const t = setTimeout(() => setBarAnimated(true), 500)
+    return () => clearTimeout(t)
+  }, [loaded])
+
+  // Points earned — trust the trigger's summary row when it exists; otherwise
+  // compute client-side the same way the /games report + trigger do.
+  const effortLevel = calcTotalEffortLevel(myResults, events)
+  const rank = summary?.overall_placement ?? divisionPlacement?.rank ?? null
+  const nDiv = divisionPlacement?.playerCount ?? null
+  const placementPts = summary?.total_placement_points
+    ?? (rank !== null && nDiv ? Math.round(Math.max(100 - (100 / nDiv) * (rank - 1), 10)) : 0)
+  const effortPts = summary?.effort_points ?? effortLevel * 5
+  const earned = placementPts + effortPts
+
+  // rankings.total_points already includes this session once the summary row exists
+  const post = summary ? (seasonTotal ?? earned) : (seasonTotal ?? 0) + earned
+  const pre = Math.max(0, post - earned)
+
+  const grade = [...GRADES].reverse().find(g => post >= g.threshold) ?? GRADES[0]
+  const nextGrade = GRADES[GRADES.indexOf(grade) + 1] ?? null
+  const frac = (p: number) => nextGrade
+    ? Math.min(1, Math.max(0, (p - grade.threshold) / (nextGrade.threshold - grade.threshold)))
+    : 1
+  const gradeBarStyle: React.CSSProperties = grade.colour.startsWith('linear-gradient')
+    ? { backgroundImage: grade.colour }
+    : { background: grade.colour }
+
+  // Session-count milestone — summary row present means the count includes this session
+  const sessionNumber = sessionCount === null ? null : (summary ? sessionCount : sessionCount + 1)
+  const milestone = sessionNumber !== null && [10, 25, 50].includes(sessionNumber) ? sessionNumber : null
+
+  const prs = myResults.filter(r => r.is_pr)
+  const eventNameFor = (eid: string) => events.find(e => e.id === eid)?.event_name ?? 'Event'
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 300 }}>
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)' }} />
+      <div style={{
+        position: 'absolute', inset: 0, margin: '0 auto', width: 'min(640px, 100vw)',
+        display: 'flex', flexDirection: 'column', background: '#101010',
+        borderLeft: '1px solid #1e1e1e', borderRight: '1px solid #1e1e1e',
+        animation: 'takeoverUp 0.34s cubic-bezier(0.16,1,0.3,1)',
+      }}>
+        <div style={{ height: '4px', flexShrink: 0, background: RAINBOW_G }} />
+
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px 18px 8px', flexShrink: 0 }}>
+          <div style={{ flex: 1, fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.16em' }}>
+            Session complete
+          </div>
+          <button onClick={onDismiss} style={{
+            width: '38px', height: '38px', borderRadius: '10px', cursor: 'pointer', flexShrink: 0,
+            background: '#181818', border: '1px solid #2a2a2a', color: '#999', fontSize: '15px',
+          }}>✕</button>
+        </div>
+
+        {/* Body */}
+        <div style={{ overflowY: 'auto', padding: '0 18px 24px', flex: 1 }}>
+
+          {/* Final placement */}
+          <div style={{ textAlign: 'center', padding: '18px 0 22px' }}>
+            <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '72px', lineHeight: 1, color: '#fff', letterSpacing: '0.02em' }}>
+              {rank !== null ? ordinal(rank) : '—'}
+            </div>
+            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.14em', marginTop: '6px' }}>
+              {divisionPlacement ? divisionPlacement.divisionName : 'This session'}
+            </div>
+          </div>
+
+          {/* Points earned */}
+          <div style={{ display: 'flex', gap: '10px' }}>
+            {[
+              { label: 'Placement pts', value: placementPts, colour: '#4DB26E' },
+              { label: 'Effort pts', value: effortPts, colour: '#B87DB5' },
+              { label: 'Total earned', value: earned, colour: '#F9B051' },
+            ].map(s => (
+              <div key={s.label} style={{ flex: 1, background: '#161616', border: '1px solid #1e1e1e', borderRadius: '14px', padding: '12px 10px', textAlign: 'center' }}>
+                <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '28px', color: s.colour, lineHeight: 1 }}>{loaded ? s.value : '…'}</div>
+                <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '10.5px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '4px' }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+          {loaded && !summary && (
+            <div style={{ fontSize: '11.5px', color: '#555', marginTop: '6px', textAlign: 'center' }}>
+              Provisional — final points are confirmed when the game is closed off
+            </div>
+          )}
+
+          {/* PRs set today */}
+          {prs.length > 0 && (
+            <>
+              <div style={{ ...QES_LBL, color: '#F9B051' }}>PRs set today</div>
+              {prs.map(r => (
+                <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#161616', border: '1px solid #F9B05133', borderRadius: '12px', padding: '10px 14px', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '10px', fontWeight: 700, color: '#F9B051', background: '#F9B05122', borderRadius: '4px', padding: '2px 6px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.05em', flexShrink: 0 }}>PR</span>
+                  <span style={{ flex: 1, fontSize: '14px', color: '#fff' }}>{eventNameFor(r.event_id)}</span>
+                  <span style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '17px', color: '#F9B051' }}>{r.score_label}</span>
+                </div>
+              ))}
+            </>
+          )}
+
+          {/* Colour progress */}
+          <div style={{ ...QES_LBL }}>Colours — +{loaded ? earned : '…'} pts this session</div>
+          <div style={{ background: '#161616', border: '1px solid #1e1e1e', borderRadius: '14px', padding: '14px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '8px' }}>
+              <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '22px', color: grade.colour.startsWith('linear-gradient') ? '#fff' : grade.colour, letterSpacing: '0.03em' }}>
+                {grade.name}
+              </div>
+              <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11.5px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                {nextGrade ? `${nextGrade.name} — ${Math.max(0, nextGrade.threshold - post)}pts to go` : 'Peak grade'}
+              </div>
+            </div>
+            <div style={{ height: '10px', borderRadius: '99px', background: '#0a0a0a', overflow: 'hidden' }}>
+              <div style={{
+                height: '100%', borderRadius: '99px', ...gradeBarStyle,
+                width: `${frac(barAnimated ? post : pre) * 100}%`,
+                transition: 'width 1.2s cubic-bezier(0.16,1,0.3,1)',
+              }} />
+            </div>
+          </div>
+
+          {/* Session-count milestone */}
+          {milestone !== null && (
+            <div style={{ marginTop: '14px', background: '#1f1608', border: '1px solid #F9B051', borderRadius: '14px', padding: '14px 16px' }}>
+              <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '20px', color: '#F9B051', letterSpacing: '0.04em' }}>
+                Milestone — your {ordinal(milestone)} session
+              </div>
+              <div style={{ fontSize: '13px', color: '#ccc', marginTop: '4px', lineHeight: 1.5 }}>
+                {milestone === 10
+                  ? 'Ten AllSport sessions played. If a friend invited you, their referral just qualified — you count towards their koha tier now.'
+                  : `${milestone} AllSport sessions played. Ka rawe — keep showing up.`}
+              </div>
+            </div>
+          )}
+
+          {/* Full report link */}
+          <a href={`/games/${sessionId}`} style={{
+            display: 'block', textAlign: 'center', marginTop: '18px', padding: '13px 0',
+            borderRadius: '999px', border: '1px solid #2a2a2a', background: '#181818',
+            color: '#fff', textDecoration: 'none', fontFamily: 'Barlow Condensed, sans-serif',
+            textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '14px',
+          }}>Full game report →</a>
+
+          <button onClick={onDismiss} style={{
+            width: '100%', marginTop: '10px', height: '54px', border: 'none', borderRadius: '999px',
+            cursor: 'pointer', background: RAINBOW_G, color: '#0a0a0a',
+            fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase',
+            letterSpacing: '0.12em', fontSize: '16px', fontWeight: 600,
+          }}>Done</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function SessionPage() {
@@ -2072,7 +2298,11 @@ export default function SessionPage() {
   const [activeTab, setActiveTab] = useState<string>('leaderboard')
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null)
   const [sheetEventId, setSheetEventId] = useState<string | null>(null)
-  const [toast, setToast] = useState<string | null>(null)
+  const [toast, setToast] = useState<{ eventName: string; label: string; isPR: boolean; isNewEvent: boolean; effortCredit: number } | null>(null)
+  const [playedEventNames, setPlayedEventNames] = useState<Set<string> | null>(null) // all-time, for "new event unlocked"
+  const [effortMaxToast, setEffortMaxToast] = useState(false)
+  const [fullHousePulseId, setFullHousePulseId] = useState<string | null>(null)
+  const [endTakeoverDismissed, setEndTakeoverDismissed] = useState(true) // assume dismissed until localStorage is checked
   const [timeLeft, setTimeLeft] = useState<number | null>(null)
   const [preSessionSecsLeft, setPreSessionSecsLeft] = useState<number | null>(null)
   const [sessionEnded, setSessionEnded] = useState(false)
@@ -2124,8 +2354,26 @@ export default function SessionPage() {
     const myEntry = placements.find(p => p.pid === activePlayerId)
     if (!myEntry) return null
     const rank = 1 + placements.filter(p => p.total < myEntry.total).length
-    return { rank, divisionName: myDivision }
+    return { rank, divisionName: myDivision, playerCount: playerIds.length }
   }, [activePlayerId, results, events, playerInfoMap])
+
+  // ── DR-10: flash the banner ordinal when a new result improves division rank ─
+  // No flash on first paint, on player switch, or on rank drops.
+  const prevRankRef = useRef<{ pid: string | null; rank: number | null }>({ pid: null, rank: null })
+  const [rankFlash, setRankFlash] = useState<{ from: number; to: number } | null>(null)
+  useEffect(() => {
+    const rank = myDivisionPlacement?.rank ?? null
+    const prev = prevRankRef.current
+    prevRankRef.current = { pid: activePlayerId, rank }
+    if (prev.pid !== activePlayerId) { setRankFlash(null); return }
+    if (prev.rank !== null && rank !== null && rank < prev.rank) {
+      setRankFlash({ from: prev.rank, to: rank })
+      const t = setTimeout(() => setRankFlash(null), 2600)
+      return () => clearTimeout(t)
+    }
+    // Rank changed without improving (or dropped) — never leave a stale flash up
+    setRankFlash(null)
+  }, [myDivisionPlacement?.rank, activePlayerId])
 
   // ── Load initial data ──────────────────────────────────────────────────────
   const loadResults = useCallback(async () => {
@@ -2141,6 +2389,7 @@ export default function SessionPage() {
         if (p) {
           setPlayer(p as Record<string, unknown>)
           setActivePlayerId(authUser.id)
+          setActiveTab(`player-${authUser.id}`) // land players on their own tab; leaderboard stays one tap away
           const { data: children } = await supabase.from('players').select('*').eq('parent_id', authUser.id).order('full_name')
           setFamilyMembers((children ?? []) as Record<string, unknown>[])
           if ((p as Record<string, unknown>).role === 'judge') setIsJudge(true)
@@ -2254,6 +2503,58 @@ export default function SessionPage() {
     return () => clearInterval(id)
   }, [loadResults])
 
+  // ── All-time played events for the active player (new-event-unlocked toast) ─
+  // Loaded once per player; includes this session's earlier submissions, so only
+  // a genuinely first-ever score for an event counts as "new".
+  useEffect(() => {
+    if (!activePlayerId) { setPlayedEventNames(null); return }
+    setPlayedEventNames(null)
+    supabase
+      .from('results')
+      .select('session_events!inner(event_name)')
+      .eq('player_id', activePlayerId)
+      .then(({ data }) => {
+        const names = new Set<string>()
+        for (const r of (data ?? []) as any[]) {
+          const n = r.session_events?.event_name
+          if (n) names.add(n)
+        }
+        setPlayedEventNames(names)
+      })
+  }, [activePlayerId])
+
+  // ── Session-end takeover: dismissed per player per session via localStorage ─
+  useEffect(() => {
+    if (!sessionEnded || !activePlayerId) return
+    setEndTakeoverDismissed(!!localStorage.getItem(`allsport_postgame_${sessionId}_${activePlayerId}`))
+  }, [sessionEnded, activePlayerId, sessionId])
+
+  // ── One-time celebration moments (effort cap 20/20, all events scored) ────
+  // Each fires once per player per session, guarded via localStorage.
+  useEffect(() => {
+    if (!activePlayerId || events.length === 0 || sessionEnded) return
+    const mine = results.filter(r => r.player_id === activePlayerId)
+    if (mine.length === 0) return
+
+    const allScored = events.every(ev => mine.some(r => r.event_id === ev.id))
+    if (allScored) {
+      const key = `allsport_fullhouse_${sessionId}_${activePlayerId}`
+      if (!localStorage.getItem(key)) {
+        localStorage.setItem(key, '1')
+        setFullHousePulseId(activePlayerId)
+        setTimeout(() => setFullHousePulseId(null), 3200)
+      }
+    }
+    if (calcTotalEffortLevel(mine, events) >= 20) {
+      const key = `allsport_effortmax_${sessionId}_${activePlayerId}`
+      if (!localStorage.getItem(key)) {
+        localStorage.setItem(key, '1')
+        setEffortMaxToast(true)
+        setTimeout(() => setEffortMaxToast(false), 5000)
+      }
+    }
+  }, [results, events, activePlayerId, sessionId, sessionEnded])
+
   // ── Timer ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     const s = session as Record<string, unknown> | null
@@ -2308,6 +2609,12 @@ export default function SessionPage() {
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a0a', color: '#fff', maxWidth: '640px', margin: '0 auto', fontFamily: 'Barlow, sans-serif' }}>
+      <style>{`
+        @keyframes toastPop { 0% { transform: translateX(-50%) scale(0.92); opacity: 0; } 60% { transform: translateX(-50%) scale(1.04); } 100% { transform: translateX(-50%) scale(1); opacity: 1; } }
+        @keyframes barShimmer { from { left: -45%; } to { left: 105%; } }
+        @keyframes takeoverUp { from { transform: translateY(6%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes rankImprove { 0% { transform: translateY(45%); opacity: 0; } 40% { transform: translateY(0); opacity: 1; } 55% { color: #F9E051; } 100% { color: #fff; } }
+      `}</style>
 
       {/* Top banner — Placement + Timer */}
       <div style={{ background: '#2371BB', padding: '12px 16px', position: 'sticky', top: 0, zIndex: 10 }}>
@@ -2317,7 +2624,15 @@ export default function SessionPage() {
               {bannerStatusLabel}
             </div>
             <div style={{ fontSize: '32px', fontWeight: 700, fontFamily: 'Bebas Neue, cursive', letterSpacing: '0.05em', lineHeight: 1 }}>
-              {myDivisionPlacement ? ordinal(myDivisionPlacement.rank) : '—'}
+              {rankFlash ? (
+                <span style={{ display: 'inline-block', animation: 'rankImprove 1.4s cubic-bezier(0.16,1,0.3,1)' }}>
+                  <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: '22px' }}>{ordinal(rankFlash.from)}</span>
+                  <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: '22px', margin: '0 6px' }}>→</span>
+                  {ordinal(rankFlash.to)}
+                </span>
+              ) : (
+                myDivisionPlacement ? ordinal(myDivisionPlacement.rank) : '—'
+              )}
             </div>
           </div>
           <div style={{ textAlign: 'right' }}>
@@ -2423,19 +2738,33 @@ export default function SessionPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '6px' }}>
                 <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11.5px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.12em' }}>
                   <span style={{ color: '#fff', fontWeight: 600 }}>{doneEvents.length}</span> of {events.length} events scored
+                  {doneEvents.length === events.length && events.length > 0 && (
+                    <span style={{ color: '#4DB26E', fontWeight: 600 }}> — All {events.length} events played</span>
+                  )}
                 </div>
                 <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11.5px', color: '#B87DB5', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 600 }}>
                   Effort level {totalEffort} / 20
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '3px' }}>
-                {events.map(ev => (
-                  <div key={ev.id} style={{
-                    flex: 1, height: '8px', borderRadius: '99px',
-                    background: scoredIds.has(ev.id) ? domainColor(ev.domain_number) : '#1e1e1e',
-                    transition: 'background 0.3s',
-                  }} />
-                ))}
+              <div style={{ position: 'relative' }}>
+                <div style={{ display: 'flex', gap: '3px' }}>
+                  {events.map(ev => (
+                    <div key={ev.id} style={{
+                      flex: 1, height: '8px', borderRadius: '99px',
+                      background: scoredIds.has(ev.id) ? domainColor(ev.domain_number) : '#1e1e1e',
+                      transition: 'background 0.3s',
+                    }} />
+                  ))}
+                </div>
+                {fullHousePulseId === pid && (
+                  <div style={{ position: 'absolute', inset: 0, borderRadius: '99px', overflow: 'hidden', pointerEvents: 'none' }}>
+                    <div style={{
+                      position: 'absolute', top: 0, bottom: 0, width: '40%', left: '-45%',
+                      background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.85), transparent)',
+                      animation: 'barShimmer 1.5s ease-out 2',
+                    }} />
+                  </div>
+                )}
               </div>
             </div>
 
@@ -2483,10 +2812,12 @@ export default function SessionPage() {
                 sessionId={sessionId as string}
                 sessionEnded={sessionEnded}
                 onClose={() => setSheetEventId(null)}
-                onSubmitted={async (label) => {
+                onSubmitted={async (label, meta) => {
                   setSheetEventId(null)
-                  setToast(`${sheetEvent.event_name} — ${label}`)
-                  setTimeout(() => setToast(null), 3000)
+                  const isNewEvent = playedEventNames !== null && !playedEventNames.has(sheetEvent.event_name)
+                  if (isNewEvent) setPlayedEventNames(prev => new Set(prev).add(sheetEvent.event_name))
+                  setToast({ eventName: sheetEvent.event_name, label, isPR: meta.isPR, isNewEvent, effortCredit: meta.effortCredit })
+                  setTimeout(() => setToast(null), meta.isPR || isNewEvent ? 4000 : 3000)
                   await loadResults()
                 }}
                 onDeleted={async () => { await loadResults() }}
@@ -2496,15 +2827,60 @@ export default function SessionPage() {
         )
       })}
 
-      {/* Score-submitted toast */}
+      {/* Session-end takeover — shows once per player per session, only if they played */}
+      {sessionEnded && !endTakeoverDismissed && activePlayerId &&
+        results.some(r => r.player_id === activePlayerId) && (
+        <SessionEndTakeover
+          sessionId={sessionId as string}
+          playerId={activePlayerId}
+          events={events}
+          myResults={results.filter(r => r.player_id === activePlayerId)}
+          divisionPlacement={myDivisionPlacement}
+          onDismiss={() => {
+            localStorage.setItem(`allsport_postgame_${sessionId}_${activePlayerId}`, '1')
+            setEndTakeoverDismissed(true)
+          }}
+        />
+      )}
+
+      {/* Score-submitted toast — PR (gold/rainbow pop) beats new-event-unlocked beats normal green */}
       {toast && (
         <div style={{
           position: 'fixed', bottom: '20px', left: '50%', transform: 'translateX(-50%)',
-          width: 'min(600px, calc(100vw - 32px))', zIndex: 200,
-          background: '#161616', border: '1px solid #2a2a2a', borderLeft: '4px solid #4DB26E',
+          width: 'min(600px, calc(100vw - 32px))', zIndex: 200, overflow: 'hidden',
+          background: '#161616',
+          border: `1px solid ${toast.isPR ? '#F9B05155' : toast.isNewEvent ? '#2371BB55' : '#2a2a2a'}`,
+          borderLeft: `4px solid ${toast.isPR ? '#F9B051' : toast.isNewEvent ? '#2371BB' : '#4DB26E'}`,
           borderRadius: '12px', padding: '13px 16px', boxShadow: '0 24px 60px rgba(0,0,0,0.6)',
+          animation: toast.isPR || toast.isNewEvent ? 'toastPop 0.45s cubic-bezier(0.16,1,0.3,1)' : undefined,
         }}>
-          <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '18px', color: '#fff' }}>Score in — {toast}</div>
+          {toast.isPR && (
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)' }} />
+          )}
+          <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '18px', color: '#fff' }}>
+            {toast.isPR
+              ? <><span style={{ color: '#F9B051' }}>NEW PR</span> — {toast.eventName} — {toast.label}</>
+              : toast.isNewEvent
+                ? <><span style={{ color: '#7ab4ff' }}>New event unlocked</span> — {toast.eventName}! <span style={{ color: '#aaa' }}>{toast.label}</span></>
+                : <>Score in — {toast.eventName} — {toast.label}</>}
+            {toast.effortCredit > 0 && (
+              <span style={{ color: '#B87DB5', marginLeft: '10px', fontSize: '15px' }}>+{toast.effortCredit} effort</span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Effort cap toast — one-time per player per session */}
+      {effortMaxToast && (
+        <div style={{
+          position: 'fixed', bottom: toast ? '84px' : '20px', left: '50%', transform: 'translateX(-50%)',
+          width: 'min(600px, calc(100vw - 32px))', zIndex: 201,
+          background: '#161616', border: '1px solid #B87DB555', borderLeft: '4px solid #B87DB5',
+          borderRadius: '12px', padding: '13px 16px', boxShadow: '0 24px 60px rgba(0,0,0,0.6)',
+          animation: 'toastPop 0.45s cubic-bezier(0.16,1,0.3,1)',
+        }}>
+          <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '18px', color: '#B87DB5' }}>Effort maxed — 20/20</div>
+          <div style={{ fontSize: '13px', color: '#888', marginTop: '2px' }}>Full 100 effort points banked this session</div>
         </div>
       )}
 

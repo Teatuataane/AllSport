@@ -2,6 +2,26 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.4.1.0] - 2026-07-07
+
+### Added
+- **Session-end moment** — when a session ends, players who played see a full-screen wrap-up: final division placement, placement + effort points earned, every PR set today, and their colour bar animating the session's points in, with a link to the full game report. Shows once per session; if points haven't been finalised yet it shows a provisional total computed from the live scores.
+- **Session milestones** — your 10th, 25th and 50th session are called out in the wrap-up. The 10th also tells you your inviter's referral just qualified.
+- **PR and unlock toasts** — a new personal record now gets a gold rainbow-striped toast with a pop animation, and playing an event for the very first time gets a "New event unlocked" toast. Effort credit earned by a submission ("+5 effort") is shown on any toast.
+- **Effort maxed moment** — hitting effort level 20/20 shows a one-time congratulation, and scoring all 10 events plays a one-time shimmer across the progress bar with an "All 10 events played" label.
+- **My 100 dashboard card** — lifetime event coverage as 10 domain-coloured dot rows ("{n} of 100 events played"), tapping through to your personal bests.
+- **Next session countdown** — the dashboard's Join a Game card now shows the next scheduled session ("Next session: Thursday 4:30pm — in 26 hours", NZ time) instead of a grey "No Session Running". The countdown maths lives in `lib/schedule.ts` with 9 unit tests.
+
+### Changed
+- **Players land on their own tab** in a live session — the leaderboard stays one tap away.
+- **Live session banner celebrates rank improvements** — moving up the division briefly animates "3rd → 2nd"; rank drops stay quiet.
+
+### Fixed
+- **Leaderboard Avg Place column** — was "—" for every player; a new DB trigger + backfill (migration `20260707_leaderboard_cleanup.sql`, run in the Supabase SQL Editor) now maintains each player's season average placement.
+- **Felix Bates no longer appears twice on the leaderboard** — his orphaned 'Youth' rankings row is merged into 'Juniors' by the same migration.
+- **Grandmaster leaderboard tabs were always empty** — the tab keys said "Grandmasters" but the database divisions are "Grandmaster Men/Women"; the legacy Youth tab is gone too.
+- **Leaderboard copy corrected** — colours are earned the moment you cross a threshold (not "awarded at year end"); points reset each January.
+
 ## [0.4.0.0] - 2026-07-05
 
 ### Added
