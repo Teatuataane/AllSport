@@ -2060,6 +2060,229 @@ function LeaderboardTab({
   )
 }
 
+// ─── Session-end takeover (DR-1) + session milestones (DR-7) ──────────────────
+
+const RAINBOW_G = 'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)'
+
+// Colour thresholds — same values as the dashboard Colours card.
+const GRADES: { name: string; colour: string; threshold: number }[] = [
+  { name: 'Mā',        colour: '#f0f0f0', threshold: 0 },
+  { name: 'Kiwikiwi',  colour: '#888888', threshold: 500 },
+  { name: 'Whero',     colour: '#EA4742', threshold: 1000 },
+  { name: 'Karaka',    colour: '#F9B051', threshold: 2000 },
+  { name: 'Kōwhai',    colour: '#FFE566', threshold: 3000 },
+  { name: 'Kākāriki',  colour: '#4DB26E', threshold: 4000 },
+  { name: 'Kahurangi', colour: '#2371BB', threshold: 5000 },
+  { name: 'Poroporo',  colour: '#B87DB5', threshold: 6000 },
+  { name: 'Uenuku',    colour: RAINBOW_G, threshold: 8000 },
+  { name: 'Taniwha',   colour: '#F9B051', threshold: 10000 }, // black card — amber accent keeps the bar visible
+]
+
+type EndSummary = { overall_placement: number; total_placement_points: number; effort_points: number }
+
+function SessionEndTakeover({
+  sessionId, playerId, events, myResults, divisionPlacement, onDismiss,
+}: {
+  sessionId: string
+  playerId: string
+  events: SessionEvent[]
+  myResults: Result[]
+  divisionPlacement: { rank: number; divisionName: string; playerCount: number } | null
+  onDismiss: () => void
+}) {
+  const [summary, setSummary] = useState<EndSummary | null>(null)
+  const [sessionCount, setSessionCount] = useState<number | null>(null)
+  const [seasonTotal, setSeasonTotal] = useState<number | null>(null)
+  const [loaded, setLoaded] = useState(false)
+  const [barAnimated, setBarAnimated] = useState(false)
+
+  // Lock body scroll while the takeover is open (same pattern as the sheet)
+  useEffect(() => {
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prev }
+  }, [])
+
+  useEffect(() => {
+    async function load() {
+      const [sumRes, cntRes, rankRes] = await Promise.all([
+        supabase.from('session_player_summary')
+          .select('overall_placement, total_placement_points, effort_points')
+          .eq('session_id', sessionId).eq('player_id', playerId).maybeSingle(),
+        supabase.from('session_player_summary')
+          .select('*', { count: 'exact', head: true })
+          .eq('player_id', playerId),
+        supabase.from('rankings')
+          .select('total_points')
+          .eq('player_id', playerId).eq('season_year', new Date().getFullYear()).maybeSingle(),
+      ])
+      setSummary((sumRes.data as EndSummary | null) ?? null)
+      setSessionCount(cntRes.count ?? 0)
+      setSeasonTotal((rankRes.data as { total_points: number } | null)?.total_points ?? null)
+      setLoaded(true)
+    }
+    load()
+  }, [sessionId, playerId])
+
+  // Kick off the colour-bar fill animation once the numbers are in
+  useEffect(() => {
+    if (!loaded) return
+    const t = setTimeout(() => setBarAnimated(true), 500)
+    return () => clearTimeout(t)
+  }, [loaded])
+
+  // Points earned — trust the trigger's summary row when it exists; otherwise
+  // compute client-side the same way the /games report + trigger do.
+  const effortLevel = calcTotalEffortLevel(myResults, events)
+  const rank = summary?.overall_placement ?? divisionPlacement?.rank ?? null
+  const nDiv = divisionPlacement?.playerCount ?? null
+  const placementPts = summary?.total_placement_points
+    ?? (rank !== null && nDiv ? Math.round(Math.max(100 - (100 / nDiv) * (rank - 1), 10)) : 0)
+  const effortPts = summary?.effort_points ?? effortLevel * 5
+  const earned = placementPts + effortPts
+
+  // rankings.total_points already includes this session once the summary row exists
+  const post = summary ? (seasonTotal ?? earned) : (seasonTotal ?? 0) + earned
+  const pre = Math.max(0, post - earned)
+
+  const grade = [...GRADES].reverse().find(g => post >= g.threshold) ?? GRADES[0]
+  const nextGrade = GRADES[GRADES.indexOf(grade) + 1] ?? null
+  const frac = (p: number) => nextGrade
+    ? Math.min(1, Math.max(0, (p - grade.threshold) / (nextGrade.threshold - grade.threshold)))
+    : 1
+  const gradeBarStyle: React.CSSProperties = grade.colour.startsWith('linear-gradient')
+    ? { backgroundImage: grade.colour }
+    : { background: grade.colour }
+
+  // Session-count milestone — summary row present means the count includes this session
+  const sessionNumber = sessionCount === null ? null : (summary ? sessionCount : sessionCount + 1)
+  const milestone = sessionNumber !== null && [10, 25, 50].includes(sessionNumber) ? sessionNumber : null
+
+  const prs = myResults.filter(r => r.is_pr)
+  const eventNameFor = (eid: string) => events.find(e => e.id === eid)?.event_name ?? 'Event'
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 300 }}>
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)' }} />
+      <div style={{
+        position: 'absolute', inset: 0, margin: '0 auto', width: 'min(640px, 100vw)',
+        display: 'flex', flexDirection: 'column', background: '#101010',
+        borderLeft: '1px solid #1e1e1e', borderRight: '1px solid #1e1e1e',
+        animation: 'takeoverUp 0.34s cubic-bezier(0.16,1,0.3,1)',
+      }}>
+        <div style={{ height: '4px', flexShrink: 0, background: RAINBOW_G }} />
+
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px 18px 8px', flexShrink: 0 }}>
+          <div style={{ flex: 1, fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.16em' }}>
+            Session complete
+          </div>
+          <button onClick={onDismiss} style={{
+            width: '38px', height: '38px', borderRadius: '10px', cursor: 'pointer', flexShrink: 0,
+            background: '#181818', border: '1px solid #2a2a2a', color: '#999', fontSize: '15px',
+          }}>✕</button>
+        </div>
+
+        {/* Body */}
+        <div style={{ overflowY: 'auto', padding: '0 18px 24px', flex: 1 }}>
+
+          {/* Final placement */}
+          <div style={{ textAlign: 'center', padding: '18px 0 22px' }}>
+            <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '72px', lineHeight: 1, color: '#fff', letterSpacing: '0.02em' }}>
+              {rank !== null ? ordinal(rank) : '—'}
+            </div>
+            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.14em', marginTop: '6px' }}>
+              {divisionPlacement ? divisionPlacement.divisionName : 'This session'}
+            </div>
+          </div>
+
+          {/* Points earned */}
+          <div style={{ display: 'flex', gap: '10px' }}>
+            {[
+              { label: 'Placement pts', value: placementPts, colour: '#4DB26E' },
+              { label: 'Effort pts', value: effortPts, colour: '#B87DB5' },
+              { label: 'Total earned', value: earned, colour: '#F9B051' },
+            ].map(s => (
+              <div key={s.label} style={{ flex: 1, background: '#161616', border: '1px solid #1e1e1e', borderRadius: '14px', padding: '12px 10px', textAlign: 'center' }}>
+                <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '28px', color: s.colour, lineHeight: 1 }}>{loaded ? s.value : '…'}</div>
+                <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '10.5px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '4px' }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+          {loaded && !summary && (
+            <div style={{ fontSize: '11.5px', color: '#555', marginTop: '6px', textAlign: 'center' }}>
+              Provisional — final points are confirmed when the game is closed off
+            </div>
+          )}
+
+          {/* PRs set today */}
+          {prs.length > 0 && (
+            <>
+              <div style={{ ...QES_LBL, color: '#F9B051' }}>PRs set today</div>
+              {prs.map(r => (
+                <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#161616', border: '1px solid #F9B05133', borderRadius: '12px', padding: '10px 14px', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '10px', fontWeight: 700, color: '#F9B051', background: '#F9B05122', borderRadius: '4px', padding: '2px 6px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.05em', flexShrink: 0 }}>PR</span>
+                  <span style={{ flex: 1, fontSize: '14px', color: '#fff' }}>{eventNameFor(r.event_id)}</span>
+                  <span style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '17px', color: '#F9B051' }}>{r.score_label}</span>
+                </div>
+              ))}
+            </>
+          )}
+
+          {/* Colour progress */}
+          <div style={{ ...QES_LBL }}>Colours — +{loaded ? earned : '…'} pts this session</div>
+          <div style={{ background: '#161616', border: '1px solid #1e1e1e', borderRadius: '14px', padding: '14px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '8px' }}>
+              <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '22px', color: grade.colour.startsWith('linear-gradient') ? '#fff' : grade.colour, letterSpacing: '0.03em' }}>
+                {grade.name}
+              </div>
+              <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11.5px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                {nextGrade ? `${nextGrade.name} — ${Math.max(0, nextGrade.threshold - post)}pts to go` : 'Peak grade'}
+              </div>
+            </div>
+            <div style={{ height: '10px', borderRadius: '99px', background: '#0a0a0a', overflow: 'hidden' }}>
+              <div style={{
+                height: '100%', borderRadius: '99px', ...gradeBarStyle,
+                width: `${frac(barAnimated ? post : pre) * 100}%`,
+                transition: 'width 1.2s cubic-bezier(0.16,1,0.3,1)',
+              }} />
+            </div>
+          </div>
+
+          {/* Session-count milestone */}
+          {milestone !== null && (
+            <div style={{ marginTop: '14px', background: '#1f1608', border: '1px solid #F9B051', borderRadius: '14px', padding: '14px 16px' }}>
+              <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '20px', color: '#F9B051', letterSpacing: '0.04em' }}>
+                Milestone — your {ordinal(milestone)} session
+              </div>
+              <div style={{ fontSize: '13px', color: '#ccc', marginTop: '4px', lineHeight: 1.5 }}>
+                {milestone === 10
+                  ? 'Ten AllSport sessions played. If a friend invited you, their referral just qualified — you count towards their koha tier now.'
+                  : `${milestone} AllSport sessions played. Ka rawe — keep showing up.`}
+              </div>
+            </div>
+          )}
+
+          {/* Full report link */}
+          <a href={`/games/${sessionId}`} style={{
+            display: 'block', textAlign: 'center', marginTop: '18px', padding: '13px 0',
+            borderRadius: '999px', border: '1px solid #2a2a2a', background: '#181818',
+            color: '#fff', textDecoration: 'none', fontFamily: 'Barlow Condensed, sans-serif',
+            textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '14px',
+          }}>Full game report →</a>
+
+          <button onClick={onDismiss} style={{
+            width: '100%', marginTop: '10px', height: '54px', border: 'none', borderRadius: '999px',
+            cursor: 'pointer', background: RAINBOW_G, color: '#0a0a0a',
+            fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase',
+            letterSpacing: '0.12em', fontSize: '16px', fontWeight: 600,
+          }}>Done</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function SessionPage() {
@@ -2078,6 +2301,7 @@ export default function SessionPage() {
   const [toast, setToast] = useState<{ eventName: string; label: string; isPR: boolean; effortCredit: number } | null>(null)
   const [effortMaxToast, setEffortMaxToast] = useState(false)
   const [fullHousePulseId, setFullHousePulseId] = useState<string | null>(null)
+  const [endTakeoverDismissed, setEndTakeoverDismissed] = useState(true) // assume dismissed until localStorage is checked
   const [timeLeft, setTimeLeft] = useState<number | null>(null)
   const [preSessionSecsLeft, setPreSessionSecsLeft] = useState<number | null>(null)
   const [sessionEnded, setSessionEnded] = useState(false)
@@ -2129,7 +2353,7 @@ export default function SessionPage() {
     const myEntry = placements.find(p => p.pid === activePlayerId)
     if (!myEntry) return null
     const rank = 1 + placements.filter(p => p.total < myEntry.total).length
-    return { rank, divisionName: myDivision }
+    return { rank, divisionName: myDivision, playerCount: playerIds.length }
   }, [activePlayerId, results, events, playerInfoMap])
 
   // ── Load initial data ──────────────────────────────────────────────────────
@@ -2260,6 +2484,12 @@ export default function SessionPage() {
     return () => clearInterval(id)
   }, [loadResults])
 
+  // ── Session-end takeover: dismissed per player per session via localStorage ─
+  useEffect(() => {
+    if (!sessionEnded || !activePlayerId) return
+    setEndTakeoverDismissed(!!localStorage.getItem(`allsport_postgame_${sessionId}_${activePlayerId}`))
+  }, [sessionEnded, activePlayerId, sessionId])
+
   // ── One-time celebration moments (effort cap 20/20, all events scored) ────
   // Each fires once per player per session, guarded via localStorage.
   useEffect(() => {
@@ -2343,6 +2573,7 @@ export default function SessionPage() {
       <style>{`
         @keyframes toastPop { 0% { transform: translateX(-50%) scale(0.92); opacity: 0; } 60% { transform: translateX(-50%) scale(1.04); } 100% { transform: translateX(-50%) scale(1); opacity: 1; } }
         @keyframes barShimmer { from { left: -45%; } to { left: 105%; } }
+        @keyframes takeoverUp { from { transform: translateY(6%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
       `}</style>
 
       {/* Top banner — Placement + Timer */}
@@ -2545,6 +2776,22 @@ export default function SessionPage() {
           </div>
         )
       })}
+
+      {/* Session-end takeover — shows once per player per session, only if they played */}
+      {sessionEnded && !endTakeoverDismissed && activePlayerId &&
+        results.some(r => r.player_id === activePlayerId) && (
+        <SessionEndTakeover
+          sessionId={sessionId as string}
+          playerId={activePlayerId}
+          events={events}
+          myResults={results.filter(r => r.player_id === activePlayerId)}
+          divisionPlacement={myDivisionPlacement}
+          onDismiss={() => {
+            localStorage.setItem(`allsport_postgame_${sessionId}_${activePlayerId}`, '1')
+            setEndTakeoverDismissed(true)
+          }}
+        />
+      )}
 
       {/* Score-submitted toast — green for a normal score, gold/rainbow pop for a PR */}
       {toast && (

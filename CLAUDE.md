@@ -181,6 +181,12 @@ All in `app/scoring/[sessionId]/page.tsx`, player flow only (judge EventCard unt
 - **[DR-9] Full-house pulse** — when all session events are scored, a one-time shimmer sweeps the progress-segment bar and "— All 10 events played" appends to the progress label (label persists; shimmer guarded via `allsport_fullhouse_{sessionId}_{playerId}`).
 - Both one-time moments are detected in a results-watching effect (fires only for the viewing player, skipped once sessionEnded).
 
+### Session-end takeover (July 2026 session 20 — DR-1/7)
+- **[DR-1] Full-screen session-end moment** — `SessionEndTakeover` in `scoring/[sessionId]/page.tsx` replaces the payoff the session-19 redesign removed. Shows when `sessionEnded` is true, the viewer has ≥1 result, and it hasn't been dismissed (localStorage `allsport_postgame_{sessionId}_{playerId}` — the old popup's pattern; the red "Session Ended" box still renders behind it). Content: final division placement (big ordinal), placement/effort/total points, PRs set today (`is_pr` rows), colour progress bar animating the session's points in (same GRADES thresholds as the dashboard), and a "Full game report →" link to `/games/{sessionId}`.
+- **Points source** — prefers the trigger-written `session_player_summary` row; if it isn't there yet, computes client-side (placement pts = `max(100 − (100/nDiv)×(rank−1), 10)` from the live `myDivisionPlacement` maths, effort pts = level×5) and labels the numbers "Provisional".
+- **[DR-7] Session-count milestones** — 10th/25th/50th session (counted from `session_player_summary`; +1 if this session's row isn't written yet). The 10th-session message says the player's referrer just earned a qualified referral.
+- `myDivisionPlacement` memo now also returns `playerCount` (division pool size) for the client-side points fallback.
+
 ---
 
 ## Scoring, Points & Bonuses
@@ -632,6 +638,7 @@ best_score, current_rank, division, average_placement, season_year
 - allsport.nz live domain
 - Event voting system — judges create votes (name, event date, close date, 2–10 events per domain nominated), players vote step-by-step (one domain per screen, partial save, locked on final submit), spoiler-free results (hidden until voted, counts only while open, percentages after close), judge full breakdown with voter names; nomination Step 2 uses auto-advance accordion (domain auto-closes and next incomplete domain opens when selection limit hit; 250ms delay for visual feedback; domain 1 open by default; page scrolls naturally — no inner scroll box)
 - Design review celebration pass (July 2026 session 20) — [DR-3] players land on their own tab, [DR-2] PR toast variant (+effort credit line), [DR-8] one-time effort-cap toast, [DR-9] one-time full-house shimmer + "All 10 events played" label
+- Session-end takeover (July 2026 session 20) — [DR-1] full-screen end-of-session moment (placement, points, PRs, animated colour progress, game report link; localStorage dismissal) + [DR-7] 10th/25th/50th session milestones with referral note on the 10th
 
 ---
 
@@ -657,7 +664,7 @@ best_score, current_rank, division, average_placement, season_year
 14. ~~Season-PR direction bug (time/sprint)~~ — FIXED July 2026 session 19: both PR loaders now always take max raw_score (time/sprint store negative seconds, so max = fastest).
 15. **Breath Hold ranking direction** — Breath Hold uses `time` mode (raw_score = −secs, faster = better), which ranks SHORTER holds as better. Should be `hold` mode (longer wins) + a decision on re-encoding any existing negative breath-hold raw_scores (mirror the 20260629 re-encode approach). Effort task label ("Complete in X or faster") is also wrong for this event.
 16. **Review drafted event content (session 19)** — Tāne to review the 94 drafted howToPerform/rules entries in lib/eventData.ts, especially the flagged ones: Toe Lift, Kelly Snatch, Repeat High Jump, Australian Football, Tag, Netball.
-17. **July 2026 design review (session 20)** — ~~[DR-2] PR toast~~, ~~[DR-3] default to own tab~~, ~~[DR-8] effort cap moment~~, ~~[DR-9] full-house pulse~~ DONE (Phase 1). Remaining: [DR-1] session-end takeover + [DR-7] session-count milestones (Phase 2); [DR-4] /leaderboard cleanup (avg place, Youth tab, Felix duplicate, hero copy) + [DR-5] dashboard next-session countdown (Phase 3); [DR-6] "My 100" coverage card + new-event-unlocked toast + [DR-10] placement-change flash (Phase 4).
+17. **July 2026 design review (session 20)** — ~~[DR-2] PR toast~~, ~~[DR-3] default to own tab~~, ~~[DR-8] effort cap moment~~, ~~[DR-9] full-house pulse~~ DONE (Phase 1); ~~[DR-1] session-end takeover~~, ~~[DR-7] session-count milestones~~ DONE (Phase 2). Remaining: [DR-4] /leaderboard cleanup (avg place, Youth tab, Felix duplicate, hero copy) + [DR-5] dashboard next-session countdown (Phase 3); [DR-6] "My 100" coverage card + new-event-unlocked toast + [DR-10] placement-change flash (Phase 4).
 
 ---
 
