@@ -296,7 +296,10 @@ const INP: React.CSSProperties = {
 }
 
 // Builds the results payload and inserts (or updates) it, including PR flag and
-// effort-task credit. Returns an error message, or null on success.
+// effort-task credit. Returns { error } on failure; on success error is null and
+// isPR / effortCredit describe the submission so the caller can pick the right toast.
+type SubmitOutcome = { error: string | null; isPR: boolean; effortCredit: number }
+
 async function submitEntry(args: {
   sessionId: string
   eventId: string
@@ -309,10 +312,10 @@ async function submitEntry(args: {
   seasonPRNum: number | null
   effectivePR: number | null
   editingResultId: string | null
-}): Promise<string | null> {
+}): Promise<SubmitOutcome> {
   const { sessionId, eventId, playerId, playerName, mode, eventData, v, myResults, seasonPRNum, effectivePR, editingResultId } = args
   const scored = computeScoreVals(mode, eventData, v)
-  if (!scored) return 'Enter a valid score first'
+  if (!scored) return { error: 'Enter a valid score first', isPR: false, effortCredit: 0 }
   try {
     const totalSecs = (parseFloat(v.timeMins) || 0) * 60 + (parseFloat(v.timeSecs) || 0)
     const payload: Record<string, unknown> = {
@@ -372,9 +375,9 @@ async function submitEntry(args: {
       const { error: dbErr } = await supabase.from('results').insert(payload)
       if (dbErr) throw dbErr
     }
-    return null
+    return { error: null, isPR: newIsPR, effortCredit: effortTaskCount * 5 }
   } catch (e: unknown) {
-    return e instanceof Error ? e.message : 'Submission failed'
+    return { error: e instanceof Error ? e.message : 'Submission failed', isPR: false, effortCredit: 0 }
   }
 }
 
@@ -483,13 +486,13 @@ function EventCard({
     if (inFlight.current) return // ref guard — React state alone lets a double-tap insert twice
     inFlight.current = true
     setSubmitting(true); setError('')
-    const errMsg = await submitEntry({
+    const outcome = await submitEntry({
       sessionId, eventId: se.id, playerId, playerName,
       mode, eventData, v: entryVals, myResults, seasonPRNum, effectivePR,
       editingResultId: editingResult?.id ?? null,
     })
-    if (errMsg) {
-      setError(errMsg)
+    if (outcome.error) {
+      setError(outcome.error)
     } else {
       setWeightKg(''); setRepCount(''); setTimeMins(''); setTimeSecs('')
       setSprintCs(''); setDistanceVal(''); setSportResult(''); setSportScore('')
@@ -931,7 +934,7 @@ type QuickEntrySheetProps = {
   sessionId: string
   sessionEnded: boolean
   onClose: () => void
-  onSubmitted: (label: string) => void
+  onSubmitted: (label: string, meta: { isPR: boolean; effortCredit: number }) => void
   onDeleted: () => void
 }
 
@@ -993,16 +996,16 @@ function QuickEntrySheet({
     if (inFlight.current) return // ref guard — React state alone lets a double-tap insert twice
     inFlight.current = true
     setSubmitting(true); setError('')
-    const errMsg = await submitEntry({
+    const outcome = await submitEntry({
       sessionId, eventId: se.id, playerId, playerName,
       mode, eventData, v, myResults, seasonPRNum, effectivePR,
       editingResultId: editingResult?.id ?? null,
     })
     inFlight.current = false
     setSubmitting(false)
-    if (errMsg) { setError(errMsg); return }
+    if (outcome.error) { setError(outcome.error); return }
     setEditingResult(null)
-    onSubmitted(scored.score_label)
+    onSubmitted(scored.score_label, { isPR: outcome.isPR, effortCredit: outcome.effortCredit })
   }
 
   async function handleSheetDelete(resultId: string) {
@@ -2072,7 +2075,9 @@ export default function SessionPage() {
   const [activeTab, setActiveTab] = useState<string>('leaderboard')
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null)
   const [sheetEventId, setSheetEventId] = useState<string | null>(null)
-  const [toast, setToast] = useState<string | null>(null)
+  const [toast, setToast] = useState<{ eventName: string; label: string; isPR: boolean; effortCredit: number } | null>(null)
+  const [effortMaxToast, setEffortMaxToast] = useState(false)
+  const [fullHousePulseId, setFullHousePulseId] = useState<string | null>(null)
   const [timeLeft, setTimeLeft] = useState<number | null>(null)
   const [preSessionSecsLeft, setPreSessionSecsLeft] = useState<number | null>(null)
   const [sessionEnded, setSessionEnded] = useState(false)
@@ -2141,6 +2146,7 @@ export default function SessionPage() {
         if (p) {
           setPlayer(p as Record<string, unknown>)
           setActivePlayerId(authUser.id)
+          setActiveTab(`player-${authUser.id}`) // land players on their own tab; leaderboard stays one tap away
           const { data: children } = await supabase.from('players').select('*').eq('parent_id', authUser.id).order('full_name')
           setFamilyMembers((children ?? []) as Record<string, unknown>[])
           if ((p as Record<string, unknown>).role === 'judge') setIsJudge(true)
@@ -2254,6 +2260,32 @@ export default function SessionPage() {
     return () => clearInterval(id)
   }, [loadResults])
 
+  // ── One-time celebration moments (effort cap 20/20, all events scored) ────
+  // Each fires once per player per session, guarded via localStorage.
+  useEffect(() => {
+    if (!activePlayerId || events.length === 0 || sessionEnded) return
+    const mine = results.filter(r => r.player_id === activePlayerId)
+    if (mine.length === 0) return
+
+    const allScored = events.every(ev => mine.some(r => r.event_id === ev.id))
+    if (allScored) {
+      const key = `allsport_fullhouse_${sessionId}_${activePlayerId}`
+      if (!localStorage.getItem(key)) {
+        localStorage.setItem(key, '1')
+        setFullHousePulseId(activePlayerId)
+        setTimeout(() => setFullHousePulseId(null), 3200)
+      }
+    }
+    if (calcTotalEffortLevel(mine, events) >= 20) {
+      const key = `allsport_effortmax_${sessionId}_${activePlayerId}`
+      if (!localStorage.getItem(key)) {
+        localStorage.setItem(key, '1')
+        setEffortMaxToast(true)
+        setTimeout(() => setEffortMaxToast(false), 5000)
+      }
+    }
+  }, [results, events, activePlayerId, sessionId, sessionEnded])
+
   // ── Timer ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     const s = session as Record<string, unknown> | null
@@ -2308,6 +2340,10 @@ export default function SessionPage() {
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a0a', color: '#fff', maxWidth: '640px', margin: '0 auto', fontFamily: 'Barlow, sans-serif' }}>
+      <style>{`
+        @keyframes toastPop { 0% { transform: translateX(-50%) scale(0.92); opacity: 0; } 60% { transform: translateX(-50%) scale(1.04); } 100% { transform: translateX(-50%) scale(1); opacity: 1; } }
+        @keyframes barShimmer { from { left: -45%; } to { left: 105%; } }
+      `}</style>
 
       {/* Top banner — Placement + Timer */}
       <div style={{ background: '#2371BB', padding: '12px 16px', position: 'sticky', top: 0, zIndex: 10 }}>
@@ -2423,19 +2459,33 @@ export default function SessionPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '6px' }}>
                 <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11.5px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.12em' }}>
                   <span style={{ color: '#fff', fontWeight: 600 }}>{doneEvents.length}</span> of {events.length} events scored
+                  {doneEvents.length === events.length && events.length > 0 && (
+                    <span style={{ color: '#4DB26E', fontWeight: 600 }}> — All {events.length} events played</span>
+                  )}
                 </div>
                 <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11.5px', color: '#B87DB5', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 600 }}>
                   Effort level {totalEffort} / 20
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '3px' }}>
-                {events.map(ev => (
-                  <div key={ev.id} style={{
-                    flex: 1, height: '8px', borderRadius: '99px',
-                    background: scoredIds.has(ev.id) ? domainColor(ev.domain_number) : '#1e1e1e',
-                    transition: 'background 0.3s',
-                  }} />
-                ))}
+              <div style={{ position: 'relative' }}>
+                <div style={{ display: 'flex', gap: '3px' }}>
+                  {events.map(ev => (
+                    <div key={ev.id} style={{
+                      flex: 1, height: '8px', borderRadius: '99px',
+                      background: scoredIds.has(ev.id) ? domainColor(ev.domain_number) : '#1e1e1e',
+                      transition: 'background 0.3s',
+                    }} />
+                  ))}
+                </div>
+                {fullHousePulseId === pid && (
+                  <div style={{ position: 'absolute', inset: 0, borderRadius: '99px', overflow: 'hidden', pointerEvents: 'none' }}>
+                    <div style={{
+                      position: 'absolute', top: 0, bottom: 0, width: '40%', left: '-45%',
+                      background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.85), transparent)',
+                      animation: 'barShimmer 1.5s ease-out 2',
+                    }} />
+                  </div>
+                )}
               </div>
             </div>
 
@@ -2483,10 +2533,10 @@ export default function SessionPage() {
                 sessionId={sessionId as string}
                 sessionEnded={sessionEnded}
                 onClose={() => setSheetEventId(null)}
-                onSubmitted={async (label) => {
+                onSubmitted={async (label, meta) => {
                   setSheetEventId(null)
-                  setToast(`${sheetEvent.event_name} — ${label}`)
-                  setTimeout(() => setToast(null), 3000)
+                  setToast({ eventName: sheetEvent.event_name, label, isPR: meta.isPR, effortCredit: meta.effortCredit })
+                  setTimeout(() => setToast(null), meta.isPR ? 4000 : 3000)
                   await loadResults()
                 }}
                 onDeleted={async () => { await loadResults() }}
@@ -2496,15 +2546,42 @@ export default function SessionPage() {
         )
       })}
 
-      {/* Score-submitted toast */}
+      {/* Score-submitted toast — green for a normal score, gold/rainbow pop for a PR */}
       {toast && (
         <div style={{
           position: 'fixed', bottom: '20px', left: '50%', transform: 'translateX(-50%)',
-          width: 'min(600px, calc(100vw - 32px))', zIndex: 200,
-          background: '#161616', border: '1px solid #2a2a2a', borderLeft: '4px solid #4DB26E',
+          width: 'min(600px, calc(100vw - 32px))', zIndex: 200, overflow: 'hidden',
+          background: '#161616',
+          border: `1px solid ${toast.isPR ? '#F9B05155' : '#2a2a2a'}`,
+          borderLeft: `4px solid ${toast.isPR ? '#F9B051' : '#4DB26E'}`,
           borderRadius: '12px', padding: '13px 16px', boxShadow: '0 24px 60px rgba(0,0,0,0.6)',
+          animation: toast.isPR ? 'toastPop 0.45s cubic-bezier(0.16,1,0.3,1)' : undefined,
         }}>
-          <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '18px', color: '#fff' }}>Score in — {toast}</div>
+          {toast.isPR && (
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)' }} />
+          )}
+          <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '18px', color: '#fff' }}>
+            {toast.isPR
+              ? <><span style={{ color: '#F9B051' }}>NEW PR</span> — {toast.eventName} — {toast.label}</>
+              : <>Score in — {toast.eventName} — {toast.label}</>}
+            {toast.effortCredit > 0 && (
+              <span style={{ color: '#B87DB5', marginLeft: '10px', fontSize: '15px' }}>+{toast.effortCredit} effort</span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Effort cap toast — one-time per player per session */}
+      {effortMaxToast && (
+        <div style={{
+          position: 'fixed', bottom: toast ? '84px' : '20px', left: '50%', transform: 'translateX(-50%)',
+          width: 'min(600px, calc(100vw - 32px))', zIndex: 201,
+          background: '#161616', border: '1px solid #B87DB555', borderLeft: '4px solid #B87DB5',
+          borderRadius: '12px', padding: '13px 16px', boxShadow: '0 24px 60px rgba(0,0,0,0.6)',
+          animation: 'toastPop 0.45s cubic-bezier(0.16,1,0.3,1)',
+        }}>
+          <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '18px', color: '#B87DB5' }}>Effort maxed — 20/20</div>
+          <div style={{ fontSize: '13px', color: '#888', marginTop: '2px' }}>Full 100 effort points banked this session</div>
         </div>
       )}
 
