@@ -1,8 +1,17 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase-browser'
+import { EVENTS } from '@/lib/eventData'
+import { fetchAll } from '@/lib/fetchAll'
+import {
+  computeRatings, sessionWins, topEvent as ratingTopEvent, topDomain as ratingTopDomain,
+  type RatingEventRow, type RatingSessionRow, type RatingPlayerRow,
+} from '@/lib/rating'
+
+const DOMAIN_NAMES = Array.from({ length: 10 }, (_, i) => EVENTS.find(e => e.domainNumber === i + 1)?.domain ?? '')
+const EVENT_DOMAIN = new Map(EVENTS.map(e => [e.name, e.domainNumber]))
 
 type ActiveSession = {
   id: string
@@ -39,7 +48,9 @@ type EnrichedPlayer = {
   rank: number
   username: string
   sessions: number
-  avgPlacement: number
+  wins: number
+  topDomain: string
+  topEvent: string
   totalPoints: number
   name: string
   color: string
@@ -147,10 +158,10 @@ function LeaderboardTable({ data, accentColor, loading }: { data: EnrichedPlayer
 
       {/* Table — horizontally scrollable on narrow screens */}
       <div style={{ overflowX: 'auto' }}>
-        <div style={{ minWidth: '640px' }}>
+        <div style={{ minWidth: '860px' }}>
           {/* Table header */}
-          <div style={{ display: 'grid', gridTemplateColumns: '56px 1fr 90px 130px 110px 160px', gap: '16px', padding: '10px 24px' }}>
-            {['#', 'Player', 'Sessions', 'Avg Place', 'Season Pts', 'Colour'].map(h => (
+          <div style={{ display: 'grid', gridTemplateColumns: '56px 1fr 90px 70px 150px 150px 110px 150px', gap: '16px', padding: '10px 24px' }}>
+            {['#', 'Player', 'Sessions', 'Wins', 'Top Domain', 'Top Event', 'Season Pts', 'Colour'].map(h => (
               <div key={h} style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#444444' }}>{h}</div>
             ))}
           </div>
@@ -158,11 +169,13 @@ function LeaderboardTable({ data, accentColor, loading }: { data: EnrichedPlayer
           {/* Rows */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
             {data.map(player => (
-              <div key={player.rank} style={{ display: 'grid', gridTemplateColumns: '56px 1fr 90px 130px 110px 160px', gap: '16px', padding: '14px 24px', alignItems: 'center', border: '1px solid', borderColor: player.rank === 1 ? `${accentColor}22` : '#1a1a1a', background: '#0d0d0d', borderRadius: '8px' }}>
+              <div key={player.rank} style={{ display: 'grid', gridTemplateColumns: '56px 1fr 90px 70px 150px 150px 110px 150px', gap: '16px', padding: '14px 24px', alignItems: 'center', border: '1px solid', borderColor: player.rank === 1 ? `${accentColor}22` : '#1a1a1a', background: '#0d0d0d', borderRadius: '8px' }}>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', color: player.rank <= 3 ? player.color : '#333333' }}>{player.rank}</div>
                 <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '16px', color: '#ffffff' }}>{player.username}</div>
                 <div style={{ color: '#555555', fontSize: '15px', fontFamily: 'var(--font-label)' }}>{player.sessions}</div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', color: accentColor }}>{player.avgPlacement > 0 ? player.avgPlacement.toFixed(1) : '—'}</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', color: player.wins > 0 ? accentColor : '#333333' }}>{player.wins}</div>
+                <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '13px', color: player.topDomain === '—' ? '#333333' : '#cccccc' }}>{player.topDomain}</div>
+                <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '13px', color: player.topEvent === '—' ? '#333333' : '#cccccc' }}>{player.topEvent}</div>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', color: '#ffffff' }}>{player.totalPoints}</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: player.name === 'Uenuku' ? 'var(--rainbow)' : player.color, flexShrink: 0 }} />
@@ -204,18 +217,63 @@ export default function Leaderboard() {
   const [loading, setLoading] = useState(true)
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null)
   const [sessionLeader, setSessionLeader] = useState<SessionLeader | null>(null)
+  const [statsData, setStatsData] = useState<{
+    results: { id: string; player_id: string | null; session_id: string; event_id: string; raw_score: number | null; placement: number | null }[]
+    events: RatingEventRow[]
+    sessions: RatingSessionRow[]
+    players: RatingPlayerRow[]
+  } | null>(null)
 
-  // Fetch seasonal rankings
+  // Per-player wins (current season) + skill-derived top domain/event (lifetime)
+  const playerStats = useMemo(() => {
+    if (!statsData) return null
+    const year = String(new Date().getFullYear())
+    const seasonSessions = new Set(statsData.sessions.filter(s => s.session_date?.startsWith(year)).map(s => s.id))
+    const wins = sessionWins(statsData.results.filter(r => seasonSessions.has(r.session_id)))
+    const ratings = computeRatings(statsData.results, statsData.events, statsData.sessions, statsData.players)
+    const out = new Map<string, { wins: number; topDomain: string; topEvent: string }>()
+    for (const p of statsData.players) {
+      const mine = ratings.get(p.id)
+      out.set(p.id, {
+        wins: wins.get(p.id) ?? 0,
+        topDomain: ratingTopDomain(mine, EVENT_DOMAIN, DOMAIN_NAMES)?.domainName ?? '—',
+        topEvent: ratingTopEvent(mine)?.eventName ?? '—',
+      })
+    }
+    return out
+  }, [statsData])
+
+  // Fetch seasonal rankings (current season only — points reset each January)
   useEffect(() => {
     const supabase = createClient()
     supabase
       .from('rankings')
       .select('id, player_id, total_points, total_sessions, average_placement, division, players(display_name, username)')
+      .eq('season_year', new Date().getFullYear())
       .order('total_points', { ascending: false })
       .then(({ data }) => {
         setRankings(data || [])
         setLoading(false)
       })
+  }, [])
+
+  // Fetch full result history for wins + skill-derived top domain/event
+  useEffect(() => {
+    const supabase = createClient()
+    const load = async () => {
+      const [results, events, sessions, players] = await Promise.all([
+        fetchAll<{ id: string; player_id: string | null; session_id: string; event_id: string; raw_score: number | null; placement: number | null }>((from, to) =>
+          supabase.from('results').select('id, player_id, session_id, event_id, raw_score, placement').not('raw_score', 'is', null).order('id').range(from, to)),
+        fetchAll<RatingEventRow>((from, to) =>
+          supabase.from('session_events').select('id, session_id, event_name').order('id').range(from, to)),
+        fetchAll<RatingSessionRow>((from, to) =>
+          supabase.from('sessions').select('id, session_date').order('id').range(from, to)),
+        fetchAll<RatingPlayerRow>((from, to) =>
+          supabase.from('players').select('id, division').order('id').range(from, to)),
+      ])
+      setStatsData({ results, events, sessions, players })
+    }
+    load()
   }, [])
 
   // Fetch active session + results, subscribe to realtime
@@ -280,11 +338,14 @@ export default function Leaderboard() {
       const p = Array.isArray(r.players) ? r.players[0] : r.players
       const username = p?.display_name || p?.username || 'Anonymous'
       const grade = getGrade(r.total_points)
+      const stats = playerStats?.get(r.player_id)
       return {
         rank: i + 1,
         username,
         sessions: r.total_sessions,
-        avgPlacement: r.average_placement ?? 0,
+        wins: stats?.wins ?? 0,
+        topDomain: stats?.topDomain ?? '—',
+        topEvent: stats?.topEvent ?? '—',
         totalPoints: r.total_points,
         ...grade,
       }
@@ -395,7 +456,10 @@ export default function Leaderboard() {
                 <strong style={{ color: 'var(--white)' }}>Season points</strong> — every session earns points per event: 1st place = 100, dropping by a gap based on session size (minimum 10). Effort work adds up to 100 more per session.
               </p>
               <p style={{ color: 'var(--grey)', fontSize: '13px', lineHeight: 1.6, margin: 0 }}>
-                <strong style={{ color: 'var(--white)' }}>Avg place</strong> — your average finishing position within your division; lower is better. In-session, the lowest total placement across all 10 events wins.
+                <strong style={{ color: 'var(--white)' }}>Wins</strong> — sessions finished 1st in your division this season. In-session, the lowest total placement across all 10 events wins.
+              </p>
+              <p style={{ color: 'var(--grey)', fontSize: '13px', lineHeight: 1.6, margin: 0 }}>
+                <strong style={{ color: 'var(--white)' }}>Top domain &amp; top event</strong> — where your skill rating is strongest, based on every head-to-head result you have played. Tap My 100 on your dashboard for the full breakdown.
               </p>
               <p style={{ color: 'var(--grey)', fontSize: '13px', lineHeight: 1.6, margin: 0 }}>
                 <strong style={{ color: 'var(--white)' }}>Colour</strong> — your grade for the year, earned from total season points. Thresholds are in the Colour Key below. Points reset each January.
