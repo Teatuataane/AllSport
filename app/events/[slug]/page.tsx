@@ -176,7 +176,10 @@ export default function EventPage() {
                   }}>
                     D{t.level}
                   </div>
-                  <div style={{ fontSize: '14px', color: 'var(--grey-light)', fontFamily: 'var(--font-body)' }}>{t.name}</div>
+                  <div style={{ fontFamily: 'var(--font-body)' }}>
+                    <div style={{ fontSize: '14px', color: 'var(--grey-light)' }}>{t.name}</div>
+                    {t.detail && <div style={{ fontSize: '12px', color: 'var(--grey)' }}>{t.detail}</div>}
+                  </div>
                 </div>
               ))}
             </div>

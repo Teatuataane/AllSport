@@ -2,6 +2,25 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.5.0.0] - 2026-07-14
+
+### Added
+- **Skill ratings** — every player now has a 0–100 skill score per event and per domain, computed from a multiplayer Elo run over session results (each event is a mini tournament within your division pool). 50 is the division average; 100 takes sustained dominance. Shown on the My 100 card, the new My Stats modal, and the leaderboard. Lives in `lib/rating.ts` with unit tests.
+- **My Stats modal** — tapping My 100 opens a full breakdown: session wins, average placement, events played, your top event and top domain, and a per-domain skill bar with coverage.
+- **Bowling** — new Aim & Precision event (head-to-head W/D/L over a set number of frames). Brings the catalogue to 105 events.
+- **Quarterly wellbeing check-in** — a short, validated survey (WHO-5 wellbeing, physical-activity days, self-rated fitness, and confidence/enjoyment/belonging) that appears on the dashboard no more than once a quarter. Answers stay private to the player; kaiwhakawā see only aggregate trends by cohort (with small groups suppressed) plus a CSV export for funder evidence. Migration `20260714_wellbeing_survey.sql`.
+
+### Changed
+- **My 100 is now a stat card** — alongside the coverage dots it shows wins, average place, events played, per-domain skill scores, and your top event, and opens the My Stats modal instead of jumping straight to /prs.
+- **Leaderboard columns** — Avg Place is replaced by Wins, Top Domain, and Top Event. The board now also filters to the current season only (it was mixing seasons before).
+- **Difficulty tier names shortened** — 73 overflowing tier names that ran off the in-game event buttons are trimmed; the detailed judge criteria move to a new per-tier "detail" line shown in the HOW TO sheet and on event pages.
+- **Selwyn Winter Jam** — the /schedule block is now a results recap with division champions instead of an advert for a past date.
+
+### Fixed
+- **Double-counted games and points** — every player was being recorded as playing each session twice, doubling their season points and session count. Root cause: an orphaned second trigger (`on_session_end`) left over from an April schema migration fired alongside the real one on every session close. Migration `20260713_fix_double_award.sql` drops the orphan, makes the award function claim each session atomically so it can never double-fire again, and rebuilds 2026 rankings from the (correct) session summaries.
+- **Breath Hold ranked backwards** — it now correctly rewards longer holds (was `time` mode / shorter-wins); its effort task is 80% of your PR. Existing scores are flipped by migration `20260713b_breath_hold_duck_walk.sql`.
+- **Duck Walk ranking** — retiered to distance walks only (10m–200m, faster wins) and added to the timed-effort set; historical scores re-encoded by the same migration.
+
 ## [0.4.1.0] - 2026-07-07
 
 ### Added

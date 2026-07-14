@@ -139,8 +139,10 @@ function computeEffortTasks(
     return [{ label: 'Complete an additional 4-hole round', count: extras, isRepeatable: true }]
   }
   if (mode === 'hold') {
-    const count = myEventResults.filter(r => r.raw_score >= 120).length
-    return [{ label: 'Hold for at least 2 minutes', count, isRepeatable: true }]
+    if (effectivePR === null) return []
+    const target = Math.max(1, Math.round(effectivePR * 0.8))
+    const count = myEventResults.filter(r => r.raw_score >= target).length
+    return [{ label: `Hold for ${fmtTime(target)} or longer`, count, isRepeatable: true }]
   }
   if (effectivePR === null) return []
 
@@ -239,7 +241,10 @@ function calcSubmissionEffortTasks(
   if (!eventData) return 0
   if (mode === 'sport') return existingEventResults.length > 0 ? 1 : 0
   if (mode === 'score') return existingEventResults.length > 0 ? 1 : 0
-  if (mode === 'hold') return (timeSecs ?? 0) >= 120 ? 1 : 0
+  if (mode === 'hold') {
+    if (effectivePR === null) return 0
+    return (timeSecs ?? 0) >= Math.max(1, Math.round(effectivePR * 0.8)) ? 1 : 0
+  }
   if (effectivePR === null) return 0
   if (mode === 'strength') {
     const w = weightKg ?? 0
@@ -1093,7 +1098,10 @@ function QuickEntrySheet({
                   {tiers.map(t => (
                     <div key={t.level} style={{ display: 'flex', gap: '10px', padding: '8px 0', borderBottom: '1px solid #1e1e1e', fontSize: '13.5px' }}>
                       <span style={{ fontFamily: 'Barlow Condensed, sans-serif', color: '#4DB26E', width: '30px', flexShrink: 0, fontWeight: 600 }}>D{t.level}</span>
-                      <span style={{ color: '#ccc', fontWeight: 300 }}>{t.name}</span>
+                      <span style={{ color: '#ccc', fontWeight: 300 }}>
+                        {t.name}
+                        {t.detail && <span style={{ display: 'block', color: '#777', fontSize: '12.5px' }}>{t.detail}</span>}
+                      </span>
                     </div>
                   ))}
                 </>

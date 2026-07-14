@@ -11,8 +11,8 @@ import {
 // ─── EVENTS array integrity ───────────────────────────────────────────────────
 
 describe('EVENTS array', () => {
-  it('contains exactly 104 events', () => {
-    expect(EVENTS).toHaveLength(104)
+  it('contains exactly 105 events', () => {
+    expect(EVENTS).toHaveLength(105)
   })
 
   it('every event has a unique slug', () => {

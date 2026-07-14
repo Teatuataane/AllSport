@@ -134,38 +134,37 @@ export default function Schedule() {
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '48px', alignItems: 'center' }}>
               <div>
-                <div className="tag">Special Event</div>
+                <div className="tag">Event Recap</div>
                 <h2 style={{ fontSize: 'clamp(40px, 5vw, 68px)', marginBottom: '8px', lineHeight: 1 }}>
                   SELWYN<br /><span style={{ color: 'var(--purple)' }}>WINTER JAM</span>
                 </h2>
                 <div className="divider" style={{ background: 'var(--purple)' }} />
                 <p style={{ color: 'var(--grey-light)', fontSize: '16px', lineHeight: 1.8, marginBottom: '16px' }}>
-                  AllSport&apos;s first public competition — a multi-division tournament with prizes. Open to all registered players and newcomers alike. Come see what AllSport is all about, then stay and compete.
+                  AllSport&apos;s first public competition is in the books. On Saturday 4 July, players across four divisions went head to head over ten events — from Pause Bench and Vertical Jump to Badminton and Carrom. Thank you to everyone who came out, competed, and made it what it was.
                 </p>
                 <p style={{ color: 'var(--grey)', fontSize: '15px', lineHeight: 1.8, marginBottom: '32px' }}>
-                  Entry by koha — $20 suggested contribution. Prizes across all divisions. Registration required.
+                  Missed it? The next big one is the Annual Championship below — and regular sessions run every week.
                 </p>
-                <Link href="/register" className="btn btn-primary" style={{ fontSize: '16px' }}>
-                  Register to Compete
+                <Link href="/schedule" className="btn btn-primary" style={{ fontSize: '16px' }}>
+                  Join a Weekly Session
                 </Link>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div style={{ background: 'var(--dark)', border: '1px solid rgba(184,125,181,0.2)', borderRadius: '12px', padding: '28px 32px' }}>
-                  <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555555', marginBottom: '8px' }}>Date</div>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '36px', color: 'var(--purple)', lineHeight: 1 }}>Saturday 4 July 2026</div>
-                </div>
-                <div style={{ background: 'var(--dark)', border: '1px solid rgba(184,125,181,0.2)', borderRadius: '12px', padding: '28px 32px' }}>
-                  <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555555', marginBottom: '8px' }}>Location</div>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '28px', color: 'var(--white)', lineHeight: 1 }}>Selwyn District</div>
-                  <div style={{ color: 'var(--grey)', fontSize: '14px', marginTop: '4px' }}>Indoor venue — Ōtautahi, Aotearoa</div>
-                </div>
-                <div style={{ background: 'var(--dark)', border: '1px solid rgba(184,125,181,0.2)', borderRadius: '12px', padding: '28px 32px' }}>
-                  <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555555', marginBottom: '8px' }}>Divisions</div>
-                  <div style={{ color: 'var(--grey-light)', fontSize: '14px', lineHeight: 1.7 }}>
-                    Men&apos;s · Women&apos;s · Juniors (U17)<br />
-                    Masters Men (40+) · Masters Women (40+)<br />
-                    Grandmaster Men (60+) · Grandmaster Women (60+)
+                  <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555555', marginBottom: '8px' }}>Saturday 4 July 2026 — Champions</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '4px' }}>
+                    {[
+                      { division: "Men's", winner: 'kiwigyver' },
+                      { division: "Women's", winner: 'Meredith' },
+                      { division: 'Masters Men (40+)', winner: 'Blair' },
+                      { division: 'Masters Women (40+)', winner: 'Tarsh' },
+                    ].map(w => (
+                      <div key={w.division} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '16px', borderBottom: '1px solid #1e1e1e', paddingBottom: '8px' }}>
+                        <span style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--grey)' }}>{w.division}</span>
+                        <span style={{ fontFamily: 'var(--font-display)', fontSize: '24px', color: 'var(--purple)', lineHeight: 1, textAlign: 'right' }}>{w.winner}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase-browser'
 import JudgeCard from '@/app/components/JudgeCard'
+import WellbeingReport from '@/app/components/WellbeingReport'
 import Link from 'next/link'
 
 const supabase = createClient()
@@ -65,6 +66,7 @@ export default function JudgePage() {
         </div>
 
         <JudgeCard playerRole={player.role} />
+        <WellbeingReport />
       </div>
     </div>
   )
