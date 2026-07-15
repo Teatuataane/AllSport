@@ -2,6 +2,11 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.5.0.1] - 2026-07-15
+
+### Changed
+- **Personal Bests page — domains now collapse** — /prs opens with all ten domains collapsed. Each domain row shows its own icon, the domain name in its colour, and a PB count (events with a result / total in that domain). Tap a domain to expand its event rows; each event now shows its pictogram icon, dimmed for events you haven't scored yet. Domains open independently, and event rows still expand to full PB history. New `DomainIcon` component and `public/domain-icons/` icon set (masked and tinted the domain colour like the event icons).
+
 ## [0.5.0.0] - 2026-07-14
 
 ### Added
