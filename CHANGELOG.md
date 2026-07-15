@@ -2,6 +2,14 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.5.1.0] - 2026-07-16
+
+### Changed
+- **"My 100" is now "My Events"** — the dashboard card and its modal are renamed, and the confusing "skill" score is gone. Instead you now see how you actually rank against your division: **Top X%** on every event and domain (the share of players who've played it that your best beats), or **1st** when nobody has beaten your best.
+- **My Events dashboard card** — cleaner at a glance: one colourful bar shows how many of the 105 events you've played (with the count), plus your **Top Domain** and **Top Event** with their icons and your Top % in each. The old wins/average/events row and the busy dot grid are gone.
+- **My Events modal** — opens to your session wins, average placement, and total games played, then your **strongest and weakest** events side by side. Every domain is now expandable: tap to see each event with its icon and your Top %, including the events you haven't played yet (shown dimmed) so you can spot where the easy ranking wins are.
+- **Leaderboard Top Domain / Top Event** — now read as "Power · Top 8%" or "Deadlift · 1st", so the whole app speaks one ranking language.
+
 ## [0.5.0.1] - 2026-07-15
 
 ### Changed
