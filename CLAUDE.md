@@ -158,7 +158,7 @@ linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)
 - **Hand Walk → Handbalance** rename (see Event renames above).
 - **Timed-effort events now rank by FASTEST time** — `difficulty+time` carries two semantics: HOLDS (longer time wins) and TIMED EFFORTS (faster time wins). Previously every `difficulty+time` event ranked longer time as better, so e.g. Running 4:20 beat 4:19. The 10 timed-effort events (Running, Cycling, Ski Erg, Row Erg, Weighted Carry, Bronco, Walking, Burpee Broad Jump, Climbing, Repeat High Jump) now rank faster as better. Rule: a higher difficulty tier always outranks a lower one; within a tier, faster wins. See "difficulty+time encoding" below. **Duck Walk is intentionally excluded** (mixed hold + walk tiers) — pending tier redesign (see What's Next).
 - **Overall placement fix** — the points trigger now ranks each scored player across EVERY session event; a missed event = last place in the division (= number of players in that division who played the session). Previously only scored events were summed, so playing fewer events gave an unfairly low (better) total.
-- **Points doubling fix** — production was running a stale award function that summed `points_earned` (duplicated across every event row); season total is now placement + effort, added once. Fixed in migration `20260629_fix_placement_and_timed_events.sql`.
+- **Points doubling fix** — production was running a stale award function that summed `points_earned` (duplicated across every event row); season total is now placement + effort, added once. Fixed in migration `20260629000000_fix_placement_and_timed_events.sql`.
 - **Date off-by-one fix** — DATE columns ('YYYY-MM-DD') were parsed as UTC midnight, rendering the previous day in behind-UTC contexts. New `lib/dates.ts` (`parseLocalDate` / `formatNZDate`) parses dates in local time. Applied to all session-date renders.
 - **Game review page** — new `/games/[sessionId]` full all-player report (every division, event, score + placement, standings), linked from dashboard session history; any logged-in player. Placements computed live from `raw_score` (so the encoding + missing-event fixes reflect for past games too).
 
@@ -585,19 +585,23 @@ best_score, current_rank, division, average_placement, season_year
   public/
     event-icons/                    # Canva silhouette exports, transparent PNG named {slug}.png (see README.md inside)
   supabase/
-    migrations/
-      20260420_phase1.sql
-      20260428_phase2.sql           # difficulty_tier column; updated award_session_points trigger
-      20260505_judge_player_management.sql
-      20260510_drop_disadvantage_columns.sql
-      20260510_per_division_points.sql
-      20260512_effort_system.sql
-      20260513_drop_effort_scores.sql
-      20260513_event_voting.sql     # event_votes, event_vote_nominations, event_vote_responses tables + RLS + functions
-      20260514_dashboard_redesign.sql # players.icon, session_player_summary, get_player_top_event RPC, updated trigger
-      20260526_fix_points_trigger.sql  # Remove bonus system; fix gap formula — run in Supabase SQL Editor
-      20260629_fix_placement_and_timed_events.sql  # Overall placement (missing event = last in division), points-doubling fix, timed-event raw_score re-encode — supersedes 20260526/b; run ONCE in Supabase SQL Editor
-      20260707_leaderboard_cleanup.sql  # average_placement trigger + backfill, merge orphaned 'Youth' rankings rows — run in Supabase SQL Editor
+    config.toml                       # Supabase CLI config (project_id = "allsport"); linked project ref lives in supabase/.temp (gitignored)
+    README.md                         # Migration workflow — how to link, baseline, and run `supabase db push`
+    migrations/                       # All files renamed to unique 14-digit timestamps (YYYYMMDDHHMMSS) for CLI compatibility (July 2026)
+      20260420000000_phase1.sql
+      20260428000000_phase2.sql           # difficulty_tier column; updated award_session_points trigger
+      20260505000000_judge_player_management.sql
+      20260510000000_drop_disadvantage_columns.sql
+      20260510000001_per_division_points.sql
+      20260512000000_effort_system.sql
+      20260513000000_drop_effort_scores.sql
+      20260513000001_event_voting.sql     # event_votes, event_vote_nominations, event_vote_responses tables + RLS + functions
+      20260514000000_dashboard_redesign.sql # players.icon, session_player_summary, get_player_top_event RPC, updated trigger
+      20260526000000_fix_points_trigger.sql  # Remove bonus system; fix gap formula
+      20260526000001_fix_trigger_add_summary.sql  # (was 20260526b)
+      20260629000000_fix_placement_and_timed_events.sql  # Overall placement (missing event = last in division), points-doubling fix, timed-event raw_score re-encode — supersedes 20260526*; run ONCE
+      20260707000000_leaderboard_cleanup.sql  # average_placement trigger + backfill, merge orphaned 'Youth' rankings rows
+      # NOTE: dates before are historical; every migration above has been applied to prod by hand and is baselined as applied in the CLI (see supabase/README.md). New migrations apply via `supabase db push`.
   public/
     logo.png
 ```
@@ -615,7 +619,7 @@ best_score, current_rank, division, average_placement, season_year
 - Live scoring — 100-event pool, all input modes including difficulty tier selector, Kaiwhakawā edit/delete/score-for-any-player, score edit (pre-fill form + UPDATE), missing scores = last place, post-game popup
 - Sport results displayed as W/D/L (Wins/Draws/Losses) everywhere: live session event card + collapsed label, leaderboard expanded row, /prs page, /events/[slug] personal best. Format: "3W 1D 2L"
 - Leaderboard competitive rows show "Nth of N" division rank context (e.g. "1st of 3")
-- Points trigger fixed (May 2026): removed bonus system (was causing 140pts for 1st instead of 100); fixed gap formula (no floor on gap — min 10 applies to earned pts only). Migration: 20260526_fix_points_trigger.sql
+- Points trigger fixed (May 2026): removed bonus system (was causing 140pts for 1st instead of 100); fixed gap formula (no floor on gap — min 10 applies to earned pts only). Migration: 20260526000000_fix_points_trigger.sql
 - Live session leaderboard — redesigned (June 2026): three simultaneous sections (Men's, Women's, Juniors); top 3 expandable per section; each top-3 row tappable to show all event scores + placements; logged-in player pinned below top 3 showing actual rank; Masters/Grandmaster toggle per gender section; Junior age-group chips (exact age); event filter dropdown (session events only, replaces overall ranking with event-specific flat list); age + event filters combinable; effort leaderboard removed (effort shown on event buttons only)
 - Live session leaderboard — bug fixes (June 2026 session 14): (1) unified Men's pool (Men's + Masters Men + Grandmaster Men ranked together); same for Women's — fixes Masters Women players being invisible; (2) Masters/Grandmaster players show sub-division rank badge alongside overall rank; (3) Masters/60+ chips are now filters within the full pool, not pool switchers; (4) all three sections (Men's, Women's, Juniors) always rendered even with zero scores — show "No scores yet" placeholder; (5) total placement score (sum of ordinal placements, lower = better) shown on every player row; (6) 15-second polling fallback added alongside realtime subscription so leaderboard always auto-refreshes; (7) Judge Summary tab added to Kaiwhakawā — all divisions, all players, all events, delete scores inline, works post-session
 - Effort system — effort tasks generated per event, locked until comp score submitted, effectivePR baseline, reps/hold/sport/tiered modes all handled; event button always shows "Effort Level: N"; award trigger correct (×10 per task, cap 100)
@@ -642,7 +646,7 @@ best_score, current_rank, division, average_placement, season_year
 - Event voting system — judges create votes (name, event date, close date, 2–10 events per domain nominated), players vote step-by-step (one domain per screen, partial save, locked on final submit), spoiler-free results (hidden until voted, counts only while open, percentages after close), judge full breakdown with voter names; nomination Step 2 uses auto-advance accordion (domain auto-closes and next incomplete domain opens when selection limit hit; 250ms delay for visual feedback; domain 1 open by default; page scrolls naturally — no inner scroll box)
 - Design review celebration pass (July 2026 session 20) — [DR-3] players land on their own tab, [DR-2] PR toast variant (+effort credit line), [DR-8] one-time effort-cap toast, [DR-9] one-time full-house shimmer + "All 10 events played" label
 - Session-end takeover (July 2026 session 20) — [DR-1] full-screen end-of-session moment (placement, points, PRs, animated colour progress, game report link; localStorage dismissal) + [DR-7] 10th/25th/50th session milestones with referral note on the 10th
-- Leaderboard cleanup (July 2026 session 20) — [DR-4] rankings.average_placement now populated by trigger + backfill (migration `20260707_leaderboard_cleanup.sql`), legacy Youth tab removed, Grandmaster tab keys fixed ('Grandmasters …' never matched the DB's 'Grandmaster …' so those tabs were always empty), Felix's duplicate Youth rankings row merged, hero + Colour Key copy corrected (colours are earned the moment a threshold is crossed; points reset each January)
+- Leaderboard cleanup (July 2026 session 20) — [DR-4] rankings.average_placement now populated by trigger + backfill (migration `20260707000000_leaderboard_cleanup.sql`), legacy Youth tab removed, Grandmaster tab keys fixed ('Grandmasters …' never matched the DB's 'Grandmaster …' so those tabs were always empty), Felix's duplicate Youth rankings row merged, hero + Colour Key copy corrected (colours are earned the moment a threshold is crossed; points reset each January)
 - Dashboard next-session countdown (July 2026 session 20) — [DR-5] Card 8 with no session running now shows "Next session: {weekday} {time}" + "in {n} hours/days" computed from the fixed schedule in NZ time (`nextScheduledSession` in dashboard/page.tsx); active-session Join state unchanged
 - "My 100" dashboard card (July 2026 session 20) — [DR-6] lifetime event coverage: 10 domain rows × 10 domain-coloured dots + "{n} of 100 events played", derived from distinct event names on results mapped through eventData EVENTS (legacy orphan names don't match — by design); taps through to /prs. Live session shows a "New event unlocked" toast for first-ever events (PR toast still wins)
 - Placement-change flash (July 2026 session 20) — [DR-10] live session banner animates "3rd → 2nd" when a new result improves the player's division rank; no animation on first paint or rank drops
@@ -651,12 +655,8 @@ best_score, current_rank, division, average_placement, season_year
 
 ## What's Next (In Priority Order)
 
-1. Apply DB migrations to production Supabase (SQL Editor):
-   - `20260629_fix_placement_and_timed_events.sql` — **run ONCE**: fixes overall placement (missing event = last in division), points doubling, and re-encodes timed-event raw_score. Supersedes `20260526`/`20260526b` (self-contained — no need to run those first). The one-time raw_score re-encode must not be run twice.
-   - `20260610_historic_points.sql` — Salvador +800, Rodrigo +1500, Zeke +1500 (2025 season)
-   - `20260617_fix_youth_division.sql` — fixes Felix + any other 'Youth' → 'Juniors'
-   - `20260707_leaderboard_cleanup.sql` — populates rankings.average_placement (new trigger + backfill) and merges Felix's orphaned 'Youth' 2026 rankings row (610 pts) into his 'Juniors' row (260 pts) so he stops appearing twice on /leaderboard
-2. **Felix's date of birth** — DOB is set (2016-12-19). Division was 'Youth' (legacy value); migration `20260617_fix_youth_division.sql` updates all 'Youth' → 'Juniors'. Code also treats 'Youth' as 'Juniors' in both leaderboard pool filters as a fallback.
+1. ~~Apply DB migrations to production Supabase~~ — DONE. All 32 migrations through `20260707000000_leaderboard_cleanup.sql` have been applied to prod (confirmed by Tāne, July 2026). Migrations are now managed by the Supabase CLI and baselined as applied — future migrations go via `supabase db push` (see `supabase/README.md`), not the SQL Editor.
+2. **Felix's date of birth** — DOB is set (2016-12-19). Division was 'Youth' (legacy value); migration `20260617000000_fix_youth_division.sql` (applied) updated all 'Youth' → 'Juniors'. Code also treats 'Youth' as 'Juniors' in both leaderboard pool filters as a fallback.
 3. **Breakdancing tiers** — change from `difficulty+reps` to `difficulty+time` with new tier descriptions (awaiting tier content from Tane)
 3. **Referral system** — DB migration (referral_code on players, referrals table, trigger), /join/[code] invite landing, dashboard "Invite Friends" section, /koha referral tier display
 4. **Funding campaign block** — update /koha with "Wheels for AllSport" campaign section (hardcoded, progress bar, milestones)
@@ -672,7 +672,7 @@ best_score, current_rank, division, average_placement, season_year
 14. ~~Season-PR direction bug (time/sprint)~~ — FIXED July 2026 session 19: both PR loaders now always take max raw_score (time/sprint store negative seconds, so max = fastest).
 15. **Breath Hold ranking direction** — Breath Hold uses `time` mode (raw_score = −secs, faster = better), which ranks SHORTER holds as better. Should be `hold` mode (longer wins) + a decision on re-encoding any existing negative breath-hold raw_scores (mirror the 20260629 re-encode approach). Effort task label ("Complete in X or faster") is also wrong for this event.
 16. **Review drafted event content (session 19)** — Tāne to review the 94 drafted howToPerform/rules entries in lib/eventData.ts, especially the flagged ones: Toe Lift, Kelly Snatch, Repeat High Jump, Australian Football, Tag, Netball.
-17. **July 2026 design review (session 20)** — ~~[DR-2] PR toast~~, ~~[DR-3] default to own tab~~, ~~[DR-8] effort cap moment~~, ~~[DR-9] full-house pulse~~ DONE (Phase 1); ~~[DR-1] session-end takeover~~, ~~[DR-7] session-count milestones~~ DONE (Phase 2); ~~[DR-4] /leaderboard cleanup~~, ~~[DR-5] dashboard next-session countdown~~ DONE (Phase 3 — DB side needs `20260707_leaderboard_cleanup.sql` run in the SQL Editor); ~~[DR-6] "My 100" card + new-event toast~~, ~~[DR-10] placement-change flash~~ DONE (Phase 4). ALL DR ITEMS COMPLETE — only the migration run remains.
+17. **July 2026 design review (session 20)** — ~~[DR-2] PR toast~~, ~~[DR-3] default to own tab~~, ~~[DR-8] effort cap moment~~, ~~[DR-9] full-house pulse~~ DONE (Phase 1); ~~[DR-1] session-end takeover~~, ~~[DR-7] session-count milestones~~ DONE (Phase 2); ~~[DR-4] /leaderboard cleanup~~, ~~[DR-5] dashboard next-session countdown~~ DONE (Phase 3 — DB side needs `20260707000000_leaderboard_cleanup.sql` run in the SQL Editor); ~~[DR-6] "My 100" card + new-event toast~~, ~~[DR-10] placement-change flash~~ DONE (Phase 4). ALL DR ITEMS COMPLETE — only the migration run remains.
 
 ---
 
@@ -696,7 +696,7 @@ best_score, current_rank, division, average_placement, season_year
 - Handbalance (session 18): renamed from Hand Walk; slug stays `hand-walk` so historical results stay linked. Tiers: D1 Pushup Hold, D2 Elevated Pushup Hold, D3 Wall Handstand, D4 Freestanding Handstand. Hold event (longer time wins)
 - Timed-effort events (session 18): 10 `difficulty+time` events rank FASTER as better (Running, Cycling, Ski Erg, Row Erg, Weighted Carry, Bronco, Walking, Burpee Broad Jump, Climbing, Repeat High Jump). Encoding inverts the within-tier seconds term (`10000 - secs`) so `raw_score` DESC still means best everywhere; higher tier always beats lower tier. `TIMED_EFFORT_SLUGS` + `encodeDiffTime`/`decodeDiffTime`/`isTimedEffort` in eventData.ts. Duck Walk excluded (mixed tiers). `time_seconds` stored un-inverted for effort matching
 - Overall placement (session 18): trigger ranks every scored player across ALL session events; a missed event = last place in the division (= number of division players who played the session). Fixes "win while playing fewer events". The live leaderboard already penalised missing events client-side; this fixed the server trigger (awarded placement + points)
-- Points doubling (session 18): root cause was a stale prod award function summing per-row `points_earned` (duplicated across every event row → ×event count). Corrected trigger computes season total as placement + effort once. Migration `20260629_fix_placement_and_timed_events.sql`
+- Points doubling (session 18): root cause was a stale prod award function summing per-row `points_earned` (duplicated across every event row → ×event count). Corrected trigger computes season total as placement + effort once. Migration `20260629000000_fix_placement_and_timed_events.sql`
 - Dates (session 18): DATE columns parsed in local time via `lib/dates.ts` (`parseLocalDate`/`formatNZDate`) to stop the UTC off-by-one (19th showing as 18th)
 - Game review (session 18): `/games/[sessionId]` is a read-only full-game report for any logged-in player; placements computed live from `raw_score` (not the stored placement), so it reflects the encoding + missing-event fixes for past games too; mirrors the trigger's 7-division structure
 - Effort task labels (June 2026 session 16): all modes use conversational sentence style — e.g. "Lift ${kg}kg for 5 reps" (was "${kg}kg × 5 reps"), "Achieve at least ${X}m" (was "Throw/jump ≥ X"), "Complete ${targetReps}+ reps at ${tierName}" (was "${n}+ reps at…"), "Complete in X or faster" (was "Hold for X or longer"), "Hold for at least 2 minutes" (was "Hold for 2 minutes")
@@ -752,12 +752,13 @@ best_score, current_rank, division, average_placement, season_year
 - Leaderboard auto-refresh: 15-second polling fallback added alongside existing realtime subscription; leaderboard updates without manual page refresh
 - Judge Summary tab: "Summary" tab appears in the tab bar for judges, alongside Kaiwhakawā; shows all 3 divisions with all players ranked; each player expandable to see all 10 event scores + ordinal placements; Edit/Delete buttons per submitted score (delete works live and post-session); "To add or update a score, use the Kaiwhakawā tab" guidance shown in edit panel
 - Dashboard Points History modal: z-index 1050/1100 (above Navbar at 1001) — back button always visible
-- Historic points migration: `supabase/migrations/20260610_historic_points.sql` — adds Salvador +800, Rodrigo +1500, Zeke +1500 to 2025 rankings; run in Supabase SQL Editor
+- Historic points migration: `supabase/migrations/20260610000000_historic_points.sql` — adds Salvador +800, Rodrigo +1500, Zeke +1500 to 2025 rankings; run in Supabase SQL Editor
 - JudgeCard tab bar: Sessions / Votes / Players tabs; default tab is Sessions; switching to Players auto-loads player list; ordinal helper `ordinalJC` used inside JudgeCard to avoid naming conflict
 
 ---
 
-*Last updated: July 2026 (session 20 — design review DR-1..10 implemented in four phases: (1) celebration pass — PR/effort toast variants, players land on own tab, effort-cap + full-house one-time moments; (2) session-end takeover with placement/points/PRs/colour-progress + 10th/25th/50th session milestones; (3) /leaderboard cleanup (avg place trigger migration 20260707, Youth tab removed, Grandmaster tab keys fixed, Felix duplicate merged, copy corrected) + dashboard next-session countdown; (4) My 100 coverage card + new-event-unlocked toast + banner placement-change flash. PENDING: run 20260707_leaderboard_cleanup.sql in the Supabase SQL Editor)*
+*Last updated: July 2026 (Supabase CLI migration setup — installed the CLI, renamed all migrations to unique 14-digit timestamps, added supabase/config.toml + README.md + baseline.sh, linked the prod project and baselined all 32 migrations as applied. Migrations now go via `supabase db push`, not the SQL Editor.)*
+*Previous: July 2026 (session 20 — design review DR-1..10 implemented in four phases: (1) celebration pass — PR/effort toast variants, players land on own tab, effort-cap + full-house one-time moments; (2) session-end takeover with placement/points/PRs/colour-progress + 10th/25th/50th session milestones; (3) /leaderboard cleanup (avg place trigger migration 20260707, Youth tab removed, Grandmaster tab keys fixed, Felix duplicate merged, copy corrected) + dashboard next-session countdown; (4) My 100 coverage card + new-event-unlocked toast + banner placement-change flash. All DB migrations through 20260707 confirmed applied to prod.)*
 *Previous: July 2026 (session 19 — TWO parallel workstreams merged: (1) live session player UI redesign: quick-entry bottom sheet with steppers/quick-picks/tier chips, Still to play/Scored list split, session progress bar, HOW TO in sheet, EventIcon pictogram system with Canva PNG mask pipeline (public/event-icons/), lib/scoring.ts extraction + unit tests, event how-to content for all 94 placeholder events, season-PR direction fix; (2) true-brand UI rollout: globals.css rewritten on the canonical token palette (with legacy aliases), shared UI kit in components/ui.tsx, Navbar/Footer rebuilt, all public pages rebuilt on the kit (canonical event lists, computed counts, no emoji), player pages reskinned, Google OAuth primary on login/play/register, leaderboard comprehension explainer. NOTE: the live session screen still uses inline styles + emoji icon fallback — migrating it onto the ui.tsx kit is a follow-up)*
 *Earlier: June 2026 (session 18 — Hand Walk → Handbalance; timed-effort events (Running etc.) now rank fastest-wins via inverted difficulty+time encoding; overall-placement fix (missing event = last in division); points-doubling fix; date off-by-one fix (lib/dates.ts); new /games/[sessionId] full game-review page; migration 20260629; stale eventData tests refreshed)*
 *Project started: March 2026*
