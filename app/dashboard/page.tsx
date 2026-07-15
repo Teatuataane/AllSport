@@ -5,12 +5,16 @@ import { createClient } from '@/lib/supabase-browser'
 import { formatNZDate } from '@/lib/dates'
 import { EVENTS } from '@/lib/eventData'
 import { nextScheduledSession } from '@/lib/schedule'
-import { domainColor } from '@/components/EventIcon'
+import EventIcon, { domainColor } from '@/components/EventIcon'
+import DomainIcon from '@/components/DomainIcon'
 import {
-  computeRatings, domainRatings, sessionWins,
-  topEvent as ratingTopEvent, topDomain as ratingTopDomain,
+  sessionWins,
   type RatingResultRow, type RatingEventRow, type RatingSessionRow, type RatingPlayerRow,
 } from '@/lib/rating'
+import {
+  computePercentiles, domainPercentiles, strongestEvent, weakestEvent,
+  topDomain as pctTopDomain, eventPctLabel, domainPctLabel,
+} from '@/lib/percentile'
 import { fetchAll } from '@/lib/fetchAll'
 import WellbeingSurvey from '@/app/components/WellbeingSurvey'
 import Link from 'next/link'
@@ -19,6 +23,8 @@ const supabase = createClient()
 
 const DOMAIN_NAMES = Array.from({ length: 10 }, (_, i) => EVENTS.find(e => e.domainNumber === i + 1)?.domain ?? '')
 const EVENT_DOMAIN = new Map(EVENTS.map(e => [e.name, e.domainNumber]))
+const EVENT_META = new Map(EVENTS.map(e => [e.name, { slug: e.slug, emoji: e.emoji, domainNumber: e.domainNumber }]))
+const DOMAIN_TOTALS = Array.from({ length: 10 }, (_, i) => EVENTS.filter(e => e.domainNumber === i + 1).length)
 
 type RatingData = {
   results: (RatingResultRow & { placement: number | null })[]
@@ -121,6 +127,7 @@ function DashboardInner() {
   // Skill ratings — full result history, recomputed client-side (idempotent)
   const [ratingData, setRatingData] = useState<RatingData | null>(null)
   const [showStats, setShowStats] = useState(false)
+  const [expandedStatDomains, setExpandedStatDomains] = useState<Set<number>>(new Set())
 
   // Active session (non-judges)
   const [activeSession, setActiveSession] = useState<any>(null)   // player already has results in this session
@@ -295,24 +302,29 @@ function DashboardInner() {
   // ── Player stats (My 100 card + stats modal) ────────────────────────────────
   const playerStats = useMemo(() => {
     if (!ratingData || !activePlayerId) return null
-    const ratings = computeRatings(ratingData.results, ratingData.events, ratingData.sessions, ratingData.players)
-    const mine = ratings.get(activePlayerId)
-    const domains = domainRatings(mine, EVENT_DOMAIN)
-    const top = ratingTopEvent(mine)
-    const topDom = ratingTopDomain(mine, EVENT_DOMAIN, DOMAIN_NAMES)
+    // Best-score percentiles (the player-facing "Top X%" metric)
+    const allPct = computePercentiles(ratingData.results, ratingData.events, ratingData.players)
+    const minePct = allPct.get(activePlayerId)
+    const pctDomains = domainPercentiles(minePct, EVENT_DOMAIN)
+    const strong = strongestEvent(minePct, EVENT_DOMAIN)
+    const weak = weakestEvent(minePct, EVENT_DOMAIN)
+    const topDomP = pctTopDomain(minePct, EVENT_DOMAIN, DOMAIN_NAMES)
 
     const myRows = ratingData.results.filter(r => r.player_id === activePlayerId)
     const wins = sessionWins(myRows).get(activePlayerId) ?? 0
     // placement repeats the session's division rank on every row — first row per session is enough
     const placeBySession = new Map<string, number>()
+    const sessionSet = new Set<string>()
     for (const r of myRows) {
+      sessionSet.add(r.session_id)
       if (r.placement != null && !placeBySession.has(r.session_id)) placeBySession.set(r.session_id, r.placement)
     }
     const avgPlace = placeBySession.size > 0
       ? [...placeBySession.values()].reduce((a, b) => a + b, 0) / placeBySession.size
       : null
+    const gamesPlayed = sessionSet.size
 
-    return { domains, top, topDom, wins, avgPlace }
+    return { wins, avgPlace, gamesPlayed, minePct, pctDomains, strong, weak, topDomP }
   }, [ratingData, activePlayerId])
 
   const handleJoinByCode = async (code: string) => {
@@ -434,7 +446,7 @@ function DashboardInner() {
     const played = playedEvents ? domainEvents.filter(e => playedEvents.has(e.name)).length : 0
     return { domainNum, played }
   })
-  const my100Total = Math.min(100, my100.reduce((s, d) => s + d.played, 0))
+  const my100Total = my100.reduce((s, d) => s + d.played, 0)
   const icon = activePlayer.icon || null
   const displayName = activePlayer.display_name || activePlayer.username || '?'
 
@@ -702,7 +714,7 @@ function DashboardInner() {
         </div>
       </BentoCard>
 
-      {/* ── Card 6b: My 100 — player stat card (coverage + skill ratings) ────── */}
+      {/* ── Card 6b: My Events — coverage + peer ranking (Top X%) ───────────── */}
       <BentoCard onClick={() => setShowStats(true)} style={{ marginBottom: '12px' }}>
         <div style={{
           background: '#111',
@@ -711,63 +723,64 @@ function DashboardInner() {
           borderRadius: '16px',
           padding: '20px 22px',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-            <div>
-              <div style={{
-                fontFamily: 'var(--font-display)', fontSize: '20px',
-                color: '#fff', letterSpacing: '0.05em', lineHeight: 1,
-              }}>
-                My 100
-              </div>
-              <div style={{ fontSize: '11px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.05em', marginTop: '3px' }}>
-                {playedEvents ? `${my100Total} of ${EVENTS.length} events played` : 'Loading your events…'}
-              </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+            <div style={{
+              fontFamily: 'var(--font-display)', fontSize: '20px',
+              color: '#fff', letterSpacing: '0.05em', lineHeight: 1,
+            }}>
+              My Events
             </div>
             <div style={{ color: '#F397C0', fontSize: '22px' }}>→</div>
           </div>
 
-          {/* Stat row: wins · avg place · events */}
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
-            {[
-              { label: 'Wins', value: playerStats ? String(playerStats.wins) : '—' },
-              { label: 'Avg Place', value: playerStats?.avgPlace != null ? playerStats.avgPlace.toFixed(1) : '—' },
-              { label: 'Events', value: playedEvents ? String(my100Total) : '—' },
-            ].map(s => (
-              <div key={s.label} style={{ flex: 1, background: '#0d0d0d', border: '1px solid #1e1e1e', borderRadius: '10px', padding: '8px 10px', textAlign: 'center' }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', color: '#fff', lineHeight: 1 }}>{s.value}</div>
-                <div style={{ fontSize: '10px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '3px' }}>{s.label}</div>
-              </div>
-            ))}
+          {/* Segmented domain coverage bar + count */}
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '7px' }}>
+            <span style={{ fontSize: '10px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+              Events played
+            </span>
+            <span style={{ fontFamily: 'var(--font-display)', fontSize: '16px', color: '#fff', lineHeight: 1 }}>
+              {playedEvents ? `${my100Total} / ${EVENTS.length}` : '—'}
+            </span>
           </div>
-
-          {/* Domain rows: coverage dots + skill score */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <div style={{ display: 'flex', gap: '3px' }}>
             {my100.map(d => {
-              const score = playerStats?.domains[d.domainNum - 1]?.score ?? 0
+              const total = DOMAIN_TOTALS[d.domainNum - 1] || 1
+              const frac = Math.min(1, d.played / total)
               return (
-                <div key={d.domainNum} style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                  {Array.from({ length: 10 }, (_, i) => (
-                    <div key={i} style={{
-                      flex: 1, height: '10px', borderRadius: '99px',
-                      background: i < Math.min(d.played, 10) ? domainColor(d.domainNum) : '#1e1e1e',
-                    }} />
-                  ))}
-                  <div style={{
-                    width: '26px', textAlign: 'right', flexShrink: 0,
-                    fontFamily: 'var(--font-display)', fontSize: '13px', lineHeight: 1,
-                    color: score > 0 ? domainColor(d.domainNum) : '#333',
-                  }}>
-                    {score > 0 ? score : '·'}
-                  </div>
+                <div key={d.domainNum} title={`${DOMAIN_NAMES[d.domainNum - 1]} — ${d.played}/${total}`}
+                  style={{ flex: 1, height: '10px', borderRadius: '99px', background: '#1e1e1e', overflow: 'hidden' }}>
+                  <div style={{ width: `${frac * 100}%`, height: '100%', borderRadius: '99px', background: domainColor(d.domainNum) }} />
                 </div>
               )
             })}
           </div>
 
-          {playerStats?.top && (
-            <div style={{ fontSize: '12px', color: '#888', fontFamily: 'var(--font-label)', letterSpacing: '0.05em', marginTop: '12px' }}>
-              Top event: <span style={{ color: '#F397C0', fontWeight: 700 }}>{playerStats.top.eventName}</span>
-              <span style={{ color: '#555' }}> · skill {playerStats.top.score}</span>
+          {/* Top domain + top event, with icons and Top % */}
+          {(playerStats?.topDomP || playerStats?.strong) && (
+            <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+              {playerStats?.topDomP && (
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '10px', background: '#0d0d0d', border: '1px solid #1e1e1e', borderRadius: '10px', padding: '10px 12px', minWidth: 0 }}>
+                  <DomainIcon domainName={playerStats.topDomP.domainName} domainNumber={playerStats.topDomP.domainNumber} size={30} />
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: '9px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>Top Domain</div>
+                    <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '13px', color: '#eee', lineHeight: 1.15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{playerStats.topDomP.domainName}</div>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '14px', color: domainColor(playerStats.topDomP.domainNumber), lineHeight: 1 }}>{`Top ${playerStats.topDomP.topPct}%`}</div>
+                  </div>
+                </div>
+              )}
+              {playerStats?.strong && (() => {
+                const meta = EVENT_META.get(playerStats.strong.eventName)
+                return (
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '10px', background: '#0d0d0d', border: '1px solid #1e1e1e', borderRadius: '10px', padding: '10px 12px', minWidth: 0 }}>
+                    {meta && <EventIcon slug={meta.slug} emoji={meta.emoji} domainNumber={meta.domainNumber} size={30} />}
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: '9px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>Top Event</div>
+                      <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '13px', color: '#eee', lineHeight: 1.15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{playerStats.strong.eventName}</div>
+                      <div style={{ fontFamily: 'var(--font-display)', fontSize: '14px', color: '#F397C0', lineHeight: 1 }}>{eventPctLabel(playerStats.strong.ep)}</div>
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
           )}
         </div>
@@ -871,7 +884,7 @@ function DashboardInner() {
             <div style={{ maxWidth: '520px', width: '100%', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: '26px', letterSpacing: '0.05em', lineHeight: 1, color: '#fff' }}>
-                  My Stats
+                  My Events
                 </div>
                 <div style={{ fontSize: '11px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.1em', marginTop: '1px' }}>
                   {displayName.toUpperCase()} · LIFETIME
@@ -905,7 +918,7 @@ function DashboardInner() {
                     {[
                       { label: 'Session Wins', value: String(playerStats.wins) },
                       { label: 'Avg Place', value: playerStats.avgPlace != null ? playerStats.avgPlace.toFixed(1) : '—' },
-                      { label: 'Events Played', value: `${my100Total}/${EVENTS.length}` },
+                      { label: 'Games Played', value: String(playerStats.gamesPlayed) },
                     ].map(s => (
                       <div key={s.label} style={{ flex: 1, background: '#111', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '14px 10px', textAlign: 'center' }}>
                         <div style={{ fontFamily: 'var(--font-display)', fontSize: '30px', color: '#fff', lineHeight: 1 }}>{s.value}</div>
@@ -914,57 +927,105 @@ function DashboardInner() {
                     ))}
                   </div>
 
-                  {/* Top event + top domain */}
-                  {(playerStats.top || playerStats.topDom) && (
+                  {/* Strongest + weakest */}
+                  {(playerStats.strong || playerStats.weak) && (
                     <div style={{ display: 'flex', gap: '10px', marginBottom: '22px' }}>
-                      {playerStats.top && (
-                        <div style={{ flex: 1, background: '#111', border: '1px solid #F397C044', borderRadius: '12px', padding: '14px 16px' }}>
-                          <div style={{ fontSize: '10px', color: '#F397C0', fontFamily: 'var(--font-label)', letterSpacing: '0.15em', textTransform: 'uppercase' }}>Top Event</div>
-                          <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', color: '#fff', marginTop: '4px', lineHeight: 1.05 }}>{playerStats.top.eventName}</div>
-                          <div style={{ fontSize: '12px', color: '#888', marginTop: '4px', fontFamily: 'var(--font-label)' }}>Skill {playerStats.top.score}</div>
-                        </div>
-                      )}
-                      {playerStats.topDom && (
-                        <div style={{ flex: 1, background: '#111', border: `1px solid ${domainColor(playerStats.topDom.domainNumber)}44`, borderRadius: '12px', padding: '14px 16px' }}>
-                          <div style={{ fontSize: '10px', color: domainColor(playerStats.topDom.domainNumber), fontFamily: 'var(--font-label)', letterSpacing: '0.15em', textTransform: 'uppercase' }}>Top Domain</div>
-                          <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', color: '#fff', marginTop: '4px', lineHeight: 1.05 }}>{playerStats.topDom.domainName}</div>
-                          <div style={{ fontSize: '12px', color: '#888', marginTop: '4px', fontFamily: 'var(--font-label)' }}>Skill {playerStats.topDom.score}</div>
-                        </div>
-                      )}
+                      {([
+                        { pick: playerStats.strong, label: 'Strongest', accent: '#4DB26E' },
+                        { pick: playerStats.weak, label: 'Weakest', accent: '#EA4742' },
+                      ] as const).map(({ pick, label, accent }) => {
+                        if (!pick) return null
+                        const meta = EVENT_META.get(pick.eventName)
+                        return (
+                          <div key={label} style={{ flex: 1, background: '#111', border: `1px solid ${accent}44`, borderRadius: '12px', padding: '14px 14px', minWidth: 0 }}>
+                            <div style={{ fontSize: '10px', color: accent, fontFamily: 'var(--font-label)', letterSpacing: '0.15em', textTransform: 'uppercase' }}>{label}</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '8px' }}>
+                              {meta && <EventIcon slug={meta.slug} emoji={meta.emoji} domainNumber={meta.domainNumber} size={34} />}
+                              <div style={{ minWidth: 0 }}>
+                                <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '14px', color: '#fff', lineHeight: 1.1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pick.eventName}</div>
+                                <div style={{ fontFamily: 'var(--font-display)', fontSize: '16px', color: accent, lineHeight: 1, marginTop: '2px' }}>{eventPctLabel(pick.ep)}</div>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
                     </div>
                   )}
 
-                  {/* Per-domain breakdown */}
+                  {/* Per-domain breakdown — collapsible, ranked by Top % */}
                   <div style={{ fontSize: '11px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '10px' }}>
-                    Skill by Domain
+                    How you rank, by domain
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
-                    {playerStats.domains.map(d => {
-                      const played = my100[d.domainNumber - 1]?.played ?? 0
-                      const domainTotal = EVENTS.filter(e => e.domainNumber === d.domainNumber).length
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
+                    {playerStats.pctDomains.map(d => {
+                      const dn = d.domainNumber
+                      const c = domainColor(dn)
+                      const played = my100[dn - 1]?.played ?? 0
+                      const domainTotal = DOMAIN_TOTALS[dn - 1] || 0
+                      const open = expandedStatDomains.has(dn)
+                      const domainEvents = EVENTS.filter(e => e.domainNumber === dn)
                       return (
-                        <div key={d.domainNumber} style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '12px 16px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '8px' }}>
-                            <span style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '13px', color: '#ddd' }}>{DOMAIN_NAMES[d.domainNumber - 1]}</span>
-                            <span style={{ fontFamily: 'var(--font-display)', fontSize: '20px', color: d.score > 0 ? domainColor(d.domainNumber) : '#333', lineHeight: 1 }}>
-                              {d.score > 0 ? d.score : '—'}
-                            </span>
-                          </div>
-                          <div style={{ height: '6px', borderRadius: '99px', background: '#1e1e1e', overflow: 'hidden', marginBottom: '6px' }}>
-                            <div style={{ width: `${d.score}%`, height: '100%', borderRadius: '99px', background: domainColor(d.domainNumber) }} />
-                          </div>
-                          <div style={{ fontSize: '11px', color: '#555', fontFamily: 'var(--font-label)' }}>
-                            {played} of {domainTotal} events played{d.eventsRated > 0 ? ` · ${d.eventsRated} rated` : ''}
-                          </div>
+                        <div key={dn} style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: '12px', overflow: 'hidden' }}>
+                          <button
+                            onClick={() => setExpandedStatDomains(prev => {
+                              const next = new Set(prev)
+                              next.has(dn) ? next.delete(dn) : next.add(dn)
+                              return next
+                            })}
+                            style={{
+                              width: '100%', display: 'flex', alignItems: 'center', gap: '12px',
+                              background: 'transparent', border: 'none', cursor: 'pointer',
+                              padding: '12px 14px', textAlign: 'left',
+                            }}
+                          >
+                            <DomainIcon domainName={DOMAIN_NAMES[dn - 1]} domainNumber={dn} size={34} />
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '13px', color: '#eee' }}>
+                                {dn}. {DOMAIN_NAMES[dn - 1]}
+                              </div>
+                              <div style={{ fontSize: '11px', color: '#555', fontFamily: 'var(--font-label)', marginTop: '2px' }}>
+                                {played}/{domainTotal} played
+                              </div>
+                            </div>
+                            <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', color: d.topPct != null ? c : '#333', lineHeight: 1, whiteSpace: 'nowrap' }}>
+                              {domainPctLabel(d)}
+                            </div>
+                            <span style={{ color: '#555', fontSize: '13px', transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}>›</span>
+                          </button>
+
+                          {open && (
+                            <div style={{ borderTop: '1px solid #1e1e1e', padding: '4px 14px 6px' }}>
+                              {domainEvents.map(ev => {
+                                const ep = playerStats.minePct?.get(ev.name)
+                                const notPlayed = !ep
+                                const label = eventPctLabel(ep)
+                                return (
+                                  <div key={ev.slug} style={{
+                                    display: 'flex', alignItems: 'center', gap: '10px',
+                                    padding: '8px 0', borderBottom: '1px solid #161616',
+                                    opacity: notPlayed ? 0.4 : 1,
+                                  }}>
+                                    <EventIcon slug={ev.slug} emoji={ev.emoji} domainNumber={dn} size={26} />
+                                    <span style={{ flex: 1, fontFamily: 'var(--font-body)', fontSize: '13px', color: '#ddd', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ev.name}</span>
+                                    <span style={{
+                                      fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '12px', whiteSpace: 'nowrap',
+                                      color: notPlayed ? '#555' : ep?.isLeader ? '#F9B051' : c,
+                                    }}>{label}</span>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )}
                         </div>
                       )
                     })}
                   </div>
 
                   <div style={{ fontSize: '12.5px', color: '#666', lineHeight: 1.6, fontFamily: 'var(--font-body)', marginBottom: '20px' }}>
-                    Skill scores run 0–100. 50 is the AllSport average for your division pool; every head-to-head
-                    result in a session moves it. Beating stronger players moves it more. New events start unrated
-                    until you have someone to compare against.
+                    <strong style={{ color: '#999' }}>Top X%</strong> means only that few players in your division who’ve played the event
+                    have a better best score than you — so lower is better, and <strong style={{ color: '#999' }}>1st</strong> means no one has
+                    beaten your best. A domain’s rank is the average across the events you’ve played in it. Scores are your lifetime best. An
+                    event only you have played shows “No comparison yet” until someone else has a go.
                   </div>
 
                   <Link href="/prs" style={{
