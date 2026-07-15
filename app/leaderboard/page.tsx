@@ -6,9 +6,12 @@ import { createClient } from '@/lib/supabase-browser'
 import { EVENTS } from '@/lib/eventData'
 import { fetchAll } from '@/lib/fetchAll'
 import {
-  computeRatings, sessionWins, topEvent as ratingTopEvent, topDomain as ratingTopDomain,
+  sessionWins,
   type RatingEventRow, type RatingSessionRow, type RatingPlayerRow,
 } from '@/lib/rating'
+import {
+  computePercentiles, strongestEvent, topDomain as pctTopDomain, eventPctLabel,
+} from '@/lib/percentile'
 
 const DOMAIN_NAMES = Array.from({ length: 10 }, (_, i) => EVENTS.find(e => e.domainNumber === i + 1)?.domain ?? '')
 const EVENT_DOMAIN = new Map(EVENTS.map(e => [e.name, e.domainNumber]))
@@ -50,7 +53,9 @@ type EnrichedPlayer = {
   sessions: number
   wins: number
   topDomain: string
+  topDomainPct: string
   topEvent: string
+  topEventPct: string
   totalPoints: number
   name: string
   color: string
@@ -174,8 +179,14 @@ function LeaderboardTable({ data, accentColor, loading }: { data: EnrichedPlayer
                 <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '16px', color: '#ffffff' }}>{player.username}</div>
                 <div style={{ color: '#555555', fontSize: '15px', fontFamily: 'var(--font-label)' }}>{player.sessions}</div>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', color: player.wins > 0 ? accentColor : '#333333' }}>{player.wins}</div>
-                <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '13px', color: player.topDomain === '—' ? '#333333' : '#cccccc' }}>{player.topDomain}</div>
-                <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '13px', color: player.topEvent === '—' ? '#333333' : '#cccccc' }}>{player.topEvent}</div>
+                <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '13px', color: player.topDomain === '—' ? '#333333' : '#cccccc' }}>
+                  {player.topDomain}
+                  {player.topDomainPct && <span style={{ color: '#777777', fontWeight: 400 }}> · {player.topDomainPct}</span>}
+                </div>
+                <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '13px', color: player.topEvent === '—' ? '#333333' : '#cccccc' }}>
+                  {player.topEvent}
+                  {player.topEventPct && <span style={{ color: player.topEventPct === '1st' ? '#F9B051' : '#777777', fontWeight: player.topEventPct === '1st' ? 700 : 400 }}> · {player.topEventPct}</span>}
+                </div>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', color: '#ffffff' }}>{player.totalPoints}</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: player.name === 'Uenuku' ? 'var(--rainbow)' : player.color, flexShrink: 0 }} />
@@ -224,20 +235,24 @@ export default function Leaderboard() {
     players: RatingPlayerRow[]
   } | null>(null)
 
-  // Per-player wins (current season) + skill-derived top domain/event (lifetime)
+  // Per-player wins (current season) + percentile-derived top domain/event (lifetime)
   const playerStats = useMemo(() => {
     if (!statsData) return null
     const year = String(new Date().getFullYear())
     const seasonSessions = new Set(statsData.sessions.filter(s => s.session_date?.startsWith(year)).map(s => s.id))
     const wins = sessionWins(statsData.results.filter(r => seasonSessions.has(r.session_id)))
-    const ratings = computeRatings(statsData.results, statsData.events, statsData.sessions, statsData.players)
-    const out = new Map<string, { wins: number; topDomain: string; topEvent: string }>()
+    const pct = computePercentiles(statsData.results, statsData.events, statsData.players)
+    const out = new Map<string, { wins: number; topDomain: string; topDomainPct: string; topEvent: string; topEventPct: string }>()
     for (const p of statsData.players) {
-      const mine = ratings.get(p.id)
+      const mine = pct.get(p.id)
+      const td = pctTopDomain(mine, EVENT_DOMAIN, DOMAIN_NAMES)
+      const te = strongestEvent(mine, EVENT_DOMAIN)
       out.set(p.id, {
         wins: wins.get(p.id) ?? 0,
-        topDomain: ratingTopDomain(mine, EVENT_DOMAIN, DOMAIN_NAMES)?.domainName ?? '—',
-        topEvent: ratingTopEvent(mine)?.eventName ?? '—',
+        topDomain: td?.domainName ?? '—',
+        topDomainPct: td ? `Top ${td.topPct}%` : '',
+        topEvent: te?.eventName ?? '—',
+        topEventPct: te ? eventPctLabel(te.ep) : '',
       })
     }
     return out
@@ -345,7 +360,9 @@ export default function Leaderboard() {
         sessions: r.total_sessions,
         wins: stats?.wins ?? 0,
         topDomain: stats?.topDomain ?? '—',
+        topDomainPct: stats?.topDomainPct ?? '',
         topEvent: stats?.topEvent ?? '—',
+        topEventPct: stats?.topEventPct ?? '',
         totalPoints: r.total_points,
         ...grade,
       }
@@ -459,7 +476,7 @@ export default function Leaderboard() {
                 <strong style={{ color: 'var(--white)' }}>Wins</strong> — sessions finished 1st in your division this season. In-session, the lowest total placement across all 10 events wins.
               </p>
               <p style={{ color: 'var(--grey)', fontSize: '13px', lineHeight: 1.6, margin: 0 }}>
-                <strong style={{ color: 'var(--white)' }}>Top domain &amp; top event</strong> — where your skill rating is strongest, based on every head-to-head result you have played. Tap My 100 on your dashboard for the full breakdown.
+                <strong style={{ color: 'var(--white)' }}>Top domain &amp; top event</strong> — where you rank highest against your division. <strong style={{ color: 'var(--white)' }}>Top X%</strong> means only that few players who’ve played it beat your best; <strong style={{ color: 'var(--white)' }}>1st</strong> means no one has. Tap My Events on your dashboard for the full breakdown.
               </p>
               <p style={{ color: 'var(--grey)', fontSize: '13px', lineHeight: 1.6, margin: 0 }}>
                 <strong style={{ color: 'var(--white)' }}>Colour</strong> — your grade for the year, earned from total season points. Thresholds are in the Colour Key below. Points reset each January.
