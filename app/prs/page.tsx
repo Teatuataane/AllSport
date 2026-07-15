@@ -6,6 +6,8 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase-browser'
 import { EVENTS, DOMAIN_ORDER, getEventsByDomain } from '@/lib/eventData'
 import { formatNZDate } from '@/lib/dates'
+import DomainIcon from '@/components/DomainIcon'
+import EventIcon from '@/components/EventIcon'
 
 const supabase = createClient()
 
@@ -53,6 +55,7 @@ export default function PRsPage() {
   const [results, setResults] = useState<PRResult[]>([])
   const [tab, setTab] = useState<'season' | 'all'>('season')
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [expandedDomains, setExpandedDomains] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     const load = async () => {
@@ -118,6 +121,15 @@ export default function PRsPage() {
     })
   }
 
+  const toggleDomain = (domain: string) => {
+    setExpandedDomains(prev => {
+      const next = new Set(prev)
+      if (next.has(domain)) next.delete(domain)
+      else next.add(domain)
+      return next
+    })
+  }
+
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a0a', color: '#fff' }}>
       {/* Header */}
@@ -166,17 +178,31 @@ export default function PRsPage() {
             const domainNumber = domainIdx + 1
             const colour = DOMAIN_COLOURS[domainNumber] || '#2371BB'
             const domainEvents = byDomain[domain] || []
+            const domainOpen = expandedDomains.has(domain)
+            const domainPBs = domainEvents.filter(e => resultsByEvent[e.name]).length
 
             return (
               <div key={domain}>
-                {/* Domain heading */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
-                  <div style={{ width: '4px', height: '20px', borderRadius: '2px', background: colour, flexShrink: 0 }} />
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '20px', color: colour, letterSpacing: '1px' }}>
+                {/* Domain heading — collapsible */}
+                <button
+                  onClick={() => toggleDomain(domain)}
+                  style={{
+                    width: '100%', background: 'transparent', border: 'none', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: '12px', padding: '4px 0',
+                    marginBottom: domainOpen ? '10px' : '0', textAlign: 'left',
+                  }}
+                >
+                  <DomainIcon domainName={domain} domainNumber={domainNumber} size={44} />
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '20px', color: colour, letterSpacing: '1px', flex: 1 }}>
                     {domainNumber}. {domain.toUpperCase()}
                   </div>
-                </div>
+                  <div style={{ fontFamily: 'var(--font-label)', fontSize: '13px', fontWeight: 700, color: domainPBs > 0 ? colour : '#555', letterSpacing: '0.05em', flexShrink: 0 }}>
+                    {domainPBs}/{domainEvents.length}
+                  </div>
+                  <div style={{ color: colour, fontSize: '16px', flexShrink: 0, transform: domainOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}>›</div>
+                </button>
 
+                {domainOpen && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   {domainEvents.map(event => {
                     const eventResults = resultsByEvent[event.name]
@@ -201,20 +227,25 @@ export default function PRsPage() {
                             textAlign: 'left',
                           }}
                         >
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                            <div style={{ fontSize: '14px', fontWeight: 600, color: pb ? '#fff' : '#444', fontFamily: 'var(--font-body)' }}>
-                              {event.name}
-                              {event.hasDifficultyTiers && event.difficultyTiers && (
-                                <span style={{ marginLeft: '8px', fontSize: '11px', color: '#B87DB5', fontFamily: 'var(--font-label)', fontWeight: 700 }}>
-                                  D1–D{event.difficultyTiers.length}
-                                </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '11px', minWidth: 0 }}>
+                            <div style={{ opacity: pb ? 1 : 0.4, flexShrink: 0 }}>
+                              <EventIcon slug={event.slug} emoji={event.emoji} domainNumber={domainNumber} size={36} />
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+                              <div style={{ fontSize: '14px', fontWeight: 600, color: pb ? '#fff' : '#444', fontFamily: 'var(--font-body)' }}>
+                                {event.name}
+                                {event.hasDifficultyTiers && event.difficultyTiers && (
+                                  <span style={{ marginLeft: '8px', fontSize: '11px', color: '#B87DB5', fontFamily: 'var(--font-label)', fontWeight: 700 }}>
+                                    D1–D{event.difficultyTiers.length}
+                                  </span>
+                                )}
+                              </div>
+                              {pb && (
+                                <div style={{ fontSize: '11px', color: '#555', fontFamily: 'var(--font-label)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                  {event.inputMode}
+                                </div>
                               )}
                             </div>
-                            {pb && (
-                              <div style={{ fontSize: '11px', color: '#555', fontFamily: 'var(--font-label)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                {event.inputMode}
-                              </div>
-                            )}
                           </div>
 
                           {pb ? (
@@ -302,6 +333,7 @@ export default function PRsPage() {
                     )
                   })}
                 </div>
+                )}
               </div>
             )
           })
