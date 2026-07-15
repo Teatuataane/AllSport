@@ -39,7 +39,7 @@
 - Supabase SSR middleware (middleware.ts) — fixes session persistence and Google double sign-in
 - Navbar — switched to browser client, PLAY NOW hides when logged in (shows DASHBOARD)
 - /play — redirects already-logged-in users to dashboard
-- Browser tab — "AllSport — Play EVERYTHING" + logo favicon
+- Browser tab — "AllSport — One Sport, Every Sport" + logo favicon
 - Bodyweight SQL migration — `ALTER TABLE players ADD COLUMN IF NOT EXISTS bodyweight_kg NUMERIC;`
 - Sign out button on desktop navbar
 - Family accounts — parent adds/removes whānau profiles from dashboard; "Submitting as" switcher in live session; `parent_id` column + RLS migration

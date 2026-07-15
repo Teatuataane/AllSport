@@ -704,7 +704,7 @@ best_score, current_rank, division, average_placement, season_year
 ## Key Decisions
 
 - Koha only — no set fees
-- Tagline: Play EVERYTHING
+- Tagline: One Sport, Every Sport.
 - Te reo Māori identity throughout
 - Taniwha = Black = peak grade = black belt equivalent
 - Colours reset January, history kept forever — section called "Colours" not "Grade"
