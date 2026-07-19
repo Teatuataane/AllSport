@@ -3,69 +3,67 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { RainbowText, SectionLabel } from '@/components/ui'
+import { EVENTS } from '@/lib/eventData'
 
-const domains = [
+const DOMAIN_META = [
   {
     name: 'Maximal Strength',
     color: '#EA4742',
     desc: 'How much can you lift? Absolute strength tested to its limit.',
-    events: ['1A Press', 'Deadlift', 'Clean & Press', 'Pause Dips', 'Pause Chin Up', 'Pause Squat', 'Zercher Dead', 'Ham Curl', 'Pause Bench', 'Turkish Get Up', 'Sandbag to Shoulder'],
   },
   {
     name: 'Calisthenics',
     color: '#F9B051',
     desc: 'Bodyweight mastery. Skills, levers, and control on full display.',
-    events: ['1 Leg Squat', 'Flag', 'Windshield Wipers', 'Toe Lift', 'Planche', 'Back Lever', 'Iron Cross', 'Front Lever', 'Chin Hang', 'Climbing'],
   },
   {
     name: 'Power',
     color: '#F397C0',
     desc: 'Strength applied fast. Explosiveness through full range of motion.',
-    events: ['Kelly Snatch', '1A Snatch', 'Triple Jump', 'Javelin', 'Shotput', 'Australian Football', 'Vertical Jump', 'Handbalance', 'Clean & Jerk', 'Snatch'],
   },
   {
     name: 'Speed',
     color: '#B87DB5',
     desc: 'React, accelerate, and leave them behind.',
-    events: ['100m Sprint', 'Tag', 'T-Race', '400m Race', 'Beach Flags', '50m Sprint', '200m Sprint', 'Touch Rugby', 'Football Dribble', 'Repeat High Jump', 'Rats & Rabbits', 'Speed Chess'],
   },
   {
     name: 'Anaerobic Endurance',
     color: '#2371BB',
     desc: 'Maximum reps, maximum effort. How far can you push before you break?',
-    events: ['Chinup Contest', 'Pushup Contest', 'Reverse Hyper', 'L-Sit Hold', 'Tibialis Curl', 'Headstand', 'Finger Push Up', 'GHD Situp', 'Leg Extension', 'Ab Rollout'],
   },
   {
     name: 'Aerobic Endurance',
     color: '#4DB26E',
     desc: 'Keep going, even when it hurts. The engine that runs everything else.',
-    events: ['Burpee Broad Jump', 'Running', 'Cycling', 'Ski Erg', 'Row Erg', 'Breath Hold', 'Weighted Carry', 'Duck Walk', 'Bronco', 'Walking'],
   },
   {
     name: 'Flexibility',
     color: '#EA4742',
     desc: 'The range you have is the range you can use.',
-    events: ['Rear Hand Clasp', 'Bridge', 'Forward Fold', 'Needle Pose', 'Forward Split', 'Middle Split', 'Standing Split', 'Foot Behind Head', 'Shoulder Dislocate', 'Pancake'],
   },
   {
     name: 'Body Awareness',
     color: '#F9B051',
     desc: 'Control your body in space. Without control there is no grace.',
-    events: ['Tae Kwon Do', 'Breakdancing', 'Trampolining', 'Jump Rope', 'Wrestling', 'Gymnastics', 'Balance Ball', 'SKATE', 'Fencing', 'Juggling', 'Foot Juggling'],
   },
   {
     name: 'Coordination',
     color: '#2371BB',
     desc: 'Hand-eye, timing, anticipation. The athletic skills behind every sport.',
-    events: ['Volleyball', 'Baseball', 'Teqball', 'Tennis', 'Cricket', 'Badminton', 'Basketball', 'Football', 'Hockey', 'Squash'],
   },
   {
     name: 'Aim & Precision',
     color: '#4DB26E',
     desc: 'When you shoot, it hits. Accuracy and composure under pressure.',
-    events: ['Netball', 'Bocce', 'Dodgeball', 'Carrom', 'Archery', 'Kubb', 'Darts', 'Disc Golf', 'Golf', 'Ultimate Frisbee'],
   },
 ]
+
+// Event lists are derived from lib/eventData.ts (the single source of truth for
+// the roster) so domain moves, additions and removals propagate automatically.
+const domains = DOMAIN_META.map(d => ({
+  ...d,
+  events: EVENTS.filter(e => e.domain === d.name).map(e => e.name),
+}))
 
 const ethos = [
   {
