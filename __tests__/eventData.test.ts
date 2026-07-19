@@ -11,8 +11,8 @@ import {
 // ─── EVENTS array integrity ───────────────────────────────────────────────────
 
 describe('EVENTS array', () => {
-  it('contains exactly 105 events', () => {
-    expect(EVENTS).toHaveLength(105)
+  it('contains exactly 122 events', () => {
+    expect(EVENTS).toHaveLength(122)
   })
 
   it('every event has a unique slug', () => {
@@ -125,10 +125,11 @@ describe('getEventByName', () => {
     expect(e!.domainNumber).toBe(1)
   })
 
-  it('finds Handbalance (slug still hand-walk after rename)', () => {
-    const e = getEventByName('Handbalance')
+  it('finds Handstand (slug still hand-walk after rename from Handbalance)', () => {
+    const e = getEventByName('Handstand')
     expect(e).toBeDefined()
     expect(e!.slug).toBe('hand-walk')
+    expect(e!.domain).toBe('Calisthenics')
   })
 
   it('returns undefined for unknown name', () => {
@@ -148,9 +149,9 @@ describe('getEventsByDomain', () => {
     expect(Object.keys(map)).toHaveLength(10)
   })
 
-  it('Maximal Strength has 11 events', () => {
+  it('Maximal Strength has 12 events', () => {
     const map = getEventsByDomain()
-    expect(map['Maximal Strength']).toHaveLength(11)
+    expect(map['Maximal Strength']).toHaveLength(12)
   })
 
   it('every event appears in exactly one domain bucket', () => {

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { EVENTS } from '@/lib/eventData'
 
 const RAINBOW = 'var(--rainbow)'
 
@@ -12,18 +13,25 @@ const rainbowText: React.CSSProperties = {
   WebkitTextFillColor: 'transparent',
 }
 
-const domains = [
-  { name: 'Maximal Strength', color: '#EA4742', events: ['1A Press', 'Deadlift', 'Clean & Press', 'Pause Dips', 'Pause Chin Up', 'Pause Squat', 'Zercher Dead', 'Ham Curl', 'Pause Bench', 'Turkish Get Up', 'Sandbag to Shoulder'] },
-  { name: 'Calisthenics', color: '#F9B051', events: ['1 Leg Squat', 'Flag', 'Windshield Wipers', 'Toe Lift', 'Planche', 'Back Lever', 'Iron Cross', 'Front Lever', 'Chin Hang', 'Climbing'] },
-  { name: 'Power', color: '#F397C0', events: ['Kelly Snatch', '1A Snatch', 'Triple Jump', 'Javelin', 'Shotput', 'Australian Football', 'Vertical Jump', 'Handbalance', 'Clean & Jerk', 'Snatch'] },
-  { name: 'Speed', color: '#B87DB5', events: ['100m Sprint', 'Tag', 'T-Race', '400m Race', 'Beach Flags', '50m Sprint', '200m Sprint', 'Touch Rugby', 'Football Dribble', 'Repeat High Jump', 'Rats & Rabbits', 'Speed Chess'] },
-  { name: 'Anaerobic Endurance', color: '#2371BB', events: ['Chinup Contest', 'Pushup Contest', 'Reverse Hyper', 'L-Sit Hold', 'Tibialis Curl', 'Headstand', 'Finger Push Up', 'GHD Situp', 'Leg Extension', 'Ab Rollout'] },
-  { name: 'Aerobic Endurance', color: '#4DB26E', events: ['Burpee Broad Jump', 'Running', 'Cycling', 'Ski Erg', 'Row Erg', 'Breath Hold', 'Weighted Carry', 'Duck Walk', 'Bronco', 'Walking'] },
-  { name: 'Flexibility', color: '#EA4742', events: ['Rear Hand Clasp', 'Bridge', 'Forward Fold', 'Needle Pose', 'Forward Split', 'Middle Split', 'Standing Split', 'Foot Behind Head', 'Shoulder Dislocate', 'Pancake'] },
-  { name: 'Body Awareness', color: '#F9B051', events: ['Tae Kwon Do', 'Breakdancing', 'Trampolining', 'Jump Rope', 'Wrestling', 'Gymnastics', 'Balance Ball', 'SKATE', 'Fencing', 'Juggling', 'Foot Juggling'] },
-  { name: 'Coordination', color: '#2371BB', events: ['Volleyball', 'Baseball', 'Teqball', 'Tennis', 'Cricket', 'Badminton', 'Basketball', 'Football', 'Hockey', 'Squash'] },
-  { name: 'Aim & Precision', color: '#4DB26E', events: ['Netball', 'Bocce', 'Dodgeball', 'Carrom', 'Archery', 'Kubb', 'Darts', 'Disc Golf', 'Golf', 'Ultimate Frisbee'] },
+const DOMAIN_META = [
+  { name: 'Maximal Strength', color: '#EA4742' },
+  { name: 'Calisthenics', color: '#F9B051' },
+  { name: 'Power', color: '#F397C0' },
+  { name: 'Speed', color: '#B87DB5' },
+  { name: 'Anaerobic Endurance', color: '#2371BB' },
+  { name: 'Aerobic Endurance', color: '#4DB26E' },
+  { name: 'Flexibility', color: '#EA4742' },
+  { name: 'Body Awareness', color: '#F9B051' },
+  { name: 'Coordination', color: '#2371BB' },
+  { name: 'Aim & Precision', color: '#4DB26E' },
 ]
+
+// Event lists are derived from lib/eventData.ts (the single source of truth for
+// the roster) so domain moves, additions and removals propagate automatically.
+const domains = DOMAIN_META.map(d => ({
+  ...d,
+  events: EVENTS.filter(e => e.domain === d.name).map(e => e.name),
+}))
 
 const ranks = [
   { te: 'Mā', en: 'White', c: '#e8e8e8', p: '0–499' },
