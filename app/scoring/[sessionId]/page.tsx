@@ -9,6 +9,10 @@ import {
   fmtTime, computeScoreVals, valsFromResult, valsFromRaw,
   isWeightScoredTierByName, EMPTY_VALS, type EntryVals,
 } from '@/lib/scoring'
+import {
+  buildJudgeRoster, resolveJudgeTarget, resultsForTarget, scoredEventIds,
+  scoredEventIdsByTarget, NO_SCORES,
+} from '@/lib/judgeRoster'
 
 const supabase = createClient()
 
@@ -384,519 +388,6 @@ async function submitEntry(args: {
   } catch (e: unknown) {
     return { error: e instanceof Error ? e.message : 'Submission failed', isPR: false, effortCredit: 0 }
   }
-}
-
-// ─── EventCard ────────────────────────────────────────────────────────────────
-
-type EventCardProps = {
-  se: SessionEvent
-  eventData: EventData | undefined
-  myResults: Result[]
-  allResults: Result[]
-  allEvents: SessionEvent[]
-  seasonPR: number | string | null
-  playerId: string | null
-  playerName: string
-  playerDivision?: string | null
-  playerInfoMap?: Record<string, PlayerInfo>
-  sessionId: string
-  sessionEnded: boolean
-  isExpanded: boolean
-  isJudge?: boolean
-  onToggle: () => void
-  onScoreSubmitted: () => void
-}
-
-function EventCard({
-  se, eventData, myResults, allResults, allEvents, seasonPR,
-  playerId, playerName, playerDivision, playerInfoMap,
-  sessionId, sessionEnded,
-  isExpanded, isJudge = false, onToggle, onScoreSubmitted,
-}: EventCardProps) {
-  const [weightKg, setWeightKg] = useState('')
-  const [repCount, setRepCount] = useState('')
-  const [timeMins, setTimeMins] = useState('')
-  const [timeSecs, setTimeSecs] = useState('')
-  const [sprintCs, setSprintCs] = useState('')
-  const [distanceVal, setDistanceVal] = useState('')
-  const [distanceUnit, setDistanceUnit] = useState<'m' | 'cm'>('m')
-  const [sportResult, setSportResult] = useState<'win' | 'draw' | 'loss' | ''>('')
-  const [sportScore, setSportScore] = useState('')
-  const [opponentName, setOpponentName] = useState('')
-  const [exerciseVariation, setExerciseVariation] = useState('')
-  const [difficultyTier, setDifficultyTier] = useState('')
-  const [scoreInput, setScoreInput] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState(false)
-  const [editingResult, setEditingResult] = useState<Result | null>(null)
-  const inFlight = useRef(false)
-
-  const mode = (eventData?.inputMode || se.input_mode || 'strength') as string
-  const emoji = eventData?.emoji ?? '🏅'
-  const isWeightVariation = !!exerciseVariation && (eventData?.weightVariations?.includes(exerciseVariation) ?? false)
-
-  const myBestResult = myResults.length > 0
-    ? myResults.reduce((best, r) => r.raw_score > best.raw_score ? r : best, myResults[0])
-    : undefined
-
-  const seasonPRNum = typeof seasonPR === 'number' ? seasonPR : null
-  const sessionBestRaw = myResults.length > 0 ? Math.max(...myResults.map(r => r.raw_score)) : null
-  const effectivePR = sessionBestRaw !== null
-    ? (seasonPRNum !== null ? Math.max(sessionBestRaw, seasonPRNum) : sessionBestRaw)
-    : seasonPRNum
-  const effortLevel = calcEffortLevel(myResults)
-  const effortTasks = computeEffortTasks(myResults, eventData, effectivePR, mode)
-  const effortLocked = myResults.length === 0
-
-  // Division placement for this event
-  let divisionRankLabel = '—'
-  let divisionRankColor = '#555'
-  if (playerDivision && playerInfoMap) {
-    if (myBestResult) {
-      const divEventResults = allResults.filter(r =>
-        r.event_id === se.id && r.player_id &&
-        playerInfoMap[r.player_id]?.division === playerDivision
-      )
-      const bestPerDiv: Record<string, number> = {}
-      divEventResults.forEach(r => {
-        if (!r.player_id) return
-        const ex = bestPerDiv[r.player_id]
-        if (ex === undefined || r.raw_score > ex) bestPerDiv[r.player_id] = r.raw_score
-      })
-      const strictlyBetter = Object.values(bestPerDiv).filter(b => b > myBestResult.raw_score).length
-      const rank = strictlyBetter + 1
-      divisionRankLabel = ordinal(rank)
-      divisionRankColor = rank === 1 ? '#F9B051' : rank === 2 ? '#C0C0C0' : rank === 3 ? '#CD7F32' : '#888'
-    } else {
-      divisionRankLabel = 'Last'
-      divisionRankColor = '#555'
-    }
-  }
-
-  const entryVals: EntryVals = {
-    weightKg, repCount, timeMins, timeSecs, sprintCs, distanceVal, distanceUnit,
-    sportResult, sportScore, opponentName, exerciseVariation, difficultyTier, scoreInput,
-  }
-
-  function computeScore(): { raw_score: number; score_label: string } | null {
-    return computeScoreVals(mode, eventData, entryVals)
-  }
-
-  function isValid(): boolean { return computeScore() !== null }
-
-  async function handleSubmit() {
-    if (sessionEnded) return
-    if (!computeScore()) return
-    if (inFlight.current) return // ref guard — React state alone lets a double-tap insert twice
-    inFlight.current = true
-    setSubmitting(true); setError('')
-    const outcome = await submitEntry({
-      sessionId, eventId: se.id, playerId, playerName,
-      mode, eventData, v: entryVals, myResults, seasonPRNum, effectivePR,
-      editingResultId: editingResult?.id ?? null,
-    })
-    if (outcome.error) {
-      setError(outcome.error)
-    } else {
-      setWeightKg(''); setRepCount(''); setTimeMins(''); setTimeSecs('')
-      setSprintCs(''); setDistanceVal(''); setSportResult(''); setSportScore('')
-      setOpponentName(''); setScoreInput(''); setEditingResult(null)
-      setSuccess(true); setTimeout(() => setSuccess(false), 2500)
-      onScoreSubmitted()
-    }
-    inFlight.current = false
-    setSubmitting(false)
-  }
-
-  function prefillFromResult(r: Result) {
-    const m = mode
-    setEditingResult(r)
-    if (r.difficulty_tier) setDifficultyTier(r.difficulty_tier)
-    if (m === 'strength') {
-      setWeightKg(String(r.weight_kg ?? ''))
-      setRepCount(String(r.reps ?? ''))
-    } else if (m === 'reps') {
-      setRepCount(String(r.reps ?? ''))
-    } else if (m === 'difficulty+reps') {
-      if (r.weight_kg) setWeightKg(String(r.weight_kg))
-      else setRepCount(String(r.reps ?? ''))
-    } else if (m === 'time' || m === 'hold') {
-      const secs = r.time_seconds ?? 0
-      setTimeMins(String(Math.floor(secs / 60)))
-      setTimeSecs(String(Math.round(secs % 60)))
-    } else if (m === 'difficulty+time') {
-      const secs = r.time_seconds ?? 0
-      setTimeMins(String(Math.floor(secs / 60)))
-      setTimeSecs(String(Math.round(secs % 60)))
-    } else if (m === 'sprint') {
-      const totalCs = Math.abs(r.raw_score)
-      setTimeSecs(String(Math.floor(totalCs / 100)))
-      setSprintCs(String(totalCs % 100))
-    } else if (m === 'distance') {
-      const raw = r.raw_score
-      if (raw >= 100) { setDistanceVal((raw / 100).toFixed(2)); setDistanceUnit('m') }
-      else { setDistanceVal(String(raw)); setDistanceUnit('cm') }
-    } else if (m === 'sport') {
-      setSportResult((r.result_type as 'win' | 'draw' | 'loss') || '')
-      setOpponentName(r.opponent_name ?? '')
-      setSportScore(r.match_score ?? '')
-    } else if (m === 'score') {
-      setScoreInput(String(Math.abs(r.raw_score)))
-    }
-    if (!isExpanded) onToggle()
-  }
-
-  async function handleDelete(resultId: string) {
-    if (editingResult?.id === resultId) setEditingResult(null)
-    await supabase.from('results').delete().eq('id', resultId)
-    onScoreSubmitted()
-  }
-
-  const myResultsSorted = [...myResults].sort((a, b) => b.raw_score - a.raw_score)
-
-  // ── Collapsed card ────────────────────────────────────────────────────────
-  if (!isExpanded) {
-    return (
-      <button
-        onClick={onToggle}
-        style={{
-          display: 'flex', flexDirection: 'column', alignItems: 'center',
-          background: myBestResult ? '#0d1a0d' : '#111',
-          border: `1px solid ${myBestResult ? '#4DB26E33' : '#1e1e1e'}`,
-          borderRadius: '12px', padding: '14px 10px', cursor: 'pointer', width: '100%',
-          gap: '0', textAlign: 'center',
-        }}
-      >
-        <div style={{ fontSize: '26px', lineHeight: 1 }}>{emoji}</div>
-        <div style={{
-          fontSize: '11px', fontWeight: 700, color: '#fff',
-          fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase',
-          letterSpacing: '0.05em', lineHeight: 1.2, marginTop: '6px', marginBottom: '8px',
-        }}>
-          {se.event_name}
-        </div>
-
-        {/* Current Score */}
-        <div style={{ fontSize: '9px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Score</div>
-        <div style={{
-          fontSize: '15px', fontWeight: 700, fontFamily: 'Bebas Neue, cursive',
-          color: myBestResult ? '#4DB26E' : '#444', marginBottom: '6px',
-        }}>
-          {myBestResult ? (mode === 'sport' ? sportWDL(myResults) : myBestResult.score_label) : '—'}
-        </div>
-
-        {/* Division Placement */}
-        <div style={{ fontSize: '9px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Div</div>
-        <div style={{
-          fontSize: '14px', fontWeight: 700, fontFamily: 'Bebas Neue, cursive',
-          color: divisionRankColor, marginBottom: '6px',
-        }}>
-          {divisionRankLabel}
-        </div>
-
-        {/* Effort Level */}
-        <div style={{ fontSize: '9px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.08em' }}>EL</div>
-        <div style={{
-          fontSize: '14px', fontWeight: 700, fontFamily: 'Bebas Neue, cursive',
-          color: effortLevel > 0 ? '#B87DB5' : '#444',
-        }}>
-          {effortLevel}
-        </div>
-      </button>
-    )
-  }
-
-  // ── Expanded card ─────────────────────────────────────────────────────────
-  return (
-    <div style={{
-      background: '#111', border: '1px solid #2371BB', borderRadius: '12px',
-      overflow: 'hidden', gridColumn: '1 / -1',
-    }}>
-      {/* Card header */}
-      <button
-        onClick={onToggle}
-        style={{
-          display: 'flex', alignItems: 'center', gap: '12px', width: '100%',
-          padding: '16px', background: '#0d1a2e', border: 'none', cursor: 'pointer',
-        }}
-      >
-        <span style={{ fontSize: '24px' }}>{emoji}</span>
-        <span style={{ fontSize: '18px', fontWeight: 700, color: '#fff', fontFamily: 'Bebas Neue, cursive', letterSpacing: '0.05em' }}>
-          {se.event_name}
-        </span>
-        <span style={{ marginLeft: 'auto', color: '#2371BB', fontSize: '18px' }}>▲</span>
-      </button>
-
-      <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-
-        {/* TODAY'S TOP SCORE */}
-        <div>
-          <div style={{ fontSize: '10px', color: '#555', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '6px', fontFamily: 'Barlow Condensed, sans-serif' }}>
-            Today's Top Score
-          </div>
-          {myBestResult ? (
-            <div style={{ fontSize: '22px', fontWeight: 700, color: '#4DB26E', fontFamily: 'Bebas Neue, cursive' }}>
-              {mode === 'sport' ? sportWDL(myResults) : myBestResult.score_label}
-            </div>
-          ) : (
-            <div style={{ color: '#555', fontSize: '14px' }}>No score yet</div>
-          )}
-        </div>
-
-        {/* PR THIS SEASON */}
-        <div>
-          <div style={{ fontSize: '10px', color: '#555', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '6px', fontFamily: 'Barlow Condensed, sans-serif' }}>
-            Personal Record This Season
-          </div>
-          <div style={{ fontSize: '15px', color: seasonPRNum !== null ? '#F9B051' : '#555' }}>
-            {seasonPRNum !== null ? formatPR(seasonPRNum, mode, eventData?.slug) : 'No PR yet'}
-          </div>
-        </div>
-
-        {/* ALL TODAY'S SCORES */}
-        {myResults.length > 0 && (
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-              <div style={{ fontSize: '10px', color: '#555', letterSpacing: '0.12em', textTransform: 'uppercase', fontFamily: 'Barlow Condensed, sans-serif' }}>
-                All Today's Scores
-              </div>
-              {mode === 'sport' && (
-                <div style={{ fontSize: '14px', fontWeight: 700, color: '#4DB26E', fontFamily: 'Bebas Neue, cursive', letterSpacing: '0.05em' }}>
-                  {sportWDL(myResults)}
-                </div>
-              )}
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              {myResultsSorted.map(r => (
-                <div key={r.id} style={{
-                  background: editingResult?.id === r.id ? '#0d1a2d' : '#0d0d0d',
-                  border: `1px solid ${editingResult?.id === r.id ? '#2371BB55' : 'transparent'}`,
-                  borderRadius: '8px', padding: '10px 14px',
-                  display: 'flex', alignItems: 'center', gap: '10px',
-                }}>
-                  <div style={{ fontSize: '15px', color: '#fff', flex: 1 }}>{r.score_label}</div>
-                  {r.is_pr && (
-                    <div style={{
-                      fontSize: '10px', fontWeight: 700, color: '#F9B051',
-                      background: '#F9B05122', borderRadius: '4px', padding: '2px 6px',
-                      fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.05em',
-                    }}>PR</div>
-                  )}
-                  {r.effort_task_completions > 0 && (
-                    <div style={{ fontSize: '12px', color: '#B87DB5', fontWeight: 700, fontFamily: 'Barlow Condensed, sans-serif' }}>
-                      +{r.effort_task_completions}
-                    </div>
-                  )}
-                  {!sessionEnded && (isJudge || true) && (
-                    <>
-                      <button
-                        onClick={() => prefillFromResult(r)}
-                        style={{ background: 'none', border: '1px solid #2371BB44', borderRadius: '4px', color: '#2371BB', cursor: 'pointer', fontSize: '11px', padding: '2px 8px', flexShrink: 0, fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700 }}
-                      >Edit</button>
-                      <button
-                        onClick={() => handleDelete(r.id)}
-                        style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: '14px', padding: '2px 6px', flexShrink: 0 }}
-                      >✕</button>
-                    </>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* EFFORT TASKS */}
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <div style={{ fontSize: '10px', color: '#555', letterSpacing: '0.12em', textTransform: 'uppercase', fontFamily: 'Barlow Condensed, sans-serif' }}>
-              Effort Tasks
-            </div>
-            <div style={{ fontSize: '13px', color: '#B87DB5', fontWeight: 700, fontFamily: 'Bebas Neue, cursive' }}>
-              Level {effortLevel}
-            </div>
-          </div>
-          {effortLocked ? (
-            effortTasks.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <div style={{ fontSize: '12px', color: '#555', fontStyle: 'italic', marginBottom: '2px' }}>Submit a score first, then aim for:</div>
-                {effortTasks.map((task, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#0d0d0d', borderRadius: '8px', padding: '10px 14px', opacity: 0.5 }}>
-                    <div style={{ width: '18px', height: '18px', borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', background: '#1e1e1e', color: '#555' }}>○</div>
-                    <div style={{ flex: 1, fontSize: '13px', color: '#888', fontFamily: 'Barlow Condensed, sans-serif' }}>{task.label}</div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div style={{ fontSize: '13px', color: '#555', fontStyle: 'italic' }}>Submit a score to unlock effort tasks</div>
-            )
-          ) : effortTasks.length === 0 ? (
-            <div style={{ fontSize: '13px', color: '#555', fontStyle: 'italic' }}>No effort tasks for this event</div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              {effortTasks.map((task, i) => {
-                const done = task.count > 0
-                return (
-                  <div key={i} style={{
-                    display: 'flex', alignItems: 'center', gap: '10px',
-                    background: '#0d0d0d', borderRadius: '8px', padding: '10px 14px',
-                  }}>
-                    <div style={{
-                      width: '18px', height: '18px', borderRadius: '50%', flexShrink: 0,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px',
-                      background: done ? '#B87DB5' : '#1e1e1e', color: done ? '#fff' : '#555',
-                    }}>
-                      {done ? '✓' : '○'}
-                    </div>
-                    <div style={{ flex: 1, fontSize: '13px', color: done ? '#B87DB5' : '#888', fontFamily: 'Barlow Condensed, sans-serif' }}>
-                      {task.label}
-                    </div>
-                    {task.isRepeatable && task.count > 1 && (
-                      <div style={{ fontSize: '12px', color: '#B87DB5', fontWeight: 700, fontFamily: 'Barlow Condensed, sans-serif' }}>
-                        ×{task.count}
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* SUBMIT SCORE */}
-        {!sessionEnded && (
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-              <div style={{ fontSize: '10px', color: editingResult ? '#2371BB' : '#555', letterSpacing: '0.12em', textTransform: 'uppercase', fontFamily: 'Barlow Condensed, sans-serif' }}>
-                {editingResult ? 'Editing Score' : 'Submit Score'}
-              </div>
-              {editingResult && (
-                <button
-                  onClick={() => { setEditingResult(null); setWeightKg(''); setRepCount(''); setTimeMins(''); setTimeSecs(''); setSprintCs(''); setDistanceVal(''); setSportResult(''); setSportScore(''); setOpponentName(''); setDifficultyTier(''); setScoreInput('') }}
-                  style={{ fontSize: '11px', color: '#555', background: 'none', border: '1px solid #333', borderRadius: '4px', padding: '2px 8px', cursor: 'pointer', fontFamily: 'Barlow Condensed, sans-serif' }}
-                >Cancel</button>
-              )}
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {eventData?.variations && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '11px', color: '#666', fontFamily: 'Barlow Condensed, sans-serif' }}>VARIATION</label>
-                  <select value={exerciseVariation} onChange={e => setExerciseVariation(e.target.value)} style={{ ...INP, fontSize: '15px' }}>
-                    <option value="">Select variation...</option>
-                    {eventData.variations.map((v, i) => (
-                      <option key={v} value={v}>D{i + 1} — {v}{eventData.weightVariations?.includes(v) ? ' (weight + reps)' : ''}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {eventData?.hasDifficultyTiers && eventData.difficultyTiers && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '11px', color: '#666', fontFamily: 'Barlow Condensed, sans-serif' }}>DIFFICULTY TIER</label>
-                  <select value={difficultyTier} onChange={e => setDifficultyTier(e.target.value)} style={{ ...INP, fontSize: '15px' }}>
-                    <option value="">Select tier...</option>
-                    {eventData.difficultyTiers.map(t => (
-                      <option key={t.level} value={t.name}>D{t.level} — {t.name}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {(mode === 'strength' || isWeightVariation ||
-                (mode === 'difficulty+reps' && isWeightScoredTierByName(eventData?.name ?? '', difficultyTier))) && (
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <input type="number" value={weightKg} onChange={e => setWeightKg(e.target.value)} placeholder={eventData?.slug === 'shoulder-dislocate' ? 'Grip width (cm)' : 'Weight (kg)'} style={{ ...INP, flex: 2 }} />
-                  {(mode === 'strength' || isWeightVariation) && (
-                    <input type="number" value={repCount} onChange={e => setRepCount(e.target.value)} placeholder="Reps" style={{ ...INP, flex: 1 }} />
-                  )}
-                </div>
-              )}
-
-              {((mode === 'reps') && !isWeightVariation) ||
-               (mode === 'difficulty+reps' && !isWeightScoredTierByName(eventData?.name ?? '', difficultyTier))
-                ? <input type="number" value={repCount} onChange={e => setRepCount(e.target.value)} placeholder="Reps" style={INP} />
-                : null}
-
-              {(mode === 'time' || mode === 'hold' || mode === 'weight+time' || mode === 'difficulty+time') && (
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <input type="number" value={timeMins} onChange={e => setTimeMins(e.target.value)} placeholder="min" style={{ ...INP, flex: 1 }} />
-                  <span style={{ color: '#555', fontSize: '20px' }}>:</span>
-                  <input type="number" value={timeSecs} onChange={e => setTimeSecs(e.target.value)} placeholder="sec" style={{ ...INP, flex: 1 }} />
-                </div>
-              )}
-
-              {mode === 'sprint' && (
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <input type="number" value={timeSecs} onChange={e => setTimeSecs(e.target.value)} placeholder="Seconds" style={{ ...INP, flex: 2 }} />
-                  <span style={{ color: '#555', fontSize: '18px' }}>.</span>
-                  <input type="number" value={sprintCs} onChange={e => setSprintCs(e.target.value)} placeholder="cs" style={{ ...INP, flex: 1 }} min="0" max="99" />
-                </div>
-              )}
-
-              {mode === 'distance' && (
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <input type="number" value={distanceVal} onChange={e => setDistanceVal(e.target.value)} placeholder="Distance" style={{ ...INP, flex: 2 }} />
-                  <div style={{ display: 'flex', borderRadius: '8px', overflow: 'hidden' }}>
-                    {(['m', 'cm'] as const).map(u => (
-                      <button key={u} onClick={() => setDistanceUnit(u)} style={{
-                        padding: '10px 16px', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px',
-                        background: distanceUnit === u ? '#2371BB' : '#1a1a1a',
-                        color: distanceUnit === u ? '#fff' : '#666',
-                      }}>{u}</button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {mode === 'sport' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    {(['win', 'draw', 'loss'] as const).map(r => {
-                      const colors = { win: '#4DB26E', draw: '#F9B051', loss: '#EA4742' }
-                      const active = sportResult === r
-                      return (
-                        <button key={r} onClick={() => setSportResult(r)} style={{
-                          flex: 1, padding: '14px', border: `2px solid ${active ? colors[r] : '#222'}`,
-                          borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px',
-                          background: active ? colors[r] + '22' : '#111', color: active ? colors[r] : '#444',
-                        }}>{r.charAt(0).toUpperCase() + r.slice(1)}</button>
-                      )
-                    })}
-                  </div>
-                  <input value={opponentName} onChange={e => setOpponentName(e.target.value)} placeholder="Opponent name (optional)" style={{ ...INP, fontSize: '15px' }} />
-                  <input value={sportScore} onChange={e => setSportScore(e.target.value)} placeholder="Score e.g. 21–18 (optional)" style={{ ...INP, fontSize: '15px' }} />
-                </div>
-              )}
-
-              {mode === 'score' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '11px', color: '#666', fontFamily: 'Barlow Condensed, sans-serif' }}>STROKE COUNT (4 HOLES)</label>
-                  <input type="number" value={scoreInput} onChange={e => setScoreInput(e.target.value)} placeholder="e.g. 18" style={INP} min="1" />
-                </div>
-              )}
-
-              {error && <div style={{ color: '#EA4742', fontSize: '13px' }}>{error}</div>}
-              {success && <div style={{ color: '#4DB26E', fontSize: '13px' }}>Submitted!</div>}
-
-              <button
-                onClick={handleSubmit}
-                disabled={!isValid() || submitting}
-                style={{
-                  padding: '14px', borderRadius: '10px', border: 'none', fontWeight: 'bold',
-                  fontSize: '15px', cursor: isValid() && !submitting ? 'pointer' : 'not-allowed',
-                  background: isValid() && !submitting ? '#2371BB' : '#1a1a1a',
-                  color: isValid() && !submitting ? '#fff' : '#555',
-                }}
-              >
-                {submitting ? 'Saving...' : editingResult ? 'Save Changes' : 'Submit Score'}
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  )
 }
 
 // ─── Quick-entry sheet (player scoring redesign) ──────────────────────────────
@@ -1475,6 +966,83 @@ function EventListRow({
           </div>
         </div>
       )}
+    </button>
+  )
+}
+
+// ─── Shared scoring-screen chrome ─────────────────────────────────────────────
+
+function sectionLabel(text: string) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '16px 4px 8px', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11.5px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.14em' }}>
+      <span style={{ width: '14px', height: '3px', borderRadius: '2px', background: 'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)' }} />
+      {text}
+    </div>
+  )
+}
+
+function ProgressSegments({ events, scoredIds, height = 8 }: { events: SessionEvent[]; scoredIds: ReadonlySet<string>; height?: number }) {
+  return (
+    <div style={{ display: 'flex', gap: '3px' }}>
+      {events.map(ev => (
+        <div key={ev.id} style={{
+          flex: 1, height: `${height}px`, borderRadius: '99px',
+          background: scoredIds.has(ev.id) ? domainColor(ev.domain_number) : '#1e1e1e',
+          transition: 'background 0.3s',
+        }} />
+      ))}
+    </div>
+  )
+}
+
+// ─── Kaiwhakawā picker ────────────────────────────────────────────────────────
+
+function JudgeChip({ label, active, tone = 'player', onClick }: {
+  label: string
+  active?: boolean
+  tone?: 'player' | 'guest' | 'add'
+  onClick: () => void
+}) {
+  const accent = tone === 'guest' ? '#F9B051' : '#EA4742'
+  const idleColor = tone === 'guest' ? '#F9B051' : tone === 'add' ? '#888' : '#ccc'
+  const idleBorder = tone === 'guest' ? '#F9B05144' : tone === 'add' ? '#2a2a2a' : '#333'
+  return (
+    <button onClick={onClick} style={{
+      fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.08em',
+      fontSize: '13px', fontWeight: 600, flexShrink: 0, cursor: 'pointer',
+      borderRadius: '999px', padding: '9px 15px',
+      background: active ? accent : '#161616',
+      color: active ? (tone === 'guest' ? '#000' : '#fff') : idleColor,
+      border: `1px ${tone === 'add' ? 'dashed' : 'solid'} ${active ? accent : idleBorder}`,
+    }}>{label}</button>
+  )
+}
+
+function JudgeRosterRow({ name, isGuest, scoredIds, events, onOpen }: {
+  name: string
+  isGuest: boolean
+  scoredIds: ReadonlySet<string>
+  events: SessionEvent[]
+  onOpen: () => void
+}) {
+  const done = events.filter(ev => scoredIds.has(ev.id)).length
+  const complete = events.length > 0 && done === events.length
+  return (
+    <button onClick={onOpen} style={{
+      width: '100%', textAlign: 'left', display: 'block', padding: '12px 14px', marginBottom: '8px',
+      borderRadius: '16px', cursor: 'pointer', background: '#111',
+      border: `1px solid ${complete ? '#1e3a28' : '#1e1e1e'}`, color: '#fff', fontFamily: 'Barlow, sans-serif',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '10px', marginBottom: '8px' }}>
+        <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '19px', letterSpacing: '0.03em', lineHeight: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {name}
+          {isGuest && <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', color: '#F9B051', marginLeft: '8px', letterSpacing: '0.1em' }}>GUEST</span>}
+        </div>
+        <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', letterSpacing: '0.08em', textTransform: 'uppercase', flexShrink: 0, color: complete ? '#4DB26E' : '#888' }}>
+          {done}/{events.length} scored
+        </div>
+      </div>
+      <ProgressSegments events={events} scoredIds={scoredIds} height={6} />
     </button>
   )
 }
@@ -2304,9 +1872,8 @@ export default function SessionPage() {
   const [activePlayerId, setActivePlayerId] = useState<string | null>(null)
   const [seasonPRs, setSeasonPRs] = useState<Record<string, number | string | null>>({})
   const [activeTab, setActiveTab] = useState<string>('leaderboard')
-  const [expandedEventId, setExpandedEventId] = useState<string | null>(null)
   const [sheetEventId, setSheetEventId] = useState<string | null>(null)
-  const [toast, setToast] = useState<{ eventName: string; label: string; isPR: boolean; isNewEvent: boolean; effortCredit: number } | null>(null)
+  const [toast, setToast] = useState<{ eventName: string; label: string; isPR: boolean; isNewEvent: boolean; effortCredit: number; playerName?: string } | null>(null)
   const [playedEventNames, setPlayedEventNames] = useState<Set<string> | null>(null) // all-time, for "new event unlocked"
   const [effortMaxToast, setEffortMaxToast] = useState(false)
   const [fullHousePulseId, setFullHousePulseId] = useState<string | null>(null)
@@ -2317,14 +1884,43 @@ export default function SessionPage() {
   const [playerInfoMap, setPlayerInfoMap] = useState<Record<string, PlayerInfo>>({})
   const [isJudge, setIsJudge] = useState(false)
   const [judgeTargetId, setJudgeTargetId] = useState<string>('')
-  const [judgeMode, setJudgeMode] = useState<'account' | 'guest'>('account')
   const [judgeGuestName, setJudgeGuestName] = useState('')
+  const [judgeShowAll, setJudgeShowAll] = useState(false)   // full registered-player picker expanded
+  const [judgeGuestDraft, setJudgeGuestDraft] = useState('') // "+ Guest" name field; '' = field hidden
+  const [judgeGuestOpen, setJudgeGuestOpen] = useState(false)
   const [sessionPlayers, setSessionPlayers] = useState<{ id: string; name: string }[]>([])
   const [judgePRs, setJudgePRs] = useState<Record<string, number | string | null>>({})
 
   const allPlayers = player ? [player, ...familyMembers] : []
   const activePlayer = allPlayers.find(p => p.id === activePlayerId) ?? player
   const activePlayerDivision = activePlayer ? (activePlayer as Record<string, unknown>).division as string | null : null
+
+  // ── Kaiwhakawā roster ──────────────────────────────────────────────────────
+  const judgeRoster = useMemo(
+    () => buildJudgeRoster(results, sessionPlayers),
+    [results, sessionPlayers],
+  )
+
+  // Currently selected scoring target — a registered player, a guest, or nobody
+  const judgeTarget = useMemo(
+    () => resolveJudgeTarget(judgeTargetId, judgeGuestName, sessionPlayers, results),
+    [judgeTargetId, judgeGuestName, sessionPlayers, results],
+  )
+
+  // Every roster row's scored-event set, computed once per results change
+  const rosterScored = useMemo(
+    () => scoredEventIdsByTarget(results, events.map(ev => ev.id)),
+    [results, events],
+  )
+
+  function selectJudgeTarget(sel: { id?: string; guestName?: string } | null) {
+    setJudgeTargetId(sel?.id ?? '')
+    setJudgeGuestName(sel?.guestName ?? '')
+    setSheetEventId(null)
+    setJudgeShowAll(false)
+    setJudgeGuestOpen(false)
+    setJudgeGuestDraft('')
+  }
 
   // ── Division placement for banner ──────────────────────────────────────────
   const myDivisionPlacement = useMemo(() => {
@@ -2469,7 +2065,12 @@ export default function SessionPage() {
 
   // ── Load PRs for judge's selected player ──────────────────────────────────
   useEffect(() => {
-    if (!isJudge || !judgeTargetId || events.length === 0) return
+    if (!isJudge) return
+    // Clear first: switching target is one chip tap, so the previous player's PRs
+    // must never linger as the new player's "Season PR" / effort-task baseline.
+    setJudgePRs({})
+    if (!judgeTargetId || events.length === 0) return
+    let cancelled = false // a fast A→B→A switch can resolve out of order
     const year = new Date().getFullYear()
     async function loadJudgePRs() {
       const { data } = await supabase
@@ -2488,9 +2089,10 @@ export default function SessionPage() {
       }
       const prs: Record<string, number | string | null> = {}
       events.forEach(ev => { prs[ev.id] = byName[ev.event_name] ?? null })
-      setJudgePRs(prs)
+      if (!cancelled) setJudgePRs(prs)
     }
     loadJudgePRs()
+    return () => { cancelled = true }
   }, [isJudge, judgeTargetId, events])
 
   // ── Realtime subscriptions ─────────────────────────────────────────────────
@@ -2664,7 +2266,7 @@ export default function SessionPage() {
           const tabId = `player-${pid}`
           const active = activeTab === tabId
           return (
-            <button key={pid} onClick={() => { setActiveTab(tabId); setActivePlayerId(pid); setExpandedEventId(null); setSheetEventId(null) }}
+            <button key={pid} onClick={() => { setActiveTab(tabId); setActivePlayerId(pid); setSheetEventId(null) }}
               style={{
                 padding: '12px 16px', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
                 fontSize: '13px', fontWeight: active ? 700 : 400, flexShrink: 0,
@@ -2687,7 +2289,7 @@ export default function SessionPage() {
           Leaderboard
         </button>
         {isJudge && (
-          <button onClick={() => setActiveTab('judge-mode')}
+          <button onClick={() => { setActiveTab('judge-mode'); setSheetEventId(null) }}
             style={{
               padding: '12px 16px', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
               fontSize: '13px', fontWeight: activeTab === 'judge-mode' ? 700 : 400, flexShrink: 0,
@@ -2725,12 +2327,6 @@ export default function SessionPage() {
         const todoEvents = events.filter(ev => !scoredIds.has(ev.id))
         const doneEvents = events.filter(ev => scoredIds.has(ev.id))
         const sheetEvent = sheetEventId ? events.find(e => e.id === sheetEventId) : undefined
-        const sectionLabel = (text: string) => (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '16px 4px 8px', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11.5px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.14em' }}>
-            <span style={{ width: '14px', height: '3px', borderRadius: '2px', background: 'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)' }} />
-            {text}
-          </div>
-        )
 
         return (
           <div key={pid} style={{ padding: '16px' }}>
@@ -2755,15 +2351,7 @@ export default function SessionPage() {
                 </div>
               </div>
               <div style={{ position: 'relative' }}>
-                <div style={{ display: 'flex', gap: '3px' }}>
-                  {events.map(ev => (
-                    <div key={ev.id} style={{
-                      flex: 1, height: '8px', borderRadius: '99px',
-                      background: scoredIds.has(ev.id) ? domainColor(ev.domain_number) : '#1e1e1e',
-                      transition: 'background 0.3s',
-                    }} />
-                  ))}
-                </div>
+                <ProgressSegments events={events} scoredIds={scoredIds} />
                 {fullHousePulseId === pid && (
                   <div style={{ position: 'absolute', inset: 0, borderRadius: '99px', overflow: 'hidden', pointerEvents: 'none' }}>
                     <div style={{
@@ -2866,6 +2454,7 @@ export default function SessionPage() {
             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)' }} />
           )}
           <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '18px', color: '#fff' }}>
+            {toast.playerName && <span style={{ color: '#EA4742' }}>{toast.playerName} — </span>}
             {toast.isPR
               ? <><span style={{ color: '#F9B051' }}>NEW PR</span> — {toast.eventName} — {toast.label}</>
               : toast.isNewEvent
@@ -2893,134 +2482,206 @@ export default function SessionPage() {
       )}
 
       {/* Judge mode tab */}
-      {activeTab === 'judge-mode' && isJudge && (
-        <div style={{ padding: '16px' }}>
-          <div style={{ marginBottom: '16px' }}>
-            <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '22px', color: '#EA4742', letterSpacing: '0.05em' }}>Kaiwhakawā</div>
+      {activeTab === 'judge-mode' && isJudge && (() => {
+        const target = judgeTarget
+        const targetResults = target ? resultsForTarget(results, target) : []
+        const targetDivision = target?.id ? (playerInfoMap[target.id]?.division ?? null) : null
+        const totalEffort = calcTotalEffortLevel(targetResults, events)
+        const scoredIds = scoredEventIds(targetResults, events.map(ev => ev.id))
+        const todoEvents = events.filter(ev => !scoredIds.has(ev.id))
+        const doneEvents = events.filter(ev => scoredIds.has(ev.id))
+        const sheetEvent = sheetEventId ? events.find(e => e.id === sheetEventId) : undefined
+        const unlistedPlayers = sessionPlayers.filter(sp => !judgeRoster.registeredIds.has(sp.id))
+        const canPickMore = unlistedPlayers.length > 0
+        const guestDraft = judgeGuestDraft.trim()
+        const addGuest = () => { if (guestDraft) selectJudgeTarget({ guestName: guestDraft }) }
+
+        return (
+          <div style={{ padding: '16px' }}>
+            <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '22px', color: '#EA4742', letterSpacing: '0.05em', lineHeight: 1 }}>Kaiwhakawā</div>
             <div style={{ fontSize: '11px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.08em', marginBottom: '12px' }}>SCORE FOR ANY PLAYER</div>
+
             {sessionEnded && (
-              <div style={{ background: '#2e0d0d', border: '1px solid #EA4742', borderRadius: '8px', padding: '10px 14px', marginBottom: '12px', color: '#EA4742', fontSize: '13px' }}>
-                Session ended — scoring locked
+              <div style={{ background: '#2e0d0d', border: '1px solid #EA4742', borderRadius: '12px', padding: '12px 16px', marginBottom: '14px', textAlign: 'center' }}>
+                <div style={{ color: '#EA4742', fontWeight: 700, fontFamily: 'Bebas Neue, cursive', fontSize: '18px' }}>Session Ended</div>
+                <div style={{ color: '#888', fontSize: '13px', marginTop: '4px' }}>Score submission is locked</div>
               </div>
             )}
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-              {(['account', 'guest'] as const).map(m => (
-                <button
-                  key={m}
-                  onClick={() => { setJudgeMode(m); setJudgeTargetId(''); setJudgeGuestName(''); setExpandedEventId(null) }}
-                  style={{
-                    flex: 1, padding: '8px 0', borderRadius: '8px', border: 'none',
-                    cursor: 'pointer', fontFamily: 'Barlow Condensed, sans-serif',
-                    fontSize: '13px', fontWeight: 700, letterSpacing: '0.06em',
-                    background: judgeMode === m ? '#EA4742' : '#1a1a1a',
-                    color: judgeMode === m ? '#fff' : '#555',
-                  }}
-                >
-                  {m === 'account' ? 'REGISTERED PLAYER' : 'GUEST PLAYER'}
-                </button>
+
+            {/* Player chips */}
+            <div className="no-scrollbar" style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '2px', marginBottom: '12px' }}>
+              {judgeRoster.registered.map(p => (
+                <JudgeChip key={p.key} label={p.name} active={judgeTargetId === p.id}
+                  onClick={() => selectJudgeTarget(judgeTargetId === p.id ? null : { id: p.id })} />
               ))}
+              {judgeRoster.guests.map(g => (
+                <JudgeChip key={g.key} label={g.name} tone="guest" active={judgeGuestName === g.name}
+                  onClick={() => selectJudgeTarget(judgeGuestName === g.name ? null : { guestName: g.name })} />
+              ))}
+              {canPickMore && (
+                <JudgeChip label={judgeShowAll ? '× Player' : '+ Player'} tone="add"
+                  onClick={() => { setJudgeShowAll(!judgeShowAll); setJudgeGuestOpen(false) }} />
+              )}
+              <JudgeChip label={judgeGuestOpen ? '× Guest' : '+ Guest'} tone="add"
+                onClick={() => { setJudgeGuestOpen(!judgeGuestOpen); setJudgeShowAll(false); setJudgeGuestDraft('') }} />
             </div>
 
-            {judgeMode === 'account' ? (
-              <>
-                <select
-                  value={judgeTargetId}
-                  onChange={e => { setJudgeTargetId(e.target.value); setExpandedEventId(null) }}
-                  style={{
-                    width: '100%', background: '#0d0d0d', border: '1px solid #EA474244',
-                    borderRadius: '8px', padding: '12px 14px', color: judgeTargetId ? '#fff' : '#666',
-                    fontSize: '15px', fontFamily: 'Barlow, sans-serif',
-                  }}
-                >
-                  <option value="">Select a player to score for...</option>
-                  {sessionPlayers.map(sp => <option key={sp.id} value={sp.id}>{sp.name}</option>)}
-                </select>
-                {sessionPlayers.length === 0 && (
-                  <div style={{ fontSize: '12px', color: '#555', marginTop: '8px' }}>
-                    No registered players yet — switch to Guest Player to score anyone by name.
-                  </div>
-                )}
-              </>
-            ) : (
-              <input
-                type="text"
-                placeholder="Enter player name..."
-                value={judgeGuestName}
-                onChange={e => { setJudgeGuestName(e.target.value); setExpandedEventId(null) }}
-                style={{
-                  width: '100%', background: '#0d0d0d', border: '1px solid #EA474244',
-                  borderRadius: '8px', padding: '12px 14px', color: '#fff',
-                  fontSize: '15px', fontFamily: 'Barlow, sans-serif', boxSizing: 'border-box',
-                }}
-              />
-            )}
-          </div>
-
-          {(() => {
-            const isAccountMode = judgeMode === 'account'
-            const activeId = isAccountMode ? judgeTargetId : null
-            const activeName = isAccountMode
-              ? (sessionPlayers.find(s => s.id === judgeTargetId)?.name ?? '')
-              : judgeGuestName.trim()
-            if (!activeName) return null
-
-            const judgeMyResults = isAccountMode
-              ? results.filter(r => r.player_id === activeId)
-              : results.filter(r => !r.player_id && r.player_name === activeName)
-            const totalEffort = calcTotalEffortLevel(judgeMyResults, events)
-
-            // Get judge target player's division for division rank display
-            const judgeTargetDivision = isAccountMode && activeId
-              ? (playerInfoMap[activeId]?.division ?? null)
-              : null
-
-            return (
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#fff' }}>
-                    {activeName}
-                    {!isAccountMode && <span style={{ fontSize: '11px', color: '#EA4742', marginLeft: '8px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.06em' }}>GUEST</span>}
-                  </div>
-                  <div style={{ fontSize: '13px', color: '#B87DB5', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700 }}>
-                    Effort Level: {totalEffort} / 20
-                  </div>
+            {/* Full registered-player picker */}
+            {judgeShowAll && (
+              <div style={{ background: '#0d0d0d', border: '1px solid #1e1e1e', borderRadius: '14px', padding: '12px', marginBottom: '12px' }}>
+                <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: '10px' }}>
+                  All registered players
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                  {events.map(ev => {
-                    const evResults = isAccountMode
-                      ? results.filter(r => r.event_id === ev.id && r.player_id === activeId)
-                      : results.filter(r => r.event_id === ev.id && !r.player_id && r.player_name === activeName)
-                    const evData = getEventByName(ev.event_name)
-                    const pr = isAccountMode ? (judgePRs[ev.id] ?? null) : null
-                    const cardKey = isAccountMode ? `judge-${ev.id}` : `judge-guest-${ev.id}`
-                    return (
-                      <EventCard
-                        key={cardKey}
-                        se={ev}
-                        eventData={evData}
-                        myResults={evResults}
-                        allResults={results}
-                        allEvents={events}
-                        seasonPR={pr}
-                        playerId={activeId}
-                        playerName={activeName}
-                        playerDivision={judgeTargetDivision}
-                        playerInfoMap={playerInfoMap}
-                        sessionId={sessionId as string}
-                        sessionEnded={sessionEnded}
-                        isJudge={true}
-                        isExpanded={expandedEventId === cardKey}
-                        onToggle={() => setExpandedEventId(expandedEventId === cardKey ? null : cardKey)}
-                        onScoreSubmitted={async () => { await loadResults() }}
-                      />
-                    )
-                  })}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', maxHeight: '220px', overflowY: 'auto' }}>
+                  {unlistedPlayers.map(sp => (
+                    <JudgeChip key={sp.id} label={sp.name} active={judgeTargetId === sp.id}
+                      onClick={() => selectJudgeTarget({ id: sp.id })} />
+                  ))}
                 </div>
               </div>
-            )
-          })()}
-        </div>
-      )}
+            )}
+
+            {/* Guest name entry */}
+            {judgeGuestOpen && (
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                <input
+                  type="text"
+                  placeholder="Guest player name..."
+                  value={judgeGuestDraft}
+                  autoFocus
+                  onChange={e => setJudgeGuestDraft(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') addGuest() }}
+                  style={{
+                    flex: 1, minWidth: 0, background: '#0d0d0d', border: '1px solid #F9B05144',
+                    borderRadius: '12px', padding: '12px 14px', color: '#fff',
+                    fontSize: '15px', fontFamily: 'Barlow, sans-serif', boxSizing: 'border-box',
+                  }}
+                />
+                <button onClick={addGuest} disabled={!guestDraft} style={{
+                  flexShrink: 0, borderRadius: '12px', padding: '0 18px', cursor: guestDraft ? 'pointer' : 'default',
+                  background: guestDraft ? '#F9B051' : '#1a1a1a', color: guestDraft ? '#000' : '#555',
+                  border: 'none', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px',
+                  fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
+                }}>Score</button>
+              </div>
+            )}
+
+            {/* No player selected — session roster */}
+            {!target && (
+              judgeRoster.registered.length + judgeRoster.guests.length === 0 ? (
+                <div style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: '16px', padding: '32px 20px', textAlign: 'center' }}>
+                  <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '20px', color: '#fff', letterSpacing: '0.03em' }}>No scores yet</div>
+                  <div style={{ fontSize: '13px', color: '#777', marginTop: '6px', lineHeight: 1.5 }}>
+                    Tap {canPickMore && <><span style={{ color: '#aaa' }}>+ Player</span> to pick a registered player, or </>}
+                    <span style={{ color: '#F9B051' }}>+ Guest</span> to score someone by name.
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {sectionLabel(`Session roster — ${judgeRoster.registered.length + judgeRoster.guests.length} player${judgeRoster.registered.length + judgeRoster.guests.length === 1 ? '' : 's'}`)}
+                  {judgeRoster.registered.map(p => (
+                    <JudgeRosterRow key={p.key} name={p.name} isGuest={false} events={events}
+                      scoredIds={rosterScored.get(p.key) ?? NO_SCORES}
+                      onOpen={() => selectJudgeTarget({ id: p.id })} />
+                  ))}
+                  {judgeRoster.guests.map(g => (
+                    <JudgeRosterRow key={g.key} name={g.name} isGuest events={events}
+                      scoredIds={rosterScored.get(g.key) ?? NO_SCORES}
+                      onOpen={() => selectJudgeTarget({ guestName: g.name })} />
+                  ))}
+                </>
+              )
+            )}
+
+            {/* Player selected — same layout as the player tab */}
+            {target && (
+              <div>
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '10px', marginBottom: '10px' }}>
+                  <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '26px', color: '#fff', letterSpacing: '0.03em', lineHeight: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {target.name}
+                    {target.isGuest && <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', color: '#F9B051', marginLeft: '10px', letterSpacing: '0.1em' }}>GUEST</span>}
+                  </div>
+                  <button onClick={() => selectJudgeTarget(null)} style={{
+                    flexShrink: 0, background: 'none', border: '1px solid #333', borderRadius: '999px',
+                    color: '#888', cursor: 'pointer', padding: '6px 13px',
+                    fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', letterSpacing: '0.08em', textTransform: 'uppercase',
+                  }}>Roster</button>
+                </div>
+
+                {/* Session progress */}
+                <div style={{ marginBottom: '4px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '6px' }}>
+                    <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11.5px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.12em' }}>
+                      <span style={{ color: '#fff', fontWeight: 600 }}>{doneEvents.length}</span> of {events.length} events scored
+                      {doneEvents.length === events.length && events.length > 0 && (
+                        <span style={{ color: '#4DB26E', fontWeight: 600 }}> — All {events.length} events played</span>
+                      )}
+                    </div>
+                    <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11.5px', color: '#B87DB5', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 600 }}>
+                      Effort level {totalEffort} / 20
+                    </div>
+                  </div>
+                  <ProgressSegments events={events} scoredIds={scoredIds} />
+                </div>
+
+                {/* Still to play */}
+                {todoEvents.length > 0 && sectionLabel(`Still to play — ${todoEvents.length} event${todoEvents.length === 1 ? '' : 's'}`)}
+                {todoEvents.map(ev => (
+                  <EventListRow
+                    key={ev.id}
+                    se={ev}
+                    eventData={getEventByName(ev.event_name)}
+                    myResults={targetResults.filter(r => r.event_id === ev.id)}
+                    allResults={results}
+                    playerInfoMap={playerInfoMap}
+                    playerDivision={targetDivision}
+                    onOpen={() => setSheetEventId(ev.id)}
+                  />
+                ))}
+
+                {/* Scored */}
+                {doneEvents.length > 0 && sectionLabel('Scored')}
+                {doneEvents.map(ev => (
+                  <EventListRow
+                    key={ev.id}
+                    se={ev}
+                    eventData={getEventByName(ev.event_name)}
+                    myResults={targetResults.filter(r => r.event_id === ev.id)}
+                    allResults={results}
+                    playerInfoMap={playerInfoMap}
+                    playerDivision={targetDivision}
+                    onOpen={() => setSheetEventId(ev.id)}
+                  />
+                ))}
+
+                {/* Quick-entry sheet */}
+                {sheetEvent && (
+                  <QuickEntrySheet
+                    key={`judge-${target.id ?? target.name}-${sheetEvent.id}`}
+                    se={sheetEvent}
+                    eventData={getEventByName(sheetEvent.event_name)}
+                    myResults={targetResults.filter(r => r.event_id === sheetEvent.id)}
+                    allResults={results}
+                    seasonPR={target.id ? (judgePRs[sheetEvent.id] ?? null) : null}
+                    playerId={target.id}
+                    playerName={target.name}
+                    sessionId={sessionId as string}
+                    sessionEnded={sessionEnded}
+                    onClose={() => setSheetEventId(null)}
+                    onSubmitted={async (label, meta) => {
+                      setSheetEventId(null)
+                      setToast({ eventName: sheetEvent.event_name, label, isPR: meta.isPR, isNewEvent: false, effortCredit: meta.effortCredit, playerName: target.name })
+                      setTimeout(() => setToast(null), meta.isPR ? 4000 : 3000)
+                      await loadResults()
+                    }}
+                    onDeleted={async () => { await loadResults() }}
+                  />
+                )}
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       {/* Leaderboard tab */}
       {activeTab === 'leaderboard' && (
