@@ -2,6 +2,20 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.5.2.0] - 2026-07-30
+
+### Changed
+- **Kaiwhakawā scoring now looks and works like the player screen** — the judge tab was still on the old two-column card grid while players moved to the new layout. It now uses the same event list, the same tap-to-score quick-entry sheet, and the same progress bar, so there's one way to score in AllSport instead of two.
+- **Pick a player by tapping their name** — the dropdown is gone. Everyone in the session is a chip along the top: tap to score for them, tap again to go back. Guests you've already scored get their own chip too, so you never retype a guest's name mid-session. "+ Player" reaches anyone else registered, and "+ Guest" takes a new name.
+- **See who still needs scoring at a glance** — with nobody selected, the tab now shows the session roster: every player with a progress bar and how many of the ten events they've done, so you can go straight to whoever is behind. Tap a row to start scoring them.
+- **Score confirmations name the player** — a kaiwhakawā scoring for several people in a row now sees "Meredith — Deadlift — 95kg × 3", so it's obvious the score landed on the right person. Personal-best alerts still show. The player-only celebrations (effort cap, all-ten-events, new event unlocked) stay on the player's own screen.
+
+### Fixed
+- **Wrong personal best when switching players quickly** — the judge tab kept the previous player's season PR on screen while the new player's loaded, which also fed the wrong target into their effort task. It now clears immediately and ignores out-of-order responses. Easy to hit now that switching players is a single tap.
+
+### Removed
+- **The old judge event-card grid** — around 510 lines of duplicated scoring code deleted. Scoring now runs through one code path for players and kaiwhakawā alike.
+
 ## [0.5.1.0] - 2026-07-16
 
 ### Changed

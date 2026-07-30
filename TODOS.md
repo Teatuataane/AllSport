@@ -142,6 +142,13 @@
 **What:** Judges can be assigned via the app rather than running `UPDATE players SET role = 'judge'` manually.
 **Effort:** M (CC)
 
+### Live session screen — focus states and touch targets
+**What:** The live session screen builds every control (kaiwhakawā player chips, roster rows, event list rows, quick-entry sheet chips, tab bar) as inline-styled `<button>`s. Inline styles can't express `:hover` or `:focus-visible`, so keyboard users get no focus indicator anywhere on the screen, and the chips land ~36px tall (the "Roster" button ~28px) against a 44px minimum touch target.
+**Why deferred:** Patching only the new kaiwhakawā chips would make them inconsistent with the identical chips in the quick-entry sheet sitting on top of them. The honest fix is the whole-screen move onto CSS classes / `components/ui.tsx`, already flagged in CLAUDE.md as the session-19 follow-up.
+**Where:** `app/scoring/[sessionId]/page.tsx`, `app/globals.css`
+**Noticed:** /ship design review, 2026-07-30 (v0.5.2.0)
+**Effort:** M (CC)
+
 ### Guest player claim flow
 **What:** A guest player who later creates an account can claim their previous session results. Judge or admin links the guest `player_id` to the new account.
 **How:** Simple admin SQL or a judge UI that searches for guest players by name and merges them with a registered player.
