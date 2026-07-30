@@ -199,6 +199,10 @@ button { font-family: inherit; }
 ::-webkit-scrollbar-track { background: var(--dark); }
 ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
 
+/* Horizontal chip rows scroll without showing a track */
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { height: 0; width: 0; display: none; }
+
 /* Navbar responsive */
 @media (max-width: 768px) {
   .desktop-nav { display: none !important; }
