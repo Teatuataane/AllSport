@@ -6,13 +6,16 @@ import {
   getEventByName,
   getEventsByDomain,
   getBonusTargets,
+  isTimedEffort,
+  encodeDiffTime,
+  decodeDiffTime,
 } from '@/lib/eventData'
 
 // ─── EVENTS array integrity ───────────────────────────────────────────────────
 
 describe('EVENTS array', () => {
-  it('contains exactly 122 events', () => {
-    expect(EVENTS).toHaveLength(122)
+  it('contains exactly 120 events', () => {
+    expect(EVENTS).toHaveLength(120)
   })
 
   it('every event has a unique slug', () => {
@@ -136,6 +139,73 @@ describe('getEventByName', () => {
     expect(getEventByName('Completely Made Up Event')).toBeUndefined()
   })
 
+  // ─── Aug 2026 roster update (120 events) ───────────────────────────────────
+  // Renames keep their slug so historical results stay linked.
+  it.each([
+    ['Pause Back Squat', 'pause-squat'],
+    ['Pause Chinup', 'pause-chin-up'],
+    ['Turkish Getup', 'turkish-get-up'],
+    ['Human Flag', 'flag'],
+    ['Finger Pushup', 'finger-push-up'],
+    ['Hamstring Curl', 'hamstring-curl'],
+    ['Foot Behind Head Pose', 'foot-behind-head'],
+    ['Toe Squat', 'toe-balance'],
+    ['Leg Ext Hold', 'leg-extension'],
+  ])('renamed %s keeps slug %s', (name, slug) => {
+    const e = getEventByName(name)
+    expect(e).toBeDefined()
+    expect(e!.slug).toBe(slug)
+  })
+
+  it.each([
+    ['Headstand', 'Calisthenics', 2],
+    ['L-Sit Hold', 'Calisthenics', 2],
+    ['Toe Lift', 'Anaerobic Endurance', 5],
+    ['Toe Squat', 'Anaerobic Endurance', 5],
+    ['American Football', 'Speed', 4],
+  ])('moved %s now sits in %s', (name, domain, domainNumber) => {
+    const e = getEventByName(name)
+    expect(e).toBeDefined()
+    expect(e!.domain).toBe(domain)
+    expect(e!.domainNumber).toBe(domainNumber)
+  })
+
+  it.each([
+    'Arm Wrestling', 'Tug of War', 'Capture the Flag', 'Kabaddi',
+    'Wheelbarrow Push', 'Wheelbarrow Pull', 'Kubb',
+  ])('new event %s is defined with real content', (name) => {
+    const e = getEventByName(name)
+    expect(e).toBeDefined()
+    expect(e!.howToPerform).not.toContain('coming soon')
+    expect(e!.rules).not.toContain('coming soon')
+  })
+
+  it.each([
+    'Reverse Hyper', 'Triple Jump', '400m Race', '50m Sprint',
+    'Football Dribble', 'Hockey Dribble', 'Walking', 'Backwards Walk', 'Airsoft',
+  ])('removed event %s is gone from the roster', (name) => {
+    expect(getEventByName(name)).toBeUndefined()
+  })
+
+  it('Leg Ext Hold is a tiered hold, not a strength lift', () => {
+    const e = getEventByName('Leg Ext Hold')!
+    expect(e.inputMode).toBe('difficulty+time')
+    expect(e.hasDifficultyTiers).toBe(true)
+    expect(e.difficultyTiers).toHaveLength(7)
+    expect(isTimedEffort(e.slug)).toBe(false) // longer hold wins
+  })
+
+  it('wheelbarrow events mirror Weighted Carry and rank fastest-first', () => {
+    const carry = getEventByName('Weighted Carry')!
+    for (const name of ['Wheelbarrow Push', 'Wheelbarrow Pull']) {
+      const e = getEventByName(name)!
+      expect(e.difficultyTiers!.map(t => t.name)).toEqual(
+        carry.difficultyTiers!.map(t => t.name)
+      )
+      expect(isTimedEffort(e.slug)).toBe(true)
+    }
+  })
+
   it('is case-sensitive (wrong case returns undefined)', () => {
     expect(getEventByName('deadlift')).toBeUndefined()
   })
@@ -160,6 +230,13 @@ describe('getEventsByDomain', () => {
     expect(total).toBe(EVENTS.length)
   })
 
+  it('every domain holds exactly 12 events', () => {
+    const map = getEventsByDomain()
+    for (const [domain, events] of Object.entries(map)) {
+      expect(events.length, `${domain} should have 12 events`).toBe(12)
+    }
+  })
+
   it('domain buckets contain the correct event objects (spot-check Deadlift)', () => {
     const map = getEventsByDomain()
     const maxStr = map['Maximal Strength']
@@ -174,11 +251,31 @@ describe('getEventsByDomain', () => {
     expect(slugs).toContain('duck-walk')
     expect(slugs).toContain('breath-hold')
     expect(slugs).toContain('bronco')
-    expect(slugs).toContain('walking')
+    expect(slugs).toContain('wheelbarrow-push')
+    expect(slugs).toContain('wheelbarrow-pull')
     expect(slugs).not.toContain('1k-run')
     expect(slugs).not.toContain('sprint-repeats')
     expect(slugs).not.toContain('30-15-test')
+    // Retired Aug 2026 — still in TIMED_EFFORT_SLUGS for historical decode
+    expect(slugs).not.toContain('walking')
+    expect(slugs).not.toContain('backwards-walk')
   })
+
+  // Guards a deliberate decision that reads like dead config: 'walking' and
+  // 'backwards-walk' are retired events kept in TIMED_EFFORT_SLUGS on purpose.
+  // Their historical raw_scores are inverted-encoded, so dropping them would
+  // make every archived Walking row decode backwards (a 4:00 reading as 2:40)
+  // wherever a past session is rendered.
+  it.each(['walking', 'backwards-walk'])(
+    'retired event %s still decodes as a timed effort',
+    (slug) => {
+      expect(getEventBySlug(slug)).toBeUndefined() // gone from the roster
+      expect(isTimedEffort(slug)).toBe(true)       // but still decodes correctly
+
+      const raw = encodeDiffTime(1, 240, true)
+      expect(decodeDiffTime(raw, isTimedEffort(slug)).secs).toBe(240)
+    }
+  )
 })
 
 // ─── effectiveScore helper (pure logic) ──────────────────────────────────────
