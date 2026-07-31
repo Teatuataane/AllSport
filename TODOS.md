@@ -88,16 +88,22 @@
 
 ## P1 — Do Next
 
-### Apply the four pending migrations, in order, code-first
-**What:** Four migrations are written but not applied to prod. Run them with `supabase db push` (never the SQL Editor as well — three contain one-time transforms that corrupt data if applied twice):
-1. `20260713000000_fix_double_award.sql` — drops the orphaned `on_session_end` trigger (the ×2 games/points root cause), adds an atomic claim guard, rebuilds 2026 rankings.
-2. `20260713000001_breath_hold_duck_walk.sql` — re-encodes Breath Hold and Duck Walk raw_scores. Must run after the above.
-3. `20260714000000_wellbeing_survey.sql` — creates `wellbeing_surveys` + RLS + report RPC. Idempotent.
-4. `20260801000000_roster_update_120.sql` — repoints renamed events so PR history reattaches, archives then deletes the un-convertible Leg Extension rows.
-**Deploy order matters for #4:** ship the v0.5.3.0 code FIRST, then migrate. Reversed, `session_events` holds the new event names while the deployed bundle still knows only the old ones, so `getEventByName()` returns undefined and live-session event cards lose their tiers and input mode mid-session.
-**After #4:** verify the archive table `results_leg_extension_archive_20260801` has RLS enabled and returns nothing through the API, then drop it once you're confident the Leg Ext Hold call is settled.
-**Noticed:** /ship, 2026-08-01 (v0.5.3.0)
-**Effort:** S (CC)
+### Confirm the double-award trigger fix actually landed
+**What:** Run this in the Supabase SQL Editor:
+```sql
+select tgname from pg_trigger where tgname in ('on_session_end', 'auto_award_points');
+```
+If `on_session_end` is absent, the ×2 games/points root cause is gone and this item is done. If it is still there, `20260713000000_fix_double_award.sql` was recorded as applied without its effects landing, and the orphaned trigger needs dropping by hand.
+**Why this is open:** every migration through `20260801000000` is recorded as applied, and `wellbeing_surveys` was confirmed to exist, so `20260714000000` genuinely ran. Because `supabase db push` applies in timestamp order, the two `20260713*` migrations must have run before it. That is inference, not observation — the trigger check above is the direct evidence.
+**Do NOT re-run the 2026071x migrations to "make sure".** `20260713000001` is a one-time re-encode of Breath Hold and Duck Walk raw_scores; applying it twice corrupts those scores.
+**Noticed:** /ship follow-up, 2026-08-01
+**Effort:** XS
+
+### Drop the Leg Extension archive table once settled
+**What:** `results_leg_extension_archive_20260801` holds the 17 result rows deleted when Leg Extension became Leg Ext Hold (a `strength` raw_score can't be decoded as a `difficulty+time` hold). Verified locked down: it returns HTTP 401 / `42501 insufficient_privilege` through PostgREST, so RLS is on and no policy exposes it. Drop it once the Leg Ext Hold call is settled and you're sure nobody wants those weights back.
+**Also:** three `session_events` rows still read "Leg Extension" — deliberately not renamed, since repointing a name onto rows that were about to be deleted would only re-link undecodable data. Those historical sessions show that event with no scores. Rename them to "Leg Ext Hold" only if you'd rather the display match the current roster; "Leg Extension" is the more truthful label for what was actually performed.
+**Noticed:** /ship follow-up, 2026-08-01
+**Effort:** XS
 
 ### Referral system — DB migration
 **What:** Add `referral_code` (TEXT UNIQUE) to `players`, create `referrals` table (referrer_id, referred_id, session_count, qualified_at), add trigger on `session_player_summary INSERT` to increment session_count and set qualified_at when threshold (10) is reached.
