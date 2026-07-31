@@ -83,21 +83,14 @@
 - session_player_summary table — populated by award_session_points trigger; dashboard points history; per-session: date, placement, effort level, points breakdown
 - Event content populated — howToPerform + rules written for all 94 placeholder events in lib/eventData.ts (pending Tāne's review of flagged events: Toe Lift, Kelly Snatch, Repeat High Jump, Australian Football, Tag, Netball). **Completed:** v0.4.0.0 (2026-07-05)
 - July 2026 design review (DR-1..10) — session-end takeover + milestones, PR/new-event/effort toasts, effort-cap + full-house one-time moments, players land on own tab, rank-improvement flash, My 100 dashboard card, next-session countdown, /leaderboard cleanup (avg place migration 20260707, Youth tab removed, Grandmaster tab keys fixed, Felix duplicate merged, copy corrected). **Completed:** v0.4.1.0 (2026-07-07)
+- Event roster reconciled to 120 events, 12 per domain — 7 added (Arm Wrestling, Tug of War, Capture the Flag, Kabaddi, Wheelbarrow Push/Pull, Kubb restored), 9 removed, 9 renamed, 5 moved between domains, Leg Extension → Leg Ext Hold (strength → difficulty+time, D1–D7). Domain names/numbers/order deliberately unchanged. Icons 120/120. **Completed:** v0.5.3.0 (2026-08-01)
+- Event renames no longer orphan personal-best history — /prs, lib/percentile.ts and My Events all group results by `session_events.event_name`, so every past rename had silently detached its own history. Migration `20260801000000` repoints 24 old names (derived from git history of eventData.ts, not memory), including earlier casualties Handbalance, Rope Climb, Zercher Deadlift, Shot Put and Javelin Throw. `lib/scoring.ts` also matched weight-scored tiers on the name literal and now accepts both spellings. **Completed:** v0.5.3.0 (2026-08-01)
+- All migrations applied and verified to prod — `20260713000000`, `20260713000001`, `20260714000000`, `20260801000000`. The ×2 games/points root cause is confirmed dead: `select tgname from pg_trigger` returns only `auto_award_points`, with the orphaned `on_session_end` absent, which also proves `20260713000000` genuinely executed rather than being recorded without effect. That migration rebuilt the 2026 rankings, so session counts and point totals now reflect true values. **Completed:** 2026-08-01
+- Corrected the stale "three session-22 migrations are pending" claim in CLAUDE.md and TODOS.md — they had already been applied, and re-running `20260713000001` (a one-time Breath Hold / Duck Walk re-encode) would have corrupted those scores. **Completed:** 2026-08-01
 
 ---
 
 ## P1 — Do Next
-
-### Confirm the double-award trigger fix actually landed
-**What:** Run this in the Supabase SQL Editor:
-```sql
-select tgname from pg_trigger where tgname in ('on_session_end', 'auto_award_points');
-```
-If `on_session_end` is absent, the ×2 games/points root cause is gone and this item is done. If it is still there, `20260713000000_fix_double_award.sql` was recorded as applied without its effects landing, and the orphaned trigger needs dropping by hand.
-**Why this is open:** every migration through `20260801000000` is recorded as applied, and `wellbeing_surveys` was confirmed to exist, so `20260714000000` genuinely ran. Because `supabase db push` applies in timestamp order, the two `20260713*` migrations must have run before it. That is inference, not observation — the trigger check above is the direct evidence.
-**Do NOT re-run the 2026071x migrations to "make sure".** `20260713000001` is a one-time re-encode of Breath Hold and Duck Walk raw_scores; applying it twice corrupts those scores.
-**Noticed:** /ship follow-up, 2026-08-01
-**Effort:** XS
 
 ### Drop the Leg Extension archive table once settled
 **What:** `results_leg_extension_archive_20260801` holds the 17 result rows deleted when Leg Extension became Leg Ext Hold (a `strength` raw_score can't be decoded as a `difficulty+time` hold). Verified locked down: it returns HTTP 401 / `42501 insufficient_privilege` through PostgREST, so RLS is on and no policy exposes it. Drop it once the Leg Ext Hold call is settled and you're sure nobody wants those weights back.
