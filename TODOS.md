@@ -88,6 +88,17 @@
 
 ## P1 — Do Next
 
+### Apply the four pending migrations, in order, code-first
+**What:** Four migrations are written but not applied to prod. Run them with `supabase db push` (never the SQL Editor as well — three contain one-time transforms that corrupt data if applied twice):
+1. `20260713000000_fix_double_award.sql` — drops the orphaned `on_session_end` trigger (the ×2 games/points root cause), adds an atomic claim guard, rebuilds 2026 rankings.
+2. `20260713000001_breath_hold_duck_walk.sql` — re-encodes Breath Hold and Duck Walk raw_scores. Must run after the above.
+3. `20260714000000_wellbeing_survey.sql` — creates `wellbeing_surveys` + RLS + report RPC. Idempotent.
+4. `20260801000000_roster_update_120.sql` — repoints renamed events so PR history reattaches, archives then deletes the un-convertible Leg Extension rows.
+**Deploy order matters for #4:** ship the v0.5.3.0 code FIRST, then migrate. Reversed, `session_events` holds the new event names while the deployed bundle still knows only the old ones, so `getEventByName()` returns undefined and live-session event cards lose their tiers and input mode mid-session.
+**After #4:** verify the archive table `results_leg_extension_archive_20260801` has RLS enabled and returns nothing through the API, then drop it once you're confident the Leg Ext Hold call is settled.
+**Noticed:** /ship, 2026-08-01 (v0.5.3.0)
+**Effort:** S (CC)
+
 ### Referral system — DB migration
 **What:** Add `referral_code` (TEXT UNIQUE) to `players`, create `referrals` table (referrer_id, referred_id, session_count, qualified_at), add trigger on `session_player_summary INSERT` to increment session_count and set qualified_at when threshold (10) is reached.
 **Migration file:** `supabase/migrations/20260515_referral_system.sql`

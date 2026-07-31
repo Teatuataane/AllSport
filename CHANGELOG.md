@@ -2,6 +2,24 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.5.3.0] - 2026-08-01
+
+### Added
+- **Seven new events, bringing the roster to 120** — **Arm Wrestling** and **Tug of War** join Power, **Capture the Flag** and **Kabaddi** join Speed, **Wheelbarrow Push** and **Wheelbarrow Pull** join Aerobic Endurance (same weight ladder as Weighted Carry, 5kg through 100kg over 200m, fastest wins), and **Kubb** returns to Aim & Precision. All seven have full how-to and rules text and their own icons, so every one of the 120 events now has artwork.
+
+### Changed
+- **Every domain now holds exactly twelve events** — the roster has been reconciled against the current programming, so no domain is bigger than another when an event is drawn.
+- **Leg Extension is now Leg Ext Hold** — it changes from a heaviest-weight lift to a timed hold with seven difficulty tiers, from bodyweight up to 24kg. Hold both legs locked out for as long as you can; longest hold at your tier wins.
+- **Events renamed for clarity** — Pause Squat is now Pause Back Squat, Pause Chin Up is Pause Chinup, Turkish Get Up is Turkish Getup, Flag is Human Flag, Finger Push Up is Finger Pushup, Ham Curl is Hamstring Curl, Foot Behind Head is Foot Behind Head Pose, and Toe Balance is Toe Squat. Your history for all of these carries over.
+- **Some events moved domain** — Headstand and L-Sit Hold move to Calisthenics, Toe Lift and Toe Squat move to Anaerobic Endurance, and American Football moves to Speed.
+
+### Fixed
+- **Personal bests that had gone missing are back** — renaming an event used to quietly detach every score you'd ever set on it, so those bests stopped showing on your Personal Bests page and stopped counting toward your Top %. Scores from before a rename now reattach, including events renamed in earlier releases such as Handbalance, Rope Climb, Zercher Deadlift, Shot Put and Javelin Throw.
+- **Weight entry on Pause Chinup's top tier** — the Weighted Chinup tier takes a weight instead of reps, and the rename would have silently turned that back into a rep count on both new and past sessions.
+
+### Removed
+- **Nine events retired** — Reverse Hyper, Triple Jump, 400m Race, 50m Sprint, Football Dribble, Hockey Dribble, Walking, Backwards Walk and Airsoft. Scores you already set on them stay in your session history.
+
 ## [0.5.2.0] - 2026-07-30
 
 ### Changed
