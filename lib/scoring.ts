@@ -12,19 +12,26 @@ export function fmtTime(totalSecs: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
-// Tiers whose input switches from reps to added weight
+// Tiers whose input switches from reps to added weight.
+// These match on the event NAME because that is what session_events stores, so
+// both the current name and any earlier one must be accepted — otherwise a
+// rename silently drops the weight input for that tier, on new sessions AND on
+// every historical session still carrying the old string.
+// 'Pause Chin Up' → 'Pause Chinup' (Aug 2026 roster update).
+const PAUSE_CHINUP_NAMES = ['Pause Chinup', 'Pause Chin Up']
+
 export function isWeightScoredTierByIdx(eventName: string, tierIdx: number): boolean {
   return (
     (eventName === 'GHD Situp' && tierIdx === 3) ||
     (eventName === 'Pause Dips' && tierIdx === 4) ||
-    (eventName === 'Pause Chin Up' && tierIdx === 4)
+    (PAUSE_CHINUP_NAMES.includes(eventName) && tierIdx === 4)
   )
 }
 export function isWeightScoredTierByName(eventName: string, tierName: string): boolean {
   return (
     (eventName === 'GHD Situp' && tierName === 'GHD Situp') ||
     (eventName === 'Pause Dips' && tierName === 'Weighted RTO Dip') ||
-    (eventName === 'Pause Chin Up' && tierName === 'Weighted Chinup')
+    (PAUSE_CHINUP_NAMES.includes(eventName) && tierName === 'Weighted Chinup')
   )
 }
 

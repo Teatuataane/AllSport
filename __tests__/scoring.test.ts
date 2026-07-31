@@ -248,11 +248,19 @@ describe('helpers', () => {
     expect(fmtTime(119.6)).toBe('2:00')
   })
 
-  it('weight-scored tier detection matches GHD Situp D4, Pause Dips D5, Pause Chin Up D5', () => {
+  it('weight-scored tier detection matches GHD Situp D4, Pause Dips D5, Pause Chinup D5', () => {
     expect(isWeightScoredTierByIdx('GHD Situp', 3)).toBe(true)
     expect(isWeightScoredTierByIdx('Pause Dips', 4)).toBe(true)
     expect(isWeightScoredTierByIdx('Pause Dips', 3)).toBe(false)
-    expect(isWeightScoredTierByName('Pause Chin Up', 'Weighted Chinup')).toBe(true)
+    expect(isWeightScoredTierByName('Pause Chinup', 'Weighted Chinup')).toBe(true)
     expect(isWeightScoredTierByName('Pushup Contest', 'Push Up')).toBe(false)
+  })
+
+  it('Pause Chinup weight tier still resolves under its pre-rename name', () => {
+    // session_events rows created before the Aug 2026 rename still say 'Pause Chin Up'
+    expect(isWeightScoredTierByIdx('Pause Chin Up', 4)).toBe(true)
+    expect(isWeightScoredTierByName('Pause Chin Up', 'Weighted Chinup')).toBe(true)
+    // and the current name works
+    expect(isWeightScoredTierByIdx('Pause Chinup', 4)).toBe(true)
   })
 })
