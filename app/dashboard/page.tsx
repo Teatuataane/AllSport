@@ -16,6 +16,10 @@ import {
   topDomain as pctTopDomain, eventPctLabel, domainPctLabel,
 } from '@/lib/percentile'
 import { fetchAll } from '@/lib/fetchAll'
+import {
+  colourByRung, colourForPoints, nextColourFrom, progressToNext,
+  colourCardStyle, colourChipStyle, colourOnDark, emblemSrc, type Colour,
+} from '@/lib/colours'
 import WellbeingSurvey from '@/app/components/WellbeingSurvey'
 import Link from 'next/link'
 
@@ -33,38 +37,7 @@ type RatingData = {
   players: RatingPlayerRow[]
 }
 
-const GRADES = [
-  { name: 'Mā',        colour: '#f0f0f0',   textColour: '#1a1a1a', threshold: 0,     borderColour: '#ccc' },
-  { name: 'Kiwikiwi',  colour: '#888888',   textColour: '#fff',    threshold: 500,   borderColour: '#888' },
-  { name: 'Whero',     colour: '#EA4742',   textColour: '#fff',    threshold: 1000,  borderColour: '#EA4742' },
-  { name: 'Karaka',    colour: '#F9B051',   textColour: '#000',    threshold: 2000,  borderColour: '#F9B051' },
-  { name: 'Kōwhai',    colour: '#FFE566',   textColour: '#000',    threshold: 3000,  borderColour: '#FFE566' },
-  { name: 'Kākāriki',  colour: '#4DB26E',   textColour: '#fff',    threshold: 4000,  borderColour: '#4DB26E' },
-  { name: 'Kahurangi', colour: '#2371BB',   textColour: '#fff',    threshold: 5000,  borderColour: '#2371BB' },
-  { name: 'Poroporo',  colour: '#B87DB5',   textColour: '#fff',    threshold: 6000,  borderColour: '#B87DB5' },
-  { name: 'Uenuku',    colour: 'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)', textColour: '#fff', threshold: 8000, borderColour: '#B87DB5' },
-  { name: 'Taniwha',   colour: '#000000',   textColour: '#F9B051', threshold: 10000, borderColour: '#F9B051' },
-]
-
 const PLAYER_ICONS = ['🏋️', '🤸', '🏃', '🚴', '🤼', '🏊', '🎯', '🏹', '⚽', '🏀', '🎾', '🏐', '🦅', '🐯', '🦁', '🦊', '🐺', '🦋', '🐬', '🐉']
-
-function gradeCardStyle(grade: typeof GRADES[0]): React.CSSProperties {
-  if (grade.colour.startsWith('linear-gradient')) {
-    return { backgroundImage: grade.colour }
-  }
-  return { background: grade.colour }
-}
-
-function getCurrentGrade(points: number) {
-  let grade = GRADES[0]
-  for (const g of GRADES) { if (points >= g.threshold) grade = g }
-  return grade
-}
-
-function getNextGrade(points: number) {
-  for (const g of GRADES) { if (points < g.threshold) return g }
-  return null
-}
 
 function ordinal(n: number): string {
   const s = ['th', 'st', 'nd', 'rd']
@@ -114,8 +87,9 @@ function DashboardInner() {
 
   // Rankings
   const [ranking, setRanking] = useState<any>(null)
-  const [allRankings, setAllRankings] = useState<any[]>([])
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
+  // Lifetime colour state. Points never reset, so there is nothing to switch
+  // between and the old season-year tabs are gone.
+  const [lifetime, setLifetime] = useState<{ lifetime_points: number; highest_rung: number } | null>(null)
   const [rankingLoading, setRankingLoading] = useState(false)
 
   // Top event
@@ -143,6 +117,8 @@ function DashboardInner() {
   const [historySessions, setHistorySessions] = useState<any[]>([])
   const [expandedSession, setExpandedSession] = useState<string | null>(null)
   const [sessionEvents, setSessionEvents] = useState<Record<string, any[]>>({})
+  // Colour timeline — one row per colour ever earned. Replaces the year tabs.
+  const [colourTimeline, setColourTimeline] = useState<any[] | null>(null)
 
   // ── Initial load ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -189,21 +165,28 @@ function DashboardInner() {
     }
   }, [player, familyMembers, activePlayerId])
 
-  // ── Year-dependent data ──────────────────────────────────────────────────────
+  // ── Seasonal ranking (division rank + session count) and lifetime colours ────
+  // `rankings` is still seasonal: it powers the division rank shown on the
+  // profile card. The Colours card reads player_totals instead.
   useEffect(() => {
     if (!activePlayerId) return
-    const loadRanking = async () => {
+    const load = async () => {
       setRankingLoading(true)
-      const [singleResult, allResult] = await Promise.all([
-        supabase.from('rankings').select('*').eq('player_id', activePlayerId).eq('season_year', selectedYear).maybeSingle(),
-        supabase.from('rankings').select('season_year, total_points').eq('player_id', activePlayerId).gt('total_points', 0).order('season_year', { ascending: false }),
+      const [seasonResult, totalsResult] = await Promise.all([
+        supabase.from('rankings').select('*')
+          .eq('player_id', activePlayerId)
+          .eq('season_year', new Date().getFullYear())
+          .maybeSingle(),
+        supabase.from('player_totals').select('lifetime_points, highest_rung')
+          .eq('player_id', activePlayerId)
+          .maybeSingle(),
       ])
-      setRanking(singleResult.data)
-      setAllRankings(allResult.data || [])
+      setRanking(seasonResult.data)
+      setLifetime(totalsResult.data)
       setRankingLoading(false)
     }
-    loadRanking()
-  }, [activePlayerId, selectedYear])
+    load()
+  }, [activePlayerId])
 
   // ── My 100: lifetime event coverage ─────────────────────────────────────────
   useEffect(() => {
@@ -349,6 +332,17 @@ function DashboardInner() {
     if (!activePlayerId) return
     setHistoryLoading(true)
     setShowHistory(true)
+    setColourTimeline(null)
+
+    // Colour timeline. Rows only exist once a colour is genuinely earned (the
+    // trigger writes them at session close, or the kaiwhakawā's "Celebrated"
+    // tap writes one mid-session), so there is nothing to filter for release.
+    supabase
+      .from('colour_awards')
+      .select('rung, colour_name, points_at_award, awarded_at, sessions(session_date, location)')
+      .eq('player_id', activePlayerId)
+      .order('rung', { ascending: false })
+      .then(({ data }) => setColourTimeline(data ?? []))
 
     // Try session_player_summary first, fall back to results
     const { data: summaries } = await supabase
@@ -423,16 +417,15 @@ function DashboardInner() {
     </div>
   )
 
-  const points = ranking?.total_points || 0
-  const grade = getCurrentGrade(points)
-  const nextGrade = getNextGrade(points)
-  const progress = nextGrade
-    ? ((points - grade.threshold) / (nextGrade.threshold - grade.threshold)) * 100
-    : 100
-
-  const currentYear = new Date().getFullYear()
-  const yearsWithData = allRankings.map((r: any) => r.season_year)
-  const years = [...new Set([currentYear, ...yearsWithData])].filter((y: number) => y >= 2025).sort((a: number, b: number) => b - a)
+  const points = lifetime?.lifetime_points ?? 0
+  // A colour is never lost, so the card shows the highest rung ever AWARDED.
+  // colourForPoints is only used to work out what comes next.
+  const highestRung = lifetime?.highest_rung ?? 1
+  const grade: Colour = colourByRung(highestRung) ?? colourForPoints(points)
+  // Takes the awarded rung into account, not just the points: a colour claimed
+  // by the kaiwhakawā mid-session lands before the points do.
+  const nextGrade = nextColourFrom(points, highestRung)
+  const progress = progressToNext(points)
 
   const isJudge = player.role === 'judge'
   const hasNoSessions = !ranking || ranking.total_sessions === 0
@@ -451,19 +444,26 @@ function DashboardInner() {
   const displayName = activePlayer.display_name || activePlayer.username || '?'
 
   // ── Colours card bar ─────────────────────────────────────────────────────────
-  const isTaniwha = grade.name === 'Taniwha'
-  const isUenuku = grade.name === 'Uenuku'
-  const barBg: React.CSSProperties = isTaniwha
-    ? { background: '#F9B051' }
-    : isUenuku
+  // Black-card family (Taniwha, all of cycle 2, Ngā Taniwha): the accent fills
+  // the bar. Everything else keeps the old ink-on-colour treatment.
+  const onBlackCard = grade.surface === '#000000'
+  const barBg: React.CSSProperties = onBlackCard
+    ? (grade.accent.startsWith('linear-gradient')
+        ? { backgroundImage: grade.accent }
+        : { background: grade.accent })
+    : grade.accent.startsWith('linear-gradient')
     ? { backgroundImage: 'linear-gradient(90deg, rgba(255,255,255,0.9), rgba(255,255,255,0.5))' }
-    : grade.textColour === '#fff'
+    : grade.ink === '#ffffff'
     ? { background: 'rgba(255,255,255,0.9)' }
     : { background: 'rgba(0,0,0,0.3)' }
 
-  const barTrackBg: React.CSSProperties = isTaniwha
+  const barTrackBg: React.CSSProperties = onBlackCard
     ? { background: '#222' }
     : { background: 'rgba(0,0,0,0.2)' }
+
+  const gradeEmblem = emblemSrc(grade)
+  // Always a hex, never the rainbow gradient — safe inside `Npx solid ${...}`.
+  const gradeBorder = colourOnDark(grade)
 
   return (
     <div style={{
@@ -537,7 +537,7 @@ function DashboardInner() {
         <div style={{
           background: '#111',
           border: '1px solid #1e1e1e',
-          borderLeft: `4px solid ${grade.borderColour}`,
+          borderLeft: `4px solid ${gradeBorder}`,
           borderRadius: '16px',
           padding: '20px 22px',
           minHeight: '110px',
@@ -548,12 +548,12 @@ function DashboardInner() {
             width: '56px', height: '56px', borderRadius: '14px',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: '30px', flexShrink: 0,
-            background: '#1a1a1a', border: `1px solid ${grade.borderColour}33`,
+            background: '#1a1a1a', border: `1px solid ${gradeBorder}33`,
           }}>
             {icon || (
               <span style={{
                 fontFamily: 'var(--font-display)', fontSize: '26px',
-                color: grade.borderColour,
+                color: gradeBorder,
               }}>
                 {displayName[0].toUpperCase()}
               </span>
@@ -580,7 +580,7 @@ function DashboardInner() {
             {topEvent && (
               <div style={{
                 marginTop: '6px', display: 'inline-flex', alignItems: 'center', gap: '5px',
-                background: '#1a1a1a', border: `1px solid ${grade.borderColour}44`,
+                background: '#1a1a1a', border: `1px solid ${gradeBorder}44`,
                 borderRadius: '6px', padding: '3px 10px',
               }}>
                 <span style={{ fontSize: '10px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.08em' }}>TOP EVENT</span>
@@ -588,7 +588,7 @@ function DashboardInner() {
                   {topEvent.event_name}
                 </span>
                 {topEvent.total_players > 1 && (
-                  <span style={{ fontSize: '10px', color: grade.borderColour }}>
+                  <span style={{ fontSize: '10px', color: gradeBorder }}>
                     #{topEvent.player_rank}
                   </span>
                 )}
@@ -603,25 +603,41 @@ function DashboardInner() {
       {/* ── Card 5: Colours ─────────────────────────────────────────────────── */}
       <BentoCard onClick={loadHistory} style={{ marginBottom: '12px' }}>
         <div style={{
-          ...gradeCardStyle(grade),
+          ...colourCardStyle(grade),
+          position: 'relative',
+          overflow: 'hidden',
           borderRadius: '16px',
           padding: '22px',
           minHeight: '140px',
           opacity: rankingLoading ? 0.7 : 1,
           transition: 'opacity 0.2s',
-          ...(isTaniwha ? { border: '2px solid #F9B051' } : {}),
         }}>
+          {/* Emblem watermark — Taniwha and beyond only. Masked so a single
+              silhouette can be tinted the accent colour, same as EventIcon.
+              Renders nothing until the PNG exists. */}
+          {gradeEmblem && (
+            <div aria-hidden style={{
+              position: 'absolute', right: '-18px', top: '50%', transform: 'translateY(-50%)',
+              width: '150px', height: '150px', opacity: 0.16, pointerEvents: 'none',
+              backgroundColor: grade.accent.startsWith('linear-gradient') ? '#F9B051' : grade.accent,
+              WebkitMaskImage: `url(${gradeEmblem})`, maskImage: `url(${gradeEmblem})`,
+              WebkitMaskRepeat: 'no-repeat', maskRepeat: 'no-repeat',
+              WebkitMaskSize: 'contain', maskSize: 'contain',
+              WebkitMaskPosition: 'center', maskPosition: 'center',
+            }} />
+          )}
+
           {/* Header row */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
+          <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
             <div>
               <div style={{
                 fontFamily: 'var(--font-display)', fontSize: '28px',
-                color: grade.textColour, letterSpacing: '0.05em', lineHeight: 1,
+                color: grade.ink, letterSpacing: '0.05em', lineHeight: 1,
               }}>
                 {grade.name}
               </div>
               <div style={{
-                fontSize: '11px', color: grade.textColour,
+                fontSize: '11px', color: grade.ink,
                 opacity: 0.6, fontFamily: 'var(--font-label)',
                 letterSpacing: '0.1em', marginTop: '2px',
               }}>
@@ -629,21 +645,22 @@ function DashboardInner() {
               </div>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '30px', fontWeight: 'bold', color: grade.textColour, lineHeight: 1 }}>
+              <div style={{ fontSize: '30px', fontWeight: 'bold', color: grade.ink, lineHeight: 1 }}>
                 {points.toLocaleString()}
               </div>
-              <div style={{ fontSize: '11px', color: grade.textColour, opacity: 0.6, fontFamily: 'var(--font-label)' }}>
-                pts · {selectedYear}
+              <div style={{ fontSize: '11px', color: grade.ink, opacity: 0.6, fontFamily: 'var(--font-label)' }}>
+                pts · lifetime
               </div>
             </div>
           </div>
 
           {/* Progress bar */}
+          <div style={{ position: 'relative' }}>
           {nextGrade ? (
             <>
               <div style={{
                 display: 'flex', justifyContent: 'space-between',
-                fontSize: '10px', color: grade.textColour, opacity: 0.7,
+                fontSize: '10px', color: grade.ink, opacity: 0.7,
                 fontFamily: 'var(--font-label)', marginBottom: '5px',
               }}>
                 <span style={{ fontWeight: 700 }}>{grade.name}</span>
@@ -658,29 +675,10 @@ function DashboardInner() {
               </div>
             </>
           ) : (
-            <div style={{ fontSize: '12px', color: grade.textColour, opacity: 0.8, fontFamily: 'var(--font-label)', letterSpacing: '0.05em' }}>
-              Taniwha — Peak Grade
+            <div style={{ fontSize: '12px', color: grade.ink, opacity: 0.8, fontFamily: 'var(--font-label)', letterSpacing: '0.05em' }}>
+              Ngā Taniwha — the end of the ladder
             </div>
           )}
-
-          {/* Year tabs */}
-          <div style={{ display: 'flex', gap: '6px', marginTop: '14px' }}>
-            {years.map((y: number) => (
-              <button
-                key={y}
-                onClick={e => { e.stopPropagation(); setSelectedYear(y) }}
-                style={{
-                  padding: '4px 12px', borderRadius: '5px', border: 'none',
-                  cursor: 'pointer', fontSize: '11px', fontFamily: 'var(--font-label)',
-                  background: selectedYear === y ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.15)',
-                  color: grade.textColour,
-                  opacity: selectedYear === y ? 1 : 0.5,
-                  fontWeight: selectedYear === y ? 700 : 400,
-                }}
-              >
-                {y}
-              </button>
-            ))}
           </div>
         </div>
       </BentoCard>
@@ -1059,7 +1057,7 @@ function DashboardInner() {
                   Points History
                 </div>
                 <div style={{ fontSize: '11px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.1em', marginTop: '1px' }}>
-                  {displayName.toUpperCase()} · {selectedYear}
+                  {displayName.toUpperCase()} · LIFETIME
                 </div>
               </div>
               <button onClick={() => setShowHistory(false)} style={{
@@ -1081,19 +1079,63 @@ function DashboardInner() {
           }}>
           <div style={{ maxWidth: '520px', margin: '0 auto', padding: '24px 16px 40px' }}>
 
-            {/* Year tabs */}
-            <div style={{ display: 'flex', gap: '6px', marginBottom: '20px' }}>
-              {years.map((y: number) => (
-                <button key={y} onClick={() => setSelectedYear(y)} style={{
-                  padding: '6px 14px', borderRadius: '6px', border: 'none',
-                  cursor: 'pointer', fontSize: '12px',
-                  background: selectedYear === y ? '#2371BB' : '#1a1a1a',
-                  color: selectedYear === y ? '#fff' : '#555',
-                  fontFamily: 'var(--font-label)', letterSpacing: '0.05em',
+            {/* ── Colour timeline ─────────────────────────────────────────
+                Replaces the old year tabs. One row per colour ever earned,
+                newest first, with the session it happened in. */}
+            {colourTimeline !== null && colourTimeline.length > 0 && (
+              <div style={{ marginBottom: '28px' }}>
+                <div style={{
+                  fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '11px',
+                  letterSpacing: '0.15em', textTransform: 'uppercase', color: '#555',
+                  marginBottom: '10px',
                 }}>
-                  {y}
-                </button>
-              ))}
+                  Colours earned
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {colourTimeline.map((a: any) => {
+                    const c = colourByRung(a.rung)
+                    if (!c) return null
+                    const sess = Array.isArray(a.sessions) ? a.sessions[0] : a.sessions
+                    return (
+                      <div key={a.rung} style={{
+                        display: 'flex', alignItems: 'center', gap: '12px',
+                        background: '#111', border: '1px solid #1e1e1e',
+                        borderRadius: '10px', padding: '10px 14px',
+                      }}>
+                        <div style={{ width: '26px', height: '26px', borderRadius: '7px', flexShrink: 0, ...colourChipStyle(c) }} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{
+                            fontFamily: 'var(--font-display)', fontSize: '19px', lineHeight: 1.05,
+                            letterSpacing: '0.03em', color: colourOnDark(c),
+                          }}>
+                            {c.name}
+                          </div>
+                          <div style={{
+                            fontSize: '11px', color: '#555', fontFamily: 'var(--font-label)',
+                            letterSpacing: '0.04em', marginTop: '2px',
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          }}>
+                            {sess?.session_date
+                              ? `${formatNZDate(sess.session_date)}${sess.location ? ` · ${sess.location}` : ''}`
+                              : 'Awarded for play before AllSport kept records'}
+                          </div>
+                        </div>
+                        <div style={{ fontFamily: 'var(--font-display)', fontSize: '15px', color: '#444', flexShrink: 0 }}>
+                          {(a.points_at_award ?? 0).toLocaleString()}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div style={{
+              fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '11px',
+              letterSpacing: '0.15em', textTransform: 'uppercase', color: '#555',
+              marginBottom: '10px',
+            }}>
+              Sessions
             </div>
 
             {historyLoading ? (
@@ -1102,7 +1144,7 @@ function DashboardInner() {
               </div>
             ) : historySessions.length === 0 ? (
               <div style={{ color: '#444', textAlign: 'center', padding: '40px 0', fontFamily: 'var(--font-body)' }}>
-                No sessions found for {selectedYear}
+                No sessions recorded yet
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>

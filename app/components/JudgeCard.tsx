@@ -6,6 +6,8 @@ import { QRCodeSVG } from 'qrcode.react'
 import Link from 'next/link'
 import { EVENTS } from '@/lib/eventData'
 import { formatNZDate } from '@/lib/dates'
+import { buildRecentPointsMap, colourWatchlist, type WatchlistEntry } from '@/lib/colourAlerts'
+import ColourWatchlistPanel from '@/components/ColourWatchlist'
 
 type Session = {
   id: string
@@ -94,6 +96,9 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
   const [judgeTab, setJudgeTab] = useState<'sessions' | 'votes' | 'players'>('sessions')
   const [playersList, setPlayersList] = useState<{ id: string; name: string; division: string; totalPoints: number; sessions: number; icon: string | null }[]>([])
   const [playersLoading, setPlayersLoading] = useState(false)
+  // Standing colour watchlist — who is close to their next colour, so a
+  // kaiwhakawā can plan the moment rather than discover it after the fact.
+  const [watchlist, setWatchlist] = useState<WatchlistEntry[]>([])
   const [expandedPlayerId, setExpandedPlayerId] = useState<string | null>(null)
   const [playerHistory, setPlayerHistory] = useState<Record<string, any[]>>({})
   const [playerHistoryLoading, setPlayerHistoryLoading] = useState<Record<string, boolean>>({})
@@ -452,6 +457,23 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
     const rankMap: Record<string, number> = {}
     const sessMap: Record<string, number> = {}
     rankingsRes.data?.forEach(r => { rankMap[r.player_id] = r.total_points; sessMap[r.player_id] = r.total_sessions })
+
+    // ── Colour watchlist ──────────────────────────────────────────────────
+    // Lifetime totals + recent per-session points, newest first.
+    const [totalsRes, formRes] = await Promise.all([
+      supabase.from('player_totals').select('player_id, lifetime_points, highest_rung'),
+      supabase.from('session_player_summary')
+        .select('player_id, total_placement_points, effort_points, sessions(session_date)')
+        .order('created_at', { ascending: false }),
+    ])
+    const totalsMap: Record<string, { lifetime_points: number; highest_rung: number }> = {}
+    totalsRes.data?.forEach(t => {
+      totalsMap[t.player_id as string] = {
+        lifetime_points: t.lifetime_points as number,
+        highest_rung: t.highest_rung as number,
+      }
+    })
+    const formMap = buildRecentPointsMap((formRes.data ?? []) as Parameters<typeof buildRecentPointsMap>[0])
     const entries = (playersRes.data || []).map(p => ({
       id: p.id,
       name: (p.display_name || p.username || p.full_name || 'Unknown') as string,
@@ -462,6 +484,11 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
     }))
     entries.sort((a, b) => b.totalPoints - a.totalPoints)
     setPlayersList(entries)
+    setWatchlist(colourWatchlist({
+      players: entries.map(e => ({ id: e.id, name: e.name })),
+      totalsOf: id => totalsMap[id],
+      recentPointsOf: id => formMap[id] ?? [],
+    }))
     setPlayersLoading(false)
   }
 
@@ -1171,6 +1198,8 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
               Refresh
             </button>
           </div>
+
+          {!playersLoading && <ColourWatchlistPanel entries={watchlist} />}
 
           {playersLoading ? (
             <div style={{ color: '#555', fontSize: '13px', fontFamily: 'Barlow, sans-serif', textAlign: 'center', padding: '20px 0' }}>

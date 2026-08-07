@@ -13,6 +13,11 @@ import {
   buildJudgeRoster, resolveJudgeTarget, resultsForTarget, scoredEventIds,
   scoredEventIdsByTarget, NO_SCORES,
 } from '@/lib/judgeRoster'
+import {
+  colourForPoints, nextColour, colourOnDark, colourByRung, colourCardStyle, emblemSrc,
+} from '@/lib/colours'
+import { applyClaimedRung, colourAlerts, type ColourAlert } from '@/lib/colourAlerts'
+import ColourAlertBanner from '@/components/ColourAlertBanner'
 
 const supabase = createClient()
 
@@ -1640,20 +1645,6 @@ function LeaderboardTab({
 
 const RAINBOW_G = 'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)'
 
-// Colour thresholds — same values as the dashboard Colours card.
-const GRADES: { name: string; colour: string; threshold: number }[] = [
-  { name: 'Mā',        colour: '#f0f0f0', threshold: 0 },
-  { name: 'Kiwikiwi',  colour: '#888888', threshold: 500 },
-  { name: 'Whero',     colour: '#EA4742', threshold: 1000 },
-  { name: 'Karaka',    colour: '#F9B051', threshold: 2000 },
-  { name: 'Kōwhai',    colour: '#FFE566', threshold: 3000 },
-  { name: 'Kākāriki',  colour: '#4DB26E', threshold: 4000 },
-  { name: 'Kahurangi', colour: '#2371BB', threshold: 5000 },
-  { name: 'Poroporo',  colour: '#B87DB5', threshold: 6000 },
-  { name: 'Uenuku',    colour: RAINBOW_G, threshold: 8000 },
-  { name: 'Taniwha',   colour: '#F9B051', threshold: 10000 }, // black card — amber accent keeps the bar visible
-]
-
 type EndSummary = { overall_placement: number; total_placement_points: number; effort_points: number }
 
 function SessionEndTakeover({
@@ -1668,7 +1659,12 @@ function SessionEndTakeover({
 }) {
   const [summary, setSummary] = useState<EndSummary | null>(null)
   const [sessionCount, setSessionCount] = useState<number | null>(null)
-  const [seasonTotal, setSeasonTotal] = useState<number | null>(null)
+  const [lifetimeTotal, setLifetimeTotal] = useState<number | null>(null)
+  // Colours crossed in THIS session. Rows exist either because the kaiwhakawā
+  // tapped "Celebrated" mid-session or because the close trigger wrote them —
+  // and the takeover only renders after the session has ended, so the
+  // coach-releases-it rule is satisfied by the time anyone sees this.
+  const [colourAwards, setColourAwards] = useState<{ rung: number; points_at_award: number }[]>([])
   const [loaded, setLoaded] = useState(false)
   const [barAnimated, setBarAnimated] = useState(false)
 
@@ -1681,20 +1677,25 @@ function SessionEndTakeover({
 
   useEffect(() => {
     async function load() {
-      const [sumRes, cntRes, rankRes] = await Promise.all([
+      const [sumRes, cntRes, rankRes, awardRes] = await Promise.all([
         supabase.from('session_player_summary')
           .select('overall_placement, total_placement_points, effort_points')
           .eq('session_id', sessionId).eq('player_id', playerId).maybeSingle(),
         supabase.from('session_player_summary')
           .select('*', { count: 'exact', head: true })
           .eq('player_id', playerId),
-        supabase.from('rankings')
-          .select('total_points')
-          .eq('player_id', playerId).eq('season_year', new Date().getFullYear()).maybeSingle(),
+        supabase.from('player_totals')
+          .select('lifetime_points')
+          .eq('player_id', playerId).maybeSingle(),
+        supabase.from('colour_awards')
+          .select('rung, points_at_award')
+          .eq('player_id', playerId).eq('session_id', sessionId)
+          .order('rung', { ascending: false }),
       ])
       setSummary((sumRes.data as EndSummary | null) ?? null)
       setSessionCount(cntRes.count ?? 0)
-      setSeasonTotal((rankRes.data as { total_points: number } | null)?.total_points ?? null)
+      setLifetimeTotal((rankRes.data as { lifetime_points: number } | null)?.lifetime_points ?? null)
+      setColourAwards((awardRes.data as { rung: number; points_at_award: number }[] | null) ?? [])
       setLoaded(true)
     }
     load()
@@ -1717,18 +1718,21 @@ function SessionEndTakeover({
   const effortPts = summary?.effort_points ?? effortLevel * 5
   const earned = placementPts + effortPts
 
-  // rankings.total_points already includes this session once the summary row exists
-  const post = summary ? (seasonTotal ?? earned) : (seasonTotal ?? 0) + earned
+  // player_totals.lifetime_points already includes this session once the
+  // summary row exists (the trigger recomputes it in the same transaction).
+  const post = summary ? (lifetimeTotal ?? earned) : (lifetimeTotal ?? 0) + earned
   const pre = Math.max(0, post - earned)
 
-  const grade = [...GRADES].reverse().find(g => post >= g.threshold) ?? GRADES[0]
-  const nextGrade = GRADES[GRADES.indexOf(grade) + 1] ?? null
+  const grade = colourForPoints(post)
+  const nextGrade = nextColour(post)
   const frac = (p: number) => nextGrade
     ? Math.min(1, Math.max(0, (p - grade.threshold) / (nextGrade.threshold - grade.threshold)))
     : 1
-  const gradeBarStyle: React.CSSProperties = grade.colour.startsWith('linear-gradient')
-    ? { backgroundImage: grade.colour }
-    : { background: grade.colour }
+  // The bar has to stay visible on a dark panel, so it uses the accent (amber
+  // for the whole Taniwha family) rather than the card surface.
+  const gradeBarStyle: React.CSSProperties = grade.accent.startsWith('linear-gradient')
+    ? { backgroundImage: grade.accent }
+    : { background: grade.accent }
 
   // Session-count milestone — summary row present means the count includes this session
   const sessionNumber = sessionCount === null ? null : (summary ? sessionCount : sessionCount + 1)
@@ -1761,6 +1765,56 @@ function SessionEndTakeover({
 
         {/* Body */}
         <div style={{ overflowY: 'auto', padding: '0 18px 24px', flex: 1 }}>
+
+          {/* ── New colour ────────────────────────────────────────────────
+              Above placement and points on purpose: on the day you cross a
+              threshold, that is the headline, not where you finished.
+              (The ladder's smallest gap is 500 and a session tops out at 200,
+              so this is always one card — the map is defensive.) */}
+          {colourAwards.map(award => {
+            const c = colourByRung(award.rung)
+            if (!c) return null
+            const em = emblemSrc(c)
+            const accent = c.accent.startsWith('linear-gradient') ? '#F9B051' : c.accent
+            return (
+              <div key={award.rung} style={{
+                ...colourCardStyle(c),
+                position: 'relative', overflow: 'hidden',
+                borderRadius: '16px', padding: '20px 22px', marginTop: '18px',
+                animation: 'toastPop 0.6s cubic-bezier(0.16,1,0.3,1)',
+              }}>
+                {em && (
+                  <div aria-hidden style={{
+                    position: 'absolute', right: '-20px', top: '50%', transform: 'translateY(-50%)',
+                    width: '160px', height: '160px', opacity: 0.18, pointerEvents: 'none',
+                    backgroundColor: accent,
+                    WebkitMaskImage: `url(${em})`, maskImage: `url(${em})`,
+                    WebkitMaskRepeat: 'no-repeat', maskRepeat: 'no-repeat',
+                    WebkitMaskSize: 'contain', maskSize: 'contain',
+                    WebkitMaskPosition: 'center', maskPosition: 'center',
+                  }} />
+                )}
+                <div style={{ position: 'relative' }}>
+                  <div style={{
+                    fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11.5px',
+                    textTransform: 'uppercase', letterSpacing: '0.18em',
+                    color: c.ink, opacity: 0.7,
+                  }}>
+                    New colour earned
+                  </div>
+                  <div style={{
+                    fontFamily: 'Bebas Neue, cursive', fontSize: '46px', lineHeight: 1.02,
+                    letterSpacing: '0.03em', color: c.ink, marginTop: '4px',
+                  }}>
+                    {c.name}
+                  </div>
+                  <div style={{ fontSize: '13px', color: c.ink, opacity: 0.75, marginTop: '4px' }}>
+                    {award.points_at_award.toLocaleString()} lifetime points · yours for good
+                  </div>
+                </div>
+              </div>
+            )
+          })}
 
           {/* Final placement */}
           <div style={{ textAlign: 'center', padding: '18px 0 22px' }}>
@@ -1809,11 +1863,11 @@ function SessionEndTakeover({
           <div style={{ ...QES_LBL }}>Colours — +{loaded ? earned : '…'} pts this session</div>
           <div style={{ background: '#161616', border: '1px solid #1e1e1e', borderRadius: '14px', padding: '14px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '8px' }}>
-              <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '22px', color: grade.colour.startsWith('linear-gradient') ? '#fff' : grade.colour, letterSpacing: '0.03em' }}>
+              <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '22px', color: colourOnDark(grade), letterSpacing: '0.03em' }}>
                 {grade.name}
               </div>
               <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11.5px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                {nextGrade ? `${nextGrade.name} — ${Math.max(0, nextGrade.threshold - post)}pts to go` : 'Peak grade'}
+                {nextGrade ? `${nextGrade.name} — ${Math.max(0, nextGrade.threshold - post).toLocaleString()}pts to go` : 'Ngā Taniwha — the end of the ladder'}
               </div>
             </div>
             <div style={{ height: '10px', borderRadius: '99px', background: '#0a0a0a', overflow: 'hidden' }}>
@@ -1890,6 +1944,11 @@ export default function SessionPage() {
   const [judgeGuestOpen, setJudgeGuestOpen] = useState(false)
   const [sessionPlayers, setSessionPlayers] = useState<{ id: string; name: string }[]>([])
   const [judgePRs, setJudgePRs] = useState<Record<string, number | string | null>>({})
+  // Lifetime colour totals for everyone in this session — feeds the live
+  // colour alert. Committed points only; this session is added on top.
+  const [playerTotals, setPlayerTotals] = useState<Record<string, { lifetime_points: number; highest_rung: number }>>({})
+  const [claimingColour, setClaimingColour] = useState<string | null>(null)
+  const [colourToast, setColourToast] = useState<{ text: string; ok: boolean } | null>(null)
 
   const allPlayers = player ? [player, ...familyMembers] : []
   const activePlayer = allPlayers.find(p => p.id === activePlayerId) ?? player
@@ -1912,6 +1971,92 @@ export default function SessionPage() {
     () => scoredEventIdsByTarget(results, events.map(ev => ev.id)),
     [results, events],
   )
+
+  // ── Live colour alert (kaiwhakawā only) ────────────────────────────────────
+  // Judges only: this is the coach's view, and players should hear it from the
+  // coach rather than from their phone.
+  const scoredPlayerIds = useMemo(
+    () => [...new Set(results.map(r => r.player_id).filter(Boolean))] as string[],
+    [results],
+  )
+
+  useEffect(() => {
+    if (!isJudge || scoredPlayerIds.length === 0) return
+    // `cancelled` guards against out-of-order responses when players are added
+    // mid-session — the same bug that leaked judgePRs across a target switch.
+    let cancelled = false
+    supabase
+      .from('player_totals')
+      .select('player_id, lifetime_points, highest_rung')
+      .in('player_id', scoredPlayerIds)
+      .then(({ data }) => {
+        if (cancelled) return
+        const map: Record<string, { lifetime_points: number; highest_rung: number }> = {}
+        for (const row of data ?? []) {
+          map[row.player_id as string] = {
+            lifetime_points: row.lifetime_points as number,
+            highest_rung: row.highest_rung as number,
+          }
+        }
+        setPlayerTotals(map)
+      })
+    return () => { cancelled = true }
+  }, [isJudge, scoredPlayerIds])
+
+  const colourAlertList: ColourAlert[] = useMemo(() => {
+    if (!isJudge || sessionEnded) return []
+    return colourAlerts({
+      results: results.map(r => ({ player_id: r.player_id, event_id: r.event_id, raw_score: r.raw_score })),
+      eventIds: events.map(ev => ev.id),
+      playerIds: scoredPlayerIds,
+      nameOf: pid => sessionPlayers.find(p => p.id === pid)?.name
+        ?? results.find(r => r.player_id === pid)?.player_name
+        ?? 'Player',
+      divisionOf: pid => playerInfoMap[pid]?.division,
+      effortLevelOf: pid => calcTotalEffortLevel(results.filter(r => r.player_id === pid), events),
+      totalsOf: pid => playerTotals[pid],
+    })
+  }, [isJudge, sessionEnded, results, events, scoredPlayerIds, sessionPlayers, playerInfoMap, playerTotals])
+
+  async function celebrateColour(alert: ColourAlert) {
+    setClaimingColour(alert.playerId)
+    const { data, error } = await supabase.rpc('claim_colour_award', {
+      p_player_id: alert.playerId,
+      p_session_id: sessionId,
+      p_rung: alert.colour.rung,
+    })
+    setClaimingColour(null)
+
+    if (error) {
+      setColourToast({ text: `Could not record ${alert.colour.name} — try again`, ok: false })
+      setTimeout(() => setColourToast(null), 4000)
+      return
+    }
+
+    // An EMPTY result is not success. claim_colour_award re-derives the
+    // guaranteed floor server-side and awards nothing if the crossing is not
+    // actually safe — that returns zero rows, not an error. The client's
+    // lifetime total is fetched once per player-set change and its effort count
+    // comes from local state, so the two can genuinely disagree (e.g. a score
+    // deleted between the fetch and the tap). Announcing a colour the server
+    // refused is the exact failure this feature exists to prevent, so say so
+    // and leave the alert in place to retry.
+    if (!Array.isArray(data) || data.length === 0) {
+      setColourToast({
+        text: `${alert.playerName} has not quite earned ${alert.colour.name} yet — scores may have changed`,
+        ok: false,
+      })
+      setTimeout(() => setColourToast(null), 5000)
+      return
+    }
+
+    // Awarded for real. Bump highest_rung locally so the alert retires with no
+    // round trip. lifetime_points stays put on purpose — it only catches up
+    // when the session closes.
+    setPlayerTotals(prev => applyClaimedRung(prev, alert.playerId, alert.colour.rung, alert.lifetimePoints))
+    setColourToast({ text: `${alert.playerName} has earned ${alert.colour.name}`, ok: true })
+    setTimeout(() => setColourToast(null), 5000)
+  }
 
   function selectJudgeTarget(sel: { id?: string; guestName?: string } | null) {
     setJudgeTargetId(sel?.id ?? '')
@@ -2467,6 +2612,26 @@ export default function SessionPage() {
         </div>
       )}
 
+      {/* Colour claimed — kaiwhakawā confirmation */}
+      {colourToast && (
+        <div style={{
+          position: 'fixed', bottom: toast ? '84px' : '20px', left: '50%', transform: 'translateX(-50%)',
+          width: 'min(600px, calc(100vw - 32px))', zIndex: 201, overflow: 'hidden',
+          background: '#161616',
+          border: `1px solid ${colourToast.ok ? '#F9B05155' : '#EA474255'}`,
+          borderLeft: `4px solid ${colourToast.ok ? '#F9B051' : '#EA4742'}`,
+          borderRadius: '12px', padding: '13px 16px', boxShadow: '0 24px 60px rgba(0,0,0,0.6)',
+          animation: colourToast.ok ? 'toastPop 0.45s cubic-bezier(0.16,1,0.3,1)' : undefined,
+        }}>
+          {colourToast.ok && (
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)' }} />
+          )}
+          <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '18px', color: '#fff' }}>
+            {colourToast.text}
+          </div>
+        </div>
+      )}
+
       {/* Effort cap toast — one-time per player per session */}
       {effortMaxToast && (
         <div style={{
@@ -2507,6 +2672,12 @@ export default function SessionPage() {
                 <div style={{ color: '#888', fontSize: '13px', marginTop: '4px' }}>Score submission is locked</div>
               </div>
             )}
+
+            <ColourAlertBanner
+              alerts={colourAlertList}
+              claimingPlayerId={claimingColour}
+              onCelebrate={celebrateColour}
+            />
 
             {/* Player chips */}
             <div className="no-scrollbar" style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '2px', marginBottom: '12px' }}>
