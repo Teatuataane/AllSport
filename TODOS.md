@@ -53,7 +53,7 @@
 - "Overall" tab renamed to "All-Divisions" everywhere (live session, global leaderboard, post-game popup, session history)
 - Post-game popup — triggers on session close, shows placements, per-event breakdown, bonuses, total points, colour progression moment with animation
 - Session history View Summary — past session popup viewable from dashboard session cards
-- My Colour History — colour progression section on homepage becomes a button for logged-in players, opens modal of all past session summaries
+- ~~My Colour History — colour progression section on homepage becomes a button for logged-in players~~ **This never actually shipped** — verified 2026-08-07, no such button exists in `app/page.tsx`. The colour history now lives in the Colours card modal on /dashboard as a full timeline (v0.5.4.0).
 - Colours section renamed from "Grade" on dashboard — conditional year tabs (no 2024, 2025 only for players with data), coloured progress bar
 - T-Race — renamed from T-Test everywhere, converted to sport/win-loss input mode
 - Chin Hang — renamed from Chin Lift everywhere
@@ -91,6 +91,20 @@
 ---
 
 ## P1 — Do Next
+
+### Export the two colour emblem PNGs
+**What:** `public/colour-emblems/taniwha.png` (one taniwha) and `nga-taniwha.png` (the full twin crest). Transparent, solid single colour, ~1000×1000, no wordmark bar, no koru shield — same spec as `public/event-icons/`, so the existing CSS-mask tint pipeline picks them up with no code change.
+**Why it matters:** the emblem is the ONLY thing distinguishing Taniwha (rung 10) from Ngā Taniwha (rung 19). Without them a player who spends four years climbing cycle 2 arrives at a card identical to the one they already had. Everything else about cycle 2 renders correctly today; the masked element just draws nothing.
+**Not usable:** `SVG/Colour Logo_White outline.svg` — it is the 7-fill multicolour version (can't be mask-tinted), carries the ALL SPORT wordmark bar, and its linework won't survive being drawn at 200px.
+**Noticed:** /ship v0.5.4.0, 2026-08-07
+**Effort:** S (Canva export, no code)
+
+### Component-test infrastructure — supabase mocking strategy
+**What:** jsdom + @testing-library/react landed in v0.5.4.0 and cover pure components (`ColourAlertBanner`, `ColourWatchlist`). What is still untestable is anything that fetches: the dashboard Colours card and timeline, the profile badge, the leaderboard colour column, the session-end takeover. All need a decision on how to mock `supabase-browser` before they can be tested at all.
+**Why it matters:** ship coverage for the colours rework came out at 43%, and every remaining gap is a fetch path or the markup wrapped around one. This is a project-wide gap, not a colours one — it predates this change by the whole life of the repo.
+**Suggested:** `vi.mock('@/lib/supabase-browser')` with a small chainable query-builder fake, or MSW at the PostgREST layer.
+**Noticed:** /ship v0.5.4.0 coverage gate, 2026-08-07
+**Effort:** M
 
 ### Drop the Leg Extension archive table once settled
 **What:** `results_leg_extension_archive_20260801` holds the 17 result rows deleted when Leg Extension became Leg Ext Hold (a `strength` raw_score can't be decoded as a `difficulty+time` hold). Verified locked down: it returns HTTP 401 / `42501 insufficient_privilege` through PostgREST, so RLS is on and no policy exposes it. Drop it once the Leg Ext Hold call is settled and you're sure nobody wants those weights back.

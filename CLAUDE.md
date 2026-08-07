@@ -387,26 +387,113 @@ The live session leaderboard has **no "All-Divisions" combined competitive tab**
 
 ## Colour System (formerly "Grade")
 
-The section is called **"Colours"** throughout the app. Resets each January. History kept permanently.
+The section is called **"Colours"** throughout the app. **Points are LIFETIME — they never
+reset.** (They reset each January until August 2026; see the rework note below.) A colour,
+once earned, is never lost.
 
-| # | Te Reo | Colour | Hex | Points |
-|---|---|---|---|---|
-| 1 | Mā | White | #ffffff | 0–499 |
-| 2 | Kiwikiwi | Grey | #888888 | 500 |
-| 3 | Whero | Red | #EA4742 | 1,000 |
-| 4 | Karaka | Orange | #F9B051 | 2,000 |
-| 5 | Kōwhai | Yellow | #F9E051 | 3,000 |
-| 6 | Kākāriki | Green | #4DB26E | 4,000 |
-| 7 | Kahurangi | Blue | #2371BB | 5,000 |
-| 8 | Poroporo | Purple | #B87DB5 | 6,000 |
-| 9 | Uenuku | Rainbow | gradient | 8,000 |
-| 10 | Taniwha | Black | #000000 | 10,000+ |
+**19 rungs.** Single source of truth: `lib/colours.ts` (names, thresholds, styling) mirrored
+by the `colour_ladder` table (so the trigger and backfill can join on thresholds).
 
-Taniwha = Black = singular peak grade = equivalent to black belt.
+| # | Te Reo | Colour | Hex | Points | | # | Te Reo | Points |
+|---|---|---|---|---|---|---|---|---|
+| 1 | Mā | White | #ffffff | 0 | | 11 | Taniwha Kiwikiwi | 20,000 |
+| 2 | Kiwikiwi | Grey | #888888 | 500 | | 12 | Taniwha Whero | 30,000 |
+| 3 | Whero | Red | #EA4742 | 1,000 | | 13 | Taniwha Karaka | 40,000 |
+| 4 | Karaka | Orange | #F9B051 | 2,000 | | 14 | Taniwha Kōwhai | 50,000 |
+| 5 | Kōwhai | Yellow | #F9E051 | 3,000 | | 15 | Taniwha Kākāriki | 60,000 |
+| 6 | Kākāriki | Green | #4DB26E | 4,000 | | 16 | Taniwha Kahurangi | 70,000 |
+| 7 | Kahurangi | Blue | #2371BB | 5,000 | | 17 | Taniwha Poroporo | 80,000 |
+| 8 | Poroporo | Purple | #B87DB5 | 6,000 | | 18 | Taniwha Uenuku | 90,000 |
+| 9 | Uenuku | Rainbow | gradient | 8,000 | | 19 | **Ngā Taniwha** | **100,000** |
+| 10 | Taniwha | Black | #000000 | 10,000 | | | *(hard cap)* | |
 
-**Progress bar:** fills in the current colour, resets at each threshold. Layout: `[Te Reo name] [████░░░] [Next Te Reo name — Xpts to go]`
+**Cycle 2** (rungs 11–18) repeats cycle 1 prefixed with "Taniwha", **skipping Mā** ("Taniwha
+Mā" would read as a demotion), +10,000 each. **Ngā Taniwha is the end of the ladder** — there
+is no rung 20, so "Taniwha" never stacks into "Taniwha Taniwha".
 
-**Year tabs:** Only show years where the player has ranking data with points > 0. No 2024 tab (no colours were awarded). 2025 tab only shows for: Tane Clement, Zeke Stokes, Rodrigo Gomez, Salvador Gomez.
+**Visual grammar:** cycle 1 is a solid (or rainbow) card. Taniwha and all of cycle 2 are a
+**black card with the cycle colour as accent** (border, heading, progress bar) plus a **single
+taniwha emblem** watermark tinted the accent. Ngā Taniwha uses the **full twin crest** in
+amber. Note the AllSport crest is already twin taniwha, which is why the escalation is one
+taniwha → both, and why `PEAK` is named Ngā Taniwha. `colourCardStyle()` owns the border,
+including the two-layer `background-clip` trick the rainbow rungs need (CSS `border` cannot
+take a gradient and silently falls back).
+
+**Emblem assets:** `public/colour-emblems/taniwha.png` and `nga-taniwha.png`, same spec as
+`public/event-icons/` (transparent, single colour, ~1000×1000, masked and tinted). **Until
+they exist, Taniwha and Ngā Taniwha are visually identical** — the emblem is the only thing
+separating rung 10 from rung 19.
+
+**Progress bar:** fills in the current colour, resets at each threshold. Layout: `[Te Reo name] [████░░░] [Next Te Reo name — Xpts to go]`. The target rung comes from
+`nextColourFrom(points, highestRung)`, **not** `nextColour(points)`: a colour claimed by the
+kaiwhakawā mid-session is awarded before `lifetime_points` catches up, and the naive version
+tells a player who was just given Whero that Whero is "60 pts to go".
+
+**Year tabs: REMOVED** (August 2026). Points are lifetime so there is nothing to switch
+between. Replaced by a **colour timeline** in the points-history modal — one row per colour
+ever earned, with the date and venue of the session it happened in.
+
+### Colours rework (August 2026 session 28) — lifetime points + kaiwhakawā alert
+
+Seasonal reset removed, ladder extended to 19 rungs, and a colour alert built so **the coach
+finds out while the player is still in the room**. Design settled in a `/grill-me` session;
+full record in `COLOURS_REWORK_PLAN.md` (19 locked decisions with reasoning).
+
+**Taniwha stays at 10,000 — knowingly.** Real data (113 player-sessions) says a division
+winner averages **149 pts/session** and a runner-up **93**, so 10,000 is ~4.5 months for a
+3×/week winner and ~1.4 years for a 1.5×/week non-winner, **not** the 1 and 3 years originally
+described. Tāne chose to keep it and let cycle 2 carry the long game (full cycle = 100,000 ≈
+4.5 years for a keen winner). Don't "correct" this later without asking.
+
+**`rankings` is UNCHANGED and still seasonal.** `/leaderboard` still ranks on current-year
+points, so January still starts a fresh race and a newcomer can climb. Only the **colour**
+went lifetime. One number became two, on purpose.
+
+- **`player_totals`** keyed on `player_id` **alone**. This fixes a latent bug: `rankings` is
+  keyed `(player_id, season_year, division)`, so when a Junior turns 17 or a player turns 40
+  the trigger inserts a **fresh row starting at zero**. Seasonal reset hid it; a lifetime
+  total keyed the same way would silently halve on a birthday. Salvador will trigger this.
+- **Recomputed, never incremented.** `earned_points` is a full recompute from
+  `session_player_summary` (+ a `results` fallback for pre-20260514 sessions). The ×2
+  double-award bug was `total_points = total_points + …`; under seasonal points that class of
+  bug self-heals each January, under lifetime points it is **permanent**.
+- **`adjustment_points` is a separate column** precisely because of that: anything added to
+  `earned_points` is wiped the next time the player finishes a session. It carries the
+  historic points that `20260610000000_historic_points.sql` **never actually applied** (it
+  UPDATEs `season_year = 2025` rows that have never existed in prod, and matches Zeke on a
+  `full_name` that is NULL — he is in the DB as display_name "Zebe"). Salvador +800,
+  Rodrigo +1500, Zeke +1500.
+- **`colour_awards` is append-only.** A voided session or deleted score can lower
+  `lifetime_points`; the row stays and display reads the **highest rung ever awarded**.
+  `colourForPoints` is only for working out what comes *next*.
+- **The alert is predictive, because it has to be.** Points are only written when a session
+  *closes*, so a stored-data alert fires after everyone has gone home. Two states:
+  `on-track` uses the current provisional placement and can retract; **`earned` uses
+  `lifetime + 10 + (effort_level × 5)`** — the guaranteed floor, with **no placement ranking
+  at all**, so no other player's result can take it back. Safe to say out loud.
+  `hasEarnedDuringSession()` in `lib/colours.ts` and the `claim_colour_award` RPC are the
+  same formula and must stay in step.
+- **The coach releases it.** `claim_colour_award(player_id, session_id, rung)` writes the
+  award mid-session on the "Celebrated" tap. The player sees nothing until then, or until the
+  session closes (structural: the session-end takeover only renders after `sessionEnded`).
+- **Rung-skip invariant:** smallest ladder gap (500) > max single session (200), so a session
+  can never skip a rung and the alert never announces two colours at once. Pinned by a test
+  that fails loudly if the points formula ever changes.
+
+**Surfaces:** dashboard Colours card + colour timeline, `/leaderboard` colour column and
+19-rung key (cycle 2 behind a "Beyond Taniwha" reveal), home colour list, `/profile` badge,
+session-end takeover colour headline, Kaiwhakawā live banner, `/judge` standing watchlist
+(sessions-away, not points-away).
+
+**Six inline copies of the ladder deleted** (dashboard, leaderboard ×2, home, profile, live
+session) plus a seventh in `__tests__/grades.test.ts`. Three had Kōwhai as `#FFE566` and three
+as `#F9E051`; canonical is **`#F9E051`**. That test also carried a **wrong points formula**
+(`Math.max(100 / playerCount, 10)` reintroduced the gap floor removed in May 2026) — migrated
+and corrected into `__tests__/colours.test.ts`.
+
+**Stale CLAUDE.md claims corrected in the same pass:** there were never any 2025 `rankings`
+rows (so no 2025 year tab existed for anyone), and there is no "My Colour History" button on
+the homepage.
 
 ---
 
@@ -503,7 +590,7 @@ update players set role = 'judge' where id = '[uuid]';
 
 | Page | Route | Status | Notes |
 |---|---|---|---|
-| Home | / | Complete | Hero, ethos, colours, CTA. Colour progression section is a "My Colour History" button for logged-in players |
+| Home | / | Complete | Hero, ethos, colours (cycle 1 + a "beyond Taniwha" line), CTA. *(No "My Colour History" button exists — an earlier claim here was wrong.)* |
 | How To Play | /how-to-play | Complete | Rules, scoring, 10 domains. Links to /events |
 | Events Index | /events | Complete | All 100 events grouped by domain, links to detail pages |
 | Event Detail | /events/[slug] | Complete | Template page: how to perform, rules, tiers, personal best |
@@ -514,7 +601,7 @@ update players set role = 'judge' where id = '[uuid]';
 | Register | /register | Complete | 3-step form, division, display prefs, junior parent fields |
 | Login | /login | Complete | Email + Google OAuth |
 | Dashboard | /dashboard | Complete | Bento grid: Judge card (judge-only), Vote card (when active), Player Profile card, Colours card (points history on click), Personal Bests card, My Events card (segmented coverage bar + Top Domain/Event percentiles, opens My Events modal — session 24 redesign of the former "My 100" card), Join a Game card (next-session countdown when idle) |
-| Judge Panel | /judge | Complete | Dedicated page — JudgeCard moved here. Create/end/void sessions, QR code, history, real-time player count, Event Votes panel (Kōwhiringa Tūāhuatanga). Judge bento card on dashboard links here. |
+| Judge Panel | /judge | Complete | Players tab opens with an **"Approaching a colour"** watchlist (sessions-away). Dedicated page — JudgeCard moved here. Create/end/void sessions, QR code, history, real-time player count, Event Votes panel (Kōwhiringa Tūāhuatanga). Judge bento card on dashboard links here. |
 | Player Profile | /profile | Complete | Icon picker (20 sport emojis), username/display name editing, leaderboard display prefs, family member management (add/remove), active profile switcher (localStorage) |
 | Scoring Setup | /scoring | Complete | Select 10 events, editable start time, create session |
 | Live Session | /scoring/[sessionId] | Complete | Per-division leaderboard tabs, Kaiwhakawā mode (player picker + score/edit/delete for any player), difficulty tier selector, sport W/D/L display, missing scores = last place, post-game popup on session end |
@@ -589,6 +676,28 @@ RLS: players see own rows; judges see all.
 ### rankings
 id, updated_at, player_id, total_points, total_sessions, average_score,
 best_score, current_rank, division, average_placement, season_year
+**Still seasonal — drives the /leaderboard ranking only.** Colours no longer read this.
+Known latent bug: division is in the unique key, so a player who changes division mid-season
+splits across two rows and double-counts on the All-Divisions tab (logged in TODOS.md).
+
+### colour_ladder
+rung (1–19 PK), name, threshold. Seeded by 20260802000000. Mirrors `lib/colours.ts` so the
+trigger and backfill can join on thresholds. Public read.
+
+### player_totals
+player_id (PK → players, NO season/division), earned_points (recomputed), adjustment_points
+(manual, survives recompute), lifetime_points (GENERATED = earned + adjustment),
+lifetime_sessions, highest_rung, updated_at
+Public read; writes only via SECURITY DEFINER functions. Maintained by
+`recompute_player_total()` — a full recompute, never an increment.
+
+### colour_awards
+id, player_id (→ players), rung (2–19; Mā is the start, not an award), colour_name (snapshot),
+points_at_award, session_id (→ sessions, null for adjustment-only rungs), awarded_at,
+celebrated_at (set by the kaiwhakawā's "Celebrated" tap)
+UNIQUE(player_id, rung) — this is what makes the mid-session claim and the close trigger
+idempotent against each other. **Append-only: a colour is never revoked.**
+RLS: own + parent (family) + judge.
 
 ### Key Logic
 - player_id on results is nullable (players can join by name without account)
@@ -627,11 +736,13 @@ best_score, current_rank, division, average_placement, season_year
     supabase-server.ts              # Server client
     eventData.ts                    # Single source of truth for all events (120) + difficulty+time encode/decode helpers (encodeDiffTime/decodeDiffTime/isTimedEffort, TIMED_EFFORT_SLUGS); DifficultyTier has optional `detail` (judge criteria)
     dates.ts                        # parseLocalDate / formatNZDate — parse DATE columns in local time (avoids off-by-one)
+    colours.ts                      # THE colour ladder (19 rungs) — names/thresholds/styling + live-alert predicates. Single source of truth
+    colourAlerts.ts                 # divisionRanks (all players) + colourAlerts (live) + colourWatchlist (/judge planning)
     rating.ts                       # Multiplayer Elo skill ratings — computeRatings/eloTo100/domainRatings/topEvent/topDomain/sessionWins (client-side, idempotent full recompute)
     judgeRoster.ts                  # Kaiwhakawā roster derivation — buildJudgeRoster/resolveJudgeTarget/resultsForTarget/scoredEventIds(ByTarget)/rosterKeyFor; guests keyed `guest:{player_name}`
     fetchAll.ts                     # Pages Supabase selects past the 1000-row cap
   app/
-    page.tsx                        # Homepage — colour progression = "My Colour History" button
+    page.tsx                        # Homepage — colour list sourced from lib/colours.ts (cycle 1 + Ngā Taniwha teaser)
     layout.tsx                      # Root layout
     globals.css                     # Design system
     play/page.tsx
@@ -669,9 +780,11 @@ best_score, current_rank, division, average_placement, season_year
     Footer.tsx                      # Rainbow rule, HQ address + session times
     ui.tsx                          # Shared brand UI kit — Button, Card, Badge, Tag, Input, Select, Dialog, RainbowText, RainbowRule, SectionLabel, StatBlock
     EventIcon.tsx                   # Event pictogram tile — CSS-mask of /event-icons/{slug}.png in domain colour, emoji fallback
+    ColourWatchlist.tsx             # "Approaching a colour" panel — /judge Players tab
     DomainIcon.tsx                  # Domain pictogram tile — CSS-mask of /domain-icons/{slug}.png in domain colour, domain-number fallback; exports domainSlug()
   public/
     event-icons/                    # Canva silhouette exports, transparent PNG named {slug}.png (see README.md inside)
+    colour-emblems/                 # taniwha.png (Taniwha + all cycle 2) and nga-taniwha.png (rung 19) — masked + tinted like event icons. PENDING
     domain-icons/                   # Canva silhouette exports, transparent PNG named {domain-slug}.png (maximal-strength, calisthenics, power, speed, anaerobic-endurance, aerobic-endurance, flexibility, body-awareness, coordination, aim-and-precision); masked + tinted the domain colour like event icons
   supabase/
     config.toml                       # Supabase CLI config (project_id = "allsport"); linked project ref lives in supabase/.temp (gitignored)
@@ -695,6 +808,9 @@ best_score, current_rank, division, average_placement, season_year
       20260713000001_breath_hold_duck_walk.sql # (was 20260713b) One-time re-encode: Breath Hold → positive secs, Duck Walk → new walk ladder — run ONCE, after 20260713000000
       20260714000000_wellbeing_survey.sql     # (was 20260714) wellbeing_surveys table + RLS + get_wellbeing_report() RPC — idempotent
       20260801000000_roster_update_120.sql    # Repoint 24 renamed events on session_events.event_name; archive + delete Leg Extension results
+      20260802000000_lifetime_colours.sql     # Lifetime colours: colour_ladder/player_totals/colour_awards, recompute_player_total,
+                                              #   claim_colour_award RPC, award_session_points extension, backfill + timeline reconstruction.
+                                              #   DEPLOY MIGRATION FIRST, THEN CODE (additive; the new client code requires player_totals).
       # ── ALL migrations above are APPLIED to prod, confirmed 2026-08-01. `supabase db push` offered only
       #    20260801000000, meaning the three 2026071x files were already recorded as applied; wellbeing_surveys
       #    was verified to exist, and db push applies in timestamp order, so they genuinely ran. There are NO
@@ -724,7 +840,7 @@ best_score, current_rank, division, average_placement, season_year
 - Divisions — 7 divisions with age labels: Men's, Women's, Juniors (U17), Masters Men (40+), Masters Women (40+), Grandmaster Men (60+), Grandmaster Women (60+)
 - Post-game popup — placement, per-event breakdown, bonuses, total points, colour progression moment
 - Session history — past session summaries accessible from dashboard
-- Colour history — accessible from homepage colour progression section (logged-in players)
+- Colours — LIFETIME points (Aug 2026): 19-rung ladder through Ngā Taniwha, colour timeline replacing year tabs, kaiwhakawā live alert + /judge watchlist, session-end colour headline. See the Colours rework block above
 - Colours section on dashboard — renamed from Grade, conditional year tabs, coloured progress bar
 - Event detail pages — /events/[slug] with how-to, rules, difficulty tiers, personal best
 - Events index — /events, all 100 events grouped by domain
@@ -784,7 +900,13 @@ best_score, current_rank, division, average_placement, season_year
 - Koha only — no set fees
 - Tagline: Play EVERYTHING
 - Te reo Māori identity throughout
-- Taniwha = Black = peak grade = black belt equivalent
+- Taniwha = Black = black belt equivalent, and the top of CYCLE 1. The peak of the whole ladder is **Ngā Taniwha** (rung 19, 100,000)
+- **Colour points are LIFETIME (Aug 2026)** — never reset, never revoked. The seasonal `rankings` table still drives the /leaderboard ranking, so the board resets each January but the colour does not
+- **Taniwha kept at 10,000 deliberately** despite real data showing that is ~4.5 months for a 3×/week winner, not the 1 year originally wanted. Cycle 2 (+10,000 each, to 100,000) carries the long game instead. Don't "fix" this without asking
+- **Cycle 2 skips Mā** ("Taniwha Mā" reads as a demotion) and the ladder hard-caps at rung 19, so "Taniwha" never stacks into "Taniwha Taniwha"
+- **A colour alert must be predictive, and conservative.** Points are only written at session close, so a stored-data alert fires after everyone leaves. "Has earned" = `lifetime + 10 + effort×5` (guaranteed floor, no placement ranking), so it can never be taken back and is safe to announce out loud. "On track" uses provisional placement and may retract
+- **The kaiwhakawā releases the moment, not the app.** The player sees a new colour only after the coach taps "Celebrated" (or at session close, whichever comes first)
+- **Any lifetime total must be RECOMPUTED, never incremented.** The ×2 double-award bug was an increment; seasonal points made that self-heal each January, lifetime points make it permanent. Manual adjustments therefore need their own column (`adjustment_points`) or the next recompute wipes them
 - Colours reset January, history kept forever — section called "Colours" not "Grade"
 - All-Divisions = combined division tab (not "Overall")
 - Kaiwhakawā = the correct te reo Māori term for judge/referee in a sports context. Used throughout display text; DB role value stays as `judge` for simplicity
@@ -870,7 +992,8 @@ best_score, current_rank, division, average_placement, season_year
 
 ---
 
-*Last updated: August 2026 (session 27 — **Event roster reconciled to 120 events, 12 per domain**, shipped as v0.5.3.0. 7 added (Arm Wrestling, Tug of War, Capture the Flag, Kabaddi, Wheelbarrow Push/Pull, Kubb restored), 9 removed, 9 renamed, 5 moved between domains, and Leg Extension became Leg Ext Hold (strength → difficulty+time, D1–D7). Domain names/numbers/order deliberately UNCHANGED — Tāne declined the sheet's reorder and the "Speed & Reactivity" rename. The big finding: **renaming an event was never safe just because the slug survived** — /prs, lib/percentile.ts and My Events all join PR history on `session_events.event_name`, and `lib/scoring.ts` matched weight-scored tiers on the name literal, so earlier renames (Handbalance and others) had already silently orphaned their history. Migration `20260801000000` repoints 24 old names derived from git history, and archives-then-deletes the un-convertible Leg Extension rows behind RLS. Icons 120/120. Tests 198 passing. Migration applied to prod 2026-08-01 AFTER the code deployed, and verified (renames landed, 17 Leg Extension rows archived+deleted, archive table correctly refuses PostgREST reads with 42501). The ×2 games/points bug is now CONFIRMED DEAD in prod — `pg_trigger` returns only `auto_award_points`, which also upgrades `20260713000000` from applied-by-inference to directly verified and means the 2026 rankings rebuild ran. Follow-up: the long-standing "three session-22 migrations are pending" note in this file was STALE — they were already applied, and re-running them would have corrupted Breath Hold / Duck Walk scores; corrected in the same follow-up PR. See "Event roster update (August 2026 session 27)" block above.)*
+*Last updated: August 2026 (session 28 — **Colours went LIFETIME**, ladder extended to 19 rungs, and a kaiwhakawā colour alert built. Design settled via `/grill-me`; the full record with 19 locked decisions is in `COLOURS_REWORK_PLAN.md`. Seasonal reset removed for colours only — `rankings` is untouched and `/leaderboard` still resets each January, so one number became two on purpose. Cycle 2 repeats the colours prefixed "Taniwha" (skipping Mā) at +10,000 each, hard-capped at **Ngā Taniwha** on 100,000. Taniwha stays at 10,000 **knowingly**: real data (149 pts/session for a winner, 93 for a runner-up) puts that at ~4.5 months for a 3×/week winner rather than the 1 year originally wanted, and Tāne chose to let cycle 2 carry the long game. New `lib/colours.ts` (19 rungs, single source of truth), `lib/colourAlerts.ts` (live alert + /judge watchlist), `components/ColourWatchlist.tsx`, and migration `20260802000000` (colour_ladder / player_totals / colour_awards + `claim_colour_award` RPC + backfill that reconstructs real crossing dates). The alert had to be **predictive** because points are only written at session close: "has earned" uses `lifetime + 10 + effort×5`, a guaranteed floor with no placement ranking, so it can never be retracted; the coach releases the moment to the player with a "Celebrated" tap. Findings along the way: `player_totals` is keyed on player_id alone because `rankings` keying on division would silently halve a lifetime total on a birthday; lifetime totals must be recomputed not incremented (the ×2 bug becomes permanent otherwise), so manual adjustments need their own column; `20260610000000_historic_points.sql` **never applied** (targets 2025 rows that have never existed, and matches Zeke on a NULL full_name) so 3,800 points were restored via `adjustment_points`; **six inline copies of the ladder** existed and disagreed on Kōwhai's hex; and `__tests__/grades.test.ts` carried a wrong points formula that reintroduced the gap floor removed in May 2026. **Migration NOT yet applied — deploy migration FIRST, then code** (additive; the client requires `player_totals`). Expected outcome simulated against live prod data and recorded in the plan: 19 colour_awards rows, nobody demoted, Rodrigo passes Tāne on lifetime points once his historic 1,500 lands. Tests 260 passing. PENDING: the two emblem PNGs — until they exist Taniwha and Ngā Taniwha render identically. See "Colours rework (August 2026 session 28)" block above.)*
+*Previous: August 2026 (session 27 — **Event roster reconciled to 120 events, 12 per domain**, shipped as v0.5.3.0. 7 added (Arm Wrestling, Tug of War, Capture the Flag, Kabaddi, Wheelbarrow Push/Pull, Kubb restored), 9 removed, 9 renamed, 5 moved between domains, and Leg Extension became Leg Ext Hold (strength → difficulty+time, D1–D7). Domain names/numbers/order deliberately UNCHANGED — Tāne declined the sheet's reorder and the "Speed & Reactivity" rename. The big finding: **renaming an event was never safe just because the slug survived** — /prs, lib/percentile.ts and My Events all join PR history on `session_events.event_name`, and `lib/scoring.ts` matched weight-scored tiers on the name literal, so earlier renames (Handbalance and others) had already silently orphaned their history. Migration `20260801000000` repoints 24 old names derived from git history, and archives-then-deletes the un-convertible Leg Extension rows behind RLS. Icons 120/120. Tests 198 passing. Migration applied to prod 2026-08-01 AFTER the code deployed, and verified (renames landed, 17 Leg Extension rows archived+deleted, archive table correctly refuses PostgREST reads with 42501). The ×2 games/points bug is now CONFIRMED DEAD in prod — `pg_trigger` returns only `auto_award_points`, which also upgrades `20260713000000` from applied-by-inference to directly verified and means the 2026 rankings rebuild ran. Follow-up: the long-standing "three session-22 migrations are pending" note in this file was STALE — they were already applied, and re-running them would have corrupted Breath Hold / Duck Walk scores; corrected in the same follow-up PR. See "Event roster update (August 2026 session 27)" block above.)*
 *Previous: July 2026 (session 26 — **Kaiwhakawā tab rebuilt onto the session-19 player layout** and shipped as v0.5.2.0. Chip player-picker (with guest recall) replaces the Registered/Guest toggle + native select; a session roster with per-player progress fills the no-selection state; selecting a player gives the same progress header + Still-to-play/Scored list + quick-entry sheet players get. `EventCard` deleted (~510 lines) — scoring now has one code path. New pure `lib/judgeRoster.ts` (+26 tests, suite at 162) and a real bug fixed along the way: stale `judgePRs` leaking the previous player's PR across a target switch. Deferred: focus states + 44px touch targets for the whole live-session screen (TODOS.md P2 — needs the ui.tsx migration). See "Kaiwhakawā tab rebuild (July 2026 session 26)" block above.)*
 *Previous: July 2026 (session 25 — Event roster update from "AllSport Programming July 2026.xlsx": roster now 122 events (was 105). 18 new events fully defined (input mode + tiers + how-to/rules + emoji); Handbalance renamed → Handstand and moved Power → Calisthenics (slug stays hand-walk); Ham Curl + Sandbag to Shoulder moved → Anaerobic Endurance; Ultimate Frisbee moved → Coordination; Kubb removed (kept Clean & Press). Backwards Walk + Scooting added to TIMED_EFFORT_SLUGS. Typecheck clean, 132/132 tests pass (updated the count/Handstand assertions in __tests__/eventData.test.ts), /events verified in-browser. Event icons now 122/122 — the 18 new slugs plus the long-missing bowling.png were exported and imported (3 Canva files renamed to match their slugs). PENDING: deferred difficulty reorders (need a raw_score re-encode migration). See "Event roster update (July 2026 session 25)" block above. Nothing committed.)*
 *Previous: July 2026 (session 24 — My Events redesign DONE: renamed the "My 100" card + modal to "My Events" and replaced the player-facing Elo "skill" score everywhere (card, modal, /leaderboard Top Domain/Event columns) with a literal best-score percentile shown as "Top X%" (per event = % of your unified-division pool you beat, inverted + floored at 1, "1st" whenever nobody has a strictly higher best incl. shared top, "No comparison yet" solo; per domain = average of played-event Top%). Card = segmented domain coverage bar + count + Top Domain/Event with icons; modal = Session Wins/Avg Place/Games Played header + Strongest+Weakest + collapsible domains with domain/event icons and dimmed unplayed events. New lib/percentile.ts (+14 unit tests, suite green at 132). Elo (lib/rating.ts) kept internally only for sessionWins. Leaderboard verified on real data; dashboard card/modal typecheck-clean, visual eyeball pending a logged-in session. Spec locked via /grill-me — see "My Events redesign" block above)*
