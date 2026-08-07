@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { EVENTS } from '@/lib/eventData'
+import { COLOURS, PEAK_POINTS } from '@/lib/colours'
 
 const RAINBOW = 'var(--rainbow)'
 
@@ -33,18 +34,9 @@ const domains = DOMAIN_META.map(d => ({
   events: EVENTS.filter(e => e.domain === d.name).map(e => e.name),
 }))
 
-const ranks = [
-  { te: 'Mā', en: 'White', c: '#e8e8e8', p: '0–499' },
-  { te: 'Kiwikiwi', en: 'Grey', c: '#888888', p: '500' },
-  { te: 'Whero', en: 'Red', c: '#EA4742', p: '1,000' },
-  { te: 'Karaka', en: 'Orange', c: '#F9B051', p: '2,000' },
-  { te: 'Kōwhai', en: 'Yellow', c: '#F9E051', p: '3,000' },
-  { te: 'Kākāriki', en: 'Green', c: '#4DB26E', p: '4,000' },
-  { te: 'Kahurangi', en: 'Blue', c: '#2371BB', p: '5,000' },
-  { te: 'Poroporo', en: 'Purple', c: '#B87DB5', p: '6,000' },
-  { te: 'Uenuku', en: 'Rainbow', c: 'rainbow', p: '8,000' },
-  { te: 'Taniwha', en: 'The highest', c: '#000000', p: '10,000+' },
-]
+// Cycle 1 only — the second cycle (Taniwha Kiwikiwi … Ngā Taniwha) is summarised
+// in a single line below the list rather than doubling the length of it.
+const ranks = COLOURS.filter(c => c.cycle === 1)
 
 const ethos = [
   { word: 'Mahi', mean: 'Effort', color: '#EA4742', desc: "Effort is the only measure that counts here. Show up and give what you've got — that's the whole game." },
@@ -215,29 +207,35 @@ export default function Home() {
               </h2>
               <div className="lp-rainbow-line" style={{ width: '60px', marginBottom: '28px' }} />
               <p style={{ color: '#cccccc', fontSize: '16px', lineHeight: 1.8, marginBottom: '16px' }}>
-                AllSport&apos;s grades follow the light spectrum — a mirror of your growing mana. Each colour is earned through effort and persistence. There are no shortcuts.
+                AllSport&apos;s colours follow the light spectrum — a mirror of your growing mana. Each colour is earned through effort and persistence. There are no shortcuts.
               </p>
               <p style={{ color: '#888', fontSize: '15px', lineHeight: 1.8, marginBottom: '16px' }}>
-                The journey from Mā to Taniwha is the journey from beginner to complete all-round athlete.
+                The journey from Mā to Taniwha is the journey from beginner to complete all-round athlete. Your points never reset — every session you ever play counts toward your next colour.
               </p>
               <p style={{ color: '#555', fontSize: '14px', lineHeight: 1.8, fontStyle: 'italic' }}>
-                Taniwha — our highest grade — is the taniwha in our emblem. Few will ever earn it.
+                Taniwha is the taniwha in our emblem. Beyond it the colours begin again — Taniwha Kiwikiwi, Taniwha Whero, and onward to Ngā Taniwha, where you earn the whole crest. Few will ever get there.
               </p>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               {ranks.map((r) => {
-                const bg = r.c === 'rainbow' ? 'linear-gradient(135deg,#EA4742,#F9B051,#4DB26E,#2371BB,#B87DB5)' : r.c
-                const teColor = r.te === 'Taniwha' ? '#fff' : r.c === 'rainbow' ? '#fff' : r.c
+                const isTaniwha = r.name === 'Taniwha'
+                const nameColour = r.accent.startsWith('linear-gradient') ? '#fff' : r.accent
                 return (
-                  <div key={r.te} className="lp-rank">
-                    <span style={{ width: '12px', height: '12px', borderRadius: '50%', flexShrink: 0, background: bg, border: r.te === 'Taniwha' ? '1px solid #555' : 'none' }} />
-                    <span style={{ fontFamily: 'var(--font-display)', fontSize: '22px', minWidth: '150px', letterSpacing: '0.04em', color: teColor }}>{r.te}</span>
-                    <span style={{ fontFamily: 'var(--font-label)', fontSize: '12px', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#555' }}>{r.en}</span>
-                    <span style={{ marginLeft: 'auto', fontFamily: 'var(--font-label)', fontSize: '13px', color: '#444', letterSpacing: '0.06em' }}>{r.p} pts</span>
+                  <div key={r.name} className="lp-rank">
+                    <span style={{ width: '12px', height: '12px', borderRadius: '50%', flexShrink: 0, background: r.surface, border: isTaniwha ? '1px solid #555' : 'none' }} />
+                    <span style={{ fontFamily: 'var(--font-display)', fontSize: '22px', minWidth: '150px', letterSpacing: '0.04em', color: nameColour }}>{r.name}</span>
+                    <span style={{ fontFamily: 'var(--font-label)', fontSize: '12px', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#555' }}>{r.english}</span>
+                    <span style={{ marginLeft: 'auto', fontFamily: 'var(--font-label)', fontSize: '13px', color: '#444', letterSpacing: '0.06em' }}>{r.threshold.toLocaleString()} pts</span>
                   </div>
                 )
               })}
+              <div className="lp-rank" style={{ marginTop: '10px', borderTop: '1px solid #1e1e1e', paddingTop: '14px' }}>
+                <span style={{ width: '12px', height: '12px', borderRadius: '50%', flexShrink: 0, background: '#000', border: '1px solid #F9B051' }} />
+                <span style={{ fontFamily: 'var(--font-label)', fontSize: '13px', letterSpacing: '0.06em', color: '#666', lineHeight: 1.6 }}>
+                  Then the colours begin again — eight more, ending at <span style={{ color: '#F9B051' }}>Ngā Taniwha</span> on {PEAK_POINTS.toLocaleString()} pts.
+                </span>
+              </div>
             </div>
           </div>
         </div>

@@ -3,29 +3,11 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase-browser'
 import Link from 'next/link'
+import { colourByRung, colourForPoints, colourOnDark } from '@/lib/colours'
 
 const supabase = createClient()
 
 const PLAYER_ICONS = ['🏋️', '🤸', '🏃', '🚴', '🤼', '🏊', '🎯', '🏹', '⚽', '🏀', '🎾', '🏐', '🦅', '🐯', '🦁', '🦊', '🐺', '🦋', '🐬', '🐉']
-
-const GRADES = [
-  { name: 'Mā', colour: '#f0f0f0', textColour: '#1a1a1a', threshold: 0, borderColour: '#ccc' },
-  { name: 'Kiwikiwi', colour: '#888888', textColour: '#fff', threshold: 500, borderColour: '#888' },
-  { name: 'Whero', colour: '#EA4742', textColour: '#fff', threshold: 1000, borderColour: '#EA4742' },
-  { name: 'Karaka', colour: '#F9B051', textColour: '#000', threshold: 2000, borderColour: '#F9B051' },
-  { name: 'Kōwhai', colour: '#FFE566', textColour: '#000', threshold: 3000, borderColour: '#FFE566' },
-  { name: 'Kākāriki', colour: '#4DB26E', textColour: '#fff', threshold: 4000, borderColour: '#4DB26E' },
-  { name: 'Kahurangi', colour: '#2371BB', textColour: '#fff', threshold: 5000, borderColour: '#2371BB' },
-  { name: 'Poroporo', colour: '#B87DB5', textColour: '#fff', threshold: 6000, borderColour: '#B87DB5' },
-  { name: 'Uenuku', colour: 'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)', textColour: '#fff', threshold: 8000, borderColour: '#B87DB5' },
-  { name: 'Taniwha', colour: '#000000', textColour: '#F9B051', threshold: 10000, borderColour: '#F9B051' },
-]
-
-function getCurrentGrade(points: number) {
-  let grade = GRADES[0]
-  for (const g of GRADES) { if (points >= g.threshold) grade = g }
-  return grade
-}
 
 function isJuniorDob(dob: string) {
   if (!dob) return false
@@ -67,6 +49,7 @@ export default function ProfilePage() {
 
   // Rankings for grade display
   const [points, setPoints] = useState(0)
+  const [rung, setRung] = useState(1)
 
   useEffect(() => {
     const load = async () => {
@@ -102,14 +85,15 @@ export default function ProfilePage() {
       const stored = typeof window !== 'undefined' ? localStorage.getItem('allsport_active_player_id') : null
       setActivePlayerId(stored || user.id)
 
-      // Load ranking for grade display
-      const { data: rankData } = await supabase
-        .from('rankings')
-        .select('total_points')
+      // Lifetime colour for the profile badge. Colours never reset, and the
+      // rung shown is the highest ever AWARDED, not the one points imply.
+      const { data: totals } = await supabase
+        .from('player_totals')
+        .select('lifetime_points, highest_rung')
         .eq('player_id', user.id)
-        .eq('season_year', new Date().getFullYear())
         .maybeSingle()
-      setPoints(rankData?.total_points || 0)
+      setPoints(totals?.lifetime_points || 0)
+      setRung(totals?.highest_rung || 1)
 
       setLoading(false)
     }
@@ -206,7 +190,8 @@ export default function ProfilePage() {
     </div>
   )
 
-  const grade = getCurrentGrade(points)
+  const grade = colourByRung(rung) ?? colourForPoints(points)
+  const gradeBorder = colourOnDark(grade)
   const displayName = form.display_name || form.username || player.full_name || '?'
 
   return (
@@ -244,10 +229,10 @@ export default function ProfilePage() {
               width: '64px', height: '64px', borderRadius: '16px',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: '34px', background: '#1a1a1a',
-              border: `2px solid ${grade.borderColour}44`,
+              border: `2px solid ${gradeBorder}44`,
             }}>
               {form.icon || (
-                <span style={{ fontFamily: 'var(--font-display)', fontSize: '28px', color: grade.borderColour }}>
+                <span style={{ fontFamily: 'var(--font-display)', fontSize: '28px', color: gradeBorder }}>
                   {displayName[0].toUpperCase()}
                 </span>
               )}
@@ -419,10 +404,10 @@ export default function ProfilePage() {
               width: '36px', height: '36px', borderRadius: '9px', flexShrink: 0,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: '20px', background: '#111',
-              border: `1px solid ${grade.borderColour}44`,
+              border: `1px solid ${gradeBorder}44`,
             }}>
               {form.icon || (
-                <span style={{ fontFamily: 'var(--font-display)', fontSize: '16px', color: grade.borderColour }}>
+                <span style={{ fontFamily: 'var(--font-display)', fontSize: '16px', color: gradeBorder }}>
                   {displayName[0].toUpperCase()}
                 </span>
               )}

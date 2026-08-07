@@ -92,7 +92,7 @@ const kohaFacts = [
   'AllSport is a community-led charitable initiative',
   'IRD 33% tax rebate applies to all koha contributions',
   'Koha acknowledgements range from the supporters wall to personal coaching',
-  'Your grade is earned through performance — not through giving',
+  'Your colour is earned by playing — not by giving',
   'We collaborate with local sports clubs so more people benefit from more sport',
 ]
 

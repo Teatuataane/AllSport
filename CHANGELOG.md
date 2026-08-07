@@ -2,6 +2,25 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.5.4.0] - 2026-08-07
+
+### Added
+- **Your colours never reset.** Every point you have ever earned counts toward your next colour, for as long as you play. Cross a threshold and that colour is yours permanently — it can't be taken back, even if a session is later voided or a score corrected.
+- **Nine more colours beyond Taniwha.** Past Taniwha the colours begin again — Taniwha Kiwikiwi, Taniwha Whero, and on — each another 10,000 points, ending at **Ngā Taniwha** on 100,000, where you earn the whole crest. The Colour Key on the leaderboard hides these behind a "Beyond Taniwha" reveal until you want to see them.
+- **Your kaiwhakawā knows before you do.** During a session, the Kaiwhakawā tab shows who is about to earn a colour, and tells them the moment it is certain — certain meaning it holds even if you finish last from here. They tap Celebrated, and that is when you find out. The moment happens in the room instead of arriving on your phone after everyone has gone home.
+- **A colour timeline.** Tap your Colours card and you now see every colour you have ever earned, with the date and the session it happened in. Backfilled from your real history, so it is full from day one.
+- **"Approaching a colour" on the judge panel** — who is closest to their next colour, measured in sessions rather than points, so a session can be planned around it.
+- **A colour moment at the end of a session.** Earn a colour and it leads the end-of-session screen, above your placement.
+
+### Changed
+- **Your colour and your leaderboard rank are now two different things.** The leaderboard still resets every January, so there is always a fresh race and a new player can climb it. Your colour comes from your lifetime total and only ever goes up.
+- **Historic points from 2025 have finally been applied** — Rodrigo, Salvador and Zeke's earlier play now counts toward their colours. It had never actually taken effect.
+- The Colours card drops its year tabs — with lifetime points there is nothing to switch between.
+
+### Fixed
+- A colour announced by a kaiwhakawā could, in rare cases, not actually have been awarded if scores changed at the same moment. The app now confirms with the server before saying anything out loud.
+- Kōwhai rendered as two slightly different yellows depending on which screen you were on.
+
 ## [0.5.3.0] - 2026-08-01
 
 ### Added
