@@ -7,7 +7,9 @@ export default defineConfig({
   test: {
     environment: 'node',
     globals: true,
-    include: ['__tests__/**/*.test.ts'],
+    // Node by default (pure-logic tests are the bulk and stay fast); component
+    // tests opt into jsdom with a `@vitest-environment jsdom` docblock.
+    include: ['__tests__/**/*.test.{ts,tsx}'],
     exclude: ['.claude/**', 'node_modules/**'],
   },
   resolve: {
