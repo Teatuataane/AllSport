@@ -92,6 +92,19 @@
 
 ## P1 — Do Next
 
+### Confirm the security headers actually land in production
+**What:** after v0.5.5.0 deploys, run `curl -sSI https://allsport.nz/dashboard | grep -iE "access-control|content-security|x-frame"`. Expect `Access-Control-Allow-Origin: https://allsport.nz` (NOT `*`), a `Content-Security-Policy`, and `X-Frame-Options: DENY`.
+**Why it matters:** eight of the nine headers come from Next's `headers()` and are already verified locally. The ACAO one is different: Vercel's own static-asset layer sets `Access-Control-Allow-Origin: *` on prerendered HTML, and whether Next's value overrides it can only be proven against the deployed site. If Vercel wins, move the same list from `lib/securityHeaders.ts` into a `vercel.json` `headers` block — the values don't change, only where they're declared.
+**Also worth watching:** `secure: true` on the auth cookie keys off `NODE_ENV`, so a local production build served over http cannot log in. That is expected, not a bug.
+**Noticed:** /ship v0.5.5.0, 2026-08-13
+**Effort:** S (one curl)
+
+### Consider moving Supabase auth off document.cookie so httpOnly becomes possible
+**What:** the session cookie is deliberately NOT `httpOnly`, because `@supabase/ssr`'s browser client reads the token out of `document.cookie` and every client component in the app uses it. Setting the flag today signs everybody out. Making it possible means reading auth server-side and passing the session down, rather than a config tweak.
+**Why it matters:** it is the one remaining gap in the cookie hardening from v0.5.5.0. Without httpOnly, any successful script injection can read the session token. Current mitigations are that there is no `dangerouslySetInnerHTML` anywhere and the CSP `connect-src` gives an attacker nowhere to send it, but neither is as strong as the flag.
+**Noticed:** /ship v0.5.5.0, 2026-08-13
+**Effort:** L (architectural — affects every client component that calls supabase)
+
 ### Export the two colour emblem PNGs
 **What:** `public/colour-emblems/taniwha.png` (one taniwha) and `nga-taniwha.png` (the full twin crest). Transparent, solid single colour, ~1000×1000, no wordmark bar, no koru shield — same spec as `public/event-icons/`, so the existing CSS-mask tint pipeline picks them up with no code change.
 **Why it matters:** the emblem is the ONLY thing distinguishing Taniwha (rung 10) from Ngā Taniwha (rung 19). Without them a player who spends four years climbing cycle 2 arrives at a card identical to the one they already had. Everything else about cycle 2 renders correctly today; the masked element just draws nothing.
