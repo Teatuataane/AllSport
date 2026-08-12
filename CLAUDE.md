@@ -729,11 +729,14 @@ RLS: own + parent (family) + judge.
 
 ```
 ~/allsport/
-  middleware.ts                     # REQUIRED — refreshes Supabase session on every request
+  next.config.ts                    # reactCompiler + headers() — serves the security header set on /:path*
+  middleware.ts                     # REQUIRED — refreshes Supabase session on every request; also forwards Supabase's no-store headers onto the response
   lib/
     supabase.ts                     # Basic client (legacy — DO NOT USE in new code)
     supabase-browser.ts             # Browser client (use this in ALL client components)
     supabase-server.ts              # Server client
+    supabase-cookies.ts             # AUTH_COOKIE_OPTIONS — MUST be passed to every Supabase client (secure/sameSite/path). See HTTP security below
+    securityHeaders.ts              # buildCsp / buildSecurityHeaders — the CSP + 8 headers, unit tested in __tests__/securityHeaders.test.ts
     eventData.ts                    # Single source of truth for all events (120) + difficulty+time encode/decode helpers (encodeDiffTime/decodeDiffTime/isTimedEffort, TIMED_EFFORT_SLUGS); DifficultyTier has optional `detail` (judge criteria)
     dates.ts                        # parseLocalDate / formatNZDate — parse DATE columns in local time (avoids off-by-one)
     colours.ts                      # THE colour ladder (19 rungs) — names/thresholds/styling + live-alert predicates. Single source of truth
@@ -821,6 +824,60 @@ RLS: own + parent (family) + judge.
 ```
 
 **IMPORTANT:** Always use createClient() from @/lib/supabase-browser in client components.
+
+---
+
+## HTTP security (August 2026 session 29) — v0.5.5.0
+
+Before this, the app sent **no security headers at all** (`next.config.ts` had no
+`headers()` block), so the only one in production was the HSTS Vercel adds by itself.
+
+**`lib/securityHeaders.ts` is the single source of truth** for the CSP and the other
+seven headers; `next.config.ts` just applies it to `/:path*`. It lives in `lib/` so it
+can be unit tested, because **a security header fails silently when it regresses** —
+delete `frame-ancestors` and nothing breaks, no test goes red, the app is simply
+framable again. `__tests__/securityHeaders.test.ts` is the only thing that notices.
+
+- **`connect-src` is derived from `NEXT_PUBLIC_SUPABASE_URL`,** never hardcoded, and
+  covers BOTH `https://` and `wss://`. Allowing https but not wss silently kills live
+  score updates and is easy to miss, because the 15-second polling fallback masks it.
+- **`script-src` keeps `'unsafe-inline'` deliberately.** Next's App Router injects
+  inline bootstrap scripts on every page; removing it needs per-request nonces, which
+  force every route dynamic and give up static prerendering. The CSP's value here is
+  `default-src`/`connect-src` blocking exfiltration and `frame-ancestors` blocking
+  clickjacking, NOT inline-XSS defence. Safe because there is no
+  `dangerouslySetInnerHTML` anywhere in the app.
+- **`style-src` keeps `'unsafe-inline'`** because the app styles via React
+  `style={{ }}` props. Removing it blanks every page.
+- `img-src` allows `https:` for `partners.logo_url`; `frame-src`/`object-src` are
+  `'none'` (verified: no iframes, no external form actions anywhere in the app).
+- **ACAO is pinned to the site origin** because Vercel serves prerendered HTML with
+  `Access-Control-Allow-Origin: *`. **Whether Next's value actually overrides Vercel's
+  static-asset layer can only be proven against the deployed site** — see the P1 item
+  in TODOS.md. If Vercel wins, move the same list into a `vercel.json` `headers` block.
+
+### Auth cookies — three traps
+1. **`@supabase/ssr`'s `setAll` takes a SECOND argument** (`headers`) carrying
+   `Cache-Control: private, no-store`. It exists so a CDN cannot cache a response that
+   sets auth cookies and serve one player's session token to another. Every call site
+   here ignored it, and prod served `/auth/callback` (a 307 that sets session cookies)
+   as `cache-control: public`. **Any new `createServerClient` call site must forward it.**
+2. **The library defaults are `{ path:'/', sameSite:'lax', httpOnly:false }` with NO
+   `secure` flag.** `cookieOptions: AUTH_COOKIE_OPTIONS` must be passed to all four
+   clients (browser, server, middleware, callback route).
+3. **`httpOnly` is deliberately OFF and must stay off** until auth moves server-side:
+   the browser client reads the session from `document.cookie`, so setting it signs
+   every player out. Logged as a P1 in TODOS.md, not an oversight.
+
+`sameSite` stays `'lax'` — `'strict'` withholds the cookie on the cross-site top-level
+navigation back from Google OAuth. `secure` keys off `NODE_ENV`, so a local production
+build served over http cannot log in; that is expected, not a bug.
+
+### Open redirect
+`/auth/callback` built `${origin}${next}` from an unvalidated query param. `next=@evil.com`
+produces `https://allsport.nz@evil.com`, where `allsport.nz` parses as *userinfo* and the
+real host is `evil.com`. `safeNext()` now rejects that plus the `//` and `/\` variants.
+**Any future redirect built by concatenating onto an origin needs the same guard.**
 
 ---
 
