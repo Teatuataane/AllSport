@@ -852,9 +852,21 @@ framable again. `__tests__/securityHeaders.test.ts` is the only thing that notic
 - `img-src` allows `https:` for `partners.logo_url`; `frame-src`/`object-src` are
   `'none'` (verified: no iframes, no external form actions anywhere in the app).
 - **ACAO is pinned to the site origin** because Vercel serves prerendered HTML with
-  `Access-Control-Allow-Origin: *`. **Whether Next's value actually overrides Vercel's
-  static-asset layer can only be proven against the deployed site** — see the P1 item
-  in TODOS.md. If Vercel wins, move the same list into a `vercel.json` `headers` block.
+  `Access-Control-Allow-Origin: *`. **Next's `headers()` does override Vercel's
+  static-asset layer — confirmed against prod 2026-08-13**, which returns
+  `access-control-allow-origin: https://allsport.nz`. No `vercel.json` needed; this
+  file's `headers()` block is the single source of truth. (Had Vercel won, the fix
+  would have been to move the same list into a `vercel.json` `headers` block.)
+
+**Verified live 2026-08-13:** all 8 headers serve on allsport.nz with the exact values
+`buildSecurityHeaders()` produces.
+
+**NOT verified end-to-end: the `no-store` forwarding on auth-cookie responses.** See
+the P1 in TODOS.md. `curl https://allsport.nz/auth/callback` returns
+`cache-control: public` and that is CORRECT — with no `?code=` the route skips the
+Supabase block entirely, sets no cookies, and redirects to `/login?error=auth`, so
+there is no session token in that response. Only a real OAuth code exchange exercises
+the fixed path. **Do not read that curl output as a regression.**
 
 ### Auth cookies — three traps
 1. **`@supabase/ssr`'s `setAll` takes a SECOND argument** (`headers`) carrying
