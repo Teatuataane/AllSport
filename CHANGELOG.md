@@ -2,6 +2,22 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.5.5.0] - 2026-08-13
+
+### Fixed
+- **A page that logged you in could be stored by a shared cache.** Sign-in responses were marked publicly cacheable, so in principle a cache sitting between you and the site could hold one player's logged-in session and hand it to somebody else. Those responses are now marked never-store, which is what Supabase intended all along.
+- **Your login is now marked HTTPS-only.** The session cookie never carried the flag that stops a browser sending it over an insecure connection.
+- **A sign-in link could be crafted to bounce you somewhere else.** The "where to go after login" part of the address is now checked, so it can only ever send you to a page on AllSport. Previously a link could be written that looked like allsport.nz but landed you on another site with the login screen still showing.
+
+### Added
+- **The site now tells your browser exactly which other sites it is allowed to talk to** — AllSport itself, our database, and Google Fonts, and nothing else. If anything ever got injected into a page, it has nowhere to send your data.
+- **AllSport can no longer be embedded inside another site's page.** This is what stops a copycat page framing the live scoring screen and collecting taps meant for us.
+- **Camera, microphone and location are switched off at the browser level.** The app never asks for them, and now it cannot.
+
+### Changed
+- Pages are no longer served with a header inviting any other website to read them.
+- Twenty-seven tests now cover the security settings above, because a security setting is the kind of thing that breaks silently: remove it and nothing looks wrong.
+
 ## [0.5.4.0] - 2026-08-07
 
 ### Added
