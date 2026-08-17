@@ -2,6 +2,21 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.5.6.0] - 2026-08-16
+
+### Fixed
+- **A player could make themselves a kaiwhakawā.** Nothing stopped an ordinary account from granting itself the judge role, which carries the power to edit or delete anybody's scores, void sessions, and see every player's koha donations and who voted for what. Only Tāne was ever meant to have it. The role is now locked, and the only way to grant it is still by hand in the database.
+- **A player could enter scores into games that had already finished.** You could add or change a score in a session from weeks ago, including sessions you never turned up to, and set your own points total directly. Scores can now only be entered while a session is actually running, points are worked out by the server and never accepted from a phone, and only a kaiwhakawā can add a guest player. Judges keep the ability to correct a score after a session has closed, because that is a real part of the job.
+- Your score itself is still something you type in, and that is on purpose: the sport already requires a result to be filmed or witnessed. What changed is that a score can no longer be quietly rewritten later.
+
+### Added
+- **A safe public roster.** The leaderboard, the game report and the live session all need to show other players' names and divisions. They now read a roster that contains only that, and no contact details at all. This is the groundwork for the next release, which closes off the rest.
+- **Your "show my full name" choice now actually does something.** You are asked at registration whether your legal name should appear on public leaderboards, and it defaults to no. That answer was never checked, so full names were readable regardless. It is now enforced where it should have been all along, in the database.
+
+### Changed
+- **Your exact date of birth no longer leaves the database.** The Junior age chips and the U10/U12/U14/U16 badges need an age bracket, not a birthday, so the bracket is now worked out server-side and only the bracket is sent.
+- One small consequence of that: a player who has turned 17 but is still listed in Juniors no longer gets a U16 badge. Previously the badge had no upper limit, so any age from 14 up showed as U16.
+
 ## [0.5.5.0] - 2026-08-13
 
 ### Fixed
