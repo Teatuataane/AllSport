@@ -68,8 +68,12 @@ export default function GameReviewPage() {
       const playerIds = [...new Set(results.map(r => r.player_id).filter(Boolean))] as string[]
       const playerMap: Record<string, PlayerRow> = {}
       if (playerIds.length > 0) {
+        // players_public: any logged-in player can open a game report, so this
+        // resolves other players' names through the safe roster view. Note
+        // full_name comes back NULL unless that player opted into showing it,
+        // which is why display_name is coalesced in the view and never blank.
         const { data: players } = await supabase
-          .from('players')
+          .from('players_public')
           .select('id, display_name, username, full_name, division')
           .in('id', playerIds)
         for (const p of (players as PlayerRow[]) ?? []) playerMap[p.id] = p

@@ -275,7 +275,9 @@ function DashboardInner() {
         fetchAll<RatingSessionRow>((from, to) =>
           supabase.from('sessions').select('id, session_date').order('id').range(from, to)),
         fetchAll<RatingPlayerRow>((from, to) =>
-          supabase.from('players').select('id, division').order('id').range(from, to)),
+          // players_public: this reads the WHOLE roster to rank the player
+          // against their division pool, which the base table no longer allows.
+          supabase.from('players_public').select('id, division').order('id').range(from, to)),
       ])
       setRatingData({ results, events, sessions, players })
     }

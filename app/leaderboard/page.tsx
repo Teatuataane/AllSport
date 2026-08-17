@@ -297,7 +297,9 @@ export default function Leaderboard() {
         fetchAll<RatingSessionRow>((from, to) =>
           supabase.from('sessions').select('id, session_date').order('id').range(from, to)),
         fetchAll<RatingPlayerRow>((from, to) =>
-          supabase.from('players').select('id, division').order('id').range(from, to)),
+          // players_public, not players: the base table is own-row/child/judge
+          // only. This page is public, so it must read the safe roster view.
+          supabase.from('players_public').select('id, division').order('id').range(from, to)),
       ])
       setStatsData({ results, events, sessions, players })
     }
