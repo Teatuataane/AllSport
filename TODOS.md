@@ -2,6 +2,7 @@
 
 ## ✅ Done
 
+- **Security headers confirmed live in production** (v0.5.5.0, verified 2026-08-13). All 8 headers serve on allsport.nz. The open question was ACAO: Vercel's static-asset layer sets `Access-Control-Allow-Origin: *` on prerendered HTML, so it was unknown whether Next's `headers()` would override it. **It does** — prod returns `access-control-allow-origin: https://allsport.nz`. No `vercel.json` fallback needed; `lib/securityHeaders.ts` stays the single source of truth. CSP verified enforcing (all 12 directives present, `frame-ancestors 'none'` + `X-Frame-Options: DENY` both live).
 - Domain rename (June 2026): Relative Strength → Calisthenics, Muscular Endurance → Anaerobic Endurance, Flexibility & Mobility → Flexibility, Speed & Agility → Speed, Co-ordination → Coordination. New order: Maximal Strength / Calisthenics / Power / Speed / Anaerobic Endurance / Aerobic Endurance / Flexibility / Body Awareness / Coordination / Aim & Precision. Updated lib/eventData.ts, all app pages, and DB migration 20260602_rename_domains.sql
 - Event selector in scoring setup now derived from eventData.ts — names always in sync, no more hardcoded DOMAINS array
 - `score` inputMode added for Golf and Disc Golf (stroke count for 4 holes, lower is better)
@@ -92,12 +93,12 @@
 
 ## P1 — Do Next
 
-### Confirm the security headers actually land in production
-**What:** after v0.5.5.0 deploys, run `curl -sSI https://allsport.nz/dashboard | grep -iE "access-control|content-security|x-frame"`. Expect `Access-Control-Allow-Origin: https://allsport.nz` (NOT `*`), a `Content-Security-Policy`, and `X-Frame-Options: DENY`.
-**Why it matters:** eight of the nine headers come from Next's `headers()` and are already verified locally. The ACAO one is different: Vercel's own static-asset layer sets `Access-Control-Allow-Origin: *` on prerendered HTML, and whether Next's value overrides it can only be proven against the deployed site. If Vercel wins, move the same list from `lib/securityHeaders.ts` into a `vercel.json` `headers` block — the values don't change, only where they're declared.
-**Also worth watching:** `secure: true` on the auth cookie keys off `NODE_ENV`, so a local production build served over http cannot log in. That is expected, not a bug.
-**Noticed:** /ship v0.5.5.0, 2026-08-13
-**Effort:** S (one curl)
+### Confirm no-store actually reaches a real auth-cookie response
+**What:** sign in with Google in an incognito window with DevTools → Network open, find the `/auth/callback` 307, and check its Response Headers say `cache-control: private, no-cache, no-store, must-revalidate, max-age=0`.
+**Why it matters:** this is the one change in v0.5.5.0 never demonstrated end-to-end. It was the most serious finding of the pass — prod was serving the session-setting redirect as `cache-control: public`, which lets a shared cache store one player's session token. The fix (forwarding the second `headers` argument of `@supabase/ssr`'s `setAll`) rests on code reading and the library contract, not a production measurement.
+**Why curl can't settle it:** `curl -sSI https://allsport.nz/auth/callback` returns `cache-control: public`, and that is CORRECT, not a regression. With no `?code=` param the route skips the whole Supabase block, sets no cookies, and just redirects to `/login?error=auth` — there is no session token in that response to protect. Only a real OAuth code exchange exercises the fixed path. Don't mistake that curl output for a failure.
+**Noticed:** /ship v0.5.5.0 follow-up, 2026-08-13
+**Effort:** S (one sign-in with DevTools open)
 
 ### Consider moving Supabase auth off document.cookie so httpOnly becomes possible
 **What:** the session cookie is deliberately NOT `httpOnly`, because `@supabase/ssr`'s browser client reads the token out of `document.cookie` and every client component in the app uses it. Setting the flag today signs everybody out. Making it possible means reading auth server-side and passing the session down, rather than a config tweak.
