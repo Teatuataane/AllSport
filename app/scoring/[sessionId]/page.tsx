@@ -57,7 +57,7 @@ type Result = {
 // date_of_birth: the live session only ever needs the Junior age chips and the
 // age-group badges, and exact birthdays for 8 minors do not belong in a payload
 // any logged-in player can fetch.
-type PlayerInfo = { division: string; age_years?: number | null; age_group?: string | null }
+type PlayerInfo = { division: string; age_years?: number | null; age_group?: string | null; show_division?: boolean }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -1363,6 +1363,10 @@ function LeaderboardTab({
         const subRows = ranked.filter(r => playerInfoMap[r.playerId]?.division === key)
         subRows.sort((a, b) => a.totalPlacement - b.totalPlacement)
         subRows.forEach((r, _, arr) => {
+          // Ranking still happens for everyone — only the visible "1st Masters"
+          // badge is withheld from players who turned show_division off. The
+          // pool itself cannot be opted out of without breaking the standings.
+          if (playerInfoMap[r.playerId]?.show_division === false) return
           r.subDivision = label
           r.subDivisionRank = 1 + arr.filter(x => x.totalPlacement < r.totalPlacement).length
         })
@@ -2153,7 +2157,7 @@ export default function SessionPage() {
     if (results.length === 0) return
     const ids = [...new Set(results.map(r => r.player_id).filter(Boolean))] as string[]
     if (ids.length === 0) return
-    supabase.from('players_public').select('id, division, age_years, age_group').in('id', ids).then(({ data }) => {
+    supabase.from('players_public').select('id, division, age_years, age_group, show_division').in('id', ids).then(({ data }) => {
       if (!data) return
       const map: Record<string, PlayerInfo> = {}
       data.forEach(p => {
@@ -2161,6 +2165,7 @@ export default function SessionPage() {
           division: p.division ?? '',
           age_years: p.age_years ?? null,
           age_group: p.age_group ?? null,
+          show_division: p.show_division !== false,
         }
       })
       setPlayerInfoMap(map)
