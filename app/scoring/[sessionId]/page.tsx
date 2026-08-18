@@ -56,8 +56,22 @@ type Result = {
 // Age arrives pre-derived from the players_public view rather than as a raw
 // date_of_birth: the live session only ever needs the Junior age chips and the
 // age-group badges, and exact birthdays for 8 minors do not belong in a payload
-// any logged-in player can fetch.
+// any logged-in player can fetch. The view exposes a single `age` integer, so
+// the U10/U12/U14/U16 bracket is derived from it here.
 type PlayerInfo = { division: string; age_years?: number | null; age_group?: string | null }
+
+// Brackets per CLAUDE.md "Junior age-group badges": U10 (0-9), U12 (10-11),
+// U14 (12-13), U16 (14-16). NULL past 16 and for a null age, both of which mean
+// "no badge" — a junior with no recorded date of birth still appears in the
+// section, they just carry no age-group label.
+function ageGroupFromAge(age: number | null | undefined): string | null {
+  if (age == null) return null
+  if (age < 10) return 'U10'
+  if (age < 12) return 'U12'
+  if (age < 14) return 'U14'
+  if (age < 17) return 'U16'
+  return null
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -1369,12 +1383,12 @@ function LeaderboardTab({
       }
     }
     if (!ageFilter && pool === 'juniors') {
-      // The bracket is now computed once in the players_public view (U10 0-9,
-      // U12 10-11, U14 12-13, U16 14-16) instead of here. One behaviour change
-      // that follows: the old local helper returned 'U16' for ANY age from 14
-      // up, so a player who turned 17 but is still flagged Juniors used to get a
-      // U16 badge. The view returns NULL past 16, matching the documented
-      // brackets, so they now get no badge, same as a null-DOB junior.
+      // Bracket comes from ageGroupFromAge() at the top of this file, fed by the
+      // view's `age` integer. One behaviour change from the pre-v0.5.6.0 code:
+      // the old local helper returned 'U16' for ANY age from 14 up, so a player
+      // who turned 17 but is still flagged Juniors used to get a U16 badge. It
+      // now returns null past 16, matching the documented brackets, so they get
+      // no badge, same as a junior with no recorded date of birth.
       for (const group of ['U10', 'U12', 'U14', 'U16']) {
         const groupRows = ranked.filter(r => (playerInfoMap[r.playerId]?.age_group ?? null) === group)
         groupRows.sort((a, b) => a.totalPlacement - b.totalPlacement)
@@ -2153,14 +2167,14 @@ export default function SessionPage() {
     if (results.length === 0) return
     const ids = [...new Set(results.map(r => r.player_id).filter(Boolean))] as string[]
     if (ids.length === 0) return
-    supabase.from('players_public').select('id, division, age_years, age_group').in('id', ids).then(({ data }) => {
+    supabase.from('players_public').select('id, division, age').in('id', ids).then(({ data }) => {
       if (!data) return
       const map: Record<string, PlayerInfo> = {}
       data.forEach(p => {
         map[p.id] = {
           division: p.division ?? '',
-          age_years: p.age_years ?? null,
-          age_group: p.age_group ?? null,
+          age_years: p.age ?? null,
+          age_group: ageGroupFromAge(p.age),
         }
       })
       setPlayerInfoMap(map)
@@ -2170,11 +2184,13 @@ export default function SessionPage() {
   // ── Load ALL registered players for judge dropdown ─────────────────────────
   useEffect(() => {
     if (!isJudge) return
-    supabase.from('players_public').select('id, display_name, username, full_name').order('display_name', { ascending: true }).then(({ data }) => {
+    supabase.from('players_public').select('id, display_name, username, name').order('display_name', { ascending: true }).then(({ data }) => {
       if (!data) return
       setSessionPlayers(data.map(p => ({
         id: p.id,
-        name: (p.display_name || p.username || p.full_name || 'Unknown') as string,
+        // `name` is the view's own coalesce of display_name -> username, so it
+        // is never blank and never leaks a legal name.
+        name: (p.display_name || p.username || p.name || 'Unknown') as string,
       })))
     })
   }, [isJudge])
