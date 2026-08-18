@@ -602,7 +602,8 @@ update players set role = 'judge' where id = '[uuid]';
 | Login | /login | Complete | Email + Google OAuth |
 | Dashboard | /dashboard | Complete | Bento grid: Judge card (judge-only), Vote card (when active), Player Profile card, Colours card (points history on click), Personal Bests card, My Events card (segmented coverage bar + Top Domain/Event percentiles, opens My Events modal — session 24 redesign of the former "My 100" card), Join a Game card (next-session countdown when idle) |
 | Judge Panel | /judge | Complete | Players tab opens with an **"Approaching a colour"** watchlist (sessions-away). Dedicated page — JudgeCard moved here. Create/end/void sessions, QR code, history, real-time player count, Event Votes panel (Kōwhiringa Tūāhuatanga). Judge bento card on dashboard links here. |
-| Player Profile | /profile | Complete | Icon picker (20 sport emojis), username/display name editing, leaderboard display prefs, family member management (add/remove), active profile switcher (localStorage) |
+| Player Profile | /profile | Complete | Icon picker (20 sport emojis), username/display name editing, leaderboard display prefs (enforced in SQL — see Privacy policy below), family member management (add/remove), active profile switcher (localStorage) |
+| Privacy Policy | /privacy | Complete | Privacy Act 2020 policy — per-field what/why/who tables, wellbeing + tamariki + guest sections, named third parties, cookie list, retention, rights. Linked from Footer and registration step 3 |
 | Scoring Setup | /scoring | Complete | Select 10 events, editable start time, create session |
 | Live Session | /scoring/[sessionId] | Complete | Per-division leaderboard tabs, Kaiwhakawā mode (player picker + score/edit/delete for any player), difficulty tier selector, sport W/D/L display, missing scores = last place, post-game popup on session end |
 | Personal Bests | /prs | Complete | Collapsible domain sections (collapsed by default, `DomainIcon` + `n/total` PB count + chevron per domain); expanded domain reveals event rows each with a 36px `EventIcon` (dimmed when no result); PR per event, expandable per-event history, this season + previous seasons tabs |
@@ -826,6 +827,43 @@ RLS: own + parent (family) + judge.
 **IMPORTANT:** Always use createClient() from @/lib/supabase-browser in client components.
 
 ---
+
+## Privacy policy + the display toggles (August 2026 session 30) — v0.5.8.0
+
+`/privacy` is the Privacy Act 2020 policy, written against what the code actually does
+rather than a template. Audit findings that shaped it, and are still true:
+
+- **No analytics, tracking pixels, error reporting or data broker exists in the bundle.**
+  Checked against `package.json` and every `fetch`/external URL. That is why the page can
+  claim it flatly. Re-check before adding any dependency that phones home.
+- **Google Fonts leaks every visitor's IP to Google** on page load, logged out included
+  (`app/layout.tsx` `<link>` to fonts.googleapis.com). Disclosed in the policy as a known
+  leak. Fix is `next/font/google`, which self-hosts and removes the third party. STILL OPEN.
+- **The database is in Sydney** (AWS `ap-southeast-2`, from the pooler URL), so the policy
+  names the region rather than saying "overseas".
+- **No payment processor exists** — koha is bank transfer recorded by hand, so no card data
+  is collected anywhere. Keep it that way or the policy needs rewriting.
+- Contact addresses are role aliases (`privacy@` / `kiaora@allsport.nz`), forwarded to Tāne
+  via ImprovMX (MX + SPF at OnlyDomains). Personal Gmail is no longer on any public page.
+
+### The four display toggles, and what each actually does now
+
+| Toggle | Enforcement |
+|---|---|
+| `show_full_name` | REAL — gated in SQL by `players_public` (20260813000002) |
+| `show_username`  | REAL — gated in SQL by `players_public` |
+| `show_division`  | REAL — flag exposed by 20260816000000; the live leaderboard drops the "1st Masters" badge. Division itself is ALWAYS exposed because it is structural (it decides the ranking pool), so this hides a label, never the pool |
+| `show_location`  | REMOVED from the UI — `players_public` never exposes city/region to anyone, so there was nothing left to gate. Column retained |
+
+**Do not "fix" show_division by masking the division column.** The leaderboard groups on it;
+masking empties the Men's / Women's / Juniors sections instead of hiding a label.
+
+### Still open from the privacy audit
+
+Self-host the fonts; no account deletion or data export in-app; full legal name required
+from everyone with no stated purpose; gender required and "Other" silently routes to the
+Men's division; `bodyweight_kg` collected by nothing (0 rows) and should be dropped; guest
+and opponent names entered by judges for people who never saw a form.
 
 ## HTTP security (August 2026 session 29) — v0.5.5.0
 

@@ -2,6 +2,18 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.5.8.0] - 2026-08-19
+
+### Added
+- **A privacy policy.** AllSport has been collecting names, birthdays, contact details and wellbeing answers since April 2026 without ever telling anyone what happens to them. `/privacy` now sets out, field by field, what we hold, why we hold it, and who can see it — with separate sections for tamariki, for guests who played without an account, and for the wellbeing check-in. Linked from the footer and from the last step of registration, where you are actually handing the details over.
+- It names the companies your information reaches (three of them), says our database sits in Sydney, and admits that loading any page tells Google your IP address because our fonts come from them. It also lists every cookie the site sets. There is one, and it only keeps you signed in.
+
+### Changed
+- **"Show division" now does something.** Turning it off hides the "1st Masters" and "1st 60+" labels next to your name on the live leaderboard. You are still ranked in your division — that part is the sport, not a setting — and the box now says so instead of implying you can opt out of it.
+- **"Show location" has been removed.** Your city and region stopped leaving the database in v0.5.6.0, so the box no longer controlled anything. A switch that does nothing is worse than no switch. Your city and region are still on your profile for us, and still go nowhere.
+- Each remaining display setting now explains in a line what it actually changes.
+- **Two proper AllSport email addresses.** Privacy questions go to privacy@allsport.nz, and partnership and koha enquiries to kiaora@allsport.nz. Both previously pointed at Tāne's personal Gmail on public pages.
+
 ## [0.5.7.0] - 2026-08-16
 
 ### Fixed
