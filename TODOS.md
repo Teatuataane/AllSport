@@ -2,6 +2,14 @@
 
 ## ✅ Done
 
+- **OWASP access-control pass closed in production** (v0.5.6.0–v0.5.7.2, applied and verified 2026-08-19). Three exploitable findings, all confirmed shut with the public anon key and no account:
+  - **Every player's contact details were readable by anyone.** `players_select_all USING (true)`, live since the April 2026 schema rebuild. One unauthenticated request returned all 27 players: 19 emails, 9 phone numbers, 25 legal names, 27 exact dates of birth, 8 of those players under 18, one with a guardian's name/email/phone. `20260813000003` replaced it with an own/child/judge policy and revoked `anon`'s grant outright. **`players` now returns `42501 permission denied`**; `players_public` still serves the roster, so the leaderboard, game report and live session are unaffected.
+  - **Any registered player could make themselves a kaiwhakawā.** `players_update_own` had no column restriction and RLS is row-level, so `PATCH {"role":"judge"}` on your own row worked; `players_insert_own` had the same gap at registration. `20260813000000` pins `role`, `is_guest`, `parent_id` and `id` with a trigger (chosen over column grants: a table-level UPDATE grant overrides column-level REVOKEs, and a column list breaks silently when a column is added later).
+  - **Any player could fabricate scores and points.** No trigger on `results`, and the insert policy constrained neither session state nor the numeric columns, so you could write into closed sessions you never attended and set `points_earned` directly — which `award_session_points` then converted into permanent lifetime colour points. `20260813000001` confines writes to an open session, preserves the server-authoritative columns from `OLD`, bounds effort credit, and limits guest rows to kaiwhakawā.
+  - **Clean:** SQL injection (no dynamic SQL anywhere in 38 migrations; PostgREST parameterises), XSS (zero sinks — no `dangerouslySetInnerHTML`/`innerHTML`/`eval`), and authentication (Supabase Auth throughout, no hand-rolled tokens, no `service_role` key in client code, and the OAuth `next` param is not an open redirect because `origin` is server-derived).
+  - **`raw_score` is still player-submitted, by design.** There is no server-side truth to check it against; the sport requires a filmed or witnessed result. What changed is that a score can no longer be rewritten after the fact.
+  - Residual findings are tracked at P1/P2/P3 below. `event_vote_responses` was among them and is now `42501` as well.
+
 - **Security headers confirmed live in production** (v0.5.5.0, verified 2026-08-13). All 8 headers serve on allsport.nz. The open question was ACAO: Vercel's static-asset layer sets `Access-Control-Allow-Origin: *` on prerendered HTML, so it was unknown whether Next's `headers()` would override it. **It does** — prod returns `access-control-allow-origin: https://allsport.nz`. No `vercel.json` fallback needed; `lib/securityHeaders.ts` stays the single source of truth. CSP verified enforcing (all 12 directives present, `frame-ancestors 'none'` + `X-Frame-Options: DENY` both live).
 - Domain rename (June 2026): Relative Strength → Calisthenics, Muscular Endurance → Anaerobic Endurance, Flexibility & Mobility → Flexibility, Speed & Agility → Speed, Co-ordination → Coordination. New order: Maximal Strength / Calisthenics / Power / Speed / Anaerobic Endurance / Aerobic Endurance / Flexibility / Body Awareness / Coordination / Aim & Precision. Updated lib/eventData.ts, all app pages, and DB migration 20260602_rename_domains.sql
 - Event selector in scoring setup now derived from eventData.ts — names always in sync, no more hardcoded DOMAINS array
@@ -93,20 +101,20 @@
 
 ## P1 — Do Next
 
-### Three parallel sessions built the same PII lockdown, and one shipped a view nobody else knew about
-**What:** `players_public` exists in production but came from none of the migrations on `main`. It was created out-of-band by the work in worktree `frontend-keys-server-proxy-bd20f8`. A third variant sits unmerged in `epic-cohen-4e2392` (`claude/user-data-privacy-audit`) with yet another shape (`full_name`, `city`, `region`, `show_division`). All three define `is_judge()` too.
-**What it cost:** v0.5.6.0 shipped client code asking for `age_years`, `age_group` and `full_name` against a live view that has `age` and `name`. Three queries returned `42703` in production — the live session's player-info map and judge roster, and the game report — so the in-game leaderboard populated no players and the game report showed no names. Fixed in v0.5.6.1 by aligning the code and the repo's migration to the view that was already live.
-**Decide before any of this moves again:** which view definition is canonical, and what happens to the two unmerged branches. The other two both still carry their own `players_public` and their own lockdown migration, so merging either one as-written will collide again. `20260813000002` is now pinned to the live shape with a comment explaining that `CREATE OR REPLACE VIEW` cannot rename or drop a column, so a shape change needs DROP + CREATE plus a sweep of every caller.
-**The actual lesson:** a database object created outside `supabase/migrations/` is invisible to every other branch. Until that view landed in the repo, `supabase db reset` produced a schema the deployed app could not run against.
+### Reconcile the two branches that still carry their own players_public
+**What:** `players_public` was built three times, from three worktrees, and twice applied straight to production without going through `supabase/migrations`. Two of those branches are still unmerged and each still carries its own view definition AND its own `is_judge()`: `frontend-keys-server-proxy-bd20f8` (its `20260819000000` age-NZ fix has since been merged to main, so its untracked copy should be deleted) and `epic-cohen-4e2392` / `claude/user-data-privacy-audit` (a variant with `city` and `region`). Merging either as-written collides again.
+**What it cost, concretely:** the view's shape changed under the deployed client twice in three days. Each time three queries started returning `42703` in production — the live session's player-info map, the kaiwhakawā roster, and the game report — so the in-game leaderboard listed nobody and the game report showed no names. It also, once, blocked `supabase db push` entirely: production's migration history held a version with no file in the repo, so the PII lockdown could not be applied until that file was committed.
+**Now settled, don't undo it:** `20260816000000` is the single definition of the view and uses DROP + CREATE, so it lands whatever shape it finds. `20260813000002` is a deliberate no-op that explains why. `CREATE OR REPLACE VIEW` can only APPEND a column — it cannot rename, reorder, retype or remove one, and it aborts the whole push if you try.
+**The actual lesson:** a database object created outside `supabase/migrations/` is invisible to every other branch, and a migration applied from an unmerged branch blocks everyone else's `db push` until its file is committed. Apply migrations from `main` only.
 **Noticed:** v0.5.6.1 hotfix, 2026-08-19
 **Effort:** M (mostly a coordination call, not code)
 
-### Vote responses are readable by anyone, with names attached
-**What:** `event_vote_responses_select` reads `player_id = auth.uid() OR is_final = TRUE OR <judge>`. The `is_final = TRUE` branch makes every submitted vote world-readable, including its `player_id`. Verified unauthenticated against prod: `curl "$URL/rest/v1/event_vote_responses?select=*" -H "apikey: $ANON_KEY"` returns **60 rows**, each pairing a player with the event they chose. Fix is to drop that branch so the policy is own-row plus judge, since the aggregate paths already exist.
-**Why it matters:** it defeats two deliberate design decisions at once. `get_vote_results()` and `get_vote_details()` were written as SECURITY DEFINER precisely so players see anonymised counts and only kaiwhakawā see names — the base table bypasses both. It also breaks the spoiler-free rule, because anyone can read the running tally before voting. Players were told the vote was anonymous.
-**Careful:** `/vote/[voteId]/results` reads the aggregate RPCs, not the table, so check whether anything still selects the table directly before tightening.
-**Noticed:** OWASP audit, 2026-08-16
-**Effort:** S (one policy, plus a grep for direct table reads)
+### search_players_by_username reads straight past the players lockdown
+**What:** it is `SECURITY DEFINER`, has no `SET search_path`, and is callable by **anon**. Verified after the lockdown landed: `curl -X POST "$URL/rest/v1/rpc/search_players_by_username" -d '{"p_query":"a"}'` with only the anon key returns 10 players. Owner rights mean it is unaffected by the RLS that now closes `players`.
+**Why it matters:** no leak today — it selects only `id`, `display_name`, `username`, all of which `players_public` exposes anyway. The problem is that it is an anon-reachable path *into the base table*, so any future edit that adds a column to its SELECT walks straight around the lockdown without anyone noticing. Revoke it from `anon` (nothing logged-out calls it; `/my-koha` is auth-gated) and pin its `search_path`.
+**Also:** `p_query` is interpolated into `ILIKE '%' || p_query || '%'`. Not SQL injection (it is a parameter), but `%` is a wildcard, so the query is a pattern.
+**Noticed:** OWASP audit, 2026-08-16; re-verified post-lockdown 2026-08-19
+**Effort:** XS
 
 ### Confirm no-store actually reaches a real auth-cookie response
 **What:** sign in with Google in an incognito window with DevTools → Network open, find the `/auth/callback` 307, and check its Response Headers say `cache-control: private, no-cache, no-store, must-revalidate, max-age=0`.
@@ -183,14 +191,14 @@
 ## P2 — Soon
 
 ### The session join code is not actually a secret
-**What:** two separate things. `sessions_select_all USING (true)` publishes every session row to anyone — verified unauthenticated, **52 of 55 sessions return their `session_code`**. And `app/dashboard/page.tsx` looks the code up with `.ilike('session_code', code)` on raw user input, so `%` is a wildcard rather than a code.
+**What:** two separate things. `sessions_select_all USING (true)` publishes every session row to anyone — re-verified unauthenticated after the players lockdown landed, **54 session codes still visible**. And `app/dashboard/page.tsx` looks the code up with `.ilike('session_code', code)` on raw user input, so `%` is a wildcard rather than a code.
 **Why it matters:** the join code reads like an access control and isn't one. Anyone can list every code that has ever existed, so "ask the kaiwhakawā for the code" protects nothing. Worth deciding what the code is *for*: if it is only a convenience for typing, that's fine, but then nothing should depend on it being unguessable.
-**Not currently exploitable via the wildcard:** `%` matches 52 rows and `.maybeSingle()` errors on multiple, so it fails rather than joining. That only holds while more than one session has a code. Switch to `.eq()` regardless.
-**Noticed:** OWASP audit, 2026-08-16
+**Not currently exploitable via the wildcard:** `%` matches every coded session and `.maybeSingle()` errors on multiple rows, so it fails rather than joining. That only holds while more than one session has a code. Switch to `.eq()` regardless.
+**Noticed:** OWASP audit, 2026-08-16; re-verified 2026-08-19
 **Effort:** S for the `.eq()`; M if you want session rows restricted, since /leaderboard and /schedule read them publicly
 
-### Pin search_path on the two remaining SECURITY DEFINER functions
-**What:** `get_wellbeing_report()` (20260714000000) and `search_players_by_username()` (20260515000000) are SECURITY DEFINER without `SET search_path = public`. Add it. `claim_colour_award`, `get_vote_results`, `get_vote_details`, `get_player_top_event` and the new `is_judge` already have it, so this is consistency more than anything.
+### Pin search_path on get_wellbeing_report
+**What:** `get_wellbeing_report()` (20260714000000) is SECURITY DEFINER without `SET search_path = public`. Add it. `claim_colour_award`, `get_vote_results`, `get_vote_details`, `get_player_top_event` and `is_judge` already have it, so this is consistency more than anything. (`search_players_by_username` has the same gap but is now tracked at P1, because it is anon-callable and reads past the players lockdown.)
 **Why it matters:** a SECURITY DEFINER function with a mutable search_path is the classic Postgres escalation shape: an attacker who can create an object in an earlier schema hijacks an unqualified reference and runs it as the owner. **Theoretical here** — `authenticated` has no CREATE on any schema in the path on Supabase — but the mitigation is one line per function and it stops the pattern being copied into the next function that matters.
 **Noticed:** OWASP audit, 2026-08-16
 **Effort:** XS
