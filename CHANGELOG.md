@@ -2,6 +2,19 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.5.7.0] - 2026-08-19
+
+### Fixed
+- **Anyone at all could read every player's contact details.** No account, no password, nothing: one request to our database returned all 27 players with 19 email addresses, 9 phone numbers, 25 legal names and everybody's exact date of birth. Eight of those players are under 18, and one of them had a parent's name, email and phone attached. This has been open since the database was rebuilt in April 2026. Your details are now visible only to you, to your parent or guardian if you are on a family account, and to a kaiwhakawā.
+- **The live session and game report show names again.** The player roster gained a column while v0.5.6.1 was being written, which left those two screens asking for names that were no longer there. Both now match the roster as it actually stands, checked against the live database rather than assumed.
+
+### Added
+- **A privacy policy, linked from the point where we ask for your details.** It says plainly what is collected, what other players can see, and what happens to a child's information.
+- **"Show my division" now actually works.** Turning it off hides your Masters or 60+ badge on the live leaderboard. You are still ranked in your pool, because the standings cannot be opted out of without changing everybody else's placings.
+
+### Changed
+- The location toggle has been removed from your profile and from registration. It offered to publish a city and region that nothing has ever displayed, so it was a promise about data we never showed.
+
 ## [0.5.6.1] - 2026-08-19
 
 ### Fixed

@@ -30,7 +30,7 @@ type ResultRow = {
   score_label: string | null
   difficulty_tier: string | null
 }
-type PlayerRow = { id: string; display_name: string | null; username: string | null; name: string | null; division: string | null }
+type PlayerRow = { id: string; display_name: string | null; username: string | null; full_name: string | null; division: string | null }
 
 type EventCell = { eventId: string; eventName: string; scoreLabel: string | null; placement: number; hasScore: boolean }
 type Standing = { playerKey: string; name: string; totalPlacement: number; rank: number; events: EventCell[] }
@@ -69,12 +69,12 @@ export default function GameReviewPage() {
       const playerMap: Record<string, PlayerRow> = {}
       if (playerIds.length > 0) {
         // players_public: any logged-in player can open a game report, so this
-        // resolves other players' names through the safe roster view. The view
-        // exposes no legal name at all; `name` is its own coalesce of
-        // display_name -> username, so it is never blank.
+        // resolves other players' names through the safe roster view. full_name
+        // comes back NULL unless that player opted into showing it, which is why
+        // display_name is coalesced in the view and is never blank.
         const { data: players } = await supabase
           .from('players_public')
-          .select('id, display_name, username, name, division')
+          .select('id, display_name, username, full_name, division')
           .in('id', playerIds)
         for (const p of (players as PlayerRow[]) ?? []) playerMap[p.id] = p
       }
@@ -198,7 +198,7 @@ function buildReport(events: EventRow[], results: ResultRow[], playerMap: Record
   const nameFor = (pid: string | null, fallback: string | null): string => {
     if (pid && playerMap[pid]) {
       const p = playerMap[pid]
-      return p.display_name || p.username || p.name || fallback || 'Unknown'
+      return p.display_name || p.username || p.full_name || fallback || 'Unknown'
     }
     return fallback || 'Guest'
   }

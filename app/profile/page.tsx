@@ -330,14 +330,13 @@ export default function ProfilePage() {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {[
-                  { key: 'show_username', label: 'Show username' },
-                  { key: 'show_full_name', label: 'Show full name' },
-                  { key: 'show_division', label: 'Show division' },
-                  { key: 'show_location', label: 'Show location' },
-                ].map(({ key, label }) => (
+                  { key: 'show_username', label: 'Show username', sub: 'Your handle next to your display name' },
+                  { key: 'show_full_name', label: 'Show full name', sub: 'Off means your legal name is never sent to other players' },
+                  { key: 'show_division', label: 'Show division', sub: 'Hides the "1st Masters" label. You are still ranked in your division' },
+                ].map(({ key, label, sub }) => (
                   <label key={key} style={{
-                    display: 'flex', alignItems: 'center', gap: '12px',
-                    cursor: 'pointer', padding: '8px 12px',
+                    display: 'flex', alignItems: 'flex-start', gap: '12px',
+                    cursor: 'pointer', padding: '10px 12px',
                     background: '#0a0a0a', borderRadius: '8px',
                     border: '1px solid #1e1e1e',
                   }}>
@@ -345,10 +344,15 @@ export default function ProfilePage() {
                       type="checkbox"
                       checked={(form as any)[key]}
                       onChange={e => setForm(f => ({ ...f, [key]: e.target.checked }))}
-                      style={{ accentColor: '#2371BB', width: '16px', height: '16px' }}
+                      style={{ accentColor: '#2371BB', width: '16px', height: '16px', marginTop: '2px', flexShrink: 0 }}
                     />
-                    <span style={{ fontSize: '13px', color: '#ccc', fontFamily: 'var(--font-body)' }}>
-                      {label}
+                    <span>
+                      <span style={{ fontSize: '13px', color: '#ccc', fontFamily: 'var(--font-body)', display: 'block' }}>
+                        {label}
+                      </span>
+                      <span style={{ fontSize: '11px', color: '#555', fontFamily: 'var(--font-body)', display: 'block', marginTop: '2px', lineHeight: 1.5 }}>
+                        {sub}
+                      </span>
                     </span>
                   </label>
                 ))}
