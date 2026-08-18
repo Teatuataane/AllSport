@@ -2,6 +2,15 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.5.6.1] - 2026-08-19
+
+### Fixed
+- **The live session showed no players, and the game report showed no names.** v0.5.6.0 asked the database for player details using column names that did not match the ones actually there, so three screens got an error back instead of a list: the in-game leaderboard, the kaiwhakawā player picker, and the full game report. The leaderboard, dashboard and My Koha were unaffected. Everything now asks for the columns that exist, and all five were checked against the live database rather than assumed.
+- **Running the database migrations would have failed part-way through.** One migration tried to redefine the player roster with different column names, which PostgreSQL refuses to do, so it would have stopped after applying the two before it. It now matches what is already there, and carries a note explaining why changing a column in it is not a one-line edit.
+
+### Changed
+- The age brackets on the Junior leaderboard (U10/U12/U14/U16) are worked out in the app again rather than in the database, because the roster the app reads provides a plain age. No visible difference.
+
 ## [0.5.6.0] - 2026-08-16
 
 ### Fixed
