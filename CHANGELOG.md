@@ -2,14 +2,27 @@
 
 All notable changes to AllSport are documented here.
 
-## [0.5.7.0] - 2026-08-16
+## [0.5.7.0] - 2026-08-19
 
 ### Fixed
 - **Anyone at all could read every player's contact details.** No account, no password, nothing: one request to our database returned all 27 players with 19 email addresses, 9 phone numbers, 25 legal names and everybody's exact date of birth. Eight of those players are under 18, and one of them had a parent's name, email and phone attached. This has been open since the database was rebuilt in April 2026. Your details are now visible only to you, to your parent or guardian if you are on a family account, and to a kaiwhakawā.
-- The leaderboard, the game report and the live session still show names and divisions exactly as before. They read those from the safe roster added in v0.5.6.0, which has never contained a single contact detail.
+- **The live session and game report show names again.** The player roster gained a column while v0.5.6.1 was being written, which left those two screens asking for names that were no longer there. Both now match the roster as it actually stands, checked against the live database rather than assumed.
+
+### Added
+- **A privacy policy, linked from the point where we ask for your details.** It says plainly what is collected, what other players can see, and what happens to a child's information.
+- **"Show my division" now actually works.** Turning it off hides your Masters or 60+ badge on the live leaderboard. You are still ranked in your pool, because the standings cannot be opted out of without changing everybody else's placings.
 
 ### Changed
-- Nothing about how the app looks or works. This release is one database change.
+- The location toggle has been removed from your profile and from registration. It offered to publish a city and region that nothing has ever displayed, so it was a promise about data we never showed.
+
+## [0.5.6.1] - 2026-08-19
+
+### Fixed
+- **The live session showed no players, and the game report showed no names.** v0.5.6.0 asked the database for player details using column names that did not match the ones actually there, so three screens got an error back instead of a list: the in-game leaderboard, the kaiwhakawā player picker, and the full game report. The leaderboard, dashboard and My Koha were unaffected. Everything now asks for the columns that exist, and all five were checked against the live database rather than assumed.
+- **Running the database migrations would have failed part-way through.** One migration tried to redefine the player roster with different column names, which PostgreSQL refuses to do, so it would have stopped after applying the two before it. It now matches what is already there, and carries a note explaining why changing a column in it is not a one-line edit.
+
+### Changed
+- The age brackets on the Junior leaderboard (U10/U12/U14/U16) are worked out in the app again rather than in the database, because the roster the app reads provides a plain age. No visible difference.
 
 ## [0.5.6.0] - 2026-08-16
 

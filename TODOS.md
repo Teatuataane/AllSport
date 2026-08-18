@@ -93,6 +93,21 @@
 
 ## P1 — Do Next
 
+### Three parallel sessions built the same PII lockdown, and one shipped a view nobody else knew about
+**What:** `players_public` exists in production but came from none of the migrations on `main`. It was created out-of-band by the work in worktree `frontend-keys-server-proxy-bd20f8`. A third variant sits unmerged in `epic-cohen-4e2392` (`claude/user-data-privacy-audit`) with yet another shape (`full_name`, `city`, `region`, `show_division`). All three define `is_judge()` too.
+**What it cost:** v0.5.6.0 shipped client code asking for `age_years`, `age_group` and `full_name` against a live view that has `age` and `name`. Three queries returned `42703` in production — the live session's player-info map and judge roster, and the game report — so the in-game leaderboard populated no players and the game report showed no names. Fixed in v0.5.6.1 by aligning the code and the repo's migration to the view that was already live.
+**Decide before any of this moves again:** which view definition is canonical, and what happens to the two unmerged branches. The other two both still carry their own `players_public` and their own lockdown migration, so merging either one as-written will collide again. `20260813000002` is now pinned to the live shape with a comment explaining that `CREATE OR REPLACE VIEW` cannot rename or drop a column, so a shape change needs DROP + CREATE plus a sweep of every caller.
+**The actual lesson:** a database object created outside `supabase/migrations/` is invisible to every other branch. Until that view landed in the repo, `supabase db reset` produced a schema the deployed app could not run against.
+**Noticed:** v0.5.6.1 hotfix, 2026-08-19
+**Effort:** M (mostly a coordination call, not code)
+
+### Vote responses are readable by anyone, with names attached
+**What:** `event_vote_responses_select` reads `player_id = auth.uid() OR is_final = TRUE OR <judge>`. The `is_final = TRUE` branch makes every submitted vote world-readable, including its `player_id`. Verified unauthenticated against prod: `curl "$URL/rest/v1/event_vote_responses?select=*" -H "apikey: $ANON_KEY"` returns **60 rows**, each pairing a player with the event they chose. Fix is to drop that branch so the policy is own-row plus judge, since the aggregate paths already exist.
+**Why it matters:** it defeats two deliberate design decisions at once. `get_vote_results()` and `get_vote_details()` were written as SECURITY DEFINER precisely so players see anonymised counts and only kaiwhakawā see names — the base table bypasses both. It also breaks the spoiler-free rule, because anyone can read the running tally before voting. Players were told the vote was anonymous.
+**Careful:** `/vote/[voteId]/results` reads the aggregate RPCs, not the table, so check whether anything still selects the table directly before tightening.
+**Noticed:** OWASP audit, 2026-08-16
+**Effort:** S (one policy, plus a grep for direct table reads)
+
 ### Confirm no-store actually reaches a real auth-cookie response
 **What:** sign in with Google in an incognito window with DevTools → Network open, find the `/auth/callback` 307, and check its Response Headers say `cache-control: private, no-cache, no-store, must-revalidate, max-age=0`.
 **Why it matters:** this is the one change in v0.5.5.0 never demonstrated end-to-end. It was the most serious finding of the pass — prod was serving the session-setting redirect as `cache-control: public`, which lets a shared cache store one player's session token. The fix (forwarding the second `headers` argument of `@supabase/ssr`'s `setAll`) rests on code reading and the library contract, not a production measurement.
@@ -167,6 +182,19 @@
 
 ## P2 — Soon
 
+### The session join code is not actually a secret
+**What:** two separate things. `sessions_select_all USING (true)` publishes every session row to anyone — verified unauthenticated, **52 of 55 sessions return their `session_code`**. And `app/dashboard/page.tsx` looks the code up with `.ilike('session_code', code)` on raw user input, so `%` is a wildcard rather than a code.
+**Why it matters:** the join code reads like an access control and isn't one. Anyone can list every code that has ever existed, so "ask the kaiwhakawā for the code" protects nothing. Worth deciding what the code is *for*: if it is only a convenience for typing, that's fine, but then nothing should depend on it being unguessable.
+**Not currently exploitable via the wildcard:** `%` matches 52 rows and `.maybeSingle()` errors on multiple, so it fails rather than joining. That only holds while more than one session has a code. Switch to `.eq()` regardless.
+**Noticed:** OWASP audit, 2026-08-16
+**Effort:** S for the `.eq()`; M if you want session rows restricted, since /leaderboard and /schedule read them publicly
+
+### Pin search_path on the two remaining SECURITY DEFINER functions
+**What:** `get_wellbeing_report()` (20260714000000) and `search_players_by_username()` (20260515000000) are SECURITY DEFINER without `SET search_path = public`. Add it. `claim_colour_award`, `get_vote_results`, `get_vote_details`, `get_player_top_event` and the new `is_judge` already have it, so this is consistency more than anything.
+**Why it matters:** a SECURITY DEFINER function with a mutable search_path is the classic Postgres escalation shape: an attacker who can create an object in an earlier schema hijacks an unqualified reference and runs it as the owner. **Theoretical here** — `authenticated` has no CREATE on any schema in the path on Supabase — but the mitigation is one line per function and it stops the pattern being copied into the next function that matters.
+**Noticed:** OWASP audit, 2026-08-16
+**Effort:** XS
+
 ### Update unit tests for new event data
 **What:** `__tests__/eventData.test.ts` has tests referencing old event slugs (30-15-test, sprint-repeats) and old getBonusTargets spec (3 targets, points 15). These now reflect the new single-task spec.
 **Where:** `__tests__/eventData.test.ts`
@@ -195,6 +223,13 @@
 ---
 
 ## P3 — Later
+
+### Drop the two orphaned bonus tables
+**What:** `bonus_completions` and `bonus_sport_opponents` still exist in prod and are still world-readable, but the bonus system was removed in May 2026 and replaced by the effort system. Neither table is referenced anywhere in `app/`, `components/` or `lib/`. Verified unauthenticated: both return HTTP 200 (`bonus_sport_opponents` 0 rows, `bonus_completions` 1 leftover row). Drop both, or at minimum revoke anon.
+**Why it matters:** mostly tidiness, but `bso_insert_own` is `FOR INSERT WITH CHECK (true)` — no `auth.uid()` check at all — so on Supabase's default grants an unauthenticated caller can write unbounded rows into a table nothing reads. That is junk data and storage growth rather than a data leak, but it is the only write path in the schema with no identity check whatsoever.
+**Careful:** confirm nothing in an unshipped branch still writes them before dropping, and take the usual archive-then-drop route if the single `bonus_completions` row is worth keeping.
+**Noticed:** OWASP audit, 2026-08-16
+**Effort:** XS
 
 ### Leaderboard icons
 **What:** Add player icon emoji next to name on /leaderboard and /scoring/[sessionId].

@@ -56,7 +56,9 @@ type Result = {
 // Age arrives pre-derived from the players_public view rather than as a raw
 // date_of_birth: the live session only ever needs the Junior age chips and the
 // age-group badges, and exact birthdays for 8 minors do not belong in a payload
-// any logged-in player can fetch.
+// any logged-in player can fetch. The view supplies age_group ready-made, so
+// there is no bracket helper here — see the note in the migration about why the
+// view's column set is not something to change casually.
 type PlayerInfo = { division: string; age_years?: number | null; age_group?: string | null; show_division?: boolean }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -1373,11 +1375,11 @@ function LeaderboardTab({
       }
     }
     if (!ageFilter && pool === 'juniors') {
-      // The bracket is now computed once in the players_public view (U10 0-9,
-      // U12 10-11, U14 12-13, U16 14-16) instead of here. One behaviour change
-      // that follows: the old local helper returned 'U16' for ANY age from 14
-      // up, so a player who turned 17 but is still flagged Juniors used to get a
-      // U16 badge. The view returns NULL past 16, matching the documented
+      // age_group comes ready-made from the players_public view (U10 0-9,
+      // U12 10-11, U14 12-13, U16 14-16). One behaviour change from the
+      // pre-v0.5.6.0 code: the old local helper returned 'U16' for ANY age from
+      // 14 up, so a player who turned 17 but is still flagged Juniors used to
+      // get a U16 badge. The view returns NULL past 16, matching the documented
       // brackets, so they now get no badge, same as a null-DOB junior.
       for (const group of ['U10', 'U12', 'U14', 'U16']) {
         const groupRows = ranked.filter(r => (playerInfoMap[r.playerId]?.age_group ?? null) === group)
@@ -2179,6 +2181,8 @@ export default function SessionPage() {
       if (!data) return
       setSessionPlayers(data.map(p => ({
         id: p.id,
+        // display_name is coalesced inside the view so it is never blank;
+        // full_name is NULL unless that player opted into showing it.
         name: (p.display_name || p.username || p.full_name || 'Unknown') as string,
       })))
     })

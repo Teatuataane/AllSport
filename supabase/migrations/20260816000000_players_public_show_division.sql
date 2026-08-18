@@ -16,11 +16,30 @@
 -- So: keep division always readable, and expose the flag so the client can drop
 -- that badge. The preference becomes real without breaking the standings.
 --
--- CREATE OR REPLACE VIEW can only APPEND columns, so the existing ten are
--- restated verbatim from 20260813000002 and show_division is added last.
--- Idempotent — safe to re-run.
+-- ── Why DROP + CREATE rather than CREATE OR REPLACE ─────────────────────────
+-- CREATE OR REPLACE VIEW can only APPEND columns. It cannot rename, reorder,
+-- retype or remove one, and it fails outright with "cannot change name of view
+-- column" if you try.
+--
+-- That is not hypothetical here. This view has been redefined more than once,
+-- from more than one branch, and 20260813000002 was itself rewritten to match a
+-- shape that had been applied to production out-of-band. Depending on which of
+-- those a given database has, the ten columns below may or may not line up with
+-- what is already there — and under CREATE OR REPLACE a mismatch ABORTS the
+-- whole `supabase db push`, part-way through, leaving the schema half-migrated.
+--
+-- DROP + CREATE always lands, whatever shape it finds. Nothing depends on this
+-- view in the database (no other view, no function, no policy references it —
+-- it is read only by the client), so the drop is safe and CASCADE is not needed.
+-- Idempotent: safe to re-run, and safe to run against any prior shape.
+--
+-- If you change a column here, sweep every caller in app/ first. The client and
+-- this view have already drifted apart twice, and each time it broke the live
+-- session and the game report in production.
 
-CREATE OR REPLACE VIEW public.players_public AS
+DROP VIEW IF EXISTS public.players_public;
+
+CREATE VIEW public.players_public AS
 SELECT
   p.id,
 
