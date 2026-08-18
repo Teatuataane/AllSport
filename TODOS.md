@@ -93,6 +93,14 @@
 
 ## P1 — Do Next
 
+### Three parallel sessions built the same PII lockdown, and one shipped a view nobody else knew about
+**What:** `players_public` exists in production but came from none of the migrations on `main`. It was created out-of-band by the work in worktree `frontend-keys-server-proxy-bd20f8`. A third variant sits unmerged in `epic-cohen-4e2392` (`claude/user-data-privacy-audit`) with yet another shape (`full_name`, `city`, `region`, `show_division`). All three define `is_judge()` too.
+**What it cost:** v0.5.6.0 shipped client code asking for `age_years`, `age_group` and `full_name` against a live view that has `age` and `name`. Three queries returned `42703` in production — the live session's player-info map and judge roster, and the game report — so the in-game leaderboard populated no players and the game report showed no names. Fixed in v0.5.6.1 by aligning the code and the repo's migration to the view that was already live.
+**Decide before any of this moves again:** which view definition is canonical, and what happens to the two unmerged branches. The other two both still carry their own `players_public` and their own lockdown migration, so merging either one as-written will collide again. `20260813000002` is now pinned to the live shape with a comment explaining that `CREATE OR REPLACE VIEW` cannot rename or drop a column, so a shape change needs DROP + CREATE plus a sweep of every caller.
+**The actual lesson:** a database object created outside `supabase/migrations/` is invisible to every other branch. Until that view landed in the repo, `supabase db reset` produced a schema the deployed app could not run against.
+**Noticed:** v0.5.6.1 hotfix, 2026-08-19
+**Effort:** M (mostly a coordination call, not code)
+
 ### Vote responses are readable by anyone, with names attached
 **What:** `event_vote_responses_select` reads `player_id = auth.uid() OR is_final = TRUE OR <judge>`. The `is_final = TRUE` branch makes every submitted vote world-readable, including its `player_id`. Verified unauthenticated against prod: `curl "$URL/rest/v1/event_vote_responses?select=*" -H "apikey: $ANON_KEY"` returns **60 rows**, each pairing a player with the event they chose. Fix is to drop that branch so the policy is own-row plus judge, since the aggregate paths already exist.
 **Why it matters:** it defeats two deliberate design decisions at once. `get_vote_results()` and `get_vote_details()` were written as SECURITY DEFINER precisely so players see anonymised counts and only kaiwhakawā see names — the base table bypasses both. It also breaks the spoiler-free rule, because anyone can read the running tally before voting. Players were told the vote was anonymous.
