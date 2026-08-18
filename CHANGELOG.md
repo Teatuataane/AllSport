@@ -2,6 +2,15 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.5.7.0] - 2026-08-16
+
+### Fixed
+- **Anyone at all could read every player's contact details.** No account, no password, nothing: one request to our database returned all 27 players with 19 email addresses, 9 phone numbers, 25 legal names and everybody's exact date of birth. Eight of those players are under 18, and one of them had a parent's name, email and phone attached. This has been open since the database was rebuilt in April 2026. Your details are now visible only to you, to your parent or guardian if you are on a family account, and to a kaiwhakawā.
+- The leaderboard, the game report and the live session still show names and divisions exactly as before. They read those from the safe roster added in v0.5.6.0, which has never contained a single contact detail.
+
+### Changed
+- Nothing about how the app looks or works. This release is one database change.
+
 ## [0.5.6.0] - 2026-08-16
 
 ### Fixed
