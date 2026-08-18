@@ -2,6 +2,11 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.5.7.2] - 2026-08-19
+
+### Fixed
+- **A database change that was live had never been written down.** The fix that works out ages in New Zealand time rather than UTC was applied to the live database but its file was missing from the project, which blocked every further database update. On a birthday morning UTC is still on yesterday, so a child could read a year younger and the age-group badge could go to the wrong player. The fix itself has been live since 19 August; this just records it where it belongs, so the project and the database agree again.
+
 ## [0.5.7.1] - 2026-08-19
 
 ### Fixed
