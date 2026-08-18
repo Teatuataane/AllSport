@@ -98,9 +98,14 @@ export default function Footer() {
           <p style={{ color: '#555555', fontSize: '13px' }}>
             © {new Date().getFullYear()} AllSport. Mahi. Mauri. Mana.
           </p>
-          <p style={{ color: '#555555', fontSize: '13px' }}>
-            Built in Ōtautahi, Aotearoa
-          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+            <Link href="/privacy" style={{ color: '#555555', fontSize: '13px' }} className="footer-link">
+              Privacy
+            </Link>
+            <p style={{ color: '#555555', fontSize: '13px' }}>
+              Built in Ōtautahi, Aotearoa
+            </p>
+          </div>
         </div>
       </div>
     </footer>

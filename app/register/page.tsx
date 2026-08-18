@@ -400,8 +400,7 @@ function RegisterInner() {
             {[
               { field: 'show_username', label: 'Show username / handle', sub: 'Recommended — lets people know who you are without revealing personal details' },
               { field: 'show_full_name', label: 'Show full name', sub: 'Your legal name will be visible on public leaderboards' },
-              { field: 'show_division', label: 'Show division', sub: 'Your division shown next to your name' },
-              { field: 'show_location', label: 'Show location', sub: 'Your city and region will be visible' },
+              { field: 'show_division', label: 'Show division', sub: 'Shows labels like "1st Masters" next to your name. You are ranked in your division either way' },
             ].map(({ field, label, sub }) => (
               <label key={field} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', cursor: 'pointer', marginBottom: '16px' }}>
                 <input
@@ -421,10 +420,18 @@ function RegisterInner() {
           <div style={{ background: 'rgba(77,178,110,0.08)', border: '1px solid var(--green)', borderRadius: '10px', padding: '12px 16px', fontSize: '13px', color: 'var(--green)' }}>
             You&apos;ll appear as: <strong>{form.show_full_name ? form.full_name : form.username || 'your username'}</strong>
             {form.show_division && division && <span style={{ color: 'var(--grey)' }}> · {division}</span>}
-            {form.show_location && form.city && <span style={{ color: 'var(--grey)' }}> · {form.city}</span>}
           </div>
 
           {error && <p style={{ color: 'var(--red)', fontSize: '13px', margin: 0 }}>{error}</p>}
+
+          <p style={{ fontSize: '12px', color: '#666', lineHeight: 1.7, margin: 0 }}>
+            Your scores and display name are public on leaderboards. Your email, phone and date of birth
+            are not shown anywhere on the site. Read the{' '}
+            <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--grey-light)', textDecoration: 'underline' }}>
+              privacy policy
+            </a>{' '}
+            for what we collect and why.
+          </p>
 
           <div style={{ display: 'flex', gap: '8px' }}>
             <button onClick={() => setStep(2)} style={backBtnStyle}>← Back</button>
