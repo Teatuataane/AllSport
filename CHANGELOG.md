@@ -2,6 +2,11 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.5.7.1] - 2026-08-19
+
+### Fixed
+- **The database update would have stopped half-way through, leaving the privacy fix unapplied.** One migration still tried to redefine the player roster with column names that no longer match the live one, which PostgreSQL refuses outright. It would have applied the two protections before it, then failed, then never reached the change that actually closes off player contact details. Only one migration defines that roster now, and it rebuilds it from scratch rather than assuming what it will find.
+
 ## [0.5.7.0] - 2026-08-19
 
 ### Fixed
