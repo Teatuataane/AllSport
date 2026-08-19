@@ -262,15 +262,31 @@ export default function Leaderboard() {
   // Colours are lifetime and come from player_totals below.
   useEffect(() => {
     const supabase = createClient()
-    supabase
-      .from('rankings')
-      .select('id, player_id, total_points, total_sessions, average_placement, division, players(display_name, username)')
-      .eq('season_year', new Date().getFullYear())
-      .order('total_points', { ascending: false })
-      .then(({ data }) => {
-        setRankings(data || [])
-        setLoading(false)
-      })
+    const load = async () => {
+      const { data: rows } = await supabase
+        .from('rankings')
+        .select('id, player_id, total_points, total_sessions, average_placement, division')
+        .eq('season_year', new Date().getFullYear())
+        .order('total_points', { ascending: false })
+
+      // Names come from players_public, NOT an embedded players(...) join.
+      // 20260813000003 revoked read on `players` for anon, and PostgREST fails
+      // the WHOLE query when an embedded table is unreadable — it does not
+      // degrade to null names. That took the public leaderboard down entirely
+      // ("No rankings yet") until this was fixed:
+      //   rankings?select=...,players(display_name,username) -> 401 42501
+      //   rankings?select=...                                -> 200
+      // Any future embed on `players` will do the same. Go through the view.
+      const ids = [...new Set((rows ?? []).map(r => r.player_id).filter(Boolean))]
+      const { data: people } = ids.length
+        ? await supabase.from('players_public').select('id, display_name, username').in('id', ids)
+        : { data: [] }
+
+      const byId = new Map((people ?? []).map(p => [p.id, p]))
+      setRankings((rows ?? []).map(r => ({ ...r, players: byId.get(r.player_id) ?? null })) as RankingRow[])
+      setLoading(false)
+    }
+    load()
   }, [])
 
   // Lifetime colours. Every player who has never crossed a threshold sits on
