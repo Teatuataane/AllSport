@@ -2,6 +2,14 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.5.7.3] - 2026-08-19
+
+### Fixed
+- **The public leaderboard would have shown "Anonymous" for every player.** The board fetched player names through a shortcut that reads the full player table, which is exactly what the next database change closes off. Once that change is applied, the shortcut returns nothing, and because a permission denial arrives as an empty answer rather than an error, nothing would have logged, thrown, or looked broken during testing — the board would simply have shown a list of strangers. The board now reads names from the safe roster like every other screen. This had to land before the lockdown, not after.
+
+### Changed
+- **Privacy questions now go to privacy@allsport.nz, and partnership and koha enquiries to kiaora@allsport.nz.** Both pages previously published Tāne's personal email address.
+
 ## [0.5.7.2] - 2026-08-19
 
 ### Fixed
