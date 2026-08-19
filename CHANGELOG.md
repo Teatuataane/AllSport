@@ -2,6 +2,16 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.5.8.0] - 2026-08-20
+
+### Fixed
+- **Games did not end when the clock ran out, so nobody got their points.** A session was meant to lock itself after 100 minutes, but the only thing that ever closed it was the live-session screen, and only when a kaiwhakawā had that screen open at the exact minute the clock hit zero. Any other time the game stayed "running" indefinitely. That matters because placements and points are only worked out when a game closes: the scores were saved, they just never became a result. The Tuesday 19 August game sat open overnight with nobody placed. Ending is now handled by the database, and any game that has run out of time is closed the moment anyone opens the app.
+- **A stranded game from before this release is closed and scored automatically** when the update is applied, so no session is left without its points.
+- Players were shown "Session Ended" while the game was still open in the database. The screen and the database now agree.
+
+### Changed
+- The player search used when nominating who referred you is now available only to signed-in players, and reads from the same safe roster as everything else, so it can never reach a private detail. Searching for a name also behaves as a plain search again: typing `%` looks for the `%` character instead of matching everybody.
+
 ## [0.5.7.2] - 2026-08-19
 
 ### Fixed
