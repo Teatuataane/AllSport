@@ -2,13 +2,18 @@
 
 All notable changes to AllSport are documented here.
 
-## [0.5.7.2] - 2026-08-19
+## [0.5.7.3] - 2026-08-19
 
 ### Fixed
 - **The public leaderboard would have shown "Anonymous" for every player.** The board fetched player names through a shortcut that reads the full player table, which is exactly what the next database change closes off. Once that change is applied, the shortcut returns nothing, and because a permission denial arrives as an empty answer rather than an error, nothing would have logged, thrown, or looked broken during testing — the board would simply have shown a list of strangers. The board now reads names from the safe roster like every other screen. This had to land before the lockdown, not after.
 
 ### Changed
 - **Privacy questions now go to privacy@allsport.nz, and partnership and koha enquiries to kiaora@allsport.nz.** Both pages previously published Tāne's personal email address.
+
+## [0.5.7.2] - 2026-08-19
+
+### Fixed
+- **A database change that was live had never been written down.** The fix that works out ages in New Zealand time rather than UTC was applied to the live database but its file was missing from the project, which blocked every further database update. On a birthday morning UTC is still on yesterday, so a child could read a year younger and the age-group badge could go to the wrong player. The fix itself has been live since 19 August; this just records it where it belongs, so the project and the database agree again.
 
 ## [0.5.7.1] - 2026-08-19
 
