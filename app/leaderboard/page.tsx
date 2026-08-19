@@ -312,6 +312,14 @@ export default function Leaderboard() {
     let channel: ReturnType<typeof supabase.channel> | null = null
 
     async function loadActiveSession() {
+      // Heal any session whose 100 minutes elapsed while nobody had the app
+      // open. Until this existed, a game that nobody closed stayed "active"
+      // forever and awarded nobody any points, because award_session_points
+      // only fires on the is_active true -> false transition. Derived from
+      // started_at server-side, so this cannot end a game that is still running.
+      // Awaited so the banner below reflects the post-close truth.
+      await supabase.rpc('close_expired_sessions')
+
       const { data: sessions } = await supabase
         .from('sessions')
         .select('id, session_date, started_at, location, is_championship')
