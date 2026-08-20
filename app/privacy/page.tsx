@@ -10,7 +10,10 @@ export const metadata = {
 // Last substantive review of this page. Update whenever the content changes.
 const LAST_UPDATED = '13 August 2026'
 
-const CONTACT_EMAIL = 'tane.clement@gmail.com'
+// Role address, not a personal one: this is published on a public page, it is
+// the Privacy Act contact of record, and it has to outlive whoever is currently
+// answering it. Forwards to Tane via ImprovMX (MX + SPF on allsport.nz).
+const CONTACT_EMAIL = 'privacy@allsport.nz'
 
 type Row = { what: string; why: string; who: string }
 

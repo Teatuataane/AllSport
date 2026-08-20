@@ -262,15 +262,34 @@ export default function Leaderboard() {
   // Colours are lifetime and come from player_totals below.
   useEffect(() => {
     const supabase = createClient()
-    supabase
-      .from('rankings')
-      .select('id, player_id, total_points, total_sessions, average_placement, division, players(display_name, username)')
-      .eq('season_year', new Date().getFullYear())
-      .order('total_points', { ascending: false })
-      .then(({ data }) => {
-        setRankings(data || [])
-        setLoading(false)
-      })
+    // Names come from a SECOND query against players_public, not from a
+    // PostgREST embed. The embed that used to be here (`players(display_name,
+    // username)`) reads the players BASE table, which 20260813000003 closes to
+    // everyone but your own row, your children and kaiwhakawā.
+    //
+    // /leaderboard is public, so under that lockdown the embed returns null for
+    // every row and the fallback below renders the entire board as "Anonymous".
+    // It fails SILENTLY: an RLS denial is an empty result, not an error, so
+    // nothing logs and nothing throws.
+    //
+    // A `from('players')` grep does not find an embed. Grep `players(` too.
+    const load = async () => {
+      const { data: rows } = await supabase
+        .from('rankings')
+        .select('id, player_id, total_points, total_sessions, average_placement, division')
+        .eq('season_year', new Date().getFullYear())
+        .order('total_points', { ascending: false })
+
+      const ids = [...new Set((rows || []).map(r => r.player_id).filter(Boolean))] as string[]
+      const { data: people } = ids.length
+        ? await supabase.from('players_public').select('id, display_name, username').in('id', ids)
+        : { data: [] as { id: string; display_name: string | null; username: string | null }[] }
+
+      const byId = new Map((people || []).map(p => [p.id as string, p]))
+      setRankings((rows || []).map(r => ({ ...r, players: byId.get(r.player_id) ?? null })))
+      setLoading(false)
+    }
+    load()
   }, [])
 
   // Lifetime colours. Every player who has never crossed a threshold sits on

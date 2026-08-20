@@ -7,10 +7,19 @@ All notable changes to AllSport are documented here.
 ### Fixed
 - **Games did not end when the clock ran out, so nobody got their points.** A session was meant to lock itself after 100 minutes, but the only thing that ever closed it was the live-session screen, and only when a kaiwhakawā had that screen open at the exact minute the clock hit zero. Any other time the game stayed "running" indefinitely. That matters because placements and points are only worked out when a game closes: the scores were saved, they just never became a result. The Tuesday 19 August game sat open overnight with nobody placed. Ending is now handled by the database, and any game that has run out of time is closed the moment anyone opens the app.
 - **A stranded game from before this release is closed and scored automatically** when the update is applied, so no session is left without its points.
+- **A game now ends on its own even if nobody has the app open.** The database checks every five minutes, so a session that runs out at 6:54pm is closed and scored by 6:59pm whether or not anyone is watching. Tuesday's game went unscored precisely because the last person shut their phone before the clock ran out.
 - Players were shown "Session Ended" while the game was still open in the database. The screen and the database now agree.
 
 ### Changed
 - The player search used when nominating who referred you is now available only to signed-in players, and reads from the same safe roster as everything else, so it can never reach a private detail. Searching for a name also behaves as a plain search again: typing `%` looks for the `%` character instead of matching everybody.
+
+## [0.5.7.3] - 2026-08-19
+
+### Fixed
+- **The public leaderboard would have shown "Anonymous" for every player.** The board fetched player names through a shortcut that reads the full player table, which is exactly what the next database change closes off. Once that change is applied, the shortcut returns nothing, and because a permission denial arrives as an empty answer rather than an error, nothing would have logged, thrown, or looked broken during testing — the board would simply have shown a list of strangers. The board now reads names from the safe roster like every other screen. This had to land before the lockdown, not after.
+
+### Changed
+- **Privacy questions now go to privacy@allsport.nz, and partnership and koha enquiries to kiaora@allsport.nz.** Both pages previously published Tāne's personal email address.
 
 ## [0.5.7.2] - 2026-08-19
 
