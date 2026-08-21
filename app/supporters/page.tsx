@@ -89,7 +89,7 @@ export default async function Supporters() {
                 We are actively building relationships with clubs across Ōtautahi. If your club is interested in hosting an AllSport session, get in touch.
               </p>
               <a
-                href="mailto:tane.clement@gmail.com?subject=AllSport Club Partnership"
+                href="mailto:kiaora@allsport.nz?subject=AllSport Club Partnership"
                 style={{
                   display: 'inline-block', marginTop: '20px',
                   padding: '12px 28px', background: 'var(--blue)', color: '#fff',
@@ -165,7 +165,7 @@ export default async function Supporters() {
           </p>
           <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
             <Link href="/koha" className="btn btn-primary" style={{ fontSize: '20px' }}>Give Koha</Link>
-            <a href="mailto:tane.clement@gmail.com?subject=AllSport Partnership Enquiry" className="btn btn-outline" style={{ fontSize: '20px' }}>Partner with Us</a>
+            <a href="mailto:kiaora@allsport.nz?subject=AllSport Partnership Enquiry" className="btn btn-outline" style={{ fontSize: '20px' }}>Partner with Us</a>
           </div>
         </div>
       </section>

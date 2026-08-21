@@ -223,6 +223,13 @@ function DashboardInner() {
   useEffect(() => {
     if (!userId) return
     const checkActive = async () => {
+      // Close anything whose 100 minutes ran out while the app was shut. Without
+      // this the "Join a Game" card offers a game that finished last night, and
+      // more importantly award_session_points never fires, so nobody in that
+      // session gets placements or points. Server-derived from started_at, so it
+      // cannot end a game still in progress. Awaited so the card below is right.
+      await supabase.rpc('close_expired_sessions')
+
       // Find any currently running session
       const { data: anyActive } = await supabase
         .from('sessions')
@@ -267,6 +274,11 @@ function DashboardInner() {
   // One RPC instead of four concurrent full-table reads. The dashboard fires a
   // lot of queries on mount and these were four of the heaviest; concurrency is
   // what costs here, not the queries. See PERF_AGGREGATION_PLAN.md.
+  //
+  // The roster half of this payload comes from players_public, joined inside
+  // stats_bundle(). The base players table is own-row/child/judge only since
+  // 20260813000003 and its anon grant is revoked, so reading it here would fail
+  // outright rather than degrade.
   useEffect(() => {
     let cancelled = false
     supabase.rpc('stats_bundle').then(({ data, error }) => {

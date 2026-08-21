@@ -497,6 +497,59 @@ the homepage.
 
 ---
 
+## Security posture (August 2026) — read before touching RLS or players_public
+
+An OWASP pass (SQL injection / XSS / auth / access control) found three
+exploitable access-control holes. All three are closed in prod, verified
+2026-08-19 with the public anon key and no account. SQL injection, XSS and
+authentication came back clean: there is no dynamic SQL anywhere in the
+migrations, no `dangerouslySetInnerHTML`/`innerHTML`/`eval` anywhere in the app,
+auth is entirely Supabase Auth with no hand-rolled tokens, and no `service_role`
+key exists in client code.
+
+**`players` is no longer publicly readable.** It was `USING (true)` from the
+April 2026 rebuild, so one unauthenticated request returned all 27 players with
+19 emails, 9 phones, 27 dates of birth and one minor's guardian contact details.
+Anything needing another player's row now reads **`players_public`**.
+
+**Three rules that are not obvious and have each already cost a production
+incident:**
+
+1. **`CREATE OR REPLACE VIEW` can only APPEND a column.** It cannot rename,
+   reorder, retype or remove one, and on a mismatch it aborts the ENTIRE
+   `supabase db push` part-way through, leaving a half-migrated schema. This bit
+   twice. `20260816000000` is therefore the single definition of
+   `players_public` and uses **DROP + CREATE** so it lands whatever shape it
+   finds. `20260813000002` is a deliberate no-op; do not put a definition back
+   in it.
+2. **Changing a `players_public` column means sweeping every caller in `app/`
+   first.** The view and the client drifted apart twice in three days, and each
+   time three queries began returning `42703` in prod — the live session's
+   player-info map, the kaiwhakawā roster, and the game report — so the in-game
+   leaderboard listed nobody and the game report showed no names. RLS failures
+   are worse: they return zero rows rather than an error, so the page empties
+   silently with nothing in the console.
+3. **Apply migrations from `main` only.** A migration applied from an unmerged
+   branch is recorded in prod's history with no file in the repo, and the CLI
+   then refuses to push anything at all until that file is committed. That is
+   what blocked the PII lockdown. The CLI suggests
+   `supabase migration repair --status reverted <version>` — **do not use it**;
+   that claims a change is absent from a database that has it. Commit the file.
+
+**`players.role` is pinned by a trigger, not by grants.** A table-level UPDATE
+grant overrides column-level REVOKEs in Postgres, so the column-grant route
+would mean enumerating every writable column and would silently break
+registration the next time a column is added.
+
+**`public.is_judge()` is `SECURITY DEFINER` for a reason.** A policy ON `players`
+that subqueries `players` raises `infinite recursion detected in policy`. Use
+the function in any new policy on that table.
+
+**`raw_score` remains player-submitted, deliberately.** There is no server-side
+truth to validate it against, and the sport already requires a filmed or
+witnessed result. `20260813000001` bounds the damage instead: writes only into an
+open session, points columns never accepted from a client, guests judge-only.
+
 ## Koha System
 
 Two paths to any tier — donate OR earn through referrals (either path alone is sufficient).
@@ -629,12 +682,31 @@ id, created_at, vote_id (→ event_votes ON DELETE CASCADE), player_id (→ auth
 UNIQUE(vote_id, player_id, domain_number)
 
 ### players
-id, created_at, full_name, email, phone, date_of_birth, address, city, region, country,
-parent_name, parent_email, parent_phone, is_active, username, division,
+id, created_at, full_name, email, phone, date_of_birth, gender, city, region, country,
+parent_name, parent_email, parent_phone, is_active, is_guest, username, division,
 role (default: player), show_full_name, show_username, show_division, show_location, display_name,
 bodyweight_kg, parent_id (uuid, references auth.users.id),
 icon (TEXT — emoji placeholder; null = show initial letter),
 referral_code (TEXT UNIQUE — 6-char alphanumeric, auto-generated on registration)
+*(Column list verified against prod 2026-08-19. There is NO `address` column — an
+earlier version of this doc listed one. `gender` and `is_guest` were missing.)*
+
+**RLS since 20260813000003: NOT publicly readable.** SELECT is own row, your
+children (`parent_id = auth.uid()`), or kaiwhakawā via `public.is_judge()`, and
+`anon`'s table grant is revoked outright. Anything needing another player's row
+reads `players_public` instead. `role`, `is_guest`, `parent_id` and `id` are
+pinned by a trigger — see the security block below.
+
+### players_public (VIEW)
+id, display_name (coalesced, never blank), username, full_name (NULL unless
+`show_full_name`), division, icon, is_active, is_guest, age_years, age_group
+(U10/U12/U14/U16, NULL past 16), show_division
+Owner-rights (`security_invoker = off`) so it reads through the RLS that closes
+`players`. Public read (anon + authenticated). **The only sanctioned path to
+another player's row.** Exposes no email, phone, city, region, country, gender,
+guardian contact, bodyweight, referral_code, role or date_of_birth.
+Defined ONLY by `20260816000000` (DROP + CREATE), corrected for NZ-local age by
+`20260819000000`. See the deploy-order warning below before changing a column.
 
 ### referrals
 id, created_at, referrer_id (uuid → auth.users), referred_id (uuid → auth.users),
@@ -656,11 +728,24 @@ points_awarded_at, partner_id (uuid → partners null — set when session is ho
 id, created_at, session_id, domain_number, domain_name, event_name
 
 ### results
-id, created_at, player_id (nullable), session_id, event_id, score, points_earned,
-rank_in_session, notes, player_name, raw_score, score_label, placement,
-exercise_variation, weight_kg, reps, time_seconds, pose_variation,
-opponent_name, match_score, result_type,
-difficulty_tier (TEXT — tier name string or null)
+id, created_at, player_id (nullable), session_id, event_id, raw_score, score_label,
+placement, placement_points, points_earned, bonus_points_total, difficulty_tier,
+exercise_variation, weight_kg, reps, time_seconds, distance_m,
+opponent_name, match_score, result_type, notes, player_name,
+is_pr (bool), effort_task_completions (int)
+*(Verified against prod 2026-08-19. There is NO `score`, `rank_in_session`,
+`adjusted_score` or `pose_variation` column — the v2 rebuild in 20260429000000
+dropped them, and earlier versions of this doc still listed them. This matters:
+a plpgsql trigger assigning a non-existent field raises at runtime and would
+break every score submission.)*
+
+**Writes are guarded since 20260813000001.** Non-judges may only write into a
+session that is still open, `placement` / `placement_points` / `points_earned` /
+`bonus_points_total` are preserved from OLD (never accepted from a client),
+`effort_task_completions` is clamped 0–20, and only kaiwhakawā may create guest
+rows (`player_id IS NULL`). Judges and `service_role` are exempt, which is what
+lets `award_session_points` write placements at session close and lets the Judge
+Summary tab edit after the fact.
 
 ### effort_scores
 Dropped (migration 20260507). Effort data lives in results.effort_task_completions.
@@ -729,11 +814,14 @@ RLS: own + parent (family) + judge.
 
 ```
 ~/allsport/
-  middleware.ts                     # REQUIRED — refreshes Supabase session on every request
+  next.config.ts                    # reactCompiler + headers() — serves the security header set on /:path*
+  middleware.ts                     # REQUIRED — refreshes Supabase session on every request; also forwards Supabase's no-store headers onto the response
   lib/
     supabase.ts                     # Basic client (legacy — DO NOT USE in new code)
     supabase-browser.ts             # Browser client (use this in ALL client components)
     supabase-server.ts              # Server client
+    supabase-cookies.ts             # AUTH_COOKIE_OPTIONS — MUST be passed to every Supabase client (secure/sameSite/path). See HTTP security below
+    securityHeaders.ts              # buildCsp / buildSecurityHeaders — the CSP + 8 headers, unit tested in __tests__/securityHeaders.test.ts
     eventData.ts                    # Single source of truth for all events (120) + difficulty+time encode/decode helpers (encodeDiffTime/decodeDiffTime/isTimedEffort, TIMED_EFFORT_SLUGS); DifficultyTier has optional `detail` (judge criteria)
     dates.ts                        # parseLocalDate / formatNZDate — parse DATE columns in local time (avoids off-by-one)
     colours.ts                      # THE colour ladder (19 rungs) — names/thresholds/styling + live-alert predicates. Single source of truth
@@ -817,11 +905,86 @@ RLS: own + parent (family) + judge.
       #    was verified to exist, and db push applies in timestamp order, so they genuinely ran. There are NO
       #    pending migrations. Do NOT re-run the 2026071x files "to be sure" — 20260713000001 is a one-time
       #    re-encode and applying it twice corrupts Breath Hold / Duck Walk scores.
+      20260813000000_role_escalation_guard.sql # public.is_judge() + trigger pinning players.role/is_guest/parent_id/id
+      20260813000001_results_write_guard.sql   # results writes confined to an open session; points columns server-only; guests judge-only
+      20260813000002_players_public_view.sql   # DELIBERATE NO-OP — see the file. Do not put a view definition back here.
+      20260813000003_players_pii_lockdown.sql  # Closes public read on players (own/child/judge + REVOKE anon)
+      20260816000000_players_public_show_division.sql # THE definition of players_public (DROP + CREATE)
+      20260819000000_players_public_age_nz.sql # age_years/age_group in Pacific/Auckland, not UTC
+      # ── ALL migrations above are APPLIED to prod, confirmed 2026-08-19 via `supabase migration list`.
+      #    20260813000003 needed `supabase db push --include-all`: its 13-Aug timestamp is older than the
+      #    19-Aug migration already applied, and the CLI refuses out-of-order inserts without that flag.
   public/
     logo.png
 ```
 
 **IMPORTANT:** Always use createClient() from @/lib/supabase-browser in client components.
+
+---
+
+## HTTP security (August 2026 session 29) — v0.5.5.0
+
+Before this, the app sent **no security headers at all** (`next.config.ts` had no
+`headers()` block), so the only one in production was the HSTS Vercel adds by itself.
+
+**`lib/securityHeaders.ts` is the single source of truth** for the CSP and the other
+seven headers; `next.config.ts` just applies it to `/:path*`. It lives in `lib/` so it
+can be unit tested, because **a security header fails silently when it regresses** —
+delete `frame-ancestors` and nothing breaks, no test goes red, the app is simply
+framable again. `__tests__/securityHeaders.test.ts` is the only thing that notices.
+
+- **`connect-src` is derived from `NEXT_PUBLIC_SUPABASE_URL`,** never hardcoded, and
+  covers BOTH `https://` and `wss://`. Allowing https but not wss silently kills live
+  score updates and is easy to miss, because the 15-second polling fallback masks it.
+- **`script-src` keeps `'unsafe-inline'` deliberately.** Next's App Router injects
+  inline bootstrap scripts on every page; removing it needs per-request nonces, which
+  force every route dynamic and give up static prerendering. The CSP's value here is
+  `default-src`/`connect-src` blocking exfiltration and `frame-ancestors` blocking
+  clickjacking, NOT inline-XSS defence. Safe because there is no
+  `dangerouslySetInnerHTML` anywhere in the app.
+- **`style-src` keeps `'unsafe-inline'`** because the app styles via React
+  `style={{ }}` props. Removing it blanks every page.
+- `img-src` allows `https:` for `partners.logo_url`; `frame-src`/`object-src` are
+  `'none'` (verified: no iframes, no external form actions anywhere in the app).
+- **ACAO is pinned to the site origin** because Vercel serves prerendered HTML with
+  `Access-Control-Allow-Origin: *`. **Next's `headers()` does override Vercel's
+  static-asset layer — confirmed against prod 2026-08-13**, which returns
+  `access-control-allow-origin: https://allsport.nz`. No `vercel.json` needed; this
+  file's `headers()` block is the single source of truth. (Had Vercel won, the fix
+  would have been to move the same list into a `vercel.json` `headers` block.)
+
+**Verified live 2026-08-13:** all 8 headers serve on allsport.nz with the exact values
+`buildSecurityHeaders()` produces.
+
+**NOT verified end-to-end: the `no-store` forwarding on auth-cookie responses.** See
+the P1 in TODOS.md. `curl https://allsport.nz/auth/callback` returns
+`cache-control: public` and that is CORRECT — with no `?code=` the route skips the
+Supabase block entirely, sets no cookies, and redirects to `/login?error=auth`, so
+there is no session token in that response. Only a real OAuth code exchange exercises
+the fixed path. **Do not read that curl output as a regression.**
+
+### Auth cookies — three traps
+1. **`@supabase/ssr`'s `setAll` takes a SECOND argument** (`headers`) carrying
+   `Cache-Control: private, no-store`. It exists so a CDN cannot cache a response that
+   sets auth cookies and serve one player's session token to another. Every call site
+   here ignored it, and prod served `/auth/callback` (a 307 that sets session cookies)
+   as `cache-control: public`. **Any new `createServerClient` call site must forward it.**
+2. **The library defaults are `{ path:'/', sameSite:'lax', httpOnly:false }` with NO
+   `secure` flag.** `cookieOptions: AUTH_COOKIE_OPTIONS` must be passed to all four
+   clients (browser, server, middleware, callback route).
+3. **`httpOnly` is deliberately OFF and must stay off** until auth moves server-side:
+   the browser client reads the session from `document.cookie`, so setting it signs
+   every player out. Logged as a P1 in TODOS.md, not an oversight.
+
+`sameSite` stays `'lax'` — `'strict'` withholds the cookie on the cross-site top-level
+navigation back from Google OAuth. `secure` keys off `NODE_ENV`, so a local production
+build served over http cannot log in; that is expected, not a bug.
+
+### Open redirect
+`/auth/callback` built `${origin}${next}` from an unvalidated query param. `next=@evil.com`
+produces `https://allsport.nz@evil.com`, where `allsport.nz` parses as *userinfo* and the
+real host is `evil.com`. `safeNext()` now rejects that plus the `//` and `/\` variants.
+**Any future redirect built by concatenating onto an origin needs the same guard.**
 
 ---
 
@@ -993,7 +1156,8 @@ RLS: own + parent (family) + judge.
 
 ---
 
-*Last updated: August 2026 (session 28 — **Colours went LIFETIME**, ladder extended to 19 rungs, and a kaiwhakawā colour alert built. Design settled via `/grill-me`; the full record with 19 locked decisions is in `COLOURS_REWORK_PLAN.md`. Seasonal reset removed for colours only — `rankings` is untouched and `/leaderboard` still resets each January, so one number became two on purpose. Cycle 2 repeats the colours prefixed "Taniwha" (skipping Mā) at +10,000 each, hard-capped at **Ngā Taniwha** on 100,000. Taniwha stays at 10,000 **knowingly**: real data (149 pts/session for a winner, 93 for a runner-up) puts that at ~4.5 months for a 3×/week winner rather than the 1 year originally wanted, and Tāne chose to let cycle 2 carry the long game. New `lib/colours.ts` (19 rungs, single source of truth), `lib/colourAlerts.ts` (live alert + /judge watchlist), `components/ColourWatchlist.tsx`, and migration `20260802000000` (colour_ladder / player_totals / colour_awards + `claim_colour_award` RPC + backfill that reconstructs real crossing dates). The alert had to be **predictive** because points are only written at session close: "has earned" uses `lifetime + 10 + effort×5`, a guaranteed floor with no placement ranking, so it can never be retracted; the coach releases the moment to the player with a "Celebrated" tap. Findings along the way: `player_totals` is keyed on player_id alone because `rankings` keying on division would silently halve a lifetime total on a birthday; lifetime totals must be recomputed not incremented (the ×2 bug becomes permanent otherwise), so manual adjustments need their own column; `20260610000000_historic_points.sql` **never applied** (targets 2025 rows that have never existed, and matches Zeke on a NULL full_name) so 3,800 points were restored via `adjustment_points`; **six inline copies of the ladder** existed and disagreed on Kōwhai's hex; and `__tests__/grades.test.ts` carried a wrong points formula that reintroduced the gap floor removed in May 2026. **Migration NOT yet applied — deploy migration FIRST, then code** (additive; the client requires `player_totals`). Expected outcome simulated against live prod data and recorded in the plan: 19 colour_awards rows, nobody demoted, Rodrigo passes Tāne on lifetime points once his historic 1,500 lands. Tests 260 passing. PENDING: the two emblem PNGs — until they exist Taniwha and Ngā Taniwha render identically. See "Colours rework (August 2026 session 28)" block above.)*
+*Last updated: August 2026 (session 29 — **OWASP access-control pass, closed in production 2026-08-19.** Three exploitable holes, all shut and verified with nothing but the public anon key: `players` was world-readable (27 players, 19 emails, 27 dates of birth, 8 of them minors, one guardian's contact details) and now returns 42501; any player could self-promote to kaiwhakawā via `PATCH {"role":"judge"}` on their own row, now pinned by a trigger; and any player could write fabricated scores into closed sessions, which `award_session_points` then turned into permanent lifetime colour points. SQL injection, XSS and authentication came back clean. New: `players_public` (the only sanctioned path to another player's row), `public.is_judge()`, and migrations 20260813000000-3 / 20260816000000 / 20260819000000. **Read the "Security posture" block before touching RLS or that view** — `CREATE OR REPLACE VIEW` cannot rename a column and aborts the whole `db push` if you try, a `players_public` column change needs a sweep of every caller in app/, and migrations must be applied from `main` only. Each of those three cost a production incident during this session: the view was built three times from three parallel worktrees and applied to prod twice out-of-band, which broke the live session and the game report on two separate days and once blocked `db push` entirely. Doc corrections in the same pass: `players.address`, `results.score`, `results.rank_in_session` and `results.adjusted_score` do not exist and never did in the v2 schema; `gender`, `is_guest`, `is_pr` and `effort_task_completions` were missing. Residual findings tracked in TODOS.md.)*
+*Previous: August 2026 (session 28 — **Colours went LIFETIME**, ladder extended to 19 rungs, and a kaiwhakawā colour alert built. Design settled via `/grill-me`; the full record with 19 locked decisions is in `COLOURS_REWORK_PLAN.md`. Seasonal reset removed for colours only — `rankings` is untouched and `/leaderboard` still resets each January, so one number became two on purpose. Cycle 2 repeats the colours prefixed "Taniwha" (skipping Mā) at +10,000 each, hard-capped at **Ngā Taniwha** on 100,000. Taniwha stays at 10,000 **knowingly**: real data (149 pts/session for a winner, 93 for a runner-up) puts that at ~4.5 months for a 3×/week winner rather than the 1 year originally wanted, and Tāne chose to let cycle 2 carry the long game. New `lib/colours.ts` (19 rungs, single source of truth), `lib/colourAlerts.ts` (live alert + /judge watchlist), `components/ColourWatchlist.tsx`, and migration `20260802000000` (colour_ladder / player_totals / colour_awards + `claim_colour_award` RPC + backfill that reconstructs real crossing dates). The alert had to be **predictive** because points are only written at session close: "has earned" uses `lifetime + 10 + effort×5`, a guaranteed floor with no placement ranking, so it can never be retracted; the coach releases the moment to the player with a "Celebrated" tap. Findings along the way: `player_totals` is keyed on player_id alone because `rankings` keying on division would silently halve a lifetime total on a birthday; lifetime totals must be recomputed not incremented (the ×2 bug becomes permanent otherwise), so manual adjustments need their own column; `20260610000000_historic_points.sql` **never applied** (targets 2025 rows that have never existed, and matches Zeke on a NULL full_name) so 3,800 points were restored via `adjustment_points`; **six inline copies of the ladder** existed and disagreed on Kōwhai's hex; and `__tests__/grades.test.ts` carried a wrong points formula that reintroduced the gap floor removed in May 2026. **Migration NOT yet applied — deploy migration FIRST, then code** (additive; the client requires `player_totals`). Expected outcome simulated against live prod data and recorded in the plan: 19 colour_awards rows, nobody demoted, Rodrigo passes Tāne on lifetime points once his historic 1,500 lands. Tests 260 passing. PENDING: the two emblem PNGs — until they exist Taniwha and Ngā Taniwha render identically. See "Colours rework (August 2026 session 28)" block above.)*
 *Previous: August 2026 (session 27 — **Event roster reconciled to 120 events, 12 per domain**, shipped as v0.5.3.0. 7 added (Arm Wrestling, Tug of War, Capture the Flag, Kabaddi, Wheelbarrow Push/Pull, Kubb restored), 9 removed, 9 renamed, 5 moved between domains, and Leg Extension became Leg Ext Hold (strength → difficulty+time, D1–D7). Domain names/numbers/order deliberately UNCHANGED — Tāne declined the sheet's reorder and the "Speed & Reactivity" rename. The big finding: **renaming an event was never safe just because the slug survived** — /prs, lib/percentile.ts and My Events all join PR history on `session_events.event_name`, and `lib/scoring.ts` matched weight-scored tiers on the name literal, so earlier renames (Handbalance and others) had already silently orphaned their history. Migration `20260801000000` repoints 24 old names derived from git history, and archives-then-deletes the un-convertible Leg Extension rows behind RLS. Icons 120/120. Tests 198 passing. Migration applied to prod 2026-08-01 AFTER the code deployed, and verified (renames landed, 17 Leg Extension rows archived+deleted, archive table correctly refuses PostgREST reads with 42501). The ×2 games/points bug is now CONFIRMED DEAD in prod — `pg_trigger` returns only `auto_award_points`, which also upgrades `20260713000000` from applied-by-inference to directly verified and means the 2026 rankings rebuild ran. Follow-up: the long-standing "three session-22 migrations are pending" note in this file was STALE — they were already applied, and re-running them would have corrupted Breath Hold / Duck Walk scores; corrected in the same follow-up PR. See "Event roster update (August 2026 session 27)" block above.)*
 *Previous: July 2026 (session 26 — **Kaiwhakawā tab rebuilt onto the session-19 player layout** and shipped as v0.5.2.0. Chip player-picker (with guest recall) replaces the Registered/Guest toggle + native select; a session roster with per-player progress fills the no-selection state; selecting a player gives the same progress header + Still-to-play/Scored list + quick-entry sheet players get. `EventCard` deleted (~510 lines) — scoring now has one code path. New pure `lib/judgeRoster.ts` (+26 tests, suite at 162) and a real bug fixed along the way: stale `judgePRs` leaking the previous player's PR across a target switch. Deferred: focus states + 44px touch targets for the whole live-session screen (TODOS.md P2 — needs the ui.tsx migration). See "Kaiwhakawā tab rebuild (July 2026 session 26)" block above.)*
 *Previous: July 2026 (session 25 — Event roster update from "AllSport Programming July 2026.xlsx": roster now 122 events (was 105). 18 new events fully defined (input mode + tiers + how-to/rules + emoji); Handbalance renamed → Handstand and moved Power → Calisthenics (slug stays hand-walk); Ham Curl + Sandbag to Shoulder moved → Anaerobic Endurance; Ultimate Frisbee moved → Coordination; Kubb removed (kept Clean & Press). Backwards Walk + Scooting added to TIMED_EFFORT_SLUGS. Typecheck clean, 132/132 tests pass (updated the count/Handstand assertions in __tests__/eventData.test.ts), /events verified in-browser. Event icons now 122/122 — the 18 new slugs plus the long-missing bowling.png were exported and imported (3 Canva files renamed to match their slugs). PENDING: deferred difficulty reorders (need a raw_score re-encode migration). See "Event roster update (July 2026 session 25)" block above. Nothing committed.)*

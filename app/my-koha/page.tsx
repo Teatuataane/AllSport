@@ -98,7 +98,7 @@ export default function MyKoha() {
         setMyReferral(referralRowRes.data)
         // Fetch referrer's display name
         const { data: rp } = await supabase
-          .from('players')
+          .from('players_public')
           .select('display_name, username')
           .eq('id', referralRowRes.data.referrer_id)
           .maybeSingle()
@@ -110,7 +110,7 @@ export default function MyKoha() {
       if (refs.length > 0) {
         const ids = refs.map((r: any) => r.referred_id)
         const { data: players } = await supabase
-          .from('players')
+          .from('players_public')
           .select('id, display_name, username')
           .in('id', ids)
         const playersMap: Record<string, any> = {}

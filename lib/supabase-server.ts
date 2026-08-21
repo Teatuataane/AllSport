@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
+import { AUTH_COOKIE_OPTIONS } from './supabase-cookies'
 
 /**
  * Anonymous, COOKIE-FREE client for reading PUBLIC data in server components.
@@ -28,6 +29,7 @@ export async function createSupabaseServerClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      cookieOptions: AUTH_COOKIE_OPTIONS,
       cookies: {
         getAll() { return cookieStore.getAll() },
         setAll(cookiesToSet) {

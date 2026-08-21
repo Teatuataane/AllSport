@@ -151,7 +151,7 @@ export default function Koha() {
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '40px', color: 'var(--blue)', lineHeight: 1 }}>$8,000 Goal</div>
             <p style={{ color: 'var(--grey)', fontSize: '14px', lineHeight: 1.6, maxWidth: '560px' }}>
               100% of Wheels for AllSport koha goes toward transport and equipment. IRD 33% tax rebate applies — your $100 koha costs you $67.{' '}
-              <a href="mailto:tane.clement@gmail.com?subject=Wheels for AllSport" style={{ color: 'var(--blue)' }}>Get in touch to contribute →</a>
+              <a href="mailto:kiaora@allsport.nz?subject=Wheels for AllSport" style={{ color: 'var(--blue)' }}>Get in touch to contribute →</a>
             </p>
           </div>
         </div>

@@ -276,28 +276,63 @@ export default function Leaderboard() {
   // The board is seasonal on purpose (it resets each January so a newcomer can
   // climb it); colours are lifetime and ride along in the same payload.
   // See PERF_AGGREGATION_PLAN.md.
+  //
+  // Player NAMES come back inside this payload, joined server-side against
+  // players_public. Do NOT reintroduce a PostgREST embed here — the
+  // `players(display_name, username)` embed that used to live in this effect
+  // reads the players BASE table, which 20260813000003 closed AND revoked the
+  // anon grant on. Measured against production while it was still live:
+  //
+  //   rankings?select=...,players(display_name,username)
+  //     -> 401 {"code":"42501","message":"permission denied for table players"}
+  //   rankings?select=...  (no embed)
+  //     -> 200, 20 rows
+  //
+  // It took the board DOWN rather than showing "Anonymous": a privilege error is
+  // raised rather than filtered, and PostgREST fails the WHOLE request when an
+  // embedded table is unreadable, so `rankings` came back empty too. When
+  // debugging, look for a 401 with 42501 and an empty board, NOT null names.
+  // (A pure RLS denial with the grant intact would be the silent, null-names
+  // case.) A `from('players')` grep does not find an embed — grep `players(` too.
   useEffect(() => {
     const supabase = createClient()
     let cancelled = false
 
-    supabase
-      .rpc('leaderboard_page', { p_season: new Date().getFullYear() })
-      .then(({ data, error }) => {
-        if (cancelled) return
-        if (error || !data) {
-          // Leave the board empty rather than half-populated; colours already
-          // fall back to rung 1 (Mā) when the map has no entry for a player.
-          setLoading(false)
-          return
-        }
-        const d = data as LeaderboardPayload
-        setRankings(d.rankings ?? [])
-        setColourRungs(new Map((d.colour_rungs ?? []).map(r => [r.player_id, r.highest_rung])))
-        setStatsData(d.stats)
-        setActiveSession(d.active_session ?? null)
-        setSessionLeader(d.active_session ? computeLeader(d.active_session_results ?? []) : null)
+    const load = async () => {
+      // Heal any session whose 100 minutes elapsed while nobody had the app
+      // open. Until this existed, a game that nobody closed stayed "active"
+      // forever and awarded nobody any points, because award_session_points
+      // only fires on the is_active true -> false transition. Derived from
+      // started_at server-side, so this cannot end a game that is still running.
+      //
+      // Sequential before the payload below, not folded into it: this WRITES,
+      // and leaderboard_page() is STABLE. It also has to land first, or the
+      // payload reports the stale active session. Two round trips, still down
+      // from seven.
+      await supabase.rpc('close_expired_sessions')
+      if (cancelled) return
+
+      const { data, error } = await supabase
+        .rpc('leaderboard_page', { p_season: new Date().getFullYear() })
+      if (cancelled) return
+
+      if (error || !data) {
+        // Leave the board empty rather than half-populated; colours already
+        // fall back to rung 1 (Mā) when the map has no entry for a player.
         setLoading(false)
-      })
+        return
+      }
+
+      const d = data as LeaderboardPayload
+      setRankings(d.rankings ?? [])
+      setColourRungs(new Map((d.colour_rungs ?? []).map(r => [r.player_id, r.highest_rung])))
+      setStatsData(d.stats)
+      setActiveSession(d.active_session ?? null)
+      setSessionLeader(d.active_session ? computeLeader(d.active_session_results ?? []) : null)
+      setLoading(false)
+    }
+
+    load()
 
     return () => { cancelled = true }
   }, [])

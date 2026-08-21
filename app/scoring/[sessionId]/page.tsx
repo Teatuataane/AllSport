@@ -53,7 +53,13 @@ type Result = {
   effort_task_completions: number
 }
 
-type PlayerInfo = { division: string; date_of_birth?: string | null }
+// Age arrives pre-derived from the players_public view rather than as a raw
+// date_of_birth: the live session only ever needs the Junior age chips and the
+// age-group badges, and exact birthdays for 8 minors do not belong in a payload
+// any logged-in player can fetch. The view supplies age_group ready-made, so
+// there is no bracket helper here — see the note in the migration about why the
+// view's column set is not something to change casually.
+type PlayerInfo = { division: string; age_years?: number | null; age_group?: string | null; show_division?: boolean }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -101,15 +107,6 @@ function ordinal(n: number): string {
   const s = ['th', 'st', 'nd', 'rd']
   const v = n % 100
   return n + (s[(v - 20) % 10] ?? s[v] ?? s[0])
-}
-
-function getAge(dob: string): number {
-  const born = new Date(dob)
-  const today = new Date()
-  let age = today.getFullYear() - born.getFullYear()
-  const m = today.getMonth() - born.getMonth()
-  if (m < 0 || (m === 0 && today.getDate() < born.getDate())) age--
-  return age
 }
 
 // ─── Effort helpers ───────────────────────────────────────────────────────────
@@ -1287,7 +1284,7 @@ function LeaderboardTab({
       if (!r.player_id) return
       const info = playerInfoMap[r.player_id]
       if (!info || info.division !== 'Juniors') return
-      if (info.date_of_birth) ages.add(getAge(info.date_of_birth))
+      if (info.age_years != null) ages.add(info.age_years)
     })
     return [...ages].sort((a, b) => a - b)
   }, [results, playerInfoMap])
@@ -1301,7 +1298,7 @@ function LeaderboardTab({
       if (pool === 'womens') return filter ? info.division === filter : WOMENS_DIVS.includes(info.division)
       if (pool === 'juniors') {
         if (info.division !== 'Juniors' && info.division !== 'Youth') return false
-        if (ageFilter !== null) return info.date_of_birth ? getAge(info.date_of_birth) === ageFilter : true
+        if (ageFilter !== null) return info.age_years != null ? info.age_years === ageFilter : true
         return true
       }
       return false
@@ -1368,22 +1365,24 @@ function LeaderboardTab({
         const subRows = ranked.filter(r => playerInfoMap[r.playerId]?.division === key)
         subRows.sort((a, b) => a.totalPlacement - b.totalPlacement)
         subRows.forEach((r, _, arr) => {
+          // Ranking still happens for everyone — only the visible "1st Masters"
+          // badge is withheld from players who turned show_division off. The
+          // pool itself cannot be opted out of without breaking the standings.
+          if (playerInfoMap[r.playerId]?.show_division === false) return
           r.subDivision = label
           r.subDivisionRank = 1 + arr.filter(x => x.totalPlacement < r.totalPlacement).length
         })
       }
     }
     if (!ageFilter && pool === 'juniors') {
-      const getAgeGroup = (dob: string | null | undefined): string | null => {
-        if (!dob) return null
-        const age = getAge(dob)
-        if (age <= 9) return 'U10'
-        if (age <= 11) return 'U12'
-        if (age <= 13) return 'U14'
-        return 'U16'
-      }
+      // age_group comes ready-made from the players_public view (U10 0-9,
+      // U12 10-11, U14 12-13, U16 14-16). One behaviour change from the
+      // pre-v0.5.6.0 code: the old local helper returned 'U16' for ANY age from
+      // 14 up, so a player who turned 17 but is still flagged Juniors used to
+      // get a U16 badge. The view returns NULL past 16, matching the documented
+      // brackets, so they now get no badge, same as a null-DOB junior.
       for (const group of ['U10', 'U12', 'U14', 'U16']) {
-        const groupRows = ranked.filter(r => getAgeGroup(playerInfoMap[r.playerId]?.date_of_birth) === group)
+        const groupRows = ranked.filter(r => (playerInfoMap[r.playerId]?.age_group ?? null) === group)
         groupRows.sort((a, b) => a.totalPlacement - b.totalPlacement)
         groupRows.forEach((r, _, arr) => {
           r.subDivision = group
@@ -2160,10 +2159,17 @@ export default function SessionPage() {
     if (results.length === 0) return
     const ids = [...new Set(results.map(r => r.player_id).filter(Boolean))] as string[]
     if (ids.length === 0) return
-    supabase.from('players').select('id, division, date_of_birth').in('id', ids).then(({ data }) => {
+    supabase.from('players_public').select('id, division, age_years, age_group, show_division').in('id', ids).then(({ data }) => {
       if (!data) return
       const map: Record<string, PlayerInfo> = {}
-      data.forEach(p => { map[p.id] = { division: p.division ?? '', date_of_birth: p.date_of_birth ?? null } })
+      data.forEach(p => {
+        map[p.id] = {
+          division: p.division ?? '',
+          age_years: p.age_years ?? null,
+          age_group: p.age_group ?? null,
+          show_division: p.show_division !== false,
+        }
+      })
       setPlayerInfoMap(map)
     })
   }, [results])
@@ -2171,10 +2177,12 @@ export default function SessionPage() {
   // ── Load ALL registered players for judge dropdown ─────────────────────────
   useEffect(() => {
     if (!isJudge) return
-    supabase.from('players').select('id, display_name, username, full_name').order('display_name', { ascending: true }).then(({ data }) => {
+    supabase.from('players_public').select('id, display_name, username, full_name').order('display_name', { ascending: true }).then(({ data }) => {
       if (!data) return
       setSessionPlayers(data.map(p => ({
         id: p.id,
+        // display_name is coalesced inside the view so it is never blank;
+        // full_name is NULL unless that player opted into showing it.
         name: (p.display_name || p.username || p.full_name || 'Unknown') as string,
       })))
     })
@@ -2329,7 +2337,16 @@ export default function SessionPage() {
         if (remaining === 0 && !closedByTimer && s.is_active) {
           closedByTimer = true
           setSessionEnded(true)
-          supabase.from('sessions').update({ is_active: false, ended_at: new Date().toISOString() }).eq('id', sessionId)
+          // RPC, not a direct update. `sessions_update_judge` is the only UPDATE
+          // policy on sessions, so the old `.update()` here silently affected
+          // zero rows for every player — the session only ever closed if a
+          // kaiwhakawā happened to have this screen open at the exact minute the
+          // clock ran out, and otherwise stayed open forever awarding nobody
+          // anything. close_expired_sessions() derives expiry from started_at
+          // server-side, so it is safe for any viewer to call.
+          supabase.rpc('close_expired_sessions').then(({ error }) => {
+            if (error) console.error('close_expired_sessions failed', error)
+          })
         }
       }
     }

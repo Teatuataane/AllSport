@@ -2,6 +2,88 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.5.8.0] - 2026-08-20
+
+### Fixed
+- **Games did not end when the clock ran out, so nobody got their points.** A session was meant to lock itself after 100 minutes, but the only thing that ever closed it was the live-session screen, and only when a kaiwhakawā had that screen open at the exact minute the clock hit zero. Any other time the game stayed "running" indefinitely. That matters because placements and points are only worked out when a game closes: the scores were saved, they just never became a result. The Tuesday 19 August game sat open overnight with nobody placed. Ending is now handled by the database, and any game that has run out of time is closed the moment anyone opens the app.
+- **A stranded game from before this release is closed and scored automatically** when the update is applied, so no session is left without its points.
+- **A game now ends on its own even if nobody has the app open.** The database checks every five minutes, so a session that runs out at 6:54pm is closed and scored by 6:59pm whether or not anyone is watching. Tuesday's game went unscored precisely because the last person shut their phone before the clock ran out.
+- Players were shown "Session Ended" while the game was still open in the database. The screen and the database now agree.
+
+### Changed
+- The player search used when nominating who referred you is now available only to signed-in players, and reads from the same safe roster as everything else, so it can never reach a private detail. Searching for a name also behaves as a plain search again: typing `%` looks for the `%` character instead of matching everybody.
+
+## [0.5.7.3] - 2026-08-19
+
+### Fixed
+- **The public leaderboard would have shown "Anonymous" for every player.** The board fetched player names through a shortcut that reads the full player table, which is exactly what the next database change closes off. Once that change is applied, the shortcut returns nothing, and because a permission denial arrives as an empty answer rather than an error, nothing would have logged, thrown, or looked broken during testing — the board would simply have shown a list of strangers. The board now reads names from the safe roster like every other screen. This had to land before the lockdown, not after.
+
+### Changed
+- **Privacy questions now go to privacy@allsport.nz, and partnership and koha enquiries to kiaora@allsport.nz.** Both pages previously published Tāne's personal email address.
+
+## [0.5.7.2] - 2026-08-19
+
+### Fixed
+- **A database change that was live had never been written down.** The fix that works out ages in New Zealand time rather than UTC was applied to the live database but its file was missing from the project, which blocked every further database update. On a birthday morning UTC is still on yesterday, so a child could read a year younger and the age-group badge could go to the wrong player. The fix itself has been live since 19 August; this just records it where it belongs, so the project and the database agree again.
+
+## [0.5.7.1] - 2026-08-19
+
+### Fixed
+- **The database update would have stopped half-way through, leaving the privacy fix unapplied.** One migration still tried to redefine the player roster with column names that no longer match the live one, which PostgreSQL refuses outright. It would have applied the two protections before it, then failed, then never reached the change that actually closes off player contact details. Only one migration defines that roster now, and it rebuilds it from scratch rather than assuming what it will find.
+
+## [0.5.7.0] - 2026-08-19
+
+### Fixed
+- **Anyone at all could read every player's contact details.** No account, no password, nothing: one request to our database returned all 27 players with 19 email addresses, 9 phone numbers, 25 legal names and everybody's exact date of birth. Eight of those players are under 18, and one of them had a parent's name, email and phone attached. This has been open since the database was rebuilt in April 2026. Your details are now visible only to you, to your parent or guardian if you are on a family account, and to a kaiwhakawā.
+- **The live session and game report show names again.** The player roster gained a column while v0.5.6.1 was being written, which left those two screens asking for names that were no longer there. Both now match the roster as it actually stands, checked against the live database rather than assumed.
+
+### Added
+- **A privacy policy, linked from the point where we ask for your details.** It says plainly what is collected, what other players can see, and what happens to a child's information.
+- **"Show my division" now actually works.** Turning it off hides your Masters or 60+ badge on the live leaderboard. You are still ranked in your pool, because the standings cannot be opted out of without changing everybody else's placings.
+
+### Changed
+- The location toggle has been removed from your profile and from registration. It offered to publish a city and region that nothing has ever displayed, so it was a promise about data we never showed.
+
+## [0.5.6.1] - 2026-08-19
+
+### Fixed
+- **The live session showed no players, and the game report showed no names.** v0.5.6.0 asked the database for player details using column names that did not match the ones actually there, so three screens got an error back instead of a list: the in-game leaderboard, the kaiwhakawā player picker, and the full game report. The leaderboard, dashboard and My Koha were unaffected. Everything now asks for the columns that exist, and all five were checked against the live database rather than assumed.
+- **Running the database migrations would have failed part-way through.** One migration tried to redefine the player roster with different column names, which PostgreSQL refuses to do, so it would have stopped after applying the two before it. It now matches what is already there, and carries a note explaining why changing a column in it is not a one-line edit.
+
+### Changed
+- The age brackets on the Junior leaderboard (U10/U12/U14/U16) are worked out in the app again rather than in the database, because the roster the app reads provides a plain age. No visible difference.
+
+## [0.5.6.0] - 2026-08-16
+
+### Fixed
+- **A player could make themselves a kaiwhakawā.** Nothing stopped an ordinary account from granting itself the judge role, which carries the power to edit or delete anybody's scores, void sessions, and see every player's koha donations and who voted for what. Only Tāne was ever meant to have it. The role is now locked, and the only way to grant it is still by hand in the database.
+- **A player could enter scores into games that had already finished.** You could add or change a score in a session from weeks ago, including sessions you never turned up to, and set your own points total directly. Scores can now only be entered while a session is actually running, points are worked out by the server and never accepted from a phone, and only a kaiwhakawā can add a guest player. Judges keep the ability to correct a score after a session has closed, because that is a real part of the job.
+- Your score itself is still something you type in, and that is on purpose: the sport already requires a result to be filmed or witnessed. What changed is that a score can no longer be quietly rewritten later.
+
+### Added
+- **A safe public roster.** The leaderboard, the game report and the live session all need to show other players' names and divisions. They now read a roster that contains only that, and no contact details at all. This is the groundwork for the next release, which closes off the rest.
+- **Your "show my full name" choice now actually does something.** You are asked at registration whether your legal name should appear on public leaderboards, and it defaults to no. That answer was never checked, so full names were readable regardless. It is now enforced where it should have been all along, in the database.
+
+### Changed
+- **Your exact date of birth no longer leaves the database.** The Junior age chips and the U10/U12/U14/U16 badges need an age bracket, not a birthday, so the bracket is now worked out server-side and only the bracket is sent.
+- One small consequence of that: a player who has turned 17 but is still listed in Juniors no longer gets a U16 badge. Previously the badge had no upper limit, so any age from 14 up showed as U16.
+
+## [0.5.5.0] - 2026-08-13
+
+### Fixed
+- **A page that logged you in could be stored by a shared cache.** Sign-in responses were marked publicly cacheable, so in principle a cache sitting between you and the site could hold one player's logged-in session and hand it to somebody else. Those responses are now marked never-store, which is what Supabase intended all along.
+- **Your login is now marked HTTPS-only.** The session cookie never carried the flag that stops a browser sending it over an insecure connection.
+- **A sign-in link could be crafted to bounce you somewhere else.** The "where to go after login" part of the address is now checked, so it can only ever send you to a page on AllSport. Previously a link could be written that looked like allsport.nz but landed you on another site with the login screen still showing.
+
+### Added
+- **The site now tells your browser exactly which other sites it is allowed to talk to** — AllSport itself, our database, and Google Fonts, and nothing else. If anything ever got injected into a page, it has nowhere to send your data.
+- **AllSport can no longer be embedded inside another site's page.** This is what stops a copycat page framing the live scoring screen and collecting taps meant for us.
+- **Camera, microphone and location are switched off at the browser level.** The app never asks for them, and now it cannot.
+
+### Changed
+- Pages are no longer served with a header inviting any other website to read them.
+- Twenty-seven tests now cover the security settings above, because a security setting is the kind of thing that breaks silently: remove it and nothing looks wrong.
+
 ## [0.5.4.0] - 2026-08-07
 
 ### Added
