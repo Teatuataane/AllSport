@@ -2337,7 +2337,16 @@ export default function SessionPage() {
         if (remaining === 0 && !closedByTimer && s.is_active) {
           closedByTimer = true
           setSessionEnded(true)
-          supabase.from('sessions').update({ is_active: false, ended_at: new Date().toISOString() }).eq('id', sessionId)
+          // RPC, not a direct update. `sessions_update_judge` is the only UPDATE
+          // policy on sessions, so the old `.update()` here silently affected
+          // zero rows for every player — the session only ever closed if a
+          // kaiwhakawā happened to have this screen open at the exact minute the
+          // clock ran out, and otherwise stayed open forever awarding nobody
+          // anything. close_expired_sessions() derives expiry from started_at
+          // server-side, so it is safe for any viewer to call.
+          supabase.rpc('close_expired_sessions').then(({ error }) => {
+            if (error) console.error('close_expired_sessions failed', error)
+          })
         }
       }
     }

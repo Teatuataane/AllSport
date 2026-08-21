@@ -224,6 +224,13 @@ function DashboardInner() {
   useEffect(() => {
     if (!userId) return
     const checkActive = async () => {
+      // Close anything whose 100 minutes ran out while the app was shut. Without
+      // this the "Join a Game" card offers a game that finished last night, and
+      // more importantly award_session_points never fires, so nobody in that
+      // session gets placements or points. Server-derived from started_at, so it
+      // cannot end a game still in progress. Awaited so the card below is right.
+      await supabase.rpc('close_expired_sessions')
+
       // Find any currently running session
       const { data: anyActive } = await supabase
         .from('sessions')
