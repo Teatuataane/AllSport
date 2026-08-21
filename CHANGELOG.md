@@ -2,6 +2,13 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.5.9.0] - 2026-08-21
+
+### Changed
+- **Opening any page no longer tells Google you were here.** Our three typefaces were loaded from Google's servers, which meant Google received the IP address and browser of every visitor to every page — including people who never register, never log in, and never agree to anything. The fonts are now served from AllSport itself. Nothing looks different; the same weights load, and pages render slightly faster because the browser no longer waits on another company's server.
+- The privacy policy no longer has to declare Google Fonts as a third party your information reaches. That list is down to three: the database, the website host, and Google sign-in if you choose it.
+- The browser is now told the site may load fonts **only** from AllSport. Previously it was allowed to fetch them from Google, which is what made the leak possible.
+
 ## [0.5.8.0] - 2026-08-20
 
 ### Fixed

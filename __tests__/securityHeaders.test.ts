@@ -52,9 +52,14 @@ describe('CSP directives', () => {
     )
   })
 
-  it('allows Google Fonts stylesheet and font files', () => {
-    expect(directive('style-src')).toContain('https://fonts.googleapis.com')
-    expect(directive('font-src')).toContain('https://fonts.gstatic.com')
+  it('does NOT allow Google Fonts — the fonts are self-hosted', () => {
+    // Fonts come from next/font/google in app/layout.tsx, which serves them
+    // from our own origin. Allowing these hosts again would re-open the leak of
+    // every visitor's IP address to Google on page load, which is the exact
+    // thing self-hosting removed. This test is the tripwire for that.
+    expect(directive('style-src')).not.toContain('fonts.googleapis.com')
+    expect(directive('font-src')).not.toContain('fonts.gstatic.com')
+    expect(directive('font-src')).toBe("font-src 'self'")
   })
 
   it('allows arbitrary https images for partner club logos', () => {

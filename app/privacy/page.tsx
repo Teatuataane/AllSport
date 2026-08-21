@@ -165,12 +165,6 @@ const thirdParties = [
       'Serves the site. Its servers automatically log request information including your IP address, browser type and the pages you request, for security and reliability. Vercel Inc. is a United States company.',
   },
   {
-    name: 'Google Fonts',
-    role: 'Typefaces',
-    detail:
-      'Our fonts load from Google’s servers, which means Google receives your IP address and browser type when you open any page — including if you never sign up. We are moving these fonts onto our own site to remove this.',
-  },
-  {
     name: 'Google Sign-In',
     role: 'Optional sign-in',
     detail:
@@ -431,6 +425,8 @@ export default function PrivacyPolicy() {
             We are a small charity and we do not run our own servers. These are the only companies your
             information reaches, and each is used strictly to run AllSport. We do not use advertising networks,
             analytics services, social media pixels or data brokers — there are none on this site.
+            Our typefaces are served from our own site rather than from Google, so simply opening a page
+            does not tell anyone else that you were here.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {thirdParties.map(t => (

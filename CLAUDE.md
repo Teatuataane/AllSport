@@ -32,7 +32,7 @@ Through this model, AllSport aims to improve public health, build connected comm
 |---|---|
 | Framework | Next.js 16 (App Router, TypeScript) |
 | Styling | Inline styles + CSS classes in globals.css |
-| Fonts | Bebas Neue, Barlow, Barlow Condensed (Google Fonts) |
+| Fonts | Bebas Neue, Barlow, Barlow Condensed — **self-hosted** via `next/font/google` in `app/layout.tsx`. Never add a `<link>` or `@import` to fonts.googleapis.com: it leaks every visitor's IP to Google, and the CSP blocks it |
 | Database | Supabase (PostgreSQL) |
 | Auth | Supabase Auth (email/password + Google OAuth) |
 | Hosting | Vercel — https://all-sport-psi.vercel.app |

@@ -34,8 +34,13 @@ export function buildCsp(supabaseUrl: string): string {
   return [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline'",
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src 'self' https://fonts.gstatic.com",
+    // No Google Fonts hosts. The fonts are self-hosted by next/font/google
+    // (app/layout.tsx), so both the stylesheet and the font files come from our
+    // own origin. Re-adding either host would also re-open the IP leak to
+    // Google that the self-hosting removed — if a font stops loading, the fault
+    // is in layout.tsx, not here.
+    "style-src 'self' 'unsafe-inline'",
+    "font-src 'self'",
     // https: covers partner club logos (partners.logo_url is an arbitrary URL
     // set by a kaiwhakawā). data:/blob: cover the session QR code canvas.
     "img-src 'self' data: blob: https:",
