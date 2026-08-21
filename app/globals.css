@@ -1,4 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:ital,wght@0,300;0,400;0,600;0,700;1,400&family=Barlow+Condensed:wght@400;500;600;700&display=swap');
+/* Fonts are self-hosted through next/font in app/layout.tsx, which exposes them
+   as --font-bebas-neue / --font-barlow-sans / --font-barlow-cond on <html>.
+   The Google Fonts @import that used to sit here was removed with it: a CSS
+   @import is only discovered after this stylesheet downloads and parses, so it
+   serialised HTML → CSS → font CSS → font files ahead of any brand-type paint,
+   and it duplicated a <link> in the layout that requested a different weight set. */
 
 /* ============================================================
    AllSport Aotearoa — brand tokens
@@ -49,10 +54,13 @@
   --grade-uenuku: linear-gradient(90deg,#EA4742,#F9B051,#F397C0,#B87DB5,#2371BB,#4DB26E); /* Uenuku / Rainbow */
   --grade-taniwha: #000000;    /* Taniwha / Black — peak */
 
-  /* Type families */
-  --font-display: 'Bebas Neue', Impact, sans-serif;   /* all headings */
-  --font-body: 'Barlow', system-ui, sans-serif;       /* body */
-  --font-label: 'Barlow Condensed', 'Barlow', sans-serif; /* uppercase UI */
+  /* Type families. The var() on each line is the self-hosted family that
+     next/font generates; the quoted name after it keeps the design working if a
+     page ever renders outside the root layout, and the generic is the fallback
+     that paints during swap. */
+  --font-display: var(--font-bebas-neue), 'Bebas Neue', Impact, sans-serif;   /* all headings */
+  --font-body: var(--font-barlow-sans), 'Barlow', system-ui, sans-serif;      /* body */
+  --font-label: var(--font-barlow-cond), 'Barlow Condensed', var(--font-barlow-sans), sans-serif; /* uppercase UI */
 
   /* Radii */
   --radius-sm: 6px;

@@ -73,7 +73,7 @@ function PlayPageInner() {
     <div style={{ minHeight: '100vh', background: 'var(--dark)', color: 'var(--white)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
       <style>{`input:focus { border-color: var(--blue) !important; box-shadow: 0 0 0 3px rgba(35,113,187,0.35); }`}</style>
       <div style={{ marginBottom: '40px', textAlign: 'center' }}>
-        <img src="/logo.png" alt="AllSport" style={{ height: '80px', marginBottom: '12px' }} />
+        <img src="/logo-mark.webp" alt="AllSport" width={133} height={80} style={{ height: '80px', width: 'auto', marginBottom: '12px' }} />
         <div style={{ fontFamily: 'var(--font-display)', fontSize: '36px', letterSpacing: '0.09em' }}>
           ALL<span style={{ color: 'var(--red)' }}>SPORT</span>
         </div>

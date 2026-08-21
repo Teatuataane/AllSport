@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase-browser'
+import { createClient, getSessionUser } from '@/lib/supabase-browser'
 import Link from 'next/link'
 import { colourByRung, colourForPoints, colourOnDark } from '@/lib/colours'
 
@@ -53,7 +53,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     const load = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
+      const user = await getSessionUser()
       if (!user) { router.push('/play'); return }
       setUserId(user.id)
 
@@ -141,7 +141,7 @@ export default function ProfilePage() {
   const handleAddMember = async () => {
     if (!memberForm.full_name || !memberForm.username || !memberForm.date_of_birth) return
     setAddingMember(true); setMemberError('')
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getSessionUser()
     if (!user) { setAddingMember(false); return }
     const division = isJuniorDob(memberForm.date_of_birth)
       ? 'Juniors'

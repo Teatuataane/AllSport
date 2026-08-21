@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useParams } from 'next/navigation'
-import { createClient } from '@/lib/supabase-browser'
+import { createClient, getSessionUser } from '@/lib/supabase-browser'
 import { getEventByName, isTimedEffort, decodeDiffTime, type EventData } from '@/lib/eventData'
 import { parseLocalDate } from '@/lib/dates'
 import EventIcon, { domainColor } from '@/components/EventIcon'
@@ -2132,7 +2132,7 @@ export default function SessionPage() {
 
   useEffect(() => {
     const load = async () => {
-      const { data: { user: authUser } } = await supabase.auth.getUser()
+      const authUser = await getSessionUser()
       if (authUser) {
         const { data: p } = await supabase.from('players').select('*').eq('id', authUser.id).single()
         if (p) {

@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase-browser'
 import { EVENTS } from '@/lib/eventData'
-import { fetchAll } from '@/lib/fetchAll'
 import {
   sessionWins,
   type RatingEventRow, type RatingSessionRow, type RatingPlayerRow,
@@ -48,6 +47,25 @@ type RankingRow = {
   average_placement: number | null
   division: string
   players: { display_name: string | null; username: string | null }[] | { display_name: string | null; username: string | null } | null
+}
+
+type StatsBundle = {
+  results: { player_id: string | null; session_id: string; event_id: string; raw_score: number | null; placement: number | null }[]
+  events: RatingEventRow[]
+  sessions: RatingSessionRow[]
+  players: RatingPlayerRow[]
+}
+
+// Shape returned by the `leaderboard_page(p_season)` RPC
+// (supabase/migrations/20260821000000_leaderboard_rpc.sql). `rankings.players`
+// arrives as a nested object, matching what PostgREST's embedded-resource syntax
+// used to return, so RankingRow is unchanged.
+type LeaderboardPayload = {
+  rankings: RankingRow[]
+  colour_rungs: { player_id: string; highest_rung: number }[]
+  active_session: ActiveSession | null
+  active_session_results: SessionResult[]
+  stats: StatsBundle
 }
 
 type EnrichedPlayer = {
@@ -227,12 +245,7 @@ export default function Leaderboard() {
   const [loading, setLoading] = useState(true)
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null)
   const [sessionLeader, setSessionLeader] = useState<SessionLeader | null>(null)
-  const [statsData, setStatsData] = useState<{
-    results: { id: string; player_id: string | null; session_id: string; event_id: string; raw_score: number | null; placement: number | null }[]
-    events: RatingEventRow[]
-    sessions: RatingSessionRow[]
-    players: RatingPlayerRow[]
-  } | null>(null)
+  const [statsData, setStatsData] = useState<StatsBundle | null>(null)
 
   // Per-player wins (current season) + percentile-derived top domain/event (lifetime)
   const playerStats = useMemo(() => {
@@ -257,105 +270,66 @@ export default function Leaderboard() {
     return out
   }, [statsData])
 
-  // Fetch seasonal rankings. The BOARD is seasonal on purpose: it resets each
-  // January so there is an annual contest and a newcomer can still climb it.
-  // Colours are lifetime and come from player_totals below.
+  // ONE request for the whole page. This used to be four separate effects firing
+  // seven concurrent PostgREST queries, which is what made the page slow: against
+  // this project a request costs ~2.7s as one of seven in flight and ~134ms alone.
+  // The board is seasonal on purpose (it resets each January so a newcomer can
+  // climb it); colours are lifetime and ride along in the same payload.
+  // See PERF_AGGREGATION_PLAN.md.
   useEffect(() => {
     const supabase = createClient()
+    let cancelled = false
+
     supabase
-      .from('rankings')
-      .select('id, player_id, total_points, total_sessions, average_placement, division, players(display_name, username)')
-      .eq('season_year', new Date().getFullYear())
-      .order('total_points', { ascending: false })
-      .then(({ data }) => {
-        setRankings(data || [])
+      .rpc('leaderboard_page', { p_season: new Date().getFullYear() })
+      .then(({ data, error }) => {
+        if (cancelled) return
+        if (error || !data) {
+          // Leave the board empty rather than half-populated; colours already
+          // fall back to rung 1 (Mā) when the map has no entry for a player.
+          setLoading(false)
+          return
+        }
+        const d = data as LeaderboardPayload
+        setRankings(d.rankings ?? [])
+        setColourRungs(new Map((d.colour_rungs ?? []).map(r => [r.player_id, r.highest_rung])))
+        setStatsData(d.stats)
+        setActiveSession(d.active_session ?? null)
+        setSessionLeader(d.active_session ? computeLeader(d.active_session_results ?? []) : null)
         setLoading(false)
       })
+
+    return () => { cancelled = true }
   }, [])
 
-  // Lifetime colours. Every player who has never crossed a threshold sits on
-  // rung 1 (Mā), which is also the fallback if the table is unreachable.
+  // Realtime for the live-session leader chip. Split from the initial load so the
+  // subscription can key off the session id the payload above returned, and so a
+  // score coming in refetches only this one small query — never the whole page.
   useEffect(() => {
+    const sessionId = activeSession?.id
+    if (!sessionId) return
+
     const supabase = createClient()
-    supabase
-      .from('player_totals')
-      .select('player_id, highest_rung')
-      .then(({ data }) => {
-        setColourRungs(new Map((data || []).map(r => [r.player_id as string, r.highest_rung as number])))
-      })
-  }, [])
-
-  // Fetch full result history for wins + skill-derived top domain/event
-  useEffect(() => {
-    const supabase = createClient()
-    const load = async () => {
-      const [results, events, sessions, players] = await Promise.all([
-        fetchAll<{ id: string; player_id: string | null; session_id: string; event_id: string; raw_score: number | null; placement: number | null }>((from, to) =>
-          supabase.from('results').select('id, player_id, session_id, event_id, raw_score, placement').not('raw_score', 'is', null).order('id').range(from, to)),
-        fetchAll<RatingEventRow>((from, to) =>
-          supabase.from('session_events').select('id, session_id, event_name').order('id').range(from, to)),
-        fetchAll<RatingSessionRow>((from, to) =>
-          supabase.from('sessions').select('id, session_date').order('id').range(from, to)),
-        fetchAll<RatingPlayerRow>((from, to) =>
-          supabase.from('players').select('id, division').order('id').range(from, to)),
-      ])
-      setStatsData({ results, events, sessions, players })
-    }
-    load()
-  }, [])
-
-  // Fetch active session + results, subscribe to realtime
-  useEffect(() => {
-    const supabase = createClient()
-    let channel: ReturnType<typeof supabase.channel> | null = null
-
-    async function loadActiveSession() {
-      const { data: sessions } = await supabase
-        .from('sessions')
-        .select('id, session_date, started_at, location, is_championship')
-        .eq('is_active', true)
-        .limit(1)
-
-      const session = sessions?.[0] ?? null
-      setActiveSession(session)
-
-      if (!session) {
-        setSessionLeader(null)
-        return
-      }
-
-      // Load current results for this session
-      const { data: results } = await supabase
+    const refresh = async () => {
+      const { data } = await supabase
         .from('results')
         .select('player_id, player_name, placement, points_earned')
-        .eq('session_id', session.id)
-
-      setSessionLeader(computeLeader((results ?? []) as SessionResult[]))
-
-      // Subscribe to realtime updates on results for this session
-      channel = supabase
-        .channel(`leaderboard-session-${session.id}`)
-        .on('postgres_changes', {
-          event: '*',
-          schema: 'public',
-          table: 'results',
-          filter: `session_id=eq.${session.id}`,
-        }, async () => {
-          const { data: fresh } = await supabase
-            .from('results')
-            .select('player_id, player_name, placement, points_earned')
-            .eq('session_id', session.id)
-          setSessionLeader(computeLeader((fresh ?? []) as SessionResult[]))
-        })
-        .subscribe()
+        .eq('session_id', sessionId)
+      setSessionLeader(computeLeader((data ?? []) as SessionResult[]))
     }
 
-    loadActiveSession()
+    const channel = supabase
+      .channel(`leaderboard-session-${sessionId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'results',
+        filter: `session_id=eq.${sessionId}`,
+      }, refresh)
+      .subscribe()
 
-    return () => {
-      if (channel) supabase.removeChannel(channel)
-    }
-  }, [])
+    return () => { supabase.removeChannel(channel) }
+  }, [activeSession?.id])
 
   const getTabData = (tabKey: string): EnrichedPlayer[] => {
     const division = DIVISION_MAP[tabKey]

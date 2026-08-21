@@ -82,7 +82,7 @@ export default function Navbar() {
         <Link href={isLoggedIn ? '/dashboard' : '/'} style={{
           display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0,
         }}>
-          <img src="/logo.png" alt="AllSport" style={{ height: 38 }} />
+          <img src="/logo-mark.webp" alt="AllSport" width={63} height={38} style={{ height: 38, width: 'auto' }} />
           <span style={{
             fontFamily: 'var(--font-display)', fontSize: 22,
             color: 'var(--white)', letterSpacing: '0.09em', lineHeight: 1,

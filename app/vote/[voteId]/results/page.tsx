@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { createClient } from '@/lib/supabase-browser'
+import { createClient, getSessionUser } from '@/lib/supabase-browser'
 import Link from 'next/link'
 
 const DOMAINS = [
@@ -85,7 +85,7 @@ export default function VoteResultsPage() {
 
   useEffect(() => {
     const init = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
+      const user = await getSessionUser()
       if (!user) { router.push('/play'); return }
 
       // Check judge role

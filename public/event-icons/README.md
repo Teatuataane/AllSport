@@ -2,6 +2,16 @@
 
 Drop one PNG per event in this folder and it appears automatically in the app (live session, and anywhere else EventIcon is used). No code change needed.
 
+**After adding icons, run the optimiser:**
+
+```bash
+node scripts/optimize-icons.mjs
+```
+
+Canva exports at 1000×1000 (~36 KB each), but these are drawn into a 26–46px tile and used as CSS *masks*, which read only the alpha channel — so the full-size colour export is ~95% waste. The script downscales to 160×160 and strips the colour data, taking the set from 4.6 MB to 212 KB. It **skips any file already 200px or smaller**, so it is safe to re-run and only touches newly dropped exports. Commit the optimised files.
+
+If you ever need a full-size original back, it is in git history (and the real master is the Canva document).
+
 **Export rules:**
 - Transparent background, solid single-colour silhouette (black is fine — the app recolours it to the domain colour via CSS mask, so it will show correctly on the dark theme)
 - Square-ish crop, subject filling most of the canvas

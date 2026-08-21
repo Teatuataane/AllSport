@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { createClient } from '@/lib/supabase-browser'
+import { createClient, getSessionUser } from '@/lib/supabase-browser'
 
 const DOMAINS = [
   { number: 1, name: 'Maximal Strength' },
@@ -59,7 +59,7 @@ export default function VotePage() {
 
   useEffect(() => {
     const init = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
+      const user = await getSessionUser()
       if (!user) { router.push('/play'); return }
       setUserId(user.id)
 

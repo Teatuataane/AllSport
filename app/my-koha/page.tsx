@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase-browser'
+import { createClient, getSessionUser } from '@/lib/supabase-browser'
 import Link from 'next/link'
 
 const supabase = createClient()
@@ -64,7 +64,7 @@ export default function MyKoha() {
   // ── Auth + load ──────────────────────────────────────────────────────────────
   useEffect(() => {
     const load = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
+      const user = await getSessionUser()
       if (!user) { router.push('/play'); return }
       setUserId(user.id)
 

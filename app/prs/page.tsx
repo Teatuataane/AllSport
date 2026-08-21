@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase-browser'
+import { createClient, getSessionUser } from '@/lib/supabase-browser'
 import { EVENTS, DOMAIN_ORDER, getEventsByDomain } from '@/lib/eventData'
 import { formatNZDate } from '@/lib/dates'
 import DomainIcon from '@/components/DomainIcon'
@@ -59,7 +59,7 @@ export default function PRsPage() {
 
   useEffect(() => {
     const load = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
+      const user = await getSessionUser()
       if (!user) { router.replace('/play'); return }
 
       const { data } = await supabase

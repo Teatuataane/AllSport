@@ -1,10 +1,16 @@
-'use client'
-
-import { useState, useEffect } from 'react'
+// Server component. `partners` is a public table (`partners_public_read` is
+// `USING (true)`), so it is read here with the cookie-free client and rendered
+// into the HTML — no client JS, no round trip after load, and no "Loading
+// partners..." flash, since the data is present on first paint.
+//
+// Revalidated rather than dynamic: partner clubs are edited by hand and change
+// very rarely, so re-rendering per request would buy nothing. The trade is that
+// a newly added partner can take up to this long to appear — raise or lower it
+// here if that ever matters.
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase-browser'
+import { createSupabasePublicClient } from '@/lib/supabase-server'
 
-const supabase = createClient()
+export const revalidate = 300
 
 interface Partner {
   id: string
@@ -16,22 +22,14 @@ interface Partner {
   display_order: number
 }
 
-export default function Supporters() {
-  const [partners, setPartners] = useState<Partner[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    const load = async () => {
-      const { data } = await supabase
-        .from('partners')
-        .select('*')
-        .eq('is_active', true)
-        .order('display_order')
-      setPartners(data || [])
-      setLoading(false)
-    }
-    load()
-  }, [])
+export default async function Supporters() {
+  const supabase = createSupabasePublicClient()
+  const { data } = await supabase
+    .from('partners')
+    .select('*')
+    .eq('is_active', true)
+    .order('display_order')
+  const partners: Partner[] = data ?? []
 
   return (
     <>
@@ -80,9 +78,7 @@ export default function Supporters() {
             AllSport partners with local sports clubs across Ōtautahi to run sessions on their turf — bringing new people into their sport while expanding the AllSport community. Their facilities and equipment help AllSport grow beyond AllSport HQ.
           </p>
 
-          {loading ? (
-            <div style={{ color: '#444', fontFamily: 'var(--font-body)', padding: '40px 0' }}>Loading partners...</div>
-          ) : partners.length === 0 ? (
+          {partners.length === 0 ? (
             <div style={{
               background: 'var(--surface)', border: '1px solid var(--border)',
               borderLeft: '4px solid var(--blue)', borderRadius: '12px',

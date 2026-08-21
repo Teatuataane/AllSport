@@ -1,9 +1,12 @@
-'use client'
-
-import { useState } from 'react'
+// Server component. The only interactive part of this page is the domain
+// accordion, which now lives in its own client island (DomainAccordion) so the
+// other ~350 lines of static marketing copy no longer ship as client JS — and
+// lib/eventData.ts (2171 lines) stays on the server, since `domains` is derived
+// here and passed down already flattened.
 import Link from 'next/link'
 import { RainbowText, SectionLabel } from '@/components/ui'
 import { EVENTS } from '@/lib/eventData'
+import DomainAccordion from './DomainAccordion'
 
 const DOMAIN_META = [
   {
@@ -150,8 +153,6 @@ const checklist = [
 const totalEvents = domains.reduce((n, d) => n + d.events.length, 0)
 
 export default function HowToPlay() {
-  const [expandedDomain, setExpandedDomain] = useState<string | null>(null)
-
   return (
     <>
       <style>{`
@@ -327,45 +328,7 @@ export default function HowToPlay() {
           <Link href="/events" style={{ display: 'inline-block', marginBottom: '32px', padding: '10px 22px', borderRadius: '999px', background: 'var(--surface)', border: '1px solid var(--border-strong)', color: 'var(--grey-light)', fontSize: '13px', fontFamily: 'var(--font-label)', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
             Browse All {totalEvents} Events →
           </Link>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            {domains.map((domain) => {
-              const isOpen = expandedDomain === domain.name
-              return (
-                <div
-                  key={domain.name}
-                  className="domain-card-htp"
-                  onClick={() => setExpandedDomain(isOpen ? null : domain.name)}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '16px 20px' }}>
-                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: domain.color, flexShrink: 0 }} />
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', color: isOpen ? domain.color : 'var(--white)', letterSpacing: '0.04em', lineHeight: 1 }}>
-                        {domain.name}
-                      </div>
-                      {!isOpen && (
-                        <div style={{ fontFamily: 'var(--font-label)', fontSize: '13px', color: '#555', marginTop: '2px' }}>{domain.desc}</div>
-                      )}
-                    </div>
-                    <span style={{ fontFamily: 'var(--font-label)', fontSize: '11px', color: '#555', marginRight: '8px', flexShrink: 0 }}>{domain.events.length} events</span>
-                    <span style={{ color: '#444', fontSize: '13px' }}>{isOpen ? '▲' : '▼'}</span>
-                  </div>
-                  {isOpen && (
-                    <div style={{ padding: '0 20px 16px', borderTop: `1px solid ${domain.color}33` }}>
-                      <p style={{ fontFamily: 'var(--font-label)', fontSize: '14px', color: '#666', marginBottom: '12px', paddingTop: '12px' }}>{domain.desc}</p>
-                      <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-                        {domain.events.map(event => (
-                          <span key={event} className="event-pill">{event}</span>
-                        ))}
-                      </div>
-                      <Link href="/events" style={{ display: 'inline-block', marginTop: '12px', fontSize: '12px', color: 'var(--blue)', fontFamily: 'var(--font-label)', fontWeight: 700, letterSpacing: '0.05em' }}>
-                        View full event details →
-                      </Link>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
+          <DomainAccordion domains={domains} />
         </div>
       </section>
 

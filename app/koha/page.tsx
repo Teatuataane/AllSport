@@ -1,5 +1,6 @@
-'use client'
-
+// Server component. This page has no state, no effects and no event handlers,
+// so the client directive it used to carry only cost bundle size. RainbowText
+// comes from the client-side ui module and stays a small client island.
 import Link from 'next/link'
 import { RainbowText } from '@/components/ui'
 
