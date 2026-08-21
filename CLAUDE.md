@@ -512,7 +512,7 @@ April 2026 rebuild, so one unauthenticated request returned all 27 players with
 19 emails, 9 phones, 27 dates of birth and one minor's guardian contact details.
 Anything needing another player's row now reads **`players_public`**.
 
-**Three rules that are not obvious and have each already cost a production
+**Five rules that are not obvious and have each already cost a production
 incident:**
 
 1. **`CREATE OR REPLACE VIEW` can only APPEND a column.** It cannot rename,
@@ -535,6 +535,35 @@ incident:**
    what blocked the PII lockdown. The CLI suggests
    `supabase migration repair --status reverted <version>` — **do not use it**;
    that claims a change is absent from a database that has it. Commit the file.
+4. **A `from('players')` grep does NOT find a PostgREST embed.** `/leaderboard`
+   resolved every player name through
+   `rankings … select('…, players(display_name, username)')`, which reads the
+   players BASE table. It survived three separate sweeps for "every cross-player
+   read", across three sessions, because nobody greps `players(`. **When
+   restricting a table, grep `tablename(` as well as `from('tablename')`.**
+   For what it actually does when it breaks, see the comment at the query in
+   `app/leaderboard/page.tsx` — measured, not assumed: a 401 / `42501` that
+   takes the whole request down, because PostgREST fails the entire query when
+   an embedded table is unreadable. Not the silent null-names case.
+5. **Never reuse a migration timestamp.** Two branches independently wrote a
+   `20260813000000`. One ran; the other was recorded as applied and then
+   **skipped forever** — so `guard_players_privileged_columns()` and its trigger
+   were absent from production for six days while the PR that added them showed
+   as merged, leaving kaiwhakawā self-promotion unguarded. Nothing surfaces
+   this: `db push` says "Remote database is up to date" and `migration list`
+   shows a tick against both columns. Only `pg_proc` / `pg_trigger` tell the
+   truth. Create migrations with `supabase migration new`, which allocates the
+   timestamp for you, and never hand-name one.
+
+**Verify a migration by querying the objects it should have created, never by
+trusting the migration history.** Every incident in this section was invisible
+in `supabase migration list`.
+
+**Parallel worktrees are the shared root cause.** Several Claude sessions work
+this repo at once from `.claude/worktrees/`, and `supabase/.temp/` is gitignored
+so a worktree is never CLI-linked. Before writing a migration or editing
+`players_public`, `git fetch && git log --oneline --all` and check whether
+someone is already doing it.
 
 **`players.role` is pinned by a trigger, not by grants.** A table-level UPDATE
 grant overrides column-level REVOKEs in Postgres, so the column-grant route
