@@ -267,10 +267,24 @@ export default function Leaderboard() {
     // username)`) reads the players BASE table, which 20260813000003 closes to
     // everyone but your own row, your children and kaiwhakawā.
     //
-    // /leaderboard is public, so under that lockdown the embed returns null for
-    // every row and the fallback below renders the entire board as "Anonymous".
-    // It fails SILENTLY: an RLS denial is an empty result, not an error, so
-    // nothing logs and nothing throws.
+    // /leaderboard is public, and this took the board DOWN, not to "Anonymous".
+    // Measured against production with the deployed key while the embed was
+    // still live:
+    //
+    //   rankings?select=...,players(display_name,username)
+    //     -> 401 {"code":"42501","message":"permission denied for table players"}
+    //   rankings?select=...  (no embed)
+    //     -> 200, 20 rows
+    //
+    // Two reasons it is a hard failure rather than a quiet one. 20260813000003
+    // REVOKES the table grant as well as tightening RLS, and a privilege error
+    // is raised, not filtered. And PostgREST fails the WHOLE request when an
+    // embedded table is unreadable, so `rankings` came back empty too and the
+    // board fell through to its "No rankings yet" state.
+    //
+    // The distinction matters when debugging: look for a 401 with 42501 and an
+    // empty board, NOT null names. (A pure RLS denial with the grant intact
+    // would be the silent, null-names case.)
     //
     // A `from('players')` grep does not find an embed. Grep `players(` too.
     const load = async () => {
