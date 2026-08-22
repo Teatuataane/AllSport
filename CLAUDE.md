@@ -914,6 +914,9 @@ RLS: own + parent (family) + judge.
       20260821000000_leaderboard_rpc.sql       # stats_bundle() + leaderboard_page(p_season): collapse the
                                                #   7-request /leaderboard fan-out into one round trip.
                                                #   INVOKER rights, reads players_public (NOT players).
+      20260822000000_privacy_tidyup.sql        # RENUMBERED from 20260821000000 (collided with the line
+                                               #   above, which had already claimed that version in prod).
+                                               #   PENDING — see the collision note below.
       # ── ALL migrations above are APPLIED to prod. 20260813000003 needed
       #    `supabase db push --include-all`: its 13-Aug timestamp is older than the 19-Aug migration
       #    already applied, and the CLI refuses out-of-order inserts without that flag.
@@ -922,6 +925,38 @@ RLS: own + parent (family) + judge.
     logo.png                          # 3666x2204 design master — NOT served; browsers get logo-hero-*.webp /
                                       #   logo-mark.webp / favicon-32.png (regenerate: scripts/gen-logo-assets.mjs)
 ```
+
+### A duplicate migration version is applied SILENTLY AS A SKIP
+
+This has now happened **twice in two weeks**, both times across parallel
+worktrees, and both times `supabase db push` reported success.
+
+The CLI keys on the **14-digit version alone**. It never looks at the rest of
+the filename or the contents. So two files numbered `20260821000000` are one
+migration as far as it is concerned: whichever is applied first claims the row
+in `supabase_migrations.schema_migrations`, and the other is treated as already
+applied and **skipped without a word**.
+
+- `20260816000000` — `leaderboard_rpc` (this branch) vs `players_public_show_division`
+  (main). Caught before pushing, by reading `supabase migration list` rather
+  than trusting the branch.
+- `20260821000000` — `leaderboard_rpc` vs `privacy_tidyup`. **Not** caught before
+  the privacy code deployed: `delete_my_account()` never existed in prod while
+  `/profile` was calling it. Renumbered to `20260822000000`.
+
+Rules that follow:
+
+1. Before adding a migration, run `ls supabase/migrations | tail` against an
+   **up-to-date main**, not your own branch. A worktree that is a few days old
+   cannot see the collision it is about to create.
+2. `supabase migration list` is the only trustworthy check. A row with a version
+   in **both** columns is applied. A blank Remote is pending. A blank **Local**
+   means prod has a migration this branch does not — you are behind, and any new
+   file you add is at risk of colliding.
+3. Renumber the file that has **never been applied**. The applied one has to keep
+   its number or the recorded history stops matching the file that produced it.
+4. `db push` reporting success is not evidence that your migration ran. Verify
+   the objects exist.
 
 ### Verifying an RPC that public pages depend on
 

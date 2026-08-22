@@ -36,6 +36,13 @@ export default function ProfilePage() {
   })
   const [memberError, setMemberError] = useState('')
 
+  // Privacy Act 2020: access (principle 6) and erasure. Both self-serve.
+  const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState('')
+  const [confirmErase, setConfirmErase] = useState(false)
+  const [erasing, setErasing] = useState(false)
+  const [eraseError, setEraseError] = useState('')
+
   // Editable profile fields
   const [form, setForm] = useState({
     username: '',
@@ -136,6 +143,71 @@ export default function ProfilePage() {
     }
     setActivePlayerId(id)
     router.push('/dashboard')
+  }
+
+  // Everything here is already readable by this player under RLS — the export
+  // gathers it rather than exposing anything new, which is why it can run
+  // client-side with no new endpoint to secure.
+  const handleExport = async () => {
+    if (!userId) return
+    setExporting(true); setExportError('')
+    try {
+      const [profile, children, results, summaries, colours, wellbeing, totals, donations] = await Promise.all([
+        supabase.from('players').select('*').eq('id', userId).single(),
+        supabase.from('players').select('*').eq('parent_id', userId),
+        supabase.from('results').select('*').eq('player_id', userId),
+        supabase.from('session_player_summary').select('*').eq('player_id', userId),
+        supabase.from('colour_awards').select('*').eq('player_id', userId),
+        supabase.from('wellbeing_surveys').select('*').eq('player_id', userId),
+        supabase.from('player_totals').select('*').eq('player_id', userId),
+        supabase.from('koha_donations').select('*').eq('player_id', userId),
+      ])
+
+      const payload = {
+        exported_at: new Date().toISOString(),
+        note:
+          'Everything AllSport holds about you. Scores and placements are also public on the ' +
+          'leaderboard; the rest is not. See allsport.nz/privacy.',
+        profile: profile.data ?? null,
+        family_members: children.data ?? [],
+        results: results.data ?? [],
+        session_summaries: summaries.data ?? [],
+        colours_earned: colours.data ?? [],
+        lifetime_totals: totals.data ?? [],
+        wellbeing_checkins: wellbeing.data ?? [],
+        koha: donations.data ?? [],
+      }
+
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `allsport-my-data-${new Date().toISOString().slice(0, 10)}.json`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch {
+      setExportError('Could not build the file. Try again, or email privacy@allsport.nz.')
+    }
+    setExporting(false)
+  }
+
+  const handleErase = async () => {
+    if (!userId) return
+    setErasing(true); setEraseError('')
+    // The RPC derives its target from auth.uid(); passing null means "me".
+    const { error } = await supabase.rpc('delete_my_account', { p_player_id: null })
+    if (error) {
+      setEraseError(error.message || 'Could not erase the account. Email privacy@allsport.nz.')
+      setErasing(false)
+      return
+    }
+    // Clear the locally-cached profile pointer before signing out, or the next
+    // visitor on this device lands on a dashboard for an account that is gone.
+    try { localStorage.removeItem('allsport_active_player_id') } catch {}
+    await supabase.auth.signOut()
+    router.push('/')
   }
 
   const handleAddMember = async () => {
@@ -609,7 +681,109 @@ export default function ProfilePage() {
             </div>
           )}
         </div>
+
+        {/* ── Your data ─────────────────────────────────────────────────── */}
+        <div style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: '16px', padding: '22px', marginTop: '16px' }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', color: '#fff', letterSpacing: '0.04em', marginBottom: '4px' }}>
+            Your data
+          </div>
+          <div style={{ fontSize: '12px', color: '#666', fontFamily: 'var(--font-body)', lineHeight: 1.7, marginBottom: '16px' }}>
+            Under the Privacy Act 2020 you can ask for a copy of what we hold, and ask us to erase it.
+            Both are here rather than by email. See the{' '}
+            <Link href="/privacy" style={{ color: '#888', textDecoration: 'underline' }}>privacy policy</Link>.
+          </div>
+
+          <button
+            onClick={handleExport}
+            disabled={exporting}
+            style={{
+              width: '100%', background: 'transparent', border: '1px solid #2a2a2a', borderRadius: '10px',
+              color: '#ccc', padding: '13px', cursor: 'pointer', minHeight: '44px',
+              fontFamily: 'var(--font-label)', fontSize: '14px', fontWeight: 700, letterSpacing: '0.06em',
+            }}
+          >
+            {exporting ? 'Preparing…' : 'Download a copy of my data'}
+          </button>
+          {exportError && (
+            <div style={{ color: '#EA4742', fontSize: '12px', fontFamily: 'var(--font-body)', marginTop: '8px' }}>{exportError}</div>
+          )}
+
+          <button
+            onClick={() => { setConfirmErase(true); setEraseError('') }}
+            style={{
+              width: '100%', background: 'transparent', border: '1px solid #4a1f1f', borderRadius: '10px',
+              color: '#EA4742', padding: '13px', cursor: 'pointer', marginTop: '10px', minHeight: '44px',
+              fontFamily: 'var(--font-label)', fontSize: '14px', fontWeight: 700, letterSpacing: '0.06em',
+            }}
+          >
+            Erase my account
+          </button>
+        </div>
       </div>
+
+      {confirmErase && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1200,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px',
+          }}
+          onClick={() => !erasing && setConfirmErase(false)}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background: '#111', border: '1px solid #2a2a2a', borderLeft: '4px solid #EA4742', borderRadius: '16px', padding: '24px', maxWidth: '460px', width: '100%' }}
+          >
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '26px', color: '#fff', letterSpacing: '0.04em', marginBottom: '12px' }}>
+              Erase this account?
+            </div>
+            <div style={{ fontSize: '13.5px', color: '#bbb', fontFamily: 'var(--font-body)', lineHeight: 1.75 }}>
+              <p style={{ margin: '0 0 10px' }}>
+                <strong style={{ color: '#fff' }}>Erased for good:</strong> your name, email, phone, date of
+                birth, location, any parent or guardian details, your username and icon, and every
+                wellbeing check-in answer you have given.
+              </p>
+              <p style={{ margin: '0 0 10px' }}>
+                <strong style={{ color: '#fff' }}>Kept, with your name removed:</strong> your scores,
+                placements, points and colours. They stay in each session&apos;s record as
+                &ldquo;Former player&rdquo;. Removing them would change where everybody else finished in
+                games that have already been scored, so we do not.
+              </p>
+              <p style={{ margin: '0 0 16px', color: '#888' }}>
+                This cannot be undone, and it is not the same as closing your login — ask a kaiwhakawā
+                if you want the sign-in removed too.
+              </p>
+            </div>
+            {eraseError && (
+              <div style={{ color: '#EA4742', fontSize: '13px', fontFamily: 'var(--font-body)', marginBottom: '10px' }}>{eraseError}</div>
+            )}
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                onClick={() => setConfirmErase(false)}
+                disabled={erasing}
+                style={{
+                  flex: 1, background: '#1a1a1a', border: '1px solid #333', borderRadius: '10px',
+                  color: '#ccc', padding: '13px', cursor: 'pointer', minHeight: '44px',
+                  fontFamily: 'var(--font-label)', fontSize: '14px', fontWeight: 700,
+                }}
+              >
+                Keep my account
+              </button>
+              <button
+                onClick={handleErase}
+                disabled={erasing}
+                style={{
+                  flex: 1, background: '#EA4742', border: 'none', borderRadius: '10px',
+                  color: '#fff', padding: '13px', cursor: 'pointer', minHeight: '44px',
+                  fontFamily: 'var(--font-label)', fontSize: '14px', fontWeight: 700,
+                  opacity: erasing ? 0.7 : 1,
+                }}
+              >
+                {erasing ? 'Erasing…' : 'Erase permanently'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
