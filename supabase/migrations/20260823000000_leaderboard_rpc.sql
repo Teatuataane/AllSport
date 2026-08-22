@@ -1,3 +1,30 @@
+-- ─── RENUMBERED FROM 20260821000000 (2026-08-21) ────────────────────────────
+--
+-- This file and 20260821000000_privacy_tidyup.sql were both written as
+-- 20260821000000 on different branches. The CLI matches on the 14-digit version
+-- ALONE, so it treated them as one migration: whichever ran first claimed the
+-- row and the other was skipped in silence, with `db push` reporting success
+-- either way.
+--
+-- Both sets of objects are now live in production, but by different routes.
+-- This file's functions ran first and claimed the row. That row was later
+-- repaired to `reverted` and re-pushed, which applied privacy_tidyup's contents
+-- under the same number -- so the ledger's 20260821000000 now describes
+-- privacy_tidyup, and main holds that file at that number.
+--
+-- Hence the renumber lands on THIS file rather than the other one: main and the
+-- production ledger already agree about 20260821000000, and that agreement is
+-- the thing worth preserving. Under 20260823000000 this shows as pending and
+-- re-applies cleanly -- `create or replace function` twice plus two grants, no
+-- schema or data change, so re-running it is a no-op that simply gives it a row
+-- of its own.
+--
+-- Verified against production before renumbering: stats_bundle() and
+-- leaderboard_page() both return 200, i.e. the functions are already there.
+--
+-- The lesson, now in CLAUDE.md: never hand-name a migration. Use
+-- `supabase migration new`, which allocates a timestamp that cannot collide.
+
 -- ─── Stage 1: collapse the leaderboard/dashboard request fan-out ─────────────
 --
 -- DEPLOY ORDER: RUN THIS MIGRATION FIRST, THEN SHIP THE CODE.
