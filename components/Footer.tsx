@@ -24,7 +24,7 @@ export default function Footer() {
             <div style={{
               display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12,
             }}>
-              <img src="/logo.png" alt="AllSport" style={{ height: 34 }} />
+              <img src="/logo-mark.webp" alt="AllSport" width={57} height={34} loading="lazy" style={{ height: 34, width: 'auto' }} />
               <span style={{
                 fontFamily: 'var(--font-display)',
                 fontSize: '30px',

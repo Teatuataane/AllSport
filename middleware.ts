@@ -39,6 +39,11 @@ export async function middleware(request: NextRequest) {
 
   // This call refreshes the session if the access token has expired.
   // Never remove it — session persistence breaks without it.
+  //
+  // KEEP getUser() HERE — do not swap this for getSession(). Server-side the
+  // cookie is attacker-supplied and unverified, and this is also the call that
+  // writes the refreshed cookie back. Client components read the refreshed
+  // session locally via getSessionUser() instead of repeating this round trip.
   await supabase.auth.getUser()
 
   return supabaseResponse

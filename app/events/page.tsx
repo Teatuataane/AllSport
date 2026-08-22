@@ -1,5 +1,7 @@
-'use client'
-
+// Server component. This page has no state, no effects and no event handlers.
+// Worth more than the other static pages: as a client component it dragged the
+// whole 2171-line lib/eventData.ts roster into the browser bundle purely to
+// render a static list. Now that lookup happens at build time.
 import Link from 'next/link'
 import { EVENTS, DOMAIN_ORDER, getEventsByDomain } from '@/lib/eventData'
 

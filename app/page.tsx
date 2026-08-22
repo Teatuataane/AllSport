@@ -129,7 +129,21 @@ export default function Home() {
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-              <img className="lp-float" src="/logo.png" alt="AllSport crest" style={{ width: '100%', maxWidth: '440px', objectFit: 'contain', filter: 'drop-shadow(0 0 60px rgba(234,71,66,0.22))' }} />
+              {/* LCP element. Served at the size it is actually drawn (440px, or
+                  880px on retina) rather than the 3666px master, and carries
+                  width/height so it reserves its box before decode. */}
+              <img
+                className="lp-float"
+                src="/logo-hero-440.webp"
+                srcSet="/logo-hero-440.webp 440w, /logo-hero-880.webp 880w"
+                sizes="(max-width: 768px) 90vw, 440px"
+                width={440}
+                height={265}
+                fetchPriority="high"
+                decoding="async"
+                alt="AllSport crest"
+                style={{ width: '100%', maxWidth: '440px', height: 'auto', objectFit: 'contain', filter: 'drop-shadow(0 0 60px rgba(234,71,66,0.22))' }}
+              />
             </div>
           </div>
         </div>

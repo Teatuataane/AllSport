@@ -241,7 +241,7 @@ All in `app/scoring/[sessionId]/page.tsx`, player flow only (judge EventCard unt
 - **Breath Hold → `hold` mode** (longer wins) + effort task = 80% of PR; **Duck Walk → all-walk tiers** D1–D5 (10m/25m/50m/100m/200m), joined `TIMED_EFFORT_SLUGS`. Historic raw_scores re-encoded by `20260713000001_breath_hold_duck_walk.sql`. `time` input mode now has zero events (kept in the type).
 - **Tier names shortened** (73 renamed) — tier chips no longer repeat the event name or carry judge criteria; new optional `detail` field on `DifficultyTier` holds the criteria, rendered in the quick-entry sheet HOW TO tier list and on /events/[slug]. NOTE: `results.difficulty_tier` stores the NAME string, so pre-rename rows display their old stored labels (fine) but won't match `findIndex` tier lookups (same accepted trade-off as the Handbalance rename).
 - **Selwyn Winter Jam recap** — /schedule block converted from advert to results recap with division champions (derived from the 2026-07-03 session `e032cb24-…`, the Jam stored a day early by the old UTC date bug): Men's kiwigyver, Women's Meredith & Clairebear (shared 1st), Masters Men Blair, Masters Women Jing.
-- **Skill rating system (`lib/rating.ts`)** — multiplayer Elo: each session-event = mini tournament within the unified division pools (men / women / juniors, matching the live leaderboard); pairwise updates, K=64 split across the field; ratings ALWAYS recomputed client-side from full history (idempotent by design — no DB triggers). Displayed only as a 0–100 skill score = expected win probability vs an average player (50 = average; 100 needs sustained dominance; unplayed = 0). Solo fields count a play but move nothing. Unit tests in `__tests__/rating.test.ts`. `lib/fetchAll.ts` pages Supabase queries past the 1000-row cap.
+- ~~**Skill rating system (`lib/rating.ts`)** — multiplayer Elo~~ **REMOVED August 2026.** Session 24 replaced the player-facing skill score with best-score percentiles (`lib/percentile.ts`) and kept the Elo "for `sessionWins`" — but `sessionWins` is a plain `placement = 1` count that never touched a rating, so `computeRatings`/`eloTo100`/`domainRatings`/`topEvent`/`topDomain` had **zero call sites** and were deleted. `lib/rating.ts` now holds only `divisionPool` + `sessionWins` + the `Rating*` row types (names kept — they describe row shapes, not ratings). `lib/fetchAll.ts` deleted in the same pass. Percentiles are now the single ranking metric: do not reintroduce a second one without deciding which is authoritative — the old pair exported `topDomain` from BOTH modules, which is why the leaderboard still imports the survivor as `pctTopDomain`. See PERF_AGGREGATION_PLAN.md.
 - **My 100 → player stat card** — header stat row (Wins · Avg Place · Events), domain coverage dots + per-domain 0–100 skill score, top-event line; tap opens a full-screen **My Stats modal** (headline stats, top event/domain cards, per-domain skill bars + coverage, explainer, link to /prs). Wins = sessions finished 1st in division (`results.placement = 1`, distinct sessions; placement has meant overall division rank since 20260514, older rows are NULL so wins can only undercount).
 - **/leaderboard columns** — Avg Place column replaced by **Wins**, **Top Domain**, **Top Event** (Elo-derived, lifetime; wins are current-season). Also fixed a latent bug: rankings query now filters `season_year = current year` (previously all seasons' rows were listed together). Explainer copy updated.
 - **Wellbeing survey** — quarterly check-in (≤1 per 91 days per player, baseline on first prompt) using validated instruments: WHO-5 (5 items, 0–5, score ×4 = 0–100) + HBSC 60-min activity days item + single-item self-rated fitness + 3 Voice-of-Rangatahi-style items (confidence / enjoyment / belonging, 1–5 agree). `WellbeingSurvey` card on /dashboard (renders only when due; family-member profiles supported via parent RLS), full-screen form, private-by-design; `WellbeingReport` on /judge shows quarterly aggregates (all / rangatahi / adults cohorts, <3 respondents suppressed) + CSV export via `get_wellbeing_report()` SECURITY DEFINER RPC. Migration `20260714000000_wellbeing_survey.sql`.
@@ -845,15 +845,16 @@ RLS: own + parent (family) + judge.
     dates.ts                        # parseLocalDate / formatNZDate — parse DATE columns in local time (avoids off-by-one)
     colours.ts                      # THE colour ladder (19 rungs) — names/thresholds/styling + live-alert predicates. Single source of truth
     colourAlerts.ts                 # divisionRanks (all players) + colourAlerts (live) + colourWatchlist (/judge planning)
-    rating.ts                       # Multiplayer Elo skill ratings — computeRatings/eloTo100/domainRatings/topEvent/topDomain/sessionWins (client-side, idempotent full recompute)
+    rating.ts                       # divisionPool (unified men/women/juniors pools) + sessionWins. The Elo engine was DELETED Aug 2026 (zero call sites once percentiles landed) — see PERF_AGGREGATION_PLAN.md
     judgeRoster.ts                  # Kaiwhakawā roster derivation — buildJudgeRoster/resolveJudgeTarget/resultsForTarget/scoredEventIds(ByTarget)/rosterKeyFor; guests keyed `guest:{player_name}`
-    fetchAll.ts                     # Pages Supabase selects past the 1000-row cap
+    # fetchAll.ts DELETED Aug 2026 — /leaderboard + /dashboard moved to the stats_bundle/leaderboard_page RPCs, which have no 1000-row cap to page around
   app/
     page.tsx                        # Homepage — colour list sourced from lib/colours.ts (cycle 1 + Ngā Taniwha teaser)
     layout.tsx                      # Root layout
     globals.css                     # Design system
     play/page.tsx
-    how-to-play/page.tsx            # Links to /events
+    how-to-play/page.tsx            # Links to /events. SERVER component (Aug 2026) — interactive domain accordion split out below
+    how-to-play/DomainAccordion.tsx # Client island for the domain accordion; receives `domains` already derived so eventData.ts stays server-side
     schedule/page.tsx
     leaderboard/page.tsx            # All-Divisions tab
     koha/page.tsx
@@ -932,22 +933,97 @@ RLS: own + parent (family) + judge.
       20260820000000_close_expired_sessions.sql # close_expired_sessions() + one-time backfill of stranded games
       20260820000001_harden_search_players.sql  # search_players_by_username → players_public, SECURITY DEFINER dropped, anon revoked
       20260820000002_schedule_close_expired_sessions.sql # pg_cron every 5 min; exception-guarded, NEVER aborts the push
-      20260821000000_privacy_tidyup.sql        # self-serve export/erasure, optional legal name, drops players.bodyweight_kg
+      20260821000000_leaderboard_rpc.sql       # stats_bundle() + leaderboard_page(p_season): collapse the
+                                               #   7-request /leaderboard fan-out into one round trip.
+                                               #   INVOKER rights, reads players_public (NOT players).
       20260821000001_drop_orphaned_bonus_tables.sql # archive (RLS-on, no policies) then drop bonus_completions + bonus_sport_opponents
       20260821000002_pin_wellbeing_search_path.sql  # last SECURITY DEFINER function without a pinned search_path
-      # ── ALL migrations above are APPLIED to prod, confirmed 2026-08-21 via `supabase migration list`.
-      #    20260813000003 needed `supabase db push --include-all`: its 13-Aug timestamp is older than the
+      20260822000000_privacy_tidyup.sql        # self-serve export/erasure, optional legal name, drops players.bodyweight_kg.
+                                               #   RENUMBERED from 20260821000000 — see the collision note below.
+      # ── 20260813000003 needed `supabase db push --include-all`: its 13-Aug timestamp is older than the
       #    19-Aug migration already applied, and the CLI refuses out-of-order inserts without that flag.
       #
-      #    TIMESTAMP COLLISIONS ARE INVISIBLE TO GIT AND FATAL TO THE CLI. 20260821000002 was renumbered
-      #    from ...000000 because main landed privacy_tidyup on the same timestamp while that branch was
-      #    open. Different filenames, so git merged both without a conflict — but schema_migrations is
-      #    keyed on the numeric prefix ALONE, so one version cannot hold two files. Check `ls
-      #    supabase/migrations | cut -c1-14 | sort | uniq -d` before pushing a branch that has been open
-      #    while anything else merged.
+      #    TIMESTAMP COLLISIONS ARE INVISIBLE TO GIT AND FATAL TO THE CLI. Different filenames merge
+      #    without a conflict, but schema_migrations is keyed on the numeric PREFIX ALONE, so one version
+      #    cannot hold two files. This has happened THREE times in two weeks, each from a branch that was
+      #    open while something else merged:
+      #      · 20260816000000 — leaderboard_rpc vs players_public_show_division (caught pre-push)
+      #      · 20260821000000 — leaderboard_rpc vs privacy_tidyup (privacy_tidyup renumbered → 20260822000000)
+      #      · 20260821000000 — privacy_tidyup vs pin_wellbeing_search_path (the latter → 20260821000002)
+      #    Run this before pushing any branch that has been open a while:
+      #      ls supabase/migrations | cut -c1-14 | sort | uniq -d
+      #
+      #    ⚠️  UNRESOLVED: which file owns prod's 20260821000000 row. leaderboard_rpc was pushed under that
+      #    version and its functions verified; privacy_tidyup's objects also exist but likely arrived by
+      #    another route, since only one row can exist per version. `migration list` looks complete either
+      #    way, which is why nobody noticed. Settle it before any `db reset` or rebuild-from-migrations:
+      #      select version from supabase_migrations.schema_migrations where version = '20260821000000';
+      #    then confirm which file's objects that row was actually meant to record.
   public/
-    logo.png
+    logo.png                          # 3666x2204 design master — NOT served; browsers get logo-hero-*.webp /
+                                      #   logo-mark.webp / favicon-32.png (regenerate: scripts/gen-logo-assets.mjs)
 ```
+
+### A duplicate migration version is applied SILENTLY AS A SKIP
+
+This has now happened **twice in two weeks**, both times across parallel
+worktrees, and both times `supabase db push` reported success.
+
+The CLI keys on the **14-digit version alone**. It never looks at the rest of
+the filename or the contents. So two files numbered `20260821000000` are one
+migration as far as it is concerned: whichever is applied first claims the row
+in `supabase_migrations.schema_migrations`, and the other is treated as already
+applied and **skipped without a word**.
+
+- `20260816000000` — `leaderboard_rpc` (this branch) vs `players_public_show_division`
+  (main). Caught before pushing, by reading `supabase migration list` rather
+  than trusting the branch.
+- `20260821000000` — `leaderboard_rpc` vs `privacy_tidyup`. The RPC was pushed
+  first and holds the row; `privacy_tidyup`'s objects reached prod by some other
+  route (`delete_my_account()` does exist — checked, 2026-08-22), so nothing was
+  broken, but the migration had no row of its own and the ledger no longer
+  matched the files. Renumbered to `20260822000000` and re-applied, which is
+  safe because that file is idempotent.
+
+  Note the failure mode here was **silent and benign-looking from both ends**:
+  `db push` reported success, and the feature worked. Only the ledger was wrong.
+  Do not assume a collision means the second migration never ran — check whether
+  its objects exist before concluding anything.
+
+Rules that follow:
+
+1. Before adding a migration, run `ls supabase/migrations | tail` against an
+   **up-to-date main**, not your own branch. A worktree that is a few days old
+   cannot see the collision it is about to create.
+2. `supabase migration list` is the only trustworthy check. A row with a version
+   in **both** columns is applied. A blank Remote is pending. A blank **Local**
+   means prod has a migration this branch does not — you are behind, and any new
+   file you add is at risk of colliding.
+3. Renumber the file that has **never been applied**. The applied one has to keep
+   its number or the recorded history stops matching the file that produced it.
+4. `db push` reporting success is not evidence that your migration ran. Verify
+   the objects exist.
+
+### Verifying an RPC that public pages depend on
+
+`supabase db push` and the SQL Editor both run as `postgres`, which has
+**BYPASSRLS**. A function that reads the wrong table therefore passes every check
+you can run there and still returns nothing to the visitors it exists for — and
+RLS returns no rows rather than an error, so it fails silently.
+
+Test the actual role:
+
+```sql
+begin;
+set local role anon;
+select jsonb_array_length(public.leaderboard_page(2026) -> 'stats' -> 'players') as players_as_anon;
+rollback;
+```
+
+For `20260821000000` this was the difference between a green tick and a broken
+board: the function originally read `players`, which `20260813000003` closed and
+revoked anon's grant on. It now reads `players_public`. Confirmed as `anon` on
+2026-08-21: 20 rankings, 27 players, names resolving.
 
 **IMPORTANT:** Always use createClient() from @/lib/supabase-browser in client components.
 

@@ -1,13 +1,18 @@
-'use client'
-
-import { useParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
+// Server component. Everything on this page except the viewer's personal best
+// comes from lib/eventData.ts, which is static — so it is rendered on the server
+// and the 2171-line roster never reaches the browser. The personal best is the
+// one per-viewer piece and lives in its own client island.
+//
+// generateStaticParams prerenders all 120 event pages at build time; they were
+// previously rendered on demand for every request despite the content being
+// fixed. Unknown slugs still fall through to the "Event not found" branch below.
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase-browser'
-import { getEventBySlug } from '@/lib/eventData'
-import { formatNZDate } from '@/lib/dates'
+import { EVENTS, getEventBySlug } from '@/lib/eventData'
+import PersonalBestCard from './PersonalBestCard'
 
-const supabase = createClient()
+export function generateStaticParams() {
+  return EVENTS.map(e => ({ slug: e.slug }))
+}
 
 const DOMAIN_COLOURS: Record<number, string> = {
   1: '#EA4742', 2: '#F9B051', 3: '#F397C0', 4: '#B87DB5', 5: '#2371BB',
@@ -26,60 +31,9 @@ const INPUT_MODE_LABEL: Record<string, string> = {
   'difficulty+reps': 'Difficulty tier + repetitions',
 }
 
-export default function EventPage() {
-  const { slug } = useParams<{ slug: string }>()
+export default async function EventPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
   const event = getEventBySlug(slug)
-  const [player, setPlayer] = useState<any>(null)
-  const [personalBest, setPersonalBest] = useState<any>(null)
-  const [sportRecord, setSportRecord] = useState<{ w: number; d: number; l: number } | null>(null)
-  const [loadingPB, setLoadingPB] = useState(true)
-
-  useEffect(() => {
-    const load = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { setLoadingPB(false); return }
-
-      const { data: p } = await supabase.from('players').select('id, display_name, username').eq('id', user.id).single()
-      setPlayer(p)
-
-      if (event) {
-        const { data: seData } = await supabase
-          .from('session_events')
-          .select('id')
-          .eq('event_name', event.name)
-        const eventIds = (seData || []).map((e: any) => e.id)
-        if (eventIds.length > 0) {
-          if (event.inputMode === 'sport') {
-            // For sport events load all results to show W/D/L record
-            const { data } = await supabase
-              .from('results')
-              .select('score_label, placement, raw_score, sessions(session_date)')
-              .eq('player_id', user.id)
-              .in('event_id', eventIds)
-            if (data && data.length > 0) {
-              setPersonalBest(data[0])
-              setSportRecord({
-                w: data.filter((r: any) => r.raw_score === 2).length,
-                d: data.filter((r: any) => r.raw_score === 1).length,
-                l: data.filter((r: any) => r.raw_score === 0).length,
-              })
-            }
-          } else {
-            const { data } = await supabase
-              .from('results')
-              .select('score_label, placement, raw_score, sessions(session_date)')
-              .eq('player_id', user.id)
-              .in('event_id', eventIds)
-              .order('raw_score', { ascending: false })
-              .limit(1)
-            if (data && data.length > 0) setPersonalBest(data[0])
-          }
-        }
-      }
-      setLoadingPB(false)
-    }
-    load()
-  }, [event?.slug])
 
   if (!event) {
     return (
@@ -186,42 +140,8 @@ export default function EventPage() {
           </div>
         )}
 
-        {/* Personal best */}
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '20px' }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', color: 'var(--white)', marginBottom: '12px', letterSpacing: '1px' }}>Personal Best</div>
-          {loadingPB ? (
-            <div style={{ color: '#555', fontSize: '13px' }}>Loading...</div>
-          ) : !player ? (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ color: '#555', fontSize: '13px', fontFamily: 'var(--font-body)' }}>Log in to see your personal best</div>
-              <Link href="/play" style={{ color: 'var(--blue)', fontSize: '13px', fontWeight: 'bold', textDecoration: 'none' }}>Log In →</Link>
-            </div>
-          ) : personalBest ? (
-            <div>
-              {sportRecord ? (
-                <div>
-                  <div style={{ fontSize: '28px', fontWeight: 'bold', color: 'var(--green)', fontFamily: 'var(--font-display)', letterSpacing: '0.05em' }}>
-                    {[sportRecord.w > 0 && `${sportRecord.w}W`, sportRecord.d > 0 && `${sportRecord.d}D`, sportRecord.l > 0 && `${sportRecord.l}L`].filter(Boolean).join(' ')}
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#555', marginTop: '4px', fontFamily: 'var(--font-body)' }}>
-                    {sportRecord.w + sportRecord.d + sportRecord.l} match{sportRecord.w + sportRecord.d + sportRecord.l !== 1 ? 'es' : ''} played
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--green)' }}>{personalBest.score_label}</div>
-                  {personalBest.sessions?.session_date && (
-                    <div style={{ fontSize: '12px', color: '#555', marginTop: '4px', fontFamily: 'var(--font-body)' }}>
-                      {formatNZDate(personalBest.sessions.session_date)}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          ) : (
-            <div style={{ color: '#555', fontSize: '13px', fontFamily: 'var(--font-body)' }}>No result yet — participate in a session to set your first score!</div>
-          )}
-        </div>
+        {/* Personal best — the one per-viewer block on this page */}
+        <PersonalBestCard eventName={event.name} isSport={event.inputMode === 'sport'} />
 
       </div>
     </div>

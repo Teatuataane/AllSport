@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase-browser'
+import { createClient, getSessionUser } from '@/lib/supabase-browser'
 import JudgeCard from '@/app/components/JudgeCard'
 import WellbeingReport from '@/app/components/WellbeingReport'
 import Link from 'next/link'
@@ -15,7 +15,7 @@ export default function JudgePage() {
 
   useEffect(() => {
     const load = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
+      const user = await getSessionUser()
       if (!user) { router.push('/play'); return }
 
       const { data: playerData } = await supabase

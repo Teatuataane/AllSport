@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useMemo, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { createClient } from '@/lib/supabase-browser'
+import { createClient, getSessionUser } from '@/lib/supabase-browser'
 import { formatNZDate } from '@/lib/dates'
 import { EVENTS } from '@/lib/eventData'
 import { nextScheduledSession } from '@/lib/schedule'
@@ -15,7 +15,6 @@ import {
   computePercentiles, domainPercentiles, strongestEvent, weakestEvent,
   topDomain as pctTopDomain, eventPctLabel, domainPctLabel,
 } from '@/lib/percentile'
-import { fetchAll } from '@/lib/fetchAll'
 import {
   colourByRung, colourForPoints, nextColourFrom, progressToNext,
   colourCardStyle, colourChipStyle, colourOnDark, emblemSrc, type Colour,
@@ -123,7 +122,7 @@ function DashboardInner() {
   // ── Initial load ────────────────────────────────────────────────────────────
   useEffect(() => {
     const load = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
+      const user = await getSessionUser()
       if (!user) { router.push('/play'); return }
       setUserId(user.id)
 
@@ -271,24 +270,22 @@ function DashboardInner() {
     }
   }, [pendingAutoJoin, loading])
 
-  // ── Skill rating data (loaded once — all public-read tables) ────────────────
+  // ── Percentile source data (loaded once — all public-read tables) ───────────
+  // One RPC instead of four concurrent full-table reads. The dashboard fires a
+  // lot of queries on mount and these were four of the heaviest; concurrency is
+  // what costs here, not the queries. See PERF_AGGREGATION_PLAN.md.
+  //
+  // The roster half of this payload comes from players_public, joined inside
+  // stats_bundle(). The base players table is own-row/child/judge only since
+  // 20260813000003 and its anon grant is revoked, so reading it here would fail
+  // outright rather than degrade.
   useEffect(() => {
-    const loadRatingData = async () => {
-      const [results, events, sessions, players] = await Promise.all([
-        fetchAll<RatingData['results'][number]>((from, to) =>
-          supabase.from('results').select('id, player_id, session_id, event_id, raw_score, placement').not('raw_score', 'is', null).order('id').range(from, to)),
-        fetchAll<RatingEventRow>((from, to) =>
-          supabase.from('session_events').select('id, session_id, event_name').order('id').range(from, to)),
-        fetchAll<RatingSessionRow>((from, to) =>
-          supabase.from('sessions').select('id, session_date').order('id').range(from, to)),
-        fetchAll<RatingPlayerRow>((from, to) =>
-          // players_public: this reads the WHOLE roster to rank the player
-          // against their division pool, which the base table no longer allows.
-          supabase.from('players_public').select('id, division').order('id').range(from, to)),
-      ])
-      setRatingData({ results, events, sessions, players })
-    }
-    loadRatingData()
+    let cancelled = false
+    supabase.rpc('stats_bundle').then(({ data, error }) => {
+      if (cancelled || error || !data) return
+      setRatingData(data as RatingData)
+    })
+    return () => { cancelled = true }
   }, [])
 
   // ── Player stats (My 100 card + stats modal) ────────────────────────────────

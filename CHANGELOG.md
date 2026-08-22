@@ -2,6 +2,17 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.5.11.0] - 2026-08-21
+
+### Changed
+- **The app is far lighter on a phone, especially on mobile data.** Opening the homepage used to pull down just over a megabyte, and three quarters of that was a single copy of the crest at poster resolution being shrunk to fit the screen. It now sends the size actually needed, so the homepage is roughly a fifth of what it was and the crest appears much sooner.
+- **The live session screen no longer downloads hundreds of kilobytes of event icons.** Every icon was a large image being drawn at about the size of a fingernail. Same pictures, around a twentieth of the weight — which matters most on patchy gym wifi in the middle of a game.
+- **The leaderboard now asks the database once instead of seven times.** It was making seven requests at the same moment and they got in each other's way: the same query took over two and a half seconds in that crowd and about a tenth of a second on its own.
+- **Images and icons are remembered between visits** rather than being re-checked with the server every single time the app opens. Repeat visits do almost no downloading.
+- **The fonts now come from AllSport instead of Google.** Text appears in the right typeface sooner because there is no detour via another company's servers, and opening the app no longer tells Google anything about it.
+- **Event pages are built in advance**, so tapping an event opens it immediately instead of being assembled on request. All 120 of them.
+- **Signed-in pages start loading sooner.** Every one of them used to check in with the login server and wait for an answer before it could ask for anything else. They now read the session already on the device.
+
 ## [0.5.10.1] - 2026-08-21
 
 ### Changed
