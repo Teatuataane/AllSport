@@ -940,9 +940,17 @@ applied and **skipped without a word**.
 - `20260816000000` — `leaderboard_rpc` (this branch) vs `players_public_show_division`
   (main). Caught before pushing, by reading `supabase migration list` rather
   than trusting the branch.
-- `20260821000000` — `leaderboard_rpc` vs `privacy_tidyup`. **Not** caught before
-  the privacy code deployed: `delete_my_account()` never existed in prod while
-  `/profile` was calling it. Renumbered to `20260822000000`.
+- `20260821000000` — `leaderboard_rpc` vs `privacy_tidyup`. The RPC was pushed
+  first and holds the row; `privacy_tidyup`'s objects reached prod by some other
+  route (`delete_my_account()` does exist — checked, 2026-08-22), so nothing was
+  broken, but the migration had no row of its own and the ledger no longer
+  matched the files. Renumbered to `20260822000000` and re-applied, which is
+  safe because that file is idempotent.
+
+  Note the failure mode here was **silent and benign-looking from both ends**:
+  `db push` reported success, and the feature worked. Only the ledger was wrong.
+  Do not assume a collision means the second migration never ran — check whether
+  its objects exist before concluding anything.
 
 Rules that follow:
 

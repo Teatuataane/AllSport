@@ -2,20 +2,26 @@
 -- 20260822 — Drop bodyweight_kg, and give players a way to erase themselves
 -- ════════════════════════════════════════════════════════════════════════════
 --
--- ⚠️  RENUMBERED FROM 20260821000000 — THIS FILE HAD NEVER BEEN APPLIED.
+-- ⚠️  RENUMBERED FROM 20260821000000 — VERSION COLLISION.
 --
--- It shipped as 20260821000000, the same version as 20260821000000_leaderboard_rpc.sql,
--- which was applied to prod first and claimed that row in supabase_migrations.
--- The CLI matches on the 14-digit version ALONE, so `db push` saw 20260821000000
--- as already applied and skipped this file in silence — reporting success while
--- delete_my_account() did not exist. app/profile/page.tsx calls that function on
--- the "erase my account" button, so the feature was broken in production from
--- the moment its code deployed, with nothing in the migration output to say so.
+-- It shipped as 20260821000000, the same version as 20260821000000_leaderboard_rpc.sql.
+-- The CLI matches on the 14-digit version ALONE, so those two files were one
+-- migration as far as it was concerned: whichever applied first claimed the row
+-- in supabase_migrations and the other would be skipped in silence, with
+-- `db push` reporting success either way.
+--
+-- What actually happened: the leaderboard RPC was pushed first and holds that
+-- row, and THIS file's objects reached production by some other route (verified
+-- 2026-08-22 — delete_my_account() exists). So the effects are live but the
+-- migration has no row of its own, and the recorded history does not match the
+-- files that produced it.
 --
 -- Renumbering this file rather than the other one is deliberate: prod's
 -- 20260821000000 row corresponds to the leaderboard RPC's contents, so that file
 -- has to keep the number for local and remote history to mean the same thing.
--- This one has never run, so moving it is free.
+-- Under 20260822000000 this file shows as pending and applies cleanly, which is
+-- safe precisely because it is idempotent — see below. Applying it is what puts
+-- the row in the ledger.
 --
 -- Nothing here depends on the leaderboard RPC or vice versa: players_public does
 -- not reference bodyweight_kg, and the RPC reads only id and division from it.
