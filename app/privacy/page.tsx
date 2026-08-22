@@ -8,7 +8,7 @@ export const metadata = {
 }
 
 // Last substantive review of this page. Update whenever the content changes.
-const LAST_UPDATED = '13 August 2026'
+const LAST_UPDATED = '21 August 2026'
 
 // Role address, not a personal one: this is published on a public page, it is
 // the Privacy Act contact of record, and it has to outlive whoever is currently
@@ -20,8 +20,8 @@ type Row = { what: string; why: string; who: string }
 const accountData: Row[] = [
   {
     what: 'Name',
-    why: 'To identify you at sessions, and for insurance and safeguarding records.',
-    who: 'Kaiwhakawā. Shown to other players only if it is also your display name.',
+    why: 'Optional. Only for insurance and safeguarding records, and so a kaiwhakawā knows who you are at a session. You can register and play under a username without giving it.',
+    who: 'Kaiwhakawā. Never shown to other players unless you switch "show full name" on.',
   },
   {
     what: 'Email address',
@@ -39,9 +39,9 @@ const accountData: Row[] = [
     who: 'Your age group is used in leaderboards. Kaiwhakawā can see the date itself.',
   },
   {
-    what: 'Gender',
-    why: 'To place you in a competition division. A kaiwhakawā can reassign your division on request.',
-    who: 'Kaiwhakawā. Your division is public if you choose to show it.',
+    what: 'Which division you compete in',
+    why: 'To place you in a division. That is the only thing it is used for. If neither Men\'s nor Women\'s fits, you choose your own starting division, and a kaiwhakawā can move you at any time.',
+    who: 'Kaiwhakawā. Your division is structural, so it is visible — the label next to your name is what "show division" controls.',
   },
   {
     what: 'Phone number',
@@ -175,15 +175,15 @@ const thirdParties = [
 const rights = [
   {
     title: 'See what we hold',
-    body: 'You can ask for a copy of everything we hold about you. Most of it is already on your dashboard, personal bests and profile pages.',
+    body: 'Your profile page has a "Download a copy of my data" button. It gives you a single file containing everything we hold about you — profile, every score, session summaries, colours, koha and any wellbeing answers. No need to ask us.',
   },
   {
     title: 'Fix what is wrong',
     body: 'You can edit your username, display name, icon and visibility settings yourself on your profile. Ask a kaiwhakawā to correct anything else, including your division.',
   },
   {
-    title: 'Delete your account',
-    body: 'Email us and we will delete your account and personal details. Scores from sessions you played stay in the leaderboard history, but we detach them from your name and contact details.',
+    title: 'Erase your account',
+    body: 'There is an "Erase my account" button on your profile. It permanently destroys your name, contact details, date of birth, location, any parent details and every wellbeing answer. Your scores and placements stay in each session\'s record under "Former player" — removing them would change where other players finished in games already scored.',
   },
   {
     title: 'Skip the wellbeing check-in',
@@ -271,7 +271,7 @@ export default function PrivacyPolicy() {
               ['Your contact details are not', 'Your email, phone number and date of birth are never shown anywhere on the site. They are for kaiwhakawā to run sessions and keep you safe.'],
               ['The wellbeing check-in is yours', 'Nobody at AllSport can read your individual answers. Kaiwhakawā only ever see group averages, and only when at least three people have answered.'],
               ['We do not sell or advertise', 'No advertising, no tracking pixels, no analytics, no data broker. We have never sold personal information and we will not.'],
-              ['You can leave', 'Ask us and we will delete your account and your personal details.'],
+              ['You can leave', 'One button on your profile erases your details for good. Another downloads everything we hold about you. Neither needs to go through us.'],
               ['You choose your name', 'Play under a username. You never have to show your legal name to other players.'],
             ].map(([title, body]) => (
               <div key={title} className="privacy-card">

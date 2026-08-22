@@ -2,13 +2,23 @@
 
 All notable changes to AllSport are documented here.
 
-## [0.5.9.0] - 2026-08-21
+## [0.5.11.0] - 2026-08-21
 
 ### Changed
 - **Opening any page no longer tells Google you were here.** Our three typefaces were loaded from Google's servers, which meant Google received the IP address and browser of every visitor to every page — including people who never register, never log in, and never agree to anything. The fonts are now served from AllSport itself. Nothing looks different; the same weights load, and pages render slightly faster because the browser no longer waits on another company's server.
 - The privacy policy no longer has to declare Google Fonts as a third party your information reaches. That list is down to three: the database, the website host, and Google sign-in if you choose it.
 - The browser is now told the site may load fonts **only** from AllSport. Previously it was allowed to fetch them from Google, which is what made the leak possible.
 
+## [0.5.10.0] - 2026-08-21
+
+### Added
+- **You can now download everything we hold about you.** One button on your profile gives you a single file with your profile, every score you have ever set, your session summaries, your colours, your koha and any wellbeing answers. Previously you had to email and ask.
+- **You can now erase your account yourself.** Also on your profile. It permanently destroys your name, email, phone, date of birth, location, any parent or guardian details, your username and icon, and every wellbeing check-in you have given. Your scores stay in each session's record as "Former player", because removing them would change where everybody else finished in games that have already been scored and whose points are already banked as colours. The button explains all of this before you confirm.
+
+### Changed
+- **Your full name is no longer required to register.** It is only ever used for insurance and safeguarding, and most players compete under a username, so asking for a legal name as the price of joining a koha-based community sport was more than we need. The field says what it is for, and you can leave it blank.
+- **We ask which division you compete in, rather than asking your gender.** That was always the only thing the answer was used for. If neither Men's nor Women's fits, you now choose your own starting division instead of being placed in the Men's one by default. A kaiwhakawā can still move anyone at any time.
+- **A body weight field has been removed from the database.** It was added in April 2026, never shown, never filled in by anybody, and read by nothing. Collecting a body weight is a significant thing to do to someone — especially the tamariki in Juniors — and doing it by accident is worse than doing it on purpose.
 ## [0.5.8.0] - 2026-08-20
 
 ### Fixed
