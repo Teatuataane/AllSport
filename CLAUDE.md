@@ -685,11 +685,18 @@ UNIQUE(vote_id, player_id, domain_number)
 id, created_at, full_name, email, phone, date_of_birth, gender, city, region, country,
 parent_name, parent_email, parent_phone, is_active, is_guest, username, division,
 role (default: player), show_full_name, show_username, show_division, show_location, display_name,
-bodyweight_kg, parent_id (uuid, references auth.users.id),
+parent_id (uuid, references auth.users.id),
 icon (TEXT — emoji placeholder; null = show initial letter),
 referral_code (TEXT UNIQUE — 6-char alphanumeric, auto-generated on registration)
-*(Column list verified against prod 2026-08-19. There is NO `address` column — an
+*(Column list verified against prod 2026-08-19; `bodyweight_kg` removed 2026-08-21
+when `20260821000000_privacy_tidyup` dropped it. There is NO `address` column — an
 earlier version of this doc listed one. `gender` and `is_guest` were missing.)*
+
+**Keep this list honest.** It is not decoration: a plpgsql trigger that assigns
+a field the table does not have raises at RUNTIME, not at migration time. The
+first draft of `20260813000001` took `rank_in_session` and `adjusted_score` from
+an earlier, stale version of this section, and would have broken every score
+submission on the first insert. Verify against prod before writing SQL from it.
 
 **RLS since 20260813000003: NOT publicly readable.** SELECT is own row, your
 children (`parent_id = auth.uid()`), or kaiwhakawā via `public.is_judge()`, and

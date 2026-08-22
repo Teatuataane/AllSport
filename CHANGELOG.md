@@ -13,6 +13,12 @@ All notable changes to AllSport are documented here.
 - **Event pages are built in advance**, so tapping an event opens it immediately instead of being assembled on request. All 120 of them.
 - **Signed-in pages start loading sooner.** Every one of them used to check in with the login server and wait for an answer before it could ask for anything else. They now read the session already on the device.
 
+## [0.5.10.1] - 2026-08-21
+
+### Changed
+- Two leftover database tables from the old bonus points system, replaced back in May, have been removed. Nothing had read them since, but one of them would accept writes from anybody at all, so it is better gone. The six real records in them were copied to a locked archive first rather than deleted.
+- Housekeeping on the last of the security review: an internal report function now has the same protection as every other one, and joining a game by code matches the code exactly instead of treating it as a search pattern.
+
 ## [0.5.10.0] - 2026-08-21
 
 ### Added
