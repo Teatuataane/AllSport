@@ -1,5 +1,5 @@
 -- ════════════════════════════════════════════════════════════════════════════
--- 20260821000000 — pin search_path on get_wellbeing_report()
+-- 20260821000002 — pin search_path on get_wellbeing_report()
 -- ════════════════════════════════════════════════════════════════════════════
 --
 -- The last SECURITY DEFINER function in the schema without a pinned
@@ -15,6 +15,12 @@
 -- function raises unless the caller is a kaiwhakawā, so it is not reachable
 -- without an account let alone anonymously, and `authenticated` has no CREATE
 -- on any schema in the path on Supabase.
+--
+-- RENUMBERED from 20260821000000: main landed 20260821000000_privacy_tidyup.sql
+-- with the same timestamp while this branch was open. Git does not flag that
+-- as a conflict (different filenames), but the Supabase CLI keys
+-- schema_migrations on the numeric prefix alone, so two files sharing one
+-- version is a collision it cannot represent.
 --
 -- It is fixed anyway because the mitigation is one line, and because the next
 -- definer function somebody writes will be copied from an existing one. Better

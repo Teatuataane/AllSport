@@ -21,15 +21,20 @@ function calculateAge(dob: string): number {
   return age
 }
 
-function calculateDivision(dob: string, gender: string): string {
+// `gender` is collected for exactly one purpose: choosing a competition
+// division. It used to be labelled "Gender" and "Other" silently produced a
+// men's division, which asks a personal question and then quietly answers it
+// on the player's behalf. Anyone who does not pick Male or Female now chooses
+// their own starting division, and a kaiwhakawā can move anyone at any time.
+function calculateDivision(dob: string, gender: string, preferred: string): string {
   const age = calculateAge(dob)
   if (age <= 16) return 'Juniors'
-  if (gender === 'Female') {
+  const womens = gender === 'Female' || (gender === 'Other' && preferred === "Women's")
+  if (womens) {
     if (age < 40) return "Women's"
     if (age < 60) return 'Masters Women'
     return 'Grandmaster Women'
   }
-  // Male + Other default to men's categories
   if (age < 40) return "Men's"
   if (age < 60) return 'Masters Men'
   return 'Grandmaster Men'
@@ -81,6 +86,10 @@ function RegisterInner() {
     phone: '',
     date_of_birth: '',
     gender: '' as 'Male' | 'Female' | 'Other' | '',
+    // Only used when gender is 'Other' — the division that player picks for
+    // themselves rather than one being assumed for them. Not stored: it feeds
+    // `division`, which is what the DB actually keeps.
+    division_preference: '' as "Men's" | "Women's" | '',
     username: '',
     city: '',
     region: '',
@@ -97,8 +106,13 @@ function RegisterInner() {
   const set = (field: string, value: any) =>
     setForm(prev => ({ ...prev, [field]: value }))
 
-  const division = form.date_of_birth && form.gender
-    ? calculateDivision(form.date_of_birth, form.gender)
+  // Under-17s are Juniors regardless, so a division resolves without needing
+  // the extra pick. Everyone else who chose 'Other' must choose a division.
+  const needsDivisionPick =
+    form.gender === 'Other' && !!form.date_of_birth && calculateAge(form.date_of_birth) > 16
+
+  const division = form.date_of_birth && form.gender && (!needsDivisionPick || form.division_preference)
+    ? calculateDivision(form.date_of_birth, form.gender, form.division_preference)
     : ''
 
   const isMinor = form.date_of_birth ? calculateAge(form.date_of_birth) < 17 : false
@@ -220,7 +234,11 @@ function RegisterInner() {
     </div>
   )
 
-  const step1Valid = !!(form.full_name && form.email && form.password && form.date_of_birth && form.gender)
+  // full_name is deliberately NOT required. It is only used for insurance and
+  // safeguarding, most players compete under a username, and asking for a legal
+  // name as a condition of playing a koha-based community sport collects more
+  // than the sport needs.
+  const step1Valid = !!(form.email && form.password && form.date_of_birth && form.gender && division)
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--dark)', color: 'var(--white)', padding: '24px', maxWidth: '560px', margin: '0 auto' }}>
@@ -268,8 +286,12 @@ function RegisterInner() {
           </div>
 
           <div>
-            <label style={labelStyle}>Full Name</label>
+            <label style={labelStyle}>Full Name <span style={{ color: '#555', fontWeight: 400 }}>— optional</span></label>
             <input value={form.full_name} onChange={e => set('full_name', e.target.value)} style={inputStyle} placeholder="Your legal name" />
+            <div style={{ fontSize: '11px', color: '#555', marginTop: '4px', lineHeight: 1.6 }}>
+              Only used for insurance and safeguarding records, and to know who you are at a session.
+              It is never shown to other players unless you turn it on. You can play under a username instead.
+            </div>
           </div>
           <div>
             <label style={labelStyle}>Email</label>
@@ -284,15 +306,39 @@ function RegisterInner() {
             <input type="date" value={form.date_of_birth} onChange={e => set('date_of_birth', e.target.value)} style={inputStyle} />
           </div>
           <div>
-            <label style={labelStyle}>Gender</label>
+            <label style={labelStyle}>Which division do you compete in?</label>
             <div style={{ display: 'flex', gap: '8px' }}>
-              {(['Male', 'Female', 'Other'] as const).map(g => (
-                <button key={g} onClick={() => set('gender', g)} style={genderBtnStyle(form.gender === g)}>{g}</button>
+              {([['Male', "Men's"], ['Female', "Women's"], ['Other', 'Another answer']] as const).map(([value, label]) => (
+                <button
+                  key={value}
+                  onClick={() => set('gender', value)}
+                  style={genderBtnStyle(form.gender === value)}
+                >
+                  {label}
+                </button>
               ))}
             </div>
-            {form.gender === 'Other' && (
-              <div style={{ marginTop: '8px', fontSize: '12px', color: '#555' }}>
-                You&apos;ll be placed in the Men&apos;s or Grandmasters equivalent by default. A Kaiwhakawā can reassign you to any division before your first session.
+            <div style={{ fontSize: '11px', color: '#555', marginTop: '6px', lineHeight: 1.6 }}>
+              This is the only thing we use it for. Divisions are split by age as well, so a
+              Masters or 60+ division is worked out from your date of birth.
+            </div>
+            {needsDivisionPick && (
+              <div style={{ marginTop: '10px', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: '10px', padding: '12px 14px' }}>
+                <div style={{ fontSize: '12px', color: 'var(--grey-light)', marginBottom: '8px', lineHeight: 1.6 }}>
+                  Which division would you like to start in? A kaiwhakawā can move you at any time,
+                  before or after your first session.
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {(["Men's", "Women's"] as const).map(d => (
+                    <button
+                      key={d}
+                      onClick={() => set('division_preference', d)}
+                      style={genderBtnStyle(form.division_preference === d)}
+                    >
+                      {d}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -301,11 +347,13 @@ function RegisterInner() {
             <input value={form.phone} onChange={e => set('phone', e.target.value)} style={inputStyle} placeholder="+64 21 000 0000" />
           </div>
 
-          {/* Show calculated division preview */}
-          {form.date_of_birth && form.gender && (
+          {/* Show calculated division preview. Gated on `division` rather than
+              its inputs: someone who picked "Another answer" has no division
+              until they choose one, and an empty "Division:" reads as broken. */}
+          {division && (
             <div style={{ background: 'rgba(35,113,187,0.08)', border: '1px solid var(--blue)', borderRadius: '10px', padding: '10px 14px', fontSize: '13px', color: 'var(--grey)' }}>
               Division: <strong style={{ color: 'var(--white)' }}>{division}</strong>
-              <span style={{ marginLeft: '8px', color: '#556', fontSize: '11px' }}>auto-calculated from your age and gender</span>
+              <span style={{ marginLeft: '8px', color: '#556', fontSize: '11px' }}>from your answer above and your age</span>
             </div>
           )}
 
