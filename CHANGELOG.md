@@ -2,6 +2,12 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.5.8.1] - 2026-08-21
+
+### Changed
+- Two leftover database tables from the old bonus points system, replaced back in May, have been removed. Nothing had read them since, but one of them would accept writes from anybody at all, so it is better gone. The six real records in them were copied to a locked archive first rather than deleted.
+- Housekeeping on the last of the security review: an internal report function now has the same protection as every other one, and joining a game by code matches the code exactly instead of treating it as a search pattern.
+
 ## [0.5.8.0] - 2026-08-20
 
 ### Fixed
