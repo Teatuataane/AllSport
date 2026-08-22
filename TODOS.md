@@ -19,6 +19,11 @@
   - **Plus pg_cron** (`20260820000002`) every 5 minutes, so a game ends unattended — the actual 19 August failure mode was that the last person shut their phone before the clock ran out. The migration is exception-guarded at every step so an unavailable extension raises a NOTICE instead of aborting the push; on prod it scheduled successfully.
   - **Verified on apply:** `closed 1 stranded session(s)`, the 19 August game came back 13/13 placements and 13/13 `points_earned`, `ended_at` = 18:54 NZST (start + 100 min exactly), and no session is left open.
 
+- **Final security hygiene from the OWASP pass** (v0.5.10.1, 2026-08-21). Three small things, none of them reachable without an account, all closed so the tree has no half-finished examples in it:
+  - **`get_wellbeing_report` search_path pinned** (`20260821000002`). It was the last SECURITY DEFINER function in the schema without one. Genuinely low risk — it raises unless the caller is a kaiwhakawā, and exploiting a mutable search_path needs CREATE on a schema `authenticated` does not have — but fixed anyway, because the next definer function anyone writes gets copied from an existing one, and every example in the tree should now be correct.
+  - **The two orphaned bonus tables are gone** (`20260821000001`). `bonus_completions` and `bonus_sport_opponents` outlived the bonus system by three months. `bso_insert_own` was `FOR INSERT WITH CHECK (true)` — the only write path in the schema with no identity check at all, so anon could write unbounded rows into a table nothing read. **Archived before dropping**, because `bonus_completions` held six real rows from the 2026-05-05 session, not junk. (An earlier version of this file said "1 leftover row" — that count came from a probe run with `limit=1` and was simply wrong.) Archives carry RLS-on-with-no-policies and revoked grants, per the trap `20260801000000` documents: `CREATE TABLE … AS SELECT` does not inherit RLS, so an unguarded archive would have republished player history to anon.
+  - **The join-code wildcard is closed.** `app/dashboard` looked the code up with `.ilike()`, so `?code=%` meant "match every session". It failed safe only because `.maybeSingle()` errors on multiple rows — protection that evaporates the moment exactly one coded session exists. Now `.eq()`. Whether session codes should be public at all is still open at P2, deliberately: that is a product decision, not a bug.
+
 - **Security headers confirmed live in production** (v0.5.5.0, verified 2026-08-13). All 8 headers serve on allsport.nz. The open question was ACAO: Vercel's static-asset layer sets `Access-Control-Allow-Origin: *` on prerendered HTML, so it was unknown whether Next's `headers()` would override it. **It does** — prod returns `access-control-allow-origin: https://allsport.nz`. No `vercel.json` fallback needed; `lib/securityHeaders.ts` stays the single source of truth. CSP verified enforcing (all 12 directives present, `frame-ancestors 'none'` + `X-Frame-Options: DENY` both live).
 - Domain rename (June 2026): Relative Strength → Calisthenics, Muscular Endurance → Anaerobic Endurance, Flexibility & Mobility → Flexibility, Speed & Agility → Speed, Co-ordination → Coordination. New order: Maximal Strength / Calisthenics / Power / Speed / Anaerobic Endurance / Aerobic Endurance / Flexibility / Body Awareness / Coordination / Aim & Precision. Updated lib/eventData.ts, all app pages, and DB migration 20260602_rename_domains.sql
 - Event selector in scoring setup now derived from eventData.ts — names always in sync, no more hardcoded DOMAINS array
@@ -193,19 +198,12 @@
 
 ## P2 — Soon
 
-### The session join code is not actually a secret
-**What:** two separate things. `sessions_select_all USING (true)` publishes every session row to anyone — re-verified unauthenticated 2026-08-21, **55 session codes still visible**. And `app/dashboard/page.tsx` looks the code up with `.ilike('session_code', code)` on raw user input, so `%` is a wildcard rather than a code.
-**Why it matters:** the join code reads like an access control and isn't one. Anyone can list every code that has ever existed, so "ask the kaiwhakawā for the code" protects nothing. Worth deciding what the code is *for*: if it is only a convenience for typing, that's fine, but then nothing should depend on it being unguessable.
-**Not currently exploitable via the wildcard:** `%` matches every coded session and `.maybeSingle()` errors on multiple rows, so it fails rather than joining. That only holds while more than one session has a code. Switch to `.eq()` regardless.
-**Noticed:** OWASP audit, 2026-08-16; re-verified 2026-08-19
-**Effort:** S for the `.eq()`; M if you want session rows restricted, since /leaderboard and /schedule read them publicly
-
-### Pin search_path on get_wellbeing_report
-**What:** `get_wellbeing_report()` (20260714000000) is now the LAST SECURITY DEFINER function without `SET search_path = public`. Add it. `claim_colour_award`, `get_vote_results`, `get_vote_details`, `get_player_top_event`, `close_expired_sessions` and `is_judge` all have it, and `search_players_by_username` stopped being SECURITY DEFINER altogether in v0.5.8.0 — so this is the only one left.
-**Why it is genuinely low risk:** it is kaiwhakawā-gated (it raises unless the caller is a judge), so it is not reachable without an account, let alone anonymously. Exploiting a mutable search_path also needs CREATE on a schema earlier in the path, which `authenticated` does not have on Supabase. This is consistency, not exposure.
-**Why it matters:** a SECURITY DEFINER function with a mutable search_path is the classic Postgres escalation shape: an attacker who can create an object in an earlier schema hijacks an unqualified reference and runs it as the owner. **Theoretical here** — `authenticated` has no CREATE on any schema in the path on Supabase — but the mitigation is one line per function and it stops the pattern being copied into the next function that matters.
-**Noticed:** OWASP audit, 2026-08-16
-**Effort:** XS
+### Decide what the session join code is actually for
+**What is left:** `sessions_select_all USING (true)` publishes every session row to anyone, so **all 55 session codes are readable unauthenticated** (re-verified 2026-08-21). The wildcard half of this is fixed — v0.5.8.1 switched the lookup from `.ilike()` to `.eq()`, so `?code=%` no longer means "match everything" — but the codes themselves are still public.
+**Why it is a decision, not a bug:** the code reads like an access control and isn't one. If it is only a convenience so nobody has to type a UUID, that is completely fine and this can be closed as won't-fix. If anything is ever meant to *depend* on it being unguessable, it needs to stop being published first.
+**What restricting would cost:** /leaderboard and /schedule both read `sessions` publicly, so hiding just `session_code` means either a `sessions_public` view (the `players_public` pattern) or column-level grants — and column grants are the brittle option, because a table-level SELECT grant overrides them and any new column silently becomes unreadable.
+**Noticed:** OWASP audit, 2026-08-16; wildcard fixed v0.5.8.1, 2026-08-21
+**Effort:** XS to close as won't-fix; M to actually restrict
 
 ### Update unit tests for new event data
 **What:** `__tests__/eventData.test.ts` has tests referencing old event slugs (30-15-test, sprint-repeats) and old getBonusTargets spec (3 targets, points 15). These now reflect the new single-task spec.
@@ -235,13 +233,6 @@
 ---
 
 ## P3 — Later
-
-### Drop the two orphaned bonus tables
-**What:** `bonus_completions` and `bonus_sport_opponents` still exist in prod and are still world-readable, but the bonus system was removed in May 2026 and replaced by the effort system. Neither table is referenced anywhere in `app/`, `components/` or `lib/`. Verified unauthenticated: both return HTTP 200 (`bonus_sport_opponents` 0 rows, `bonus_completions` 1 leftover row). Drop both, or at minimum revoke anon.
-**Why it matters:** mostly tidiness, but `bso_insert_own` is `FOR INSERT WITH CHECK (true)` — no `auth.uid()` check at all — so on Supabase's default grants an unauthenticated caller can write unbounded rows into a table nothing reads. That is junk data and storage growth rather than a data leak, but it is the only write path in the schema with no identity check whatsoever.
-**Careful:** confirm nothing in an unshipped branch still writes them before dropping, and take the usual archive-then-drop route if the single `bonus_completions` row is worth keeping.
-**Noticed:** OWASP audit, 2026-08-16
-**Effort:** XS
 
 ### Leaderboard icons
 **What:** Add player icon emoji next to name on /leaderboard and /scoring/[sessionId].
