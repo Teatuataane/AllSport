@@ -911,12 +911,38 @@ RLS: own + parent (family) + judge.
       20260813000003_players_pii_lockdown.sql  # Closes public read on players (own/child/judge + REVOKE anon)
       20260816000000_players_public_show_division.sql # THE definition of players_public (DROP + CREATE)
       20260819000000_players_public_age_nz.sql # age_years/age_group in Pacific/Auckland, not UTC
-      # ── ALL migrations above are APPLIED to prod, confirmed 2026-08-19 via `supabase migration list`.
-      #    20260813000003 needed `supabase db push --include-all`: its 13-Aug timestamp is older than the
-      #    19-Aug migration already applied, and the CLI refuses out-of-order inserts without that flag.
+      20260821000000_leaderboard_rpc.sql       # stats_bundle() + leaderboard_page(p_season): collapse the
+                                               #   7-request /leaderboard fan-out into one round trip.
+                                               #   INVOKER rights, reads players_public (NOT players).
+      # ── ALL migrations above are APPLIED to prod. 20260813000003 needed
+      #    `supabase db push --include-all`: its 13-Aug timestamp is older than the 19-Aug migration
+      #    already applied, and the CLI refuses out-of-order inserts without that flag.
+      #    20260821000000 applied + verified 2026-08-21, INCLUDING as `anon` (see the note below).
   public/
-    logo.png
+    logo.png                          # 3666x2204 design master — NOT served; browsers get logo-hero-*.webp /
+                                      #   logo-mark.webp / favicon-32.png (regenerate: scripts/gen-logo-assets.mjs)
 ```
+
+### Verifying an RPC that public pages depend on
+
+`supabase db push` and the SQL Editor both run as `postgres`, which has
+**BYPASSRLS**. A function that reads the wrong table therefore passes every check
+you can run there and still returns nothing to the visitors it exists for — and
+RLS returns no rows rather than an error, so it fails silently.
+
+Test the actual role:
+
+```sql
+begin;
+set local role anon;
+select jsonb_array_length(public.leaderboard_page(2026) -> 'stats' -> 'players') as players_as_anon;
+rollback;
+```
+
+For `20260821000000` this was the difference between a green tick and a broken
+board: the function originally read `players`, which `20260813000003` closed and
+revoked anon's grant on. It now reads `players_public`. Confirmed as `anon` on
+2026-08-21: 20 rankings, 27 players, names resolving.
 
 **IMPORTANT:** Always use createClient() from @/lib/supabase-browser in client components.
 

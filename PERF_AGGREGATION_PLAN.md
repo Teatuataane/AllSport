@@ -1,13 +1,20 @@
 # Server-side aggregation plan — /leaderboard and /dashboard
 
-Status: **Stage 0 and Stage 1 implemented** (August 2026), pending deploy.
-Stage 2 and Stage 3 remain proposals. Written after the mobile performance
-audit; the P0 image and cache fixes from that audit are already landed.
+Status: **Stage 0 and Stage 1 implemented and the migration is APPLIED to prod
+(2026-08-21).** The code still needs to ship. Stage 2 and Stage 3 remain
+proposals. Written after the mobile performance audit; the P0 image and cache
+fixes from that audit are already landed.
 
-> **DEPLOY ORDER: apply `20260821000000_leaderboard_rpc.sql` FIRST, then ship the
-> code.** The migration is purely additive, so it is a no-op against the
-> currently deployed bundle. Reversed, the new bundle calls `leaderboard_page`
-> before it exists and the board renders empty.
+> **DEPLOY ORDER (done in this order): `20260821000000_leaderboard_rpc.sql`
+> FIRST, then the code.** The migration is purely additive, so it was a no-op
+> against the then-deployed bundle. Reversed, the new bundle would call
+> `leaderboard_page` before it exists and the board would render empty.
+>
+> **Verified as `anon`, not just as `postgres`.** The SQL Editor runs with
+> BYPASSRLS, so the obvious check passes even when the function reads a table
+> the public cannot. Confirmed under `set local role anon`: 20 rankings, 27
+> players, names resolving. `prosecdef = false` and `provolatile = s` on both
+> functions.
 
 > **THIS BRANCH IS 42 COMMITS BEHIND `origin/main` — merge before shipping.**
 > `supabase migration list` surfaced two problems that were invisible from
