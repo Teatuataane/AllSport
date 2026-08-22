@@ -325,7 +325,13 @@ function DashboardInner() {
       const { data: sess, error } = await supabase
         .from('sessions')
         .select('id, session_code, is_active, location')
-        .ilike('session_code', code)
+        // .eq, not .ilike. ILIKE treats the code as a PATTERN, so `?code=%`
+        // matched every session that has ever had one. It failed safe only
+        // because .maybeSingle() errors on multiple rows — that protection
+        // disappears the moment exactly one coded session exists. Codes are
+        // generated uppercase and the caller already uppercases, so an exact
+        // match costs nothing.
+        .eq('session_code', code)
         .maybeSingle()
       if (error) throw new Error(`Session lookup failed: ${error.message}`)
       if (!sess) throw new Error(`No session found with code "${code}". Ask the Kaiwhakawā to confirm the code on their screen.`)
