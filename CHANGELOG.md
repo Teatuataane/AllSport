@@ -2,6 +2,11 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.5.11.1] - 2026-08-23
+
+### Changed
+- **The browser is now told the site may load fonts only from AllSport.** The typefaces were moved onto our own servers in v0.5.11.0, which stopped every visitor's IP address being sent to Google. The permission to fetch them from Google was still in place though, so a single line added back later would have quietly restored the leak with nothing appearing broken. That permission is now withdrawn, and a test fails if anyone reinstates it.
+
 ## [0.5.11.0] - 2026-08-21
 
 ### Changed

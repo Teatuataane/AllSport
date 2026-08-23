@@ -52,9 +52,14 @@ describe('CSP directives', () => {
     )
   })
 
-  it('allows Google Fonts stylesheet and font files', () => {
-    expect(directive('style-src')).toContain('https://fonts.googleapis.com')
-    expect(directive('font-src')).toContain('https://fonts.gstatic.com')
+  it('does NOT allow Google Fonts — the typefaces are self-hosted', () => {
+    // This assertion used to require the opposite. next/font/google now serves
+    // the fonts from our own origin, so allowing these hosts again would let a
+    // stray <link> re-open the leak of every visitor's IP to Google without
+    // anything breaking or logging. This is the tripwire for that.
+    expect(directive('style-src')).not.toContain('fonts.googleapis.com')
+    expect(directive('font-src')).not.toContain('fonts.gstatic.com')
+    expect(directive('font-src')).toBe("font-src 'self'")
   })
 
   it('allows arbitrary https images for partner club logos', () => {
