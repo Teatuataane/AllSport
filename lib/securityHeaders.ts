@@ -34,8 +34,17 @@ export function buildCsp(supabaseUrl: string): string {
   return [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline'",
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src 'self' https://fonts.gstatic.com",
+    // No Google Fonts hosts. The typefaces are self-hosted by next/font/google
+    // (app/layout.tsx), so the stylesheet and the font files both come from our
+    // own origin and nothing needs to reach Google.
+    //
+    // This is the part that KEEPS it fixed. Self-hosting closed the leak of
+    // every visitor's IP to Google; these two directives are what stops a
+    // future `<link rel="stylesheet" href="https://fonts.googleapis.com/...">`
+    // from quietly reopening it. Without them that link just works, and nobody
+    // finds out. If a font stops rendering, the fault is in layout.tsx.
+    "style-src 'self' 'unsafe-inline'",
+    "font-src 'self'",
     // https: covers partner club logos (partners.logo_url is an arbitrary URL
     // set by a kaiwhakawā). data:/blob: cover the session QR code canvas.
     "img-src 'self' data: blob: https:",
