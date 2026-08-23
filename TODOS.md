@@ -115,6 +115,14 @@
 
 ## P1 — Do Next
 
+### Settle which migration file owns prod's `20260821000000` row
+**What:** two different files were written under version `20260821000000` — `leaderboard_rpc` (v0.5.11.0) and `privacy_tidyup` (v0.5.10.0). Only one row can exist per version, but the objects from BOTH exist in production, so one of them was applied by a route other than `db push`. `privacy_tidyup` has since been renumbered to `20260822000000`; `leaderboard_rpc` keeps `20260821000000`. Confirm the ledger row actually corresponds to `leaderboard_rpc`, and that `20260822000000` has since been applied and recorded.
+**Why it matters:** nothing is broken today — `leaderboard_page`, `stats_bundle` and `delete_my_account` all exist and are verified. The risk is a `supabase db reset` or any rebuild-from-migrations, where the recorded history would replay something different from what actually shaped production.
+**Why it went unnoticed:** the CLI keys on the 14-digit prefix ALONE, so a collision is applied silently as a skip and `db push` reports success. `migration list` then reads as complete from either side. This is the third collision in two weeks — the other two were `20260816000000` (caught pre-push) and `privacy_tidyup` vs `pin_wellbeing_search_path` (main renumbered the latter to `...0002`).
+**Guard that would have caught all three:** `ls supabase/migrations | cut -c1-14 | sort | uniq -d` before pushing any branch that has been open while something else merged. Now written into CLAUDE.md.
+**Noticed:** /ship v0.5.11.0, 2026-08-22
+**Effort:** S (one query, then a `migration list`)
+
 ### Reconcile the two branches that still carry their own players_public
 **What:** `players_public` was built three times, from three worktrees, and twice applied straight to production without going through `supabase/migrations`. Two of those branches are still unmerged and each still carries its own view definition AND its own `is_judge()`: `frontend-keys-server-proxy-bd20f8` (its `20260819000000` age-NZ fix has since been merged to main, so its untracked copy should be deleted) and `epic-cohen-4e2392` / `claude/user-data-privacy-audit` (a variant with `city` and `region`). Merging either as-written collides again.
 **What it cost, concretely:** the view's shape changed under the deployed client twice in three days. Each time three queries started returning `42703` in production — the live session's player-info map, the kaiwhakawā roster, and the game report — so the in-game leaderboard listed nobody and the game report showed no names. It also, once, blocked `supabase db push` entirely: production's migration history held a version with no file in the repo, so the PII lockdown could not be applied until that file was committed.
@@ -197,6 +205,15 @@
 ---
 
 ## P2 — Soon
+
+### Move the ranking maths into SQL (PERF_AGGREGATION_PLAN.md Stage 2)
+**What:** `/leaderboard` and `/dashboard` still ship the full result history to the browser and compute percentiles and wins there. Stage 1 collapsed the request fan-out into one RPC, which fixed the latency; Stage 2 would aggregate server-side and return ~20 rows instead of ~1500.
+**Why it is deliberately deferred:** payload is ~40 KB gzipped today, which does not justify the risk. The maths maps cleanly onto window functions (`rank() - 1` is exactly the "ties never count as beaten" rule), but the blocker is that domain rollup needs event name → domain, which lives only in `lib/eventData.ts`. Doing it properly means seeding an `events` reference table from that file — which would also fix the structural weakness behind the session-27 rename incident.
+**Do not ship it without the parity gate:** diff the TypeScript and SQL implementations player-by-player on real data first. Watch the `'Youth'` legacy division mapping, orphan event names, the `max(1, …)` floor, and shared-top counting as `isLeader`. This can silently change what players see.
+**Trigger:** revisit when `results` grows perhaps 5–10× from today, or if the `events` reference table becomes worth having on its own merits.
+**Where:** full plan with measurements in `PERF_AGGREGATION_PLAN.md`
+**Noticed:** performance audit, 2026-08-22
+**Effort:** L (2–3 days with the reference table and the parity gate)
 
 ### Decide what the session join code is actually for
 **What is left:** `sessions_select_all USING (true)` publishes every session row to anyone, so **all 55 session codes are readable unauthenticated** (re-verified 2026-08-21). The wildcard half of this is fixed — v0.5.8.1 switched the lookup from `.ilike()` to `.eq()`, so `?code=%` no longer means "match everything" — but the codes themselves are still public.
