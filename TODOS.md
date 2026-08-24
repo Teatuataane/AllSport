@@ -2,6 +2,18 @@
 
 ## ✅ Done
 
+- **Taniwha grading system live** (v0.6.0.0, applied and verified 2026-08-25). Both migrations pushed from `main` and confirmed by querying the objects with the public anon key rather than trusting `db push`:
+  - `event_domains` **120 rows**, `player_taniwha` seeded for all **27 players**, **197 wins backfilled** from history, `results.event_placement` present.
+  - The budget invariant — `SUM(body_parts) <= taniwha_body_budget(lifetime_points)` for every player — returns **zero breaches**. Nobody is building two taniwha. No guest row carries a placement.
+  - **The interesting part:** Tāne already holds three domains at or past 9 of 12 (Coordination 11, Calisthenics 10, Maximal Strength 9) and RGFell holds one, but **nobody has crown room** — everyone is under 10,000 lifetime points. The crowns are earned and waiting on points. That is the calibration working, not a bug: don't lower a threshold to "fix" it.
+  - `/leaderboard` switched over on its own — column header reads TANIWHA, the Taniwha Key replaced the Colour Key, every player shows `0 · Whānau`.
+
+- **The Colours fallbacks are gone** (v0.6.0.1). Deploy-order insurance, spent once the migrations landed. Deleted `lib/colourAlerts.ts`, `components/ColourAlertBanner.tsx`, `components/ColourWatchlist.tsx` and every fallback branch. `lib/colours.ts` survives shrunk to a lookup table, because `colour_awards` records colours really earned on real dates and the timeline still shows them. The points economy moved to `lib/taniwha.ts`; `RAINBOW` to `lib/domainColours.ts`. **Coverage moved with the code**: the component test was ported to the taniwha components rather than deleted, and the generic ranking helpers are now tested in `__tests__/sessionRanking.test.ts`.
+
+- **`player_taniwha` folded into `leaderboard_page()`** (`20260824233516`). The separate query was correct while the progression migrations were pending; it is not any more, and it had turned the performance pass's 7-requests-into-1 back into 2. `/prs` runs its two queries concurrently for the same reason.
+
+- **`npm install`.** `@testing-library/react` and `jsdom` were declared but never installed, so `colourComponents.test.tsx` had been permanently red and React components had no coverage at all. Suite is now fully green with zero errors.
+
 - **OWASP access-control pass closed in production** (v0.5.6.0–v0.5.8.0, applied and verified 2026-08-21). Every finding shut and confirmed with the public anon key and no account:
   - **Every player's contact details were readable by anyone.** `players_select_all USING (true)`, live since the April 2026 schema rebuild. One unauthenticated request returned all 27 players: 19 emails, 9 phone numbers, 25 legal names, 27 exact dates of birth, 8 of those players under 18, one with a guardian's name/email/phone. `20260813000003` replaced it with an own/child/judge policy and revoked `anon`'s grant outright. **`players` now returns `42501 permission denied`**; `players_public` still serves the roster, so the leaderboard, game report and live session are unaffected.
   - **Any registered player could make themselves a kaiwhakawā.** `players_update_own` had no column restriction and RLS is row-level, so `PATCH {"role":"judge"}` on your own row worked; `players_insert_own` had the same gap at registration. `20260813000000` pins `role`, `is_guest`, `parent_id` and `id` with a trigger (chosen over column grants: a table-level UPDATE grant overrides column-level REVOKEs, and a column list breaks silently when a column is added later).
@@ -115,16 +127,6 @@
 
 ## P1 — Do Next
 
-### Apply the two taniwha migrations, from `main`, in order
-**What:** `20260824220633_event_placements.sql` then `20260824222612_player_taniwha.sql`. Both shipped in v0.6.0.0 **written but deliberately unapplied**, because a migration applied from an unmerged branch is recorded in prod's history with no file in the repo and then blocks every subsequent `db push`.
-**Why nothing is broken meanwhile:** every client surface falls back to the Colours UI when `player_taniwha` does not answer. Probed against prod with the anon key before shipping: a missing table returns `PGRST205` in `error` (handled), whereas a missing *column* returns `42703` and takes the whole query down — which is why every taniwha read is its own query and nothing selects a column it is not sure of.
-**Verify by querying the objects, not `migration list`.** Both files end with numbered verification queries. The two that matter most:
-  - `20260824222612` #3 — the budget invariant across every player in one statement. **Must return zero rows.**
-  - `20260824220633` #5 — who is already close to a crown. Wins are backfilled from all history, so the first crowns could land within days of the migrations going in. Look at this before the client is live so nobody is surprised.
-**Also unverified until applied:** roughly 1,000 lines of SQL checked only by libpg_query parsing. Docker was not available in the session that wrote them, so nothing has executed.
-**Noticed:** /ship v0.6.0.0, 2026-08-25
-**Effort:** S to apply, M to verify properly
-
 ### Settle which migration file owns prod's `20260821000000` row
 **What:** two different files were written under version `20260821000000` — `leaderboard_rpc` (v0.5.11.0) and `privacy_tidyup` (v0.5.10.0). Only one row can exist per version, but the objects from BOTH exist in production, so one of them was applied by a route other than `db push`. `privacy_tidyup` has since been renumbered to `20260822000000`; `leaderboard_rpc` keeps `20260821000000`. Confirm the ledger row actually corresponds to `leaderboard_rpc`, and that `20260822000000` has since been applied and recorded.
 **Why it matters:** nothing is broken today — `leaderboard_page`, `stats_bundle` and `delete_my_account` all exist and are verified. The risk is a `supabase db reset` or any rebuild-from-migrations, where the recorded history would replay something different from what actually shaped production.
@@ -155,18 +157,21 @@
 **Noticed:** /ship v0.5.5.0, 2026-08-13
 **Effort:** L (architectural — affects every client component that calls supabase)
 
-### Export the two colour emblem PNGs
-**What:** `public/colour-emblems/taniwha.png` (one taniwha) and `nga-taniwha.png` (the full twin crest). Transparent, solid single colour, ~1000×1000, no wordmark bar, no koru shield — same spec as `public/event-icons/`, so the existing CSS-mask tint pipeline picks them up with no code change.
-**Why it matters:** the emblem is the ONLY thing distinguishing Taniwha (rung 10) from Ngā Taniwha (rung 19). Without them a player who spends four years climbing cycle 2 arrives at a card identical to the one they already had. Everything else about cycle 2 renders correctly today; the masked element just draws nothing.
-**Not usable:** `SVG/Colour Logo_White outline.svg` — it is the 7-fill multicolour version (can't be mask-tinted), carries the ALL SPORT wordmark bar, and its linework won't survive being drawn at 200px.
-**Noticed:** /ship v0.5.4.0, 2026-08-07
-**Effort:** S (Canva export, no code)
+### Draw the twelve taniwha, ten layers each
+**What:** twelve creatures — Te Taniwha ō te Whānau, one per domain, and Te Kāhui — each drawn ONCE and sliced into ten layers: Tinana, Kakī, Pane, Hiku, Ringa mauī, Ringa matau, Waewae mauī, Waewae matau, Arero, Tikitiki. Twelve drawings, not 120.
+**Spec:** transparent PNG, solid silhouette, ~1000×1000, same as `public/event-icons/`, so the existing CSS-mask tint pipeline picks them up with no code change. Path `public/taniwha/{taniwha-slug}/{part-slug}.png`.
+**The one constraint that cannot be fixed later:** all ten parts of a taniwha must be exported on the SAME canvas with the SAME registration, or they will not layer. A filename that is not the exact slug falls back silently, exactly as event icons do.
+**Why it matters:** the taniwha card currently draws a progress bar and a name. The creature assembling part by part IS the feature; without the art a player sees a counter.
+**Supersedes** the old "export the two colour emblem PNGs" item — that ladder is retired and `emblemSrc` is deleted, so those two assets are no longer wanted.
+**Noticed:** /ship v0.6.0.0, 2026-08-25
+**Effort:** M (art, no code)
 
 ### Component-test infrastructure — supabase mocking strategy
-**What:** jsdom + @testing-library/react landed in v0.5.4.0 and cover pure components (`ColourAlertBanner`, `ColourWatchlist`). What is still untestable is anything that fetches: the dashboard Colours card and timeline, the profile badge, the leaderboard colour column, the session-end takeover. All need a decision on how to mock `supabase-browser` before they can be tested at all.
-**Why it matters:** ship coverage for the colours rework came out at 43%, and every remaining gap is a fetch path or the markup wrapped around one. This is a project-wide gap, not a colours one — it predates this change by the whole life of the repo.
+**What is now done:** `npm install` (v0.6.0.1) finally installed `@testing-library/react` and `jsdom`, which were declared but missing — the component test had been permanently red and React components had zero coverage. `__tests__/taniwhaComponents.test.tsx` now covers `TaniwhaAlertBanner` and `TaniwhaWatchlist` with 15 tests.
+**What is still untestable:** anything that fetches — the dashboard taniwha card and its choose/switch picker, the profile badge, the leaderboard column, `/prs`, the session-end takeover. All need a decision on how to mock `supabase-browser` before they can be tested at all. This is a project-wide gap that predates the taniwha work by the whole life of the repo.
 **Suggested:** `vi.mock('@/lib/supabase-browser')` with a small chainable query-builder fake, or MSW at the PostgREST layer.
-**Noticed:** /ship v0.5.4.0 coverage gate, 2026-08-07
+**Sharpest reason to do it:** the taniwha card's choose-and-switch flow calls an RPC that writes permanent, never-revoked progression. It is the highest-consequence untested path in the app.
+**Noticed:** v0.5.4.0 coverage gate; half-closed v0.6.0.1
 **Effort:** M
 
 ### Drop the Leg Extension archive table once settled
@@ -175,12 +180,9 @@
 **Noticed:** /ship follow-up, 2026-08-01
 **Effort:** XS
 
-### Referral system — DB migration
-**What:** Add `referral_code` (TEXT UNIQUE) to `players`, create `referrals` table (referrer_id, referred_id, session_count, qualified_at), add trigger on `session_player_summary INSERT` to increment session_count and set qualified_at when threshold (10) is reached.
-**Migration file:** `supabase/migrations/20260515_referral_system.sql`
-**Notes:** Generate referral_code as 6-char alphanumeric via `substring(md5(random()::text), 1, 6)` or a custom function. Backfill existing players.
-
 ### Referral system — /join/[code] landing page
+**The DB half is already BUILT** — `20260515000002_referral_system.sql` created `referrals`, `players.referral_code` and the qualifying trigger, and `/my-koha` reads them. CLAUDE.md described the whole feature as "Planned" until v0.6.0.0; that was wrong. **Only this page is missing.**
+**Why it matters more than it used to:** Te Taniwha ō te Whānau is crowned by one qualified referral, and **nobody in the club has one**. It is currently the hardest crown in the system rather than the first one everybody gets. Making it easy to invite someone is now on the critical path of the grading system, not a growth nice-to-have.
 **What:** Public page at `/join/[code]`. Fetches the referrer's display name, shows an AllSport intro block, and a Register CTA that pre-fills the referral code in the registration form.
 **Design:** Dark background, rainbow stripe, logo, "You've been invited to AllSport by [name]", brief 3-line sport description, big red Register button.
 **Where:** `app/join/[code]/page.tsx`
@@ -215,26 +217,6 @@
 ---
 
 ## P2 — Soon
-
-### Fold `player_taniwha` into the `leaderboard_page` RPC
-**What:** `/leaderboard` makes one extra round trip for `player_taniwha`, outside `leaderboard_page()`. It is deliberate — that RPC is already applied to production and the taniwha column had to work before the progression migrations did — but it quietly turns the performance pass's 7-requests-into-1 back into 2.
-**Do it once the migrations are live**, along with the same treatment for `player_event_wins` on `/prs`.
-**Noticed:** /ship v0.6.0.0, 2026-08-25
-**Effort:** S
-
-### Delete `lib/colours.ts` and the Colours fallbacks
-**What:** every taniwha surface currently renders the old Colours UI when `player_taniwha` does not answer — the dashboard card, the leaderboard column and key, the profile badge, the judge watchlist, the live alert banner, the session-end takeover. That is deploy-order insurance, not a permanent design.
-**Once the migrations are applied and verified, take them out**, and move `MIN_PLACEMENT_POINTS` / `EFFORT_POINTS_PER_LEVEL` / `MAX_EFFORT_LEVEL` / `MAX_SESSION_POINTS` into `lib/taniwha.ts` — they describe the points economy, which outlives the colour ladder. A test currently pins the two modules together so they cannot drift while both exist.
-**Leave `colour_awards` alone.** It records colours that were really awarded and really celebrated, on real dates, and the dashboard timeline still shows them as the colours era. Rewriting them as taniwha parts would fabricate history.
-**Noticed:** /ship v0.6.0.0, 2026-08-25
-**Effort:** M
-
-### `@testing-library/react` and `jsdom` are declared but not installed
-**What:** `__tests__/colourComponents.test.tsx` cannot run — it fails with `ERR_MODULE_NOT_FOUND` and is the one error in an otherwise green 369-test suite. Both packages ARE in `package.json`; the hoisted `node_modules` is just stale.
-**Why it matters:** it is the repo's only component test, so React components currently have no coverage at all, and a permanently-red line in the suite output trains everyone to ignore the suite output.
-**Fix:** `npm install`. Then decide whether the taniwha components deserve the same treatment.
-**Noticed:** /ship v0.6.0.0, 2026-08-25
-**Effort:** XS
 
 ### Move the ranking maths into SQL (PERF_AGGREGATION_PLAN.md Stage 2)
 **What:** `/leaderboard` and `/dashboard` still ship the full result history to the browser and compute percentiles and wins there. Stage 1 collapsed the request fan-out into one RPC, which fixed the latency; Stage 2 would aggregate server-side and return ~20 rows instead of ~1500.

@@ -64,7 +64,7 @@ type StatsBundle = {
 // used to return, so RankingRow is unchanged.
 type LeaderboardPayload = {
   rankings: RankingRow[]
-  colour_rungs: { player_id: string; highest_rung: number }[]
+  taniwha: { player_id: string; crowned: number; building: string | null }[]
   active_session: ActiveSession | null
   active_session_results: SessionResult[]
   stats: StatsBundle
@@ -331,22 +331,12 @@ export default function Leaderboard() {
       const d = data as LeaderboardPayload
       setRankings(d.rankings ?? [])
 
-      const pt = await supabase
-        .from('player_taniwha')
-        .select('player_id, taniwha_slug, crowned_at, is_building')
-      if (pt.error) {
-        setTaniwhaByPlayer(null) // pre-migration: the Colour column stays
-      } else {
-        const m = new Map<string, { crowned: number; building: Taniwha | null }>()
-        type PtRow = { player_id: string; taniwha_slug: string; crowned_at: string | null; is_building: boolean }
-        for (const r of (pt.data ?? []) as PtRow[]) {
-          const cur = m.get(r.player_id) ?? { crowned: 0, building: null }
-          if (r.crowned_at) cur.crowned += 1
-          if (r.is_building) cur.building = taniwhaBySlug(r.taniwha_slug)
-          m.set(r.player_id, cur)
-        }
-        setTaniwhaByPlayer(m)
-      }
+      // Comes down with the rankings in the same round trip — see
+      // 20260824233516. It used to be a second query, which undid half of the
+      // performance pass's 7-into-1 collapse.
+      setTaniwhaByPlayer(new Map((d.taniwha ?? []).map(r =>
+        [r.player_id, { crowned: r.crowned, building: r.building ? taniwhaBySlug(r.building) : null }],
+      )))
       setStatsData(d.stats)
       setActiveSession(d.active_session ?? null)
       setSessionLeader(d.active_session ? computeLeader(d.active_session_results ?? []) : null)

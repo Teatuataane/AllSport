@@ -497,14 +497,22 @@ the homepage.
 
 ---
 
-## Taniwha grading system (August 2026 session 31) — v0.6.0.0, CODE SHIPPED, MIGRATIONS NOT APPLIED
+## Taniwha grading system (August 2026 session 31) — LIVE, applied and verified 2026-08-25
 
 Replaces the Colours ladder with a collection of **twelve taniwha**. Design settled in a
 `/grill-me` session; the full record with 28 locked decisions is in `TANIWHA_SYSTEM_PLAN.md`.
 
-**READ THIS FIRST: the two migrations are written and NOT applied.** Until they are,
-production still runs the Colours ladder and every surface renders the Colours UI unchanged.
-That is deliberate, not an oversight — see the deploy-order note below.
+**APPLIED AND VERIFIED IN PRODUCTION, 2026-08-25.** Checked by querying the objects with the
+public anon key, not by trusting `db push`: `event_domains` 120 rows, `player_taniwha` seeded
+for all 27 players, **197 wins backfilled**, `results.event_placement` present. The budget
+invariant (`SUM(body_parts) <= taniwha_body_budget(lifetime_points)`) returns **zero breaches**,
+nobody is building two taniwha, and no guest row carries a placement.
+
+**What the backfill revealed, and it is the design working:** Tāne already holds **three domains
+at or past 9 of 12** (Coordination 11, Calisthenics 10, Maximal Strength 9) and RGFell holds
+one — but **nobody has crown room**, because everyone is under 10,000 lifetime points. The
+crowns are earned and waiting on points. Points are the binding constraint, exactly as the
+calibration assumed. Do not "fix" this by lowering a threshold; it is the intended shape.
 
 - **Twelve taniwha, ten parts each.** Te Taniwha ō te Whānau, one per domain, then **Te Kāhui**
   for holding all eleven. Parts in order: Tinana, Kakī, Pane, Hiku, Ringa mauī, Ringa matau,
@@ -533,10 +541,24 @@ That is deliberate, not an oversight — see the deploy-order note below.
   (Kahurangi was rung 7 at 5,000 points; 5,000 points is 5 parts). The dashboard timeline still
   shows them as the colours era.
 
-**DEPLOY ORDER: the CODE ships first and the migrations follow.** Every taniwha read is its own
-query for this reason, verified against prod with the anon key: a missing TABLE returns
-`PGRST205` in `error` and the surface falls back to Colours, but a missing COLUMN returns
-`42703` and takes the whole query down. **Never fold a taniwha column into an existing select.**
+**The Colours fallbacks are GONE** (v0.6.0.1). They were deploy-order insurance and are spent.
+`lib/colourAlerts.ts`, `components/ColourAlertBanner.tsx` and `components/ColourWatchlist.tsx`
+are deleted. **`lib/colours.ts` survives, shrunk to a lookup table**: `colour_awards` records
+colours really earned on real dates and the dashboard timeline still shows them as the colours
+era. Rewriting them as taniwha parts would fabricate history, and the numbers do not line up
+(Kahurangi was rung 7 at 5,000 points; 5,000 points is 5 parts). **Do not add to that file** —
+a new threshold or predicate there means two grading systems are live at once.
+
+**The points economy lives in `lib/taniwha.ts` now** (`MIN_PLACEMENT_POINTS`,
+`EFFORT_POINTS_PER_LEVEL`, `MAX_EFFORT_LEVEL`, `MAX_SESSION_POINTS`). It describes the
+session-to-points contract, which outlives any grading system built on it, and
+`award_session_points()` is the other half of that contract. `RAINBOW` lives in
+`lib/domainColours.ts`, which depends on nothing, because both modules need it.
+
+**STILL TRUE: a missing COLUMN returns `42703` and takes the whole query down**, while a
+missing table returns `PGRST205` in `error`. That is why every taniwha read is its own query
+and nothing selects a column it is not sure of. **Never fold a taniwha column into an existing
+select.**
 
 **`event_domains` is the roster mirrored into SQL** (120 rows, from `lib/eventData.ts`), because
 the server must know an event's domain to award a crown without trusting the client. It cannot
@@ -933,8 +955,7 @@ RLS: own + parent (family) + judge.
     securityHeaders.ts              # buildCsp / buildSecurityHeaders — the CSP + 8 headers, unit tested in __tests__/securityHeaders.test.ts
     eventData.ts                    # Single source of truth for all events (120) + difficulty+time encode/decode helpers (encodeDiffTime/decodeDiffTime/isTimedEffort, TIMED_EFFORT_SLUGS); DifficultyTier has optional `detail` (judge criteria)
     dates.ts                        # parseLocalDate / formatNZDate — parse DATE columns in local time (avoids off-by-one)
-    colours.ts                      # THE colour ladder (19 rungs) — names/thresholds/styling + live-alert predicates. Single source of truth
-    colourAlerts.ts                 # divisionRanks (all players) + colourAlerts (live) + colourWatchlist (/judge planning)
+    colours.ts                      # RETIRED ladder, kept as a LOOKUP TABLE so the dashboard timeline can render historical colour_awards. Do not add to it
     domainColours.ts                # THE ten domain colours. In lib/ so SERVER components can import it
     taniwha.ts                      # THE taniwha ladder — 12 taniwha, 10 parts, budget/capacity map, crown predicates
     taniwhaAlerts.ts                # taniwhaAlerts (live) + taniwhaWatchlist (/judge) + provisionalWins + crownHint + winsByDomain
@@ -981,7 +1002,6 @@ RLS: own + parent (family) + judge.
     Footer.tsx                      # Rainbow rule, HQ address + session times
     ui.tsx                          # Shared brand UI kit — Button, Card, Badge, Tag, Input, Select, Dialog, RainbowText, RainbowRule, SectionLabel, StatBlock
     EventIcon.tsx                   # Event pictogram tile — CSS-mask of /event-icons/{slug}.png in domain colour, emoji fallback
-    ColourWatchlist.tsx             # "Approaching a colour" panel — /judge Players tab
     TaniwhaCard.tsx                 # Dashboard taniwha card + choose/switch picker + TaniwhaTimeline
     TaniwhaWatchlist.tsx            # "Approaching a crown" panel — /judge, leads with the BLOCKER not sessions-away
     TaniwhaAlertBanner.tsx          # Live kaiwhakawā crown alert (earned / on-track)
@@ -1034,10 +1054,13 @@ RLS: own + parent (family) + judge.
                                                #   INVOKER rights, reads players_public (NOT players).
       20260821000001_drop_orphaned_bonus_tables.sql # archive (RLS-on, no policies) then drop bonus_completions + bonus_sport_opponents
       20260821000002_pin_wellbeing_search_path.sql  # last SECURITY DEFINER function without a pinned search_path
-      20260824220633_event_placements.sql      # NOT APPLIED. results.event_placement/event_field_size + backfill,
-                                               #   player_event_wins view, guard extended, close_expired_sessions fix.
-      20260824222612_player_taniwha.sql        # NOT APPLIED. player_taniwha, event_domains (120-row roster mirror),
-                                               #   sync/choose/claim functions, backfill. Apply AFTER 20260824220633.
+      20260824220633_event_placements.sql      # APPLIED 2026-08-25. results.event_placement/event_field_size +
+                                               #   backfill, player_event_wins view, guard extended,
+                                               #   close_expired_sessions fix.
+      20260824222612_player_taniwha.sql        # APPLIED 2026-08-25. player_taniwha, event_domains (120-row roster
+                                               #   mirror), sync/choose/claim functions, backfill.
+      20260824233516_leaderboard_taniwha.sql   # leaderboard_page(): colour_rungs key -> taniwha (crowned + building).
+                                               #   ⚠ MIGRATION FIRST, THEN CODE — the client reads the new key.
       20260822000000_privacy_tidyup.sql        # self-serve export/erasure, optional legal name, drops players.bodyweight_kg.
                                                #   RENUMBERED from 20260821000000 — see the collision note below.
       # ── 20260813000003 needed `supabase db push --include-all`: its 13-Aug timestamp is older than the
@@ -1363,7 +1386,9 @@ real host is `evil.com`. `safeNext()` now rejects that plus the `//` and `/\` va
 
 ---
 
-*Last updated: August 2026 (session 31 — **the Colours ladder became a collection of twelve taniwha**, shipped as v0.6.0.0. Design settled via `/grill-me`; 28 locked decisions in `TANIWHA_SYSTEM_PLAN.md`. Nine parts of every taniwha are bought with lifetime points and the crown must be EARNED: one qualified referral for the whānau taniwha, 9 of 12 event wins for a domain. **The two migrations are written and NOT applied** — apply from `main`, in order, then verify by querying the objects. Until then production still runs Colours and every surface falls back to it, which was verified against prod with the anon key rather than assumed. Findings along the way: the domain palette had **six colours across ten domains in three separate copies**, so four pairs of domains were identical; `session_events.domain_number` cannot be used for domain rollup because June 2026 renumbered the domains and August moved five events, which is why `event_domains` mirrors the roster into SQL; `close_expired_sessions()` has been **failing for every logged-in non-judge caller** since 20260820000000 and only worked because anon callers and pg_cron hid it; and the referral system this doc listed as "Planned" has been built since May. 369 tests. Still blocked on people: the reo review (four domain words are placeholders, plus Hiko/Hiku and two other near-collisions) and the twelve drawings. See the "Taniwha grading system" block above.)*
+*Last updated: August 2026 (session 31b — **the taniwha migrations are APPLIED and verified in production**, and the Colours fallbacks are gone. Verified by querying the objects with the public anon key, never by trusting `db push`: 120 event_domains rows, 27 player_taniwha rows, **197 wins backfilled**, budget invariant zero breaches, no guest row with a placement, nobody building two taniwha. The backfill showed Tāne already holds three domains past 9 of 12 and RGFell one, but **nobody has crown room** because everyone is under 10,000 points — points are the binding constraint, exactly as the calibration assumed. Cleanup in the same pass: `lib/colourAlerts.ts` and the two colour components deleted, every fallback branch removed, the points economy moved into `lib/taniwha.ts`, RAINBOW into `lib/domainColours.ts`, and `player_taniwha` folded into `leaderboard_page()` so the performance pass's 7-into-1 collapse stops being 2. Coverage moved with the code rather than being lost — the component test was PORTED to the taniwha components, and the generic ranking helpers are tested in `__tests__/sessionRanking.test.ts`. `npm install` fixed the stale node_modules that had made `colourComponents.test.tsx` unrunnable. See the "Taniwha grading system" block above.)*
+
+*Previous: August 2026 (session 31 — **the Colours ladder became a collection of twelve taniwha**, shipped as v0.6.0.0. Design settled via `/grill-me`; 28 locked decisions in `TANIWHA_SYSTEM_PLAN.md`. Nine parts of every taniwha are bought with lifetime points and the crown must be EARNED: one qualified referral for the whānau taniwha, 9 of 12 event wins for a domain. **The two migrations are written and NOT applied** — apply from `main`, in order, then verify by querying the objects. Until then production still runs Colours and every surface falls back to it, which was verified against prod with the anon key rather than assumed. Findings along the way: the domain palette had **six colours across ten domains in three separate copies**, so four pairs of domains were identical; `session_events.domain_number` cannot be used for domain rollup because June 2026 renumbered the domains and August moved five events, which is why `event_domains` mirrors the roster into SQL; `close_expired_sessions()` has been **failing for every logged-in non-judge caller** since 20260820000000 and only worked because anon callers and pg_cron hid it; and the referral system this doc listed as "Planned" has been built since May. 369 tests. Still blocked on people: the reo review (four domain words are placeholders, plus Hiko/Hiku and two other near-collisions) and the twelve drawings. See the "Taniwha grading system" block above.)*
 
 *Previous: August 2026 (session 30 — **the OWASP remediation applied and verified in production, plus two bugs found while verifying it.** All three access-control findings are shut and confirmed with the public anon key: `players` returns 42501, role self-promotion is trigger-pinned, and score writes are confined to an open session. Verified end-to-end by a real game on 2026-08-19. **The bigger find was that games never auto-ended**: the 100-minute lock was a client-side `sessions.update()` against a table whose only UPDATE policy is judge-only, so it affected zero rows for every player, and the client set its own "Session Ended" state regardless, which is why nobody noticed. An un-closed session awards NOBODY anything — the 19 August game sat open overnight with 13 results and zero placements. Fixed by `close_expired_sessions()` plus pg_cron; the stranded game was backfilled and came back 13/13. Also closed the last three hygiene items (search_path, the orphaned bonus tables archived-then-dropped, the join-code ILIKE wildcard). **Read the "Security posture" block before touching RLS or players_public**, and note the new migration-timestamp warning: a collision is invisible to git and fatal to the CLI. Doc corrections: `players.bodyweight_kg` is gone, and the "session auto-locks" line in Key Logic described behaviour that had not worked for months. Still open, and both deliberately: whether session codes should be public at all, and which of the two parallel branches carrying their own `players_public` survives.)*
 *Previous: August 2026 (session 29 — **OWASP access-control pass, closed in production 2026-08-19.** Three exploitable holes, all shut and verified with nothing but the public anon key: `players` was world-readable (27 players, 19 emails, 27 dates of birth, 8 of them minors, one guardian's contact details) and now returns 42501; any player could self-promote to kaiwhakawā via `PATCH {"role":"judge"}` on their own row, now pinned by a trigger; and any player could write fabricated scores into closed sessions, which `award_session_points` then turned into permanent lifetime colour points. SQL injection, XSS and authentication came back clean. New: `players_public` (the only sanctioned path to another player's row), `public.is_judge()`, and migrations 20260813000000-3 / 20260816000000 / 20260819000000. **Read the "Security posture" block before touching RLS or that view** — `CREATE OR REPLACE VIEW` cannot rename a column and aborts the whole `db push` if you try, a `players_public` column change needs a sweep of every caller in app/, and migrations must be applied from `main` only. Each of those three cost a production incident during this session: the view was built three times from three parallel worktrees and applied to prod twice out-of-band, which broke the live session and the game report on two separate days and once blocked `db push` entirely. Doc corrections in the same pass: `players.address`, `results.score`, `results.rank_in_session` and `results.adjusted_score` do not exist and never did in the v2 schema; `gender`, `is_guest`, `is_pr` and `effort_task_completions` were missing. Residual findings tracked in TODOS.md.)*
