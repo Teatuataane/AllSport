@@ -15,11 +15,12 @@ import {
   computePercentiles, domainPercentiles, strongestEvent, weakestEvent,
   topDomain as pctTopDomain, eventPctLabel, domainPctLabel,
 } from '@/lib/percentile'
-import {
-  colourByRung, colourForPoints, nextColourFrom, progressToNext,
-  colourCardStyle, colourChipStyle, colourOnDark, emblemSrc, type Colour,
-} from '@/lib/colours'
+// The colour ladder is retired; these three are only for the colour TIMELINE
+// in the points-history modal, which still shows the colours players really
+// earned before v0.6.0.0. See lib/colours.ts.
+import { colourByRung, colourChipStyle, colourOnDark } from '@/lib/colours'
 import TaniwhaCard, { TaniwhaTimeline, loadTaniwhaState, type TaniwhaState } from '@/components/TaniwhaCard'
+import { taniwhaBySlug, taniwhaOnDark } from '@/lib/taniwha'
 import WellbeingSurvey from '@/app/components/WellbeingSurvey'
 import Link from 'next/link'
 
@@ -441,14 +442,14 @@ function DashboardInner() {
   )
 
   const points = lifetime?.lifetime_points ?? 0
-  // A colour is never lost, so the card shows the highest rung ever AWARDED.
-  // colourForPoints is only used to work out what comes next.
-  const highestRung = lifetime?.highest_rung ?? 1
-  const grade: Colour = colourByRung(highestRung) ?? colourForPoints(points)
-  // Takes the awarded rung into account, not just the points: a colour claimed
-  // by the kaiwhakawā mid-session lands before the points do.
-  const nextGrade = nextColourFrom(points, highestRung)
-  const progress = progressToNext(points)
+
+  // The player's personal accent, used on the avatar tile and the card edges.
+  // It used to come from their colour; it now comes from the taniwha they are
+  // building, and is neutral until they have chosen one. Always a hex, never
+  // the rainbow gradient, so it is safe inside `Npx solid ${...}`.
+  const buildingRow = taniwha?.rows.find(r => r.is_building)
+  const buildingTaniwha = buildingRow ? taniwhaBySlug(buildingRow.taniwha_slug) : null
+  const gradeBorder = buildingTaniwha ? taniwhaOnDark(buildingTaniwha) : '#888888'
 
   const isJudge = player.role === 'judge'
   const hasNoSessions = !ranking || ranking.total_sessions === 0
@@ -466,27 +467,6 @@ function DashboardInner() {
   const icon = activePlayer.icon || null
   const displayName = activePlayer.display_name || activePlayer.username || '?'
 
-  // ── Colours card bar ─────────────────────────────────────────────────────────
-  // Black-card family (Taniwha, all of cycle 2, Ngā Taniwha): the accent fills
-  // the bar. Everything else keeps the old ink-on-colour treatment.
-  const onBlackCard = grade.surface === '#000000'
-  const barBg: React.CSSProperties = onBlackCard
-    ? (grade.accent.startsWith('linear-gradient')
-        ? { backgroundImage: grade.accent }
-        : { background: grade.accent })
-    : grade.accent.startsWith('linear-gradient')
-    ? { backgroundImage: 'linear-gradient(90deg, rgba(255,255,255,0.9), rgba(255,255,255,0.5))' }
-    : grade.ink === '#ffffff'
-    ? { background: 'rgba(255,255,255,0.9)' }
-    : { background: 'rgba(0,0,0,0.3)' }
-
-  const barTrackBg: React.CSSProperties = onBlackCard
-    ? { background: '#222' }
-    : { background: 'rgba(0,0,0,0.2)' }
-
-  const gradeEmblem = emblemSrc(grade)
-  // Always a hex, never the rainbow gradient — safe inside `Npx solid ${...}`.
-  const gradeBorder = colourOnDark(grade)
 
   return (
     <div style={{
@@ -623,7 +603,7 @@ function DashboardInner() {
         </div>
       </BentoCard>
 
-      {/* ── Card 5: Taniwha, or Colours until the migration lands ──────────── */}
+      {/* ── Card 5: Taniwha ─────────────────────────────────────────────── */}
       {taniwha && activePlayerId && (
         <TaniwhaCard
           state={taniwha}
@@ -631,89 +611,6 @@ function DashboardInner() {
           onOpenHistory={loadHistory}
           onChanged={() => setTaniwhaNonce(n => n + 1)}
         />
-      )}
-      {!taniwha && (
-      <BentoCard onClick={loadHistory} style={{ marginBottom: '12px' }}>
-        <div style={{
-          ...colourCardStyle(grade),
-          position: 'relative',
-          overflow: 'hidden',
-          borderRadius: '16px',
-          padding: '22px',
-          minHeight: '140px',
-          opacity: rankingLoading ? 0.7 : 1,
-          transition: 'opacity 0.2s',
-        }}>
-          {/* Emblem watermark — Taniwha and beyond only. Masked so a single
-              silhouette can be tinted the accent colour, same as EventIcon.
-              Renders nothing until the PNG exists. */}
-          {gradeEmblem && (
-            <div aria-hidden style={{
-              position: 'absolute', right: '-18px', top: '50%', transform: 'translateY(-50%)',
-              width: '150px', height: '150px', opacity: 0.16, pointerEvents: 'none',
-              backgroundColor: grade.accent.startsWith('linear-gradient') ? '#F9B051' : grade.accent,
-              WebkitMaskImage: `url(${gradeEmblem})`, maskImage: `url(${gradeEmblem})`,
-              WebkitMaskRepeat: 'no-repeat', maskRepeat: 'no-repeat',
-              WebkitMaskSize: 'contain', maskSize: 'contain',
-              WebkitMaskPosition: 'center', maskPosition: 'center',
-            }} />
-          )}
-
-          {/* Header row */}
-          <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
-            <div>
-              <div style={{
-                fontFamily: 'var(--font-display)', fontSize: '28px',
-                color: grade.ink, letterSpacing: '0.05em', lineHeight: 1,
-              }}>
-                {grade.name}
-              </div>
-              <div style={{
-                fontSize: '11px', color: grade.ink,
-                opacity: 0.6, fontFamily: 'var(--font-label)',
-                letterSpacing: '0.1em', marginTop: '2px',
-              }}>
-                COLOURS · TAP FOR HISTORY
-              </div>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '30px', fontWeight: 'bold', color: grade.ink, lineHeight: 1 }}>
-                {points.toLocaleString()}
-              </div>
-              <div style={{ fontSize: '11px', color: grade.ink, opacity: 0.6, fontFamily: 'var(--font-label)' }}>
-                pts · lifetime
-              </div>
-            </div>
-          </div>
-
-          {/* Progress bar */}
-          <div style={{ position: 'relative' }}>
-          {nextGrade ? (
-            <>
-              <div style={{
-                display: 'flex', justifyContent: 'space-between',
-                fontSize: '10px', color: grade.ink, opacity: 0.7,
-                fontFamily: 'var(--font-label)', marginBottom: '5px',
-              }}>
-                <span style={{ fontWeight: 700 }}>{grade.name}</span>
-                <span>{nextGrade.name} — {(nextGrade.threshold - points).toLocaleString()} pts to go</span>
-              </div>
-              <div style={{ height: '6px', borderRadius: '3px', overflow: 'hidden', ...barTrackBg }}>
-                <div style={{
-                  height: '100%', borderRadius: '3px',
-                  width: `${Math.min(progress, 100)}%`,
-                  transition: 'width 0.6s ease', ...barBg,
-                }} />
-              </div>
-            </>
-          ) : (
-            <div style={{ fontSize: '12px', color: grade.ink, opacity: 0.8, fontFamily: 'var(--font-label)', letterSpacing: '0.05em' }}>
-              Ngā Taniwha — the end of the ladder
-            </div>
-          )}
-          </div>
-        </div>
-      </BentoCard>
       )}
 
       {/* ── Wellbeing check-in (renders only when a quarterly survey is due) ─── */}

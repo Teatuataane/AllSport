@@ -26,25 +26,22 @@
 // /leaderboard still resets each January. Only the grading went lifetime.
 
 import type { CSSProperties } from 'react'
-import { DOMAIN_COLORS } from './domainColours'
-import {
-  RAINBOW,
-  MIN_PLACEMENT_POINTS,
-  EFFORT_POINTS_PER_LEVEL,
-  MAX_EFFORT_LEVEL,
-  MAX_SESSION_POINTS,
-} from './colours'
+import { DOMAIN_COLORS, RAINBOW } from './domainColours'
 
-// Re-exported so nothing has to import the module this one replaces. When
-// lib/colours.ts is finally deleted these four constants move HERE — they
-// describe the points economy, which outlives the colour ladder.
-export {
-  RAINBOW,
-  MIN_PLACEMENT_POINTS,
-  EFFORT_POINTS_PER_LEVEL,
-  MAX_EFFORT_LEVEL,
-  MAX_SESSION_POINTS,
-}
+export { RAINBOW }
+
+// ── The points economy ───────────────────────────────────────────────────────
+// These moved here from lib/colours.ts when the colour ladder was retired: they
+// describe how a session converts into points, which outlives any particular
+// grading system built on top of it. The award trigger is the other half of
+// this contract — change one and you must change the other.
+
+/** Minimum placement award for anyone who takes part in a session. */
+export const MIN_PLACEMENT_POINTS = 10
+export const EFFORT_POINTS_PER_LEVEL = 5
+export const MAX_EFFORT_LEVEL = 20
+/** 100 placement + 100 effort. Nothing can score more in one session. */
+export const MAX_SESSION_POINTS = 200
 
 // ── The shape of the ladder ──────────────────────────────────────────────────
 

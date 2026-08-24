@@ -86,7 +86,12 @@ export default function PRsPage() {
       const user = await getSessionUser()
       if (!user) { router.replace('/play'); return }
 
-      const { data } = await supabase
+      // Both loads at once. They are separate queries on purpose — folding
+      // event_placement into the results select would take the whole page down
+      // with a 42703 if it ever went missing — but there is no reason to wait
+      // for one before starting the other.
+      const [resultsRes, winsRes] = await Promise.all([
+        supabase
         .from('results')
         .select(`
           id, score_label, raw_score, difficulty_tier, placement,
@@ -95,8 +100,14 @@ export default function PRsPage() {
         `)
         .eq('player_id', user.id)
         .not('score_label', 'is', null)
-        .order('created_at', { ascending: false })
+        .order('created_at', { ascending: false }),
+        supabase
+          .from('player_event_wins')
+          .select('event_name, wins')
+          .eq('player_id', user.id),
+      ])
 
+      const { data } = resultsRes
       if (data) {
         const mapped: PRResult[] = (data as any[]).map(r => ({
           id: r.id,
@@ -112,14 +123,7 @@ export default function PRsPage() {
         setResults(mapped)
       }
 
-      // Separate query on purpose: folding event_placement into the results
-      // select above would take the entire page down with a 42703 if this runs
-      // against a database where the migration has not landed yet.
-      const { data: winRows, error: winErr } = await supabase
-        .from('player_event_wins')
-        .select('event_name, wins')
-        .eq('player_id', user.id)
-
+      const { data: winRows, error: winErr } = winsRes
       if (winErr) {
         console.warn('player_event_wins unavailable — win markers hidden', winErr.message)
       } else if (winRows) {

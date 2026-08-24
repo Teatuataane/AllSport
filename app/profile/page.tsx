@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient, getSessionUser } from '@/lib/supabase-browser'
 import Link from 'next/link'
-import { colourByRung, colourForPoints, colourOnDark } from '@/lib/colours'
 import { MAX_CROWNS, taniwhaBySlug, taniwhaOnDark } from '@/lib/taniwha'
 
 const supabase = createClient()
@@ -60,8 +59,6 @@ export default function ProfilePage() {
   })
 
   // Rankings for grade display
-  const [points, setPoints] = useState(0)
-  const [rung, setRung] = useState(1)
 
   useEffect(() => {
     const load = async () => {
@@ -97,18 +94,7 @@ export default function ProfilePage() {
       const stored = typeof window !== 'undefined' ? localStorage.getItem('allsport_active_player_id') : null
       setActivePlayerId(stored || user.id)
 
-      // Lifetime colour for the profile badge. Colours never reset, and the
-      // rung shown is the highest ever AWARDED, not the one points imply.
-      const { data: totals } = await supabase
-        .from('player_totals')
-        .select('lifetime_points, highest_rung')
-        .eq('player_id', user.id)
-        .maybeSingle()
-      setPoints(totals?.lifetime_points || 0)
-      setRung(totals?.highest_rung || 1)
-
-      // Taniwha progression for the badge. Its own query, so a missing table
-      // comes back as an error here instead of taking the profile down.
+      // Taniwha progression for the badge.
       const pt = await supabase
         .from('player_taniwha')
         .select('taniwha_slug, crowned_at, is_building')
@@ -279,16 +265,13 @@ export default function ProfilePage() {
     </div>
   )
 
-  const grade = colourByRung(rung) ?? colourForPoints(points)
-  // The badge shows crowned taniwha once the progression exists, and the colour
-  // until then. `taniwha === null` is the pre-migration state, not an error.
-  const crowned = taniwha?.filter(r => r.crowned_at).length ?? null
+  // The badge is the crowned count, the way a belt is. Tinted by the taniwha
+  // under construction, or neutral before the player has chosen one.
+  const crowned = taniwha?.filter(r => r.crowned_at).length ?? 0
   const building = taniwha?.find(r => r.is_building)
   const buildingT = building ? taniwhaBySlug(building.taniwha_slug) : null
-  const gradeBorder = buildingT ? taniwhaOnDark(buildingT) : colourOnDark(grade)
-  const badgeLine = crowned === null
-    ? grade.name
-    : `${crowned}/${MAX_CROWNS} taniwha`
+  const gradeBorder = buildingT ? taniwhaOnDark(buildingT) : '#888888'
+  const badgeLine = `${crowned}/${MAX_CROWNS} taniwha`
   const displayName = form.display_name || form.username || player.full_name || '?'
 
   return (

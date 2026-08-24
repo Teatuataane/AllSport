@@ -2,6 +2,16 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.6.0.1] - 2026-08-25
+
+### Changed
+- **The taniwha are live.** Both database migrations are applied and verified: 197 event wins were backfilled from every session ever played, and all 27 players now have their first taniwha started. The leaderboard, the dashboard and Personal Bests have switched over on their own.
+- **The old Colours screens are gone.** They were kept as a safety net while the database caught up, and it has. What survives is the record: the colours you actually earned, on the dates you earned them, still show in your points history.
+- **The leaderboard asks the database once again.** Taniwha progress used to be a second request; it now comes down with everything else. Personal Bests loads its two halves at the same time instead of one after the other.
+
+### Fixed
+- **A whole test file had never been able to run.** Two testing packages were listed but never installed, so the only tests covering on-screen components had been failing for weeks and nobody could see them pass or fail. Installed, and the component tests now cover the taniwha alert and the coach's watchlist instead.
+
 ## [0.6.0.0] - 2026-08-25
 
 ### Added

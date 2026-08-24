@@ -13,17 +13,13 @@ import {
   buildJudgeRoster, resolveJudgeTarget, resultsForTarget, scoredEventIds,
   scoredEventIdsByTarget, NO_SCORES,
 } from '@/lib/judgeRoster'
-import {
-  colourForPoints, nextColour, colourOnDark, colourByRung, colourCardStyle, emblemSrc,
-} from '@/lib/colours'
-import { applyClaimedRung, colourAlerts, type ColourAlert } from '@/lib/colourAlerts'
-import ColourAlertBanner from '@/components/ColourAlertBanner'
 import TaniwhaAlertBanner from '@/components/TaniwhaAlertBanner'
 import {
   taniwhaAlerts, provisionalWins, crownHint, type TaniwhaAlert, type TaniwhaProgress,
 } from '@/lib/taniwhaAlerts'
 import {
-  MAX_CROWNS, WIN_TARGET, bodyPartBudget, taniwhaBySlug, taniwhaCardStyle,
+  MAX_CROWNS, bodyPartBudget, nextSlot, progressToNextSlot,
+  partByNumber, taniwhaBySlug, taniwhaCardStyle, taniwhaOnDark,
 } from '@/lib/taniwha'
 
 const supabase = createClient()
@@ -1680,11 +1676,14 @@ function SessionEndTakeover({
   // tapped "Celebrated" mid-session or because the close trigger wrote them —
   // and the takeover only renders after the session has ended, so the
   // coach-releases-it rule is satisfied by the time anyone sees this.
-  const [colourAwards, setColourAwards] = useState<{ rung: number; points_at_award: number }[]>([])
   // Crowns landed in THIS session. `null` means the progression migrations are
   // not applied, in which case the colour card above keeps rendering; an empty
   // array means the progression exists and nothing was crowned today.
   const [crowns, setCrowns] = useState<{ taniwha_slug: string; crown_order: number }[] | null>(null)
+  // Every taniwha row for this player, so the progress bar knows which one they
+  // are building. Same query cost as fetching only the crowns.
+  const [taniwhaRows, setTaniwhaRows] =
+    useState<{ taniwha_slug: string; is_building: boolean }[] | null>(null)
   const [loaded, setLoaded] = useState(false)
   const [barAnimated, setBarAnimated] = useState(false)
 
@@ -1697,7 +1696,7 @@ function SessionEndTakeover({
 
   useEffect(() => {
     async function load() {
-      const [sumRes, cntRes, rankRes, awardRes] = await Promise.all([
+      const [sumRes, cntRes, rankRes] = await Promise.all([
         supabase.from('session_player_summary')
           .select('overall_placement, total_placement_points, effort_points')
           .eq('session_id', sessionId).eq('player_id', playerId).maybeSingle(),
@@ -1707,25 +1706,23 @@ function SessionEndTakeover({
         supabase.from('player_totals')
           .select('lifetime_points')
           .eq('player_id', playerId).maybeSingle(),
-        supabase.from('colour_awards')
-          .select('rung, points_at_award')
-          .eq('player_id', playerId).eq('session_id', sessionId)
-          .order('rung', { ascending: false }),
       ])
-      // Its own query: a missing table must not take the end-of-session moment
-      // down with it.
-      const crownRes = await supabase
+
+      // Its own query, so a failure here degrades the taniwha panel rather than
+      // taking the whole end-of-session moment down.
+      const ptRes = await supabase
         .from('player_taniwha')
-        .select('taniwha_slug, crown_order')
+        .select('taniwha_slug, crown_order, crowned_session_id, is_building')
         .eq('player_id', playerId)
-        .eq('crowned_session_id', sessionId)
-        .order('crown_order', { ascending: true })
-      setCrowns(crownRes.error ? null : ((crownRes.data ?? []) as any[]))
+      const rows = (ptRes.data ?? []) as any[]
+      setTaniwhaRows(ptRes.error ? null : rows)
+      setCrowns(ptRes.error ? null : rows
+        .filter(r => r.crowned_session_id === sessionId)
+        .sort((a, b) => (a.crown_order ?? 0) - (b.crown_order ?? 0)))
 
       setSummary((sumRes.data as EndSummary | null) ?? null)
       setSessionCount(cntRes.count ?? 0)
       setLifetimeTotal((rankRes.data as { lifetime_points: number } | null)?.lifetime_points ?? null)
-      setColourAwards((awardRes.data as { rung: number; points_at_award: number }[] | null) ?? [])
       setLoaded(true)
     }
     load()
@@ -1753,16 +1750,17 @@ function SessionEndTakeover({
   const post = summary ? (lifetimeTotal ?? earned) : (lifetimeTotal ?? 0) + earned
   const pre = Math.max(0, post - earned)
 
-  const grade = colourForPoints(post)
-  const nextGrade = nextColour(post)
-  const frac = (p: number) => nextGrade
-    ? Math.min(1, Math.max(0, (p - grade.threshold) / (nextGrade.threshold - grade.threshold)))
-    : 1
-  // The bar has to stay visible on a dark panel, so it uses the accent (amber
-  // for the whole Taniwha family) rather than the card surface.
-  const gradeBarStyle: React.CSSProperties = grade.accent.startsWith('linear-gradient')
-    ? { backgroundImage: grade.accent }
-    : { background: grade.accent }
+  // Progress toward the next PART, not the next colour. Every 1,000 points is
+  // one part, so this bar fills roughly every seven sessions rather than once
+  // every few months — the whole reason the ladder was re-cut this way.
+  const nextPartSlot = nextSlot(post)
+  const buildingRow = taniwhaRows?.find((r) => r.is_building)
+  const buildingTaniwha = buildingRow ? taniwhaBySlug(buildingRow.taniwha_slug) : null
+  const frac = (p: number) => progressToNextSlot(p) / 100
+  const gradeBarStyle: React.CSSProperties = {
+    background: buildingTaniwha && !buildingTaniwha.accent.startsWith('linear-gradient')
+      ? buildingTaniwha.accent : '#F9B051',
+  }
 
   // Session-count milestone — summary row present means the count includes this session
   const sessionNumber = sessionCount === null ? null : (summary ? sessionCount : sessionCount + 1)
@@ -1854,52 +1852,6 @@ function SessionEndTakeover({
             )
           })()}
 
-          {/* The retired colour ladder. Rendered only while the progression
-              tables are absent, so the two systems never both shout. */}
-          {crowns === null && colourAwards.map(award => {
-            const c = colourByRung(award.rung)
-            if (!c) return null
-            const em = emblemSrc(c)
-            const accent = c.accent.startsWith('linear-gradient') ? '#F9B051' : c.accent
-            return (
-              <div key={award.rung} style={{
-                ...colourCardStyle(c),
-                position: 'relative', overflow: 'hidden',
-                borderRadius: '16px', padding: '20px 22px', marginTop: '18px',
-                animation: 'toastPop 0.6s cubic-bezier(0.16,1,0.3,1)',
-              }}>
-                {em && (
-                  <div aria-hidden style={{
-                    position: 'absolute', right: '-20px', top: '50%', transform: 'translateY(-50%)',
-                    width: '160px', height: '160px', opacity: 0.18, pointerEvents: 'none',
-                    backgroundColor: accent,
-                    WebkitMaskImage: `url(${em})`, maskImage: `url(${em})`,
-                    WebkitMaskRepeat: 'no-repeat', maskRepeat: 'no-repeat',
-                    WebkitMaskSize: 'contain', maskSize: 'contain',
-                    WebkitMaskPosition: 'center', maskPosition: 'center',
-                  }} />
-                )}
-                <div style={{ position: 'relative' }}>
-                  <div style={{
-                    fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11.5px',
-                    textTransform: 'uppercase', letterSpacing: '0.18em',
-                    color: c.ink, opacity: 0.7,
-                  }}>
-                    New colour earned
-                  </div>
-                  <div style={{
-                    fontFamily: 'Bebas Neue, cursive', fontSize: '46px', lineHeight: 1.02,
-                    letterSpacing: '0.03em', color: c.ink, marginTop: '4px',
-                  }}>
-                    {c.name}
-                  </div>
-                  <div style={{ fontSize: '13px', color: c.ink, opacity: 0.75, marginTop: '4px' }}>
-                    {award.points_at_award.toLocaleString()} lifetime points · yours for good
-                  </div>
-                </div>
-              </div>
-            )
-          })}
 
           {/* Final placement */}
           <div style={{ textAlign: 'center', padding: '18px 0 22px' }}>
@@ -1944,15 +1896,19 @@ function SessionEndTakeover({
             </>
           )}
 
-          {/* Colour progress */}
-          <div style={{ ...QES_LBL }}>Colours — +{loaded ? earned : '…'} pts this session</div>
+          {/* Taniwha progress */}
+          <div style={{ ...QES_LBL }}>Taniwha — +{loaded ? earned : '…'} pts this session</div>
           <div style={{ background: '#161616', border: '1px solid #1e1e1e', borderRadius: '14px', padding: '14px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '8px' }}>
-              <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '22px', color: colourOnDark(grade), letterSpacing: '0.03em' }}>
-                {grade.name}
+              <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '22px', color: buildingTaniwha ? taniwhaOnDark(buildingTaniwha) : '#F9B051', letterSpacing: '0.03em' }}>
+                {buildingTaniwha ? buildingTaniwha.name : 'Choose your next taniwha'}
               </div>
               <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11.5px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                {nextGrade ? `${nextGrade.name} — ${Math.max(0, nextGrade.threshold - post).toLocaleString()}pts to go` : 'Ngā Taniwha — the end of the ladder'}
+                {nextPartSlot
+                  ? nextPartSlot.isCrown
+                    ? `Crown — ${nextPartSlot.pointsToGo.toLocaleString()}pts to go`
+                    : `${partByNumber(((nextPartSlot.slot - 1) % 10) + 1)?.name ?? 'Next part'} — ${nextPartSlot.pointsToGo.toLocaleString()}pts to go`
+                  : 'Te Kāhui — the end of the ladder'}
               </div>
             </div>
             <div style={{ height: '10px', borderRadius: '99px', background: '#0a0a0a', overflow: 'hidden' }}>
@@ -2037,7 +1993,6 @@ export default function SessionPage() {
   const [taniwhaProgress, setTaniwhaProgress] =
     useState<Record<string, TaniwhaProgress> | null>(null)
   const [claimingCrown, setClaimingCrown] = useState<string | null>(null)
-  const [claimingColour, setClaimingColour] = useState<string | null>(null)
   const [colourToast, setColourToast] = useState<{ text: string; ok: boolean } | null>(null)
 
   const allPlayers = player ? [player, ...familyMembers] : []
@@ -2217,61 +2172,6 @@ export default function SessionPage() {
       }
     })
     setColourToast({ text: `${alert.playerName} has earned ${alert.taniwha.name}`, ok: true })
-    setTimeout(() => setColourToast(null), 5000)
-  }
-
-  const colourAlertList: ColourAlert[] = useMemo(() => {
-    if (!isJudge || sessionEnded) return []
-    return colourAlerts({
-      results: results.map(r => ({ player_id: r.player_id, event_id: r.event_id, raw_score: r.raw_score })),
-      eventIds: events.map(ev => ev.id),
-      playerIds: scoredPlayerIds,
-      nameOf: pid => sessionPlayers.find(p => p.id === pid)?.name
-        ?? results.find(r => r.player_id === pid)?.player_name
-        ?? 'Player',
-      divisionOf: pid => playerInfoMap[pid]?.division,
-      effortLevelOf: pid => calcTotalEffortLevel(results.filter(r => r.player_id === pid), events),
-      totalsOf: pid => playerTotals[pid],
-    })
-  }, [isJudge, sessionEnded, results, events, scoredPlayerIds, sessionPlayers, playerInfoMap, playerTotals])
-
-  async function celebrateColour(alert: ColourAlert) {
-    setClaimingColour(alert.playerId)
-    const { data, error } = await supabase.rpc('claim_colour_award', {
-      p_player_id: alert.playerId,
-      p_session_id: sessionId,
-      p_rung: alert.colour.rung,
-    })
-    setClaimingColour(null)
-
-    if (error) {
-      setColourToast({ text: `Could not record ${alert.colour.name} — try again`, ok: false })
-      setTimeout(() => setColourToast(null), 4000)
-      return
-    }
-
-    // An EMPTY result is not success. claim_colour_award re-derives the
-    // guaranteed floor server-side and awards nothing if the crossing is not
-    // actually safe — that returns zero rows, not an error. The client's
-    // lifetime total is fetched once per player-set change and its effort count
-    // comes from local state, so the two can genuinely disagree (e.g. a score
-    // deleted between the fetch and the tap). Announcing a colour the server
-    // refused is the exact failure this feature exists to prevent, so say so
-    // and leave the alert in place to retry.
-    if (!Array.isArray(data) || data.length === 0) {
-      setColourToast({
-        text: `${alert.playerName} has not quite earned ${alert.colour.name} yet — scores may have changed`,
-        ok: false,
-      })
-      setTimeout(() => setColourToast(null), 5000)
-      return
-    }
-
-    // Awarded for real. Bump highest_rung locally so the alert retires with no
-    // round trip. lifetime_points stays put on purpose — it only catches up
-    // when the session closes.
-    setPlayerTotals(prev => applyClaimedRung(prev, alert.playerId, alert.colour.rung, alert.lifetimePoints))
-    setColourToast({ text: `${alert.playerName} has earned ${alert.colour.name}`, ok: true })
     setTimeout(() => setColourToast(null), 5000)
   }
 
@@ -2909,19 +2809,11 @@ export default function SessionPage() {
               </div>
             )}
 
-            {taniwhaProgress ? (
-              <TaniwhaAlertBanner
-                alerts={taniwhaAlertList}
-                claimingPlayerId={claimingCrown}
-                onCelebrate={celebrateCrown}
-              />
-            ) : (
-              <ColourAlertBanner
-                alerts={colourAlertList}
-                claimingPlayerId={claimingColour}
-                onCelebrate={celebrateColour}
-              />
-            )}
+            <TaniwhaAlertBanner
+              alerts={taniwhaAlertList}
+              claimingPlayerId={claimingCrown}
+              onCelebrate={celebrateCrown}
+            />
 
             {/* Player chips */}
             <div className="no-scrollbar" style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '2px', marginBottom: '12px' }}>

@@ -14,6 +14,7 @@ import {
   MAX_SESSION_POINTS,
   MAX_EFFORT_LEVEL,
   EFFORT_POINTS_PER_LEVEL,
+  MIN_PLACEMENT_POINTS,
   TANIWHA,
   WHANAU,
   KAHUI,
@@ -47,7 +48,6 @@ import {
 } from '@/lib/taniwha'
 import { DOMAIN_COLORS } from '@/lib/domainColours'
 import { EVENTS, DOMAIN_ORDER } from '@/lib/eventData'
-import * as colours from '@/lib/colours'
 import { readFileSync, readdirSync } from 'node:fs'
 
 describe('shape', () => {
@@ -232,12 +232,16 @@ describe('invariants that must never quietly break', () => {
     }
   })
 
-  it('keeps the points economy in step with lib/colours.ts while both exist', () => {
-    // These four move here when colours.ts is deleted. Until then they are
-    // re-exported, so a drift is impossible — this asserts that stays true.
-    expect(MAX_SESSION_POINTS).toBe(colours.MAX_SESSION_POINTS)
-    expect(MAX_EFFORT_LEVEL).toBe(colours.MAX_EFFORT_LEVEL)
-    expect(guaranteedSessionPoints(4)).toBe(colours.guaranteedSessionPoints(4))
+  it('owns the points economy, and it still matches the award trigger', () => {
+    // These moved here from lib/colours.ts when the colour ladder was retired.
+    // award_session_points() is the other half of this contract: 1st place is
+    // 100, effort is level x 5 capped at level 20, and the minimum award is 10.
+    // Change one and the other must change with it.
+    expect(MIN_PLACEMENT_POINTS).toBe(10)
+    expect(EFFORT_POINTS_PER_LEVEL).toBe(5)
+    expect(MAX_EFFORT_LEVEL).toBe(20)
+    expect(MAX_SESSION_POINTS).toBe(200)
+    expect(guaranteedSessionPoints(MAX_EFFORT_LEVEL)).toBe(110)
   })
 })
 
