@@ -30,16 +30,107 @@
 //
 // `on-track` may retract. Never announce it as a result.
 
-import { divisionRanks, projectedPlacementPoints, type AlertResultRow } from './colourAlerts'
 import {
   WIN_TARGET,
+  MIN_PLACEMENT_POINTS,
   crownPoints,
   guaranteedSessionPoints,
   taniwhaBySlug,
   type Taniwha,
 } from './taniwha'
 
-export type { AlertResultRow }
+// ── Session ranking helpers ──────────────────────────────────────────────────
+// Moved here from lib/colourAlerts.ts when the colour ladder was retired. They
+// are generic — they rank players across a session's events and price a
+// placement — and were never colour-specific.
+
+export type AlertResultRow = {
+  player_id: string | null
+  event_id: string
+  raw_score: number
+}
+
+export type DivisionRank = {
+  rank: number
+  divisionName: string
+  /** Players in this division with at least one result this session. */
+  playerCount: number
+  /** Sum of per-event placements. Lower is better. */
+  totalPlacement: number
+}
+
+/**
+ * Provisional division rank for EVERY player with a result in the session.
+ *
+ * Same maths the live leaderboard and the session-end takeover use: within a
+ * division, a player's score for each event is ranked against the others who
+ * scored it, a missed event counts as one worse than the whole field, and the
+ * lowest total wins. Extracted here so the judge banner and the player banner
+ * cannot drift apart — this codebase has already been bitten by six copies of
+ * the colour ladder.
+ */
+export function divisionRanks(
+  results: AlertResultRow[],
+  eventIds: string[],
+  divisionOf: (playerId: string) => string | null | undefined,
+): Map<string, DivisionRank> {
+  const out = new Map<string, DivisionRank>()
+
+  const byDivision = new Map<string, AlertResultRow[]>()
+  for (const r of results) {
+    if (!r.player_id) continue
+    const div = divisionOf(r.player_id)
+    if (!div) continue
+    const bucket = byDivision.get(div)
+    if (bucket) bucket.push(r)
+    else byDivision.set(div, [r])
+  }
+
+  for (const [divisionName, divResults] of byDivision) {
+    const playerIds = [...new Set(divResults.map(r => r.player_id!))]
+
+    // Best raw_score per (event, player) — one pass, not events × players.
+    const bestByEvent = new Map<string, Map<string, number>>()
+    for (const r of divResults) {
+      let evt = bestByEvent.get(r.event_id)
+      if (!evt) { evt = new Map(); bestByEvent.set(r.event_id, evt) }
+      const existing = evt.get(r.player_id!)
+      if (existing === undefined || r.raw_score > existing) evt.set(r.player_id!, r.raw_score)
+    }
+
+    const totals = playerIds.map(pid => {
+      let total = 0
+      for (const eventId of eventIds) {
+        const evt = bestByEvent.get(eventId)
+        const scores = evt ? [...evt.values()] : []
+        const mine = evt?.get(pid)
+        // Missed the event: one worse than everyone who did score it.
+        if (mine === undefined) total += scores.length + 1
+        else total += 1 + scores.filter(s => s > mine).length
+      }
+      return { pid, total }
+    })
+
+    for (const { pid, total } of totals) {
+      out.set(pid, {
+        rank: 1 + totals.filter(t => t.total < total).length,
+        divisionName,
+        playerCount: playerIds.length,
+        totalPlacement: total,
+      })
+    }
+  }
+
+  return out
+}
+
+/** The placement award a rank would earn if the session closed right now. */
+export function projectedPlacementPoints(rank: number, playerCount: number): number {
+  if (playerCount <= 0) return MIN_PLACEMENT_POINTS
+  const gap = 100 / playerCount
+  return Math.max(100 - gap * (rank - 1), MIN_PLACEMENT_POINTS)
+}
+
 
 /** One player's progression, as the live session sees it. */
 export type TaniwhaProgress = {
@@ -390,5 +481,34 @@ export function winsByDomain(winsByEvent: Record<string, number>): Record<number
   for (const e of EVENTS) {
     if (winsByEvent[e.name]) out[e.domainNumber] = (out[e.domainNumber] ?? 0) + 1
   }
+  return out
+}
+
+
+/**
+ * Points earned per session per player, most recent first. Feeds the
+ * watchlist's "about N sessions away" from each player's own recent form.
+ * Moved here from lib/colourAlerts.ts with the rest of the generic helpers.
+ */
+export function buildRecentPointsMap(
+  rows: {
+    player_id: string
+    total_placement_points: number | null
+    effort_points: number | null
+    /** Optional. Without it the sort is stable, so input order is preserved. */
+    sessions?: { session_date: string } | { session_date: string }[] | null
+  }[]
+): Record<string, number[]> {
+  const dated = rows.map(r => {
+    const s = Array.isArray(r.sessions) ? r.sessions[0] : r.sessions
+    return {
+      player_id: r.player_id,
+      date: s?.session_date ?? '',
+      points: (r.total_placement_points ?? 0) + (r.effort_points ?? 0),
+    }
+  })
+  dated.sort((a, b) => b.date.localeCompare(a.date))
+  const out: Record<string, number[]> = {}
+  for (const d of dated) (out[d.player_id] ??= []).push(d.points)
   return out
 }

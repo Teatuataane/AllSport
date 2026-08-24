@@ -1,4 +1,8 @@
 // ─── AllSport domain colours ─────────────────────────────────────────────────
+//
+// Also the home of RAINBOW. It used to live in lib/colours.ts, but both that
+// module and lib/taniwha.ts need it and neither can import the other without a
+// cycle, so it sits in the palette module that depends on nothing.
 // THE single source of truth for the ten domain accent colours.
 //
 // This lives in lib/ rather than in components/EventIcon.tsx because
@@ -44,3 +48,7 @@ export const DOMAIN_COLORS = [
 export function domainColor(domainNumber: number): string {
   return DOMAIN_COLORS[(domainNumber - 1 + 10) % 10] || '#888'
 }
+
+/** The brand gradient. Uenuku, and Te Kāhui's accent. */
+export const RAINBOW =
+  'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)'

@@ -6,8 +6,7 @@ import { QRCodeSVG } from 'qrcode.react'
 import Link from 'next/link'
 import { EVENTS } from '@/lib/eventData'
 import { formatNZDate } from '@/lib/dates'
-import { buildRecentPointsMap, colourWatchlist, type WatchlistEntry } from '@/lib/colourAlerts'
-import ColourWatchlistPanel from '@/components/ColourWatchlist'
+import { buildRecentPointsMap } from '@/lib/taniwhaAlerts'
 import TaniwhaWatchlist from '@/components/TaniwhaWatchlist'
 import { taniwhaWatchlist, type TaniwhaWatchEntry, type TaniwhaProgress } from '@/lib/taniwhaAlerts'
 
@@ -100,9 +99,6 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
   const [playersLoading, setPlayersLoading] = useState(false)
   // Standing colour watchlist — who is close to their next colour, so a
   // kaiwhakawā can plan the moment rather than discover it after the fact.
-  const [watchlist, setWatchlist] = useState<WatchlistEntry[]>([])
-  // Taniwha crown watchlist. NULL means the progression migrations are not
-  // applied, in which case the colour watchlist above renders instead.
   const [taniwhaWatch, setTaniwhaWatch] = useState<TaniwhaWatchEntry[] | null>(null)
   const [expandedPlayerId, setExpandedPlayerId] = useState<string | null>(null)
   const [playerHistory, setPlayerHistory] = useState<Record<string, any[]>>({})
@@ -489,15 +485,7 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
     }))
     entries.sort((a, b) => b.totalPoints - a.totalPoints)
     setPlayersList(entries)
-    setWatchlist(colourWatchlist({
-      players: entries.map(e => ({ id: e.id, name: e.name })),
-      totalsOf: id => totalsMap[id],
-      recentPointsOf: id => formMap[id] ?? [],
-    }))
-
     // ── Taniwha crown watchlist ───────────────────────────────────────────
-    // Its own queries, so a missing table comes back as an error and the
-    // colour watchlist keeps rendering rather than the panel disappearing.
     const [ptRes, winsRes, refRes] = await Promise.all([
       supabase.from('player_taniwha')
         .select('player_id, taniwha_slug, domain_number, body_parts, is_building, crowned_at'),
@@ -1241,9 +1229,7 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
             </button>
           </div>
 
-          {!playersLoading && (taniwhaWatch
-            ? <TaniwhaWatchlist entries={taniwhaWatch} />
-            : <ColourWatchlistPanel entries={watchlist} />)}
+          {!playersLoading && taniwhaWatch && <TaniwhaWatchlist entries={taniwhaWatch} />}
 
           {playersLoading ? (
             <div style={{ color: '#555', fontSize: '13px', fontFamily: 'Barlow, sans-serif', textAlign: 'center', padding: '20px 0' }}>
