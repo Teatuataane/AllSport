@@ -3,17 +3,13 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase-browser'
 import { EVENTS, DOMAIN_ORDER, getEventByName } from '@/lib/eventData'
+import { DOMAIN_COLORS } from '@/lib/domainColours'
 
 const DOMAINS = DOMAIN_ORDER.map((domainName, idx) => ({
   number: idx + 1,
   name: domainName,
   events: EVENTS.filter(e => e.domainNumber === idx + 1).map(e => e.name),
 }))
-
-const DOMAIN_COLORS = [
-  '#EA4742', '#F9B051', '#F397C0', '#B87DB5', '#2371BB',
-  '#4DB26E', '#EA4742', '#F9B051', '#B87DB5', '#2371BB',
-]
 
 export default function ScoringSetup() {
   const router = useRouter()

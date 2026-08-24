@@ -2,15 +2,12 @@
 
 import { useEffect, useState } from 'react'
 
-// Domain accent colours, indexed by domainNumber - 1 (same palette as /scoring setup page)
-export const DOMAIN_COLORS = [
-  '#EA4742', '#F9B051', '#F397C0', '#B87DB5', '#2371BB',
-  '#4DB26E', '#EA4742', '#F9B051', '#B87DB5', '#2371BB',
-]
+// The palette moved to lib/domainColours.ts so server components can use it too.
+// Re-exported here because the client call sites (dashboard, live session,
+// DomainIcon) already import from this module.
+import { domainColor } from '@/lib/domainColours'
+export { DOMAIN_COLORS, domainColor } from '@/lib/domainColours'
 
-export function domainColor(domainNumber: number): string {
-  return DOMAIN_COLORS[(domainNumber - 1 + 10) % 10] || '#888'
-}
 
 // Module-level cache: probe each icon URL once per page load, not once per render
 const iconStatus: Record<string, boolean> = {}
