@@ -19,6 +19,7 @@ import {
   colourByRung, colourForPoints, nextColourFrom, progressToNext,
   colourCardStyle, colourChipStyle, colourOnDark, emblemSrc, type Colour,
 } from '@/lib/colours'
+import TaniwhaCard, { TaniwhaTimeline, loadTaniwhaState, type TaniwhaState } from '@/components/TaniwhaCard'
 import WellbeingSurvey from '@/app/components/WellbeingSurvey'
 import Link from 'next/link'
 
@@ -119,6 +120,13 @@ function DashboardInner() {
   // Colour timeline — one row per colour ever earned. Replaces the year tabs.
   const [colourTimeline, setColourTimeline] = useState<any[] | null>(null)
 
+  // Taniwha progression. NULL means the schema is not there yet (migrations
+  // 20260824220633 + 20260824222612), in which case the Colours card below
+  // keeps rendering exactly as it did. The dashboard owns this fetch because
+  // it is what decides WHICH card to show.
+  const [taniwha, setTaniwha] = useState<TaniwhaState | null>(null)
+  const [taniwhaNonce, setTaniwhaNonce] = useState(0)
+
   // ── Initial load ────────────────────────────────────────────────────────────
   useEffect(() => {
     const load = async () => {
@@ -183,9 +191,12 @@ function DashboardInner() {
       setRanking(seasonResult.data)
       setLifetime(totalsResult.data)
       setRankingLoading(false)
+      // Needs the lifetime total, so it runs off the back of the same load
+      // rather than in its own effect that would race it.
+      setTaniwha(await loadTaniwhaState(activePlayerId, totalsResult.data?.lifetime_points ?? 0))
     }
     load()
-  }, [activePlayerId])
+  }, [activePlayerId, taniwhaNonce])
 
   // ── My 100: lifetime event coverage ─────────────────────────────────────────
   useEffect(() => {
@@ -612,7 +623,16 @@ function DashboardInner() {
         </div>
       </BentoCard>
 
-      {/* ── Card 5: Colours ─────────────────────────────────────────────────── */}
+      {/* ── Card 5: Taniwha, or Colours until the migration lands ──────────── */}
+      {taniwha && activePlayerId && (
+        <TaniwhaCard
+          state={taniwha}
+          points={points}
+          onOpenHistory={loadHistory}
+          onChanged={() => setTaniwhaNonce(n => n + 1)}
+        />
+      )}
+      {!taniwha && (
       <BentoCard onClick={loadHistory} style={{ marginBottom: '12px' }}>
         <div style={{
           ...colourCardStyle(grade),
@@ -694,6 +714,7 @@ function DashboardInner() {
           </div>
         </div>
       </BentoCard>
+      )}
 
       {/* ── Wellbeing check-in (renders only when a quarterly survey is due) ─── */}
       {activePlayerId && <WellbeingSurvey playerId={activePlayerId} />}
@@ -1094,6 +1115,18 @@ function DashboardInner() {
             {/* ── Colour timeline ─────────────────────────────────────────
                 Replaces the old year tabs. One row per colour ever earned,
                 newest first, with the session it happened in. */}
+            {/* Crowns first — the current system. The colours timeline below it
+                is the retired one, kept because those awards really happened. */}
+            <TaniwhaTimeline
+              state={taniwha}
+              sessions={Object.fromEntries(
+                (historySessions ?? [])
+                  .map((h: any) => (Array.isArray(h.sessions) ? h.sessions[0] : h.sessions))
+                  .filter(Boolean)
+                  .map((s: any) => [s.id, s])
+              )}
+            />
+
             {colourTimeline !== null && colourTimeline.length > 0 && (
               <div style={{ marginBottom: '28px' }}>
                 <div style={{

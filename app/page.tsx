@@ -2,8 +2,12 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { EVENTS } from '@/lib/eventData'
-import { COLOURS, PEAK_POINTS } from '@/lib/colours'
+import { EVENTS, DOMAIN_ORDER } from '@/lib/eventData'
+import { DOMAIN_COLORS } from '@/lib/domainColours'
+import {
+  TANIWHA, PARTS, PEAK_POINTS, MAX_CROWNS, WIN_TARGET, EVENTS_PER_DOMAIN,
+  BODY_PARTS_PER_TANIWHA, PART_POINTS, taniwhaOnDark,
+} from '@/lib/taniwha'
 
 const RAINBOW = 'var(--rainbow)'
 
@@ -14,18 +18,10 @@ const rainbowText: React.CSSProperties = {
   WebkitTextFillColor: 'transparent',
 }
 
-const DOMAIN_META = [
-  { name: 'Maximal Strength', color: '#EA4742' },
-  { name: 'Calisthenics', color: '#F9B051' },
-  { name: 'Power', color: '#F397C0' },
-  { name: 'Speed', color: '#B87DB5' },
-  { name: 'Anaerobic Endurance', color: '#2371BB' },
-  { name: 'Aerobic Endurance', color: '#4DB26E' },
-  { name: 'Flexibility', color: '#EA4742' },
-  { name: 'Body Awareness', color: '#F9B051' },
-  { name: 'Coordination', color: '#2371BB' },
-  { name: 'Aim & Precision', color: '#4DB26E' },
-]
+// Names come from lib/eventData.ts and colours from lib/domainColours.ts, so the
+// homepage cannot drift from the rest of the app. It had its own hand-written
+// palette until August 2026, which disagreed with BOTH the event icons and /prs.
+const DOMAIN_META = DOMAIN_ORDER.map((name, i) => ({ name, color: DOMAIN_COLORS[i] }))
 
 // Event lists are derived from lib/eventData.ts (the single source of truth for
 // the roster) so domain moves, additions and removals propagate automatically.
@@ -36,7 +32,9 @@ const domains = DOMAIN_META.map(d => ({
 
 // Cycle 1 only — the second cycle (Taniwha Kiwikiwi … Ngā Taniwha) is summarised
 // in a single line below the list rather than doubling the length of it.
-const ranks = COLOURS.filter(c => c.cycle === 1)
+// The twelve taniwha, in display order. Static — no database, so this section
+// is correct whether or not the progression migrations have been applied.
+const ranks = TANIWHA
 
 const ethos = [
   { word: 'Mahi', mean: 'Effort', color: '#EA4742', desc: "Effort is the only measure that counts here. Show up and give what you've got — that's the whole game." },
@@ -210,44 +208,63 @@ export default function Home() {
         </div>
       </section>
 
-      {/* EARN YOUR COLOURS */}
+      {/* COLLECT THE TANIWHA */}
       <section id="colours" style={{ padding: '100px 0', background: '#0a0a0a', borderTop: '3px solid #2371BB' }}>
         <div className="container">
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '64px', alignItems: 'start' }}>
             <div>
-              <div className="lp-tag">The Colour System</div>
+              <div className="lp-tag">The Taniwha</div>
               <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(44px, 6vw, 72px)', lineHeight: 0.9, letterSpacing: '0.03em', margin: '18px 0 10px', color: '#fff' }}>
-                EARN YOUR<br /><span style={rainbowText}>COLOURS</span>
+                COLLECT THE<br /><span style={rainbowText}>TANIWHA</span>
               </h2>
               <div className="lp-rainbow-line" style={{ width: '60px', marginBottom: '28px' }} />
               <p style={{ color: '#cccccc', fontSize: '16px', lineHeight: 1.8, marginBottom: '16px' }}>
-                AllSport&apos;s colours follow the light spectrum — a mirror of your growing mana. Each colour is earned through effort and persistence. There are no shortcuts.
+                There are twelve taniwha, and each one is built from ten parts — a spine, a
+                head, four limbs, a tail, a tongue, and finally a crown.
               </p>
               <p style={{ color: '#888', fontSize: '15px', lineHeight: 1.8, marginBottom: '16px' }}>
-                The journey from Mā to Taniwha is the journey from beginner to complete all-round athlete. Your points never reset — every session you ever play counts toward your next colour.
+                The {BODY_PARTS_PER_TANIWHA} body parts are earned by turning up. Every{' '}
+                {PART_POINTS.toLocaleString()} points you have ever scored adds another one, and
+                those points never reset. The crown is different: it has to be <em>done</em>.
+              </p>
+              <p style={{ color: '#888', fontSize: '15px', lineHeight: 1.8, marginBottom: '16px' }}>
+                Ten of the taniwha belong to the ten disciplines, and you crown one by winning{' '}
+                {WIN_TARGET} of its {EVENTS_PER_DOMAIN} events. The first taniwha is the
+                whānau, and you crown it by bringing someone else into the sport — the only
+                crown you cannot earn on your own.
               </p>
               <p style={{ color: '#555', fontSize: '14px', lineHeight: 1.8, fontStyle: 'italic' }}>
-                Taniwha is the taniwha in our emblem. Beyond it the colours begin again — Taniwha Kiwikiwi, Taniwha Whero, and onward to Ngā Taniwha, where you earn the whole crest. Few will ever get there.
+                Hold all eleven and they gather into Te Kāhui, the whole crest, at{' '}
+                {PEAK_POINTS.toLocaleString()} points. Few will ever get there.
               </p>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              {ranks.map((r) => {
-                const isTaniwha = r.name === 'Taniwha'
-                const nameColour = r.accent.startsWith('linear-gradient') ? '#fff' : r.accent
-                return (
-                  <div key={r.name} className="lp-rank">
-                    <span style={{ width: '12px', height: '12px', borderRadius: '50%', flexShrink: 0, background: r.surface, border: isTaniwha ? '1px solid #555' : 'none' }} />
-                    <span style={{ fontFamily: 'var(--font-display)', fontSize: '22px', minWidth: '150px', letterSpacing: '0.04em', color: nameColour }}>{r.name}</span>
-                    <span style={{ fontFamily: 'var(--font-label)', fontSize: '12px', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#555' }}>{r.english}</span>
-                    <span style={{ marginLeft: 'auto', fontFamily: 'var(--font-label)', fontSize: '13px', color: '#444', letterSpacing: '0.06em' }}>{r.threshold.toLocaleString()} pts</span>
-                  </div>
-                )
-              })}
+              {ranks.map((r) => (
+                <div key={r.slug} className="lp-rank">
+                  <span style={{
+                    width: '12px', height: '12px', borderRadius: '50%', flexShrink: 0,
+                    background: r.accent.startsWith('linear-gradient') ? undefined : r.accent,
+                    backgroundImage: r.accent.startsWith('linear-gradient') ? r.accent : undefined,
+                    border: r.inverted ? '1px solid #555' : 'none',
+                  }} />
+                  <span style={{ fontFamily: 'var(--font-display)', fontSize: '19px', minWidth: '210px', letterSpacing: '0.04em', color: taniwhaOnDark(r) }}>
+                    {r.name}
+                  </span>
+                  <span style={{ fontFamily: 'var(--font-label)', fontSize: '12px', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#555' }}>
+                    {r.colourName}
+                  </span>
+                  <span style={{ marginLeft: 'auto', fontFamily: 'var(--font-label)', fontSize: '12px', color: '#444', letterSpacing: '0.06em' }}>
+                    {r.kind === 'domain'
+                      ? DOMAIN_META[(r.domainNumber as number) - 1].name
+                      : r.kind === 'whanau' ? 'One referral' : `All ${MAX_CROWNS}`}
+                  </span>
+                </div>
+              ))}
               <div className="lp-rank" style={{ marginTop: '10px', borderTop: '1px solid #1e1e1e', paddingTop: '14px' }}>
-                <span style={{ width: '12px', height: '12px', borderRadius: '50%', flexShrink: 0, background: '#000', border: '1px solid #F9B051' }} />
                 <span style={{ fontFamily: 'var(--font-label)', fontSize: '13px', letterSpacing: '0.06em', color: '#666', lineHeight: 1.6 }}>
-                  Then the colours begin again — eight more, ending at <span style={{ color: '#F9B051' }}>Ngā Taniwha</span> on {PEAK_POINTS.toLocaleString()} pts.
+                  The parts, in the order they come:{' '}
+                  <span style={{ color: '#888' }}>{PARTS.map(p => p.name).join(' · ')}</span>
                 </span>
               </div>
             </div>

@@ -8,6 +8,8 @@ import { EVENTS } from '@/lib/eventData'
 import { formatNZDate } from '@/lib/dates'
 import { buildRecentPointsMap, colourWatchlist, type WatchlistEntry } from '@/lib/colourAlerts'
 import ColourWatchlistPanel from '@/components/ColourWatchlist'
+import TaniwhaWatchlist from '@/components/TaniwhaWatchlist'
+import { taniwhaWatchlist, type TaniwhaWatchEntry, type TaniwhaProgress } from '@/lib/taniwhaAlerts'
 
 type Session = {
   id: string
@@ -99,6 +101,9 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
   // Standing colour watchlist — who is close to their next colour, so a
   // kaiwhakawā can plan the moment rather than discover it after the fact.
   const [watchlist, setWatchlist] = useState<WatchlistEntry[]>([])
+  // Taniwha crown watchlist. NULL means the progression migrations are not
+  // applied, in which case the colour watchlist above renders instead.
+  const [taniwhaWatch, setTaniwhaWatch] = useState<TaniwhaWatchEntry[] | null>(null)
   const [expandedPlayerId, setExpandedPlayerId] = useState<string | null>(null)
   const [playerHistory, setPlayerHistory] = useState<Record<string, any[]>>({})
   const [playerHistoryLoading, setPlayerHistoryLoading] = useState<Record<string, boolean>>({})
@@ -489,6 +494,43 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
       totalsOf: id => totalsMap[id],
       recentPointsOf: id => formMap[id] ?? [],
     }))
+
+    // ── Taniwha crown watchlist ───────────────────────────────────────────
+    // Its own queries, so a missing table comes back as an error and the
+    // colour watchlist keeps rendering rather than the panel disappearing.
+    const [ptRes, winsRes, refRes] = await Promise.all([
+      supabase.from('player_taniwha')
+        .select('player_id, taniwha_slug, domain_number, body_parts, is_building, crowned_at'),
+      supabase.from('player_event_wins').select('player_id, event_name'),
+      supabase.from('referrals').select('referrer_id').not('qualified_at', 'is', null),
+    ])
+
+    if (ptRes.error) {
+      setTaniwhaWatch(null)
+    } else {
+      // event_name -> domain, through the CURRENT roster. Never through
+      // session_events.domain_number, which records the numbering of the day
+      // and was renumbered in June 2026.
+      const domainOf = new Map(EVENTS.map(e => [e.name, e.domainNumber]))
+      const progress: Record<string, TaniwhaProgress> = {}
+      const at = (id: string) => (progress[id] ??= {
+        taniwha: [], lifetimePoints: totalsMap[id]?.lifetime_points ?? 0,
+        bankedWinsByDomain: {}, qualifiedReferrals: 0,
+      })
+      for (const r of (ptRes.data ?? []) as any[]) at(r.player_id).taniwha.push(r)
+      for (const w of (winsRes.data ?? []) as any[]) {
+        const d = domainOf.get(w.event_name)
+        if (d) { const g = at(w.player_id).bankedWinsByDomain; g[d] = (g[d] ?? 0) + 1 }
+      }
+      for (const r of (refRes.data ?? []) as any[]) at(r.referrer_id).qualifiedReferrals += 1
+
+      setTaniwhaWatch(taniwhaWatchlist({
+        players: entries.map(e => ({ id: e.id, name: e.name })),
+        progressOf: id => progress[id],
+        recentPointsOf: id => formMap[id] ?? [],
+      }))
+    }
+
     setPlayersLoading(false)
   }
 
@@ -1199,7 +1241,9 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
             </button>
           </div>
 
-          {!playersLoading && <ColourWatchlistPanel entries={watchlist} />}
+          {!playersLoading && (taniwhaWatch
+            ? <TaniwhaWatchlist entries={taniwhaWatch} />
+            : <ColourWatchlistPanel entries={watchlist} />)}
 
           {playersLoading ? (
             <div style={{ color: '#555', fontSize: '13px', fontFamily: 'Barlow, sans-serif', textAlign: 'center', padding: '20px 0' }}>

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { createClient, getSessionUser } from '@/lib/supabase-browser'
 import Link from 'next/link'
 import { colourByRung, colourForPoints, colourOnDark } from '@/lib/colours'
+import { MAX_CROWNS, taniwhaBySlug, taniwhaOnDark } from '@/lib/taniwha'
 
 const supabase = createClient()
 
@@ -19,6 +20,10 @@ export default function ProfilePage() {
 
   const [userId, setUserId] = useState<string | null>(null)
   const [player, setPlayer] = useState<any>(null)
+  // Taniwha progression for the badge. NULL means the schema is not there yet
+  // (20260824222612), and the colour badge renders unchanged.
+  const [taniwha, setTaniwha] =
+    useState<{ taniwha_slug: string; crowned_at: string | null; is_building: boolean }[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
@@ -102,6 +107,14 @@ export default function ProfilePage() {
       setPoints(totals?.lifetime_points || 0)
       setRung(totals?.highest_rung || 1)
 
+      // Taniwha progression for the badge. Its own query, so a missing table
+      // comes back as an error here instead of taking the profile down.
+      const pt = await supabase
+        .from('player_taniwha')
+        .select('taniwha_slug, crowned_at, is_building')
+        .eq('player_id', user.id)
+      setTaniwha(pt.error ? null : (pt.data ?? []))
+
       setLoading(false)
     }
     load()
@@ -152,12 +165,13 @@ export default function ProfilePage() {
     if (!userId) return
     setExporting(true); setExportError('')
     try {
-      const [profile, children, results, summaries, colours, wellbeing, totals, donations] = await Promise.all([
+      const [profile, children, results, summaries, colours, playerTaniwha, wellbeing, totals, donations] = await Promise.all([
         supabase.from('players').select('*').eq('id', userId).single(),
         supabase.from('players').select('*').eq('parent_id', userId),
         supabase.from('results').select('*').eq('player_id', userId),
         supabase.from('session_player_summary').select('*').eq('player_id', userId),
         supabase.from('colour_awards').select('*').eq('player_id', userId),
+        supabase.from('player_taniwha').select('*').eq('player_id', userId),
         supabase.from('wellbeing_surveys').select('*').eq('player_id', userId),
         supabase.from('player_totals').select('*').eq('player_id', userId),
         supabase.from('koha_donations').select('*').eq('player_id', userId),
@@ -173,6 +187,9 @@ export default function ProfilePage() {
         results: results.data ?? [],
         session_summaries: summaries.data ?? [],
         colours_earned: colours.data ?? [],
+        // Empty rather than absent if the progression migrations have not been
+        // applied — an export must never fail because a table is missing.
+        taniwha_progression: playerTaniwha.data ?? [],
         lifetime_totals: totals.data ?? [],
         wellbeing_checkins: wellbeing.data ?? [],
         koha: donations.data ?? [],
@@ -263,7 +280,15 @@ export default function ProfilePage() {
   )
 
   const grade = colourByRung(rung) ?? colourForPoints(points)
-  const gradeBorder = colourOnDark(grade)
+  // The badge shows crowned taniwha once the progression exists, and the colour
+  // until then. `taniwha === null` is the pre-migration state, not an error.
+  const crowned = taniwha?.filter(r => r.crowned_at).length ?? null
+  const building = taniwha?.find(r => r.is_building)
+  const buildingT = building ? taniwhaBySlug(building.taniwha_slug) : null
+  const gradeBorder = buildingT ? taniwhaOnDark(buildingT) : colourOnDark(grade)
+  const badgeLine = crowned === null
+    ? grade.name
+    : `${crowned}/${MAX_CROWNS} taniwha`
   const displayName = form.display_name || form.username || player.full_name || '?'
 
   return (
@@ -317,7 +342,7 @@ export default function ProfilePage() {
                 fontSize: '11px', color: '#555',
                 fontFamily: 'var(--font-label)', letterSpacing: '0.08em',
               }}>
-                {grade.name} · {player.division}
+                {badgeLine} · {player.division}
               </div>
               {form.icon && (
                 <button onClick={() => setForm(f => ({ ...f, icon: '' }))} style={{

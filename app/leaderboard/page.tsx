@@ -14,6 +14,11 @@ import {
 import {
   COLOURS, colourByRung, colourChipStyle, colourOnDark, PEAK_POINTS, type Colour,
 } from '@/lib/colours'
+import {
+  MAX_CROWNS, WIN_TARGET, EVENTS_PER_DOMAIN, BODY_PARTS_PER_TANIWHA,
+  PART_POINTS, PEAK_POINTS as TANIWHA_PEAK_POINTS, TANIWHA,
+  taniwhaBySlug, taniwhaOnDark, type Taniwha,
+} from '@/lib/taniwha'
 
 const DOMAIN_NAMES = Array.from({ length: 10 }, (_, i) => EVENTS.find(e => e.domainNumber === i + 1)?.domain ?? '')
 const EVENT_DOMAIN = new Map(EVENTS.map(e => [e.name, e.domainNumber]))
@@ -84,6 +89,10 @@ type EnrichedPlayer = {
   color: string
   /** Dot / chip fill. May be the rainbow gradient. */
   colourAccent: string
+  /** Taniwha crowned, lifetime. Null until the progression migrations land. */
+  crowned: number | null
+  /** The taniwha they are building, for the accent dot. */
+  building: Taniwha | null
 }
 
 const DIVISION_MAP: Record<string, string> = {
@@ -152,7 +161,7 @@ function LeaderboardTable({ data, accentColor, loading }: { data: EnrichedPlayer
             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: '#c0c0c0' }} />
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '44px', color: '#c0c0c0', lineHeight: 1 }}>2</div>
             <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '14px', color: '#ffffff', marginTop: '6px' }}>{data[1]?.username ?? '—'}</div>
-            <div style={{ color: data[1]?.color, fontFamily: 'var(--font-label)', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '3px' }}>{data[1]?.name}</div>
+            <div style={{ color: data[1]?.crowned === null ? data[1]?.color : '#F9B051', fontFamily: 'var(--font-label)', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '3px' }}>{data[1]?.crowned === null ? data[1]?.name : `${data[1]?.crowned} taniwha`}</div>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', color: '#666666', marginTop: '8px' }}>{data[1]?.totalPoints} pts</div>
           </div>
           {/* 1st */}
@@ -160,7 +169,7 @@ function LeaderboardTable({ data, accentColor, loading }: { data: EnrichedPlayer
             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: `linear-gradient(90deg, ${accentColor}, var(--amber))` }} />
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '56px', color: accentColor, lineHeight: 1 }}>1</div>
             <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '16px', color: '#ffffff', marginTop: '6px' }}>{data[0]?.username ?? '—'}</div>
-            <div style={{ color: data[0]?.color, fontFamily: 'var(--font-label)', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '3px' }}>{data[0]?.name}</div>
+            <div style={{ color: data[0]?.crowned === null ? data[0]?.color : '#F9B051', fontFamily: 'var(--font-label)', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '3px' }}>{data[0]?.crowned === null ? data[0]?.name : `${data[0]?.crowned} taniwha`}</div>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '28px', color: accentColor, marginTop: '8px' }}>{data[0]?.totalPoints} pts</div>
           </div>
           {/* 3rd */}
@@ -168,7 +177,7 @@ function LeaderboardTable({ data, accentColor, loading }: { data: EnrichedPlayer
             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: '#cd7f32' }} />
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '44px', color: '#cd7f32', lineHeight: 1 }}>3</div>
             <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '14px', color: '#ffffff', marginTop: '6px' }}>{data[2]?.username ?? '—'}</div>
-            <div style={{ color: data[2]?.color, fontFamily: 'var(--font-label)', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '3px' }}>{data[2]?.name}</div>
+            <div style={{ color: data[2]?.crowned === null ? data[2]?.color : '#F9B051', fontFamily: 'var(--font-label)', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '3px' }}>{data[2]?.crowned === null ? data[2]?.name : `${data[2]?.crowned} taniwha`}</div>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', color: '#666666', marginTop: '8px' }}>{data[2]?.totalPoints} pts</div>
           </div>
         </div>
@@ -179,7 +188,7 @@ function LeaderboardTable({ data, accentColor, loading }: { data: EnrichedPlayer
         <div style={{ minWidth: '860px' }}>
           {/* Table header */}
           <div style={{ display: 'grid', gridTemplateColumns: '56px 1fr 90px 70px 150px 150px 110px 150px', gap: '16px', padding: '10px 24px' }}>
-            {['#', 'Player', 'Sessions', 'Wins', 'Top Domain', 'Top Event', 'Season Pts', 'Colour'].map(h => (
+            {['#', 'Player', 'Sessions', 'Wins', 'Top Domain', 'Top Event', 'Season Pts', data.some(d => d.crowned !== null) ? 'Taniwha' : 'Colour'].map(h => (
               <div key={h} style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#444444' }}>{h}</div>
             ))}
           </div>
@@ -201,10 +210,28 @@ function LeaderboardTable({ data, accentColor, loading }: { data: EnrichedPlayer
                   {player.topEventPct && <span style={{ color: player.topEventPct === '1st' ? '#F9B051' : '#777777', fontWeight: player.topEventPct === '1st' ? 700 : 400 }}> · {player.topEventPct}</span>}
                 </div>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', color: '#ffffff' }}>{player.totalPoints}</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: player.colourAccent, flexShrink: 0 }} />
-                  <span style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '13px', color: player.color }}>{player.name}</span>
-                </div>
+                {player.crowned === null ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: player.colourAccent, flexShrink: 0 }} />
+                    <span style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '13px', color: player.color }}>{player.name}</span>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{
+                      width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0,
+                      background: player.building && !player.building.accent.startsWith('linear-gradient')
+                        ? player.building.accent : '#333333',
+                      backgroundImage: player.building?.accent.startsWith('linear-gradient')
+                        ? player.building.accent : undefined,
+                    }} />
+                    <span style={{ fontFamily: 'var(--font-display)', fontSize: '20px', color: '#ffffff', lineHeight: 1 }}>
+                      {player.crowned}
+                    </span>
+                    <span style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '12px', color: player.building ? taniwhaOnDark(player.building) : '#444444' }}>
+                      {player.building ? player.building.name.replace('Te Taniwha ō te ', '').replace('Te ', '') : '—'}
+                    </span>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -241,6 +268,14 @@ export default function Leaderboard() {
   // Lifetime colour rung per player. Separate from `rankings`, which is
   // seasonal and drives the RANK — colours never reset, the board does.
   const [colourRungs, setColourRungs] = useState<Map<string, number>>(new Map())
+
+  // Taniwha progression, one extra round trip. It is NOT in leaderboard_page()
+  // because that RPC is already applied to production and this has to work
+  // before the progression migrations do — a missing table comes back as an
+  // error here and the board silently keeps its Colour column. Fold it into
+  // the RPC once the migrations are live (logged in TANIWHA_SYSTEM_PLAN.md).
+  const [taniwhaByPlayer, setTaniwhaByPlayer] =
+    useState<Map<string, { crowned: number; building: Taniwha | null }> | null>(null)
   const [showBeyondTaniwha, setShowBeyondTaniwha] = useState(false)
   const [loading, setLoading] = useState(true)
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null)
@@ -326,6 +361,23 @@ export default function Leaderboard() {
       const d = data as LeaderboardPayload
       setRankings(d.rankings ?? [])
       setColourRungs(new Map((d.colour_rungs ?? []).map(r => [r.player_id, r.highest_rung])))
+
+      const pt = await supabase
+        .from('player_taniwha')
+        .select('player_id, taniwha_slug, crowned_at, is_building')
+      if (pt.error) {
+        setTaniwhaByPlayer(null) // pre-migration: the Colour column stays
+      } else {
+        const m = new Map<string, { crowned: number; building: Taniwha | null }>()
+        type PtRow = { player_id: string; taniwha_slug: string; crowned_at: string | null; is_building: boolean }
+        for (const r of (pt.data ?? []) as PtRow[]) {
+          const cur = m.get(r.player_id) ?? { crowned: 0, building: null }
+          if (r.crowned_at) cur.crowned += 1
+          if (r.is_building) cur.building = taniwhaBySlug(r.taniwha_slug)
+          m.set(r.player_id, cur)
+        }
+        setTaniwhaByPlayer(m)
+      }
       setStatsData(d.stats)
       setActiveSession(d.active_session ?? null)
       setSessionLeader(d.active_session ? computeLeader(d.active_session_results ?? []) : null)
@@ -389,6 +441,8 @@ export default function Leaderboard() {
         name: colour.name,
         color: colourOnDark(colour),
         colourAccent: colour.accent,
+        crowned: taniwhaByPlayer ? (taniwhaByPlayer.get(r.player_id)?.crowned ?? 0) : null,
+        building: taniwhaByPlayer ? (taniwhaByPlayer.get(r.player_id)?.building ?? null) : null,
       }
     })
   }
@@ -503,7 +557,15 @@ export default function Leaderboard() {
                 <strong style={{ color: 'var(--white)' }}>Top domain &amp; top event</strong> — where you rank highest against your division. <strong style={{ color: 'var(--white)' }}>Top X%</strong> means only that few players who’ve played it beat your best; <strong style={{ color: 'var(--white)' }}>1st</strong> means no one has. Tap My Events on your dashboard for the full breakdown.
               </p>
               <p style={{ color: 'var(--grey)', fontSize: '13px', lineHeight: 1.6, margin: 0 }}>
-                <strong style={{ color: 'var(--white)' }}>Colour</strong> — earned from your <strong style={{ color: 'var(--white)' }}>lifetime</strong> points, not the season total in the points column. Colours never reset and are never lost. Thresholds are in the Colour Key below.
+                {taniwhaByPlayer ? (
+                  <>
+                    <strong style={{ color: 'var(--white)' }}>Taniwha</strong> — how many you have crowned, out of {MAX_CROWNS}, and which one you are building now. Built from your <strong style={{ color: 'var(--white)' }}>lifetime</strong> points, not the season total in the points column, and never lost. See the key below.
+                  </>
+                ) : (
+                  <>
+                    <strong style={{ color: 'var(--white)' }}>Colour</strong> — earned from your <strong style={{ color: 'var(--white)' }}>lifetime</strong> points, not the season total in the points column. Colours never reset and are never lost. Thresholds are in the Colour Key below.
+                  </>
+                )}
               </p>
             </div>
           </div>
@@ -512,52 +574,100 @@ export default function Leaderboard() {
         </div>
       </section>
 
-      {/* Grade key */}
+      {/* Key — the taniwha collection once the progression migrations are live,
+          the retired colour ladder until then. The colours branch goes away in
+          the cleanup pass that deletes lib/colours.ts. */}
+      {taniwhaByPlayer ? (
       <section className="section" style={{ background: '#0a0a0a' }}>
         <div style={{ height: '3px', background: 'var(--rainbow)', marginTop: '-80px', marginBottom: '80px' }} />
         <div className="container">
-          <div className="tag">Colour Thresholds</div>
+          <div className="tag">The Collection</div>
           <h2 style={{ fontSize: 'clamp(36px, 4vw, 56px)', marginBottom: '8px' }}>
-            COLOUR <span className="rainbow-text">KEY</span>
+            TANIWHA <span className="rainbow-text">KEY</span>
           </h2>
           <div className="rainbow-line" style={{ width: '60px', marginBottom: '16px' }} />
-          <p style={{ color: '#888888', fontSize: '15px', maxWidth: '560px', marginBottom: '40px', lineHeight: 1.7 }}>
-            Collect points every time you play. Cross a threshold and that colour is yours straight away, for good. Points never reset, so every session you have ever played still counts toward your next colour.
+          <p style={{ color: '#888888', fontSize: '15px', maxWidth: '620px', marginBottom: '10px', lineHeight: 1.7 }}>
+            Twelve taniwha, each built from ten parts. The {BODY_PARTS_PER_TANIWHA} body parts
+            come from turning up — one for every {PART_POINTS.toLocaleString()} lifetime points,
+            and those never reset. The crown has to be earned.
           </p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '8px' }}>
-            {COLOURS.filter(c => c.cycle === 1).map(c => <ColourKeyPill key={c.rung} c={c} />)}
-          </div>
-
-          {/* Cycle 2 is folded away — 19 pills at once reads as a wall. */}
-          <button
-            onClick={() => setShowBeyondTaniwha(v => !v)}
-            style={{
-              marginTop: '20px', background: 'transparent', border: '1px solid #1e1e1e',
-              borderRadius: '8px', padding: '10px 18px', cursor: 'pointer',
-              fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '13px',
-              letterSpacing: '0.1em', textTransform: 'uppercase', color: '#F9B051',
-            }}
-          >
-            {showBeyondTaniwha ? 'Hide what comes after Taniwha' : 'Beyond Taniwha →'}
-          </button>
-
-          {showBeyondTaniwha && (
-            <div style={{ marginTop: '20px' }}>
-              <p style={{ color: '#888888', fontSize: '15px', maxWidth: '560px', marginBottom: '20px', lineHeight: 1.7 }}>
-                Past Taniwha the colours begin again, each one another 10,000 points, until the whole crest is yours at {PEAK_POINTS.toLocaleString()}.
-              </p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '8px' }}>
-                {COLOURS.filter(c => c.cycle !== 1).map(c => <ColourKeyPill key={c.rung} c={c} />)}
+          <p style={{ color: '#666666', fontSize: '14px', maxWidth: '620px', marginBottom: '40px', lineHeight: 1.7 }}>
+            A discipline taniwha is crowned by winning {WIN_TARGET} of its {EVENTS_PER_DOMAIN} events.
+            Te Taniwha ō te Whānau is crowned by bringing someone into the sport. Hold all {MAX_CROWNS}
+            and they gather into Te Kāhui at {TANIWHA_PEAK_POINTS.toLocaleString()} points.
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '8px' }}>
+            {TANIWHA.map(tw => (
+              <div key={tw.slug} className="rank-pill">
+                <div style={{
+                  width: '28px', height: '18px', borderRadius: '3px', flexShrink: 0,
+                  background: tw.accent.startsWith('linear-gradient') ? undefined : tw.accent,
+                  backgroundImage: tw.accent.startsWith('linear-gradient') ? tw.accent : undefined,
+                  border: tw.inverted ? '1px solid #444' : 'none',
+                }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '17px', color: taniwhaOnDark(tw), lineHeight: 1.1 }}>{tw.name}</div>
+                  <div style={{ fontFamily: 'var(--font-label)', fontSize: '11px', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#444444' }}>
+                    {tw.colourName} · {tw.english}
+                  </div>
+                </div>
               </div>
-            </div>
-          )}
+            ))}
+          </div>
           <div style={{ marginTop: '24px' }}>
             <Link href="/koha" style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '14px', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--green)', borderBottom: '1px solid var(--green)', paddingBottom: '2px' }}>
-              Learn about Koha rewards for colour achievers →
+              Learn about Koha rewards →
             </Link>
           </div>
         </div>
       </section>
+      ) : (
+        <section className="section" style={{ background: '#0a0a0a' }}>
+          <div style={{ height: '3px', background: 'var(--rainbow)', marginTop: '-80px', marginBottom: '80px' }} />
+          <div className="container">
+            <div className="tag">Colour Thresholds</div>
+            <h2 style={{ fontSize: 'clamp(36px, 4vw, 56px)', marginBottom: '8px' }}>
+              COLOUR <span className="rainbow-text">KEY</span>
+            </h2>
+            <div className="rainbow-line" style={{ width: '60px', marginBottom: '16px' }} />
+            <p style={{ color: '#888888', fontSize: '15px', maxWidth: '560px', marginBottom: '40px', lineHeight: 1.7 }}>
+              Collect points every time you play. Cross a threshold and that colour is yours straight away, for good. Points never reset, so every session you have ever played still counts toward your next colour.
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '8px' }}>
+              {COLOURS.filter(c => c.cycle === 1).map(c => <ColourKeyPill key={c.rung} c={c} />)}
+            </div>
+
+            {/* Cycle 2 is folded away — 19 pills at once reads as a wall. */}
+            <button
+              onClick={() => setShowBeyondTaniwha(v => !v)}
+              style={{
+                marginTop: '20px', background: 'transparent', border: '1px solid #1e1e1e',
+                borderRadius: '8px', padding: '10px 18px', cursor: 'pointer',
+                fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '13px',
+                letterSpacing: '0.1em', textTransform: 'uppercase', color: '#F9B051',
+              }}
+            >
+              {showBeyondTaniwha ? 'Hide what comes after Taniwha' : 'Beyond Taniwha →'}
+            </button>
+
+            {showBeyondTaniwha && (
+              <div style={{ marginTop: '20px' }}>
+                <p style={{ color: '#888888', fontSize: '15px', maxWidth: '560px', marginBottom: '20px', lineHeight: 1.7 }}>
+                  Past Taniwha the colours begin again, each one another 10,000 points, until the whole crest is yours at {PEAK_POINTS.toLocaleString()}.
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '8px' }}>
+                  {COLOURS.filter(c => c.cycle !== 1).map(c => <ColourKeyPill key={c.rung} c={c} />)}
+                </div>
+              </div>
+            )}
+            <div style={{ marginTop: '24px' }}>
+              <Link href="/koha" style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '14px', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--green)', borderBottom: '1px solid var(--green)', paddingBottom: '2px' }}>
+                Learn about Koha rewards for colour achievers →
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* CTA */}
       <section style={{ padding: '80px 0', background: '#000000', textAlign: 'center', borderTop: '1px solid #1a1a1a' }}>

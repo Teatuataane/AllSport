@@ -8,15 +8,29 @@ import { EVENTS, DOMAIN_ORDER, getEventsByDomain } from '@/lib/eventData'
 import { formatNZDate } from '@/lib/dates'
 import DomainIcon from '@/components/DomainIcon'
 import EventIcon from '@/components/EventIcon'
+import { domainColor } from '@/lib/domainColours'
 
 const supabase = createClient()
 
-const DOMAIN_COLOURS: Record<number, string> = {
-  1: '#EA4742', 2: '#F9B051', 3: '#F397C0', 4: '#B87DB5', 5: '#2371BB',
-  6: '#4DB26E', 7: '#EA4742', 8: '#F9B051', 9: '#B87DB5', 10: '#2371BB',
-}
 
 const CURRENT_YEAR = new Date().getFullYear()
+
+// Gold, so a win reads as an honour rather than as another domain accent. It
+// is a filled pill rather than bare text specifically so it still separates
+// from the Calisthenics rows, whose domain colour is the same amber.
+const WIN_CHIP: React.CSSProperties = {
+  fontFamily: 'var(--font-label)',
+  fontSize: '10px',
+  fontWeight: 700,
+  letterSpacing: '0.08em',
+  color: '#F9B051',
+  background: '#F9B05118',
+  border: '1px solid #F9B05155',
+  borderRadius: '4px',
+  padding: '2px 6px',
+  whiteSpace: 'nowrap',
+  verticalAlign: 'middle',
+}
 
 type PRResult = {
   id: string
@@ -56,6 +70,16 @@ export default function PRsPage() {
   const [tab, setTab] = useState<'season' | 'all'>('season')
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [expandedDomains, setExpandedDomains] = useState<Set<string>>(new Set())
+  // Events this player has WON, keyed by event_name -> how many times.
+  // A win is 1st in the unified division pool with a field of at least 3 —
+  // that rule is defined once, in the player_event_wins view, and never
+  // reimplemented here.
+  const [wins, setWins] = useState<Record<string, number>>({})
+  // False until the view answers. The view ships in 20260824220633, so if the
+  // client is deployed first this stays false and the whole win layer simply
+  // does not render, rather than taking the page down with a 42703. Same
+  // failure mode CLAUDE.md records for players_public column drift.
+  const [winsReady, setWinsReady] = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -87,6 +111,26 @@ export default function PRsPage() {
         }))
         setResults(mapped)
       }
+
+      // Separate query on purpose: folding event_placement into the results
+      // select above would take the entire page down with a 42703 if this runs
+      // against a database where the migration has not landed yet.
+      const { data: winRows, error: winErr } = await supabase
+        .from('player_event_wins')
+        .select('event_name, wins')
+        .eq('player_id', user.id)
+
+      if (winErr) {
+        console.warn('player_event_wins unavailable — win markers hidden', winErr.message)
+      } else if (winRows) {
+        const m: Record<string, number> = {}
+        for (const w of winRows as { event_name: string; wins: number }[]) {
+          m[w.event_name] = (m[w.event_name] ?? 0) + Number(w.wins)
+        }
+        setWins(m)
+        setWinsReady(true)
+      }
+
       setLoading(false)
     }
     load()
@@ -109,6 +153,9 @@ export default function PRsPage() {
     resultsByEvent[k].sort((a, b) => effectiveScore(b) - effectiveScore(a))
   }
 
+  // Lifetime and tab-independent: the season tabs filter PBs, but a win is a
+  // permanent fact and is what the taniwha crowns will count.
+  const totalWins = Object.keys(wins).length
   const totalPBs = Object.keys(resultsByEvent).length
   const totalEvents = EVENTS.length
 
@@ -146,6 +193,12 @@ export default function PRsPage() {
                   {totalPBs} / {totalEvents} events {tab === 'season' ? `in ${CURRENT_YEAR}` : 'all time'}
                 </div>
               )}
+              {!loading && winsReady && totalWins > 0 && (
+                <div style={{ color: '#555', fontSize: '12px', marginTop: '6px', fontFamily: 'var(--font-body)', display: 'flex', alignItems: 'center', gap: '7px' }}>
+                  <span style={WIN_CHIP}>WON</span>
+                  <span>{totalWins} of {totalEvents} events won outright, all time</span>
+                </div>
+              )}
             </div>
             {/* Season tabs */}
             <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
@@ -176,10 +229,16 @@ export default function PRsPage() {
         ) : (
           DOMAIN_ORDER.map((domain, domainIdx) => {
             const domainNumber = domainIdx + 1
-            const colour = DOMAIN_COLOURS[domainNumber] || '#2371BB'
+            const colour = domainColor(domainNumber)
             const domainEvents = byDomain[domain] || []
             const domainOpen = expandedDomains.has(domain)
             const domainPBs = domainEvents.filter(e => resultsByEvent[e.name]).length
+            // Lifetime, and counted from the CURRENT roster's domain membership
+            // rather than session_events.domain_number, which records the
+            // numbering of the day and was renumbered in June 2026 (and five
+            // events changed domain again in August). See the warning in
+            // migration 20260824220633 part 6.
+            const domainWins = domainEvents.filter(e => wins[e.name]).length
 
             return (
               <div key={domain}>
@@ -196,6 +255,11 @@ export default function PRsPage() {
                   <div style={{ fontFamily: 'var(--font-display)', fontSize: '20px', color: colour, letterSpacing: '1px', flex: 1 }}>
                     {domainNumber}. {domain.toUpperCase()}
                   </div>
+                  {winsReady && domainWins > 0 && (
+                    <div style={{ ...WIN_CHIP, flexShrink: 0 }}>
+                      {domainWins}/{domainEvents.length} WON
+                    </div>
+                  )}
                   <div style={{ fontFamily: 'var(--font-label)', fontSize: '13px', fontWeight: 700, color: domainPBs > 0 ? colour : '#555', letterSpacing: '0.05em', flexShrink: 0 }}>
                     {domainPBs}/{domainEvents.length}
                   </div>
@@ -234,6 +298,11 @@ export default function PRsPage() {
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
                               <div style={{ fontSize: '14px', fontWeight: 600, color: pb ? '#fff' : '#444', fontFamily: 'var(--font-body)' }}>
                                 {event.name}
+                                {winsReady && wins[event.name] && (
+                                  <span style={{ ...WIN_CHIP, marginLeft: '8px' }}>
+                                    WON{wins[event.name] > 1 ? ` ×${wins[event.name]}` : ''}
+                                  </span>
+                                )}
                                 {event.hasDifficultyTiers && event.difficultyTiers && (
                                   <span style={{ marginLeft: '8px', fontSize: '11px', color: '#B87DB5', fontFamily: 'var(--font-label)', fontWeight: 700 }}>
                                     D1–D{event.difficultyTiers.length}
