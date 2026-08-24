@@ -2,6 +2,26 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.6.0.0] - 2026-08-25
+
+### Added
+- **The Colours ladder becomes a collection of twelve taniwha.** Instead of climbing nineteen colour rungs, you now build taniwha: one for the whānau, one for each of the ten disciplines, and Te Kāhui when you hold all eleven. Every taniwha is made of ten parts — Tinana, Kakī, Pane, Hiku, the four limbs, Arero and finally Tikitiki, the crown.
+- **Nine of those parts are earned by turning up.** Every 1,000 lifetime points adds another part, and those points still never reset. What changes is that the tenth part, the crown, has to be *done*: a discipline taniwha is crowned by winning 9 of its 12 events, and the whānau taniwha is crowned by bringing someone into the sport who sticks for ten sessions. It is the only crown nobody can earn alone.
+- **A taniwha whose crown is not ready simply waits.** Your points always keep building something, so a player who trains for years without winning is never stuck — they finish the body, park it, and start the next. Nothing you earn is ever taken away.
+- **You choose which taniwha to build next, and you can change your mind.** Parts stay on the taniwha you put them on, so switching costs you time, not work already done.
+- **The Personal Bests page is now also your win sheet.** Every event you have won outright carries a gold mark, and each discipline shows how many of its twelve you hold.
+- **The live session tells you when a win matters.** Line up an event in the discipline you are building and it says so: *a win here takes you to 7 of 9*.
+- **The kaiwhakawā is told while you are still in the room.** A crown landing now shows on the live screen, and the coach releases the moment with a tap rather than everyone finding out after they have gone home. The app only ever says "earned" when the result can no longer be taken back by anyone else's score.
+- **The judge's player list shows what is actually holding someone up** — more points, more wins, or more parts — instead of a single guess at how many sessions away they are.
+
+### Changed
+- **Each of the ten disciplines now has its own colour**, and the twelve taniwha wear them: red for Maximal Strength through to black for Aim & Precision, with gold for the whānau and the rainbow for Te Kāhui.
+- **The leaderboard still resets every January.** The taniwha you hold are for life; the season race is not. That was deliberate — one number became two.
+
+### Fixed
+- **Four of the ten disciplines were sharing a colour with another discipline.** The palette only ever had six colours stretched across ten, so Maximal Strength and Flexibility were both red, and three more pairs matched. Every event icon, discipline icon, the Personal Bests page and the live session progress bar were all affected. There are now ten distinct colours, defined in one place instead of five.
+- **Games could fail to close when a signed-in player opened the app.** The hundred-minute lock ran, then tripped over a security check and abandoned the whole thing, so the session stayed open and nobody was awarded anything until a background job swept up minutes later. Oddly it worked fine for logged-out visitors, which is why it went unnoticed.
+
 ## [0.5.11.1] - 2026-08-23
 
 ### Changed

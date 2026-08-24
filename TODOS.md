@@ -115,6 +115,16 @@
 
 ## P1 — Do Next
 
+### Apply the two taniwha migrations, from `main`, in order
+**What:** `20260824220633_event_placements.sql` then `20260824222612_player_taniwha.sql`. Both shipped in v0.6.0.0 **written but deliberately unapplied**, because a migration applied from an unmerged branch is recorded in prod's history with no file in the repo and then blocks every subsequent `db push`.
+**Why nothing is broken meanwhile:** every client surface falls back to the Colours UI when `player_taniwha` does not answer. Probed against prod with the anon key before shipping: a missing table returns `PGRST205` in `error` (handled), whereas a missing *column* returns `42703` and takes the whole query down — which is why every taniwha read is its own query and nothing selects a column it is not sure of.
+**Verify by querying the objects, not `migration list`.** Both files end with numbered verification queries. The two that matter most:
+  - `20260824222612` #3 — the budget invariant across every player in one statement. **Must return zero rows.**
+  - `20260824220633` #5 — who is already close to a crown. Wins are backfilled from all history, so the first crowns could land within days of the migrations going in. Look at this before the client is live so nobody is surprised.
+**Also unverified until applied:** roughly 1,000 lines of SQL checked only by libpg_query parsing. Docker was not available in the session that wrote them, so nothing has executed.
+**Noticed:** /ship v0.6.0.0, 2026-08-25
+**Effort:** S to apply, M to verify properly
+
 ### Settle which migration file owns prod's `20260821000000` row
 **What:** two different files were written under version `20260821000000` — `leaderboard_rpc` (v0.5.11.0) and `privacy_tidyup` (v0.5.10.0). Only one row can exist per version, but the objects from BOTH exist in production, so one of them was applied by a route other than `db push`. `privacy_tidyup` has since been renumbered to `20260822000000`; `leaderboard_rpc` keeps `20260821000000`. Confirm the ledger row actually corresponds to `leaderboard_rpc`, and that `20260822000000` has since been applied and recorded.
 **Why it matters:** nothing is broken today — `leaderboard_page`, `stats_bundle` and `delete_my_account` all exist and are verified. The risk is a `supabase db reset` or any rebuild-from-migrations, where the recorded history would replay something different from what actually shaped production.
@@ -206,9 +216,30 @@
 
 ## P2 — Soon
 
+### Fold `player_taniwha` into the `leaderboard_page` RPC
+**What:** `/leaderboard` makes one extra round trip for `player_taniwha`, outside `leaderboard_page()`. It is deliberate — that RPC is already applied to production and the taniwha column had to work before the progression migrations did — but it quietly turns the performance pass's 7-requests-into-1 back into 2.
+**Do it once the migrations are live**, along with the same treatment for `player_event_wins` on `/prs`.
+**Noticed:** /ship v0.6.0.0, 2026-08-25
+**Effort:** S
+
+### Delete `lib/colours.ts` and the Colours fallbacks
+**What:** every taniwha surface currently renders the old Colours UI when `player_taniwha` does not answer — the dashboard card, the leaderboard column and key, the profile badge, the judge watchlist, the live alert banner, the session-end takeover. That is deploy-order insurance, not a permanent design.
+**Once the migrations are applied and verified, take them out**, and move `MIN_PLACEMENT_POINTS` / `EFFORT_POINTS_PER_LEVEL` / `MAX_EFFORT_LEVEL` / `MAX_SESSION_POINTS` into `lib/taniwha.ts` — they describe the points economy, which outlives the colour ladder. A test currently pins the two modules together so they cannot drift while both exist.
+**Leave `colour_awards` alone.** It records colours that were really awarded and really celebrated, on real dates, and the dashboard timeline still shows them as the colours era. Rewriting them as taniwha parts would fabricate history.
+**Noticed:** /ship v0.6.0.0, 2026-08-25
+**Effort:** M
+
+### `@testing-library/react` and `jsdom` are declared but not installed
+**What:** `__tests__/colourComponents.test.tsx` cannot run — it fails with `ERR_MODULE_NOT_FOUND` and is the one error in an otherwise green 369-test suite. Both packages ARE in `package.json`; the hoisted `node_modules` is just stale.
+**Why it matters:** it is the repo's only component test, so React components currently have no coverage at all, and a permanently-red line in the suite output trains everyone to ignore the suite output.
+**Fix:** `npm install`. Then decide whether the taniwha components deserve the same treatment.
+**Noticed:** /ship v0.6.0.0, 2026-08-25
+**Effort:** XS
+
 ### Move the ranking maths into SQL (PERF_AGGREGATION_PLAN.md Stage 2)
 **What:** `/leaderboard` and `/dashboard` still ship the full result history to the browser and compute percentiles and wins there. Stage 1 collapsed the request fan-out into one RPC, which fixed the latency; Stage 2 would aggregate server-side and return ~20 rows instead of ~1500.
-**Why it is deliberately deferred:** payload is ~40 KB gzipped today, which does not justify the risk. The maths maps cleanly onto window functions (`rank() - 1` is exactly the "ties never count as beaten" rule), but the blocker is that domain rollup needs event name → domain, which lives only in `lib/eventData.ts`. Doing it properly means seeding an `events` reference table from that file — which would also fix the structural weakness behind the session-27 rename incident.
+**Why it is deliberately deferred:** payload is ~40 KB gzipped today, which does not justify the risk. The maths maps cleanly onto window functions (`rank() - 1` is exactly the "ties never count as beaten" rule).
+**The stated blocker is now gone.** This item used to be held up by domain rollup needing event name → domain, which lived only in `lib/eventData.ts`. v0.6.0.0 seeds exactly that table — `event_domains`, 120 rows, in `20260824222612` — because the crown condition needs the server to know an event's domain without trusting the client. Two tests read the migration file and fail if it disagrees with `EVENTS`. So Stage 2 is now a smaller job than this entry assumes.
 **Do not ship it without the parity gate:** diff the TypeScript and SQL implementations player-by-player on real data first. Watch the `'Youth'` legacy division mapping, orphan event names, the `max(1, …)` floor, and shared-top counting as `isLeader`. This can silently change what players see.
 **Trigger:** revisit when `results` grows perhaps 5–10× from today, or if the `events` reference table becomes worth having on its own merits.
 **Where:** full plan with measurements in `PERF_AGGREGATION_PLAN.md`

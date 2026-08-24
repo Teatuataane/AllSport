@@ -2,7 +2,7 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient, getSessionUser } from '@/lib/supabase-browser'
-import { getEventByName, isTimedEffort, decodeDiffTime, type EventData } from '@/lib/eventData'
+import { EVENTS, getEventByName, isTimedEffort, decodeDiffTime, type EventData } from '@/lib/eventData'
 import { parseLocalDate } from '@/lib/dates'
 import EventIcon, { domainColor } from '@/components/EventIcon'
 import {
@@ -18,6 +18,13 @@ import {
 } from '@/lib/colours'
 import { applyClaimedRung, colourAlerts, type ColourAlert } from '@/lib/colourAlerts'
 import ColourAlertBanner from '@/components/ColourAlertBanner'
+import TaniwhaAlertBanner from '@/components/TaniwhaAlertBanner'
+import {
+  taniwhaAlerts, provisionalWins, crownHint, type TaniwhaAlert, type TaniwhaProgress,
+} from '@/lib/taniwhaAlerts'
+import {
+  MAX_CROWNS, WIN_TARGET, bodyPartBudget, taniwhaBySlug, taniwhaCardStyle,
+} from '@/lib/taniwha'
 
 const supabase = createClient()
 
@@ -917,7 +924,7 @@ function eventDivisionRank(
 }
 
 function EventListRow({
-  se, eventData, myResults, allResults, playerInfoMap, playerDivision, onOpen,
+  se, eventData, myResults, allResults, playerInfoMap, playerDivision, onOpen, crownHint,
 }: {
   se: SessionEvent
   eventData: EventData | undefined
@@ -926,6 +933,8 @@ function EventListRow({
   playerInfoMap: Record<string, PlayerInfo>
   playerDivision: string | null | undefined
   onOpen: () => void
+  /** "A win here takes you to 7 of 9" — only on the domain being built. */
+  crownHint?: string | null
 }) {
   const mode = (eventData?.inputMode || se.input_mode || 'strength') as string
   const myBestResult = myResults.length > 0
@@ -952,6 +961,14 @@ function EventListRow({
             <span style={{ fontSize: '10.5px', color: '#B87DB5', border: '1px solid #B87DB566', borderRadius: '999px', padding: '0 7px' }}>EL {effortLevel}</span>
           )}
         </div>
+        {crownHint && (
+          <div style={{
+            fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', marginTop: '4px',
+            letterSpacing: '0.06em', color: '#F9B051',
+          }}>
+            {crownHint}
+          </div>
+        )}
       </div>
       {todo ? (
         <span style={{
@@ -1664,6 +1681,10 @@ function SessionEndTakeover({
   // and the takeover only renders after the session has ended, so the
   // coach-releases-it rule is satisfied by the time anyone sees this.
   const [colourAwards, setColourAwards] = useState<{ rung: number; points_at_award: number }[]>([])
+  // Crowns landed in THIS session. `null` means the progression migrations are
+  // not applied, in which case the colour card above keeps rendering; an empty
+  // array means the progression exists and nothing was crowned today.
+  const [crowns, setCrowns] = useState<{ taniwha_slug: string; crown_order: number }[] | null>(null)
   const [loaded, setLoaded] = useState(false)
   const [barAnimated, setBarAnimated] = useState(false)
 
@@ -1691,6 +1712,16 @@ function SessionEndTakeover({
           .eq('player_id', playerId).eq('session_id', sessionId)
           .order('rung', { ascending: false }),
       ])
+      // Its own query: a missing table must not take the end-of-session moment
+      // down with it.
+      const crownRes = await supabase
+        .from('player_taniwha')
+        .select('taniwha_slug, crown_order')
+        .eq('player_id', playerId)
+        .eq('crowned_session_id', sessionId)
+        .order('crown_order', { ascending: true })
+      setCrowns(crownRes.error ? null : ((crownRes.data ?? []) as any[]))
+
       setSummary((sumRes.data as EndSummary | null) ?? null)
       setSessionCount(cntRes.count ?? 0)
       setLifetimeTotal((rankRes.data as { lifetime_points: number } | null)?.lifetime_points ?? null)
@@ -1770,7 +1801,62 @@ function SessionEndTakeover({
               threshold, that is the headline, not where you finished.
               (The ladder's smallest gap is 500 and a session tops out at 200,
               so this is always one card — the map is defensive.) */}
-          {colourAwards.map(award => {
+          {/* ── Crown earned ──────────────────────────────────────────────
+              The headline on the day it happens, above placement and points.
+              Only ever one: a session tops out at 200 points and a crown slot
+              is 10,000 apart, so two cannot land together. */}
+          {(crowns ?? []).map(cr => {
+            const tw = taniwhaBySlug(cr.taniwha_slug)
+            if (!tw) return null
+            const card = taniwhaCardStyle(tw)
+            return (
+              <div key={cr.taniwha_slug} style={{
+                ...card,
+                position: 'relative', overflow: 'hidden',
+                borderRadius: '16px', padding: '20px 22px', marginTop: '18px',
+                animation: 'toastPop 0.6s cubic-bezier(0.16,1,0.3,1)',
+              }}>
+                <div style={{
+                  fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11.5px',
+                  textTransform: 'uppercase', letterSpacing: '0.18em',
+                  color: card.color as string, opacity: 0.7,
+                }}>
+                  Taniwha crowned
+                </div>
+                <div style={{
+                  fontFamily: 'Bebas Neue, cursive', fontSize: '40px', lineHeight: 1.02,
+                  letterSpacing: '0.03em', color: card.color as string, marginTop: '4px',
+                }}>
+                  {tw.name}
+                </div>
+                <div style={{ fontSize: '13px', color: card.color as string, opacity: 0.75, marginTop: '4px' }}>
+                  Crown #{cr.crown_order} of {MAX_CROWNS} · yours for good
+                </div>
+              </div>
+            )
+          })}
+
+          {/* Parts are the every-session heartbeat: quieter than a crown, but
+              nobody should finish a game without knowing they earned one. */}
+          {crowns !== null && lifetimeTotal !== null && summary && (() => {
+            const today = (summary.total_placement_points ?? 0) + (summary.effort_points ?? 0)
+            const gained = bodyPartBudget(lifetimeTotal) - bodyPartBudget(Math.max(lifetimeTotal - today, 0))
+            if (gained <= 0) return null
+            return (
+              <div style={{
+                background: '#111', border: '1px solid #1e1e1e', borderRadius: '16px',
+                padding: '14px 18px', marginTop: '18px',
+                fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px',
+                letterSpacing: '0.06em', textTransform: 'uppercase', color: '#F9B051',
+              }}>
+                +{gained} taniwha part{gained === 1 ? '' : 's'} today
+              </div>
+            )
+          })()}
+
+          {/* The retired colour ladder. Rendered only while the progression
+              tables are absent, so the two systems never both shout. */}
+          {crowns === null && colourAwards.map(award => {
             const c = colourByRung(award.rung)
             if (!c) return null
             const em = emblemSrc(c)
@@ -1946,6 +2032,11 @@ export default function SessionPage() {
   // Lifetime colour totals for everyone in this session — feeds the live
   // colour alert. Committed points only; this session is added on top.
   const [playerTotals, setPlayerTotals] = useState<Record<string, { lifetime_points: number; highest_rung: number }>>({})
+  // Taniwha progression for everyone scoring in this session. NULL means the
+  // progression migrations are not applied, and the colour banner shows instead.
+  const [taniwhaProgress, setTaniwhaProgress] =
+    useState<Record<string, TaniwhaProgress> | null>(null)
+  const [claimingCrown, setClaimingCrown] = useState<string | null>(null)
   const [claimingColour, setClaimingColour] = useState<string | null>(null)
   const [colourToast, setColourToast] = useState<{ text: string; ok: boolean } | null>(null)
 
@@ -2001,6 +2092,133 @@ export default function SessionPage() {
       })
     return () => { cancelled = true }
   }, [isJudge, scoredPlayerIds])
+
+  // Taniwha progression. Its own queries so a missing table is an error object
+  // rather than something that takes the live session down mid-game.
+  // NOT judge-gated: the player's own event list needs it for the crown hint,
+  // and player_taniwha / player_event_wins are both public reads.
+  useEffect(() => {
+    if (scoredPlayerIds.length === 0) { setTaniwhaProgress(null); return }
+    let cancelled = false
+    ;(async () => {
+      const [pt, wins, refs] = await Promise.all([
+        supabase.from('player_taniwha')
+          .select('player_id, taniwha_slug, domain_number, body_parts, is_building, crowned_at')
+          .in('player_id', scoredPlayerIds),
+        supabase.from('player_event_wins').select('player_id, event_name').in('player_id', scoredPlayerIds),
+        supabase.from('referrals').select('referrer_id').in('referrer_id', scoredPlayerIds)
+          .not('qualified_at', 'is', null),
+      ])
+      if (cancelled) return
+      if (pt.error) { setTaniwhaProgress(null); return }
+
+      // event_name -> domain through the CURRENT roster, never through
+      // session_events.domain_number (renumbered June 2026).
+      const domainOf = new Map(EVENTS.map(e => [e.name, e.domainNumber]))
+      const map: Record<string, TaniwhaProgress> = {}
+      const at = (id: string) => (map[id] ??= {
+        taniwha: [], lifetimePoints: 0, bankedWinsByDomain: {},
+        qualifiedReferrals: 0, bankedEventNames: new Set<string>(),
+      })
+      for (const pid of scoredPlayerIds) at(pid)
+      for (const r of (pt.data ?? []) as any[]) at(r.player_id).taniwha.push(r)
+      for (const w of (wins.data ?? []) as any[]) {
+        const d = domainOf.get(w.event_name)
+        const prog = at(w.player_id)
+        prog.bankedEventNames!.add(w.event_name)
+        if (typeof d === 'number') {
+          prog.bankedWinsByDomain[d] = (prog.bankedWinsByDomain[d] ?? 0) + 1
+        }
+      }
+      for (const r of (refs.data ?? []) as any[]) at(r.referrer_id).qualifiedReferrals += 1
+      setTaniwhaProgress(map)
+    })()
+    return () => { cancelled = true }
+  }, [scoredPlayerIds])
+
+  // "A win here takes you to 7 of 9" — shown on an event that belongs to the
+  // domain this player is building, that they have not already won, and only
+  // while the crown is still outstanding. The whole point of the taniwha
+  // system in one line, at the moment the player can act on it.
+  function crownHintFor(pid: string | null | undefined, se: SessionEvent): string | null {
+    if (!pid || !taniwhaProgress) return null
+    // Domain from the CURRENT roster, never session_events.domain_number.
+    return crownHint(taniwhaProgress[pid], se.event_name, getEventByName(se.event_name)?.domainNumber)
+  }
+
+  const taniwhaAlertList: TaniwhaAlert[] = useMemo(() => {
+    if (!isJudge || sessionEnded || !taniwhaProgress) return []
+    const domainOfEvent = new Map(events.map(ev => [ev.id, getEventByName(ev.event_name)?.domainNumber]))
+    const prov = provisionalWins({
+      results: results.map(r => ({ player_id: r.player_id, event_id: r.event_id, raw_score: r.raw_score })),
+      domainOfEvent: id => domainOfEvent.get(id) ?? null,
+      divisionOf: pid => playerInfoMap[pid]?.division,
+      // The crown counts DISTINCT events, so a player winning an event they
+      // have already banked must not be counted twice. Without this, someone
+      // on 8 banked wins who wins the same Deadlift again would read as 9.
+      alreadyWon: (pid, eventId) => {
+        const name = events.find(ev => ev.id === eventId)?.event_name
+        return !!name && !!taniwhaProgress[pid]?.bankedEventNames?.has(name)
+      },
+    })
+    return taniwhaAlerts({
+      results: results.map(r => ({ player_id: r.player_id, event_id: r.event_id, raw_score: r.raw_score })),
+      eventIds: events.map(ev => ev.id),
+      playerIds: scoredPlayerIds,
+      nameOf: pid => sessionPlayers.find(p => p.id === pid)?.name
+        ?? results.find(r => r.player_id === pid)?.player_name
+        ?? 'Player',
+      divisionOf: pid => playerInfoMap[pid]?.division,
+      effortLevelOf: pid => calcTotalEffortLevel(results.filter(r => r.player_id === pid), events),
+      progressOf: pid => {
+        const base = taniwhaProgress[pid]
+        return base ? { ...base, lifetimePoints: playerTotals[pid]?.lifetime_points ?? 0 } : undefined
+      },
+      provisionalWinsOf: pid => prov.get(pid) ?? {},
+    })
+  }, [isJudge, sessionEnded, results, events, scoredPlayerIds, sessionPlayers, playerInfoMap, playerTotals, taniwhaProgress])
+
+  async function celebrateCrown(alert: TaniwhaAlert) {
+    setClaimingCrown(alert.playerId)
+    const { data, error } = await supabase.rpc('claim_taniwha_crown', {
+      p_player_id: alert.playerId,
+      p_session_id: sessionId,
+    })
+    setClaimingCrown(null)
+
+    // FALSE is not an error — claim_taniwha_crown re-derives the guaranteed
+    // floor and the banked wins server-side and refuses anything that is not
+    // genuinely safe. Announcing a crown the server declined is the exact
+    // failure this feature exists to prevent, so say so and leave the alert up.
+    if (error || data !== true) {
+      setColourToast({
+        text: error
+          ? `Could not record ${alert.taniwha.name} — try again`
+          : `${alert.playerName} has not quite earned ${alert.taniwha.name} yet — scores may have changed`,
+        ok: false,
+      })
+      setTimeout(() => setColourToast(null), 5000)
+      return
+    }
+
+    // Retire the alert locally. lifetime_points stays put on purpose — it only
+    // catches up when the session closes.
+    setTaniwhaProgress(prev => {
+      if (!prev) return prev
+      const p = prev[alert.playerId]
+      if (!p) return prev
+      return {
+        ...prev,
+        [alert.playerId]: {
+          ...p,
+          taniwha: p.taniwha.map(x =>
+            x.is_building ? { ...x, is_building: false, crowned_at: new Date().toISOString() } : x),
+        },
+      }
+    })
+    setColourToast({ text: `${alert.playerName} has earned ${alert.taniwha.name}`, ok: true })
+    setTimeout(() => setColourToast(null), 5000)
+  }
 
   const colourAlertList: ColourAlert[] = useMemo(() => {
     if (!isJudge || sessionEnded) return []
@@ -2538,6 +2756,7 @@ export default function SessionPage() {
                 playerInfoMap={playerInfoMap}
                 playerDivision={pDivision}
                 onOpen={() => setSheetEventId(ev.id)}
+                crownHint={crownHintFor(pid, ev)}
               />
             ))}
 
@@ -2690,11 +2909,19 @@ export default function SessionPage() {
               </div>
             )}
 
-            <ColourAlertBanner
-              alerts={colourAlertList}
-              claimingPlayerId={claimingColour}
-              onCelebrate={celebrateColour}
-            />
+            {taniwhaProgress ? (
+              <TaniwhaAlertBanner
+                alerts={taniwhaAlertList}
+                claimingPlayerId={claimingCrown}
+                onCelebrate={celebrateCrown}
+              />
+            ) : (
+              <ColourAlertBanner
+                alerts={colourAlertList}
+                claimingPlayerId={claimingColour}
+                onCelebrate={celebrateColour}
+              />
+            )}
 
             {/* Player chips */}
             <div className="no-scrollbar" style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '2px', marginBottom: '12px' }}>
@@ -2824,6 +3051,7 @@ export default function SessionPage() {
                     playerInfoMap={playerInfoMap}
                     playerDivision={targetDivision}
                     onOpen={() => setSheetEventId(ev.id)}
+                    crownHint={crownHintFor(judgeTargetId, ev)}
                   />
                 ))}
 

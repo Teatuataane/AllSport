@@ -4,11 +4,7 @@
 // render a static list. Now that lookup happens at build time.
 import Link from 'next/link'
 import { EVENTS, DOMAIN_ORDER, getEventsByDomain } from '@/lib/eventData'
-
-const DOMAIN_COLOURS = [
-  '#EA4742', '#F9B051', '#F397C0', '#B87DB5', '#2371BB',
-  '#4DB26E', '#EA4742', '#F9B051', '#B87DB5', '#2371BB',
-]
+import { DOMAIN_COLORS as DOMAIN_COLOURS } from '@/lib/domainColours'
 
 export default function EventsIndex() {
   const byDomain = getEventsByDomain()
