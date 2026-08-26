@@ -597,7 +597,13 @@ switcher becomes global; a **five-tab bottom bar** replaces the hamburger. Desig
 settled over two `/grill-me` rounds and a design canvas; the spec with all 16
 locked decisions is `DASHBOARD_REDESIGN_PLAN.md`.
 
-**BUILT, NOT COMMITTED, NOT APPLIED.** One new migration is written and waiting.
+**SHIPPED (PR #91) AND VERIFIED IN PRODUCTION, 2026-08-26.** Checked by querying
+the objects with the public anon key, not by trusting the ledger: `event_domains`
+120 rows, `player_taniwha` 27 players, `player_event_wins` answering,
+`leaderboard_page` carrying its `taniwha` key, and **1,183 of 1,246 `results` rows
+backfilled with `event_placement`**. The budget invariant holds with **zero
+breaches** across all 27 players — the top player sits on 5 parts at 5,310 points,
+which is exactly `floor(p/1000)`. Nobody holds a crown yet.
 
 - **The dashboard is four blocks**: identity + seasonal rank → taniwha card →
   four numbers (Games · Events Won · Games Won · PRs) → a ten-spoke skill radar.
@@ -639,9 +645,10 @@ locked decisions is `DASHBOARD_REDESIGN_PLAN.md`.
   NOT in it**: a missing table degrades to a hidden card, a missing column returns
   42703 and would take the entire dashboard down with it.
 - **`event_placement` is the one hard dependency.** My Events' average-placement
-  column needs it, and it ships in the unapplied `20260824220633`. It is its own
-  guarded query, so pre-migration the column shows dashes instead of 42703-ing the
-  page. Everything else in this pass degrades cleanly.
+  column needs it. `20260824220633` is applied and 1,183 rows are backfilled, so
+  the column now has real data — but it stays its OWN guarded query, because that
+  is what kept the page alive before the migration landed and is what will keep it
+  alive if the column ever moves again.
 - **`lib/colours.ts` now has exactly ONE consumer**: the pre-migration accent
   fallback in `components/PlayerTabs.tsx`. Once the taniwha migrations are applied
   and that fallback is removed, nothing imports it — the history page renders
@@ -652,6 +659,16 @@ locked decisions is `DASHBOARD_REDESIGN_PLAN.md`.
 - **`gloss` is new on `Taniwha`** — the English name shown under the te reo one.
   "Taniwha of Connection" is Tāne's; the other eleven are unconfirmed, as are the
   four placeholder names they sit under.
+
+**NOT EVERY RPC IS VERIFIED AS `anon`.** The pattern recorded under "Verifying an
+RPC that public pages depend on" exists because `/leaderboard` is public and a
+function that reads the wrong table passes every check run as `postgres`. It does
+NOT generalise. `player_dashboard` reads `colour_awards`, whose policies subquery
+`public.players` and which is granted to `authenticated` only — so calling it as
+`anon` returns `42501 permission denied for table players`, and that is the CORRECT
+answer, not a bug. Verifying an authenticated-only RPC as anon proves nothing except
+that anon is locked out. Match the role to the surface: anon for public pages,
+authenticated for anything behind a login.
 
 **`TaniwhaFigure` has TWO renderers and picks by probe.** Where the art exists it
 layers `/taniwha/{slug}/{piece}.png` as CSS masks filled with the taniwha's ink —
@@ -1152,8 +1169,9 @@ RLS: own + parent (family) + judge.
                                                #   mirror), sync/choose/claim functions, backfill.
       20260824233516_leaderboard_taniwha.sql   # leaderboard_page(): colour_rungs key -> taniwha (crowned + building).
                                                #   ⚠ MIGRATION FIRST, THEN CODE — the client reads the new key.
-      20260826004819_player_dashboard_rpc.sql  # NOT APPLIED. player_dashboard(uuid[]) — whole household in one call.
-                                               #   INVOKER rights; taniwha data deliberately excluded (see its header).
+      20260826004819_player_dashboard_rpc.sql  # APPLIED 2026-08-26. player_dashboard(uuid[]) — whole household in
+                                               #   one call. INVOKER rights; taniwha data deliberately excluded.
+                                               #   ⚠ VERIFY THIS ONE AS `authenticated`, NOT `anon` — see below.
       20260822000000_privacy_tidyup.sql        # self-serve export/erasure, optional legal name, drops players.bodyweight_kg.
                                                #   RENUMBERED from 20260821000000 — see the collision note below.
       # ── 20260813000003 needed `supabase db push --include-all`: its 13-Aug timestamp is older than the

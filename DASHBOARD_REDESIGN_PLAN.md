@@ -277,9 +277,8 @@ rollback;
 
 ## 7. Build order
 
-**Status, August 2026: steps 1–8 are BUILT. Nothing is committed, nothing is
-applied.** The migration is written and waiting; the code degrades gracefully
-without it in every place except the My Events average-placement column.
+**Status: SHIPPED.** Merged as PR #91 and all migrations applied and verified in
+production on 2026-08-26.
 
 1. Migration `player_dashboard` → push → verify as `anon`.
 2. `lib/useActivePlayer.ts` + `components/PlayerTabs.tsx` (taniwha accent, colour-rung fallback).
@@ -313,9 +312,12 @@ falls back. Do NOT gate this work on those migrations.
   card and collection carry tinted tiles, which is what the canvas shows. All ten parts of
   a taniwha must be exported on one canvas with the same registration or they will not
   layer, and a filename that is not the exact slug falls back silently.
-- **Focus states and 44px targets across the live-session screen** — P2 in TODOS.md, gated
-  on the `components/ui.tsx` migration. The new nav and player tabs are built on `ui.tsx`
-  primitives so they add nothing to that debt.
+- **Focus states across the new nav** — P2 in TODOS.md. An earlier draft of this plan
+  claimed the bottom bar and player tabs were built on `components/ui.tsx` primitives.
+  They are NOT: they use inline styles, matching the surrounding code, which means no
+  `:focus-visible` on any of them. Touch targets ARE at the 44px floor (tabs 44, chips
+  45), so what is left is keyboard focus, and it now covers three surfaces rather than
+  one. Folded into the existing TODOS entry.
 - **Season lens for percentiles** — `lib/percentile.ts` is lifetime-only by design.
 - **Limb dates are derived, not stored.** `player_taniwha` holds a count, not a
   row per limb, so Taniwha History reconstructs the date each limb landed by

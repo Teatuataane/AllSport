@@ -99,8 +99,13 @@ function Tab({ tab, label, colour, active, live, onClick, href }: {
   )
   const style: React.CSSProperties = {
     position: 'relative',
-    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-    padding: '0 4px', background: 'transparent', border: 'none',
+    display: 'flex', flexDirection: 'column', alignItems: 'center',
+    justifyContent: 'flex-start', gap: 4,
+    // The icon-plus-label stack is only ~38px tall, which is under the 44px
+    // floor. The bar has the room, so the target fills it rather than floating
+    // in the middle of it — the padding is the hit area, not decoration.
+    minHeight: 44, paddingTop: 2, paddingBottom: 4, paddingLeft: 4, paddingRight: 4,
+    background: 'transparent', border: 'none',
     cursor: 'pointer', textDecoration: 'none',
     WebkitTapHighlightColor: 'transparent',
   }
