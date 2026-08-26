@@ -480,3 +480,41 @@ describe('the implement — part ten', () => {
     }
   })
 })
+
+describe('the art checker mirrors the ladder', () => {
+  // scripts/check-taniwha-art.mjs cannot import a TS module, so it carries its
+  // own copy of the part slugs and the implement map. That is the same
+  // duplication the SQL guards above exist for: if the ladder changes and the
+  // checker does not, it will happily pass an export that is missing a piece.
+  const checker = readFileSync('scripts/check-taniwha-art.mjs', 'utf8')
+
+  const arrayIn = (name: string) => {
+    const m = checker.match(new RegExp(`const ${name}\\s*=\\s*\\[([\\s\\S]*?)\\]`))
+    if (!m) throw new Error(`${name} not found in check-taniwha-art.mjs`)
+    return [...m[1].matchAll(/'([a-z-]+)'/g)].map(x => x[1])
+  }
+
+  it('lists the nine body slugs, in assembly order', () => {
+    // The tenth body part is the implement and is resolved per taniwha, so the
+    // checker's BODY array stops at nine.
+    const expected = PARTS.slice(0, IMPLEMENT_PART - 1).map(p => p.slug)
+    expect(arrayIn('BODY')).toEqual(expected)
+    expect(expected[0]).toBe('pane')
+  })
+
+  it('maps every taniwha to its own implement slug', () => {
+    const block = checker.slice(checker.indexOf('const IMPLEMENTS'))
+    for (const tw of TANIWHA) {
+      const re = new RegExp(`['"]?${tw.slug}['"]?\\s*:\\s*'${tw.implement.slug}'`)
+      expect(re.test(block), `${tw.slug} -> ${tw.implement.slug} missing from IMPLEMENTS`).toBe(true)
+    }
+  })
+
+  it('knows the crown, and every taniwha accent', () => {
+    expect(checker).toContain("'tikitiki'")
+    const block = checker.slice(checker.indexOf('const ACCENT'))
+    for (const tw of TANIWHA) {
+      expect(new RegExp(`['"]?${tw.slug}['"]?\\s*:`).test(block), `${tw.slug} missing from ACCENT`).toBe(true)
+    }
+  })
+})
