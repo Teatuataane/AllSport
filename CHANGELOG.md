@@ -6,8 +6,12 @@ All notable changes to AllSport are documented here.
 
 ### Changed
 - **Each taniwha now carries the tool of its own discipline.** The tenth part you earn is an implement — a barbell for Maximal Strength, a bow for Aim & Precision, an oar for Aerobic Endurance — and it is the one part that differs between the twelve. Every one is taken from an event you actually play in that discipline. Te Taniwha ō te Whānau has no discipline, so it holds many hands instead: its crown is a referral, and the sport needs no equipment to start. Te Kāhui carries the other eleven.
-- **Neck and head are one part now, and wings were added.** A neck on its own was never worth unlocking. A taniwha is built from ten body parts and a crown: body, head, tail, four limbs, wings, tongue, implement, then the crown.
+- **Neck and head are one part now, and wings were added.** A neck on its own was never worth unlocking. A taniwha is built from ten body parts and a crown: head, body, tail, four limbs, wings, tongue, implement, then the crown.
+- **The head comes first now.** It is the most recognisable single piece, so your very first award already looks like a taniwha rather than a headless body.
 - **Nothing about the pace changed.** Still one part for every 1,000 lifetime points, still a crown for every 10,000, and the full set still sits at 110,000. Nobody's progress moved.
+
+### Added
+- **The first taniwha has been drawn.** Te Taniwha ō te Whānau, all eleven pieces, assembling one at a time as you earn them. Eleven to go.
 
 ## [0.6.0.1] - 2026-08-25
 

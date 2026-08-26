@@ -698,5 +698,19 @@ the server would then refuse. The crown counts DISTINCT events, so the progressi
      never both shout: the colour card renders ONLY while the progression tables are absent.
    - The progression load is no longer judge-gated, because the player's own list needs it.
      Both tables are public reads.
-10. **Art, as it arrives.** Everything renders with a placeholder until then, the same way the
-    event icons did.
+10. **Art, as it arrives.** **1 of 12 drawn** — Te Taniwha ō te Whānau, all eleven pieces, in
+    `public/taniwha/whanau/`. Registration verified clean: same 1000×1000 canvas, real alpha,
+    no drift across the eleven frames.
+    - **Method proven and written down** in `TANIWHA_ART_PROMPT.md`: draw in Canva on one page,
+      duplicate it eleven times, delete only (never move), download PNG with transparent
+      background, rename to slugs.
+    - **`scripts/check-taniwha-art.mjs`** validates a folder and renders the assembly preview
+      using the same CSS mask the app does. It catches the one thing that cannot be fixed after
+      export — pieces cropped individually rather than on a shared canvas.
+    - **Three pieces of the first taniwha need redrawing**, committed as-is so the pipeline is
+      proven end to end: `hands.png` is a solid disc rather than the many-hands implement;
+      `tikitiki` is 104×59 on a 1000px canvas, a 2px smudge at the size the leaderboard renders,
+      for what is four months of a player's work; and `arero` is 0.16% coverage and 44%
+      semi-transparent, so the wero fades rather than reads.
+    - **Lesson for the other eleven:** draw the small pieces much larger on the canvas. A piece
+      scales with the whole square, so anything under ~150px across vanishes at 24px.
