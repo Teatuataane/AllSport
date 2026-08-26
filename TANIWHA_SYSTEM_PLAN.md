@@ -131,32 +131,45 @@ outside the ladder** (the existing DR-7 session-count milestones are the obvious
 
 ---
 
-## 4. The ten parts
+## 4. The eleven parts
 
-Award order is the assembly order. Every taniwha is built the same way, so a player learns
-one sequence and uses it forever.
+Award order is the assembly order, and it tells a story: the body assembles, gains its
+wings, issues the wero, picks up the tool of its discipline, and only then earns its crown.
 
 | Slot | Part | Te reo |
 |---|---|---|
 | 1 | body | **Tinana** |
-| 2 | neck | **Kakī** |
-| 3 | head | **Pane** |
-| 4 | tail | **Hiku** |
-| 5 | left arm | **Ringa mauī** |
-| 6 | right arm | **Ringa matau** |
-| 7 | left leg | **Waewae mauī** |
-| 8 | right leg | **Waewae matau** |
+| 2 | head | **Pane** |
+| 3 | tail | **Hiku** |
+| 4 | left arm | **Ringa mauī** |
+| 5 | right arm | **Ringa matau** |
+| 6 | left leg | **Waewae mauī** |
+| 7 | right leg | **Waewae matau** |
+| 8 | wings / fins | **Parirau** |
 | 9 | tongue | **Arero** |
-| 10 | **crown** | **Tikitiki** |
+| 10 | **the implement** | per taniwha — see §5 |
+| 11 | **crown** | **Tikitiki** |
 
-*Mauī* and *matau* keep the four limbs distinct without inventing anything. **Arero at nine
-is a good accident**: the protruding tongue is the wero, the challenge, so the taniwha issues
-its challenge and then takes its crown. *Tikitiki* is a topknot and carries mana; the
-transliteration *karauna* is the safer literal alternative if a reo speaker prefers it.
+**Ten body parts bought with points, plus a crown that must be earned.** Revised 26 August
+2026 from the original nine-plus-crown:
 
-A player's position reads as, for example, **"Waewae mauī of my third taniwha"**.
+- **Neck and head merged.** "You have unlocked a neck" was never going to feel like anything,
+  and a merged head reads far better in silhouette.
+- **Parirau added**, because it changes the top edge of every silhouette, which is what makes
+  twelve black shapes tellable apart at 24px.
+- **Part ten became the implement**, the only part that differs between taniwha.
 
----
+**The arithmetic got simpler, not harder.** The budget was
+`floor(p/1000) − floor(p/10000)`; that subtraction existed only because every tenth slot was
+consumed by a crown. With ten body parts the crown stops consuming a slot at all, so:
+
+- body-part budget = `floor(p/1000)`, capped at **110** (11 × 10)
+- crown capacity = `floor(p/10000)`, capped at **11**
+
+`PEAK_POINTS` is unchanged at 110,000 and no crown threshold moved.
+
+*Mauī* and *matau* keep the four limbs distinct without inventing anything. PENDING A REO
+SPEAKER, along with **Parirau** and the four implement names marked below.
 
 ## 5. The twelve taniwha
 
@@ -174,6 +187,34 @@ A player's position reads as, for example, **"Waewae mauī of my third taniwha"*
 | 10 | Te Taniwha ō te **Ruruku** | 9 Coordination | white | Mā | `#F2F2F2` |
 | 11 | Te Taniwha ō te **Tika** | 10 Aim & Precision | black | Pango | inverted card |
 | 12 | **Te Kāhui** | all | rainbow | Uenuku | `var(--rainbow)` |
+
+### 5.0 The implements — part ten
+
+Every one is drawn from a **real event in that domain** rather than invented. That is also how
+the two domains with no obvious equipment got one: Speed has Beach Flags and Capture the Flag,
+and Flexibility's Forward Split and Middle Split are literally scored as block height from the
+ground. The same two domains had no natural colour either, which is a pattern rather than a
+coincidence.
+
+| Taniwha | Implement | Te reo | From |
+|---|---|---|---|
+| Whānau | many hands | Ngā Ringaringa | the invitation — its crown is a referral, and the sport needs no equipment to start |
+| Kaha | barbell | Pou Taumaha *(reo TBC)* | Deadlift, Clean & Press |
+| Kaha Tinana | rings | Porowhita | Iron Cross, Front Lever |
+| Hiko | javelin | Tao | Javelin |
+| Tere | flag | Kara | Beach Flags, Capture the Flag |
+| Manawanui | ab wheel | Wīra *(reo TBC)* | Ab Rollout |
+| Manawaroa | oar | Hoe | Row Erg, Ski Erg |
+| Ngāwari | block | Papa *(reo TBC)* | Forward Split, Middle Split |
+| Mataara | jump rope | Taura | Jump Rope |
+| Ruruku | racquet | Rākete *(reo TBC)* | Tennis, Badminton, Squash |
+| Tika | bow | Kōpere | Archery |
+| Te Kāhui | the other eleven | Ngā Taniwha | holding all eleven crowned |
+
+**One consequence worth knowing.** The implement is the last part before the crown, so for most
+of the months spent building a taniwha it is not there. That is arguably perfect — the creature
+assembles, picks up the tool, then earns its crown — but it means the implement cannot be what
+makes the twelve tellable apart on the dashboard. The build still has to carry that.
 
 **Gold and rainbow bracket the set** as the two that are not domains: gold where everyone
 begins, rainbow where everyone is trying to arrive.

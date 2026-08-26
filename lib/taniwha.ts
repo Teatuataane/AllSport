@@ -47,19 +47,20 @@ export const MAX_SESSION_POINTS = 200
 
 /** Lifetime points per part. Flat, forever, including the first taniwha. */
 export const PART_POINTS = 1_000
-export const PARTS_PER_TANIWHA = 10
-/** The crown is part ten of every taniwha; parts one to nine are the body. */
-export const CROWN_PART = 10
-export const BODY_PARTS_PER_TANIWHA = 9
+/** Ten body parts plus the crown. */
+export const PARTS_PER_TANIWHA = 11
+/** The crown is the eleventh; parts one to ten are the body. */
+export const CROWN_PART = 11
+/** Part ten. The only part whose identity depends on which taniwha it is. */
+export const IMPLEMENT_PART = 10
+export const BODY_PARTS_PER_TANIWHA = 10
 /** Whānau + ten domains. Te Kāhui is awarded, never built from parts. */
 export const BUILT_TANIWHA = 11
 export const TOTAL_TANIWHA = 12
-/** 11 × 10. The last part slot on the ladder. */
-export const TOTAL_SLOTS = BUILT_TANIWHA * PARTS_PER_TANIWHA
-/** Lifetime points to fill every slot. Hard cap. */
-export const PEAK_POINTS = TOTAL_SLOTS * PART_POINTS // 110,000
-/** 11 × 9. Every body part on the ladder. */
-export const TOTAL_BODY_PARTS = BUILT_TANIWHA * BODY_PARTS_PER_TANIWHA // 99
+/** 11 × 10. Every body part on the ladder. */
+export const TOTAL_BODY_PARTS = BUILT_TANIWHA * BODY_PARTS_PER_TANIWHA // 110
+/** Lifetime points to fill every body part. Hard cap. */
+export const PEAK_POINTS = TOTAL_BODY_PARTS * PART_POINTS // 110,000
 /** Whānau plus ten domains. Te Kāhui is not one of these. */
 export const MAX_CROWNS = BUILT_TANIWHA
 
@@ -77,12 +78,19 @@ export const WIN_MIN_FIELD = 3
 export const WHANAU_REFERRALS = 1
 
 // ── The ten parts ────────────────────────────────────────────────────────────
-// Award order is the assembly order. Every taniwha is built the same way, so a
-// player learns one sequence and uses it forever.
+// Award order is the assembly order, and it tells a story: the body assembles,
+// gains its wings, issues the wero, picks up the tool of its discipline, and
+// only then earns its crown.
 //
 // `mauī` and `matau` keep the four limbs distinct without inventing anything.
-// Arero at nine is deliberate: the protruding tongue is the wero, the
-// challenge, so the taniwha issues its challenge and then takes its crown.
+// Neck and head are ONE part — "you have unlocked a neck" was never going to
+// feel like anything, and a merged head reads far better in silhouette.
+//
+// Part 10, the implement, is the only part that differs between taniwha. Every
+// one is drawn from a real event in that domain rather than invented, which is
+// also how the two domains with no obvious equipment (Speed, Flexibility) got
+// one: Beach Flags and Capture the Flag give Speed a flag, and Forward Split and
+// Middle Split are literally scored as block height from the ground.
 //
 // PENDING A REO SPEAKER. See TANIWHA_SYSTEM_PLAN.md §13 — in particular whether
 // `Tikitiki` (a topknot, carrying mana) or the literal `karauna` is right for
@@ -98,16 +106,20 @@ export type Part = {
 }
 
 export const PARTS: Part[] = [
-  { number: 1,  name: 'Tinana',        english: 'body',      slug: 'tinana' },
-  { number: 2,  name: 'Kakī',          english: 'neck',      slug: 'kaki' },
-  { number: 3,  name: 'Pane',          english: 'head',      slug: 'pane' },
-  { number: 4,  name: 'Hiku',          english: 'tail',      slug: 'hiku' },
-  { number: 5,  name: 'Ringa mauī',    english: 'left arm',  slug: 'ringa-maui' },
-  { number: 6,  name: 'Ringa matau',   english: 'right arm', slug: 'ringa-matau' },
-  { number: 7,  name: 'Waewae mauī',   english: 'left leg',  slug: 'waewae-maui' },
-  { number: 8,  name: 'Waewae matau',  english: 'right leg', slug: 'waewae-matau' },
-  { number: 9,  name: 'Arero',         english: 'tongue',    slug: 'arero' },
-  { number: 10, name: 'Tikitiki',      english: 'crown',     slug: 'tikitiki' },
+  { number: 1,  name: 'Tinana',       english: 'body',      slug: 'tinana' },
+  { number: 2,  name: 'Pane',         english: 'head',      slug: 'pane' },
+  { number: 3,  name: 'Hiku',         english: 'tail',      slug: 'hiku' },
+  { number: 4,  name: 'Ringa mauī',   english: 'left arm',  slug: 'ringa-maui' },
+  { number: 5,  name: 'Ringa matau',  english: 'right arm', slug: 'ringa-matau' },
+  { number: 6,  name: 'Waewae mauī',  english: 'left leg',  slug: 'waewae-maui' },
+  { number: 7,  name: 'Waewae matau', english: 'right leg', slug: 'waewae-matau' },
+  { number: 8,  name: 'Parirau',      english: 'wings',     slug: 'parirau' },
+  { number: 9,  name: 'Arero',        english: 'tongue',    slug: 'arero' },
+  // Part TEN is the implement, and it is the only part that differs between
+  // taniwha: each carries the tool of its own discipline. Resolve it with
+  // partFor(taniwha, 10), never partByNumber(10).
+  { number: 10, name: 'Taputapu',     english: 'implement', slug: 'taputapu' },
+  { number: 11, name: 'Tikitiki',     english: 'crown',     slug: 'tikitiki' },
 ]
 
 export function partByNumber(n: number): Part | null {
@@ -133,6 +145,24 @@ export function partByNumber(n: number): Part | null {
 
 export type TaniwhaKind = 'whanau' | 'domain' | 'kahui'
 
+/**
+ * Part ten. The only part that differs between taniwha — each carries the tool
+ * of its own discipline, drawn from a real event in that domain rather than
+ * invented.
+ *
+ * ⚠ FOUR OF THESE TE REO NAMES ARE PLACEHOLDERS, marked below. Tao, Hoe,
+ * Kōpere, Taura, Kara, Porowhita and Ringaringa are attested; Pou Taumaha,
+ * Wīra, Papa and Rākete are my best attempts and go to the reo review with the
+ * domain words.
+ */
+export type Implement = {
+  name: string
+  english: string
+  slug: string
+  /** The event it comes from, so nobody has to re-derive the reasoning. */
+  from: string
+}
+
 export type Taniwha = {
   kind: TaniwhaKind
   /** Full display name. */
@@ -154,6 +184,8 @@ export type Taniwha = {
   inverted: boolean
   /** The crest treatment — black card, amber accent, the twin taniwha. */
   crest: boolean
+  /** Part ten. */
+  implement: Implement
 }
 
 const domainTaniwha = (
@@ -162,6 +194,7 @@ const domainTaniwha = (
   slug: string,
   colourName: string,
   english: string,
+  implement: Implement,
   opts: { inverted?: boolean } = {},
 ): Taniwha => ({
   kind: 'domain',
@@ -173,6 +206,7 @@ const domainTaniwha = (
   accent: DOMAIN_COLORS[domainNumber - 1],
   inverted: opts.inverted ?? false,
   crest: false,
+  implement,
 })
 
 export const WHANAU: Taniwha = {
@@ -185,6 +219,13 @@ export const WHANAU: Taniwha = {
   accent: '#F9B051',
   inverted: false,
   crest: true,
+  // No domain, so no equipment. It carries MANY HANDS instead: its crown is a
+  // referral, so the thing it holds out is the invitation — and the sport's
+  // whole pitch is that you need no equipment to start.
+  implement: {
+    name: 'Ngā Ringaringa', english: 'many hands', slug: 'hands',
+    from: 'the invitation — this crown is a qualified referral',
+  },
 }
 
 export const KAHUI: Taniwha = {
@@ -197,24 +238,60 @@ export const KAHUI: Taniwha = {
   accent: RAINBOW,
   inverted: false,
   crest: true,
+  // The assembly carries the other eleven. Nothing else says "all of them".
+  implement: {
+    name: 'Ngā Taniwha', english: 'the other eleven', slug: 'taniwha',
+    from: 'holding all eleven crowned',
+  },
 }
 
 /** Indexed by domainNumber - 1, so it matches DOMAIN_COLORS and DOMAIN_ORDER. */
+const imp = (name: string, english: string, slug: string, from: string): Implement =>
+  ({ name, english, slug, from })
+
 export const DOMAIN_TANIWHA: Taniwha[] = [
-  domainTaniwha(1,  'Kaha',        'kaha',        'Whero',    'red'),
-  domainTaniwha(2,  'Kaha Tinana', 'kaha-tinana', 'Karaka',   'orange'),
-  domainTaniwha(3,  'Hiko',        'hiko',        'Kōwhai',   'yellow'),
-  domainTaniwha(4,  'Tere',        'tere',        'Kākāriki', 'green'),
-  domainTaniwha(5,  'Manawanui',   'manawanui',   'Kahurangi','blue'),
-  domainTaniwha(6,  'Manawaroa',   'manawaroa',   'Poroporo', 'purple'),
-  domainTaniwha(7,  'Ngāwari',     'ngawari',     'Māwhero',  'pink'),
-  domainTaniwha(8,  'Mataara',     'mataara',     'Kōkōwai',  'brown'),
-  domainTaniwha(9,  'Ruruku',      'ruruku',      'Mā',       'white'),
-  domainTaniwha(10, 'Tika',        'tika',        'Pango',    'black', { inverted: true }),
+  domainTaniwha(1,  'Kaha',        'kaha',        'Whero',    'red',
+    imp('Pou Taumaha', 'barbell',  'barbell',  'Deadlift, Clean & Press')),      // reo TBC
+  domainTaniwha(2,  'Kaha Tinana', 'kaha-tinana', 'Karaka',   'orange',
+    imp('Porowhita',   'rings',    'rings',    'Iron Cross, Front Lever')),
+  domainTaniwha(3,  'Hiko',        'hiko',        'Kōwhai',   'yellow',
+    imp('Tao',         'javelin',  'javelin',  'Javelin')),
+  domainTaniwha(4,  'Tere',        'tere',        'Kākāriki', 'green',
+    imp('Kara',        'flag',     'flag',     'Beach Flags, Capture the Flag')),
+  domainTaniwha(5,  'Manawanui',   'manawanui',   'Kahurangi','blue',
+    imp('Wīra',        'ab wheel', 'ab-wheel', 'Ab Rollout')),                   // reo TBC
+  domainTaniwha(6,  'Manawaroa',   'manawaroa',   'Poroporo', 'purple',
+    imp('Hoe',         'oar',      'oar',      'Row Erg, Ski Erg')),
+  domainTaniwha(7,  'Ngāwari',     'ngawari',     'Māwhero',  'pink',
+    imp('Papa',        'block',    'block',    'Forward Split, Middle Split')),             // reo TBC
+  domainTaniwha(8,  'Mataara',     'mataara',     'Kōkōwai',  'brown',
+    imp('Taura',       'jump rope','jump-rope','Jump Rope')),
+  domainTaniwha(9,  'Ruruku',      'ruruku',      'Mā',       'white',
+    imp('Rākete',      'racquet',  'racquet',  'Tennis, Badminton, Squash')),    // reo TBC
+  domainTaniwha(10, 'Tika',        'tika',        'Pango',    'black',
+    imp('Kōpere',      'bow',      'bow',      'Archery'), { inverted: true }),
 ]
 
 /** Whānau, the ten domains, then Te Kāhui. Display order, NOT collection order. */
 export const TANIWHA: Taniwha[] = [WHANAU, ...DOMAIN_TANIWHA, KAHUI]
+
+/**
+ * The part a given taniwha earns at position `n`.
+ *
+ * Identical to partByNumber for parts 1-9 and the crown, but part TEN is the
+ * implement and differs per taniwha — Kaha earns a barbell, Tika earns a bow.
+ * Use this anywhere a part is named to a player; partByNumber alone would tell
+ * everyone they earned a generic "Taputapu".
+ */
+export function partFor(taniwha: Taniwha, n: number): Part | null {
+  if (n !== IMPLEMENT_PART) return partByNumber(n)
+  return {
+    number: IMPLEMENT_PART,
+    name: taniwha.implement.name,
+    english: taniwha.implement.english,
+    slug: taniwha.implement.slug,
+  }
+}
 
 export function taniwhaForDomain(domainNumber: number): Taniwha | null {
   return DOMAIN_TANIWHA.find(t => t.domainNumber === domainNumber) ?? null
@@ -225,67 +302,55 @@ export function taniwhaBySlug(slug: string): Taniwha | null {
 }
 
 // ── The points map ───────────────────────────────────────────────────────────
-// Every 1,000 points fills one slot, and every tenth slot is a crown. Slots run
-// 1..110 across the whole ladder, so slot 10 is your first crown, slot 20 your
-// second, and slots 110 completes it.
+// Every 1,000 lifetime points is one body part. That is the whole rule.
 //
-// ⚠ A SLOT IS NOT A FIXED CELL IN A FIXED TANIWHA.
+// Crowns are a SEPARATE track: they are not bought with points and do not
+// consume a part slot. Points open crown ROOM — one per 10,000 — and the act
+// (a referral, or 9 of 12 event wins) fills it.
 //
-// The obvious reading — slot 15 is "taniwha two, part five" — is wrong, because
+//   body-part budget  floor(p/1000), capped at 110  (11 taniwha × 10 parts)
+//   crown capacity    floor(p/10000), capped at 11
+//
+// At the peak that is exactly 110 body parts and 11 crowns, which is why
+// PEAK_POINTS is 110,000.
+//
+// ⚠ A PART IS NOT A FIXED CELL IN A FIXED TANIWHA.
+//
+// The obvious reading — part 15 is "taniwha two, part five" — is wrong, because
 // a player may SWITCH which taniwha they are building and their parts stay on
 // the one they were placed on (TANIWHA_SYSTEM_PLAN.md decision 10). Switch at
 // four parts and the abandoned taniwha still holds four, resumable later. Under
-// a fixed map those slots are gone and it could never be finished.
-//
-// So points grant a BUDGET, not an address:
-//
-//   body-part budget  floor(p/1000) − floor(p/10000), capped at 99
-//   crown capacity    floor(p/10000), capped at 11
-//
-// At the peak that is exactly 99 body parts (11 × 9) and 11 crowns. Which
-// taniwha the budget is spent on is the player's choice and lives in the
-// database. Which crown is claimed first is whichever act lands first.
+// a fixed map those slots are gone and it could never be finished. So points
+// grant a BUDGET, and where it is spent is the player's choice, held in the
+// database.
 
-export type Slot = {
-  slot: number
-  points: number
-  isCrown: boolean
-  /** 1..11 when isCrown — your first crown, second, and so on. Never a domain. */
-  crownOrdinal: number | null
-}
+export type Slot = { slot: number; points: number }
 
 /** Lifetime points that open your `nth` crown. Whānau's is normally 10,000. */
 export function crownPoints(nth: number): number {
-  return nth * PARTS_PER_TANIWHA * PART_POINTS
-}
-
-export function slotAt(slot: number): Slot | null {
-  if (!Number.isInteger(slot) || slot < 1 || slot > TOTAL_SLOTS) return null
-  const isCrown = slot % PARTS_PER_TANIWHA === 0
-  return {
-    slot,
-    points: slot * PART_POINTS,
-    isCrown,
-    crownOrdinal: isCrown ? slot / PARTS_PER_TANIWHA : null,
-  }
-}
-
-/** Total 1,000-point steps taken, capped at the peak. Drives the progress bar. */
-export function slotsReached(points: number): number {
-  if (!Number.isFinite(points) || points < 0) return 0
-  return Math.min(Math.floor(points / PART_POINTS), TOTAL_SLOTS)
+  return nth * BODY_PARTS_PER_TANIWHA * PART_POINTS
 }
 
 /** Body parts this lifetime total has earned, to spend on whichever taniwha. */
 export function bodyPartBudget(points: number): number {
-  const slots = slotsReached(points)
-  const crownSlots = Math.floor(slots / PARTS_PER_TANIWHA)
-  return Math.min(slots - crownSlots, TOTAL_BODY_PARTS)
+  if (!Number.isFinite(points) || points < 0) return 0
+  return Math.min(Math.floor(points / PART_POINTS), TOTAL_BODY_PARTS)
+}
+
+/** Alias kept for the progress UI: parts and slots are now the same thing. */
+export const slotsReached = bodyPartBudget
+
+export function slotAt(slot: number): Slot | null {
+  if (!Number.isInteger(slot) || slot < 1 || slot > TOTAL_BODY_PARTS) return null
+  return { slot, points: slot * PART_POINTS }
 }
 
 /** The most crowns this lifetime total permits. Holding one still needs its act. */
 export function crownCapacity(points: number): number {
-  return Math.min(Math.floor(Math.max(points, 0) / (PARTS_PER_TANIWHA * PART_POINTS)), MAX_CROWNS)
+  return Math.min(
+    Math.floor(Math.max(points, 0) / (BODY_PARTS_PER_TANIWHA * PART_POINTS)),
+    MAX_CROWNS,
+  )
 }
 
 /** Is there room for another crown, points-wise? */
@@ -293,16 +358,16 @@ export function hasCrownRoom(points: number, crownsHeld: number): boolean {
   return crownsHeld < crownCapacity(points)
 }
 
-/** The next slot to come, or null once the ladder is complete. */
+/** The next part to come, or null once every one is earned. */
 export function nextSlot(points: number): (Slot & { pointsToGo: number }) | null {
-  const reached = slotsReached(points)
-  if (reached >= TOTAL_SLOTS) return null
+  const reached = bodyPartBudget(points)
+  if (reached >= TOTAL_BODY_PARTS) return null
   const s = slotAt(reached + 1)
   if (!s) return null
   return { ...s, pointsToGo: s.points - Math.max(points, 0) }
 }
 
-/** Percentage progress toward the next slot, 0–100. */
+/** Percentage progress toward the next part, 0–100. */
 export function progressToNextSlot(points: number): number {
   const next = nextSlot(points)
   if (!next) return 100
@@ -449,6 +514,8 @@ export function taniwhaChipStyle(t: Taniwha): CSSProperties {
  * silently, exactly as event icons do.
  */
 export function partAssetSrc(t: Taniwha, part: Part): string | null {
+  // Te Kāhui is assembled from the other eleven rather than drawn in parts.
   if (t.kind === 'kahui') return null
-  return `/taniwha/${t.slug}/${part.slug}.png`
+  const slug = part.number === IMPLEMENT_PART ? t.implement.slug : part.slug
+  return `/taniwha/${t.slug}/${slug}.png`
 }

@@ -19,7 +19,7 @@ import {
 } from '@/lib/taniwhaAlerts'
 import {
   MAX_CROWNS, bodyPartBudget, nextSlot, progressToNextSlot,
-  partByNumber, taniwhaBySlug, taniwhaCardStyle, taniwhaOnDark,
+  partFor, BODY_PARTS_PER_TANIWHA, taniwhaBySlug, taniwhaCardStyle, taniwhaOnDark,
 } from '@/lib/taniwha'
 
 const supabase = createClient()
@@ -1904,10 +1904,10 @@ function SessionEndTakeover({
                 {buildingTaniwha ? buildingTaniwha.name : 'Choose your next taniwha'}
               </div>
               <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11.5px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                {nextPartSlot
-                  ? nextPartSlot.isCrown
-                    ? `Crown — ${nextPartSlot.pointsToGo.toLocaleString()}pts to go`
-                    : `${partByNumber(((nextPartSlot.slot - 1) % 10) + 1)?.name ?? 'Next part'} — ${nextPartSlot.pointsToGo.toLocaleString()}pts to go`
+                {nextPartSlot && buildingTaniwha
+                  ? `${partFor(buildingTaniwha, ((nextPartSlot.slot - 1) % BODY_PARTS_PER_TANIWHA) + 1)?.name ?? 'Next part'} — ${nextPartSlot.pointsToGo.toLocaleString()}pts to go`
+                  : nextPartSlot
+                  ? `Next part — ${nextPartSlot.pointsToGo.toLocaleString()}pts to go`
                   : 'Te Kāhui — the end of the ladder'}
               </div>
             </div>

@@ -219,13 +219,16 @@ export default function Home() {
               </h2>
               <div className="lp-rainbow-line" style={{ width: '60px', marginBottom: '28px' }} />
               <p style={{ color: '#cccccc', fontSize: '16px', lineHeight: 1.8, marginBottom: '16px' }}>
-                There are twelve taniwha, and each one is built from ten parts — a spine, a
-                head, four limbs, a tail, a tongue, and finally a crown.
+                There are twelve taniwha, and each one is built from eleven parts — a body, a
+                head, a tail, four limbs, wings, a tongue, the tool of its own discipline, and
+                finally a crown.
               </p>
               <p style={{ color: '#888', fontSize: '15px', lineHeight: 1.8, marginBottom: '16px' }}>
                 The {BODY_PARTS_PER_TANIWHA} body parts are earned by turning up. Every{' '}
                 {PART_POINTS.toLocaleString()} points you have ever scored adds another one, and
-                those points never reset. The crown is different: it has to be <em>done</em>.
+                those points never reset. The tenth is the implement — a barbell, a bow, an oar —
+                the tool of that taniwha&apos;s discipline. The crown is different again: it has
+                to be <em>done</em>.
               </p>
               <p style={{ color: '#888', fontSize: '15px', lineHeight: 1.8, marginBottom: '16px' }}>
                 Ten of the taniwha belong to the ten disciplines, and you crown one by winning{' '}

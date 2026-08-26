@@ -29,7 +29,8 @@ import {
   taniwhaOnDark,
   bodyPartBudget,
   crownCapacity,
-  partByNumber,
+  partFor,
+  CROWN_PART,
   winsToGo,
   type Taniwha,
 } from '@/lib/taniwha'
@@ -132,7 +133,9 @@ export default function TaniwhaCard({
 
   const bodyParts = building?.body_parts ?? 0
   const bodyDone = bodyParts >= BODY_PARTS_PER_TANIWHA
-  const nextPart = bodyDone ? partByNumber(10) : partByNumber(bodyParts + 1)
+  const nextPart = bodyDone
+    ? partFor(buildingTaniwha, CROWN_PART)
+    : partFor(buildingTaniwha, bodyParts + 1)
   const domainWins = building?.domain_number ? (wins[building.domain_number] ?? 0) : 0
   const condition = crownConditionLabel(buildingTaniwha, domainWins)
   const roomLeft = crownCapacity(points) - crowned.length
