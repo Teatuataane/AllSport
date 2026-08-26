@@ -219,8 +219,8 @@ export default function Home() {
               </h2>
               <div className="lp-rainbow-line" style={{ width: '60px', marginBottom: '28px' }} />
               <p style={{ color: '#cccccc', fontSize: '16px', lineHeight: 1.8, marginBottom: '16px' }}>
-                There are twelve taniwha, and each one is built from eleven parts — a body, a
-                head, a tail, four limbs, wings, a tongue, the tool of its own discipline, and
+                There are twelve taniwha, and each one is built from eleven parts — a head, a
+                body, a tail, four limbs, wings, a tongue, the tool of its own discipline, and
                 finally a crown.
               </p>
               <p style={{ color: '#888', fontSize: '15px', lineHeight: 1.8, marginBottom: '16px' }}>

@@ -78,9 +78,13 @@ export const WIN_MIN_FIELD = 3
 export const WHANAU_REFERRALS = 1
 
 // ── The ten parts ────────────────────────────────────────────────────────────
-// Award order is the assembly order, and it tells a story: the body assembles,
-// gains its wings, issues the wero, picks up the tool of its discipline, and
-// only then earns its crown.
+// Award order is the assembly order, and it tells a story: the head comes
+// first, the body forms beneath it, it grows limbs and wings, issues the wero,
+// picks up the tool of its discipline, and only then earns its crown.
+//
+// The head leads deliberately. It is the most recognisable single piece, so a
+// player's very first award already looks like a taniwha — where a headless
+// torso would not.
 //
 // `mauī` and `matau` keep the four limbs distinct without inventing anything.
 // Neck and head are ONE part — "you have unlocked a neck" was never going to
@@ -106,8 +110,8 @@ export type Part = {
 }
 
 export const PARTS: Part[] = [
-  { number: 1,  name: 'Tinana',       english: 'body',      slug: 'tinana' },
-  { number: 2,  name: 'Pane',         english: 'head',      slug: 'pane' },
+  { number: 1,  name: 'Pane',         english: 'head',      slug: 'pane' },
+  { number: 2,  name: 'Tinana',       english: 'body',      slug: 'tinana' },
   { number: 3,  name: 'Hiku',         english: 'tail',      slug: 'hiku' },
   { number: 4,  name: 'Ringa mauī',   english: 'left arm',  slug: 'ringa-maui' },
   { number: 5,  name: 'Ringa matau',  english: 'right arm', slug: 'ringa-matau' },

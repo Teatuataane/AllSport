@@ -81,13 +81,17 @@ describe('shape', () => {
     expect(IMPLEMENT_PART).toBe(10)
     expect(PARTS[CROWN_PART - 1].english).toBe('crown')
     expect(PARTS[IMPLEMENT_PART - 1].english).toBe('implement')
-    expect(partByNumber(1)?.name).toBe('Tinana')
+    expect(partByNumber(1)?.name).toBe('Pane')
     expect(partByNumber(12)).toBeNull()
   })
 
   it('merged neck into head — a neck was never worth an unlock on its own', () => {
     expect(PARTS.map(p => p.english)).not.toContain('neck')
-    expect(partByNumber(2)?.english).toBe('head')
+  })
+
+  it('leads with the head, so the first award already looks like a taniwha', () => {
+    expect(partByNumber(1)?.english).toBe('head')
+    expect(partByNumber(2)?.english).toBe('body')
   })
 
   it('gives every part and every taniwha a unique name and slug', () => {
@@ -343,7 +347,7 @@ describe('rank and styling', () => {
   })
 
   it('points every part at a slug-named asset', () => {
-    expect(partAssetSrc(WHANAU, PARTS[0])).toBe('/taniwha/whanau/tinana.png')
+    expect(partAssetSrc(WHANAU, PARTS[0])).toBe('/taniwha/whanau/pane.png')
     expect(partAssetSrc(taniwhaForDomain(3)!, PARTS[CROWN_PART - 1])).toBe('/taniwha/hiko/tikitiki.png')
     // Part ten resolves to the taniwha's OWN implement, not a generic slug.
     expect(partAssetSrc(taniwhaForDomain(3)!, PARTS[IMPLEMENT_PART - 1])).toBe('/taniwha/hiko/javelin.png')

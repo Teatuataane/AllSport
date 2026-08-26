@@ -38,7 +38,7 @@ time in vector.
 > from exactly the same eleven pieces, and each piece must be visually separable
 > from its neighbours, because the artwork will later be cut apart and stacked
 > up one piece at a time:
-> body, head, tail, left arm, right arm, left leg, right leg, wings, tongue,
+> head, body, tail, left arm, right arm, left leg, right leg, wings, tongue,
 > an implement it holds, and a crown or headdress.
 > So: keep the limbs clear of the body outline, don't let the tail cross the
 > legs, don't tuck a limb or a wing behind the torso, and hold the implement
@@ -127,36 +127,87 @@ Barbell and javelin are the two at risk of reading as a plain bar — draw the
 grip and the point deliberately. Ab wheel, oar, jump rope, racquet and bow are
 the strongest silhouettes in the set.
 
-## Then: turning a draft into the shippable asset
+## Exporting from Canva
 
-None of the above produces the file the app loads. Once a design is settled:
+Canva has no "export each layer separately", so the reliable method is one page
+per piece. It takes about ten minutes per taniwha and it is the only way to keep
+the pieces registered.
 
-- Redraw it as **vector**, on a **1000 × 1000** canvas.
-- Slice into **eleven** PNGs, all exported at 1000 × 1000 on the **same canvas with
-  the same registration** — this is the one thing that cannot be fixed later. If
-  the pieces are cropped individually they will not stack.
-- Transparent background, solid single colour (black is fine — the app recolours
-  it through a CSS mask, the same pipeline as the event icons).
-- Save to `public/taniwha/{taniwha-slug}/{part-slug}.png`.
+**Set the canvas up once.** Create the design as **Custom size, 1000 × 1000 px**.
+Not a template, not a resize afterwards — the page dimensions have to be fixed
+before you draw, because resizing later moves everything.
 
-Slugs, exactly:
+**Then, per taniwha:**
+
+1. Draw the whole creature on **one page**, with each piece as its own element or
+   group. Get it finished and positioned before you split anything.
+2. **Duplicate that page eleven times** (right-click the page → Duplicate). You
+   now have eleven identical copies.
+3. On page 1, **delete everything except the head**. On page 2, everything except
+   the body. And so on, in this order:
+
+   `pane · tinana · hiku · ringa-maui · ringa-matau · waewae-maui · waewae-matau · parirau · arero · {implement} · tikitiki`
+
+4. **Only ever delete. Never move, resize, nudge or re-centre anything.** The
+   moment a piece is repositioned, that piece is registered to a different origin
+   and the creature will come apart when the app stacks it. Everything must stay
+   exactly where it sat on the finished drawing.
+5. **Download → PNG → tick "Transparent background" → select all 11 pages.**
+   Transparent background is a Canva Pro feature; without it every piece exports
+   on a white square and the app will tint the whole square, not the shape.
+   Leave "Size" at 1× — what matters is that all eleven match, not how large.
+6. Canva names them `Design name - 1.png`, `- 2.png` … Rename to the slugs in
+   step 3 and drop them in `public/taniwha/{taniwha-slug}/`.
+
+**Colour does not matter.** The app uses the artwork as a *mask*: it reads only
+the alpha channel and fills the shape with the domain colour. So draw in black,
+or in the domain colour, or in hot pink — it all renders the same. What does
+matter is that the fill is **flat and fully opaque**. Any shading, gradient or
+partial transparency comes through as a partly-tinted patch.
+
+## Check the export before you draw the next one
+
+```
+node scripts/check-taniwha-art.mjs kaha
+```
+
+It verifies all eleven pieces are present, all the same canvas, square, large
+enough, and carrying a real alpha channel — then writes
+`public/taniwha/_preview.html`, which shows the taniwha assembling one piece at
+a time, masked and tinted exactly as the app does it.
+
+```
+open public/taniwha/_preview.html
+```
+
+**Watch for a piece that jumps, shifts or changes scale between frames.** That is
+the registration failure, and it is the one thing that cannot be fixed
+afterwards — it means the pieces were cropped individually rather than exported
+from one shared canvas. Everything else can be redrawn later; that has to be
+caught now. Run it on the first taniwha before drawing the other eleven.
+
+## The slugs
+
+Folders, one per taniwha:
 
 ```
 whanau  kaha  kaha-tinana  hiko  tere  manawanui
 manawaroa  ngawari  mataara  ruruku  tika  kahui
+```
 
-tinana  pane  hiku  ringa-maui  ringa-matau
+Files inside each, in assembly order:
+
+```
+pane  tinana  hiku  ringa-maui  ringa-matau
 waewae-maui  waewae-matau  parirau  arero  tikitiki
 
-# and part ten, the implement — one per taniwha, named for the tool itself:
+# plus part ten, the implement — named for the tool, one per taniwha:
 hands  barbell  rings  javelin  flag  ab-wheel
 oar  block  jump-rope  racquet  bow  taniwha
 ```
 
 A filename that is not the exact slug **falls back silently** and draws nothing,
-the same trap the event icons have.
-
----
+the same trap the event icons have. The checker catches this too.
 
 ## Before this becomes final art
 

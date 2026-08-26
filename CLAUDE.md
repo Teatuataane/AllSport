@@ -515,7 +515,7 @@ crowns are earned and waiting on points. Points are the binding constraint, exac
 calibration assumed. Do not "fix" this by lowering a threshold; it is the intended shape.
 
 - **Twelve taniwha, eleven parts each.** Te Taniwha ō te Whānau, one per domain, then
-  **Te Kāhui** for holding all eleven. Parts in order: Tinana (body), Pane (head), Hiku (tail),
+  **Te Kāhui** for holding all eleven. Parts in order: Pane (head), Tinana (body), Hiku (tail),
   Ringa mauī, Ringa matau, Waewae mauī, Waewae matau, Parirau (wings), Arero (tongue),
   **the implement**, **Tikitiki** (the crown).
 - **Part TEN is the implement, and it is the only part that differs between taniwha** — each

@@ -134,12 +134,14 @@ outside the ladder** (the existing DR-7 session-count milestones are the obvious
 ## 4. The eleven parts
 
 Award order is the assembly order, and it tells a story: the body assembles, gains its
-wings, issues the wero, picks up the tool of its discipline, and only then earns its crown.
+wings, issues the wero, picks up the tool of its discipline, and only then earns its crown. The
+head leads deliberately: it is the most recognisable single piece, so a player's very first
+award already looks like a taniwha.
 
 | Slot | Part | Te reo |
 |---|---|---|
-| 1 | body | **Tinana** |
-| 2 | head | **Pane** |
+| 1 | head | **Pane** |
+| 2 | body | **Tinana** |
 | 3 | tail | **Hiku** |
 | 4 | left arm | **Ringa mauī** |
 | 5 | right arm | **Ringa matau** |
