@@ -4,7 +4,7 @@
 //
 // A player collects TWELVE taniwha, each assembled from TEN named body parts.
 //
-//   1        Te Taniwha ō te Whānau   the AllSport taniwha, gold
+//   1        Te Taniwha o te Whānau   the AllSport taniwha, gold
 //   2 … 11   one taniwha per domain, in whatever order the player chooses
 //   12       Te Kāhui                 the assembly, awarded for holding all eleven
 //
@@ -74,7 +74,7 @@ export const EVENTS_PER_DOMAIN = 12
  * record — a field of one is a free win.
  */
 export const WIN_MIN_FIELD = 3
-/** Qualified referrals needed to crown Te Taniwha ō te Whānau. */
+/** Qualified referrals needed to crown Te Taniwha o te Whānau. */
 export const WHANAU_REFERRALS = 1
 
 // ── The ten parts ────────────────────────────────────────────────────────────
@@ -131,7 +131,7 @@ export function partByNumber(n: number): Part | null {
 }
 
 // ── The twelve taniwha ───────────────────────────────────────────────────────
-// Descriptive names, in the Te Taniwha ō te ___ form, rather than proper names.
+// Descriptive names, in the Te Taniwha o te ___ form, rather than proper names.
 // That needs nobody's permission and explains itself, and the award row stores
 // a name snapshot so a later rename costs nothing. Real taniwha from pūrākau
 // are iwi taonga — several Ōtautahi and Canterbury taniwha are named Ngāi Tahu
@@ -144,8 +144,12 @@ export function partByNumber(n: number): Part | null {
 //   · Kaha (Maximal Strength) vs Kaha Tinana (Calisthenics)
 //   · Manawanui (Anaerobic) vs Manawaroa (Aerobic)
 //   · Hiko, the Power TANIWHA, vs Hiku, the tail PART — one letter apart
-// And the macron on `ō` is itself unsettled; in this construction the particle
-// is usually the unmacronised `o`.
+//
+// The macron IS settled: the particle is the unmacronised `o`, decided August
+// 2026. `Te Taniwha o te ___` across all twelve. Nothing stores the display
+// name as a key — `slug` is the identity everywhere — so this was a display
+// change only, but `app/leaderboard/page.tsx` strips the prefix by literal
+// string match, so the two must not drift apart again.
 
 export type TaniwhaKind = 'whanau' | 'domain' | 'kahui'
 
@@ -177,7 +181,14 @@ export type Taniwha = {
   domainNumber: number | null
   /** Te reo colour name. */
   colourName: string
+  /** English name of the COLOUR — 'gold', 'red'. Not the taniwha's meaning. */
   english: string
+  /**
+   * Plain-English name, shown under the te reo one everywhere a player sees it.
+   * "Taniwha of Connection" is Tāne's; the rest follow its form and are MINE,
+   * so they need confirming alongside the four placeholder names above.
+   */
+  gloss: string
   /** Fill/accent. Hex, or RAINBOW. */
   accent: string
   /**
@@ -198,15 +209,17 @@ const domainTaniwha = (
   slug: string,
   colourName: string,
   english: string,
+  gloss: string,
   implement: Implement,
   opts: { inverted?: boolean } = {},
 ): Taniwha => ({
   kind: 'domain',
-  name: `Te Taniwha ō te ${word}`,
+  name: `Te Taniwha o te ${word}`,
   slug,
   domainNumber,
   colourName,
   english,
+  gloss,
   accent: DOMAIN_COLORS[domainNumber - 1],
   inverted: opts.inverted ?? false,
   crest: false,
@@ -215,11 +228,12 @@ const domainTaniwha = (
 
 export const WHANAU: Taniwha = {
   kind: 'whanau',
-  name: 'Te Taniwha ō te Whānau',
+  name: 'Te Taniwha o te Whānau',
   slug: 'whanau',
   domainNumber: null,
   colourName: 'Kōura',
   english: 'gold',
+  gloss: 'Taniwha of Connection',
   accent: '#F9B051',
   inverted: false,
   crest: true,
@@ -239,6 +253,7 @@ export const KAHUI: Taniwha = {
   domainNumber: null,
   colourName: 'Uenuku',
   english: 'rainbow',
+  gloss: 'The Assembly',
   accent: RAINBOW,
   inverted: false,
   crest: true,
@@ -254,25 +269,25 @@ const imp = (name: string, english: string, slug: string, from: string): Impleme
   ({ name, english, slug, from })
 
 export const DOMAIN_TANIWHA: Taniwha[] = [
-  domainTaniwha(1,  'Kaha',        'kaha',        'Whero',    'red',
+  domainTaniwha(1,  'Kaha',        'kaha',        'Whero',    'red',    'Taniwha of Strength',
     imp('Pou Taumaha', 'barbell',  'barbell',  'Deadlift, Clean & Press')),      // reo TBC
-  domainTaniwha(2,  'Kaha Tinana', 'kaha-tinana', 'Karaka',   'orange',
+  domainTaniwha(2,  'Kaha Tinana', 'kaha-tinana', 'Karaka',   'orange', 'Taniwha of Bodyweight Strength',
     imp('Porowhita',   'rings',    'rings',    'Iron Cross, Front Lever')),
-  domainTaniwha(3,  'Hiko',        'hiko',        'Kōwhai',   'yellow',
+  domainTaniwha(3,  'Hiko',        'hiko',        'Kōwhai',   'yellow', 'Taniwha of Power',
     imp('Tao',         'javelin',  'javelin',  'Javelin')),
-  domainTaniwha(4,  'Tere',        'tere',        'Kākāriki', 'green',
+  domainTaniwha(4,  'Tere',        'tere',        'Kākāriki', 'green',  'Taniwha of Speed',
     imp('Kara',        'flag',     'flag',     'Beach Flags, Capture the Flag')),
-  domainTaniwha(5,  'Manawanui',   'manawanui',   'Kahurangi','blue',
+  domainTaniwha(5,  'Manawanui',   'manawanui',   'Kahurangi','blue',   'Taniwha of Endurance',
     imp('Wīra',        'ab wheel', 'ab-wheel', 'Ab Rollout')),                   // reo TBC
-  domainTaniwha(6,  'Manawaroa',   'manawaroa',   'Poroporo', 'purple',
+  domainTaniwha(6,  'Manawaroa',   'manawaroa',   'Poroporo', 'purple', 'Taniwha of Stamina',
     imp('Hoe',         'oar',      'oar',      'Row Erg, Ski Erg')),
-  domainTaniwha(7,  'Ngāwari',     'ngawari',     'Māwhero',  'pink',
-    imp('Papa',        'block',    'block',    'Forward Split, Middle Split')),             // reo TBC
-  domainTaniwha(8,  'Mataara',     'mataara',     'Kōkōwai',  'brown',
+  domainTaniwha(7,  'Ngāwari',     'ngawari',     'Māwhero',  'pink',   'Taniwha of Flexibility',
+    imp('Papa',        'block',    'block',    'Forward Split, Middle Split')),  // reo TBC
+  domainTaniwha(8,  'Mataara',     'mataara',     'Kōkōwai',  'brown',  'Taniwha of Awareness',
     imp('Taura',       'jump rope','jump-rope','Jump Rope')),
-  domainTaniwha(9,  'Ruruku',      'ruruku',      'Mā',       'white',
+  domainTaniwha(9,  'Ruruku',      'ruruku',      'Mā',       'white',  'Taniwha of Coordination',
     imp('Rākete',      'racquet',  'racquet',  'Tennis, Badminton, Squash')),    // reo TBC
-  domainTaniwha(10, 'Tika',        'tika',        'Pango',    'black',
+  domainTaniwha(10, 'Tika',        'tika',        'Pango',    'black',  'Taniwha of Precision',
     imp('Kōpere',      'bow',      'bow',      'Archery'), { inverted: true }),
 ]
 
@@ -379,6 +394,84 @@ export function progressToNextSlot(points: number): number {
   return Math.min(Math.max(((points - from) / PART_POINTS) * 100, 0), 100)
 }
 
+/**
+ * Limbs held on one taniwha, counting the crown as the tenth.
+ *
+ * `body_parts` maxes at 9 because the crown is not bought with points, so a
+ * crowned taniwha STORES 9 and must DISPLAY 10. Getting this wrong shows a
+ * finished taniwha as "9 of 10" forever, which is the kind of off-by-one nobody
+ * reports because it looks deliberate.
+ */
+export function limbsHeld(
+  row: { body_parts: number; crowned_at: string | null } | null | undefined,
+): number {
+  if (!row) return 0
+  return Math.min(Math.max(row.body_parts, 0), BODY_PARTS_PER_TANIWHA) + (row.crowned_at ? 1 : 0)
+}
+
+// ── When each limb landed ────────────────────────────────────────────────────
+// `player_taniwha` stores a COUNT of limbs, not a row per limb, so there is no
+// stored date for "when did I earn Ringa matau". There is no plan to add one —
+// 110 award rows per player to render a list is not worth the write amplification
+// on every session close.
+//
+// It is derivable instead. Points only ever arrive at a session close, so running
+// the sessions in date order and watching for each 1,000-point boundary gives the
+// exact session in which every limb landed. Same technique the colours backfill
+// used to reconstruct real crossing dates rather than stamping them all with the
+// migration's timestamp.
+//
+// What this deliberately does NOT claim is WHICH taniwha each limb went on. A
+// player may switch at any time and that history is not stored either, so the
+// list says "limb 5" and names the session, never "Ringa matau of Te Tere".
+
+export type LimbCrossing = {
+  /** 1-based across the whole ladder, 1..110 body parts. Crowns are not slots. */
+  limb: number
+  /** Lifetime total the moment it landed. */
+  points: number
+  sessionId: string
+  sessionDate: string
+  location: string | null
+}
+
+export type PointsSession = {
+  session_id: string
+  session_date: string
+  location: string | null
+  /** placement + effort for that session. */
+  points: number
+}
+
+/**
+ * Sessions may arrive in any order; they are sorted here so a caller cannot get
+ * it wrong. `startingPoints` covers adjustment_points, which are not attributable
+ * to any session — they shift every crossing that follows.
+ */
+export function limbCrossings(sessions: PointsSession[], startingPoints = 0): LimbCrossing[] {
+  const ordered = [...sessions].sort((a, b) => a.session_date.localeCompare(b.session_date))
+  const out: LimbCrossing[] = []
+  let total = Math.max(startingPoints, 0)
+  let limb = Math.floor(total / PART_POINTS)
+
+  for (const s of ordered) {
+    total += Math.max(s.points, 0)
+    const reached = Math.min(Math.floor(total / PART_POINTS), TOTAL_BODY_PARTS)
+    while (limb < reached) {
+      limb += 1
+      out.push({
+        limb,
+        points: total,
+        sessionId: s.session_id,
+        sessionDate: s.session_date,
+        location: s.location,
+      })
+    }
+    if (limb >= TOTAL_BODY_PARTS) break
+  }
+  return out
+}
+
 // ── Crown conditions ─────────────────────────────────────────────────────────
 // Every crown needs crown ROOM (the points) and its ACT. Crowns are fungible:
 // the points open your Nth crown, and which taniwha takes it is whichever act
@@ -386,7 +479,7 @@ export function progressToNextSlot(points: number): number {
 // domain first and Whānau second — that is fine, and it is why these take
 // `crownsHeld` rather than a fixed position.
 
-/** Te Taniwha ō te Whānau: the only crown a player cannot earn alone. */
+/** Te Taniwha o te Whānau: the only crown a player cannot earn alone. */
 export function whanauCrownEarned(
   points: number,
   crownsHeld: number,

@@ -2254,10 +2254,29 @@ export default function SessionPage() {
         const { data: p } = await supabase.from('players').select('*').eq('id', authUser.id).single()
         if (p) {
           setPlayer(p as Record<string, unknown>)
-          setActivePlayerId(authUser.id)
-          setActiveTab(`player-${authUser.id}`) // land players on their own tab; leaderboard stays one tap away
           const { data: children } = await supabase.from('players').select('*').eq('parent_id', authUser.id).order('full_name')
           setFamilyMembers((children ?? []) as Record<string, unknown>[])
+
+          // Land on the tab of whoever the rest of the app is currently showing.
+          // A parent who switched to their child on the stats page and then taps
+          // PLAY expects to arrive on that child, not to hunt for them again.
+          //
+          // Only honoured when the stored id is genuinely one of this account's
+          // children — localStorage is user-editable, and the scoring screen is
+          // the one place where landing on the wrong tab could mis-attribute a
+          // score. Attribution itself is unchanged: a submission still belongs to
+          // whichever tab you are on.
+          let landOn = authUser.id
+          try {
+            const stored = window.localStorage.getItem('allsport_active_player_id')
+            if (stored && (children ?? []).some(c => (c as { id: string }).id === stored)) {
+              landOn = stored
+            }
+          } catch {
+            // Blocked site data. Fall back to the account holder.
+          }
+          setActivePlayerId(landOn)
+          setActiveTab(`player-${landOn}`) // leaderboard stays one tap away
           if ((p as Record<string, unknown>).role === 'judge') setIsJudge(true)
         }
       }

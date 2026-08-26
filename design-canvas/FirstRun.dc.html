@@ -1,0 +1,162 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@400;600;700&display=swap">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #0a0a0a; color: #ffffff;
+           font-family: 'Barlow', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #2371BB; text-decoration: none; }
+    a:hover { color: #4a90d9; }
+    .lab { font-family: 'Barlow Condensed', 'Barlow', sans-serif; text-transform: uppercase;
+           letter-spacing: 0.1em; font-weight: 600; }
+    .dis { font-family: 'Bebas Neue', Impact, sans-serif; letter-spacing: 0.05em; line-height: 1; }
+    .card { background: #111111; border: 1px solid #1e1e1e; border-radius: 16px; }
+    .tl { font-family: 'Barlow Condensed', sans-serif; text-transform: uppercase;
+          letter-spacing: 0.1em; font-weight: 600; font-size: 10px; }
+  </style>
+</helmet>
+
+<div style="width: 390px; background: #0a0a0a; position: relative; padding-bottom: 64px; min-height: 860px;">
+
+  <div style="height: 5px; background: linear-gradient(90deg,#EA4742,#F9B051,#F397C0,#B87DB5,#2371BB,#4DB26E);"></div>
+
+  <div style="height: 48px; display: flex; align-items: center; padding: 0 16px;
+              background: rgba(10,10,10,0.92); border-bottom: 1px solid #1e1e1e; gap: 9px;">
+    <div style="width: 30px; height: 22px; border-radius: 4px; background: linear-gradient(135deg,#EA4742,#2371BB); opacity: 0.9;"></div>
+    <span class="dis" style="font-size: 20px; color: #ffffff;">ALL<span style="color: #EA4742;">SPORT</span></span>
+  </div>
+
+  <!-- No player tabs: solo account, and no history to switch between anyway -->
+
+  <div style="padding: 20px 16px 0;">
+
+    <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 20px;">
+      <div style="width: 54px; height: 54px; border-radius: 15px; flex-shrink: 0; background: #1a1a1a;
+                  border: 1px solid #2a2a2a; display: flex; align-items: center; justify-content: center;">
+        <span class="dis" style="font-size: 26px; color: #666666;">M</span>
+      </div>
+      <div style="flex-grow: 1;">
+        <div class="dis" style="font-size: 30px; color: #ffffff;">AWHINA</div>
+        <div class="lab" style="font-size: 12px; color: #666666; margin-top: 3px;">WOMEN'S · NEW PLAYER</div>
+      </div>
+    </div>
+
+    <!-- The action, elevated: this is the one screen where action outranks stats -->
+    <div style="background: linear-gradient(135deg,#0d2140,#061428); border: 1px solid #2371BB55;
+                border-radius: 16px; padding: 22px; margin-bottom: 16px; box-shadow: 0 8px 30px rgba(35,113,187,0.22);">
+      <div class="lab" style="font-size: 11px; color: #4a7ab5; letter-spacing: 0.14em;">YOUR FIRST GAME</div>
+      <div class="dis" style="font-size: 32px; color: #ffffff; margin-top: 7px;">SATURDAY 9:00AM</div>
+      <div style="font-size: 13px; color: #8fa9c4; margin-top: 6px; line-height: 1.5;">AllSport HQ · 26 Carbine Place, Sockburn<br>in 2 days</div>
+      <div style="margin-top: 16px; display: flex; gap: 9px;">
+        <div class="lab" style="background: #2371BB; color: #ffffff; border-radius: 999px;
+                    padding: 11px 22px; font-size: 13px;">JOIN A GAME</div>
+        <div class="lab" style="border: 1px solid #2a2a2a; color: #b5b5b5; border-radius: 999px;
+                    padding: 11px 20px; font-size: 13px;">HOW IT WORKS</div>
+      </div>
+    </div>
+
+    <!-- Empty stats, honestly empty — no fake zeros dressed up as data -->
+    <div class="card" style="padding: 26px 20px; text-align: center; margin-bottom: 16px;">
+      <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#2a2a2a" stroke-width="1.6" stroke-linecap="round" style="margin-bottom: 14px;"><path d="M5 19V11"></path><path d="M12 19V5"></path><path d="M19 19v-5"></path></svg>
+      <div class="dis" style="font-size: 24px; color: #ffffff;">NO GAMES YET</div>
+      <div style="font-size: 13px; color: #666666; margin-top: 8px; line-height: 1.6; max-width: 260px; margin-left: auto; margin-right: auto;">Play one 100-minute session and this page fills with your placements, your personal bests and every event you've tried.</div>
+    </div>
+
+    <!-- The ladder, starting position — motivating, not empty -->
+    <div style="background: #000000; border: 2px solid #F9B051; border-radius: 16px; padding: 20px; margin-bottom: 16px;">
+      <div class="lab" style="font-size: 11px; color: #F9B051; opacity: 0.6; letter-spacing: 0.16em;">YOUR FIRST TANIWHA</div>
+      <div class="dis" style="font-size: 28px; color: #F9B051; margin-top: 5px; line-height: 1.05;">Te Taniwha o te Whānau</div>
+      <div style="font-size: 13px; color: #F9B051; opacity: 0.72; margin-top: 3px;">Taniwha of Connection</div>
+
+      <div style="display: flex; align-items: center; gap: 14px; margin: 16px 0 4px;">
+        <svg viewBox="0 0 165 150" width="150" height="136" style="flex-shrink: 0;">
+          <path d="M34,20 L40,6 L48,15 L56,4 L63,20 Z" fill="rgba(249,176,81,0.07)" stroke="rgba(249,176,81,0.28)" stroke-width="1" stroke-dasharray="2 2"></path>
+          <path d="M30,37 L13,43 L15,50 L32,44 Z" fill="rgba(249,176,81,0.07)" stroke="rgba(249,176,81,0.28)" stroke-width="1" stroke-dasharray="2 2"></path>
+          <path d="M112,76 Q142,64 154,38 Q146,74 118,94 Z" fill="rgba(249,176,81,0.07)" stroke="rgba(249,176,81,0.28)" stroke-width="1" stroke-dasharray="2 2"></path>
+          <ellipse cx="80" cy="78" rx="34" ry="25" fill="rgba(249,176,81,0.2)" stroke="#F9B051" stroke-width="1.6" stroke-dasharray="3 2.5"></ellipse>
+          <path d="M58,70 L45,45 L60,37 L71,62 Z" fill="rgba(249,176,81,0.07)" stroke="rgba(249,176,81,0.28)" stroke-width="1" stroke-dasharray="2 2"></path>
+          <ellipse cx="48" cy="32" rx="20" ry="15" fill="rgba(249,176,81,0.07)" stroke="rgba(249,176,81,0.28)" stroke-width="1" stroke-dasharray="2 2"></ellipse>
+          <path d="M60,94 L48,119 L60,125 L72,100 Z" fill="rgba(249,176,81,0.07)" stroke="rgba(249,176,81,0.28)" stroke-width="1" stroke-dasharray="2 2"></path>
+          <path d="M78,100 L74,125 L86,128 L92,104 Z" fill="rgba(249,176,81,0.07)" stroke="rgba(249,176,81,0.28)" stroke-width="1" stroke-dasharray="2 2"></path>
+          <path d="M96,98 L96,125 L108,125 L106,98 Z" fill="rgba(249,176,81,0.07)" stroke="rgba(249,176,81,0.28)" stroke-width="1" stroke-dasharray="2 2"></path>
+          <path d="M108,94 L115,121 L127,117 L118,92 Z" fill="rgba(249,176,81,0.07)" stroke="rgba(249,176,81,0.28)" stroke-width="1" stroke-dasharray="2 2"></path>
+        </svg>
+        <div style="flex-grow: 1; min-width: 0;">
+          <div class="dis" style="font-size: 32px; color: #F9B051;">0<span style="font-size: 18px; opacity: 0.5;"> / 11</span></div>
+          <div class="lab" style="font-size: 10px; color: #F9B051; opacity: 0.55; margin-top: 2px;">PIECES</div>
+          <div style="height: 1px; background: rgba(249,176,81,0.22); margin: 12px 0;"></div>
+          <div class="lab" style="font-size: 10px; color: #F9B051; opacity: 0.55;">FIRST UP</div>
+          <div style="font-size: 14px; color: #F9B051; font-weight: 600; margin-top: 3px;">Tinana</div>
+          <div style="font-size: 12px; color: #F9B051; opacity: 0.6;">head · piece 1</div>
+        </div>
+      </div>
+
+      <div style="margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(249,176,81,0.22);
+                  font-size: 12px; color: #F9B051; opacity: 0.72; line-height: 1.5;">A good session is worth 100–200 points. Every 1,000 places one piece — there are twelve taniwha to collect.</div>
+    </div>
+
+    <div class="card" style="padding: 16px;">
+      <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 12px;">
+        <div class="lab" style="font-size: 11px; color: #666666; letter-spacing: 0.14em;">EVENT COVERAGE</div>
+        <div><span class="dis" style="font-size: 20px; color: #444444;">0</span><span class="lab" style="font-size: 12px; color: #444444;"> / 120</span></div>
+      </div>
+      <div style="display: flex; gap: 3px; height: 10px; margin-bottom: 6px;">
+        <div style="flex-grow: 1; background: #171717; border-radius: 3px;"></div>
+        <div style="flex-grow: 1; background: #171717; border-radius: 3px;"></div>
+        <div style="flex-grow: 1; background: #171717; border-radius: 3px;"></div>
+        <div style="flex-grow: 1; background: #171717; border-radius: 3px;"></div>
+        <div style="flex-grow: 1; background: #171717; border-radius: 3px;"></div>
+        <div style="flex-grow: 1; background: #171717; border-radius: 3px;"></div>
+        <div style="flex-grow: 1; background: #171717; border-radius: 3px;"></div>
+        <div style="flex-grow: 1; background: #171717; border-radius: 3px;"></div>
+        <div style="flex-grow: 1; background: #171717; border-radius: 3px;"></div>
+        <div style="flex-grow: 1; background: #171717; border-radius: 3px;"></div>
+      </div>
+      <div class="lab" style="font-size: 9px; color: #333333;">TEN DOMAINS · TEN TANIWHA · WIN 9 OF 12 TO CROWN ONE</div>
+      <div class="lab" style="font-size: 12px; color: #2371BB; text-align: center; padding: 15px 0 0;
+                  border-top: 1px solid #1e1e1e; margin-top: 14px;">SEE WHAT YOU'LL PLAY →</div>
+    </div>
+
+  </div>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 64px;
+              background: rgba(10,10,10,0.96); border-top: 1px solid #1e1e1e;
+              display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: start; padding-top: 9px;">
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5c5c5c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M10 8.5l6 3.5-6 3.5z"></path></svg>
+      <span class="tl" style="color: #5c5c5c;">PLAY</span>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round"><path d="M5 19V11"></path><path d="M12 19V5"></path><path d="M19 19v-5"></path></svg>
+      <span class="tl" style="color: #ffffff;">STATS</span>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5c5c5c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v6a5 5 0 01-10 0z"></path><path d="M7 6H4v1a3 3 0 003 3"></path><path d="M17 6h3v1a3 3 0 01-3 3"></path><path d="M9 20h6"></path><path d="M12 15v5"></path></svg>
+      <span class="tl" style="color: #5c5c5c;">BOARD</span>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5c5c5c" stroke-width="1.8" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="2"></rect><rect x="13" y="4" width="7" height="7" rx="2"></rect><rect x="4" y="13" width="7" height="7" rx="2"></rect><rect x="13" y="13" width="7" height="7" rx="2"></rect></svg>
+      <span class="tl" style="color: #5c5c5c;">EVENTS</span>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5c5c5c" stroke-width="1.8" stroke-linecap="round"><circle cx="6" cy="12" r="1.4"></circle><circle cx="12" cy="12" r="1.4"></circle><circle cx="18" cy="12" r="1.4"></circle></svg>
+      <span class="tl" style="color: #5c5c5c;">MORE</span>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":390,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

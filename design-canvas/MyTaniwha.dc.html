@@ -1,0 +1,357 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@400;600;700&display=swap">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #0a0a0a; color: #ffffff;
+           font-family: 'Barlow', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #2371BB; text-decoration: none; }
+    a:hover { color: #4a90d9; }
+    .lab { font-family: 'Barlow Condensed', 'Barlow', sans-serif; text-transform: uppercase;
+           letter-spacing: 0.1em; font-weight: 600; }
+    .dis { font-family: 'Bebas Neue', Impact, sans-serif; letter-spacing: 0.05em; line-height: 1; }
+    .tl { font-family: 'Barlow Condensed', sans-serif; text-transform: uppercase;
+          letter-spacing: 0.1em; font-weight: 600; font-size: 10px; }
+    .trow { display: flex; align-items: center; gap: 12px; padding: 13px 14px;
+            border-radius: 12px; background: #111111; border: 1px solid #1a1a1a; }
+    .seg { display: flex; gap: 2px; margin-top: 6px; }
+    .seg > div { flex: 1; height: 4px; border-radius: 2px; }
+    .limb { display: flex; align-items: center; gap: 10px; padding: 8px 0; }
+  </style>
+</helmet>
+
+<div style="width: 390px; background: #0a0a0a; position: relative; padding-bottom: 76px;">
+
+  <div style="height: 5px; background: linear-gradient(90deg,#EA4742,#F9B051,#F397C0,#B87DB5,#2371BB,#4DB26E);"></div>
+
+  <div style="height: 48px; display: flex; align-items: center; padding: 0 16px;
+              background: rgba(10,10,10,0.92); border-bottom: 1px solid #1e1e1e; gap: 12px;">
+    <span style="color: #888888; font-size: 19px;">&lsaquo;</span>
+    <span class="dis" style="font-size: 20px; color: #ffffff;">MY TANIWHA</span>
+  </div>
+
+  <div style="padding: 16px 16px 0;">
+
+    <!-- Four numbers across the top -->
+    <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 16px;">
+      <div style="background: #111111; border: 1px solid #1e1e1e; border-radius: 14px; padding: 13px 6px; text-align: center;">
+        <div class="dis" style="font-size: 24px; color: #ffffff;">1<span style="font-size: 13px; color: #555555;">/12</span></div>
+        <div class="lab" style="font-size: 9px; color: #666666; margin-top: 3px;">TANIWHA</div>
+      </div>
+      <div style="background: #111111; border: 1px solid #1e1e1e; border-radius: 14px; padding: 13px 6px; text-align: center;">
+        <div class="dis" style="font-size: 24px; color: #F9B051;">5<span style="font-size: 13px; color: #555555;">/110</span></div>
+        <div class="lab" style="font-size: 9px; color: #666666; margin-top: 3px;">PIECES</div>
+      </div>
+      <div style="background: #111111; border: 1px solid #1e1e1e; border-radius: 14px; padding: 13px 6px; text-align: center;">
+        <div class="dis" style="font-size: 24px; color: #ffffff;">0<span style="font-size: 13px; color: #555555;">/11</span></div>
+        <div class="lab" style="font-size: 9px; color: #666666; margin-top: 3px;">CROWNS</div>
+      </div>
+      <div style="background: #111111; border: 1px solid #1e1e1e; border-radius: 14px; padding: 13px 6px; text-align: center;">
+        <div class="dis" style="font-size: 24px; color: #ffffff;">5,720</div>
+        <div class="lab" style="font-size: 9px; color: #666666; margin-top: 3px;">POINTS</div>
+      </div>
+    </div>
+
+    <div style="font-size: 12.5px; color: #666666; line-height: 1.55; margin-bottom: 18px;">
+      Every 1,000 points places one piece. Ten pieces make a body — the eleventh, the
+      <span style="color: #F9B051;">Tikitiki</span>, has to be earned. Your pieces stay
+      where you put them, so switching changes what your next pieces build, not what you
+      already hold.
+    </div>
+
+    <!-- EXPANDED: Whānau, showing its ten limbs -->
+    <div style="background: #000000; border: 2px solid #F9B051; border-radius: 14px;
+                padding: 14px 15px; margin-bottom: 8px;">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="width: 40px; height: 40px; border-radius: 11px; flex-shrink: 0; background: #F9B05118;
+                    border: 1px solid #F9B05155; display: flex; align-items: center; justify-content: center;">
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#F9B051" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l3-9 6 5 6-5 3 9z"></path></svg>
+        </div>
+        <div style="flex-grow: 1; min-width: 0;">
+          <div style="font-size: 14.5px; font-weight: 600; color: #F9B051;">Te Taniwha o te Whānau</div>
+          <div style="font-size: 12px; color: #F9B051; opacity: 0.6; margin-top: 1px;">Taniwha of Connection</div>
+        </div>
+        <div style="text-align: right; flex-shrink: 0;">
+          <div class="dis" style="font-size: 18px; color: #F9B051;">5/11</div>
+          <div class="lab" style="font-size: 9px; color: #F9B051; opacity: 0.5;">PIECES</div>
+        </div>
+        <span style="color: #F9B051; font-size: 12px; transform: rotate(90deg);">›</span>
+      </div>
+
+      <div style="margin-top: 13px; padding-top: 12px; border-top: 1px solid rgba(249,176,81,0.22);">
+        <div class="limb">
+          <div style="width: 22px; height: 22px; border-radius: 6px; background: #F9B051; flex-shrink: 0;
+                      display: flex; align-items: center; justify-content: center;">
+            <span class="dis" style="font-size: 12px; color: #000000;">1</span></div>
+          <span style="font-size: 13.5px; color: #F9B051; flex-grow: 1;">Tinana</span>
+          <span style="font-size: 12px; color: #F9B051; opacity: 0.5;">body</span>
+        </div>
+        <div class="limb">
+          <div style="width: 22px; height: 22px; border-radius: 6px; background: #F9B051; flex-shrink: 0;
+                      display: flex; align-items: center; justify-content: center;">
+            <span class="dis" style="font-size: 12px; color: #000000;">2</span></div>
+          <span style="font-size: 13.5px; color: #F9B051; flex-grow: 1;">Kakī</span>
+          <span style="font-size: 12px; color: #F9B051; opacity: 0.5;">neck</span>
+        </div>
+        <div class="limb">
+          <div style="width: 22px; height: 22px; border-radius: 6px; background: #F9B051; flex-shrink: 0;
+                      display: flex; align-items: center; justify-content: center;">
+            <span class="dis" style="font-size: 12px; color: #000000;">3</span></div>
+          <span style="font-size: 13.5px; color: #F9B051; flex-grow: 1;">Pane</span>
+          <span style="font-size: 12px; color: #F9B051; opacity: 0.5;">head</span>
+        </div>
+        <div class="limb">
+          <div style="width: 22px; height: 22px; border-radius: 6px; background: #F9B051; flex-shrink: 0;
+                      display: flex; align-items: center; justify-content: center;">
+            <span class="dis" style="font-size: 12px; color: #000000;">4</span></div>
+          <span style="font-size: 13.5px; color: #F9B051; flex-grow: 1;">Hiku</span>
+          <span style="font-size: 12px; color: #F9B051; opacity: 0.5;">tail</span>
+        </div>
+        <div class="limb">
+          <div style="width: 22px; height: 22px; border-radius: 6px; background: #F9B051; flex-shrink: 0;
+                      display: flex; align-items: center; justify-content: center;">
+            <span class="dis" style="font-size: 12px; color: #000000;">5</span></div>
+          <span style="font-size: 13.5px; color: #F9B051; flex-grow: 1;">Ringa mauī</span>
+          <span style="font-size: 12px; color: #F9B051; opacity: 0.5;">left arm</span>
+        </div>
+
+        <div class="limb" style="background: rgba(249,176,81,0.07); border-radius: 8px; padding: 8px 9px; margin: 3px -9px;">
+          <div style="width: 22px; height: 22px; border-radius: 6px; flex-shrink: 0; border: 1.5px dashed #F9B051;
+                      display: flex; align-items: center; justify-content: center;">
+            <span class="dis" style="font-size: 12px; color: #F9B051;">6</span></div>
+          <span style="font-size: 13.5px; color: #F9B051; flex-grow: 1; font-weight: 600;">Ringa matau</span>
+          <span class="lab" style="font-size: 10px; color: #F9B051;">720 / 1,000</span>
+        </div>
+
+        <div class="limb" style="opacity: 0.38;">
+          <div style="width: 22px; height: 22px; border-radius: 6px; flex-shrink: 0; border: 1px solid rgba(249,176,81,0.5);
+                      display: flex; align-items: center; justify-content: center;">
+            <span class="dis" style="font-size: 12px; color: #F9B051;">7</span></div>
+          <span style="font-size: 13.5px; color: #F9B051; flex-grow: 1;">Waewae mauī</span>
+          <span style="font-size: 12px; color: #F9B051;">left leg</span>
+        </div>
+        <div class="limb" style="opacity: 0.38;">
+          <div style="width: 22px; height: 22px; border-radius: 6px; flex-shrink: 0; border: 1px solid rgba(249,176,81,0.5);
+                      display: flex; align-items: center; justify-content: center;">
+            <span class="dis" style="font-size: 12px; color: #F9B051;">8</span></div>
+          <span style="font-size: 13.5px; color: #F9B051; flex-grow: 1;">Waewae matau</span>
+          <span style="font-size: 12px; color: #F9B051;">right leg</span>
+        </div>
+        <div class="limb" style="opacity: 0.38;">
+          <div style="width: 22px; height: 22px; border-radius: 6px; flex-shrink: 0; border: 1px solid rgba(249,176,81,0.5);
+                      display: flex; align-items: center; justify-content: center;">
+            <span class="dis" style="font-size: 12px; color: #F9B051;">9</span></div>
+          <span style="font-size: 13.5px; color: #F9B051; flex-grow: 1;">Arero</span>
+          <span style="font-size: 12px; color: #F9B051;">tongue</span>
+        </div>
+
+        <div class="limb" style="border-top: 1px solid rgba(249,176,81,0.22); margin-top: 5px; padding-top: 12px;">
+          <div style="width: 22px; height: 22px; border-radius: 6px; flex-shrink: 0; border: 1px solid rgba(249,176,81,0.5);
+                      display: flex; align-items: center; justify-content: center;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#F9B051" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l3-9 6 5 6-5 3 9z"></path></svg>
+          </div>
+          <div style="flex-grow: 1;">
+            <div style="font-size: 13.5px; color: #F9B051; font-weight: 600;">Tikitiki <span style="opacity: 0.5; font-weight: 400;">crown</span></div>
+            <div style="font-size: 11.5px; color: #F9B051; opacity: 0.6; margin-top: 1px;">Bring in one player who reaches ten sessions</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- COLLAPSED: the ten domains -->
+    <div style="display: flex; flex-direction: column; gap: 7px; margin-bottom: 16px;">
+
+      <div class="trow">
+        <div style="width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0; background: #EA474222; border: 1px solid #EA474255;"></div>
+        <div style="flex-grow: 1; min-width: 0;">
+          <div style="font-size: 14px; font-weight: 600; color: #ffffff;">Te Taniwha o te Kaha</div>
+          <div style="font-size: 11.5px; color: #666666; margin-top: 1px;">Taniwha of Strength · 7 of 9 wins</div>
+          <div class="seg">
+            <div style="background: #2a2a2a;"></div><div style="background: #2a2a2a;"></div><div style="background: #2a2a2a;"></div>
+            <div style="background: #2a2a2a;"></div><div style="background: #2a2a2a;"></div><div style="background: #2a2a2a;"></div>
+            <div style="background: #2a2a2a;"></div><div style="background: #2a2a2a;"></div><div style="background: #2a2a2a;"></div>
+            <div style="background: #2a2a2a;"></div>
+          </div>
+        </div>
+        <div style="text-align: right; flex-shrink: 0;">
+          <div class="dis" style="font-size: 17px; color: #555555;">0/11</div>
+          <div class="lab" style="font-size: 9px; color: #555555;">PIECES</div>
+        </div>
+        <span style="color: #444444; font-size: 12px;">›</span>
+      </div>
+
+      <div class="trow">
+        <div style="width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0; background: #F9B05122; border: 1px solid #F9B05155;"></div>
+        <div style="flex-grow: 1; min-width: 0;">
+          <div style="font-size: 14px; font-weight: 600; color: #ffffff;">Te Taniwha o te Kaha Tinana</div>
+          <div style="font-size: 11.5px; color: #666666; margin-top: 1px;">Taniwha of Bodyweight Strength · 2 of 9 wins</div>
+        </div>
+        <div style="text-align: right; flex-shrink: 0;">
+          <div class="dis" style="font-size: 17px; color: #555555;">0/11</div>
+          <div class="lab" style="font-size: 9px; color: #555555;">PIECES</div>
+        </div>
+        <span style="color: #444444; font-size: 12px;">›</span>
+      </div>
+
+      <div class="trow">
+        <div style="width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0; background: #F9E05122; border: 1px solid #F9E05155;"></div>
+        <div style="flex-grow: 1; min-width: 0;">
+          <div style="font-size: 14px; font-weight: 600; color: #ffffff;">Te Taniwha o te Hiko</div>
+          <div style="font-size: 11.5px; color: #666666; margin-top: 1px;">Taniwha of Power · 4 of 9 wins</div>
+        </div>
+        <div style="text-align: right; flex-shrink: 0;">
+          <div class="dis" style="font-size: 17px; color: #555555;">0/11</div>
+          <div class="lab" style="font-size: 9px; color: #555555;">PIECES</div>
+        </div>
+        <span style="color: #444444; font-size: 12px;">›</span>
+      </div>
+
+      <div class="trow">
+        <div style="width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0; background: #4DB26E22; border: 1px solid #4DB26E55;"></div>
+        <div style="flex-grow: 1; min-width: 0;">
+          <div style="font-size: 14px; font-weight: 600; color: #ffffff;">Te Taniwha o te Tere</div>
+          <div style="font-size: 11.5px; color: #666666; margin-top: 1px;">Taniwha of Speed · 1 of 9 wins</div>
+        </div>
+        <div style="text-align: right; flex-shrink: 0;">
+          <div class="dis" style="font-size: 17px; color: #555555;">0/11</div>
+          <div class="lab" style="font-size: 9px; color: #555555;">PIECES</div>
+        </div>
+        <span style="color: #444444; font-size: 12px;">›</span>
+      </div>
+
+      <div class="trow">
+        <div style="width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0; background: #2371BB22; border: 1px solid #2371BB55;"></div>
+        <div style="flex-grow: 1; min-width: 0;">
+          <div style="font-size: 14px; font-weight: 600; color: #ffffff;">Te Taniwha o te Manawanui</div>
+          <div style="font-size: 11.5px; color: #666666; margin-top: 1px;">Taniwha of Endurance · 3 of 9 wins</div>
+        </div>
+        <div style="text-align: right; flex-shrink: 0;">
+          <div class="dis" style="font-size: 17px; color: #555555;">0/11</div>
+          <div class="lab" style="font-size: 9px; color: #555555;">PIECES</div>
+        </div>
+        <span style="color: #444444; font-size: 12px;">›</span>
+      </div>
+
+      <div class="trow">
+        <div style="width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0; background: #B87DB522; border: 1px solid #B87DB555;"></div>
+        <div style="flex-grow: 1; min-width: 0;">
+          <div style="font-size: 14px; font-weight: 600; color: #ffffff;">Te Taniwha o te Manawaroa</div>
+          <div style="font-size: 11.5px; color: #666666; margin-top: 1px;">Taniwha of Stamina · 2 of 9 wins</div>
+        </div>
+        <div style="text-align: right; flex-shrink: 0;">
+          <div class="dis" style="font-size: 17px; color: #555555;">0/11</div>
+          <div class="lab" style="font-size: 9px; color: #555555;">PIECES</div>
+        </div>
+        <span style="color: #444444; font-size: 12px;">›</span>
+      </div>
+
+      <div class="trow">
+        <div style="width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0; background: #F397C022; border: 1px solid #F397C055;"></div>
+        <div style="flex-grow: 1; min-width: 0;">
+          <div style="font-size: 14px; font-weight: 600; color: #ffffff;">Te Taniwha o te Ngāwari</div>
+          <div style="font-size: 11.5px; color: #666666; margin-top: 1px;">Taniwha of Flexibility · 0 of 9 wins</div>
+        </div>
+        <div style="text-align: right; flex-shrink: 0;">
+          <div class="dis" style="font-size: 17px; color: #555555;">0/11</div>
+          <div class="lab" style="font-size: 9px; color: #555555;">PIECES</div>
+        </div>
+        <span style="color: #444444; font-size: 12px;">›</span>
+      </div>
+
+      <div class="trow">
+        <div style="width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0; background: #B8733322; border: 1px solid #B8733366;"></div>
+        <div style="flex-grow: 1; min-width: 0;">
+          <div style="font-size: 14px; font-weight: 600; color: #ffffff;">Te Taniwha o te Mataara</div>
+          <div style="font-size: 11.5px; color: #666666; margin-top: 1px;">Taniwha of Awareness · 1 of 9 wins</div>
+        </div>
+        <div style="text-align: right; flex-shrink: 0;">
+          <div class="dis" style="font-size: 17px; color: #555555;">0/11</div>
+          <div class="lab" style="font-size: 9px; color: #555555;">PIECES</div>
+        </div>
+        <span style="color: #444444; font-size: 12px;">›</span>
+      </div>
+
+      <div class="trow">
+        <div style="width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0; background: #F2F2F218; border: 1px solid #F2F2F244;"></div>
+        <div style="flex-grow: 1; min-width: 0;">
+          <div style="font-size: 14px; font-weight: 600; color: #ffffff;">Te Taniwha o te Ruruku</div>
+          <div style="font-size: 11.5px; color: #666666; margin-top: 1px;">Taniwha of Coordination · 3 of 9 wins</div>
+        </div>
+        <div style="text-align: right; flex-shrink: 0;">
+          <div class="dis" style="font-size: 17px; color: #555555;">0/11</div>
+          <div class="lab" style="font-size: 9px; color: #555555;">PIECES</div>
+        </div>
+        <span style="color: #444444; font-size: 12px;">›</span>
+      </div>
+
+      <div class="trow">
+        <div style="width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0; background: #8C919922; border: 1px solid #8C919966;"></div>
+        <div style="flex-grow: 1; min-width: 0;">
+          <div style="font-size: 14px; font-weight: 600; color: #ffffff;">Te Taniwha o te Tika</div>
+          <div style="font-size: 11.5px; color: #666666; margin-top: 1px;">Taniwha of Precision · 2 of 9 wins</div>
+        </div>
+        <div style="text-align: right; flex-shrink: 0;">
+          <div class="dis" style="font-size: 17px; color: #555555;">0/11</div>
+          <div class="lab" style="font-size: 9px; color: #555555;">PIECES</div>
+        </div>
+        <span style="color: #444444; font-size: 12px;">›</span>
+      </div>
+    </div>
+
+    <div style="border: 2px solid transparent; border-radius: 12px;
+                background-image: linear-gradient(#000,#000), linear-gradient(90deg,#EA4742,#F9B051,#F397C0,#B87DB5,#2371BB,#4DB26E);
+                background-origin: border-box; background-clip: padding-box, border-box;
+                padding: 15px 16px; display: flex; align-items: center; gap: 12px; opacity: 0.55; margin-bottom: 18px;">
+      <div style="width: 40px; height: 40px; border-radius: 11px; flex-shrink: 0;
+                  background: linear-gradient(135deg,#EA4742,#F9B051,#B87DB5,#2371BB); opacity: 0.35;"></div>
+      <div style="flex-grow: 1; min-width: 0;">
+        <div style="font-size: 14.5px; font-weight: 600; color: #ffffff;">Te Kāhui</div>
+        <div style="font-size: 11.5px; color: #888888; margin-top: 1px;">The Assembly · hold all eleven crowned</div>
+      </div>
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#666666" stroke-width="1.9" stroke-linecap="round" style="flex-shrink: 0;"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 018 0v3"></path></svg>
+    </div>
+
+  </div>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 76px;
+              background: rgba(10,10,10,0.97); border-top: 1px solid #1e1e1e;
+              box-shadow: 0 -12px 28px rgba(0,0,0,0.65);
+              display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: start; padding-top: 11px;">
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5c5c5c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M10 8.5l6 3.5-6 3.5z"></path></svg>
+      <span class="tl" style="color: #5c5c5c;">PLAY</span>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round"><path d="M5 19V11"></path><path d="M12 19V5"></path><path d="M19 19v-5"></path></svg>
+      <span class="tl" style="color: #ffffff;">STATS</span>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5c5c5c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v6a5 5 0 01-10 0z"></path><path d="M7 6H4v1a3 3 0 003 3"></path><path d="M17 6h3v1a3 3 0 01-3 3"></path><path d="M9 20h6"></path><path d="M12 15v5"></path></svg>
+      <span class="tl" style="color: #5c5c5c;">BOARD</span>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5c5c5c" stroke-width="1.8" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="2"></rect><rect x="13" y="4" width="7" height="7" rx="2"></rect><rect x="4" y="13" width="7" height="7" rx="2"></rect><rect x="13" y="13" width="7" height="7" rx="2"></rect></svg>
+      <span class="tl" style="color: #5c5c5c;">EVENTS</span>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5c5c5c" stroke-width="1.8" stroke-linecap="round"><circle cx="6" cy="12" r="1.4"></circle><circle cx="12" cy="12" r="1.4"></circle><circle cx="18" cy="12" r="1.4"></circle></svg>
+      <span class="tl" style="color: #5c5c5c;">MORE</span>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":390,"height":1980}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

@@ -40,7 +40,7 @@ describe('the live crown alert', () => {
     const a = taniwhaAlerts(input(speedBuilder()))
     expect(a).toHaveLength(1)
     expect(a[0].state).toBe('earned')
-    expect(a[0].taniwha.name).toBe('Te Taniwha ō te Tere')
+    expect(a[0].taniwha.name).toBe('Te Taniwha o te Tere')
     expect(a[0].crownOrdinal).toBe(2)
     expect(a[0].pointsShortfall).toBe(0)
     expect(a[0].winsShortfall).toBe(0)

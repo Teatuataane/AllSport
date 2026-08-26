@@ -3,7 +3,15 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { createClient, getSessionUser } from '@/lib/supabase-browser'
+import { createClient } from '@/lib/supabase-browser'
+import { useActivePlayer } from '@/lib/useActivePlayer'
+import PlayerTabs, { ViewingAsBanner } from '@/components/PlayerTabs'
+import {
+  computePercentiles, domainPercentiles, type DomainPercentile,
+} from '@/lib/percentile'
+import type {
+  RatingResultRow, RatingEventRow, RatingPlayerRow,
+} from '@/lib/rating'
 import { EVENTS, DOMAIN_ORDER, getEventsByDomain } from '@/lib/eventData'
 import { formatNZDate } from '@/lib/dates'
 import DomainIcon from '@/components/DomainIcon'
@@ -63,9 +71,87 @@ function sessionYear(session_date: string): number {
   return parseInt(session_date.slice(0, 4), 10)
 }
 
+const EVENT_DOMAIN = new Map(EVENTS.map(e => [e.name, e.domainNumber]))
+
+
+// ── Strongest to weakest ─────────────────────────────────────────────────────
+// Answers "what am I good at, what am I bad at" before a single domain is
+// opened. Top % is where the player's best sits against everyone in their
+// division pool who has played that event, so LOWER is better and the bar is
+// drawn from its inverse.
+function DomainComparison({ domains }: { domains: DomainPercentile[] }) {
+  const rated = domains
+    .filter(d => d.topPct != null)
+    .sort((a, b) => (a.topPct as number) - (b.topPct as number))
+  if (rated.length === 0) return null
+
+  return (
+    <div style={{
+      background: '#111', border: '1px solid #1e1e1e', borderRadius: '16px',
+      padding: '15px 16px', marginBottom: '18px',
+    }}>
+      <div style={{
+        display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+        marginBottom: '11px',
+      }}>
+        <span style={{
+          fontFamily: 'var(--font-label)', textTransform: 'uppercase',
+          letterSpacing: '0.14em', fontWeight: 600, fontSize: '11px', color: '#666',
+        }}>
+          Strongest to weakest
+        </span>
+        <span style={{
+          fontFamily: 'var(--font-label)', textTransform: 'uppercase',
+          letterSpacing: '0.1em', fontWeight: 600, fontSize: '10px', color: '#444',
+        }}>
+          Longer = stronger
+        </span>
+      </div>
+
+      {rated.map(d => {
+        const colour = domainColor(d.domainNumber)
+        const pct = Math.max(0, Math.min(100, 100 - (d.topPct as number)))
+        return (
+          <div key={d.domainNumber} style={{ display: 'flex', alignItems: 'center', gap: '9px', padding: '4px 0' }}>
+            <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: colour, flexShrink: 0 }} />
+            <span style={{ fontSize: '12.5px', color: '#fff', width: '104px', flexShrink: 0 }}>
+              {DOMAIN_ORDER[d.domainNumber - 1]}
+            </span>
+            <div style={{ flexGrow: 1, height: '7px', background: '#171717', borderRadius: '4px', overflow: 'hidden' }}>
+              <div style={{ width: `${pct}%`, height: '100%', background: colour }} />
+            </div>
+            <span style={{
+              fontFamily: 'var(--font-label)', fontSize: '11px', color: '#888',
+              width: '46px', textAlign: 'right', flexShrink: 0,
+            }}>
+              TOP {d.topPct}%
+            </span>
+          </div>
+        )
+      })}
+
+      <div style={{
+        fontSize: '11.5px', color: '#555', lineHeight: 1.5, marginTop: '11px',
+        paddingTop: '11px', borderTop: '1px solid #1e1e1e',
+      }}>
+        Top % is where your best sits against everyone in your division pool who
+        has played that event. Lower is better.
+      </div>
+    </div>
+  )
+}
+
 export default function PRsPage() {
   const router = useRouter()
+  const { loading: playerLoading, userId, activePlayerId } = useActivePlayer()
   const [loading, setLoading] = useState(true)
+  // Average placement per event. Its own query on purpose: `event_placement`
+  // ships in 20260824220633, and selecting a column that does not exist yet
+  // returns 42703 and takes the WHOLE results query down — where a separate one
+  // just leaves this column blank. Same reasoning as the wins query below.
+  const [avgPlace, setAvgPlace] = useState<Record<string, number>>({})
+  // Percentiles, for the strongest-to-weakest comparison at the top.
+  const [domainPct, setDomainPct] = useState<DomainPercentile[] | null>(null)
   const [results, setResults] = useState<PRResult[]>([])
   const [tab, setTab] = useState<'season' | 'all'>('season')
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
@@ -82,9 +168,12 @@ export default function PRsPage() {
   const [winsReady, setWinsReady] = useState(false)
 
   useEffect(() => {
+    if (playerLoading) return
+    if (!userId) { router.replace('/play'); return }
+    if (!activePlayerId) return
     const load = async () => {
-      const user = await getSessionUser()
-      if (!user) { router.replace('/play'); return }
+      const user = { id: activePlayerId }
+      setLoading(true)
 
       // Both loads at once. They are separate queries on purpose — folding
       // event_placement into the results select would take the whole page down
@@ -138,7 +227,53 @@ export default function PRsPage() {
       setLoading(false)
     }
     load()
-  }, [])
+  }, [playerLoading, userId, activePlayerId, router])
+
+  // Average placement per event — separate and guarded, see above.
+  useEffect(() => {
+    if (!activePlayerId) return
+    let cancelled = false
+    supabase
+      .from('results')
+      .select('event_placement, session_events!inner(event_name)')
+      .eq('player_id', activePlayerId)
+      .not('event_placement', 'is', null)
+      .then(({ data, error }) => {
+        if (cancelled) return
+        if (error) {
+          console.warn('event_placement unavailable — average placement hidden', error.message)
+          return
+        }
+        const sums: Record<string, { n: number; total: number }> = {}
+        for (const r of (data ?? []) as any[]) {
+          const name = r.session_events?.event_name
+          if (!name) continue
+          if (!sums[name]) sums[name] = { n: 0, total: 0 }
+          sums[name].n += 1
+          sums[name].total += Number(r.event_placement)
+        }
+        const out: Record<string, number> = {}
+        for (const [k, v] of Object.entries(sums)) out[k] = v.total / v.n
+        setAvgPlace(out)
+      })
+    return () => { cancelled = true }
+  }, [activePlayerId])
+
+  // Domain percentiles for the comparison bars. Reuses the same bundle the
+  // dashboard loads — no new per-player queries.
+  useEffect(() => {
+    if (!activePlayerId) return
+    let cancelled = false
+    supabase.rpc('stats_bundle').then(({ data, error }) => {
+      if (cancelled || error || !data) return
+      const b = data as {
+        results: RatingResultRow[]; events: RatingEventRow[]; players: RatingPlayerRow[]
+      }
+      const mine = computePercentiles(b.results as any, b.events, b.players).get(activePlayerId)
+      setDomainPct(domainPercentiles(mine, EVENT_DOMAIN))
+    })
+    return () => { cancelled = true }
+  }, [activePlayerId])
 
   const byDomain = getEventsByDomain()
   const visibleResults = tab === 'season'
@@ -183,6 +318,7 @@ export default function PRsPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a0a', color: '#fff' }}>
+      <PlayerTabs />
       {/* Header */}
       <div style={{ background: '#000', borderBottom: '1px solid #1a1a1a', padding: '20px 24px' }}>
         <div style={{ maxWidth: '680px', margin: '0 auto' }}>
@@ -191,7 +327,7 @@ export default function PRsPage() {
           </Link>
           <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '12px' }}>
             <div>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: '36px', color: '#fff', lineHeight: 1 }}>My Personal Bests</div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '36px', color: '#fff', lineHeight: 1 }}>My Events</div>
               {!loading && (
                 <div style={{ color: '#555', fontSize: '13px', marginTop: '4px', fontFamily: 'var(--font-body)' }}>
                   {totalPBs} / {totalEvents} events {tab === 'season' ? `in ${CURRENT_YEAR}` : 'all time'}
@@ -228,6 +364,10 @@ export default function PRsPage() {
       </div>
 
       <div style={{ maxWidth: '680px', margin: '0 auto', padding: '24px 16px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        <div>
+          <ViewingAsBanner />
+          {domainPct && <DomainComparison domains={domainPct} />}
+        </div>
         {loading ? (
           <div style={{ color: '#555', fontSize: '14px', fontFamily: 'var(--font-body)', textAlign: 'center', paddingTop: '48px' }}>Loading your results…</div>
         ) : (
@@ -272,6 +412,19 @@ export default function PRsPage() {
 
                 {domainOpen && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {/* Column headers — without them the three right-hand numbers
+                      are unreadable, and a tooltip is no use on a phone. */}
+                  <div style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
+                    gap: '10px', padding: '2px 14px 4px',
+                    fontFamily: 'var(--font-label)', textTransform: 'uppercase',
+                    letterSpacing: '0.08em', fontWeight: 600, fontSize: '9px', color: '#555',
+                  }}>
+                    <span style={{ width: '84px', textAlign: 'right' }}>Personal best</span>
+                    <span style={{ width: '38px', textAlign: 'right' }}>Avg</span>
+                    <span style={{ width: '30px', textAlign: 'right' }}>Won</span>
+                    <span style={{ width: '10px' }} />
+                  </div>
                   {domainEvents.map(event => {
                     const eventResults = resultsByEvent[event.name]
                     const pb = eventResults?.[0]
@@ -302,11 +455,6 @@ export default function PRsPage() {
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
                               <div style={{ fontSize: '14px', fontWeight: 600, color: pb ? '#fff' : '#444', fontFamily: 'var(--font-body)' }}>
                                 {event.name}
-                                {winsReady && wins[event.name] && (
-                                  <span style={{ ...WIN_CHIP, marginLeft: '8px' }}>
-                                    WON{wins[event.name] > 1 ? ` ×${wins[event.name]}` : ''}
-                                  </span>
-                                )}
                                 {event.hasDifficultyTiers && event.difficultyTiers && (
                                   <span style={{ marginLeft: '8px', fontSize: '11px', color: '#B87DB5', fontFamily: 'var(--font-label)', fontWeight: 700 }}>
                                     D1–D{event.difficultyTiers.length}
@@ -321,23 +469,38 @@ export default function PRsPage() {
                             </div>
                           </div>
 
-                          {pb ? (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                              <div style={{ textAlign: 'right' }}>
-                                <div style={{ fontSize: '16px', fontWeight: 700, color: '#4DB26E', fontFamily: 'var(--font-body)' }}>
-                                  {event.inputMode === 'sport' ? sportWDL(eventResults) : pb.score_label}
-                                </div>
-                                {pb.difficulty_tier && event.inputMode !== 'sport' && (
-                                  <div style={{ fontSize: '11px', color: '#B87DB5', fontFamily: 'var(--font-label)', fontWeight: 700 }}>
-                                    {pb.difficulty_tier}
+                          {/* PR, average placement and wins side by side. A lens
+                              toggle would hide two thirds of the answer behind a
+                              tap, and all three fit at 375px. */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+                            <div style={{ textAlign: 'right', width: '84px' }}>
+                              {pb ? (
+                                <>
+                                  <div style={{ fontSize: '15px', fontWeight: 700, color: '#4DB26E', fontFamily: 'var(--font-body)' }}>
+                                    {event.inputMode === 'sport' ? sportWDL(eventResults) : pb.score_label}
                                   </div>
-                                )}
-                              </div>
-                              <div style={{ color: '#333', fontSize: '14px', transform: isExpanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}>›</div>
+                                  {pb.difficulty_tier && event.inputMode !== 'sport' && (
+                                    <div style={{ fontSize: '11px', color: '#B87DB5', fontFamily: 'var(--font-label)', fontWeight: 700 }}>
+                                      {pb.difficulty_tier}
+                                    </div>
+                                  )}
+                                </>
+                              ) : (
+                                <span style={{ fontSize: '11px', color: '#333', fontFamily: 'var(--font-label)', letterSpacing: '0.05em' }}>
+                                  NOT PLAYED
+                                </span>
+                              )}
                             </div>
-                          ) : (
-                            <div style={{ fontSize: '12px', color: '#333', fontFamily: 'var(--font-label)', letterSpacing: '0.05em' }}>No result</div>
-                          )}
+                            <div style={{ textAlign: 'right', width: '38px', fontSize: '13px', color: avgPlace[event.name] != null ? '#999' : '#333', fontFamily: 'var(--font-body)' }}>
+                              {avgPlace[event.name] != null ? avgPlace[event.name].toFixed(1) : '—'}
+                            </div>
+                            <div style={{ textAlign: 'right', width: '30px', fontSize: '13px', fontWeight: 600, color: wins[event.name] ? '#F9B051' : '#333', fontFamily: 'var(--font-body)' }}>
+                              {winsReady ? (wins[event.name] ?? 0) : '—'}
+                            </div>
+                            <div style={{ color: '#333', fontSize: '14px', width: '10px', transform: isExpanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}>
+                              {pb ? '›' : ''}
+                            </div>
+                          </div>
                         </button>
 
                         {/* Expanded history */}

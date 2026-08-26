@@ -1,44 +1,62 @@
 'use client'
+
+// ─── The stats page ──────────────────────────────────────────────────────────
+// Four blocks and one conditional strip. That is the whole page:
+//
+//   1  identity + seasonal division rank
+//   2  the taniwha card — what you are currently earning
+//   3  four numbers — games, events won, games won, PRs
+//   4  the skill radar across the ten domains
+//
+// Everything the old bento grid carried is now either a nav destination (judge,
+// koha, profile, personal bests) or lives behind the taniwha card (play history,
+// the picker, the colours era). The dashboard used to be an action hub with stats
+// bolted on; it is a stats page with one action on it.
+//
+// TWO CLOCKS, ON PURPOSE. Taniwha points are lifetime and never reset. `rankings`
+// is still seasonal, so the division rank line is explicitly labelled with the
+// year — that is the only seasonal number on the page.
+
 import { useEffect, useMemo, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { createClient, getSessionUser } from '@/lib/supabase-browser'
-import { formatNZDate } from '@/lib/dates'
+import Link from 'next/link'
+import { createClient } from '@/lib/supabase-browser'
 import { EVENTS } from '@/lib/eventData'
 import { nextScheduledSession } from '@/lib/schedule'
-import EventIcon, { domainColor } from '@/components/EventIcon'
-import DomainIcon from '@/components/DomainIcon'
+import { useActivePlayer, playerLabel } from '@/lib/useActivePlayer'
+import PlayerTabs, { ViewingAsBanner } from '@/components/PlayerTabs'
+import DomainRadar from '@/components/DomainRadar'
+import TaniwhaCard, { loadTaniwhaState, type TaniwhaState } from '@/components/TaniwhaCard'
+import VoteCard from '@/app/components/VoteCard'
+import WellbeingSurvey from '@/app/components/WellbeingSurvey'
+import { DOMAIN_COLORS } from '@/lib/domainColours'
+import { taniwhaBySlug, taniwhaOnDark } from '@/lib/taniwha'
 import {
   sessionWins,
   type RatingResultRow, type RatingEventRow, type RatingSessionRow, type RatingPlayerRow,
 } from '@/lib/rating'
 import {
   computePercentiles, domainPercentiles, strongestEvent, weakestEvent,
-  topDomain as pctTopDomain, eventPctLabel, domainPctLabel,
+  eventPctLabel, type DomainPercentile,
 } from '@/lib/percentile'
-// The colour ladder is retired; these three are only for the colour TIMELINE
-// in the points-history modal, which still shows the colours players really
-// earned before v0.6.0.0. See lib/colours.ts.
-import { colourByRung, colourChipStyle, colourOnDark } from '@/lib/colours'
-import TaniwhaCard, { TaniwhaTimeline, loadTaniwhaState, type TaniwhaState } from '@/components/TaniwhaCard'
-import { taniwhaBySlug, taniwhaOnDark } from '@/lib/taniwha'
-import WellbeingSurvey from '@/app/components/WellbeingSurvey'
-import Link from 'next/link'
 
 const supabase = createClient()
 
 const DOMAIN_NAMES = Array.from({ length: 10 }, (_, i) => EVENTS.find(e => e.domainNumber === i + 1)?.domain ?? '')
 const EVENT_DOMAIN = new Map(EVENTS.map(e => [e.name, e.domainNumber]))
-const EVENT_META = new Map(EVENTS.map(e => [e.name, { slug: e.slug, emoji: e.emoji, domainNumber: e.domainNumber }]))
-const DOMAIN_TOTALS = Array.from({ length: 10 }, (_, i) => EVENTS.filter(e => e.domainNumber === i + 1).length)
 
-type RatingData = {
+type StatsBundle = {
   results: (RatingResultRow & { placement: number | null })[]
   events: RatingEventRow[]
   sessions: RatingSessionRow[]
   players: RatingPlayerRow[]
 }
 
-const PLAYER_ICONS = ['🏋️', '🤸', '🏃', '🚴', '🤼', '🏊', '🎯', '🏹', '⚽', '🏀', '🎾', '🏐', '🦅', '🐯', '🦁', '🦊', '🐺', '🦋', '🐬', '🐉']
+type HouseholdBundle = {
+  totals: { player_id: string; lifetime_points: number; highest_rung: number }[]
+  rankings: { player_id: string; division: string | null; current_rank: number | null; total_sessions: number | null }[]
+  counts: { player_id: string; games: number; prs: number }[]
+}
 
 function ordinal(n: number): string {
   const s = ['th', 'st', 'nd', 'rd']
@@ -46,1281 +64,493 @@ function ordinal(n: number): string {
   return n + (s[(v - 20) % 10] || s[v] || s[0])
 }
 
-// ── Bento card wrapper ────────────────────────────────────────────────────────
-function BentoCard({
-  onClick, href, children, style = {},
-}: {
-  onClick?: () => void
-  href?: string
-  children: React.ReactNode
-  style?: React.CSSProperties
-}) {
-  const base: React.CSSProperties = {
-    display: 'block', width: '100%', textDecoration: 'none',
-    borderRadius: '16px', cursor: 'pointer',
-    transition: 'opacity 0.15s, transform 0.1s',
-    WebkitTapHighlightColor: 'transparent',
-    ...style,
-  }
-  if (href) {
-    return <Link href={href} style={base}>{children}</Link>
-  }
-  return (
-    <button onClick={onClick} style={{ ...base, border: 'none', padding: 0, textAlign: 'left' as const }}>
-      {children}
-    </button>
-  )
-}
-
 function DashboardInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const {
+    loading: playerLoading, userId, self, familyMembers, activePlayerId, activePlayer,
+  } = useActivePlayer()
 
-  // Auth state
-  const [userId, setUserId] = useState<string | null>(null)
-  const [player, setPlayer] = useState<any>(null) // auth user's player record
-  const [loading, setLoading] = useState(true)
-
-  // Active profile context (may be a family member)
-  const [activePlayerId, setActivePlayerId] = useState<string | null>(null)
-  const [activePlayer, setActivePlayer] = useState<any>(null)
-  const [familyMembers, setFamilyMembers] = useState<any[]>([])
-
-  // Rankings
-  const [ranking, setRanking] = useState<any>(null)
-  // Lifetime colour state. Points never reset, so there is nothing to switch
-  // between and the old season-year tabs are gone.
-  const [lifetime, setLifetime] = useState<{ lifetime_points: number; highest_rung: number } | null>(null)
-  const [rankingLoading, setRankingLoading] = useState(false)
-
-  // Top event
-  const [topEvent, setTopEvent] = useState<{ event_name: string; player_rank: number; total_players: number } | null>(null)
-
-  // My 100 — distinct event names ever played (null while loading)
-  const [playedEvents, setPlayedEvents] = useState<Set<string> | null>(null)
-
-  // Skill ratings — full result history, recomputed client-side (idempotent)
-  const [ratingData, setRatingData] = useState<RatingData | null>(null)
-  const [showStats, setShowStats] = useState(false)
-  const [expandedStatDomains, setExpandedStatDomains] = useState<Set<number>>(new Set())
-
-  // Active session (non-judges)
-  const [activeSession, setActiveSession] = useState<any>(null)   // player already has results in this session
-  const [anyActiveSession, setAnyActiveSession] = useState<any>(null) // any currently running session
-
-  // Join game
-  const [joinError, setJoinError] = useState('')
-  const [pendingAutoJoin, setPendingAutoJoin] = useState<string | null>(null)
-
-  // Colours history modal
-  const [showHistory, setShowHistory] = useState(false)
-  const [historyLoading, setHistoryLoading] = useState(false)
-  const [historySessions, setHistorySessions] = useState<any[]>([])
-  const [expandedSession, setExpandedSession] = useState<string | null>(null)
-  const [sessionEvents, setSessionEvents] = useState<Record<string, any[]>>({})
-  // Colour timeline — one row per colour ever earned. Replaces the year tabs.
-  const [colourTimeline, setColourTimeline] = useState<any[] | null>(null)
-
-  // Taniwha progression. NULL means the schema is not there yet (migrations
-  // 20260824220633 + 20260824222612), in which case the Colours card below
-  // keeps rendering exactly as it did. The dashboard owns this fetch because
-  // it is what decides WHICH card to show.
+  const [household, setHousehold] = useState<HouseholdBundle | null>(null)
+  const [stats, setStats] = useState<StatsBundle | null>(null)
   const [taniwha, setTaniwha] = useState<TaniwhaState | null>(null)
-  const [taniwhaNonce, setTaniwhaNonce] = useState(0)
+  const [activeSession, setActiveSession] = useState<any>(null)
+  const [joinCode, setJoinCode] = useState('')
+  const [joinError, setJoinError] = useState('')
 
-  // ── Initial load ────────────────────────────────────────────────────────────
+  const isJudge = self?.role === 'judge'
+
   useEffect(() => {
+    if (!playerLoading && !userId) router.push('/play')
+  }, [playerLoading, userId, router])
+
+  // ── The household, in one round trip ────────────────────────────────────────
+  // Parent AND every child at once, so switching tabs is pure state. See the
+  // header of 20260826004819 for why this is one call and not four per player.
+  const householdIds = useMemo(
+    () => (userId ? [userId, ...familyMembers.map(m => m.id)] : []),
+    [userId, familyMembers],
+  )
+
+  useEffect(() => {
+    if (householdIds.length === 0) return
+    let cancelled = false
     const load = async () => {
-      const user = await getSessionUser()
-      if (!user) { router.push('/play'); return }
-      setUserId(user.id)
-
-      const [playerResult, familyResult] = await Promise.all([
-        supabase.from('players').select('*').eq('id', user.id).single(),
-        supabase.from('players')
-          .select('id, full_name, display_name, username, division, date_of_birth, icon')
-          .eq('parent_id', user.id)
-          .order('full_name'),
-      ])
-
-      setPlayer(playerResult.data)
-      setFamilyMembers(familyResult.data || [])
-
-      // Restore active profile from localStorage
-      const stored = typeof window !== 'undefined' ? localStorage.getItem('allsport_active_player_id') : null
-      const members = familyResult.data || []
-      if (stored && stored !== user.id && members.find((m: any) => m.id === stored)) {
-        setActivePlayerId(stored)
-        setActivePlayer(members.find((m: any) => m.id === stored))
-      } else {
-        setActivePlayerId(user.id)
-        setActivePlayer(playerResult.data)
-      }
-
-      setLoading(false)
+      const { data, error } = await supabase.rpc('player_dashboard', { p_player_ids: householdIds })
+      if (cancelled) return
+      if (error) { console.warn('player_dashboard unavailable', error.message); return }
+      setHousehold(data as HouseholdBundle)
     }
     load()
-  }, [router])
+    return () => { cancelled = true }
+    // Keyed on the ids themselves, not the array identity, so a re-render of the
+    // hook does not refire the request.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [householdIds.join(',')])
 
-  // Re-sync active player when family members or player changes
-  useEffect(() => {
-    if (!activePlayerId || !player) return
-    if (activePlayerId === player.id) {
-      setActivePlayer(player)
-    } else {
-      const member = familyMembers.find(m => m.id === activePlayerId)
-      if (member) setActivePlayer(member)
-    }
-  }, [player, familyMembers, activePlayerId])
-
-  // ── Seasonal ranking (division rank + session count) and lifetime colours ────
-  // `rankings` is still seasonal: it powers the division rank shown on the
-  // profile card. The Colours card reads player_totals instead.
-  useEffect(() => {
-    if (!activePlayerId) return
-    const load = async () => {
-      setRankingLoading(true)
-      const [seasonResult, totalsResult] = await Promise.all([
-        supabase.from('rankings').select('*')
-          .eq('player_id', activePlayerId)
-          .eq('season_year', new Date().getFullYear())
-          .maybeSingle(),
-        supabase.from('player_totals').select('lifetime_points, highest_rung')
-          .eq('player_id', activePlayerId)
-          .maybeSingle(),
-      ])
-      setRanking(seasonResult.data)
-      setLifetime(totalsResult.data)
-      setRankingLoading(false)
-      // Needs the lifetime total, so it runs off the back of the same load
-      // rather than in its own effect that would race it.
-      setTaniwha(await loadTaniwhaState(activePlayerId, totalsResult.data?.lifetime_points ?? 0))
-    }
-    load()
-  }, [activePlayerId, taniwhaNonce])
-
-  // ── My 100: lifetime event coverage ─────────────────────────────────────────
-  useEffect(() => {
-    if (!activePlayerId) return
-    setPlayedEvents(null)
-    supabase
-      .from('results')
-      .select('session_events!inner(event_name)')
-      .eq('player_id', activePlayerId)
-      .then(({ data }) => {
-        const names = new Set<string>()
-        for (const r of (data ?? []) as any[]) {
-          const n = r.session_events?.event_name
-          if (n) names.add(n)
-        }
-        setPlayedEvents(names)
-      })
-  }, [activePlayerId])
-
-  // ── Top event ───────────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!activePlayerId || !activePlayer?.division) return
-    const loadTopEvent = async () => {
-      const { data } = await supabase.rpc('get_player_top_event', {
-        p_player_id: activePlayerId,
-        p_division: activePlayer.division,
-      })
-      if (data && data.length > 0) setTopEvent(data[0])
-      else setTopEvent(null)
-    }
-    loadTopEvent()
-  }, [activePlayerId, activePlayer?.division])
-
-  // ── Active session detection ─────────────────────────────────────────────────
-  useEffect(() => {
-    if (!userId) return
-    const checkActive = async () => {
-      // Close anything whose 100 minutes ran out while the app was shut. Without
-      // this the "Join a Game" card offers a game that finished last night, and
-      // more importantly award_session_points never fires, so nobody in that
-      // session gets placements or points. Server-derived from started_at, so it
-      // cannot end a game still in progress. Awaited so the card below is right.
-      await supabase.rpc('close_expired_sessions')
-
-      // Find any currently running session
-      const { data: anyActive } = await supabase
-        .from('sessions')
-        .select('*')
-        .eq('is_active', true)
-        .maybeSingle()
-      setAnyActiveSession(anyActive)
-
-      if (anyActive) {
-        // Check if this player already has a result in this session
-        const { data: result } = await supabase
-          .from('results')
-          .select('id')
-          .eq('player_id', userId)
-          .eq('session_id', anyActive.id)
-          .limit(1)
-        if (result && result.length > 0) setActiveSession(anyActive)
-      }
-    }
-    checkActive()
-  }, [userId])
-
-  // ── Auto-join from QR / ?code= (silent, no UI — QR code fallback) ───────────
-  useEffect(() => {
-    const codeFromUrl = searchParams.get('code')
-    const codeFromStorage = typeof window !== 'undefined' ? localStorage.getItem('pending_session_code') : null
-    const code = codeFromUrl || codeFromStorage
-    if (code) {
-      setPendingAutoJoin(code.toUpperCase())
-      if (codeFromStorage) localStorage.removeItem('pending_session_code')
-    }
-  }, [searchParams])
-
-  useEffect(() => {
-    if (pendingAutoJoin && !loading) {
-      setPendingAutoJoin(null)
-      handleJoinByCode(pendingAutoJoin)
-    }
-  }, [pendingAutoJoin, loading])
-
-  // ── Percentile source data (loaded once — all public-read tables) ───────────
-  // One RPC instead of four concurrent full-table reads. The dashboard fires a
-  // lot of queries on mount and these were four of the heaviest; concurrency is
-  // what costs here, not the queries. See PERF_AGGREGATION_PLAN.md.
-  //
-  // The roster half of this payload comes from players_public, joined inside
-  // stats_bundle(). The base players table is own-row/child/judge only since
-  // 20260813000003 and its anon grant is revoked, so reading it here would fail
-  // outright rather than degrade.
+  // ── Percentiles. One shared dataset for every player on the page. ───────────
   useEffect(() => {
     let cancelled = false
     supabase.rpc('stats_bundle').then(({ data, error }) => {
       if (cancelled || error || !data) return
-      setRatingData(data as RatingData)
+      setStats(data as StatsBundle)
     })
     return () => { cancelled = true }
   }, [])
 
-  // ── Player stats (My 100 card + stats modal) ────────────────────────────────
-  const playerStats = useMemo(() => {
-    if (!ratingData || !activePlayerId) return null
-    // Best-score percentiles (the player-facing "Top X%" metric)
-    const allPct = computePercentiles(ratingData.results, ratingData.events, ratingData.players)
-    const minePct = allPct.get(activePlayerId)
-    const pctDomains = domainPercentiles(minePct, EVENT_DOMAIN)
-    const strong = strongestEvent(minePct, EVENT_DOMAIN)
-    const weak = weakestEvent(minePct, EVENT_DOMAIN)
-    const topDomP = pctTopDomain(minePct, EVENT_DOMAIN, DOMAIN_NAMES)
+  // ── Taniwha. Its OWN query, never folded into the bundle above. ─────────────
+  // A missing table returns PGRST205 and this returns null; a missing column
+  // would return 42703 and take the whole request down. Keeping it separate is
+  // what lets the rest of the page survive the pre-migration window.
+  useEffect(() => {
+    if (!activePlayerId) return
+    let cancelled = false
+    setTaniwha(null)
+    const points = household?.totals.find(t => t.player_id === activePlayerId)?.lifetime_points ?? 0
+    loadTaniwhaState(activePlayerId, points).then(s => { if (!cancelled) setTaniwha(s) })
+    return () => { cancelled = true }
+  }, [activePlayerId, household])
 
-    const myRows = ratingData.results.filter(r => r.player_id === activePlayerId)
-    const wins = sessionWins(myRows).get(activePlayerId) ?? 0
-    // placement repeats the session's division rank on every row — first row per session is enough
-    const placeBySession = new Map<string, number>()
-    const sessionSet = new Set<string>()
-    for (const r of myRows) {
-      sessionSet.add(r.session_id)
-      if (r.placement != null && !placeBySession.has(r.session_id)) placeBySession.set(r.session_id, r.placement)
+  // ── Is a game running right now? ────────────────────────────────────────────
+  useEffect(() => {
+    if (!userId) return
+    let cancelled = false
+    const check = async () => {
+      await supabase.rpc('close_expired_sessions')
+      const { data } = await supabase.from('sessions').select('*').eq('is_active', true).maybeSingle()
+      if (!cancelled) setActiveSession(data ?? null)
     }
-    const avgPlace = placeBySession.size > 0
-      ? [...placeBySession.values()].reduce((a, b) => a + b, 0) / placeBySession.size
-      : null
-    const gamesPlayed = sessionSet.size
+    check()
+    return () => { cancelled = true }
+  }, [userId])
 
-    return { wins, avgPlace, gamesPlayed, minePct, pctDomains, strong, weak, topDomP }
-  }, [ratingData, activePlayerId])
+  // Silent auto-join from the QR code.
+  useEffect(() => {
+    const code = searchParams.get('code')
+    if (code && userId) handleJoinByCode(code.toUpperCase())
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, userId])
 
   const handleJoinByCode = async (code: string) => {
     setJoinError('')
-    try {
-      const { data: sess, error } = await supabase
-        .from('sessions')
-        .select('id, session_code, is_active, location')
-        // .eq, not .ilike. ILIKE treats the code as a PATTERN, so `?code=%`
-        // matched every session that has ever had one. It failed safe only
-        // because .maybeSingle() errors on multiple rows — that protection
-        // disappears the moment exactly one coded session exists. Codes are
-        // generated uppercase and the caller already uppercases, so an exact
-        // match costs nothing.
-        .eq('session_code', code)
-        .maybeSingle()
-      if (error) throw new Error(`Session lookup failed: ${error.message}`)
-      if (!sess) throw new Error(`No session found with code "${code}". Ask the Kaiwhakawā to confirm the code on their screen.`)
-      if (!sess.is_active) throw new Error(`Session "${code}" has ended.`)
-      window.location.href = `/scoring/${sess.id}`
-    } catch (e: any) {
-      setJoinError(e.message)
+    const { data: sess, error } = await supabase
+      .from('sessions')
+      .select('id, session_code, is_active, location')
+      // .eq, not .ilike — ILIKE treats the code as a PATTERN, so `?code=%`
+      // matched every session that ever had one.
+      .eq('session_code', code)
+      .maybeSingle()
+    if (error) { setJoinError(`Session lookup failed: ${error.message}`); return }
+    if (!sess) { setJoinError(`No session found with code "${code}". Ask the Kaiwhakawā to confirm it.`); return }
+    if (!sess.is_active) { setJoinError(`Session "${code}" has ended.`); return }
+    window.location.href = `/scoring/${sess.id}`
+  }
+
+  // ── Derived ─────────────────────────────────────────────────────────────────
+  const points = household?.totals.find(t => t.player_id === activePlayerId)?.lifetime_points ?? 0
+  const ranking = household?.rankings.find(r => r.player_id === activePlayerId) ?? null
+  const counts = household?.counts.find(c => c.player_id === activePlayerId) ?? null
+
+  const derived = useMemo(() => {
+    if (!stats || !activePlayerId) return null
+    const allPct = computePercentiles(stats.results, stats.events, stats.players)
+    const minePct = allPct.get(activePlayerId)
+    const domains: DomainPercentile[] = domainPercentiles(minePct, EVENT_DOMAIN)
+    const myRows = stats.results.filter(r => r.player_id === activePlayerId)
+    return {
+      domains,
+      strong: strongestEvent(minePct, EVENT_DOMAIN),
+      weak: weakestEvent(minePct, EVENT_DOMAIN),
+      gamesWon: sessionWins(myRows).get(activePlayerId) ?? 0,
     }
+  }, [stats, activePlayerId])
+
+  const eventsWon = useMemo(() => {
+    if (!taniwha) return null
+    return Object.values(taniwha.winsByEvent).filter(n => n > 0).length
+  }, [taniwha])
+
+  const buildingTaniwha = useMemo(() => {
+    const row = taniwha?.rows.find(r => r.is_building && !r.crowned_at)
+    return row ? taniwhaBySlug(row.taniwha_slug) : null
+  }, [taniwha])
+
+  const accent = buildingTaniwha ? taniwhaOnDark(buildingTaniwha) : 'var(--blue)'
+
+  // Strongest / weakest DOMAIN, for the two boxes under the radar.
+  const domainExtremes = useMemo(() => {
+    const rated = (derived?.domains ?? []).filter(d => d.topPct != null)
+    if (rated.length === 0) return null
+    const sorted = [...rated].sort((a, b) => (a.topPct! - b.topPct!))
+    return { best: sorted[0], worst: sorted[sorted.length - 1] }
+  }, [derived])
+
+  if (playerLoading) {
+    return (
+      <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ color: '#555' }}>Loading…</div>
+      </div>
+    )
   }
 
-  // ── Points history ───────────────────────────────────────────────────────────
-  const loadHistory = async () => {
-    if (!activePlayerId) return
-    setHistoryLoading(true)
-    setShowHistory(true)
-    setColourTimeline(null)
-
-    // Colour timeline. Rows only exist once a colour is genuinely earned (the
-    // trigger writes them at session close, or the kaiwhakawā's "Celebrated"
-    // tap writes one mid-session), so there is nothing to filter for release.
-    supabase
-      .from('colour_awards')
-      .select('rung, colour_name, points_at_award, awarded_at, sessions(session_date, location)')
-      .eq('player_id', activePlayerId)
-      .order('rung', { ascending: false })
-      .then(({ data }) => setColourTimeline(data ?? []))
-
-    // Try session_player_summary first, fall back to results
-    const { data: summaries } = await supabase
-      .from('session_player_summary')
-      .select('*, sessions(id, session_date, location, is_championship)')
-      .eq('player_id', activePlayerId)
-      .order('created_at', { ascending: false })
-      .limit(20)
-
-    if (summaries && summaries.length > 0) {
-      setHistorySessions(summaries)
-    } else {
-      // Fallback: group results by session
-      const { data: results } = await supabase
-        .from('results')
-        .select('session_id, placement, points_earned, effort_task_completions, sessions(id, session_date, location, is_championship)')
-        .eq('player_id', activePlayerId)
-        .not('points_earned', 'is', null)
-        .order('created_at', { ascending: false })
-        .limit(100)
-
-      if (results) {
-        const bySession: Record<string, any> = {}
-        for (const r of results) {
-          const sid = r.session_id
-          if (!bySession[sid]) {
-            bySession[sid] = {
-              session_id: sid,
-              sessions: r.sessions,
-              overall_placement: r.placement,
-              total_placement_points: r.points_earned || 0,
-              effort_points: 0,
-              effort_level: 0,
-              _fallback: true,
-            }
-          }
-        }
-        setHistorySessions(Object.values(bySession))
-      }
-    }
-
-    setHistoryLoading(false)
+  if (!activePlayer) {
+    return (
+      <div style={{
+        minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexDirection: 'column', gap: 16,
+      }}>
+        <div style={{ color: '#555' }}>No player profile found.</div>
+        <Link href="/register" style={{ color: 'var(--blue)' }}>Complete registration</Link>
+      </div>
+    )
   }
 
-  const loadSessionEvents = async (sessionId: string) => {
-    if (sessionEvents[sessionId]) return
-    const [eventsResult, resultsResult] = await Promise.all([
-      supabase.from('session_events').select('*').eq('session_id', sessionId).order('domain_number'),
-      supabase.from('results').select('event_id, score_label, raw_score, placement').eq('session_id', sessionId).eq('player_id', activePlayerId!).not('raw_score', 'is', null),
-    ])
-    const evs = eventsResult.data || []
-    const res = resultsResult.data || []
-    // Attach result to each event
-    const merged = evs.map((ev: any) => ({
-      ...ev,
-      result: res.find((r: any) => r.event_id === ev.id) || null,
-    }))
-    setSessionEvents(prev => ({ ...prev, [sessionId]: merged }))
-  }
-
-  // ── Derived values ────────────────────────────────────────────────────────────
-  if (loading) return (
-    <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ color: '#555', fontFamily: 'var(--font-body)' }}>Loading...</div>
-    </div>
-  )
-
-  if (!player || !activePlayer) return (
-    <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '16px' }}>
-      <div style={{ color: '#555' }}>No player profile found.</div>
-      <a href="/register" style={{ color: '#2371BB' }}>Complete registration</a>
-    </div>
-  )
-
-  const points = lifetime?.lifetime_points ?? 0
-
-  // The player's personal accent, used on the avatar tile and the card edges.
-  // It used to come from their colour; it now comes from the taniwha they are
-  // building, and is neutral until they have chosen one. Always a hex, never
-  // the rainbow gradient, so it is safe inside `Npx solid ${...}`.
-  const buildingRow = taniwha?.rows.find(r => r.is_building)
-  const buildingTaniwha = buildingRow ? taniwhaBySlug(buildingRow.taniwha_slug) : null
-  const gradeBorder = buildingTaniwha ? taniwhaOnDark(buildingTaniwha) : '#888888'
-
-  const isJudge = player.role === 'judge'
-  const hasNoSessions = !ranking || ranking.total_sessions === 0
   const nextSession = nextScheduledSession()
-
-  // My 100 coverage per domain — event names stored as strings, so legacy
-  // orphan names simply don't match; that's fine
-  const my100 = Array.from({ length: 10 }, (_, i) => {
-    const domainNum = i + 1
-    const domainEvents = EVENTS.filter(e => e.domainNumber === domainNum)
-    const played = playedEvents ? domainEvents.filter(e => playedEvents.has(e.name)).length : 0
-    return { domainNum, played }
-  })
-  const my100Total = my100.reduce((s, d) => s + d.played, 0)
-  const icon = activePlayer.icon || null
-  const displayName = activePlayer.display_name || activePlayer.username || '?'
-
+  const hasPlayed = (counts?.games ?? 0) > 0
 
   return (
-    <div style={{
-      minHeight: '100vh', background: '#0a0a0a', color: '#fff',
-      maxWidth: '520px', margin: '0 auto', padding: '20px 16px 40px',
-    }}>
+    <>
+      <PlayerTabs />
 
-      {/* ── Card 1: Judge Panel ─────────────────────────────────────────────── */}
-      {isJudge && (
-        <BentoCard href="/judge" style={{ marginBottom: '12px' }}>
-          <div style={{
-            background: 'linear-gradient(135deg, #061428, #0d2140)',
-            border: '1px solid #2371BB44',
-            borderLeft: '4px solid #2371BB',
-            borderRadius: '16px',
-            padding: '20px 22px',
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            minHeight: '80px',
-          }}>
-            <div>
-              <div style={{
-                fontFamily: 'var(--font-display)', fontSize: '22px',
-                color: '#2371BB', letterSpacing: '0.06em', lineHeight: 1,
-              }}>
-                Kaiwhakawā
-              </div>
-              <div style={{
-                fontSize: '11px', color: '#4a7ab5',
-                fontFamily: 'var(--font-label)',
-                letterSpacing: '0.1em', marginTop: '3px',
-              }}>
-                KAIWHAKAWĀ PANEL · Start session or create vote
-              </div>
-            </div>
-            <div style={{ color: '#2371BB', fontSize: '24px', marginLeft: '16px' }}>→</div>
-          </div>
-        </BentoCard>
-      )}
+      <div style={{ maxWidth: 520, margin: '0 auto', padding: '14px 16px 40px', color: 'var(--white)' }}>
+        <ViewingAsBanner />
 
-      {/* ── Card 2: Active session return (non-judge) ───────────────────────── */}
-      {!isJudge && activeSession && (
-        <BentoCard href={`/scoring/${activeSession.id}`} style={{ marginBottom: '12px' }}>
-          <div style={{
-            background: 'linear-gradient(135deg, #061a0d, #0d2e1a)',
-            border: '1px solid #4DB26E44',
-            borderLeft: '4px solid #4DB26E',
-            borderRadius: '16px',
-            padding: '18px 22px',
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          }}>
-            <div>
-              <div style={{ color: '#4DB26E', fontWeight: 'bold', fontSize: '14px', fontFamily: 'var(--font-display)', letterSpacing: '0.06em' }}>
-                Session in Progress
-              </div>
-              <div style={{ color: '#888', fontSize: '12px', marginTop: '2px', fontFamily: 'var(--font-body)' }}>
-                {activeSession.location} — tap to return
-              </div>
-            </div>
-            <div style={{ color: '#4DB26E', fontSize: '24px' }}>→</div>
-          </div>
-        </BentoCard>
-      )}
+        {/* ── The one action on the page ──────────────────────────────────── */}
+        {activeSession ? (
+          <ActionStrip
+            href={`/scoring/${activeSession.id}`}
+            tone="var(--green)"
+            title={isJudge ? 'Session running' : 'Session in progress'}
+            detail={`${activeSession.location ?? 'AllSport HQ'} — tap to ${isJudge ? 'score' : 'return'}`}
+            live
+          />
+        ) : userId ? (
+          <VoteCard userId={userId} isJudge={isJudge} />
+        ) : null}
 
-      {/* ── Card 3: Event Vote (injected as a bento card when active) ──────── */}
-      {userId && player && (
-        <VoteCard userId={userId} isJudge={isJudge} />
-      )}
-
-      {/* ── Card 4: Player Profile ──────────────────────────────────────────── */}
-      <BentoCard href="/profile" style={{ marginBottom: '12px' }}>
-        <div style={{
-          background: '#111',
-          border: '1px solid #1e1e1e',
-          borderLeft: `4px solid ${gradeBorder}`,
-          borderRadius: '16px',
-          padding: '20px 22px',
-          minHeight: '110px',
-          display: 'flex', alignItems: 'center', gap: '18px',
-        }}>
-          {/* Icon */}
-          <div style={{
-            width: '56px', height: '56px', borderRadius: '14px',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '30px', flexShrink: 0,
-            background: '#1a1a1a', border: `1px solid ${gradeBorder}33`,
-          }}>
-            {icon || (
-              <span style={{
-                fontFamily: 'var(--font-display)', fontSize: '26px',
-                color: gradeBorder,
-              }}>
-                {displayName[0].toUpperCase()}
-              </span>
-            )}
-          </div>
-
-          {/* Info */}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{
-              fontFamily: 'var(--font-display)', fontSize: '22px',
-              letterSpacing: '0.04em', color: '#fff', lineHeight: 1,
-              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-            }}>
-              {displayName}
-            </div>
-            <div style={{
-              fontSize: '12px', color: '#666',
-              fontFamily: 'var(--font-label)',
-              letterSpacing: '0.05em', marginTop: '4px',
-            }}>
-              {activePlayer.division}
-              {ranking?.current_rank ? ` · #${ranking.current_rank} in division` : ''}
-            </div>
-            {topEvent && (
-              <div style={{
-                marginTop: '6px', display: 'inline-flex', alignItems: 'center', gap: '5px',
-                background: '#1a1a1a', border: `1px solid ${gradeBorder}44`,
-                borderRadius: '6px', padding: '3px 10px',
-              }}>
-                <span style={{ fontSize: '10px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.08em' }}>TOP EVENT</span>
-                <span style={{ fontSize: '11px', color: '#ccc', fontFamily: 'var(--font-body)', fontWeight: 600 }}>
-                  {topEvent.event_name}
-                </span>
-                {topEvent.total_players > 1 && (
-                  <span style={{ fontSize: '10px', color: gradeBorder }}>
-                    #{topEvent.player_rank}
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
-
-          <div style={{ color: '#444', fontSize: '20px', flexShrink: 0 }}>→</div>
-        </div>
-      </BentoCard>
-
-      {/* ── Card 5: Taniwha ─────────────────────────────────────────────── */}
-      {taniwha && activePlayerId && (
-        <TaniwhaCard
-          state={taniwha}
-          points={points}
-          onOpenHistory={loadHistory}
-          onChanged={() => setTaniwhaNonce(n => n + 1)}
-        />
-      )}
-
-      {/* ── Wellbeing check-in (renders only when a quarterly survey is due) ─── */}
-      {activePlayerId && <WellbeingSurvey playerId={activePlayerId} />}
-
-      {/* ── Card 6: Personal Bests ───────────────────────────────────────────── */}
-      <BentoCard href="/prs" style={{ marginBottom: '12px' }}>
-        <div style={{
-          background: '#111',
-          border: '1px solid #1e1e1e',
-          borderLeft: '4px solid #2371BB',
-          borderRadius: '16px',
-          padding: '20px 22px',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          minHeight: '76px',
-        }}>
-          <div>
-            <div style={{
-              fontFamily: 'var(--font-display)', fontSize: '20px',
-              color: '#fff', letterSpacing: '0.05em', lineHeight: 1,
-            }}>
-              My Personal Bests
-            </div>
-            <div style={{ fontSize: '11px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.05em', marginTop: '3px' }}>
-              All {EVENTS.length} events — your best scores
-            </div>
-          </div>
-          <div style={{ color: '#2371BB', fontSize: '22px' }}>→</div>
-        </div>
-      </BentoCard>
-
-      {/* ── Card 6b: My Events — coverage + peer ranking (Top X%) ───────────── */}
-      <BentoCard onClick={() => setShowStats(true)} style={{ marginBottom: '12px' }}>
-        <div style={{
-          background: '#111',
-          border: '1px solid #1e1e1e',
-          borderLeft: '4px solid #F397C0',
-          borderRadius: '16px',
-          padding: '20px 22px',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-            <div style={{
-              fontFamily: 'var(--font-display)', fontSize: '20px',
-              color: '#fff', letterSpacing: '0.05em', lineHeight: 1,
-            }}>
-              My Events
-            </div>
-            <div style={{ color: '#F397C0', fontSize: '22px' }}>→</div>
-          </div>
-
-          {/* Segmented domain coverage bar + count */}
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '7px' }}>
-            <span style={{ fontSize: '10px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-              Events played
-            </span>
-            <span style={{ fontFamily: 'var(--font-display)', fontSize: '16px', color: '#fff', lineHeight: 1 }}>
-              {playedEvents ? `${my100Total} / ${EVENTS.length}` : '—'}
-            </span>
-          </div>
-          <div style={{ display: 'flex', gap: '3px' }}>
-            {my100.map(d => {
-              const total = DOMAIN_TOTALS[d.domainNum - 1] || 1
-              const frac = Math.min(1, d.played / total)
-              return (
-                <div key={d.domainNum} title={`${DOMAIN_NAMES[d.domainNum - 1]} — ${d.played}/${total}`}
-                  style={{ flex: 1, height: '10px', borderRadius: '99px', background: '#1e1e1e', overflow: 'hidden' }}>
-                  <div style={{ width: `${frac * 100}%`, height: '100%', borderRadius: '99px', background: domainColor(d.domainNum) }} />
-                </div>
-              )
-            })}
-          </div>
-
-          {/* Top domain + top event, with icons and Top % */}
-          {(playerStats?.topDomP || playerStats?.strong) && (
-            <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
-              {playerStats?.topDomP && (
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '10px', background: '#0d0d0d', border: '1px solid #1e1e1e', borderRadius: '10px', padding: '10px 12px', minWidth: 0 }}>
-                  <DomainIcon domainName={playerStats.topDomP.domainName} domainNumber={playerStats.topDomP.domainNumber} size={30} />
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: '9px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>Top Domain</div>
-                    <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '13px', color: '#eee', lineHeight: 1.15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{playerStats.topDomP.domainName}</div>
-                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '14px', color: domainColor(playerStats.topDomP.domainNumber), lineHeight: 1 }}>{`Top ${playerStats.topDomP.topPct}%`}</div>
-                  </div>
-                </div>
-              )}
-              {playerStats?.strong && (() => {
-                const meta = EVENT_META.get(playerStats.strong.eventName)
-                return (
-                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '10px', background: '#0d0d0d', border: '1px solid #1e1e1e', borderRadius: '10px', padding: '10px 12px', minWidth: 0 }}>
-                    {meta && <EventIcon slug={meta.slug} emoji={meta.emoji} domainNumber={meta.domainNumber} size={30} />}
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: '9px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>Top Event</div>
-                      <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '13px', color: '#eee', lineHeight: 1.15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{playerStats.strong.eventName}</div>
-                      <div style={{ fontFamily: 'var(--font-display)', fontSize: '14px', color: '#F397C0', lineHeight: 1 }}>{eventPctLabel(playerStats.strong.ep)}</div>
-                    </div>
-                  </div>
-                )
-              })()}
-            </div>
-          )}
-        </div>
-      </BentoCard>
-
-      {/* ── Card 7: My Koha ──────────────────────────────────────────────── */}
-      <BentoCard href="/my-koha" style={{ marginBottom: '12px' }}>
-        <div style={{
-          background: '#111',
-          border: '1px solid #1e1e1e',
-          borderLeft: '4px solid #4DB26E',
-          borderRadius: '16px',
-          padding: '20px 22px',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          minHeight: '76px',
-        }}>
-          <div>
-            <div style={{
-              fontFamily: 'var(--font-display)', fontSize: '20px',
-              color: '#fff', letterSpacing: '0.05em', lineHeight: 1,
-            }}>
-              My Koha
-            </div>
-            <div style={{ fontSize: '11px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.05em', marginTop: '3px' }}>
-              Donations, referrals &amp; tier status
-            </div>
-          </div>
-          <div style={{ color: '#4DB26E', fontSize: '22px' }}>→</div>
-        </div>
-      </BentoCard>
-
-      {/* ── Card 8: Join a Game / next session countdown ────────────────────── */}
-      {!isJudge && !activeSession && (
-        <div style={{
-          background: anyActiveSession && hasNoSessions ? '#061a0d' : anyActiveSession ? '#0a120a' : '#0d0d0d',
-          border: anyActiveSession ? `1px solid ${hasNoSessions ? '#4DB26E' : '#2a4a2a'}` : '1px solid #1e1e1e',
-          borderLeft: `4px solid ${anyActiveSession ? '#4DB26E' : '#2371BB'}`,
-          borderRadius: '16px',
-          padding: '20px 22px',
-          ...(anyActiveSession && hasNoSessions ? { boxShadow: '0 0 24px #4DB26E22' } : {}),
-        }}>
-          <div style={{
-            fontFamily: 'var(--font-display)', fontSize: '20px',
-            color: anyActiveSession ? (hasNoSessions ? '#4DB26E' : '#6ecf8a') : '#fff',
-            letterSpacing: '0.05em', marginBottom: '4px', lineHeight: 1,
-          }}>
-            {anyActiveSession
-              ? (hasNoSessions ? 'Join Your First Game' : 'Join a Game')
-              : `Next session: ${nextSession.label}`}
-          </div>
-          <div style={{
-            fontSize: '11px', color: '#555',
-            fontFamily: 'var(--font-label)',
-            letterSpacing: '0.05em', marginBottom: anyActiveSession ? '14px' : 0,
-          }}>
-            {anyActiveSession
-              ? anyActiveSession.location || 'AllSport HQ'
-              : <><span style={{ color: '#7ab4ff' }}>{nextSession.relative}</span> · Tue &amp; Thu 4:30pm — Sat 9:00am</>}
-          </div>
-
-          {anyActiveSession && (
-            <>
-              {joinError && (
-                <div style={{
-                  background: '#2e0d0d', border: '1px solid #EA4742',
-                  borderRadius: '8px', padding: '10px 14px', marginBottom: '12px',
-                  color: '#EA4742', fontSize: '12px', lineHeight: 1.4,
-                }}>
-                  ⚠ {joinError}
-                </div>
-              )}
-              <button
-                onClick={() => { window.location.href = `/scoring/${anyActiveSession.id}` }}
-                style={{
-                  width: '100%', padding: '15px', borderRadius: '10px', border: 'none',
-                  cursor: 'pointer',
-                  background: hasNoSessions
-                    ? 'linear-gradient(135deg, #2d7d46, #4DB26E)'
-                    : '#1a3d22',
-                  color: '#fff', fontWeight: 'bold', fontSize: '18px',
-                  fontFamily: 'var(--font-display)', letterSpacing: '0.08em',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                }}
-              >
-                Join Session Now →
-              </button>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* ── My Stats Modal ───────────────────────────────────────────────────── */}
-      {showStats && (
-        <>
-          <div style={{
-            position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1100,
-            background: '#0a0a0a', borderBottom: '1px solid #222',
-            padding: '14px 16px',
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          }}>
-            <div style={{ maxWidth: '520px', width: '100%', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: '26px', letterSpacing: '0.05em', lineHeight: 1, color: '#fff' }}>
-                  My Events
-                </div>
-                <div style={{ fontSize: '11px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.1em', marginTop: '1px' }}>
-                  {displayName.toUpperCase()} · LIFETIME
-                </div>
-              </div>
-              <button onClick={() => setShowStats(false)} style={{
-                background: '#1a1a1a', border: '1px solid #333', borderRadius: '10px',
-                color: '#ccc', cursor: 'pointer', padding: '10px 18px',
-                fontFamily: 'var(--font-label)', fontSize: '14px', fontWeight: 700,
-                minHeight: '44px', flexShrink: 0,
-              }}>
-                ← Back
-              </button>
-            </div>
-          </div>
-
-          <div style={{
-            position: 'fixed', inset: 0, background: 'rgba(10,10,10,0.97)',
-            zIndex: 1050, overflowY: 'auto',
-            paddingTop: '72px',
-          }}>
-            <div style={{ maxWidth: '520px', margin: '0 auto', padding: '24px 16px 40px' }}>
-              {!playerStats ? (
-                <div style={{ color: '#555', textAlign: 'center', padding: '40px 0', fontFamily: 'var(--font-body)' }}>
-                  Crunching your results…
-                </div>
-              ) : (
-                <>
-                  {/* Headline stats */}
-                  <div style={{ display: 'flex', gap: '10px', marginBottom: '18px' }}>
-                    {[
-                      { label: 'Session Wins', value: String(playerStats.wins) },
-                      { label: 'Avg Place', value: playerStats.avgPlace != null ? playerStats.avgPlace.toFixed(1) : '—' },
-                      { label: 'Games Played', value: String(playerStats.gamesPlayed) },
-                    ].map(s => (
-                      <div key={s.label} style={{ flex: 1, background: '#111', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '14px 10px', textAlign: 'center' }}>
-                        <div style={{ fontFamily: 'var(--font-display)', fontSize: '30px', color: '#fff', lineHeight: 1 }}>{s.value}</div>
-                        <div style={{ fontSize: '10px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '5px' }}>{s.label}</div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Strongest + weakest */}
-                  {(playerStats.strong || playerStats.weak) && (
-                    <div style={{ display: 'flex', gap: '10px', marginBottom: '22px' }}>
-                      {([
-                        { pick: playerStats.strong, label: 'Strongest', accent: '#4DB26E' },
-                        { pick: playerStats.weak, label: 'Weakest', accent: '#EA4742' },
-                      ] as const).map(({ pick, label, accent }) => {
-                        if (!pick) return null
-                        const meta = EVENT_META.get(pick.eventName)
-                        return (
-                          <div key={label} style={{ flex: 1, background: '#111', border: `1px solid ${accent}44`, borderRadius: '12px', padding: '14px 14px', minWidth: 0 }}>
-                            <div style={{ fontSize: '10px', color: accent, fontFamily: 'var(--font-label)', letterSpacing: '0.15em', textTransform: 'uppercase' }}>{label}</div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '8px' }}>
-                              {meta && <EventIcon slug={meta.slug} emoji={meta.emoji} domainNumber={meta.domainNumber} size={34} />}
-                              <div style={{ minWidth: 0 }}>
-                                <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '14px', color: '#fff', lineHeight: 1.1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pick.eventName}</div>
-                                <div style={{ fontFamily: 'var(--font-display)', fontSize: '16px', color: accent, lineHeight: 1, marginTop: '2px' }}>{eventPctLabel(pick.ep)}</div>
-                              </div>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
-
-                  {/* Per-domain breakdown — collapsible, ranked by Top % */}
-                  <div style={{ fontSize: '11px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '10px' }}>
-                    How you rank, by domain
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
-                    {playerStats.pctDomains.map(d => {
-                      const dn = d.domainNumber
-                      const c = domainColor(dn)
-                      const played = my100[dn - 1]?.played ?? 0
-                      const domainTotal = DOMAIN_TOTALS[dn - 1] || 0
-                      const open = expandedStatDomains.has(dn)
-                      const domainEvents = EVENTS.filter(e => e.domainNumber === dn)
-                      return (
-                        <div key={dn} style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: '12px', overflow: 'hidden' }}>
-                          <button
-                            onClick={() => setExpandedStatDomains(prev => {
-                              const next = new Set(prev)
-                              next.has(dn) ? next.delete(dn) : next.add(dn)
-                              return next
-                            })}
-                            style={{
-                              width: '100%', display: 'flex', alignItems: 'center', gap: '12px',
-                              background: 'transparent', border: 'none', cursor: 'pointer',
-                              padding: '12px 14px', textAlign: 'left',
-                            }}
-                          >
-                            <DomainIcon domainName={DOMAIN_NAMES[dn - 1]} domainNumber={dn} size={34} />
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '13px', color: '#eee' }}>
-                                {dn}. {DOMAIN_NAMES[dn - 1]}
-                              </div>
-                              <div style={{ fontSize: '11px', color: '#555', fontFamily: 'var(--font-label)', marginTop: '2px' }}>
-                                {played}/{domainTotal} played
-                              </div>
-                            </div>
-                            <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', color: d.topPct != null ? c : '#333', lineHeight: 1, whiteSpace: 'nowrap' }}>
-                              {domainPctLabel(d)}
-                            </div>
-                            <span style={{ color: '#555', fontSize: '13px', transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}>›</span>
-                          </button>
-
-                          {open && (
-                            <div style={{ borderTop: '1px solid #1e1e1e', padding: '4px 14px 6px' }}>
-                              {domainEvents.map(ev => {
-                                const ep = playerStats.minePct?.get(ev.name)
-                                const notPlayed = !ep
-                                const label = eventPctLabel(ep)
-                                return (
-                                  <div key={ev.slug} style={{
-                                    display: 'flex', alignItems: 'center', gap: '10px',
-                                    padding: '8px 0', borderBottom: '1px solid #161616',
-                                    opacity: notPlayed ? 0.4 : 1,
-                                  }}>
-                                    <EventIcon slug={ev.slug} emoji={ev.emoji} domainNumber={dn} size={26} />
-                                    <span style={{ flex: 1, fontFamily: 'var(--font-body)', fontSize: '13px', color: '#ddd', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ev.name}</span>
-                                    <span style={{
-                                      fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '12px', whiteSpace: 'nowrap',
-                                      color: notPlayed ? '#555' : ep?.isLeader ? '#F9B051' : c,
-                                    }}>{label}</span>
-                                  </div>
-                                )
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-
-                  <div style={{ fontSize: '12.5px', color: '#666', lineHeight: 1.6, fontFamily: 'var(--font-body)', marginBottom: '20px' }}>
-                    <strong style={{ color: '#999' }}>Top X%</strong> means only that few players in your division who’ve played the event
-                    have a better best score than you — so lower is better, and <strong style={{ color: '#999' }}>1st</strong> means no one has
-                    beaten your best. A domain’s rank is the average across the events you’ve played in it. Scores are your lifetime best. An
-                    event only you have played shows “No comparison yet” until someone else has a go.
-                  </div>
-
-                  <Link href="/prs" style={{
-                    display: 'block', textAlign: 'center', padding: '14px',
-                    background: '#1a1a1a', border: '1px solid #333', borderRadius: '999px',
-                    color: '#fff', textDecoration: 'none',
-                    fontFamily: 'var(--font-label)', fontSize: '14px', fontWeight: 700, letterSpacing: '0.08em',
-                  }}>
-                    Personal bests →
-                  </Link>
-                </>
-              )}
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* ── Points History Modal ─────────────────────────────────────────────── */}
-      {showHistory && (
-        <>
-          {/* Fixed header bar — always on screen regardless of scroll */}
-          <div style={{
-            position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1100,
-            background: '#0a0a0a', borderBottom: '1px solid #222',
-            padding: '14px 16px',
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          }}>
-            <div style={{ maxWidth: '520px', width: '100%', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: '26px', letterSpacing: '0.05em', lineHeight: 1, color: '#fff' }}>
-                  Points History
-                </div>
-                <div style={{ fontSize: '11px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.1em', marginTop: '1px' }}>
-                  {displayName.toUpperCase()} · LIFETIME
-                </div>
-              </div>
-              <button onClick={() => setShowHistory(false)} style={{
-                background: '#1a1a1a', border: '1px solid #333', borderRadius: '10px',
-                color: '#ccc', cursor: 'pointer', padding: '10px 18px',
-                fontFamily: 'var(--font-label)', fontSize: '14px', fontWeight: 700,
-                minHeight: '44px', flexShrink: 0,
-              }}>
-                ← Back
-              </button>
-            </div>
-          </div>
-
-          {/* Scrollable overlay — sits behind the fixed header */}
-          <div style={{
-            position: 'fixed', inset: 0, background: 'rgba(10,10,10,0.97)',
-            zIndex: 1050, overflowY: 'auto',
-            paddingTop: '72px', /* clears the fixed header */
-          }}>
-          <div style={{ maxWidth: '520px', margin: '0 auto', padding: '24px 16px 40px' }}>
-
-            {/* ── Colour timeline ─────────────────────────────────────────
-                Replaces the old year tabs. One row per colour ever earned,
-                newest first, with the session it happened in. */}
-            {/* Crowns first — the current system. The colours timeline below it
-                is the retired one, kept because those awards really happened. */}
-            <TaniwhaTimeline
-              state={taniwha}
-              sessions={Object.fromEntries(
-                (historySessions ?? [])
-                  .map((h: any) => (Array.isArray(h.sessions) ? h.sessions[0] : h.sessions))
-                  .filter(Boolean)
-                  .map((s: any) => [s.id, s])
-              )}
+        {!activeSession && (
+          <div id="join">
+            <JoinBlock
+              nextSession={nextSession}
+              highlight={!hasPlayed}
+              code={joinCode}
+              onCode={setJoinCode}
+              onJoin={() => handleJoinByCode(joinCode.trim().toUpperCase())}
+              error={joinError}
             />
-
-            {colourTimeline !== null && colourTimeline.length > 0 && (
-              <div style={{ marginBottom: '28px' }}>
-                <div style={{
-                  fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '11px',
-                  letterSpacing: '0.15em', textTransform: 'uppercase', color: '#555',
-                  marginBottom: '10px',
-                }}>
-                  Colours earned
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  {colourTimeline.map((a: any) => {
-                    const c = colourByRung(a.rung)
-                    if (!c) return null
-                    const sess = Array.isArray(a.sessions) ? a.sessions[0] : a.sessions
-                    return (
-                      <div key={a.rung} style={{
-                        display: 'flex', alignItems: 'center', gap: '12px',
-                        background: '#111', border: '1px solid #1e1e1e',
-                        borderRadius: '10px', padding: '10px 14px',
-                      }}>
-                        <div style={{ width: '26px', height: '26px', borderRadius: '7px', flexShrink: 0, ...colourChipStyle(c) }} />
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{
-                            fontFamily: 'var(--font-display)', fontSize: '19px', lineHeight: 1.05,
-                            letterSpacing: '0.03em', color: colourOnDark(c),
-                          }}>
-                            {c.name}
-                          </div>
-                          <div style={{
-                            fontSize: '11px', color: '#555', fontFamily: 'var(--font-label)',
-                            letterSpacing: '0.04em', marginTop: '2px',
-                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                          }}>
-                            {sess?.session_date
-                              ? `${formatNZDate(sess.session_date)}${sess.location ? ` · ${sess.location}` : ''}`
-                              : 'Awarded for play before AllSport kept records'}
-                          </div>
-                        </div>
-                        <div style={{ fontFamily: 'var(--font-display)', fontSize: '15px', color: '#444', flexShrink: 0 }}>
-                          {(a.points_at_award ?? 0).toLocaleString()}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-
-            <div style={{
-              fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '11px',
-              letterSpacing: '0.15em', textTransform: 'uppercase', color: '#555',
-              marginBottom: '10px',
-            }}>
-              Sessions
-            </div>
-
-            {historyLoading ? (
-              <div style={{ color: '#555', textAlign: 'center', padding: '40px 0', fontFamily: 'var(--font-body)' }}>
-                Loading history...
-              </div>
-            ) : historySessions.length === 0 ? (
-              <div style={{ color: '#444', textAlign: 'center', padding: '40px 0', fontFamily: 'var(--font-body)' }}>
-                No sessions recorded yet
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {historySessions.map((s: any) => {
-                  const sess = s.sessions
-                  const sid = s.session_id
-                  const isExpanded = expandedSession === sid
-                  const evData = sessionEvents[sid]
-                  const totalPts = (s.total_placement_points || 0) + (s.effort_points || 0)
-
-                  return (
-                    <div key={sid} style={{
-                      background: '#111', border: '1px solid #1e1e1e',
-                      borderRadius: '12px', overflow: 'hidden',
-                    }}>
-                      {/* Summary row */}
-                      <button
-                        onClick={async () => {
-                          if (isExpanded) {
-                            setExpandedSession(null)
-                          } else {
-                            setExpandedSession(sid)
-                            await loadSessionEvents(sid)
-                          }
-                        }}
-                        style={{
-                          width: '100%', padding: '16px 18px',
-                          background: 'transparent', border: 'none',
-                          cursor: 'pointer', textAlign: 'left' as const,
-                          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                        }}
-                      >
-                        <div>
-                          <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#fff' }}>
-                            {sess?.location || 'Session'}
-                            {sess?.is_championship && (
-                              <span style={{ color: '#F9B051', marginLeft: '8px', fontSize: '10px', fontFamily: 'var(--font-label)', letterSpacing: '0.1em' }}>
-                                CHAMPIONSHIP
-                              </span>
-                            )}
-                          </div>
-                          <div style={{ fontSize: '12px', color: '#555', marginTop: '2px', fontFamily: 'var(--font-label)' }}>
-                            {formatNZDate(sess?.session_date)}
-                            {s.overall_placement ? ` · ${ordinal(s.overall_placement)} place` : ''}
-                          </div>
-                        </div>
-                        <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: '12px' }}>
-                          <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#4DB26E' }}>
-                            +{totalPts}
-                          </div>
-                          <div style={{ fontSize: '10px', color: '#555', fontFamily: 'var(--font-label)' }}>
-                            pts total
-                          </div>
-                        </div>
-                      </button>
-
-                      {/* Expanded breakdown */}
-                      {isExpanded && (
-                        <div style={{ borderTop: '1px solid #1e1e1e', padding: '14px 18px' }}>
-                          {/* Points breakdown */}
-                          <div style={{
-                            display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
-                            gap: '8px', marginBottom: '14px',
-                          }}>
-                            {[
-                              { label: 'Placement', value: `+${s.total_placement_points || 0}` },
-                              { label: 'Effort', value: `+${s.effort_points || 0}` },
-                              { label: 'Effort Level', value: s.effort_level || 0 },
-                            ].map(stat => (
-                              <div key={stat.label} style={{
-                                background: '#0a0a0a', borderRadius: '8px', padding: '10px',
-                                textAlign: 'center',
-                              }}>
-                                <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#fff' }}>{stat.value}</div>
-                                <div style={{ fontSize: '10px', color: '#555', marginTop: '2px', fontFamily: 'var(--font-label)', letterSpacing: '0.05em' }}>{stat.label}</div>
-                              </div>
-                            ))}
-                          </div>
-
-                          {/* Events */}
-                          {!evData ? (
-                            <div style={{ color: '#555', fontSize: '12px', fontFamily: 'var(--font-body)', textAlign: 'center', padding: '8px 0' }}>
-                              Loading events...
-                            </div>
-                          ) : (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                              <div style={{ fontSize: '10px', color: '#444', fontFamily: 'var(--font-label)', letterSpacing: '0.1em', marginBottom: '6px' }}>
-                                EVENTS
-                              </div>
-                              {evData.map((ev: any) => (
-                                <div key={ev.id} style={{
-                                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                  padding: '6px 0', borderBottom: '1px solid #1a1a1a',
-                                }}>
-                                  <span style={{ fontSize: '12px', color: '#ccc', fontFamily: 'var(--font-body)' }}>
-                                    {ev.event_name}
-                                  </span>
-                                  <span style={{
-                                    fontSize: '12px',
-                                    color: ev.result ? '#4DB26E' : '#444',
-                                    fontFamily: 'var(--font-label)',
-                                  }}>
-                                    {ev.result ? ev.result.score_label : 'No score'}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-
-                          <Link
-                            href={`/games/${sid}`}
-                            style={{
-                              display: 'block', marginTop: '14px', textAlign: 'center',
-                              padding: '10px', borderRadius: '8px', background: '#0a0a0a',
-                              border: '1px solid #2371BB', color: '#2371BB', textDecoration: 'none',
-                              fontFamily: 'var(--font-label)', fontSize: '13px', letterSpacing: '0.08em',
-                            }}
-                          >
-                            VIEW FULL GAME — ALL PLAYERS
-                          </Link>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            )}
           </div>
-          </div>{/* end scrollable overlay */}
-        </>
-      )}
+        )}
+
+        {/* ── 1. Identity ─────────────────────────────────────────────────── */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
+          <div style={{
+            width: 54, height: 54, borderRadius: 15, flexShrink: 0,
+            background: `${accent}1e`, border: `1px solid ${accent}55`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: activePlayer.icon ? 26 : 24,
+            fontFamily: activePlayer.icon ? undefined : 'var(--font-display)',
+            color: accent,
+          }}>
+            {activePlayer.icon || playerLabel(activePlayer).charAt(0).toUpperCase()}
+          </div>
+          <div style={{ flexGrow: 1, minWidth: 0 }}>
+            <div style={{
+              fontFamily: 'var(--font-display)', fontSize: 30,
+              letterSpacing: '0.05em', lineHeight: 1,
+            }}>
+              {playerLabel(activePlayer).toUpperCase()}
+            </div>
+            <div style={{
+              fontFamily: 'var(--font-label)', textTransform: 'uppercase',
+              letterSpacing: '0.1em', fontWeight: 600, fontSize: 12,
+              color: 'var(--text-muted)', marginTop: 3,
+            }}>
+              {activePlayer.division ?? 'No division'}{isJudge && activePlayerId === userId ? ' · Kaiwhakawā' : ''}
+            </div>
+          </div>
+          {ranking?.current_rank != null && (
+            <div style={{ textAlign: 'right', flexShrink: 0 }}>
+              <div style={{
+                fontFamily: 'var(--font-display)', fontSize: 24,
+                color: 'var(--blue)', lineHeight: 1,
+              }}>
+                {ordinal(ranking.current_rank).toUpperCase()}
+              </div>
+              <div style={{
+                fontFamily: 'var(--font-label)', textTransform: 'uppercase',
+                letterSpacing: '0.1em', fontWeight: 600, fontSize: 10,
+                color: '#555', marginTop: 2,
+              }}>
+                {new Date().getFullYear()} board
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── 2. Taniwha ──────────────────────────────────────────────────── */}
+        {taniwha && (
+          <TaniwhaCard
+            state={taniwha}
+            points={points}
+            onOpenHistory={() => router.push('/taniwha/history')}
+          />
+        )}
+
+        {/* ── 3. Four numbers ─────────────────────────────────────────────── */}
+        <div style={{
+          display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+          gap: 8, marginBottom: 16,
+        }}>
+          <Stat value={counts?.games ?? 0} label="Total games" />
+          <Stat value={eventsWon} label="Events won" colour="var(--amber)" />
+          <Stat value={derived?.gamesWon} label="Games won" colour="var(--amber)" />
+          <Stat value={counts?.prs ?? 0} label="Total PRs" colour="var(--green)" />
+        </div>
+
+        {/* ── 4. Skill across the domains ─────────────────────────────────── */}
+        <div style={{
+          background: 'var(--surface)', border: '1px solid var(--border)',
+          borderRadius: 16, padding: '18px 16px 16px',
+        }}>
+          <div style={{
+            display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+            marginBottom: 4,
+          }}>
+            <SectionLabel>Skill across the domains</SectionLabel>
+            <span style={{
+              fontFamily: 'var(--font-label)', textTransform: 'uppercase',
+              letterSpacing: '0.1em', fontWeight: 600, fontSize: 10, color: '#444',
+            }}>
+              Further out = stronger
+            </span>
+          </div>
+
+          {derived ? (
+            <DomainRadar domains={derived.domains} accent={accent} />
+          ) : (
+            <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#444' }}>
+              Loading…
+            </div>
+          )}
+
+          {domainExtremes ? (
+            <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+              <ExtremeBox
+                label="Strongest"
+                name={DOMAIN_NAMES[domainExtremes.best.domainNumber - 1]}
+                colour={DOMAIN_COLORS[domainExtremes.best.domainNumber - 1]}
+                detail={`Top ${domainExtremes.best.topPct}%`}
+              />
+              <ExtremeBox
+                label="Weakest"
+                name={DOMAIN_NAMES[domainExtremes.worst.domainNumber - 1]}
+                colour={DOMAIN_COLORS[domainExtremes.worst.domainNumber - 1]}
+                detail={`Top ${domainExtremes.worst.topPct}%`}
+              />
+            </div>
+          ) : (
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '8px 0 2px', lineHeight: 1.5 }}>
+              Play a session and this fills in — every event you score is compared
+              against everyone in your division pool who has played it.
+            </div>
+          )}
+
+          {derived?.strong && (
+            <div style={{
+              display: 'flex', justifyContent: 'space-between', gap: 12,
+              marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)',
+              fontSize: 12.5, color: 'var(--text-muted)',
+            }}>
+              <span>Best event: <span style={{ color: 'var(--white)' }}>{derived.strong.eventName}</span></span>
+              <span style={{ color: 'var(--amber)', flexShrink: 0 }}>{eventPctLabel(derived.strong.ep)}</span>
+            </div>
+          )}
+
+          <Link href="/prs" style={{
+            display: 'block', textAlign: 'center', paddingTop: 15, marginTop: 14,
+            borderTop: '1px solid var(--border)',
+            fontFamily: 'var(--font-label)', textTransform: 'uppercase',
+            letterSpacing: '0.1em', fontWeight: 600, fontSize: 12, color: 'var(--blue)',
+          }}>
+            All 120 events →
+          </Link>
+        </div>
+
+        {userId && activePlayerId && (
+          <div style={{ marginTop: 16 }}>
+            <WellbeingSurvey playerId={activePlayerId} />
+          </div>
+        )}
+      </div>
+    </>
+  )
+}
+
+// ── Small parts ──────────────────────────────────────────────────────────────
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <span style={{
+      fontFamily: 'var(--font-label)', textTransform: 'uppercase',
+      letterSpacing: '0.14em', fontWeight: 600, fontSize: 11, color: 'var(--text-muted)',
+    }}>
+      {children}
+    </span>
+  )
+}
+
+function Stat({ value, label, colour = 'var(--white)' }: {
+  value: number | null | undefined
+  label: string
+  colour?: string
+}) {
+  return (
+    <div style={{
+      background: 'var(--surface)', border: '1px solid var(--border)',
+      borderRadius: 16, padding: '13px 6px', textAlign: 'center',
+    }}>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 26, color: colour, lineHeight: 1 }}>
+        {value == null ? '—' : value}
+      </div>
+      <div style={{
+        fontFamily: 'var(--font-label)', textTransform: 'uppercase',
+        letterSpacing: '0.1em', fontWeight: 600, fontSize: 9,
+        color: 'var(--text-muted)', marginTop: 3,
+      }}>
+        {label}
+      </div>
     </div>
   )
 }
 
-// ── Vote card (bento-styled replacement for VoteBanner) ───────────────────────
-function VoteCard({ userId, isJudge }: { userId: string; isJudge: boolean }) {
-  const [vote, setVote] = useState<any>(null)
-  const [responses, setResponses] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [now, setNow] = useState(Date.now())
-
-  useEffect(() => {
-    const fetchVote = async () => {
-      const nowIso = new Date().toISOString()
-      const { data: voteData } = await supabase
-        .from('event_votes')
-        .select('id, name, event_date, voting_closes_at, is_active')
-        .eq('is_active', true)
-        .gt('voting_closes_at', nowIso)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-
-      if (!voteData) { setLoading(false); return }
-      setVote(voteData)
-
-      const { data: responseData } = await supabase
-        .from('event_vote_responses')
-        .select('domain_number, is_final')
-        .eq('vote_id', voteData.id)
-        .eq('player_id', userId)
-
-      setResponses(responseData || [])
-      setLoading(false)
-    }
-    fetchVote()
-  }, [userId])
-
-  useEffect(() => {
-    const interval = setInterval(() => setNow(Date.now()), 1000)
-    return () => clearInterval(interval)
-  }, [])
-
-  if (loading || !vote) return null
-
-  const closesAt = new Date(vote.voting_closes_at).getTime()
-  const msLeft = closesAt - now
-  const hasFinal = responses.some(r => r.is_final)
-  const hasPartial = responses.length > 0 && !hasFinal
-  const voteState = hasFinal ? 'voted' : hasPartial ? 'partial' : 'not_voted'
-
-  function fmt(ms: number) {
-    if (ms <= 0) return 'Closed'
-    const s = Math.floor(ms / 1000)
-    const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60
-    if (d > 0) return `${d}d ${h}h ${m}m`
-    if (h > 0) return `${h}h ${m}m ${sec}s`
-    return `${m}m ${sec}s`
-  }
-
-  const href = voteState === 'voted' ? `/vote/${vote.id}/results` : `/vote/${vote.id}`
-
+function ExtremeBox({ label, name, colour, detail }: {
+  label: string; name: string; colour: string; detail: string
+}) {
   return (
-    <BentoCard href={href} style={{ marginBottom: '12px' }}>
+    <div style={{
+      flex: 1, background: '#0d0d0d', border: '1px solid #1a1a1a',
+      borderRadius: 10, padding: '11px 13px', minWidth: 0,
+    }}>
       <div style={{
-        background: 'linear-gradient(135deg, #0d0a1a, #1a0d2e)',
-        border: '1px solid #B87DB544',
-        borderLeft: '4px solid #B87DB5',
-        borderRadius: '16px',
-        overflow: 'hidden',
-        minHeight: '100px',
+        fontFamily: 'var(--font-label)', textTransform: 'uppercase',
+        letterSpacing: '0.1em', fontWeight: 600, fontSize: 9, color: '#555',
       }}>
-        <div style={{ height: '3px', background: 'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)' }} />
-        <div style={{ padding: '18px 22px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <div style={{
-              fontFamily: 'var(--font-display)', fontSize: '20px',
-              color: '#fff', letterSpacing: '0.05em', lineHeight: 1,
-            }}>
-              {vote.name}
-            </div>
-            <div style={{
-              fontSize: '11px', color: '#888',
-              fontFamily: 'var(--font-label)', marginTop: '3px',
-            }}>
-              {new Date(vote.event_date).toLocaleDateString('en-NZ', { day: 'numeric', month: 'long', year: 'numeric' })}
-            </div>
-            <div style={{
-              fontSize: '12px', fontWeight: 700, marginTop: '6px',
-              fontFamily: 'var(--font-label)', letterSpacing: '0.05em',
-              color: voteState === 'voted' ? '#4DB26E' : '#F9B051',
-            }}>
-              {voteState === 'voted'
-                ? '✓ Voted — tap to view results'
-                : voteState === 'partial'
-                ? `${responses.length}/10 done — tap to continue`
-                : msLeft > 0 ? `CLOSES IN: ${fmt(msLeft)}` : 'CLOSED'}
-            </div>
+        {label}
+      </div>
+      <div style={{ fontSize: 13.5, color: colour, fontWeight: 600, marginTop: 3 }}>{name}</div>
+      <div style={{
+        fontFamily: 'var(--font-label)', textTransform: 'uppercase',
+        fontSize: 11, color: 'var(--text-muted)', marginTop: 1,
+      }}>
+        {detail}
+      </div>
+    </div>
+  )
+}
+
+function ActionStrip({ href, tone, title, detail, live }: {
+  href: string; tone: string; title: string; detail: string; live?: boolean
+}) {
+  return (
+    <Link href={href} style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      background: 'linear-gradient(135deg,#061a0d,#0d2e1a)',
+      border: `1px solid ${tone}44`, borderLeft: `4px solid ${tone}`,
+      borderRadius: 16, padding: '13px 16px', marginBottom: 14, textDecoration: 'none',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        {live && (
+          <span style={{
+            width: 8, height: 8, borderRadius: 999, background: tone,
+            boxShadow: `0 0 0 4px ${tone}2e`, flexShrink: 0,
+          }} />
+        )}
+        <div>
+          <div style={{
+            fontFamily: 'var(--font-label)', textTransform: 'uppercase',
+            letterSpacing: '0.08em', fontWeight: 600, fontSize: 13, color: tone,
+          }}>
+            {title}
           </div>
-          <div style={{ color: '#B87DB5', fontSize: '24px', flexShrink: 0, marginLeft: '12px' }}>→</div>
+          <div style={{ fontSize: 12, color: '#7a7a7a', marginTop: 1 }}>{detail}</div>
         </div>
       </div>
-    </BentoCard>
+      <span style={{ color: tone, fontSize: 20 }}>→</span>
+    </Link>
+  )
+}
+
+function JoinBlock({ nextSession, highlight, code, onCode, onJoin, error }: {
+  nextSession: ReturnType<typeof nextScheduledSession>
+  highlight: boolean
+  code: string
+  onCode: (v: string) => void
+  onJoin: () => void
+  error: string
+}) {
+  return (
+    <div style={{
+      background: highlight ? 'linear-gradient(135deg,#0d2140,#061428)' : 'var(--surface)',
+      border: `1px solid ${highlight ? '#2371BB55' : 'var(--border)'}`,
+      borderRadius: 16, padding: 18, marginBottom: 16,
+      boxShadow: highlight ? '0 8px 30px rgba(35,113,187,0.22)' : undefined,
+    }}>
+      <SectionLabel>{highlight ? 'Your first game' : 'Next session'}</SectionLabel>
+      {nextSession && (
+        <>
+          <div style={{
+            fontFamily: 'var(--font-display)', fontSize: 26, marginTop: 6, letterSpacing: '0.04em',
+          }}>
+            {nextSession.label.toUpperCase()}
+          </div>
+          <div style={{ fontSize: 13, color: '#8fa9c4', marginTop: 5, lineHeight: 1.5 }}>
+            AllSport HQ · 26 Carbine Place, Sockburn<br />{nextSession.relative}
+          </div>
+        </>
+      )}
+      <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+        <input
+          value={code}
+          onChange={e => onCode(e.target.value.toUpperCase())}
+          placeholder="JOIN CODE"
+          style={{
+            flexGrow: 1, minWidth: 0, background: '#0a0a0a',
+            border: '1px solid var(--border-strong)', borderRadius: 999,
+            padding: '11px 18px', color: 'var(--white)',
+            fontFamily: 'var(--font-label)', letterSpacing: '0.1em', fontSize: 13,
+          }}
+        />
+        <button onClick={onJoin} style={{
+          background: 'var(--blue)', color: 'var(--white)', border: 'none',
+          borderRadius: 999, padding: '11px 22px', cursor: 'pointer',
+          fontFamily: 'var(--font-label)', textTransform: 'uppercase',
+          letterSpacing: '0.08em', fontWeight: 600, fontSize: 13, flexShrink: 0,
+        }}>
+          Join
+        </button>
+      </div>
+      {error && <div style={{ color: 'var(--red)', fontSize: 13, marginTop: 10 }}>{error}</div>}
+    </div>
   )
 }
 

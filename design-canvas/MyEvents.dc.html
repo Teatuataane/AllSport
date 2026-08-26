@@ -1,0 +1,306 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@400;600;700&display=swap">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #0a0a0a; color: #ffffff;
+           font-family: 'Barlow', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #2371BB; text-decoration: none; }
+    a:hover { color: #4a90d9; }
+    .lab { font-family: 'Barlow Condensed', 'Barlow', sans-serif; text-transform: uppercase;
+           letter-spacing: 0.1em; font-weight: 600; }
+    .dis { font-family: 'Bebas Neue', Impact, sans-serif; letter-spacing: 0.05em; line-height: 1; }
+    .card { background: #111111; border: 1px solid #1e1e1e; border-radius: 16px; }
+    .tl { font-family: 'Barlow Condensed', sans-serif; text-transform: uppercase;
+          letter-spacing: 0.1em; font-weight: 600; font-size: 10px; }
+    .drow { display: flex; align-items: center; gap: 11px; padding: 13px 14px; border-bottom: 1px solid #1e1e1e; }
+    .erow { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-bottom: 1px solid #171717; }
+    .col { flex-shrink: 0; text-align: right; font-size: 12.5px; }
+    .cmp { display: flex; align-items: center; gap: 9px; padding: 4px 0; }
+  </style>
+</helmet>
+
+<div style="width: 390px; background: #0a0a0a; position: relative; padding-bottom: 76px;">
+
+  <div style="height: 5px; background: linear-gradient(90deg,#EA4742,#F9B051,#F397C0,#B87DB5,#2371BB,#4DB26E);"></div>
+
+  <div style="height: 48px; display: flex; align-items: center; padding: 0 16px;
+              background: rgba(10,10,10,0.92); border-bottom: 1px solid #1e1e1e; gap: 9px;">
+    <div style="width: 30px; height: 22px; border-radius: 4px; flex-shrink: 0;
+                background: linear-gradient(135deg,#EA4742,#2371BB); opacity: 0.9;"></div>
+    <span class="dis" style="font-size: 20px; color: #ffffff;">ALL<span style="color: #EA4742;">SPORT</span></span>
+  </div>
+
+  <div style="display: flex; align-items: stretch; padding: 0 10px; background: #0a0a0a; border-bottom: 1px solid #1e1e1e;">
+    <div style="display: flex; align-items: center; gap: 8px; padding: 9px 12px 8px; border-bottom: 2px solid #F9B051;">
+      <div style="width: 26px; height: 26px; border-radius: 8px; background: #F9B05122; border: 1px solid #F9B05166;
+                  display: flex; align-items: center; justify-content: center; font-size: 13px;">🏋️</div>
+      <span class="lab" style="font-size: 14px; color: #ffffff; letter-spacing: 0.06em;">TĀNE</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px; padding: 9px 12px 8px; border-bottom: 2px solid transparent;">
+      <div style="width: 26px; height: 26px; border-radius: 8px; background: #1a1a1a; border: 1px solid #2a2a2a;
+                  display: flex; align-items: center; justify-content: center; font-size: 13px;">🏃</div>
+      <span class="lab" style="font-size: 14px; color: #666666; letter-spacing: 0.06em;">RIMA</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px; padding: 9px 12px 8px; border-bottom: 2px solid transparent;">
+      <div style="width: 26px; height: 26px; border-radius: 8px; background: #1a1a1a; border: 1px solid #2a2a2a;
+                  display: flex; align-items: center; justify-content: center; font-size: 13px;">🤸</div>
+      <span class="lab" style="font-size: 14px; color: #666666; letter-spacing: 0.06em;">TOA</span>
+    </div>
+  </div>
+
+  <div style="padding: 16px 16px 0;">
+    <div class="dis" style="font-size: 30px; color: #ffffff;">MY EVENTS</div>
+    <div style="font-size: 13px; color: #666666; margin-top: 4px;">62 of 120 played · 23 won · lifetime</div>
+
+    <!-- ── Domain comparison: strongest to weakest, at a glance ───────────── -->
+    <div class="card" style="padding: 15px 16px; margin: 16px 0 14px;">
+      <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 11px;">
+        <div class="lab" style="font-size: 11px; color: #666666; letter-spacing: 0.14em;">STRONGEST TO WEAKEST</div>
+        <div class="lab" style="font-size: 10px; color: #444444;">LONGER = STRONGER</div>
+      </div>
+
+      <div class="cmp"><div style="width: 8px; height: 8px; border-radius: 2px; background: #EA4742; flex-shrink: 0;"></div>
+        <span style="font-size: 12.5px; color: #ffffff; width: 96px; flex-shrink: 0;">Strength</span>
+        <div style="flex-grow: 1; height: 7px; background: #171717; border-radius: 4px; overflow: hidden;"><div style="width: 91%; height: 100%; background: #EA4742;"></div></div>
+        <span class="lab" style="font-size: 11px; color: #888888; width: 44px; text-align: right; flex-shrink: 0;">TOP 9%</span></div>
+
+      <div class="cmp"><div style="width: 8px; height: 8px; border-radius: 2px; background: #F9E051; flex-shrink: 0;"></div>
+        <span style="font-size: 12.5px; color: #ffffff; width: 96px; flex-shrink: 0;">Power</span>
+        <div style="flex-grow: 1; height: 7px; background: #171717; border-radius: 4px; overflow: hidden;"><div style="width: 82%; height: 100%; background: #F9E051;"></div></div>
+        <span class="lab" style="font-size: 11px; color: #888888; width: 44px; text-align: right; flex-shrink: 0;">TOP 18%</span></div>
+
+      <div class="cmp"><div style="width: 8px; height: 8px; border-radius: 2px; background: #2371BB; flex-shrink: 0;"></div>
+        <span style="font-size: 12.5px; color: #ffffff; width: 96px; flex-shrink: 0;">Anaerobic</span>
+        <div style="flex-grow: 1; height: 7px; background: #171717; border-radius: 4px; overflow: hidden;"><div style="width: 73%; height: 100%; background: #2371BB;"></div></div>
+        <span class="lab" style="font-size: 11px; color: #888888; width: 44px; text-align: right; flex-shrink: 0;">TOP 27%</span></div>
+
+      <div class="cmp"><div style="width: 8px; height: 8px; border-radius: 2px; background: #F2F2F2; flex-shrink: 0;"></div>
+        <span style="font-size: 12.5px; color: #ffffff; width: 96px; flex-shrink: 0;">Coordination</span>
+        <div style="flex-grow: 1; height: 7px; background: #171717; border-radius: 4px; overflow: hidden;"><div style="width: 69%; height: 100%; background: #F2F2F2;"></div></div>
+        <span class="lab" style="font-size: 11px; color: #888888; width: 44px; text-align: right; flex-shrink: 0;">TOP 31%</span></div>
+
+      <div class="cmp"><div style="width: 8px; height: 8px; border-radius: 2px; background: #F9B051; flex-shrink: 0;"></div>
+        <span style="font-size: 12.5px; color: #ffffff; width: 96px; flex-shrink: 0;">Calisthenics</span>
+        <div style="flex-grow: 1; height: 7px; background: #171717; border-radius: 4px; overflow: hidden;"><div style="width: 66%; height: 100%; background: #F9B051;"></div></div>
+        <span class="lab" style="font-size: 11px; color: #888888; width: 44px; text-align: right; flex-shrink: 0;">TOP 34%</span></div>
+
+      <div class="cmp"><div style="width: 8px; height: 8px; border-radius: 2px; background: #B87DB5; flex-shrink: 0;"></div>
+        <span style="font-size: 12.5px; color: #ffffff; width: 96px; flex-shrink: 0;">Aerobic</span>
+        <div style="flex-grow: 1; height: 7px; background: #171717; border-radius: 4px; overflow: hidden;"><div style="width: 59%; height: 100%; background: #B87DB5;"></div></div>
+        <span class="lab" style="font-size: 11px; color: #888888; width: 44px; text-align: right; flex-shrink: 0;">TOP 41%</span></div>
+
+      <div class="cmp"><div style="width: 8px; height: 8px; border-radius: 2px; background: #8C9199; flex-shrink: 0;"></div>
+        <span style="font-size: 12.5px; color: #ffffff; width: 96px; flex-shrink: 0;">Aim</span>
+        <div style="flex-grow: 1; height: 7px; background: #171717; border-radius: 4px; overflow: hidden;"><div style="width: 52%; height: 100%; background: #8C9199;"></div></div>
+        <span class="lab" style="font-size: 11px; color: #888888; width: 44px; text-align: right; flex-shrink: 0;">TOP 48%</span></div>
+
+      <div class="cmp"><div style="width: 8px; height: 8px; border-radius: 2px; background: #B87333; flex-shrink: 0;"></div>
+        <span style="font-size: 12.5px; color: #ffffff; width: 96px; flex-shrink: 0;">Body Aware</span>
+        <div style="flex-grow: 1; height: 7px; background: #171717; border-radius: 4px; overflow: hidden;"><div style="width: 45%; height: 100%; background: #B87333;"></div></div>
+        <span class="lab" style="font-size: 11px; color: #888888; width: 44px; text-align: right; flex-shrink: 0;">TOP 55%</span></div>
+
+      <div class="cmp"><div style="width: 8px; height: 8px; border-radius: 2px; background: #4DB26E; flex-shrink: 0;"></div>
+        <span style="font-size: 12.5px; color: #ffffff; width: 96px; flex-shrink: 0;">Speed</span>
+        <div style="flex-grow: 1; height: 7px; background: #171717; border-radius: 4px; overflow: hidden;"><div style="width: 39%; height: 100%; background: #4DB26E;"></div></div>
+        <span class="lab" style="font-size: 11px; color: #888888; width: 44px; text-align: right; flex-shrink: 0;">TOP 61%</span></div>
+
+      <div class="cmp"><div style="width: 8px; height: 8px; border-radius: 2px; background: #F397C0; flex-shrink: 0;"></div>
+        <span style="font-size: 12.5px; color: #ffffff; width: 96px; flex-shrink: 0;">Flexibility</span>
+        <div style="flex-grow: 1; height: 7px; background: #171717; border-radius: 4px; overflow: hidden;"><div style="width: 16%; height: 100%; background: #F397C0;"></div></div>
+        <span class="lab" style="font-size: 11px; color: #888888; width: 44px; text-align: right; flex-shrink: 0;">TOP 84%</span></div>
+
+      <div style="font-size: 11.5px; color: #555555; line-height: 1.5; margin-top: 11px; padding-top: 11px; border-top: 1px solid #1e1e1e;">Top % is where your best sits against everyone in your division pool who has played that event. Lower is better.</div>
+    </div>
+  </div>
+
+  <div style="padding: 0 16px 16px;">
+    <div class="card" style="padding: 0; overflow: hidden;">
+
+      <!-- expanded domain -->
+      <div class="drow" style="background: #141414;">
+        <div style="width: 32px; height: 32px; border-radius: 9px; flex-shrink: 0; background: #EA474222;
+                    border: 1px solid #EA474255; display: flex; align-items: center; justify-content: center;">
+          <span class="dis" style="font-size: 15px; color: #EA4742;">1</span>
+        </div>
+        <div style="flex-grow: 1; min-width: 0;">
+          <div class="lab" style="font-size: 14px; color: #ffffff; letter-spacing: 0.05em;">MAXIMAL STRENGTH</div>
+          <div class="lab" style="font-size: 10px; color: #555555; margin-top: 2px;">10 PLAYED · 7 OF 9 WINS · 2 TO CROWN</div>
+        </div>
+        <span class="dis" style="font-size: 17px; color: #EA4742;">TOP 9%</span>
+        <span style="color: #555555; font-size: 12px; transform: rotate(90deg);">›</span>
+      </div>
+
+      <!-- column headers -->
+      <div class="erow" style="background: #0d0d0d; padding-top: 6px; padding-bottom: 6px;">
+        <div style="width: 26px; flex-shrink: 0;"></div>
+        <span style="flex-grow: 1;"></span>
+        <span class="lab" style="font-size: 9px; color: #555555; width: 76px; text-align: right; flex-shrink: 0;">PERSONAL BEST</span>
+        <span class="lab" style="font-size: 9px; color: #555555; width: 40px; text-align: right; flex-shrink: 0;">AVG</span>
+        <span class="lab" style="font-size: 9px; color: #555555; width: 34px; text-align: right; flex-shrink: 0;">WON</span>
+      </div>
+
+      <div class="erow">
+        <div style="width: 26px; height: 26px; border-radius: 7px; background: #EA474222; border: 1px solid #EA474255; flex-shrink: 0;"></div>
+        <span style="font-size: 13px; color: #ffffff; flex-grow: 1; min-width: 0;">Deadlift</span>
+        <span class="col" style="width: 76px; color: #ffffff; font-weight: 600;">180kg × 3</span>
+        <span class="col" style="width: 40px; color: #999999;">1.4</span>
+        <span class="col" style="width: 34px; color: #F9B051; font-weight: 600;">4</span>
+      </div>
+      <div class="erow">
+        <div style="width: 26px; height: 26px; border-radius: 7px; background: #EA474222; border: 1px solid #EA474255; flex-shrink: 0;"></div>
+        <span style="font-size: 13px; color: #ffffff; flex-grow: 1; min-width: 0;">Pause Back Squat</span>
+        <span class="col" style="width: 76px; color: #ffffff; font-weight: 600;">140kg × 2</span>
+        <span class="col" style="width: 40px; color: #999999;">1.8</span>
+        <span class="col" style="width: 34px; color: #F9B051; font-weight: 600;">2</span>
+      </div>
+      <div class="erow">
+        <div style="width: 26px; height: 26px; border-radius: 7px; background: #EA474222; border: 1px solid #EA474255; flex-shrink: 0;"></div>
+        <span style="font-size: 13px; color: #ffffff; flex-grow: 1; min-width: 0;">Clean &amp; Press</span>
+        <span class="col" style="width: 76px; color: #ffffff; font-weight: 600;">75kg × 1</span>
+        <span class="col" style="width: 40px; color: #999999;">2.0</span>
+        <span class="col" style="width: 34px; color: #F9B051; font-weight: 600;">1</span>
+      </div>
+      <div class="erow">
+        <div style="width: 26px; height: 26px; border-radius: 7px; background: #EA474222; border: 1px solid #EA474255; flex-shrink: 0;"></div>
+        <span style="font-size: 13px; color: #ffffff; flex-grow: 1; min-width: 0;">Sandbag to Shoulder</span>
+        <span class="col" style="width: 76px; color: #ffffff; font-weight: 600;">D4 · 6</span>
+        <span class="col" style="width: 40px; color: #999999;">3.2</span>
+        <span class="col" style="width: 34px; color: #555555;">0</span>
+      </div>
+      <div class="erow">
+        <div style="width: 26px; height: 26px; border-radius: 7px; background: #EA474222; border: 1px solid #EA474255; flex-shrink: 0;"></div>
+        <span style="font-size: 13px; color: #ffffff; flex-grow: 1; min-width: 0;">Turkish Getup</span>
+        <span class="col" style="width: 76px; color: #ffffff; font-weight: 600;">32kg × 1</span>
+        <span class="col" style="width: 40px; color: #999999;">2.5</span>
+        <span class="col" style="width: 34px; color: #555555;">0</span>
+      </div>
+      <div class="erow" style="opacity: 0.38;">
+        <div style="width: 26px; height: 26px; border-radius: 7px; background: #EA474222; border: 1px solid #EA474255; flex-shrink: 0;"></div>
+        <span style="font-size: 13px; color: #cccccc; flex-grow: 1; min-width: 0;">Arthur Lift</span>
+        <span class="col lab" style="width: 76px; color: #777777; font-size: 11px;">NOT PLAYED</span>
+        <span class="col" style="width: 40px; color: #777777;">—</span>
+        <span class="col" style="width: 34px; color: #777777;">—</span>
+      </div>
+      <div class="erow" style="opacity: 0.38; border-bottom: 1px solid #1e1e1e;">
+        <div style="width: 26px; height: 26px; border-radius: 7px; background: #EA474222; border: 1px solid #EA474255; flex-shrink: 0;"></div>
+        <span style="font-size: 13px; color: #cccccc; flex-grow: 1; min-width: 0;">Pause Row</span>
+        <span class="col lab" style="width: 76px; color: #777777; font-size: 11px;">NOT PLAYED</span>
+        <span class="col" style="width: 40px; color: #777777;">—</span>
+        <span class="col" style="width: 34px; color: #777777;">—</span>
+      </div>
+
+      <!-- collapsed domains -->
+      <div class="drow">
+        <div style="width: 32px; height: 32px; border-radius: 9px; flex-shrink: 0; background: #F9B05122;
+                    border: 1px solid #F9B05155; display: flex; align-items: center; justify-content: center;">
+          <span class="dis" style="font-size: 15px; color: #F9B051;">2</span>
+        </div>
+        <div style="flex-grow: 1; min-width: 0;">
+          <div class="lab" style="font-size: 14px; color: #ffffff; letter-spacing: 0.05em;">CALISTHENICS</div>
+          <div class="lab" style="font-size: 10px; color: #555555; margin-top: 2px;">5 PLAYED · 2 OF 9 WINS · 7 TO CROWN</div>
+        </div>
+        <span class="dis" style="font-size: 17px; color: #F9B051;">TOP 34%</span>
+        <span style="color: #555555; font-size: 12px;">›</span>
+      </div>
+
+      <div class="drow">
+        <div style="width: 32px; height: 32px; border-radius: 9px; flex-shrink: 0; background: #F9E05122;
+                    border: 1px solid #F9E05155; display: flex; align-items: center; justify-content: center;">
+          <span class="dis" style="font-size: 15px; color: #F9E051;">3</span>
+        </div>
+        <div style="flex-grow: 1; min-width: 0;">
+          <div class="lab" style="font-size: 14px; color: #ffffff; letter-spacing: 0.05em;">POWER</div>
+          <div class="lab" style="font-size: 10px; color: #555555; margin-top: 2px;">8 PLAYED · 4 OF 9 WINS · 5 TO CROWN</div>
+        </div>
+        <span class="dis" style="font-size: 17px; color: #F9E051;">TOP 18%</span>
+        <span style="color: #555555; font-size: 12px;">›</span>
+      </div>
+
+      <div class="drow">
+        <div style="width: 32px; height: 32px; border-radius: 9px; flex-shrink: 0; background: #4DB26E22;
+                    border: 1px solid #4DB26E55; display: flex; align-items: center; justify-content: center;">
+          <span class="dis" style="font-size: 15px; color: #4DB26E;">4</span>
+        </div>
+        <div style="flex-grow: 1; min-width: 0;">
+          <div class="lab" style="font-size: 14px; color: #ffffff; letter-spacing: 0.05em;">SPEED</div>
+          <div class="lab" style="font-size: 10px; color: #555555; margin-top: 2px;">4 PLAYED · 1 OF 9 WINS · 8 TO CROWN</div>
+        </div>
+        <span class="dis" style="font-size: 17px; color: #4DB26E;">TOP 61%</span>
+        <span style="color: #555555; font-size: 12px;">›</span>
+      </div>
+
+      <div class="drow">
+        <div style="width: 32px; height: 32px; border-radius: 9px; flex-shrink: 0; background: #2371BB22;
+                    border: 1px solid #2371BB55; display: flex; align-items: center; justify-content: center;">
+          <span class="dis" style="font-size: 15px; color: #2371BB;">5</span>
+        </div>
+        <div style="flex-grow: 1; min-width: 0;">
+          <div class="lab" style="font-size: 14px; color: #ffffff; letter-spacing: 0.05em;">ANAEROBIC ENDURANCE</div>
+          <div class="lab" style="font-size: 10px; color: #555555; margin-top: 2px;">7 PLAYED · 3 OF 9 WINS · 6 TO CROWN</div>
+        </div>
+        <span class="dis" style="font-size: 17px; color: #2371BB;">TOP 27%</span>
+        <span style="color: #555555; font-size: 12px;">›</span>
+      </div>
+
+      <div class="drow" style="border-bottom: none;">
+        <div style="width: 32px; height: 32px; border-radius: 9px; flex-shrink: 0; background: #B87DB522;
+                    border: 1px solid #B87DB555; display: flex; align-items: center; justify-content: center;">
+          <span class="dis" style="font-size: 15px; color: #B87DB5;">6</span>
+        </div>
+        <div style="flex-grow: 1; min-width: 0;">
+          <div class="lab" style="font-size: 14px; color: #ffffff; letter-spacing: 0.05em;">AEROBIC ENDURANCE</div>
+          <div class="lab" style="font-size: 10px; color: #555555; margin-top: 2px;">6 PLAYED · 2 OF 9 WINS · 7 TO CROWN</div>
+        </div>
+        <span class="dis" style="font-size: 17px; color: #B87DB5;">TOP 41%</span>
+        <span style="color: #555555; font-size: 12px;">›</span>
+      </div>
+    </div>
+
+    <div style="text-align: center; padding: 16px 0 0;">
+      <span class="lab" style="font-size: 11px; color: #444444;">DOMAINS 7–10 BELOW</span>
+    </div>
+  </div>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 76px;
+              background: rgba(10,10,10,0.97); border-top: 1px solid #1e1e1e;
+              box-shadow: 0 -12px 28px rgba(0,0,0,0.65);
+              display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: start; padding-top: 11px;">
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5c5c5c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M10 8.5l6 3.5-6 3.5z"></path></svg>
+      <span class="tl" style="color: #5c5c5c;">PLAY</span>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5c5c5c" stroke-width="1.8" stroke-linecap="round"><path d="M5 19V11"></path><path d="M12 19V5"></path><path d="M19 19v-5"></path></svg>
+      <span class="tl" style="color: #5c5c5c;">STATS</span>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5c5c5c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v6a5 5 0 01-10 0z"></path><path d="M7 6H4v1a3 3 0 003 3"></path><path d="M17 6h3v1a3 3 0 01-3 3"></path><path d="M9 20h6"></path><path d="M12 15v5"></path></svg>
+      <span class="tl" style="color: #5c5c5c;">BOARD</span>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="1.8" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="2"></rect><rect x="13" y="4" width="7" height="7" rx="2"></rect><rect x="4" y="13" width="7" height="7" rx="2"></rect><rect x="13" y="13" width="7" height="7" rx="2"></rect></svg>
+      <span class="tl" style="color: #ffffff;">EVENTS</span>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5c5c5c" stroke-width="1.8" stroke-linecap="round"><circle cx="6" cy="12" r="1.4"></circle><circle cx="12" cy="12" r="1.4"></circle><circle cx="18" cy="12" r="1.4"></circle></svg>
+      <span class="tl" style="color: #5c5c5c;">MORE</span>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":390,"height":1720}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

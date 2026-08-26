@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient, getSessionUser } from '@/lib/supabase-browser'
+import { ACTIVE_PLAYER_KEY, useActivePlayer } from '@/lib/useActivePlayer'
 import Link from 'next/link'
 import { MAX_CROWNS, taniwhaBySlug, taniwhaOnDark } from '@/lib/taniwha'
 
@@ -30,6 +31,7 @@ export default function ProfilePage() {
 
   // Active profile context
   const [activePlayerId, setActivePlayerId] = useState<string | null>(null)
+  const { setActivePlayer } = useActivePlayer()
 
   // Family members
   const [familyMembers, setFamilyMembers] = useState<any[]>([])
@@ -91,7 +93,7 @@ export default function ProfilePage() {
       }
 
       // Restore active player
-      const stored = typeof window !== 'undefined' ? localStorage.getItem('allsport_active_player_id') : null
+      const stored = typeof window !== 'undefined' ? localStorage.getItem(ACTIVE_PLAYER_KEY) : null
       setActivePlayerId(stored || user.id)
 
       // Taniwha progression for the badge.
@@ -137,9 +139,12 @@ export default function ProfilePage() {
   }
 
   const handleSwitchProfile = (id: string) => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('allsport_active_player_id', id)
-    }
+    // Through the hook, never straight to localStorage. Writing the key directly
+    // persists the choice but tells nothing that is already mounted, so the
+    // player-tab strip and the dashboard would keep rendering the previous
+    // player until a hard reload — which is exactly the silent-wrong-person
+    // failure this whole feature exists to remove.
+    setActivePlayer(id)
     setActivePlayerId(id)
     router.push('/dashboard')
   }
@@ -208,7 +213,7 @@ export default function ProfilePage() {
     }
     // Clear the locally-cached profile pointer before signing out, or the next
     // visitor on this device lands on a dashboard for an account that is gone.
-    try { localStorage.removeItem('allsport_active_player_id') } catch {}
+    try { localStorage.removeItem(ACTIVE_PLAYER_KEY) } catch {}
     await supabase.auth.signOut()
     router.push('/')
   }

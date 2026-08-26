@@ -30,6 +30,8 @@ import {
   crownCapacity,
   hasCrownRoom,
   TOTAL_BODY_PARTS,
+  limbCrossings,
+  limbsHeld,
   MAX_CROWNS,
   BODY_PARTS_PER_TANIWHA,
   nextSlot,
@@ -122,7 +124,7 @@ describe('domains', () => {
   })
 
   it('resolves by domain number and by slug', () => {
-    expect(taniwhaForDomain(1)?.name).toBe('Te Taniwha ō te Kaha')
+    expect(taniwhaForDomain(1)?.name).toBe('Te Taniwha o te Kaha')
     expect(taniwhaForDomain(11)).toBeNull()
     expect(taniwhaBySlug('kahui')).toBe(KAHUI)
     expect(taniwhaBySlug('nope')).toBeNull()
@@ -516,5 +518,77 @@ describe('the art checker mirrors the ladder', () => {
     for (const tw of TANIWHA) {
       expect(new RegExp(`['"]?${tw.slug}['"]?\\s*:`).test(block), `${tw.slug} missing from ACCENT`).toBe(true)
     }
+  })
+})
+
+// ── limbCrossings ────────────────────────────────────────────────────────────
+// Taniwha History shows when each piece landed. `player_taniwha` stores a count,
+// not a row per piece, so this derives the dates from the session points instead.
+// Body parts only: crowns are earned rather than bought, so they are not slots.
+
+describe('limbCrossings', () => {
+  const s = (id: string, date: string, points: number) =>
+    ({ session_id: id, session_date: date, location: 'AllSport HQ', points })
+
+  it('names the session in which each 1,000-point boundary was crossed', () => {
+    const out = limbCrossings([s('a', '2026-03-01', 600), s('b', '2026-03-05', 600)])
+    expect(out).toHaveLength(1)
+    expect(out[0].limb).toBe(1)
+    expect(out[0].sessionId).toBe('b')
+    expect(out[0].points).toBe(1200)
+  })
+
+  it('emits every piece when one session crosses several boundaries', () => {
+    const out = limbCrossings([s('a', '2026-03-01', 3200)])
+    expect(out.map(c => c.limb)).toEqual([1, 2, 3])
+    expect(out.every(c => c.sessionId === 'a')).toBe(true)
+  })
+
+  it('sorts by date rather than trusting the caller', () => {
+    const out = limbCrossings([s('b', '2026-03-05', 600), s('a', '2026-03-01', 600)])
+    expect(out[0].sessionId).toBe('b')
+  })
+
+  it('starting points shift every crossing that follows', () => {
+    // 800 of adjustment_points means the first session only needs 200 more.
+    const out = limbCrossings([s('a', '2026-03-01', 300)], 800)
+    expect(out).toHaveLength(1)
+    expect(out[0].points).toBe(1100)
+  })
+
+  it('stops at the last body part on the ladder, not beyond', () => {
+    const out = limbCrossings([s('a', '2026-03-01', 500_000)])
+    expect(out).toHaveLength(TOTAL_BODY_PARTS)
+    expect(out[out.length - 1].limb).toBe(TOTAL_BODY_PARTS)
+  })
+
+  it('ignores a session worth nothing', () => {
+    expect(limbCrossings([s('a', '2026-03-01', 0)])).toHaveLength(0)
+  })
+})
+
+describe('limbsHeld', () => {
+  it('counts the crown as the last piece', () => {
+    // body_parts caps at BODY_PARTS_PER_TANIWHA because the crown is earned, not
+    // bought. A crowned taniwha therefore STORES 10 and must READ 11, or a
+    // finished one shows as "10 of 11" forever.
+    expect(limbsHeld({ body_parts: BODY_PARTS_PER_TANIWHA, crowned_at: '2026-08-22' }))
+      .toBe(PARTS_PER_TANIWHA)
+  })
+
+  it('an uncrowned full body is every piece but the crown', () => {
+    expect(limbsHeld({ body_parts: BODY_PARTS_PER_TANIWHA, crowned_at: null }))
+      .toBe(BODY_PARTS_PER_TANIWHA)
+  })
+
+  it('is zero for a taniwha never started, or absent', () => {
+    expect(limbsHeld({ body_parts: 0, crowned_at: null })).toBe(0)
+    expect(limbsHeld(null)).toBe(0)
+    expect(limbsHeld(undefined)).toBe(0)
+  })
+
+  it('clamps a body_parts value the server should never send', () => {
+    expect(limbsHeld({ body_parts: 40, crowned_at: null })).toBe(BODY_PARTS_PER_TANIWHA)
+    expect(limbsHeld({ body_parts: -3, crowned_at: null })).toBe(0)
   })
 })

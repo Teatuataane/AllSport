@@ -1,0 +1,144 @@
+{
+  "artboards": [
+    {
+      "file": "Main.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 390,
+      "h": 1400,
+      "title": "Stats"
+    },
+    {
+      "file": "TaniwhaHistory.dc.html",
+      "x": 460,
+      "y": 0,
+      "w": 390,
+      "h": 1900,
+      "title": "Taniwha history"
+    },
+    {
+      "file": "MyTaniwha.dc.html",
+      "x": 920,
+      "y": 0,
+      "w": 390,
+      "h": 1980,
+      "title": "My Taniwha"
+    },
+    {
+      "file": "MyEvents.dc.html",
+      "x": 1380,
+      "y": 0,
+      "w": 390,
+      "h": 1720,
+      "title": "My Events"
+    },
+    {
+      "file": "ChildView.dc.html",
+      "x": 1840,
+      "y": 0,
+      "w": 390,
+      "h": 1400,
+      "title": "Stats — child tab"
+    },
+    {
+      "file": "FirstRun.dc.html",
+      "x": 2300,
+      "y": 0,
+      "w": 390,
+      "h": 1000,
+      "title": "Stats — first run"
+    },
+    {
+      "file": "TaniwhaStates.dc.html",
+      "x": 0,
+      "y": 2180,
+      "w": 880,
+      "h": 1620,
+      "title": "Taniwha card states"
+    },
+    {
+      "file": "NavSystem.dc.html",
+      "x": 950,
+      "y": 2180,
+      "w": 880,
+      "h": 1180,
+      "title": "Nav bar system"
+    },
+    {
+      "file": "PlayerTabs.dc.html",
+      "x": 1900,
+      "y": 2180,
+      "w": 880,
+      "h": 760,
+      "title": "Player switcher"
+    }
+  ],
+  "annotations": [
+    {
+      "id": "read-me",
+      "x": 0,
+      "y": -300,
+      "w": 900,
+      "text": "AllSport dashboard redesign — round 2, your critique applied.\n\nSCREENS (top row) · SYSTEM SPECS (bottom row)\n\nThe dashboard is now four blocks: identity, taniwha card, four numbers, skill radar. Everything below moved into Taniwha History, which is what the card opens.\n\nTe Taniwha o te Whānau is now really drawn (11/11 pieces) and the app renders it; the other eleven still fall back to filler geometry."
+    },
+    {
+      "id": "note-card",
+      "x": -340,
+      "y": 40,
+      "w": 310,
+      "text": "TANIWHA CARD — what changed\n\n· \"Currently earning\" label\n· Name + English gloss\n· Tap for Taniwha History\n· The creature assembling, limb by limb\n· 5 of 10 limbs, currently building Ringa Matau (right arm)\n· Three numbers at once: this taniwha, this limb, all time\n· Bottom text and the choose button are GONE — the button now lives in Taniwha History"
+    },
+    {
+      "id": "note-radar",
+      "x": -340,
+      "y": 700,
+      "w": 310,
+      "text": "SKILL RADAR\n\nTen spokes, one per domain, in the ten domain colours. Each spoke is the player's average Top % in that domain — further out is stronger. Strongest and weakest are named underneath so the shape never has to be decoded.\n\nA new player's shape sits near the centre and grows outward, which is the right story."
+    },
+    {
+      "id": "note-history",
+      "x": 460,
+      "y": -190,
+      "w": 390,
+      "text": "Opens from the taniwha card. Holds the choose/switch control, the limbs earned with dates, the play history you moved off the dashboard, and the colours era."
+    },
+    {
+      "id": "note-taniwha",
+      "x": 920,
+      "y": -190,
+      "w": 390,
+      "text": "Retitled MY TANIWHA. Four counts across the top, then each taniwha as an expandable row — expanded here to show all ten named limbs and what the crown needs."
+    },
+    {
+      "id": "note-events",
+      "x": 1380,
+      "y": -190,
+      "w": 390,
+      "text": "Lens toggle dropped. Every event now shows PR, average placement and wins side by side, and the strongest-to-weakest bars at the top answer \"what am I good at\" before any domain is opened."
+    },
+    {
+      "id": "note-nav",
+      "x": 2300,
+      "y": -190,
+      "w": 390,
+      "text": "The bottom bar is fixed — it travels with the screen on every page, sitting above the content on a shadow rather than at the end of it."
+    },
+    {
+      "id": "note-open",
+      "x": 0,
+      "y": 3860,
+      "w": 900,
+      "text": "SUPERSEDED IN PART — main changed the parts model after this canvas was drawn (PR #90, v0.6.1.0): eleven pieces, not ten. The head leads, the neck is merged into it, wings arrive at eight, and piece TEN is the taputapu — the tool of that taniwha’s discipline, different for every one. Counts here are corrected; the drawn figures still show the older silhouette.\n\nlib/taniwha.ts is the source of truth, not this canvas.\n\nRESOLVED — the particle is unmacronised: \"Te Taniwha o te …\" across all twelve.\n\nSTILL OPEN — the English glosses (Connection is Tāne’s, the other eleven are mine), and the four placeholder names: Hiko, Manawanui, Mataara, Ruruku."
+    },
+    {
+      "id": "note-specs",
+      "x": 0,
+      "y": 2070,
+      "w": 900,
+      "text": "SYSTEM SPECS — states, sizes and the failure modes each piece is designed against."
+    }
+  ],
+  "launch": {
+    "view": "canvas"
+  }
+}
