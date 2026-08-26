@@ -1,16 +1,34 @@
 'use client'
+
+// ─── Top bar ─────────────────────────────────────────────────────────────────
+// Two quite different bars behind one component.
+//
+// LOGGED OUT — unchanged: brand, the five public links on desktop, PLAY NOW, and
+// a hamburger on phones.
+//
+// LOGGED IN — slimmed from 60px to 48px and stripped to the logo. The DASHBOARD
+// pill, SIGN OUT and the entire hamburger are gone: every link they held is now
+// either a bottom-bar tab or a row in the MORE sheet. On desktop (≥769px) the
+// bottom bar is hidden by CSS, so the same five destinations render here as text
+// links instead — `useNavState` is shared with BottomNav so PLAY cannot point
+// two different ways on two different widths.
+
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useRouter, usePathname } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase-browser'
+import { useNavState } from '@/lib/useNavState'
+
+export const TOP_BAR_HEIGHT = 48
+export const RAINBOW_HEIGHT = 5
 
 export default function Navbar() {
   const [user, setUser] = useState<any>(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [menuOpen, setMenuOpen] = useState(false)
-  const router = useRouter()
   const pathname = usePathname()
   const supabase = createClient()
+  const { isJudge, playHref, playLabel, playColour } = useNavState()
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -26,28 +44,12 @@ export default function Navbar() {
 
   useEffect(() => { setMenuOpen(false) }, [pathname])
 
-  const handleSignOut = async () => {
-    setMenuOpen(false)
-    await supabase.auth.signOut()
-    router.push('/')
-  }
-
   const publicLinks = [
     { href: '/', label: 'HOME' },
     { href: '/how-to-play', label: 'HOW TO PLAY' },
     { href: '/schedule', label: 'SCHEDULE' },
     { href: '/leaderboard', label: 'LEADERBOARD' },
     { href: '/koha', label: 'KOHA' },
-  ]
-
-  const loggedInMenuLinks = [
-    { href: '/', label: 'HOME' },
-    { href: '/how-to-play', label: 'HOW TO PLAY' },
-    { href: '/events', label: 'EVENTS' },
-    { href: '/schedule', label: 'SCHEDULE' },
-    { href: '/leaderboard', label: 'LEADERBOARD' },
-    { href: '/koha', label: 'KOHA' },
-    { href: '/prs', label: 'MY PERSONAL BESTS' },
   ]
 
   const isLoggedIn = !authLoading && !!user
@@ -60,125 +62,124 @@ export default function Navbar() {
     opacity,
   })
 
+  const brand = (
+    <Link href={isLoggedIn ? '/dashboard' : '/'} style={{
+      display: 'flex', alignItems: 'center', gap: 9, flexShrink: 0,
+    }}>
+      <img src="/logo-mark.webp" alt="AllSport" width={50} height={30}
+           style={{ height: 30, width: 'auto' }} />
+      <span style={{
+        fontFamily: 'var(--font-display)', fontSize: 20,
+        color: 'var(--white)', letterSpacing: '0.09em', lineHeight: 1,
+      }}>
+        ALL<span style={{ color: 'var(--red)' }}>SPORT</span>
+      </span>
+    </Link>
+  )
+
+  // Mirrors the bottom bar, one for one. Only rendered ≥769px.
+  const desktopTabs = [
+    { href: playHref, label: playLabel.toUpperCase(), colour: playColour, match: '/scoring' },
+    { href: '/dashboard', label: 'STATS', match: '/dashboard' },
+    { href: '/leaderboard', label: 'BOARD', match: '/leaderboard' },
+    { href: '/prs', label: 'EVENTS', match: '/prs' },
+    { href: '/taniwha', label: 'TANIWHA', match: '/taniwha' },
+  ]
+
   return (
     <>
-      {/* Rainbow stripe — the brand's signature edge */}
       <div style={{
-        height: 5,
+        height: RAINBOW_HEIGHT,
         background: 'var(--rainbow)',
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1001,
       }} />
 
       <nav style={{
-        position: 'fixed', top: 5, left: 0, right: 0, zIndex: 1000,
-        background: 'rgba(10,10,10,0.82)',
+        position: 'fixed', top: RAINBOW_HEIGHT, left: 0, right: 0, zIndex: 1000,
+        background: 'rgba(10,10,10,0.86)',
         backdropFilter: 'blur(14px)',
         WebkitBackdropFilter: 'blur(14px)',
         borderBottom: '1px solid var(--border)',
-        padding: '0 20px', height: 60,
+        padding: '0 16px',
+        height: isLoggedIn ? TOP_BAR_HEIGHT : 60,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        gap: 24,
       }}>
-        {/* Logo */}
-        <Link href={isLoggedIn ? '/dashboard' : '/'} style={{
-          display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0,
-        }}>
-          <img src="/logo-mark.webp" alt="AllSport" width={63} height={38} style={{ height: 38, width: 'auto' }} />
-          <span style={{
-            fontFamily: 'var(--font-display)', fontSize: 22,
-            color: 'var(--white)', letterSpacing: '0.09em', lineHeight: 1,
-          }}>
-            ALL<span style={{ color: 'var(--red)' }}>SPORT</span>
-          </span>
-        </Link>
+        {brand}
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-          {!authLoading && (isLoggedIn ? (
-            <>
-              <Link href="/dashboard" style={{
-                background: 'var(--blue)', color: 'var(--white)',
-                padding: '9px 20px', borderRadius: 999,
-                fontFamily: 'var(--font-label)',
-                fontSize: 13, fontWeight: 600, letterSpacing: '0.08em',
-                lineHeight: 1, boxShadow: 'var(--glow-blue)',
+        {!authLoading && (isLoggedIn ? (
+          <div className="desktop-nav" style={{ display: 'flex', alignItems: 'center', gap: 26 }}>
+            {desktopTabs.map(t => {
+              const on = pathname === t.match || pathname.startsWith(`${t.match}/`)
+              return (
+                <Link key={t.label} href={t.href} style={{
+                  fontFamily: 'var(--font-label)', fontSize: 13,
+                  letterSpacing: '0.1em', fontWeight: 600,
+                  color: t.colour ?? (on ? 'var(--white)' : 'var(--grey)'),
+                  borderBottom: on ? '2px solid var(--blue)' : '2px solid transparent',
+                  paddingBottom: 3, lineHeight: 1,
+                  transition: 'color 200ms',
+                }}>
+                  {t.label}
+                </Link>
+              )
+            })}
+            {isJudge && (
+              <Link href="/judge" style={{
+                fontFamily: 'var(--font-label)', fontSize: 13,
+                letterSpacing: '0.1em', fontWeight: 600, color: 'var(--red)',
+                lineHeight: 1,
               }}>
-                DASHBOARD
+                KAIWHAKAWĀ
               </Link>
+            )}
+          </div>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+            <div className="desktop-nav" style={{ display: 'flex', alignItems: 'center', gap: 24, marginRight: 12 }}>
+              {publicLinks.map(link => (
+                <Link key={link.href} href={link.href} style={{
+                  fontFamily: 'var(--font-label)', fontSize: 13,
+                  letterSpacing: '0.1em', fontWeight: 600,
+                  color: pathname === link.href ? 'var(--white)' : 'var(--grey)',
+                  transition: 'color 200ms',
+                }}>
+                  {link.label}
+                </Link>
+              ))}
+            </div>
 
-              <button onClick={handleSignOut} style={{
-                background: 'transparent', border: '1px solid var(--border-strong)',
-                borderRadius: 999, cursor: 'pointer',
-                fontFamily: 'var(--font-label)',
-                fontSize: 12, fontWeight: 600,
-                letterSpacing: '0.08em', color: 'var(--grey)',
-                padding: '8px 14px', lineHeight: 1,
-              }}>
-                SIGN OUT
-              </button>
+            <Link href="/play" style={{
+              background: 'var(--red)', color: 'var(--white)',
+              padding: '9px 24px', borderRadius: 999,
+              fontFamily: 'var(--font-label)',
+              fontSize: 14, fontWeight: 600, letterSpacing: '0.1em',
+              lineHeight: 1, boxShadow: 'var(--glow-red)',
+            }}>
+              PLAY NOW
+            </Link>
 
-              {/* Hamburger — always visible when logged in */}
-              <button
-                onClick={() => setMenuOpen(o => !o)}
-                aria-label="Menu"
-                style={{
-                  background: 'transparent', border: 'none',
-                  cursor: 'pointer', padding: 6,
-                  display: 'flex', flexDirection: 'column',
-                  gap: 5, alignItems: 'center', justifyContent: 'center',
-                }}
-              >
-                <span style={hamburgerBar('rotate(45deg) translate(5px, 5px)')} />
-                <span style={hamburgerBar('mid', menuOpen ? 0 : 1)} />
-                <span style={hamburgerBar('rotate(-45deg) translate(5px, -5px)')} />
-              </button>
-            </>
-          ) : (
-            <>
-              {/* Desktop links — logged-out only */}
-              <div className="desktop-nav" style={{ display: 'flex', alignItems: 'center', gap: 24, marginRight: 12 }}>
-                {publicLinks.map(link => (
-                  <Link key={link.href} href={link.href} style={{
-                    fontFamily: 'var(--font-label)', fontSize: 13,
-                    letterSpacing: '0.1em', fontWeight: 600,
-                    color: pathname === link.href ? 'var(--white)' : 'var(--grey)',
-                    transition: 'color 200ms',
-                  }}>
-                    {link.label}
-                  </Link>
-                ))}
-              </div>
-
-              <Link href="/play" style={{
-                background: 'var(--red)', color: 'var(--white)',
-                padding: '9px 24px', borderRadius: 999,
-                fontFamily: 'var(--font-label)',
-                fontSize: 14, fontWeight: 600, letterSpacing: '0.1em',
-                lineHeight: 1, boxShadow: 'var(--glow-red)',
-              }}>
-                PLAY NOW
-              </Link>
-
-              {/* Mobile hamburger — logged-out */}
-              <button
-                className="hamburger"
-                onClick={() => setMenuOpen(o => !o)}
-                aria-label="Toggle menu"
-                style={{
-                  display: 'none', background: 'transparent', border: 'none',
-                  cursor: 'pointer', padding: 6, flexDirection: 'column',
-                  gap: 5, alignItems: 'center', justifyContent: 'center',
-                }}
-              >
-                <span style={hamburgerBar('rotate(45deg) translate(5px, 5px)')} />
-                <span style={hamburgerBar('mid', menuOpen ? 0 : 1)} />
-                <span style={hamburgerBar('rotate(-45deg) translate(5px, -5px)')} />
-              </button>
-            </>
-          ))}
-        </div>
+            <button
+              className="hamburger"
+              onClick={() => setMenuOpen(o => !o)}
+              aria-label="Toggle menu"
+              aria-expanded={menuOpen}
+              style={{
+                display: 'none', background: 'transparent', border: 'none',
+                cursor: 'pointer', padding: 6, flexDirection: 'column',
+                gap: 5, alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              <span style={hamburgerBar('rotate(45deg) translate(5px, 5px)')} />
+              <span style={hamburgerBar('mid', menuOpen ? 0 : 1)} />
+              <span style={hamburgerBar('rotate(-45deg) translate(5px, -5px)')} />
+            </button>
+          </div>
+        ))}
       </nav>
 
-      {/* Dropdown menu */}
-      {menuOpen && (
+      {/* Logged-out phones only. The logged-in menu is the bottom bar's MORE sheet. */}
+      {menuOpen && !isLoggedIn && (
         <div style={{
           position: 'fixed', top: 65, left: 0, right: 0, zIndex: 999,
           background: 'rgba(10,10,10,0.96)',
@@ -187,7 +188,7 @@ export default function Navbar() {
           borderBottom: '1px solid var(--border)',
           display: 'flex', flexDirection: 'column',
         }}>
-          {(isLoggedIn ? loggedInMenuLinks : publicLinks).map(link => (
+          {publicLinks.map(link => (
             <Link
               key={link.href}
               href={link.href}
@@ -205,8 +206,9 @@ export default function Navbar() {
         </div>
       )}
 
-      {/* Spacer */}
-      <div style={{ height: 65 }} />
+      {/* Spacer. Logged in this is 53px, against the old 65 — and nothing is
+          buried behind a hamburger any more. */}
+      <div style={{ height: (isLoggedIn ? TOP_BAR_HEIGHT : 60) + RAINBOW_HEIGHT }} />
     </>
   )
 }

@@ -200,7 +200,7 @@ function LeaderboardTable({ data, accentColor, loading }: { data: EnrichedPlayer
                       {player.crowned}
                     </span>
                     <span style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '12px', color: player.building ? taniwhaOnDark(player.building) : '#444444' }}>
-                      {player.building ? player.building.name.replace('Te Taniwha ō te ', '').replace('Te ', '') : '—'}
+                      {player.building ? player.building.name.replace('Te Taniwha o te ', '').replace('Te ', '') : '—'}
                     </span>
                   </div>
                 )}
@@ -542,7 +542,7 @@ export default function Leaderboard() {
         </p>
         <p style={{ color: '#666666', fontSize: '14px', maxWidth: '620px', marginBottom: '40px', lineHeight: 1.7 }}>
           A discipline taniwha is crowned by winning {WIN_TARGET} of its {EVENTS_PER_DOMAIN} events.
-          Te Taniwha ō te Whānau is crowned by bringing someone into the sport. Hold all {MAX_CROWNS}
+          Te Taniwha o te Whānau is crowned by bringing someone into the sport. Hold all {MAX_CROWNS}
           and they gather into Te Kāhui at {TANIWHA_PEAK_POINTS.toLocaleString()} points.
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '8px' }}>

@@ -216,3 +216,14 @@ button { font-family: inherit; }
   .desktop-nav { display: none !important; }
   .hamburger { display: flex !important; }
 }
+
+/* Bottom tab bar — phones only. Above 768px the same five destinations render
+   as text links in the top bar, so the bar itself would be a phone app sitting
+   in a browser window. Inline styles cannot express a media query, which is why
+   these two live here rather than on the component. */
+.bottom-nav { display: grid; }
+.bottom-nav-spacer { display: block; }
+@media (min-width: 769px) {
+  .bottom-nav { display: none !important; }
+  .bottom-nav-spacer { display: none !important; }
+}

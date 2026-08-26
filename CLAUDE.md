@@ -580,6 +580,70 @@ client cannot set it, because PostgREST only populates GUCs under the `request.`
 placeholders, plus the near-collisions Kaha/Kaha Tinana, Manawanui/Manawaroa and **Hiko/Hiku**,
 and the macron on `ō`), and the twelve drawings sliced into ten registered layers each.
 
+## Dashboard redesign — stats page, player tabs, bottom nav (August 2026 session 32)
+
+`/dashboard` stops being an action hub and becomes a **stats page**; the family
+switcher becomes global; a **five-tab bottom bar** replaces the hamburger. Design
+settled over two `/grill-me` rounds and a design canvas; the spec with all 16
+locked decisions is `DASHBOARD_REDESIGN_PLAN.md`.
+
+**BUILT, NOT COMMITTED, NOT APPLIED.** One new migration is written and waiting.
+
+- **The dashboard is four blocks**: identity + seasonal rank → taniwha card →
+  four numbers (Games · Events Won · Games Won · PRs) → a ten-spoke skill radar.
+  Everything else moved: play history and the taniwha picker to **`/taniwha/history`**,
+  the collection to **`/taniwha`**, and judge/koha/profile/PRs into the nav.
+- **`lib/activePlayer.ts` is the pure half of the switcher, `lib/useActivePlayer.ts`
+  the hook.** The split is not tidiness: the hook calls `createClient()` at module
+  scope, so importing it from a test throws before an assertion runs. Same reason
+  `lib/judgeRoster.ts` and `lib/percentile.ts` are pure.
+- **`resolveActiveId` is a real guard.** `allsport_active_player_id` is editable
+  from any console and RLS on `players` fails SILENTLY — a query for a stranger's
+  row returns zero rows, not an error — so a stored id is honoured only when it
+  names someone in the household. Without it the page renders empty under someone
+  else's name instead of refusing.
+- **The switcher must be set through the hook, never by writing localStorage.**
+  `/profile` did the latter for three months, which is why only `/dashboard` ever
+  followed a switch: writing the key persists the choice but tells nothing that is
+  already mounted. A parent switched to their child, opened Personal Bests, and
+  silently saw their own.
+- **Limb dates are DERIVED, not stored.** `player_taniwha` holds a count, not a row
+  per limb. `limbCrossings()` reconstructs when each limb landed by running session
+  points in date order and watching each 1,000-point boundary — the same technique
+  the colours backfill used. It deliberately does NOT claim which taniwha a limb
+  went on, because switching is not recorded either.
+- **`limbsHeld()` counts the crown as the tenth.** `body_parts` caps at 9 because
+  the crown is earned rather than bought, so a crowned taniwha STORES 9 and must
+  DISPLAY 10. The off-by-one looks deliberate, so nobody reports it.
+- **`player_dashboard(uuid[])` loads the whole household in one call**, so switching
+  players costs no network. INVOKER rights, reads through RLS — a parent gets their
+  child's rows because the child's own policy grants it, and a stranger's id returns
+  an empty array from the policy rather than a leak. **Taniwha data is deliberately
+  NOT in it**: a missing table degrades to a hidden card, a missing column returns
+  42703 and would take the entire dashboard down with it.
+- **`event_placement` is the one hard dependency.** My Events' average-placement
+  column needs it, and it ships in the unapplied `20260824220633`. It is its own
+  guarded query, so pre-migration the column shows dashes instead of 42703-ing the
+  page. Everything else in this pass degrades cleanly.
+- **`lib/colours.ts` now has exactly ONE consumer**: the pre-migration accent
+  fallback in `components/PlayerTabs.tsx`. Once the taniwha migrations are applied
+  and that fallback is removed, nothing imports it — the history page renders
+  `colour_awards.colour_name` as a stored string, not through the ladder.
+- **The macron is settled**: `Te Taniwha o te ___`, unmacronised, across all twelve.
+  `app/leaderboard/page.tsx` strips that prefix by literal string match, so the
+  spelling there and in `lib/taniwha.ts` must not drift apart.
+- **`gloss` is new on `Taniwha`** — the English name shown under the te reo one.
+  "Taniwha of Connection" is Tāne's; the other eleven are unconfirmed, as are the
+  four placeholder names they sit under.
+
+**Still filler:** `components/TaniwhaFigure.tsx` draws the ten limbs as geometry.
+Tāne is drawing the twelve in Canva, ten registered layers each, for
+`/taniwha/{slug}/{limb}.png` — `partAssetSrc()` already returns those paths, and all
+ten layers of a taniwha must be exported on one canvas with the same registration
+or they will not stack.
+
+---
+
 ## Security posture (August 2026) — read before touching RLS or players_public
 
 An OWASP pass (SQL injection / XSS / auth / access control) found three
@@ -955,6 +1019,9 @@ RLS: own + parent (family) + judge.
     securityHeaders.ts              # buildCsp / buildSecurityHeaders — the CSP + 8 headers, unit tested in __tests__/securityHeaders.test.ts
     eventData.ts                    # Single source of truth for all events (120) + difficulty+time encode/decode helpers (encodeDiffTime/decodeDiffTime/isTimedEffort, TIMED_EFFORT_SLUGS); DifficultyTier has optional `detail` (judge criteria)
     dates.ts                        # parseLocalDate / formatNZDate — parse DATE columns in local time (avoids off-by-one)
+    activePlayer.ts                 # Pure half of the family switcher — resolveActiveId/playerLabel. No React, no Supabase, so it is testable
+    useActivePlayer.ts              # The hook over allsport_active_player_id. Cross-component + cross-tab sync
+    useNavState.ts                  # Shared PLAY destination for BottomNav and the desktop top bar
     colours.ts                      # RETIRED ladder, kept as a LOOKUP TABLE so the dashboard timeline can render historical colour_awards. Do not add to it
     domainColours.ts                # THE ten domain colours. In lib/ so SERVER components can import it
     taniwha.ts                      # THE taniwha ladder — 12 taniwha, 10 parts, budget/capacity map, crown predicates
@@ -1002,7 +1069,11 @@ RLS: own + parent (family) + judge.
     Footer.tsx                      # Rainbow rule, HQ address + session times
     ui.tsx                          # Shared brand UI kit — Button, Card, Badge, Tag, Input, Select, Dialog, RainbowText, RainbowRule, SectionLabel, StatBlock
     EventIcon.tsx                   # Event pictogram tile — CSS-mask of /event-icons/{slug}.png in domain colour, emoji fallback
-    TaniwhaCard.tsx                 # Dashboard taniwha card + choose/switch picker + TaniwhaTimeline
+    BottomNav.tsx                   # Five-tab bottom bar (phones) + the MORE sheet. Hidden >768px by .bottom-nav in globals.css
+    PlayerTabs.tsx                  # Sticky family switcher + ViewingAsBanner. Renders null on a solo account
+    DomainRadar.tsx                 # Ten-spoke skill radar, one spoke per domain, driven by Top %
+    TaniwhaFigure.tsx               # The ten limbs assembling. FILLER geometry until the Canva exports land
+    TaniwhaCard.tsx                 # Dashboard taniwha card + TaniwhaPicker + TaniwhaTimeline
     TaniwhaWatchlist.tsx            # "Approaching a crown" panel — /judge, leads with the BLOCKER not sessions-away
     TaniwhaAlertBanner.tsx          # Live kaiwhakawā crown alert (earned / on-track)
     DomainIcon.tsx                  # Domain pictogram tile — CSS-mask of /domain-icons/{slug}.png in domain colour, domain-number fallback; exports domainSlug()
@@ -1061,6 +1132,8 @@ RLS: own + parent (family) + judge.
                                                #   mirror), sync/choose/claim functions, backfill.
       20260824233516_leaderboard_taniwha.sql   # leaderboard_page(): colour_rungs key -> taniwha (crowned + building).
                                                #   ⚠ MIGRATION FIRST, THEN CODE — the client reads the new key.
+      20260826004819_player_dashboard_rpc.sql  # NOT APPLIED. player_dashboard(uuid[]) — whole household in one call.
+                                               #   INVOKER rights; taniwha data deliberately excluded (see its header).
       20260822000000_privacy_tidyup.sql        # self-serve export/erasure, optional legal name, drops players.bodyweight_kg.
                                                #   RENUMBERED from 20260821000000 — see the collision note below.
       # ── 20260813000003 needed `supabase db push --include-all`: its 13-Aug timestamp is older than the

@@ -1,0 +1,271 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@400;600;700&display=swap">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #0a0a0a; color: #ffffff;
+           font-family: 'Barlow', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #2371BB; text-decoration: none; }
+    a:hover { color: #4a90d9; }
+    .lab { font-family: 'Barlow Condensed', 'Barlow', sans-serif; text-transform: uppercase;
+           letter-spacing: 0.1em; font-weight: 600; }
+    .dis { font-family: 'Bebas Neue', Impact, sans-serif; letter-spacing: 0.05em; line-height: 1; }
+    .card { background: #111111; border: 1px solid #1e1e1e; border-radius: 16px; }
+    .tl { font-family: 'Barlow Condensed', sans-serif; text-transform: uppercase;
+          letter-spacing: 0.1em; font-weight: 600; font-size: 10px; }
+    .sec { font-family: 'Barlow Condensed', sans-serif; text-transform: uppercase;
+           letter-spacing: 0.14em; font-weight: 600; font-size: 11px; color: #666666; }
+  </style>
+</helmet>
+
+<div style="width: 390px; background: #0a0a0a; position: relative; padding-bottom: 76px;">
+
+  <div style="height: 5px; background: linear-gradient(90deg,#EA4742,#F9B051,#F397C0,#B87DB5,#2371BB,#4DB26E);"></div>
+
+  <div style="height: 48px; display: flex; align-items: center; padding: 0 16px;
+              background: rgba(10,10,10,0.92); border-bottom: 1px solid #1e1e1e; gap: 12px;">
+    <span style="color: #888888; font-size: 19px;">&lsaquo;</span>
+    <span class="dis" style="font-size: 20px; color: #ffffff;">TANIWHA HISTORY</span>
+  </div>
+
+  <div style="padding: 16px 16px 0;">
+
+    <div style="display: flex; align-items: center; gap: 12px; padding: 14px 16px; margin-bottom: 14px;
+                background: #000000; border: 2px solid #F9B051; border-radius: 14px;">
+      <div style="width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0; background: #F9B05118;
+                  border: 1px solid #F9B05155; display: flex; align-items: center; justify-content: center;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F9B051" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l3-9 6 5 6-5 3 9z"></path></svg>
+      </div>
+      <div style="flex-grow: 1; min-width: 0;">
+        <div class="lab" style="font-size: 10px; color: #F9B051; opacity: 0.55;">CURRENTLY EARNING</div>
+        <div style="font-size: 14.5px; font-weight: 600; color: #F9B051; margin-top: 2px;">Te Taniwha o te Whānau</div>
+      </div>
+      <div style="text-align: right; flex-shrink: 0;">
+        <div class="dis" style="font-size: 18px; color: #F9B051;">5/10</div>
+        <div class="lab" style="font-size: 9px; color: #F9B051; opacity: 0.5;">LIMBS</div>
+      </div>
+    </div>
+
+    <!-- The choose/switch control now lives HERE, not on the dashboard card -->
+    <div style="background: #111111; border: 1px solid #1e1e1e; border-radius: 12px;
+                padding: 14px 16px; margin-bottom: 18px;">
+      <div class="sec" style="margin-bottom: 8px;">CHANGE WHAT YOU ARE BUILDING</div>
+      <div style="font-size: 12px; color: #666666; line-height: 1.5; margin-bottom: 12px;">Your limbs stay where you put them. Switching changes what your next limbs build, not what you already hold.</div>
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+        <div style="display: flex; align-items: center; gap: 11px; padding: 10px 12px; border-radius: 10px;
+                    background: #F9B0511e; border: 1px solid #F9B05177;">
+          <div style="width: 30px; height: 30px; border-radius: 9px; flex-shrink: 0; background: #F9B05122; border: 1px solid #F9B05155;"></div>
+          <div style="flex-grow: 1; min-width: 0;">
+            <div style="font-size: 13px; font-weight: 600; color: #ffffff;">Te Taniwha o te Whānau</div>
+            <div class="lab" style="font-size: 10px; color: #666666;">CONNECTION · 5/10 LIMBS</div>
+          </div>
+          <div class="lab" style="font-size: 10px; color: #F9B051; font-weight: 700;">BUILDING</div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 11px; padding: 10px 12px; border-radius: 10px;
+                    background: #111111; border: 1px solid #1a1a1a;">
+          <div style="width: 30px; height: 30px; border-radius: 9px; flex-shrink: 0; background: #EA474222; border: 1px solid #EA474255;"></div>
+          <div style="flex-grow: 1; min-width: 0;">
+            <div style="font-size: 13px; font-weight: 600; color: #ffffff;">Te Taniwha o te Kaha</div>
+            <div class="lab" style="font-size: 10px; color: #666666;">MAXIMAL STRENGTH · 7/9 WINS</div>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 11px; padding: 10px 12px; border-radius: 10px;
+                    background: #111111; border: 1px solid #1a1a1a;">
+          <div style="width: 30px; height: 30px; border-radius: 9px; flex-shrink: 0; background: #F9E05122; border: 1px solid #F9E05155;"></div>
+          <div style="flex-grow: 1; min-width: 0;">
+            <div style="font-size: 13px; font-weight: 600; color: #ffffff;">Te Taniwha o te Hiko</div>
+            <div class="lab" style="font-size: 10px; color: #666666;">POWER · 4/9 WINS</div>
+          </div>
+        </div>
+        <div class="lab" style="font-size: 11px; color: #2371BB; text-align: center; padding: 8px 0 2px;">SHOW ALL TEN DOMAINS</div>
+      </div>
+    </div>
+
+    <!-- Limbs earned -->
+    <div class="sec" style="margin-bottom: 10px;">LIMBS EARNED</div>
+    <div class="card" style="padding: 0; overflow: hidden; margin-bottom: 18px;">
+      <div style="display: flex; align-items: center; gap: 11px; padding: 11px 15px; border-bottom: 1px solid #1a1a1a;">
+        <div style="width: 24px; height: 24px; border-radius: 7px; background: #F9B051; flex-shrink: 0;
+                    display: flex; align-items: center; justify-content: center;"><span class="dis" style="font-size: 12px; color: #000;">5</span></div>
+        <div style="flex-grow: 1;">
+          <div style="font-size: 13.5px; color: #ffffff; font-weight: 600;">Ringa mauī <span style="color: #666666; font-weight: 400;">left arm</span></div>
+          <div style="font-size: 11px; color: #555555; margin-top: 1px;">Sat 15 Aug 2026 · AllSport HQ</div>
+        </div>
+        <span class="lab" style="font-size: 11px; color: #555555;">5,000</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 11px; padding: 11px 15px; border-bottom: 1px solid #1a1a1a;">
+        <div style="width: 24px; height: 24px; border-radius: 7px; background: #F9B051; flex-shrink: 0;
+                    display: flex; align-items: center; justify-content: center;"><span class="dis" style="font-size: 12px; color: #000;">4</span></div>
+        <div style="flex-grow: 1;">
+          <div style="font-size: 13.5px; color: #ffffff; font-weight: 600;">Hiku <span style="color: #666666; font-weight: 400;">tail</span></div>
+          <div style="font-size: 11px; color: #555555; margin-top: 1px;">Thu 24 Jul 2026 · AllSport HQ</div>
+        </div>
+        <span class="lab" style="font-size: 11px; color: #555555;">4,000</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 11px; padding: 11px 15px; border-bottom: 1px solid #1a1a1a;">
+        <div style="width: 24px; height: 24px; border-radius: 7px; background: #F9B051; flex-shrink: 0;
+                    display: flex; align-items: center; justify-content: center;"><span class="dis" style="font-size: 12px; color: #000;">3</span></div>
+        <div style="flex-grow: 1;">
+          <div style="font-size: 13.5px; color: #ffffff; font-weight: 600;">Pane <span style="color: #666666; font-weight: 400;">head</span></div>
+          <div style="font-size: 11px; color: #555555; margin-top: 1px;">Sat 21 Jun 2026 · Selwyn Sports Centre</div>
+        </div>
+        <span class="lab" style="font-size: 11px; color: #555555;">3,000</span>
+      </div>
+      <div class="lab" style="font-size: 11px; color: #2371BB; text-align: center; padding: 12px 0;">SHOW ALL 5</div>
+    </div>
+
+    <!-- Play history, relocated here -->
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+      <div class="sec">PLAY HISTORY</div>
+      <div style="display: flex; gap: 6px;">
+        <div class="lab" style="font-size: 11px; color: #ffffff; background: #1e1e1e; border-radius: 999px; padding: 5px 11px;">ALL TIME</div>
+        <div class="lab" style="font-size: 11px; color: #666666; border: 1px solid #1e1e1e; border-radius: 999px; padding: 5px 11px;">2026</div>
+      </div>
+    </div>
+
+    <div class="card" style="padding: 0; overflow: hidden; margin-bottom: 18px;">
+      <div style="border-bottom: 1px solid #1e1e1e; background: #141414;">
+        <div style="display: flex; align-items: center; gap: 12px; padding: 14px 16px;">
+          <div style="width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0; background: #F9B05122;
+                      border: 1px solid #F9B05155; display: flex; align-items: center; justify-content: center;">
+            <span class="dis" style="font-size: 17px; color: #F9B051;">1ST</span>
+          </div>
+          <div style="flex-grow: 1; min-width: 0;">
+            <div style="font-size: 14px; font-weight: 600; color: #ffffff;">Sat 22 Aug</div>
+            <div style="font-size: 11px; color: #666666; margin-top: 2px;">AllSport HQ · 7 in Masters Men</div>
+          </div>
+          <div style="text-align: right; flex-shrink: 0;">
+            <div class="dis" style="font-size: 19px; color: #ffffff;">186</div>
+            <div class="lab" style="font-size: 9px; color: #555555;">100 + 86 EFFORT</div>
+          </div>
+          <div style="color: #555555; font-size: 12px; transform: rotate(90deg);">›</div>
+        </div>
+        <div style="padding: 0 16px 14px;">
+          <div style="display: flex; align-items: center; gap: 9px; padding: 7px 0; border-top: 1px solid #1e1e1e;">
+            <div style="width: 24px; height: 24px; border-radius: 7px; background: #EA474222; border: 1px solid #EA474255; flex-shrink: 0;"></div>
+            <span style="font-size: 13px; color: #cccccc; flex-grow: 1;">Deadlift</span>
+            <span style="font-size: 13px; color: #ffffff; font-weight: 600;">180kg × 3</span>
+            <span class="lab" style="font-size: 11px; color: #F9B051; width: 44px; text-align: right;">WON</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 9px; padding: 7px 0; border-top: 1px solid #1e1e1e;">
+            <div style="width: 24px; height: 24px; border-radius: 7px; background: #F9B05122; border: 1px solid #F9B05155; flex-shrink: 0;"></div>
+            <span style="font-size: 13px; color: #cccccc; flex-grow: 1;">Human Flag</span>
+            <span style="font-size: 13px; color: #ffffff; font-weight: 600;">D4 · 18s</span>
+            <span class="lab" style="font-size: 11px; color: #888888; width: 44px; text-align: right;">3RD</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 9px; padding: 7px 0; border-top: 1px solid #1e1e1e;">
+            <div style="width: 24px; height: 24px; border-radius: 7px; background: #4DB26E22; border: 1px solid #4DB26E55; flex-shrink: 0;"></div>
+            <span style="font-size: 13px; color: #cccccc; flex-grow: 1;">Kabaddi</span>
+            <span style="font-size: 13px; color: #ffffff; font-weight: 600;">2W 1L</span>
+            <span class="lab" style="font-size: 11px; color: #F9B051; width: 44px; text-align: right;">WON</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 7px; margin-top: 12px; flex-wrap: wrap;">
+            <div class="lab" style="font-size: 10px; color: #4DB26E; border: 1px solid #4DB26E55;
+                        background: #4DB26E14; border-radius: 999px; padding: 4px 9px;">2 PRS SET</div>
+            <div class="lab" style="font-size: 10px; color: #F9B051; border: 1px solid #F9B05155;
+                        background: #F9B05114; border-radius: 999px; padding: 4px 9px;">2 EVENTS WON</div>
+            <div class="lab" style="font-size: 10px; color: #555555;">3 OF 10 SHOWN</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid #1e1e1e;">
+        <div style="width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0; background: #1a1a1a;
+                    border: 1px solid #2a2a2a; display: flex; align-items: center; justify-content: center;">
+          <span class="dis" style="font-size: 17px; color: #999999;">3RD</span>
+        </div>
+        <div style="flex-grow: 1; min-width: 0;">
+          <div style="font-size: 14px; font-weight: 600; color: #ffffff;">Thu 20 Aug</div>
+          <div style="font-size: 11px; color: #666666; margin-top: 2px;">AllSport HQ · 5 in Masters Men</div>
+        </div>
+        <div style="text-align: right; flex-shrink: 0;">
+          <div class="dis" style="font-size: 19px; color: #ffffff;">125</div>
+          <div class="lab" style="font-size: 9px; color: #555555;">60 + 65 EFFORT</div>
+        </div>
+        <div style="color: #555555; font-size: 12px;">›</div>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 12px; padding: 14px 16px;">
+        <div style="width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0; background: #1a1a1a;
+                    border: 1px solid #2a2a2a; display: flex; align-items: center; justify-content: center;">
+          <span class="dis" style="font-size: 17px; color: #999999;">2ND</span>
+        </div>
+        <div style="flex-grow: 1; min-width: 0;">
+          <div style="font-size: 14px; font-weight: 600; color: #ffffff;">Tue 18 Aug</div>
+          <div style="font-size: 11px; color: #666666; margin-top: 2px;">Selwyn Sports Centre · 9 in Masters Men</div>
+        </div>
+        <div style="text-align: right; flex-shrink: 0;">
+          <div class="dis" style="font-size: 19px; color: #ffffff;">164</div>
+          <div class="lab" style="font-size: 9px; color: #555555;">89 + 75 EFFORT</div>
+        </div>
+        <div style="color: #555555; font-size: 12px;">›</div>
+      </div>
+    </div>
+
+    <div class="lab" style="font-size: 12px; color: #2371BB; text-align: center; padding: 0 0 18px;">SHOW ALL 38 GAMES</div>
+
+    <div class="card" style="padding: 16px; margin-bottom: 18px;">
+      <div class="sec" style="margin-bottom: 12px;">THE COLOURS ERA</div>
+      <div style="display: flex; align-items: center; gap: 12px; padding-bottom: 10px;">
+        <div style="width: 11px; height: 11px; border-radius: 999px; background: #2371BB; flex-shrink: 0;"></div>
+        <div style="flex-grow: 1;">
+          <div class="dis" style="font-size: 16px; color: #2371BB;">KAHURANGI</div>
+          <div style="font-size: 11px; color: #555555; margin-top: 2px;">Sat 15 Aug 2026 · AllSport HQ</div>
+        </div>
+        <span class="lab" style="font-size: 11px; color: #555555;">5,000</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="width: 11px; height: 11px; border-radius: 999px; background: #4DB26E; flex-shrink: 0;"></div>
+        <div style="flex-grow: 1;">
+          <div class="dis" style="font-size: 16px; color: #4DB26E;">KĀKĀRIKI</div>
+          <div style="font-size: 11px; color: #555555; margin-top: 2px;">Thu 26 Jun 2026 · AllSport HQ</div>
+        </div>
+        <span class="lab" style="font-size: 11px; color: #555555;">4,000</span>
+      </div>
+      <div style="font-size: 11px; color: #444444; line-height: 1.5; margin-top: 12px; padding-top: 12px; border-top: 1px solid #1e1e1e;">Colours you really earned, on the dates you earned them. Kept as history — never rewritten as taniwha limbs.</div>
+    </div>
+
+  </div>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 76px;
+              background: rgba(10,10,10,0.97); border-top: 1px solid #1e1e1e;
+              box-shadow: 0 -12px 28px rgba(0,0,0,0.65);
+              display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: start; padding-top: 11px;">
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5c5c5c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M10 8.5l6 3.5-6 3.5z"></path></svg>
+      <span class="tl" style="color: #5c5c5c;">PLAY</span>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round"><path d="M5 19V11"></path><path d="M12 19V5"></path><path d="M19 19v-5"></path></svg>
+      <span class="tl" style="color: #ffffff;">STATS</span>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5c5c5c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v6a5 5 0 01-10 0z"></path><path d="M7 6H4v1a3 3 0 003 3"></path><path d="M17 6h3v1a3 3 0 01-3 3"></path><path d="M9 20h6"></path><path d="M12 15v5"></path></svg>
+      <span class="tl" style="color: #5c5c5c;">BOARD</span>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5c5c5c" stroke-width="1.8" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="2"></rect><rect x="13" y="4" width="7" height="7" rx="2"></rect><rect x="4" y="13" width="7" height="7" rx="2"></rect><rect x="13" y="13" width="7" height="7" rx="2"></rect></svg>
+      <span class="tl" style="color: #5c5c5c;">EVENTS</span>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5c5c5c" stroke-width="1.8" stroke-linecap="round"><circle cx="6" cy="12" r="1.4"></circle><circle cx="12" cy="12" r="1.4"></circle><circle cx="18" cy="12" r="1.4"></circle></svg>
+      <span class="tl" style="color: #5c5c5c;">MORE</span>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":390,"height":1900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

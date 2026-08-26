@@ -61,7 +61,7 @@ describe('TaniwhaAlertBanner', () => {
     expect(screen.getByTestId('taniwha-alert-p1')).toHaveProperty('dataset.state', 'earned')
     expect(screen.getByText(/HAS EARNED CROWN #2/)).toBeTruthy()
     expect(screen.getByText(/SAFE TO CALL IT/)).toBeTruthy()
-    expect(screen.getByText(/Te Taniwha ō te Tere/)).toBeTruthy()
+    expect(screen.getByText(/Te Taniwha o te Tere/)).toBeTruthy()
     expect(screen.getByRole('button', { name: /celebrated/i })).toBeTruthy()
   })
 

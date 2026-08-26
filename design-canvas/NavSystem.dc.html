@@ -1,0 +1,212 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@400;600;700&display=swap">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #0a0a0a; color: #ffffff;
+           font-family: 'Barlow', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #2371BB; text-decoration: none; }
+    a:hover { color: #4a90d9; }
+    .lab { font-family: 'Barlow Condensed', 'Barlow', sans-serif; text-transform: uppercase;
+           letter-spacing: 0.1em; font-weight: 600; }
+    .dis { font-family: 'Bebas Neue', Impact, sans-serif; letter-spacing: 0.05em; line-height: 1; }
+    .spec { font-family: 'Barlow Condensed', sans-serif; text-transform: uppercase;
+            letter-spacing: 0.16em; font-size: 11px; color: #555555; font-weight: 600; }
+    .bar { height: 64px; background: #0d0d0d; border-top: 1px solid #1e1e1e;
+           display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
+           align-items: start; padding-top: 9px; width: 390px; }
+    .tab { display: flex; flex-direction: column; align-items: center; gap: 4px; position: relative; }
+    .tl { font-family: 'Barlow Condensed', sans-serif; text-transform: uppercase;
+          letter-spacing: 0.1em; font-weight: 600; font-size: 10px; }
+  </style>
+</helmet>
+
+<div style="width: 880px; background: #0a0a0a; padding: 32px;">
+
+  <div class="dis" style="font-size: 34px; color: #ffffff; margin-bottom: 4px;">NAVIGATION SYSTEM</div>
+  <div style="font-size: 14px; color: #666666; margin-bottom: 30px;">Bottom tab bar on mobile · slim top bar · MORE sheet · desktop fallback</div>
+
+  <!-- Top bar -->
+  <div class="spec" style="margin-bottom: 10px;">SLIM TOP BAR — 48px + 5px rainbow. Everything that used to sit here moved into MORE.</div>
+  <div style="width: 390px; margin-bottom: 34px; border: 1px solid #1e1e1e; border-radius: 10px; overflow: hidden;">
+    <div style="height: 5px; background: linear-gradient(90deg,#EA4742,#F9B051,#F397C0,#B87DB5,#2371BB,#4DB26E);"></div>
+    <div style="height: 48px; display: flex; align-items: center; padding: 0 16px; background: #0d0d0d; gap: 9px;">
+      <div style="width: 30px; height: 22px; border-radius: 4px; background: linear-gradient(135deg,#EA4742,#2371BB); opacity: 0.9;"></div>
+      <span class="dis" style="font-size: 20px; color: #ffffff;">ALL<span style="color: #EA4742;">SPORT</span></span>
+    </div>
+  </div>
+
+  <!-- Tab bar states -->
+  <div class="spec" style="margin-bottom: 10px;">BOTTOM TAB BAR — 64px + safe area. 78px targets, well over the 44px floor.</div>
+
+  <div style="display: flex; gap: 28px; flex-wrap: wrap; margin-bottom: 34px;">
+
+    <div>
+      <div class="lab" style="font-size: 11px; color: #888888; margin-bottom: 8px;">A · RESTING — NO SESSION RUNNING</div>
+      <div class="bar" style="border: 1px solid #1e1e1e; border-radius: 10px;">
+        <div class="tab">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5c5c5c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M10 8.5l6 3.5-6 3.5z"></path></svg>
+          <span class="tl" style="color: #5c5c5c;">PLAY</span>
+        </div>
+        <div class="tab">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round"><path d="M5 19V11"></path><path d="M12 19V5"></path><path d="M19 19v-5"></path></svg>
+          <span class="tl" style="color: #ffffff;">STATS</span>
+        </div>
+        <div class="tab">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5c5c5c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v6a5 5 0 01-10 0z"></path><path d="M7 6H4v1a3 3 0 003 3"></path><path d="M17 6h3v1a3 3 0 01-3 3"></path><path d="M9 20h6"></path><path d="M12 15v5"></path></svg>
+          <span class="tl" style="color: #5c5c5c;">BOARD</span>
+        </div>
+        <div class="tab">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5c5c5c" stroke-width="1.8" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="2"></rect><rect x="13" y="4" width="7" height="7" rx="2"></rect><rect x="4" y="13" width="7" height="7" rx="2"></rect><rect x="13" y="13" width="7" height="7" rx="2"></rect></svg>
+          <span class="tl" style="color: #5c5c5c;">EVENTS</span>
+        </div>
+        <div class="tab">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5c5c5c" stroke-width="1.8" stroke-linecap="round"><circle cx="6" cy="12" r="1.4"></circle><circle cx="12" cy="12" r="1.4"></circle><circle cx="18" cy="12" r="1.4"></circle></svg>
+          <span class="tl" style="color: #5c5c5c;">MORE</span>
+        </div>
+      </div>
+      <div style="font-size: 12px; color: #666666; margin-top: 8px; width: 390px; line-height: 1.5;">PLAY → next-session countdown + join. Grey like any other tab.</div>
+    </div>
+
+    <div>
+      <div class="lab" style="font-size: 11px; color: #4DB26E; margin-bottom: 8px;">B · SESSION LIVE — PLAY GOES GREEN</div>
+      <div class="bar" style="border: 1px solid #4DB26E33; border-radius: 10px;">
+        <div class="tab">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4DB26E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M10 8.5l6 3.5-6 3.5z"></path></svg>
+          <span class="tl" style="color: #4DB26E;">PLAY</span>
+          <div style="position: absolute; top: -1px; right: 50%; margin-right: -16px; width: 7px; height: 7px; border-radius: 999px; background: #4DB26E; box-shadow: 0 0 0 3px rgba(77,178,110,0.2);"></div>
+        </div>
+        <div class="tab">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round"><path d="M5 19V11"></path><path d="M12 19V5"></path><path d="M19 19v-5"></path></svg>
+          <span class="tl" style="color: #ffffff;">STATS</span>
+        </div>
+        <div class="tab">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5c5c5c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v6a5 5 0 01-10 0z"></path><path d="M7 6H4v1a3 3 0 003 3"></path><path d="M17 6h3v1a3 3 0 01-3 3"></path><path d="M9 20h6"></path><path d="M12 15v5"></path></svg>
+          <span class="tl" style="color: #5c5c5c;">BOARD</span>
+        </div>
+        <div class="tab">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5c5c5c" stroke-width="1.8" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="2"></rect><rect x="13" y="4" width="7" height="7" rx="2"></rect><rect x="4" y="13" width="7" height="7" rx="2"></rect><rect x="13" y="13" width="7" height="7" rx="2"></rect></svg>
+          <span class="tl" style="color: #5c5c5c;">EVENTS</span>
+        </div>
+        <div class="tab">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5c5c5c" stroke-width="1.8" stroke-linecap="round"><circle cx="6" cy="12" r="1.4"></circle><circle cx="12" cy="12" r="1.4"></circle><circle cx="18" cy="12" r="1.4"></circle></svg>
+          <span class="tl" style="color: #5c5c5c;">MORE</span>
+        </div>
+      </div>
+      <div style="font-size: 12px; color: #666666; margin-top: 8px; width: 390px; line-height: 1.5;">Opens the active player's tab in the live session, not the leaderboard.</div>
+    </div>
+
+    <div>
+      <div class="lab" style="font-size: 11px; color: #EA4742; margin-bottom: 8px;">C · KAIWHAKAWĀ — PLAY IS THE JUDGE ENTRY</div>
+      <div class="bar" style="border: 1px solid #EA474233; border-radius: 10px;">
+        <div class="tab">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#EA4742" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3"></path><path d="M5 8h14l-2 11H7z"></path><path d="M9 12h6"></path></svg>
+          <span class="tl" style="color: #EA4742;">JUDGE</span>
+        </div>
+        <div class="tab">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round"><path d="M5 19V11"></path><path d="M12 19V5"></path><path d="M19 19v-5"></path></svg>
+          <span class="tl" style="color: #ffffff;">STATS</span>
+        </div>
+        <div class="tab">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5c5c5c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v6a5 5 0 01-10 0z"></path><path d="M7 6H4v1a3 3 0 003 3"></path><path d="M17 6h3v1a3 3 0 01-3 3"></path><path d="M9 20h6"></path><path d="M12 15v5"></path></svg>
+          <span class="tl" style="color: #5c5c5c;">BOARD</span>
+        </div>
+        <div class="tab">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5c5c5c" stroke-width="1.8" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="2"></rect><rect x="13" y="4" width="7" height="7" rx="2"></rect><rect x="4" y="13" width="7" height="7" rx="2"></rect><rect x="13" y="13" width="7" height="7" rx="2"></rect></svg>
+          <span class="tl" style="color: #5c5c5c;">EVENTS</span>
+        </div>
+        <div class="tab">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5c5c5c" stroke-width="1.8" stroke-linecap="round"><circle cx="6" cy="12" r="1.4"></circle><circle cx="12" cy="12" r="1.4"></circle><circle cx="18" cy="12" r="1.4"></circle></svg>
+          <span class="tl" style="color: #5c5c5c;">MORE</span>
+        </div>
+      </div>
+      <div style="font-size: 12px; color: #666666; margin-top: 8px; width: 390px; line-height: 1.5;">role = 'judge' only. Live session → straight in. Nothing running → /judge.</div>
+    </div>
+
+    <!-- MORE sheet -->
+    <div>
+      <div class="lab" style="font-size: 11px; color: #888888; margin-bottom: 8px;">D · MORE SHEET — ABSORBS THE ENTIRE HAMBURGER</div>
+      <div style="width: 390px; background: #111111; border: 1px solid #1e1e1e; border-radius: 18px 18px 10px 10px; overflow: hidden;">
+        <div style="padding: 12px 0 8px; display: flex; justify-content: center;">
+          <div style="width: 38px; height: 4px; border-radius: 999px; background: #2a2a2a;"></div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; padding: 13px 20px; border-bottom: 1px solid #1e1e1e; background: #EA47420d;">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#EA4742" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3"></path><path d="M5 8h14l-2 11H7z"></path><path d="M9 12h6"></path></svg>
+          <span class="lab" style="font-size: 15px; color: #EA4742; flex-grow: 1;">KAIWHAKAWĀ PANEL</span>
+          <span style="color: #EA4742;">›</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; padding: 13px 20px; border-bottom: 1px solid #1e1e1e;">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#888888" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"></path></svg>
+          <span class="lab" style="font-size: 15px; color: #b5b5b5; flex-grow: 1;">MY PROFILE &amp; FAMILY</span>
+          <span style="color: #555555;">›</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; padding: 13px 20px; border-bottom: 1px solid #1e1e1e;">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#888888" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18"></path><path d="M8 3v4"></path><path d="M16 3v4"></path></svg>
+          <span class="lab" style="font-size: 15px; color: #b5b5b5; flex-grow: 1;">SCHEDULE</span>
+          <span style="color: #555555;">›</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; padding: 13px 20px; border-bottom: 1px solid #1e1e1e;">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#888888" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-4.6-7-10a4 4 0 017-2.6A4 4 0 0119 11c0 5.4-7 10-7 10z"></path></svg>
+          <span class="lab" style="font-size: 15px; color: #b5b5b5; flex-grow: 1;">KOHA</span>
+          <span style="color: #555555;">›</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; padding: 13px 20px; border-bottom: 1px solid #1e1e1e;">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#888888" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M9.5 9.5a2.5 2.5 0 115 .5c0 1.5-2.5 2-2.5 3.5"></path><path d="M12 17h.01"></path></svg>
+          <span class="lab" style="font-size: 15px; color: #b5b5b5; flex-grow: 1;">HOW TO PLAY</span>
+          <span style="color: #555555;">›</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; padding: 13px 20px; border-bottom: 1px solid #1e1e1e;">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#888888" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V6a2 2 0 012-2h12a2 2 0 012 2v14"></path><path d="M8 8h8"></path><path d="M8 12h8"></path></svg>
+          <span class="lab" style="font-size: 15px; color: #b5b5b5; flex-grow: 1;">SUPPORTERS &amp; PARTNERS</span>
+          <span style="color: #555555;">›</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; padding: 13px 20px;">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#666666" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 17l5-5-5-5"></path><path d="M20 12H9"></path><path d="M9 4H6a2 2 0 00-2 2v12a2 2 0 002 2h3"></path></svg>
+          <span class="lab" style="font-size: 15px; color: #666666; flex-grow: 1;">SIGN OUT</span>
+        </div>
+      </div>
+      <div style="font-size: 12px; color: #666666; margin-top: 8px; width: 390px; line-height: 1.5;">Personal Bests is NOT here — it lives on the EVENTS tab now.</div>
+    </div>
+  </div>
+
+  <!-- Desktop -->
+  <div class="spec" style="margin-bottom: 10px;">DESKTOP ≥768px — the five tabs move up into the top bar. No bottom bar.</div>
+  <div style="width: 816px; border: 1px solid #1e1e1e; border-radius: 10px; overflow: hidden;">
+    <div style="height: 5px; background: linear-gradient(90deg,#EA4742,#F9B051,#F397C0,#B87DB5,#2371BB,#4DB26E);"></div>
+    <div style="height: 56px; display: flex; align-items: center; padding: 0 22px; background: #0d0d0d; gap: 34px;">
+      <div style="display: flex; align-items: center; gap: 9px;">
+        <div style="width: 30px; height: 22px; border-radius: 4px; background: linear-gradient(135deg,#EA4742,#2371BB); opacity: 0.9;"></div>
+        <span class="dis" style="font-size: 20px; color: #ffffff;">ALL<span style="color: #EA4742;">SPORT</span></span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 26px; flex-grow: 1;">
+        <span class="lab" style="font-size: 13px; color: #4DB26E;">PLAY</span>
+        <span class="lab" style="font-size: 13px; color: #ffffff; border-bottom: 2px solid #2371BB; padding-bottom: 3px;">STATS</span>
+        <span class="lab" style="font-size: 13px; color: #888888;">BOARD</span>
+        <span class="lab" style="font-size: 13px; color: #888888;">EVENTS</span>
+        <span class="lab" style="font-size: 13px; color: #888888;">MORE</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <div style="width: 26px; height: 26px; border-radius: 8px; background: #2371BB22; border: 1px solid #2371BB66; display: flex; align-items: center; justify-content: center; font-size: 13px;">🏋️</div>
+        <span class="lab" style="font-size: 13px; color: #ffffff;">TĀNE</span>
+        <span style="color: #555555; font-size: 11px;">▾</span>
+      </div>
+    </div>
+  </div>
+  <div style="font-size: 12px; color: #666666; margin-top: 8px; line-height: 1.5;">On desktop the player switcher collapses into an avatar menu on the right rather than a second row.</div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":880,"height":1180}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

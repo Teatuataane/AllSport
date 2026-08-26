@@ -1,0 +1,160 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@400;600;700&display=swap">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #0a0a0a; color: #ffffff;
+           font-family: 'Barlow', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #2371BB; text-decoration: none; }
+    a:hover { color: #4a90d9; }
+    .lab { font-family: 'Barlow Condensed', 'Barlow', sans-serif; text-transform: uppercase;
+           letter-spacing: 0.1em; font-weight: 600; }
+    .dis { font-family: 'Bebas Neue', Impact, sans-serif; letter-spacing: 0.05em; line-height: 1; }
+    .spec { font-family: 'Barlow Condensed', sans-serif; text-transform: uppercase;
+            letter-spacing: 0.16em; font-size: 11px; color: #555555; font-weight: 600; }
+    .strip { display: flex; align-items: stretch; padding: 0 10px; width: 390px;
+             background: #0a0a0a; border: 1px solid #1e1e1e; border-radius: 10px; }
+    .chip { display: flex; align-items: center; gap: 8px; padding: 9px 12px 8px; flex-shrink: 0; }
+    .av { width: 26px; height: 26px; border-radius: 8px; flex-shrink: 0; display: flex;
+          align-items: center; justify-content: center; font-size: 13px; }
+    .nm { font-family: 'Barlow Condensed', sans-serif; text-transform: uppercase;
+          letter-spacing: 0.06em; font-weight: 600; font-size: 14px; }
+    .note { font-size: 12px; color: #666666; margin-top: 8px; width: 390px; line-height: 1.5; }
+  </style>
+</helmet>
+
+<div style="width: 880px; background: #0a0a0a; padding: 32px;">
+
+  <div class="dis" style="font-size: 34px; color: #ffffff; margin-bottom: 4px;">PLAYER SWITCHER</div>
+  <div style="font-size: 14px; color: #666666; margin-bottom: 30px; max-width: 660px; line-height: 1.55;">Sticky under the top bar. Renders only when the account has family members, so a solo player pays nothing for it. The active chip's underline is that player's own colour rung — the parent and the child are never the same blue.</div>
+
+  <div style="display: flex; gap: 28px; flex-wrap: wrap;">
+
+    <div>
+      <div class="spec" style="margin-bottom: 9px;">A · PARENT ACTIVE — BUILDING TE WHĀNAU (GOLD)</div>
+      <div class="strip">
+        <div class="chip" style="border-bottom: 2px solid #F9B051;">
+          <div class="av" style="background: #F9B05122; border: 1px solid #F9B05166;">🏋️</div>
+          <span class="nm" style="color: #ffffff;">TĀNE</span>
+        </div>
+        <div class="chip" style="border-bottom: 2px solid transparent;">
+          <div class="av" style="background: #1a1a1a; border: 1px solid #2a2a2a;">🏃</div>
+          <span class="nm" style="color: #666666;">FELIX</span>
+        </div>
+        <div class="chip" style="border-bottom: 2px solid transparent;">
+          <div class="av" style="background: #1a1a1a; border: 1px solid #2a2a2a;">🤸</div>
+          <span class="nm" style="color: #666666;">NIKAU</span>
+        </div>
+        <div class="chip">
+          <div class="av" style="border: 1px dashed #333333; color: #555555; font-size: 15px;">+</div>
+        </div>
+      </div>
+      <div class="note">Parent always first. The dashed + opens Profile → Add family member, mirroring the Kaiwhakawā tab's existing "+ Player" chip.</div>
+    </div>
+
+    <div>
+      <div class="spec" style="margin-bottom: 9px;">B · CHILD ACTIVE — BUILDING TE TERE (GREEN)</div>
+      <div class="strip">
+        <div class="chip" style="border-bottom: 2px solid transparent;">
+          <div class="av" style="background: #1a1a1a; border: 1px solid #2a2a2a;">🏋️</div>
+          <span class="nm" style="color: #666666;">TĀNE</span>
+        </div>
+        <div class="chip" style="border-bottom: 2px solid #4DB26E;">
+          <div class="av" style="background: #4DB26E22; border: 1px solid #4DB26E66;">🏃</div>
+          <span class="nm" style="color: #ffffff;">FELIX</span>
+        </div>
+        <div class="chip" style="border-bottom: 2px solid transparent;">
+          <div class="av" style="background: #1a1a1a; border: 1px solid #2a2a2a;">🤸</div>
+          <span class="nm" style="color: #666666;">NIKAU</span>
+        </div>
+        <div class="chip">
+          <div class="av" style="border: 1px dashed #333333; color: #555555; font-size: 15px;">+</div>
+        </div>
+      </div>
+      <div class="note">Persists to localStorage. Every per-player surface — Stats, Events, Koha — follows it.</div>
+    </div>
+
+    <div>
+      <div class="spec" style="margin-bottom: 9px;">C · SOLO ACCOUNT — NO STRIP AT ALL</div>
+      <div style="width: 390px; border: 1px dashed #1e1e1e; border-radius: 10px; height: 45px;
+                  display: flex; align-items: center; justify-content: center;">
+        <span class="lab" style="font-size: 11px; color: #3a3a3a;">NOT RENDERED · 0px</span>
+      </div>
+      <div class="note">familyMembers.length === 0 → the strip does not mount. Most players never see it.</div>
+    </div>
+
+    <div>
+      <div class="spec" style="margin-bottom: 9px;">D · FIVE+ MEMBERS — HORIZONTAL SCROLL, NO WRAP</div>
+      <div class="strip" style="overflow: hidden; position: relative;">
+        <div class="chip" style="border-bottom: 2px solid #F9B051;">
+          <div class="av" style="background: #F9B05122; border: 1px solid #F9B05166;">🏋️</div>
+          <span class="nm" style="color: #ffffff;">TĀNE</span>
+        </div>
+        <div class="chip" style="border-bottom: 2px solid transparent;">
+          <div class="av" style="background: #1a1a1a; border: 1px solid #2a2a2a;">🏃</div>
+          <span class="nm" style="color: #666666;">FELIX</span>
+        </div>
+        <div class="chip" style="border-bottom: 2px solid transparent;">
+          <div class="av" style="background: #1a1a1a; border: 1px solid #2a2a2a;">🤸</div>
+          <span class="nm" style="color: #666666;">NIKAU</span>
+        </div>
+        <div class="chip" style="border-bottom: 2px solid transparent;">
+          <div class="av" style="background: #1a1a1a; border: 1px solid #2a2a2a;">🎯</div>
+          <span class="nm" style="color: #666666;">ARIA</span>
+        </div>
+        <div style="position: absolute; right: 0; top: 0; bottom: 0; width: 46px;
+                    background: linear-gradient(90deg, rgba(10,10,10,0), #0a0a0a);"></div>
+      </div>
+      <div class="note">Fade mask on the right edge signals more. Same overflow behaviour as the live-session tab strip, so the gesture is already learned.</div>
+    </div>
+
+    <div>
+      <div class="spec" style="margin-bottom: 9px;">E · VIEWING-AS BANNER — ONLY WHEN NOT YOURSELF</div>
+      <div style="width: 390px; padding: 0 16px;">
+        <div style="background: #4DB26E0f; border: 1px solid #4DB26E33; border-radius: 12px;
+                    padding: 9px 13px; display: flex; align-items: center; gap: 9px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4DB26E" stroke-width="2" stroke-linecap="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+          <span class="lab" style="font-size: 12px; color: #4DB26E; letter-spacing: 0.08em;">VIEWING FELIX'S STATS</span>
+        </div>
+      </div>
+      <div class="note">Tinted in the CHILD's colour. Absent on your own tab, so it never becomes wallpaper you stop reading.</div>
+    </div>
+
+    <div>
+      <div class="spec" style="margin-bottom: 9px;">F · TARGET SIZE</div>
+      <div class="strip" style="position: relative; padding-bottom: 0;">
+        <div class="chip" style="border-bottom: 2px solid #F9B051; outline: 1px dashed #4DB26E88; outline-offset: -1px;">
+          <div class="av" style="background: #F9B05122; border: 1px solid #F9B05166;">🏋️</div>
+          <span class="nm" style="color: #ffffff;">TĀNE</span>
+        </div>
+        <div class="chip" style="border-bottom: 2px solid transparent; outline: 1px dashed #4DB26E88; outline-offset: -1px;">
+          <div class="av" style="background: #1a1a1a; border: 1px solid #2a2a2a;">🏃</div>
+          <span class="nm" style="color: #666666;">FELIX</span>
+        </div>
+      </div>
+      <div class="note"><span style="color: #4DB26E;">45px tall × 92px wide.</span> Height is the one compromise against the 44px floor — it clears it, but only just, so the row must never get shorter.</div>
+    </div>
+
+  </div>
+
+  <div style="margin-top: 34px; padding: 18px 20px; border: 1px solid #1e1e1e; border-radius: 14px; background: #111111; max-width: 816px;">
+    <div class="spec" style="margin-bottom: 10px; color: #F9B051;">THE BUG THIS FIXES</div>
+    <div style="font-size: 14px; color: #b5b5b5; line-height: 1.6;">Today <span style="font-family: monospace; font-size: 12px; color: #ffffff; background: #1a1a1a; padding: 2px 5px; border-radius: 4px;">allsport_active_player_id</span> is written on /profile but only <span style="font-family: monospace; font-size: 12px; color: #ffffff; background: #1a1a1a; padding: 2px 5px; border-radius: 4px;">/dashboard</span> reads it. A parent switches to their kid, taps Personal Bests, and silently sees their own. A shared <span style="font-family: monospace; font-size: 12px; color: #ffffff; background: #1a1a1a; padding: 2px 5px; border-radius: 4px;">useActivePlayer()</span> hook plus this always-visible strip makes "whose numbers am I reading" unanswerable-by-accident.</div>
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":880,"height":760}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
