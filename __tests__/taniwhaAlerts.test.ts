@@ -13,8 +13,8 @@ import { domainColor } from '@/lib/domainColours'
 // A player whose body is finished and who is building the Speed taniwha.
 const speedBuilder = (over: Partial<TaniwhaProgress> = {}): TaniwhaProgress => ({
   taniwha: [
-    { taniwha_slug: 'whanau', domain_number: null, body_parts: 9, is_building: false, crowned_at: '2026-07-03T00:00:00Z' },
-    { taniwha_slug: 'tere', domain_number: 4, body_parts: 9, is_building: true, crowned_at: null },
+    { taniwha_slug: 'whanau', domain_number: null, body_parts: 10, is_building: false, crowned_at: '2026-07-03T00:00:00Z' },
+    { taniwha_slug: 'tere', domain_number: 4, body_parts: 10, is_building: true, crowned_at: null },
   ],
   lifetimePoints: 19_990,
   bankedWinsByDomain: { 4: WIN_TARGET },
@@ -71,7 +71,7 @@ describe('the live crown alert', () => {
 
   it('never alerts on a taniwha whose body is unfinished', () => {
     const p = speedBuilder()
-    p.taniwha[1].body_parts = 8
+    p.taniwha[1].body_parts = 9
     expect(taniwhaAlerts(input(p))).toEqual([])
   })
 
@@ -88,9 +88,9 @@ describe('the live crown alert', () => {
       ...Array.from({ length: 4 }, (_, i) => ({
         taniwha_slug: ['whanau', 'kaha', 'hiko', 'ngawari'][i],
         domain_number: i === 0 ? null : [0, 1, 3, 7][i],
-        body_parts: 9, is_building: false, crowned_at: '2026-07-03T00:00:00Z',
+        body_parts: 10, is_building: false, crowned_at: '2026-07-03T00:00:00Z',
       })),
-      { taniwha_slug: 'tere', domain_number: 4, body_parts: 9, is_building: true, crowned_at: null },
+      { taniwha_slug: 'tere', domain_number: 4, body_parts: 10, is_building: true, crowned_at: null },
     ]
     const a = taniwhaAlerts(input(p))
     expect(a[0].crownOrdinal).toBe(5)
@@ -100,7 +100,7 @@ describe('the live crown alert', () => {
 
   it('treats the whānau referral as banked, because it cannot un-qualify', () => {
     const p = speedBuilder()
-    p.taniwha = [{ taniwha_slug: 'whanau', domain_number: null, body_parts: 9, is_building: true, crowned_at: null }]
+    p.taniwha = [{ taniwha_slug: 'whanau', domain_number: null, body_parts: 10, is_building: true, crowned_at: null }]
     p.lifetimePoints = 9_995
     expect(taniwhaAlerts(input(p))[0].state).toBe('earned')
 
@@ -147,7 +147,7 @@ describe('the standing watchlist', () => {
 
   it('names BODY first, because a crown is not even in question yet', () => {
     const p = speedBuilder()
-    p.taniwha[1].body_parts = 8
+    p.taniwha[1].body_parts = 9
     const e = watch(p)
     expect(e[0].blocker).toBe('body')
     expect(e[0].partsToGo).toBe(1)
@@ -168,7 +168,7 @@ describe('the standing watchlist', () => {
 
   it('orders by what the coach can act on first', () => {
     const people: Record<string, TaniwhaProgress> = {
-      body:   (() => { const p = speedBuilder(); p.taniwha[1].body_parts = 8; return p })(),
+      body:   (() => { const p = speedBuilder(); p.taniwha[1].body_parts = 9; return p })(),
       wins:   speedBuilder({ lifetimePoints: 25_000, bankedWinsByDomain: { 4: 5 } }),
       points: speedBuilder({ lifetimePoints: 19_700 }),
       ready:  speedBuilder({ lifetimePoints: 20_000 }),
@@ -248,7 +248,7 @@ describe('provisional wins from the live standings', () => {
 
 describe('the in-session crown hint', () => {
   const p = (over: Partial<TaniwhaProgress> = {}): TaniwhaProgress => ({
-    taniwha: [{ taniwha_slug: 'tere', domain_number: 4, body_parts: 9, is_building: true, crowned_at: null }],
+    taniwha: [{ taniwha_slug: 'tere', domain_number: 4, body_parts: 10, is_building: true, crowned_at: null }],
     lifetimePoints: 20_000,
     bankedWinsByDomain: { 4: 6 },
     qualifiedReferrals: 0,
@@ -278,7 +278,7 @@ describe('the in-session crown hint', () => {
     idle.taniwha[0].is_building = false
     expect(crownHint(idle, 'Beach Flags', 4)).toBeNull()
     expect(crownHint(p({
-      taniwha: [{ taniwha_slug: 'whanau', domain_number: null, body_parts: 9, is_building: true, crowned_at: null }],
+      taniwha: [{ taniwha_slug: 'whanau', domain_number: null, body_parts: 10, is_building: true, crowned_at: null }],
     }), 'Beach Flags', 4)).toBeNull()
     expect(crownHint(undefined, 'Beach Flags', 4)).toBeNull()
   })

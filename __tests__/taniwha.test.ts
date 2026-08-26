@@ -6,7 +6,6 @@ import {
   CROWN_PART,
   BUILT_TANIWHA,
   TOTAL_TANIWHA,
-  TOTAL_SLOTS,
   PEAK_POINTS,
   WIN_TARGET,
   EVENTS_PER_DOMAIN,
@@ -20,6 +19,8 @@ import {
   KAHUI,
   DOMAIN_TANIWHA,
   partByNumber,
+  partFor,
+  IMPLEMENT_PART,
   taniwhaForDomain,
   taniwhaBySlug,
   slotAt,
@@ -29,6 +30,8 @@ import {
   crownCapacity,
   hasCrownRoom,
   TOTAL_BODY_PARTS,
+  limbCrossings,
+  limbsHeld,
   MAX_CROWNS,
   BODY_PARTS_PER_TANIWHA,
   nextSlot,
@@ -45,8 +48,6 @@ import {
   taniwhaOnDark,
   taniwhaChipStyle,
   partAssetSrc,
-  limbCrossings,
-  limbsHeld,
 } from '@/lib/taniwha'
 import { DOMAIN_COLORS } from '@/lib/domainColours'
 import { EVENTS, DOMAIN_ORDER } from '@/lib/eventData'
@@ -61,10 +62,12 @@ describe('shape', () => {
     expect(TANIWHA[TANIWHA.length - 1]).toBe(KAHUI)
   })
 
-  it('builds eleven of them from ten parts each, and awards the twelfth', () => {
+  it('builds eleven of them from ten body parts and a crown', () => {
     expect(BUILT_TANIWHA).toBe(11)
     expect(PARTS).toHaveLength(PARTS_PER_TANIWHA)
-    expect(TOTAL_SLOTS).toBe(110)
+    expect(PARTS_PER_TANIWHA).toBe(11)
+    expect(BODY_PARTS_PER_TANIWHA).toBe(10)
+    expect(TOTAL_BODY_PARTS).toBe(110)
     // Te Kāhui is what holding all eleven looks like, not a twelfth build.
     expect(partAssetSrc(KAHUI, PARTS[0])).toBeNull()
   })
@@ -74,12 +77,23 @@ describe('shape', () => {
     expect(crownPoints(BUILT_TANIWHA)).toBe(PEAK_POINTS)
   })
 
-  it('numbers the parts 1..10 with the crown last', () => {
-    expect(PARTS.map(p => p.number)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
-    expect(CROWN_PART).toBe(10)
+  it('numbers the parts 1..11, implement tenth and crown last', () => {
+    expect(PARTS.map(p => p.number)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11])
+    expect(CROWN_PART).toBe(11)
+    expect(IMPLEMENT_PART).toBe(10)
     expect(PARTS[CROWN_PART - 1].english).toBe('crown')
-    expect(partByNumber(1)?.name).toBe('Tinana')
-    expect(partByNumber(11)).toBeNull()
+    expect(PARTS[IMPLEMENT_PART - 1].english).toBe('implement')
+    expect(partByNumber(1)?.name).toBe('Pane')
+    expect(partByNumber(12)).toBeNull()
+  })
+
+  it('merged neck into head — a neck was never worth an unlock on its own', () => {
+    expect(PARTS.map(p => p.english)).not.toContain('neck')
+  })
+
+  it('leads with the head, so the first award already looks like a taniwha', () => {
+    expect(partByNumber(1)?.english).toBe('head')
+    expect(partByNumber(2)?.english).toBe('body')
   })
 
   it('gives every part and every taniwha a unique name and slug', () => {
@@ -128,11 +142,11 @@ describe('domains', () => {
 })
 
 describe('the points map', () => {
-  it('costs a flat 1,000 per slot, including the first taniwha', () => {
+  it('costs a flat 1,000 per part, including the first taniwha', () => {
     expect(PART_POINTS).toBe(1_000)
-    expect(slotAt(1)).toMatchObject({ points: 1_000, isCrown: false })
-    expect(slotAt(10)).toMatchObject({ points: 10_000, isCrown: true, crownOrdinal: 1 })
-    expect(slotAt(11)).toMatchObject({ points: 11_000, isCrown: false })
+    expect(slotAt(1)).toMatchObject({ points: 1_000 })
+    expect(slotAt(10)).toMatchObject({ points: 10_000 })
+    expect(slotAt(TOTAL_BODY_PARTS)).toMatchObject({ points: PEAK_POINTS })
   })
 
   it('puts every crown on a round ten thousand', () => {
@@ -142,30 +156,25 @@ describe('the points map', () => {
     expect(crownPoints(MAX_CROWNS)).toBe(PEAK_POINTS)
   })
 
-  it('marks exactly eleven crown slots on the ladder, every tenth one', () => {
-    const crowns: number[] = []
-    for (let s = 1; s <= TOTAL_SLOTS; s++) {
-      const slot = slotAt(s)
-      expect(slot).not.toBeNull()
-      expect(slot!.points).toBe(s * PART_POINTS)
-      if (slot!.isCrown) crowns.push(slot!.crownOrdinal as number)
+  it('prices every part on the ladder, and nothing outside it', () => {
+    for (let s = 1; s <= TOTAL_BODY_PARTS; s++) {
+      expect(slotAt(s)?.points).toBe(s * PART_POINTS)
     }
-    expect(crowns).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11])
     expect(slotAt(0)).toBeNull()
-    expect(slotAt(TOTAL_SLOTS + 1)).toBeNull()
+    expect(slotAt(TOTAL_BODY_PARTS + 1)).toBeNull()
     expect(slotAt(1.5)).toBeNull()
   })
 
   it('splits the ladder into a body-part budget and a crown capacity', () => {
-    // The whole point of the budget model: neither depends on which taniwha
-    // the player chose, or on how often they switched.
+    // Neither depends on which taniwha the player chose, or how often they
+    // switched. Crowns are a separate track and consume no part slot.
     expect(bodyPartBudget(0)).toBe(0)
-    expect(bodyPartBudget(9_000)).toBe(9)     // a full body, no crown yet
-    expect(bodyPartBudget(10_000)).toBe(9)    // the 10,000th point buys the CROWN slot
-    expect(bodyPartBudget(11_000)).toBe(10)   // next taniwha's first body part
+    expect(bodyPartBudget(999)).toBe(0)
+    expect(bodyPartBudget(10_000)).toBe(10)   // one full body
     expect(bodyPartBudget(PEAK_POINTS)).toBe(TOTAL_BODY_PARTS)
+    expect(bodyPartBudget(PEAK_POINTS * 3)).toBe(TOTAL_BODY_PARTS)
     expect(TOTAL_BODY_PARTS).toBe(BUILT_TANIWHA * BODY_PARTS_PER_TANIWHA)
-    expect(TOTAL_BODY_PARTS).toBe(99)
+    expect(TOTAL_BODY_PARTS).toBe(110)
 
     expect(crownCapacity(9_999)).toBe(0)
     expect(crownCapacity(10_000)).toBe(1)
@@ -173,9 +182,9 @@ describe('the points map', () => {
     expect(crownCapacity(PEAK_POINTS * 2)).toBe(MAX_CROWNS)
   })
 
-  it('accounts for every point: budget + capacity = slots reached', () => {
-    for (let p = 0; p <= PEAK_POINTS; p += 500) {
-      expect(bodyPartBudget(p) + crownCapacity(p)).toBe(slotsReached(p))
+  it('gives one body part per 1,000 points, all the way up', () => {
+    for (let p = 0; p <= PEAK_POINTS; p += 250) {
+      expect(bodyPartBudget(p)).toBe(Math.min(Math.floor(p / PART_POINTS), TOTAL_BODY_PARTS))
     }
   })
 
@@ -191,17 +200,15 @@ describe('the points map', () => {
     expect(slotsReached(999)).toBe(0)
     expect(slotsReached(1_000)).toBe(1)
     expect(slotsReached(10_500)).toBe(10)
-    expect(slotsReached(PEAK_POINTS)).toBe(TOTAL_SLOTS)
-    expect(slotsReached(PEAK_POINTS * 3)).toBe(TOTAL_SLOTS)
+    expect(slotsReached(PEAK_POINTS)).toBe(TOTAL_BODY_PARTS)
     expect(slotsReached(-5)).toBe(0)
     expect(slotsReached(NaN)).toBe(0)
   })
 
   it('reports the next slot and how far off it is', () => {
-    expect(nextSlot(0)).toMatchObject({ slot: 1, isCrown: false, pointsToGo: 1_000 })
-    expect(nextSlot(9_400)).toMatchObject({ isCrown: true, crownOrdinal: 1, pointsToGo: 600 })
-    // Straight over a crown boundary: back to body parts.
-    expect(nextSlot(10_000)).toMatchObject({ slot: 11, isCrown: false })
+    expect(nextSlot(0)).toMatchObject({ slot: 1, pointsToGo: 1_000 })
+    expect(nextSlot(9_400)).toMatchObject({ slot: 10, pointsToGo: 600 })
+    expect(nextSlot(10_000)).toMatchObject({ slot: 11 })
     expect(nextSlot(PEAK_POINTS)).toBeNull()
   })
 
@@ -227,10 +234,8 @@ describe('invariants that must never quietly break', () => {
   })
 
   it('places exactly one part per 1,000 points, all the way up', () => {
-    // The ladder has no gaps and no double steps, so total parts placed is
-    // always floor(points / 1000) — the property the whole progress UI leans on.
     for (let p = 0; p <= PEAK_POINTS; p += 250) {
-      expect(slotsReached(p)).toBe(Math.min(Math.floor(p / PART_POINTS), TOTAL_SLOTS))
+      expect(slotsReached(p)).toBe(Math.min(Math.floor(p / PART_POINTS), TOTAL_BODY_PARTS))
     }
   })
 
@@ -273,7 +278,7 @@ describe('crowns', () => {
     // 21 body parts earned, enough for two full bodies and a third started.
     const points = 24_000
     expect(domainCrownEarned(points, 0, 6)).toBe(false)
-    expect(bodyPartBudget(points)).toBe(22)
+    expect(bodyPartBudget(points)).toBe(24)
     expect(crownCapacity(points)).toBe(2) // room reserved, unclaimed
   })
 
@@ -344,8 +349,11 @@ describe('rank and styling', () => {
   })
 
   it('points every part at a slug-named asset', () => {
-    expect(partAssetSrc(WHANAU, PARTS[0])).toBe('/taniwha/whanau/tinana.png')
-    expect(partAssetSrc(taniwhaForDomain(3)!, PARTS[9])).toBe('/taniwha/hiko/tikitiki.png')
+    expect(partAssetSrc(WHANAU, PARTS[0])).toBe('/taniwha/whanau/pane.png')
+    expect(partAssetSrc(taniwhaForDomain(3)!, PARTS[CROWN_PART - 1])).toBe('/taniwha/hiko/tikitiki.png')
+    // Part ten resolves to the taniwha's OWN implement, not a generic slug.
+    expect(partAssetSrc(taniwhaForDomain(3)!, PARTS[IMPLEMENT_PART - 1])).toBe('/taniwha/hiko/javelin.png')
+    expect(partAssetSrc(taniwhaForDomain(10)!, PARTS[IMPLEMENT_PART - 1])).toBe('/taniwha/tika/bow.png')
   })
 })
 
@@ -362,6 +370,16 @@ const migrationSql = (() => {
   const dir = 'supabase/migrations'
   const f = readdirSync(dir).find(n => n.endsWith('_player_taniwha.sql'))
   if (!f) throw new Error('player_taniwha migration not found')
+  return readFileSync(`${dir}/${f}`, 'utf8')
+})()
+
+// The ladder arithmetic moved to its own migration when the parts were re-cut
+// to ten. Read whichever file currently defines taniwha_body_budget.
+const ladderSql = (() => {
+  const dir = 'supabase/migrations'
+  const f = readdirSync(dir).sort().reverse()
+    .find(n => /function public\.taniwha_body_budget/i.test(readFileSync(`${dir}/${n}`, 'utf8')))
+  if (!f) throw new Error('taniwha_body_budget migration not found')
   return readFileSync(`${dir}/${f}`, 'utf8')
 })()
 
@@ -405,26 +423,108 @@ describe('choose_taniwha slug list mirrors DOMAIN_TANIWHA', () => {
 
 describe('the migration keeps the ladder numbers it hardcodes', () => {
   it('uses the same budget arithmetic as bodyPartBudget/crownCapacity', () => {
-    // SQL cannot import the module, so the constants are inlined there. These
-    // are the exact literals the two IMMUTABLE functions carry.
-    expect(migrationSql).toContain('/ 1000 - GREATEST(p_points, 0) / 10000')
-    expect(migrationSql).toContain('99')
-    expect(migrationSql).toContain('/ 10000, 11')
-    expect(TOTAL_BODY_PARTS).toBe(99)
+    // SQL cannot import the module, so the constants are inlined there.
+    // 20260825 re-cut the ladder to ten body parts, so the budget is a plain
+    // floor(p/1000) — the crown no longer consumes a part slot.
+    expect(ladderSql).toContain('/ 1000, 110')
+    expect(ladderSql).toContain('/ 10000, 11')
+    expect(TOTAL_BODY_PARTS).toBe(110)
     expect(MAX_CROWNS).toBe(11)
   })
 
-  it('caps body_parts at nine and requires nine for a crown', () => {
-    expect(migrationSql).toContain('body_parts BETWEEN 0 AND 9')
-    expect(migrationSql).toContain('pt.body_parts = 9')
-    expect(BODY_PARTS_PER_TANIWHA).toBe(9)
+  it('caps body_parts at ten and requires ten for a crown', () => {
+    expect(ladderSql).toContain('body_parts BETWEEN 0 AND 10')
+    expect(ladderSql).toContain('pt.body_parts = 10')
+    expect(BODY_PARTS_PER_TANIWHA).toBe(10)
     expect(WIN_TARGET).toBe(9)
   })
 })
 
+
+describe('the implement — part ten', () => {
+  it('gives every taniwha one, and no two domains share a slug', () => {
+    for (const tw of TANIWHA) {
+      expect(tw.implement.name.length).toBeGreaterThan(0)
+      expect(tw.implement.slug).toMatch(/^[a-z-]+$/)
+      expect(tw.implement.from.length).toBeGreaterThan(0)
+    }
+    const domainSlugs = DOMAIN_TANIWHA.map(t => t.implement.slug)
+    expect(new Set(domainSlugs).size).toBe(10)
+  })
+
+  it('names it per taniwha, never the generic placeholder', () => {
+    // partByNumber(10) is a stand-in that must never reach a player.
+    expect(partByNumber(IMPLEMENT_PART)?.name).toBe('Taputapu')
+    expect(partFor(taniwhaForDomain(1)!, IMPLEMENT_PART)?.english).toBe('barbell')
+    expect(partFor(taniwhaForDomain(10)!, IMPLEMENT_PART)?.english).toBe('bow')
+    expect(partFor(WHANAU, IMPLEMENT_PART)?.english).toBe('many hands')
+    expect(partFor(KAHUI, IMPLEMENT_PART)?.english).toBe('the other eleven')
+  })
+
+  it('leaves every other part identical across taniwha', () => {
+    for (const n of [1, 2, 3, 4, 5, 6, 7, 8, 9, CROWN_PART]) {
+      expect(partFor(taniwhaForDomain(1)!, n)).toEqual(partByNumber(n))
+      expect(partFor(KAHUI, n)).toEqual(partByNumber(n))
+    }
+  })
+
+  it('draws each implement from a real event in its own domain', () => {
+    // The two domains with no obvious equipment are the point of this test:
+    // Speed and Flexibility get theirs from Beach Flags and the split block.
+    expect(taniwhaForDomain(4)!.implement.from).toMatch(/Flags/)
+    expect(taniwhaForDomain(7)!.implement.from).toMatch(/Split/)
+    for (const tw of DOMAIN_TANIWHA) {
+      const domainEvents = EVENTS.filter(e => e.domainNumber === tw.domainNumber)
+      const named = tw.implement.from.split(/,\s*/)
+      const real = named.filter(n => domainEvents.some(e => e.name === n))
+      expect(real.length, `${tw.name}: "${tw.implement.from}" names no event in domain ${tw.domainNumber}`)
+        .toBeGreaterThan(0)
+    }
+  })
+})
+
+describe('the art checker mirrors the ladder', () => {
+  // scripts/check-taniwha-art.mjs cannot import a TS module, so it carries its
+  // own copy of the part slugs and the implement map. That is the same
+  // duplication the SQL guards above exist for: if the ladder changes and the
+  // checker does not, it will happily pass an export that is missing a piece.
+  const checker = readFileSync('scripts/check-taniwha-art.mjs', 'utf8')
+
+  const arrayIn = (name: string) => {
+    const m = checker.match(new RegExp(`const ${name}\\s*=\\s*\\[([\\s\\S]*?)\\]`))
+    if (!m) throw new Error(`${name} not found in check-taniwha-art.mjs`)
+    return [...m[1].matchAll(/'([a-z-]+)'/g)].map(x => x[1])
+  }
+
+  it('lists the nine body slugs, in assembly order', () => {
+    // The tenth body part is the implement and is resolved per taniwha, so the
+    // checker's BODY array stops at nine.
+    const expected = PARTS.slice(0, IMPLEMENT_PART - 1).map(p => p.slug)
+    expect(arrayIn('BODY')).toEqual(expected)
+    expect(expected[0]).toBe('pane')
+  })
+
+  it('maps every taniwha to its own implement slug', () => {
+    const block = checker.slice(checker.indexOf('const IMPLEMENTS'))
+    for (const tw of TANIWHA) {
+      const re = new RegExp(`['"]?${tw.slug}['"]?\\s*:\\s*'${tw.implement.slug}'`)
+      expect(re.test(block), `${tw.slug} -> ${tw.implement.slug} missing from IMPLEMENTS`).toBe(true)
+    }
+  })
+
+  it('knows the crown, and every taniwha accent', () => {
+    expect(checker).toContain("'tikitiki'")
+    const block = checker.slice(checker.indexOf('const ACCENT'))
+    for (const tw of TANIWHA) {
+      expect(new RegExp(`['"]?${tw.slug}['"]?\\s*:`).test(block), `${tw.slug} missing from ACCENT`).toBe(true)
+    }
+  })
+})
+
 // ── limbCrossings ────────────────────────────────────────────────────────────
-// The history page shows when each limb landed. `player_taniwha` stores a count,
-// not a row per limb, so this derives the dates from the session points instead.
+// Taniwha History shows when each piece landed. `player_taniwha` stores a count,
+// not a row per piece, so this derives the dates from the session points instead.
+// Body parts only: crowns are earned rather than bought, so they are not slots.
 
 describe('limbCrossings', () => {
   const s = (id: string, date: string, points: number) =>
@@ -438,7 +538,7 @@ describe('limbCrossings', () => {
     expect(out[0].points).toBe(1200)
   })
 
-  it('emits every limb when one session crosses several boundaries', () => {
+  it('emits every piece when one session crosses several boundaries', () => {
     const out = limbCrossings([s('a', '2026-03-01', 3200)])
     expect(out.map(c => c.limb)).toEqual([1, 2, 3])
     expect(out.every(c => c.sessionId === 'a')).toBe(true)
@@ -456,10 +556,10 @@ describe('limbCrossings', () => {
     expect(out[0].points).toBe(1100)
   })
 
-  it('never runs past the end of the ladder', () => {
+  it('stops at the last body part on the ladder, not beyond', () => {
     const out = limbCrossings([s('a', '2026-03-01', 500_000)])
-    expect(out).toHaveLength(TOTAL_SLOTS)
-    expect(out[out.length - 1].limb).toBe(TOTAL_SLOTS)
+    expect(out).toHaveLength(TOTAL_BODY_PARTS)
+    expect(out[out.length - 1].limb).toBe(TOTAL_BODY_PARTS)
   })
 
   it('ignores a session worth nothing', () => {
@@ -468,14 +568,17 @@ describe('limbCrossings', () => {
 })
 
 describe('limbsHeld', () => {
-  it('counts the crown as the tenth limb', () => {
-    // body_parts caps at 9 because the crown is earned, not bought. A crowned
-    // taniwha stores 9 and must read 10, or a finished one shows as "9 of 10".
-    expect(limbsHeld({ body_parts: 9, crowned_at: '2026-08-22' })).toBe(10)
+  it('counts the crown as the last piece', () => {
+    // body_parts caps at BODY_PARTS_PER_TANIWHA because the crown is earned, not
+    // bought. A crowned taniwha therefore STORES 10 and must READ 11, or a
+    // finished one shows as "10 of 11" forever.
+    expect(limbsHeld({ body_parts: BODY_PARTS_PER_TANIWHA, crowned_at: '2026-08-22' }))
+      .toBe(PARTS_PER_TANIWHA)
   })
 
-  it('an uncrowned full body is nine', () => {
-    expect(limbsHeld({ body_parts: 9, crowned_at: null })).toBe(9)
+  it('an uncrowned full body is every piece but the crown', () => {
+    expect(limbsHeld({ body_parts: BODY_PARTS_PER_TANIWHA, crowned_at: null }))
+      .toBe(BODY_PARTS_PER_TANIWHA)
   })
 
   it('is zero for a taniwha never started, or absent', () => {

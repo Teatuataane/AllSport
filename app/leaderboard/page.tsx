@@ -536,9 +536,10 @@ export default function Leaderboard() {
         </h2>
         <div className="rainbow-line" style={{ width: '60px', marginBottom: '16px' }} />
         <p style={{ color: '#888888', fontSize: '15px', maxWidth: '620px', marginBottom: '10px', lineHeight: 1.7 }}>
-          Twelve taniwha, each built from ten parts. The {BODY_PARTS_PER_TANIWHA} body parts
-          come from turning up — one for every {PART_POINTS.toLocaleString()} lifetime points,
-          and those never reset. The crown has to be earned.
+          Twelve taniwha, each built from {BODY_PARTS_PER_TANIWHA} body parts and a crown. The
+          body comes from turning up — one part for every {PART_POINTS.toLocaleString()} lifetime
+          points, and those never reset. The last of them is the implement, the tool of that
+          discipline. The crown has to be earned.
         </p>
         <p style={{ color: '#666666', fontSize: '14px', maxWidth: '620px', marginBottom: '40px', lineHeight: 1.7 }}>
           A discipline taniwha is crowned by winning {WIN_TARGET} of its {EVENTS_PER_DOMAIN} events.

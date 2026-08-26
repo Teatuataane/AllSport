@@ -32,6 +32,7 @@
 
 import {
   WIN_TARGET,
+  BODY_PARTS_PER_TANIWHA,
   MIN_PLACEMENT_POINTS,
   crownPoints,
   guaranteedSessionPoints,
@@ -201,7 +202,7 @@ export function taniwhaAlerts(input: TaniwhaAlertInput): TaniwhaAlert[] {
     // Only the taniwha under construction can be crowned next, and only once
     // its body is finished. A half-built one is not a candidate.
     const building = p.taniwha.find(t => t.is_building && !t.crowned_at)
-    if (!building || building.body_parts < 9) continue
+    if (!building || building.body_parts < BODY_PARTS_PER_TANIWHA) continue
 
     const t = taniwhaBySlug(building.taniwha_slug)
     if (!t) continue
@@ -315,7 +316,7 @@ export function taniwhaWatchlist(input: TaniwhaWatchInput): TaniwhaWatchEntry[] 
 
     const crownsHeld = p.taniwha.filter(x => x.crowned_at).length
     const crownOrdinal = crownsHeld + 1
-    const partsToGo = Math.max(9 - building.body_parts, 0)
+    const partsToGo = Math.max(BODY_PARTS_PER_TANIWHA - building.body_parts, 0)
 
     const winsToGo = t.kind === 'whanau'
       ? (p.qualifiedReferrals >= 1 ? 0 : 1)

@@ -514,13 +514,23 @@ one — but **nobody has crown room**, because everyone is under 10,000 lifetime
 crowns are earned and waiting on points. Points are the binding constraint, exactly as the
 calibration assumed. Do not "fix" this by lowering a threshold; it is the intended shape.
 
-- **Twelve taniwha, ten parts each.** Te Taniwha ō te Whānau, one per domain, then **Te Kāhui**
-  for holding all eleven. Parts in order: Tinana, Kakī, Pane, Hiku, Ringa mauī, Ringa matau,
-  Waewae mauī, Waewae matau, Arero, **Tikitiki** (the crown).
-- **Nine parts by points, the crown by an act.** The whānau crown needs one qualified referral;
+- **Twelve taniwha, eleven parts each.** Te Taniwha ō te Whānau, one per domain, then
+  **Te Kāhui** for holding all eleven. Parts in order: Pane (head), Tinana (body), Hiku (tail),
+  Ringa mauī, Ringa matau, Waewae mauī, Waewae matau, Parirau (wings), Arero (tongue),
+  **the implement**, **Tikitiki** (the crown).
+- **Part TEN is the implement, and it is the only part that differs between taniwha** — each
+  carries the tool of its own discipline, drawn from a REAL event in that domain rather than
+  invented (Tika's bow from Archery, Tere's flag from Beach Flags, Ngāwari's block from Forward
+  Split, which is literally scored as block height). It lives in `lib/taniwha.ts`, not in SQL:
+  the database only needs to know how many parts a taniwha holds, never which. Resolve it with
+  `partFor(taniwha, 10)` — `partByNumber(10)` returns the generic placeholder "Taputapu", which
+  must never reach a player.
+- **Ten parts by points, the crown by an act.** The whānau crown needs one qualified referral;
   a domain crown needs **9 of that domain's 12 events won**. `PEAK_POINTS` 100,000 → **110,000**.
-- **Points grant a BUDGET, not an address.** body budget = `floor(p/1000) − floor(p/10000)`
-  capped at 99; crown capacity = `floor(p/10000)` capped at 11. The intuitive
+- **Points grant a BUDGET, not an address.** body budget = `floor(p/1000)` capped at 110; crown
+  capacity = `floor(p/10000)` capped at 11. A crown consumes NO part slot — crowns are a separate
+  track, opened by points and filled by an act. (This got simpler on 26 Aug: the old budget
+  subtracted `floor(p/10000)` only because every tenth slot was a crown.) The intuitive
   "slot 15 = taniwha two, part five" map is WRONG: a player may switch and their parts stay on
   the taniwha they were placed on, so under a fixed map an abandoned taniwha could never be
   resumed. **Crowns are fungible** — the points open your Nth crown and whichever act lands
@@ -612,9 +622,16 @@ locked decisions is `DASHBOARD_REDESIGN_PLAN.md`.
   points in date order and watching each 1,000-point boundary — the same technique
   the colours backfill used. It deliberately does NOT claim which taniwha a limb
   went on, because switching is not recorded either.
-- **`limbsHeld()` counts the crown as the tenth.** `body_parts` caps at 9 because
-  the crown is earned rather than bought, so a crowned taniwha STORES 9 and must
-  DISPLAY 10. The off-by-one looks deliberate, so nobody reports it.
+- **`limbsHeld()` counts the crown as the LAST piece.** `body_parts` caps at
+  `BODY_PARTS_PER_TANIWHA` because the crown is earned rather than bought, so a
+  crowned taniwha STORES 10 and must DISPLAY 11. The off-by-one looks deliberate,
+  so nobody reports it. Written against the constants, not literals, which is why
+  it survived the ten-parts change on `main` unaltered.
+- **Name a piece with `partFor(taniwha, n)`, never `partByNumber(n)`.** Piece ten
+  is the implement and differs per taniwha — Kaha earns a barbell, Tika a bow.
+  `partByNumber` would tell every player they earned a generic "Taputapu". The one
+  deliberate exception is the limbs-earned list in Taniwha History, which uses
+  `partByNumber` BECAUSE it does not know which taniwha the piece went on.
 - **`player_dashboard(uuid[])` loads the whole household in one call**, so switching
   players costs no network. INVOKER rights, reads through RLS — a parent gets their
   child's rows because the child's own policy grants it, and a stranger's id returns
@@ -636,11 +653,14 @@ locked decisions is `DASHBOARD_REDESIGN_PLAN.md`.
   "Taniwha of Connection" is Tāne's; the other eleven are unconfirmed, as are the
   four placeholder names they sit under.
 
-**Still filler:** `components/TaniwhaFigure.tsx` draws the ten limbs as geometry.
-Tāne is drawing the twelve in Canva, ten registered layers each, for
-`/taniwha/{slug}/{limb}.png` — `partAssetSrc()` already returns those paths, and all
-ten layers of a taniwha must be exported on one canvas with the same registration
-or they will not stack.
+**`TaniwhaFigure` has TWO renderers and picks by probe.** Where the art exists it
+layers `/taniwha/{slug}/{piece}.png` as CSS masks filled with the taniwha's ink —
+the same pipeline as EventIcon, and the first call site `partAssetSrc()` has ever
+had. Where it does not, it falls back to filler geometry, so the eleven taniwha
+still undrawn render as shapes rather than nothing. The probe is one image load per
+taniwha per page load, cached at module scope; a missing folder falls back silently
+and must never produce half a creature. Whānau is drawn (11/11, verified by
+`node scripts/check-taniwha-art.mjs whanau`); the other eleven are not.
 
 ---
 
@@ -1072,7 +1092,7 @@ RLS: own + parent (family) + judge.
     BottomNav.tsx                   # Five-tab bottom bar (phones) + the MORE sheet. Hidden >768px by .bottom-nav in globals.css
     PlayerTabs.tsx                  # Sticky family switcher + ViewingAsBanner. Renders null on a solo account
     DomainRadar.tsx                 # Ten-spoke skill radar, one spoke per domain, driven by Top %
-    TaniwhaFigure.tsx               # The ten limbs assembling. FILLER geometry until the Canva exports land
+    TaniwhaFigure.tsx               # The eleven pieces assembling. Real art via CSS mask where drawn, filler geometry where not
     TaniwhaCard.tsx                 # Dashboard taniwha card + TaniwhaPicker + TaniwhaTimeline
     TaniwhaWatchlist.tsx            # "Approaching a crown" panel — /judge, leads with the BLOCKER not sessions-away
     TaniwhaAlertBanner.tsx          # Live kaiwhakawā crown alert (earned / on-track)

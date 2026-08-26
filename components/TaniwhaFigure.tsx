@@ -1,53 +1,77 @@
 'use client'
 
 // ─── The taniwha, assembling ─────────────────────────────────────────────────
-// Ten limbs as ten discrete shapes: earned solid, the one under construction
-// dashed, the rest ghosted. The whole point of the grading system is that you
-// can SEE the creature come together, so a progress bar will not do.
+// Eleven pieces: ten body parts bought with points, then the crown, which is
+// earned. The whole point of the grading system is that you can SEE the creature
+// come together, so a progress bar will not do.
 //
-// ⚠ THIS GEOMETRY IS FILLER. Tāne is drawing the twelve in Canva, ten
-// registered layers each, to be exported as /taniwha/{slug}/{limb}.png and
-// rendered through the same CSS-mask pipeline as EventIcon — see
-// `partAssetSrc()` in lib/taniwha.ts, which already returns those paths. Swapping
-// this file's <path>s for masked layers is the whole of that change; nothing
-// else needs to know.
+// TWO RENDERERS, and which one runs depends on whether the art exists yet.
 //
-// All ten layers of a taniwha MUST be exported on the same canvas with the same
-// registration, or they will not line up when stacked.
+//  1. REAL ART — /taniwha/{slug}/{piece}.png layered as CSS masks and filled
+//     with the taniwha's ink, the same pipeline as EventIcon. Every piece is
+//     exported on one 1000×1000 canvas with the same registration, so stacking
+//     them at identical size is what makes them line up. See public/taniwha/README.md.
+//  2. FILLER GEOMETRY — the shapes below, for the eleven taniwha not yet drawn.
+//
+// The probe is one HEAD-equivalent image load per taniwha per page load, cached
+// at module scope. A missing folder falls back silently, exactly as event icons
+// do; it must never render half a creature.
 
-import { PARTS, CROWN_PART, type Taniwha } from '@/lib/taniwha'
+import { useEffect, useState } from 'react'
+import {
+  PARTS, CROWN_PART, IMPLEMENT_PART, BODY_PARTS_PER_TANIWHA,
+  partFor, partAssetSrc, type Taniwha,
+} from '@/lib/taniwha'
 
-/**
- * Limb geometry, keyed by part number so it matches PARTS exactly. Drawn on a
- * 165×150 canvas, side-on, facing left. Order here is PAINT order (back to
- * front), which is not award order — the tail sits behind the body, the crown
- * above the head.
- */
+// ── Filler geometry ──────────────────────────────────────────────────────────
+// Keyed by PART NUMBER so it tracks PARTS exactly. Head is one piece now — neck
+// merged into it in the August 2026 pass, because "you have unlocked a neck" was
+// never going to feel like anything.
 const SHAPES: Record<number, { d?: string; ellipse?: { cx: number; cy: number; rx: number; ry: number } }> = {
-  10: { d: 'M34,20 L40,6 L48,15 L56,4 L63,20 Z' },              // Tikitiki  crown
-  9:  { d: 'M30,37 L13,43 L15,50 L32,44 Z' },                    // Arero     tongue
-  4:  { d: 'M112,76 Q142,64 154,38 Q146,74 118,94 Z' },          // Hiku      tail
-  1:  { ellipse: { cx: 80, cy: 78, rx: 34, ry: 25 } },           // Tinana    body
-  2:  { d: 'M58,70 L45,45 L60,37 L71,62 Z' },                    // Kakī      neck
-  3:  { ellipse: { cx: 48, cy: 32, rx: 20, ry: 15 } },           // Pane      head
-  5:  { d: 'M60,94 L48,119 L60,125 L72,100 Z' },                 // Ringa mauī
-  6:  { d: 'M78,100 L74,125 L86,128 L92,104 Z' },                // Ringa matau
-  7:  { d: 'M96,98 L96,125 L108,125 L106,98 Z' },                // Waewae mauī
-  8:  { d: 'M108,94 L115,121 L127,117 L118,92 Z' },              // Waewae matau
+  11: { d: 'M34,20 L40,6 L48,15 L56,4 L63,20 Z' },                   // Tikitiki    crown
+  10: { d: 'M120,104 L150,96 L152,104 L122,112 Z' },                 // Taputapu    implement
+  9:  { d: 'M30,37 L13,43 L15,50 L32,44 Z' },                        // Arero       tongue
+  8:  { d: 'M86,60 Q112,26 148,30 Q120,52 108,72 Z' },               // Parirau     wings
+  7:  { d: 'M108,94 L115,121 L127,117 L118,92 Z' },                  // Waewae matau
+  6:  { d: 'M96,98 L96,125 L108,125 L106,98 Z' },                    // Waewae mauī
+  5:  { d: 'M78,100 L74,125 L86,128 L92,104 Z' },                    // Ringa matau
+  4:  { d: 'M60,94 L48,119 L60,125 L72,100 Z' },                     // Ringa mauī
+  3:  { d: 'M112,76 Q142,64 154,38 Q146,74 118,94 Z' },              // Hiku        tail
+  2:  { ellipse: { cx: 80, cy: 78, rx: 34, ry: 25 } },               // Tinana      body
+  1:  { d: 'M58,70 L45,45 L34,38 Q30,20 50,17 Q70,20 66,40 L71,62 Z' }, // Pane     head + neck
 }
 
-/** Back to front. */
-const PAINT_ORDER = [10, 9, 4, 1, 2, 3, 5, 6, 7, 8]
+/** Back to front. Wings and tail sit behind the body, crown and tool in front. */
+const PAINT_ORDER = [8, 3, 2, 11, 1, 9, 6, 7, 4, 5, 10]
+
+// ── Art probe ────────────────────────────────────────────────────────────────
+// slug -> has art. `undefined` while unknown, so the first paint uses geometry
+// rather than flashing an empty frame.
+const artStatus: Record<string, boolean> = {}
+
+function probeArt(t: Taniwha, onResult: (ok: boolean) => void): void {
+  if (t.kind === 'kahui') { onResult(false); return }
+  const cached = artStatus[t.slug]
+  if (cached !== undefined) { onResult(cached); return }
+
+  const src = partAssetSrc(t, PARTS[0])
+  if (!src) { onResult(false); return }
+
+  const img = new Image()
+  img.onload = () => { artStatus[t.slug] = true; onResult(true) }
+  img.onerror = () => { artStatus[t.slug] = false; onResult(false) }
+  img.src = src
+}
 
 export type TaniwhaFigureProps = {
   taniwha: Taniwha
-  /** 0–10. The tenth is the crown and only fills when the crown is held. */
+  /** 0–11. The eleventh is the crown and only fills when the crown is held. */
   limbsEarned: number
-  /** Solid fill for earned limbs — the card's ink, not always the accent. */
+  /** Solid fill for earned pieces — the card's ink, not always the accent. */
   ink: string
-  /** Ghost fill for locked limbs, as an rgba string. */
+  /** Ghost fill for locked pieces, as an rgba string. */
   ghost: string
-  /** Ghost stroke for locked limbs. */
+  /** Ghost stroke for locked pieces. */
   ghostStroke: string
   width?: number
   /** Hide the eye — used on the small figures where it reads as noise. */
@@ -57,38 +81,87 @@ export type TaniwhaFigureProps = {
 export default function TaniwhaFigure({
   taniwha, limbsEarned, ink, ghost, ghostStroke, width = 150, showEye = true,
 }: TaniwhaFigureProps) {
-  // The crown is limb 10 and is earned by an ACT, never bought, so a player on
-  // nine limbs has a complete body and no crown — `building` must not point at
-  // it as if the next 1,000 points would fill it.
-  const building = limbsEarned < PARTS.length - 1 ? limbsEarned + 1 : null
-  const headEarned = limbsEarned >= 3
+  const [hasArt, setHasArt] = useState(artStatus[taniwha.slug] ?? false)
+
+  useEffect(() => {
+    let cancelled = false
+    probeArt(taniwha, ok => { if (!cancelled) setHasArt(ok) })
+    return () => { cancelled = true }
+  }, [taniwha.slug])
+
+  // The crown is the eleventh and is earned by an ACT, never bought, so a player
+  // on ten body parts has a complete body and no crown — `building` must not
+  // point at it as if the next 1,000 points would fill it.
+  const building = limbsEarned < BODY_PARTS_PER_TANIWHA ? limbsEarned + 1 : null
+  const height = Math.round((width / 165) * 150)
+
+  const stateOf = (n: number): 'earned' | 'building' | 'locked' => {
+    if (n === CROWN_PART) return limbsEarned >= CROWN_PART ? 'earned' : 'locked'
+    if (n <= limbsEarned) return 'earned'
+    return n === building ? 'building' : 'locked'
+  }
+
+  const label = `${taniwha.name}, ${limbsEarned} of ${PARTS.length} pieces`
+
+  if (hasArt) {
+    return (
+      <div
+        role="img"
+        aria-label={label}
+        style={{ position: 'relative', width, height: width, flexShrink: 0 }}
+      >
+        {PARTS.map(p => {
+          // partFor, not partByNumber: piece ten is the implement and its file is
+          // named for the tool, so Kaha loads barbell.png and Tika loads bow.png.
+          const part = partFor(taniwha, p.number) ?? p
+          const src = partAssetSrc(taniwha, part)
+          if (!src) return null
+          const state = stateOf(p.number)
+          return (
+            <div
+              key={p.number}
+              aria-hidden
+              style={{
+                position: 'absolute', inset: 0,
+                backgroundColor: ink,
+                opacity: state === 'earned' ? 1 : state === 'building' ? 0.38 : 0.12,
+                WebkitMaskImage: `url(${src})`,
+                maskImage: `url(${src})`,
+                WebkitMaskSize: 'contain',
+                maskSize: 'contain',
+                WebkitMaskRepeat: 'no-repeat',
+                maskRepeat: 'no-repeat',
+                WebkitMaskPosition: 'center',
+                maskPosition: 'center',
+                transition: 'opacity 220ms var(--ease)',
+              }}
+            />
+          )
+        })}
+      </div>
+    )
+  }
 
   return (
     <svg
       viewBox="0 0 165 150"
       width={width}
-      height={Math.round((width / 165) * 150)}
+      height={height}
       style={{ flexShrink: 0, display: 'block' }}
       role="img"
-      aria-label={`${taniwha.name}, ${limbsEarned} of ${PARTS.length} limbs`}
+      aria-label={label}
     >
       {PAINT_ORDER.map(n => {
         const shape = SHAPES[n]
-        const earned = n <= limbsEarned && n !== CROWN_PART
-        const crowned = n === CROWN_PART && limbsEarned >= CROWN_PART
-        const isBuilding = n === building
-
-        const fill = earned || crowned ? ink : ghost
-        const stroke = isBuilding ? ink : earned || crowned ? undefined : ghostStroke
-        const strokeWidth = isBuilding ? 1.6 : stroke ? 1 : undefined
-        const dash = isBuilding ? '3 2.5' : stroke ? '2 2' : undefined
-        const buildFill = isBuilding ? ghost : fill
+        if (!shape) return null
+        const state = stateOf(n)
+        const isBuilding = state === 'building'
 
         const common = {
-          fill: buildFill,
-          stroke,
-          strokeWidth,
-          strokeDasharray: dash,
+          fill: state === 'earned' ? ink : ghost,
+          stroke: isBuilding ? ink : state === 'locked' ? ghostStroke : undefined,
+          strokeWidth: isBuilding ? 1.6 : state === 'locked' ? 1 : undefined,
+          strokeDasharray: isBuilding ? '3 2.5' : state === 'locked' ? '2 2' : undefined,
         }
 
         return shape.ellipse
@@ -96,8 +169,8 @@ export default function TaniwhaFigure({
           : <path key={n} d={shape.d} {...common} />
       })}
 
-      {showEye && headEarned && (
-        <circle cx="42" cy="28" r="2.6" fill={taniwha.inverted ? '#F2F2F2' : '#000000'} />
+      {showEye && limbsEarned >= 1 && (
+        <circle cx="46" cy="30" r="2.6" fill={taniwha.inverted ? '#F2F2F2' : '#000000'} />
       )}
     </svg>
   )
@@ -129,3 +202,5 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
   const n = parseInt(m[1], 16)
   return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 }
 }
+
+export { IMPLEMENT_PART }

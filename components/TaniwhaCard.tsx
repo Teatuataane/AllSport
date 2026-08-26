@@ -37,7 +37,8 @@ import {
   bodyPartBudget,
   crownCapacity,
   limbsHeld,
-  partByNumber,
+  partFor,
+  CROWN_PART,
   type Taniwha,
 } from '@/lib/taniwha'
 import { winsByDomain } from '@/lib/taniwhaAlerts'
@@ -109,7 +110,9 @@ export default function TaniwhaCard({
   const t: Taniwha = (building && taniwhaBySlug(building.taniwha_slug)) || WHANAU
 
   const limbs = limbsHeld(building)
-  const nextLimb = limbs < BODY_PARTS_PER_TANIWHA ? partByNumber(limbs + 1) : partByNumber(PARTS_PER_TANIWHA)
+  // partFor, not partByNumber: piece ten is the implement and differs per
+  // taniwha, so partByNumber would tell everyone they earned a generic Taputapu.
+  const nextLimb = limbs < BODY_PARTS_PER_TANIWHA ? partFor(t, limbs + 1) : partFor(t, CROWN_PART)
   const bodyDone = limbs >= BODY_PARTS_PER_TANIWHA
 
   // Parts earned but not yet placed, because nothing is being built. Derived,
@@ -204,12 +207,12 @@ export default function TaniwhaCard({
                 {bodyDone ? 'Body complete' : 'Currently building'}
               </div>
               <div style={{ fontSize: 14, color: ink, fontWeight: 600, marginTop: 3 }}>
-                {bodyDone ? 'Tikitiki' : nextLimb?.name}
+                {nextLimb?.name}
               </div>
               <div style={{ fontSize: 12, color: ink, opacity: 0.6 }}>
                 {bodyDone
-                  ? 'the crown — earned, not bought'
-                  : `${nextLimb?.english} · limb ${limbs + 1}`}
+                  ? `${nextLimb?.english} — earned, not bought`
+                  : `${nextLimb?.english} · piece ${limbs + 1}`}
               </div>
             </div>
           </div>

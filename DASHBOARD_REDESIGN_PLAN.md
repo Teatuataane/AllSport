@@ -145,9 +145,9 @@ Four blocks, plus the conditional action strip. Nothing else.
    - Taniwha name, then its **English gloss** on the line beneath
      ("Te Taniwha ō te Whānau" / "Taniwha of Connection").
    - `TAP FOR TANIWHA HISTORY`.
-   - **The creature, assembling** — the ten limbs as discrete shapes: earned solid in
-     the accent, the limb under construction dashed, the rest ghosted. Filler geometry
-     until the twelve drawings exist.
+   - **The creature, assembling** — the eleven pieces layered: earned solid in the
+     accent, the piece under construction faint, the rest ghosted. Real artwork
+     where it exists (Whānau today), filler geometry everywhere else.
    - `5 / 10 LIMBS`, then `CURRENTLY BUILDING · Ringa Matau · right arm · limb 6`.
    - **Three point figures side by side**: `THIS TANIWHA` (limbs placed × 1,000),
      `THIS LIMB` (progress toward the next 1,000), `ALL TIME` (lifetime), with a thin
@@ -200,7 +200,7 @@ Opens from the taniwha card. In order:
 
 1. Four counts across the top: **Taniwha · Limbs · Crowns · Points**
    (`1/12`, `5/110`, `0/11`, `5,720`). "Taniwha" counts those **started**, not crowned.
-2. The explanation paragraph (points place limbs, the tenth is earned, limbs stay put).
+2. The explanation paragraph (points place pieces, the crown is earned, pieces stay put).
 3. **Te Taniwha ō te Whānau**, then the ten domains, then Te Kāhui — each an expandable
    row. Collapsed: icon, name, gloss, wins toward 9, limbs placed. Expanded: all ten
    limbs by number and name with their English, earned / building (showing

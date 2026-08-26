@@ -22,8 +22,8 @@ import { loadTaniwhaState, limbsHeld, type TaniwhaState, type PlayerTaniwhaRow }
 import { winsByDomain } from '@/lib/taniwhaAlerts'
 import { DOMAIN_ORDER } from '@/lib/eventData'
 import {
-  PARTS, PARTS_PER_TANIWHA, PART_POINTS, BODY_PARTS_PER_TANIWHA,
-  TOTAL_SLOTS, MAX_CROWNS, TOTAL_TANIWHA, WIN_TARGET, EVENTS_PER_DOMAIN,
+  PARTS, PARTS_PER_TANIWHA, PART_POINTS, BODY_PARTS_PER_TANIWHA, partFor,
+  TOTAL_BODY_PARTS, MAX_CROWNS, TOTAL_TANIWHA, WIN_TARGET, EVENTS_PER_DOMAIN,
   WHANAU, KAHUI, DOMAIN_TANIWHA, taniwhaCardStyle, taniwhaOnDark,
   winsToGo, type Taniwha,
 } from '@/lib/taniwha'
@@ -103,16 +103,19 @@ export default function MyTaniwhaPage() {
           gap: 8, marginBottom: 16,
         }}>
           <Count value={started} of={TOTAL_TANIWHA} label="Taniwha" />
-          <Count value={limbsPlaced} of={TOTAL_SLOTS} label="Limbs" colour="var(--amber)" />
+          <Count value={limbsPlaced} of={TOTAL_BODY_PARTS} label="Limbs" colour="var(--amber)" />
           <Count value={crowned} of={MAX_CROWNS} label="Crowns" />
           <Count value={points.toLocaleString()} label="Points" />
         </div>
 
         <p style={{ fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.55, marginBottom: 18 }}>
-          Every {PART_POINTS.toLocaleString()} points places one limb. Nine limbs make
-          a body — the tenth, the <span style={{ color: 'var(--amber)' }}>Tikitiki</span>,
-          has to be earned. Your limbs stay where you put them, so switching changes
-          what your next limbs build, not what you already hold.
+          Every {PART_POINTS.toLocaleString()} points places one piece.{' '}
+          {BODY_PARTS_PER_TANIWHA} pieces make a body — including the{' '}
+          <span style={{ color: 'var(--amber)' }}>taputapu</span>, the tool of its
+          own discipline. The last piece, the{' '}
+          <span style={{ color: 'var(--amber)' }}>Tikitiki</span>, has to be earned.
+          Your pieces stay where you put them, so switching changes what your next
+          ones build, not what you already hold.
         </p>
 
         {!state ? (
@@ -301,11 +304,12 @@ function TaniwhaRow({ t, row, wins, domainName, open, onToggle }: {
                 ? 'Not started. Pick this taniwha and your next limbs build it.'
                 : crownedHere
                 ? 'Complete — body and crown.'
-                : `${limbs} of ${PARTS_PER_TANIWHA} limbs placed.`}
+                : `${limbs} of ${PARTS_PER_TANIWHA} pieces placed.`}
             </div>
           </div>
 
-          {PARTS.map(p => {
+          {PARTS.map(raw => {
+            const p = partFor(t, raw.number) ?? raw
             const held = p.number <= Math.min(limbs, BODY_PARTS_PER_TANIWHA)
               || (p.number === PARTS_PER_TANIWHA && crownedHere)
             const isCrown = p.number === PARTS_PER_TANIWHA

@@ -25,7 +25,7 @@ import {
   TaniwhaPicker, TaniwhaTimeline, loadTaniwhaState, limbsHeld, type TaniwhaState,
 } from '@/components/TaniwhaCard'
 import {
-  PARTS_PER_TANIWHA, WHANAU, limbCrossings, partByNumber,
+  PARTS_PER_TANIWHA, BODY_PARTS_PER_TANIWHA, WHANAU, limbCrossings, partByNumber,
   taniwhaBySlug, taniwhaCardStyle, type PointsSession,
 } from '@/lib/taniwha'
 
@@ -190,7 +190,14 @@ export default function TaniwhaHistoryPage() {
             <Empty>Your first limb lands at 1,000 points.</Empty>
           ) : (
             crossings.slice(0, 6).map(c => {
-              const part = partByNumber(((c.limb - 1) % PARTS_PER_TANIWHA) + 1)
+              // Body parts only — crowns are earned, not bought, so they are not
+              // slots on this ladder and must not be part of the modulus.
+              //
+              // partByNumber, NOT partFor, and that is deliberate: we do not know
+              // which taniwha this piece went on, because switching is not
+              // recorded. Piece ten therefore reads as the generic "Taputapu"
+              // rather than naming a tool the player may not have earned.
+              const part = partByNumber(((c.limb - 1) % BODY_PARTS_PER_TANIWHA) + 1)
               return (
                 <Row key={c.limb}>
                   <Pip>{c.limb}</Pip>

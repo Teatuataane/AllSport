@@ -79,7 +79,7 @@
       "x": 0,
       "y": -300,
       "w": 900,
-      "text": "AllSport dashboard redesign — round 2, your critique applied.\n\nSCREENS (top row) · SYSTEM SPECS (bottom row)\n\nThe dashboard is now four blocks: identity, taniwha card, four numbers, skill radar. Everything below moved into Taniwha History, which is what the card opens.\n\nLimb artwork is filler geometry so the assembly reads — twelve real drawings, ten registered layers each, still to come."
+      "text": "AllSport dashboard redesign — round 2, your critique applied.\n\nSCREENS (top row) · SYSTEM SPECS (bottom row)\n\nThe dashboard is now four blocks: identity, taniwha card, four numbers, skill radar. Everything below moved into Taniwha History, which is what the card opens.\n\nTe Taniwha o te Whānau is now really drawn (11/11 pieces) and the app renders it; the other eleven still fall back to filler geometry."
     },
     {
       "id": "note-card",
@@ -128,7 +128,7 @@
       "x": 0,
       "y": 3860,
       "w": 900,
-      "text": "RESOLVED SINCE ROUND 2 — the particle is unmacronised: \"Te Taniwha o te …\" across all twelve, in the canvas and in lib/taniwha.ts.\n\nSTILL OPEN — (1) the English glosses are mine except Connection, which is yours. (2) Hiko, Manawanui, Mataara and Ruruku are the four names still awaiting a reo speaker, along with the Hiko/Hiku, Kaha/Kaha Tinana and Manawanui/Manawaroa near-collisions. (3) Taniwha artwork: Tāne is drawing the twelve in Canva — ten registered layers each, exported as {slug}/{limb}.png."
+      "text": "SUPERSEDED IN PART — main changed the parts model after this canvas was drawn (PR #90, v0.6.1.0): eleven pieces, not ten. The head leads, the neck is merged into it, wings arrive at eight, and piece TEN is the taputapu — the tool of that taniwha’s discipline, different for every one. Counts here are corrected; the drawn figures still show the older silhouette.\n\nlib/taniwha.ts is the source of truth, not this canvas.\n\nRESOLVED — the particle is unmacronised: \"Te Taniwha o te …\" across all twelve.\n\nSTILL OPEN — the English glosses (Connection is Tāne’s, the other eleven are mine), and the four placeholder names: Hiko, Manawanui, Mataara, Ruruku."
     },
     {
       "id": "note-specs",
