@@ -14,7 +14,7 @@ const child = (id: string, name: string): ActivePlayerRow => ({
   division: 'Juniors', date_of_birth: null, icon: null,
 })
 
-const FAMILY = [child('kid-1', 'Felix'), child('kid-2', 'Nikau')]
+const FAMILY = [child('kid-1', 'Rima'), child('kid-2', 'Toa')]
 
 describe('resolveActiveId', () => {
   it('falls back to the signed-in user when nothing is stored', () => {
@@ -33,7 +33,7 @@ describe('resolveActiveId', () => {
   })
 
   it('refuses a stale id after that family member is removed', () => {
-    expect(resolveActiveId('kid-1', SELF, [child('kid-2', 'Nikau')])).toBe(SELF)
+    expect(resolveActiveId('kid-1', SELF, [child('kid-2', 'Toa')])).toBe(SELF)
   })
 
   it('a solo account can never resolve to anyone but itself', () => {
