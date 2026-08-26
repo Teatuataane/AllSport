@@ -514,13 +514,23 @@ one — but **nobody has crown room**, because everyone is under 10,000 lifetime
 crowns are earned and waiting on points. Points are the binding constraint, exactly as the
 calibration assumed. Do not "fix" this by lowering a threshold; it is the intended shape.
 
-- **Twelve taniwha, ten parts each.** Te Taniwha ō te Whānau, one per domain, then **Te Kāhui**
-  for holding all eleven. Parts in order: Tinana, Kakī, Pane, Hiku, Ringa mauī, Ringa matau,
-  Waewae mauī, Waewae matau, Arero, **Tikitiki** (the crown).
-- **Nine parts by points, the crown by an act.** The whānau crown needs one qualified referral;
+- **Twelve taniwha, eleven parts each.** Te Taniwha ō te Whānau, one per domain, then
+  **Te Kāhui** for holding all eleven. Parts in order: Pane (head), Tinana (body), Hiku (tail),
+  Ringa mauī, Ringa matau, Waewae mauī, Waewae matau, Parirau (wings), Arero (tongue),
+  **the implement**, **Tikitiki** (the crown).
+- **Part TEN is the implement, and it is the only part that differs between taniwha** — each
+  carries the tool of its own discipline, drawn from a REAL event in that domain rather than
+  invented (Tika's bow from Archery, Tere's flag from Beach Flags, Ngāwari's block from Forward
+  Split, which is literally scored as block height). It lives in `lib/taniwha.ts`, not in SQL:
+  the database only needs to know how many parts a taniwha holds, never which. Resolve it with
+  `partFor(taniwha, 10)` — `partByNumber(10)` returns the generic placeholder "Taputapu", which
+  must never reach a player.
+- **Ten parts by points, the crown by an act.** The whānau crown needs one qualified referral;
   a domain crown needs **9 of that domain's 12 events won**. `PEAK_POINTS` 100,000 → **110,000**.
-- **Points grant a BUDGET, not an address.** body budget = `floor(p/1000) − floor(p/10000)`
-  capped at 99; crown capacity = `floor(p/10000)` capped at 11. The intuitive
+- **Points grant a BUDGET, not an address.** body budget = `floor(p/1000)` capped at 110; crown
+  capacity = `floor(p/10000)` capped at 11. A crown consumes NO part slot — crowns are a separate
+  track, opened by points and filled by an act. (This got simpler on 26 Aug: the old budget
+  subtracted `floor(p/10000)` only because every tenth slot was a crown.) The intuitive
   "slot 15 = taniwha two, part five" map is WRONG: a player may switch and their parts stay on
   the taniwha they were placed on, so under a fixed map an abandoned taniwha could never be
   resumed. **Crowns are fungible** — the points open your Nth crown and whichever act lands

@@ -157,14 +157,18 @@
 **Noticed:** /ship v0.5.5.0, 2026-08-13
 **Effort:** L (architectural — affects every client component that calls supabase)
 
-### Draw the twelve taniwha, ten layers each
-**What:** twelve creatures — Te Taniwha ō te Whānau, one per domain, and Te Kāhui — each drawn ONCE and sliced into ten layers: Tinana, Kakī, Pane, Hiku, Ringa mauī, Ringa matau, Waewae mauī, Waewae matau, Arero, Tikitiki. Twelve drawings, not 120.
-**Spec:** transparent PNG, solid silhouette, ~1000×1000, same as `public/event-icons/`, so the existing CSS-mask tint pipeline picks them up with no code change. Path `public/taniwha/{taniwha-slug}/{part-slug}.png`.
+### Draw the twelve taniwha — 1 of 12 done
+**Done:** Te Taniwha ō te Whānau, all eleven pieces, in `public/taniwha/whanau/`. Registration verified clean — same 1000×1000 canvas, real alpha, no drift across the eleven frames. The method works.
+**Three pieces of it need redrawing** (committed as-is so the pipeline was proven end to end): `hands.png` is a solid disc rather than the many-hands implement; `tikitiki` is 104×59 on a 1000px canvas, which is a 2px smudge at the size the leaderboard renders — for what is four months of a player's work; and `arero` is 0.16% coverage and 44% semi-transparent, so the wero fades rather than reads.
+**Lesson for the other eleven:** draw the small pieces much LARGER on the canvas. A piece scales with the whole square, so anything under about 150px across vanishes at 24px.
+**Check each one before drawing the next:** `node scripts/check-taniwha-art.mjs <slug>` then open `public/taniwha/_preview.html`.
+**What remains:** eleven creatures — one per domain, plus Te Kāhui — each drawn ONCE and sliced into eleven layers: Pane, Tinana, Hiku, Ringa mauī, Ringa matau, Waewae mauī, Waewae matau, Parirau, Arero, the implement, Tikitiki.
+**Spec:** transparent PNG, solid silhouette, 1000×1000, same as `public/event-icons/`. Path `public/taniwha/{taniwha-slug}/{part-slug}.png` — **the folder must be the slug**, lowercase and no macrons; a folder named "Te Taniwha o te Whānau" resolves to nothing and the card draws blank, silently.
 **The one constraint that cannot be fixed later:** all ten parts of a taniwha must be exported on the SAME canvas with the SAME registration, or they will not layer. A filename that is not the exact slug falls back silently, exactly as event icons do.
 **Why it matters:** the taniwha card currently draws a progress bar and a name. The creature assembling part by part IS the feature; without the art a player sees a counter.
 **Supersedes** the old "export the two colour emblem PNGs" item — that ladder is retired and `emblemSrc` is deleted, so those two assets are no longer wanted.
-**Noticed:** /ship v0.6.0.0, 2026-08-25
-**Effort:** M (art, no code)
+**Noticed:** /ship v0.6.0.0, 2026-08-25; first one landed v0.6.1.0, 2026-08-26
+**Effort:** M (art, no code) — about 11/12 remaining
 
 ### Component-test infrastructure — supabase mocking strategy
 **What is now done:** `npm install` (v0.6.0.1) finally installed `@testing-library/react` and `jsdom`, which were declared but missing — the component test had been permanently red and React components had zero coverage. `__tests__/taniwhaComponents.test.tsx` now covers `TaniwhaAlertBanner` and `TaniwhaWatchlist` with 15 tests.
