@@ -216,7 +216,7 @@ function Count({ value, of, label, colour = 'var(--white)' }: {
       </div>
       <div style={{
         fontFamily: 'var(--font-label)', textTransform: 'uppercase',
-        letterSpacing: '0.1em', fontWeight: 600, fontSize: 9,
+        letterSpacing: '0.1em', fontWeight: 600, fontSize: 10,
         color: 'var(--text-muted)', marginTop: 3,
       }}>
         {label}
@@ -288,7 +288,7 @@ function TaniwhaRow({ t, row, wins, domainName, open, onToggle }: {
           </div>
           <div style={{
             fontFamily: 'var(--font-label)', textTransform: 'uppercase',
-            fontSize: 9, color: '#555',
+            fontSize: 10, color: 'var(--text-muted)',
           }}>
             {row?.is_building ? 'Building' : 'Pieces'}
           </div>

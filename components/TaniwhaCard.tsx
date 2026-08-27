@@ -28,7 +28,6 @@ import {
   BODY_PARTS_PER_TANIWHA,
   PARTS_PER_TANIWHA,
   WIN_TARGET,
-  MAX_CROWNS,
   WHANAU,
   taniwhaBySlug,
   taniwhaForDomain,
@@ -257,8 +256,11 @@ export default function TaniwhaCard({
       <div style={{
         position: 'absolute', top: 18, right: 20, textAlign: 'right',
       }}>
+        {/* No denominator here. PARTS_PER_TANIWHA and MAX_CROWNS are both 11,
+            so "0/11 Pieces" and "0/11 Crowned" sat on the same card meaning
+            entirely different things. The label carries it. */}
         <div style={{ fontSize: 30, fontWeight: 'bold', color: ink, lineHeight: 1 }}>
-          {crowned.length}<span style={{ fontSize: 16, opacity: 0.5 }}>/{MAX_CROWNS}</span>
+          {crowned.length}
         </div>
         <div style={{
           fontFamily: 'var(--font-label)', textTransform: 'uppercase',
@@ -281,8 +283,8 @@ function Figure({ ink, label, value, suffix }: {
       </div>
       <div style={{
         fontFamily: 'var(--font-label)', textTransform: 'uppercase',
-        letterSpacing: '0.1em', fontWeight: 600, fontSize: 9,
-        color: ink, opacity: 0.55, marginTop: 2,
+        letterSpacing: '0.1em', fontWeight: 600, fontSize: 10,
+        color: ink, opacity: 0.7, marginTop: 2,
       }}>
         {label}
       </div>

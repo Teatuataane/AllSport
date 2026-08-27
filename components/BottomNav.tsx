@@ -295,9 +295,14 @@ function MoreSheet({ isJudge, onClose, onSignOut }: {
           </svg>
         </SheetRow>
 
-        <SheetRow href="/koha" label="Koha">
+        {/* "Koha" sat directly under "My koha" with a near-identical heart, so
+            the pair read as one thing listed twice. The public page is the
+            giving one — naming it by the action separates them. */}
+        <SheetRow href="/koha" label="Give koha">
           <svg {...stroke()} strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 21s-7-4.6-7-10a4 4 0 017-2.6A4 4 0 0119 11c0 5.4-7 10-7 10z" />
+            <path d="M20 12v7a2 2 0 01-2 2H6a2 2 0 01-2-2v-7" /><path d="M3 8h18v4H3z" />
+            <path d="M12 21V8" /><path d="M12 8S9.5 3.5 7.5 5.5 12 8 12 8z" />
+            <path d="M12 8s2.5-4.5 4.5-2.5S12 8 12 8z" />
           </svg>
         </SheetRow>
 

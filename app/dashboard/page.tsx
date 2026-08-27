@@ -352,7 +352,7 @@ function DashboardInner() {
             <SectionLabel>Skill across the domains</SectionLabel>
             <span style={{
               fontFamily: 'var(--font-label)', textTransform: 'uppercase',
-              letterSpacing: '0.1em', fontWeight: 600, fontSize: 10, color: '#444',
+              letterSpacing: '0.1em', fontWeight: 600, fontSize: 10, color: 'var(--text-muted)',
             }}>
               Further out = stronger
             </span>
@@ -507,7 +507,7 @@ function Stat({ value, label, colour = 'var(--white)' }: {
       </div>
       <div style={{
         fontFamily: 'var(--font-label)', textTransform: 'uppercase',
-        letterSpacing: '0.1em', fontWeight: 600, fontSize: 9,
+        letterSpacing: '0.1em', fontWeight: 600, fontSize: 10,
         color: 'var(--text-muted)', marginTop: 3,
       }}>
         {label}
@@ -526,7 +526,7 @@ function ExtremeBox({ label, name, colour, detail }: {
     }}>
       <div style={{
         fontFamily: 'var(--font-label)', textTransform: 'uppercase',
-        letterSpacing: '0.1em', fontWeight: 600, fontSize: 9, color: '#555',
+        letterSpacing: '0.1em', fontWeight: 600, fontSize: 10, color: 'var(--text-muted)',
       }}>
         {label}
       </div>

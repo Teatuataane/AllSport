@@ -429,7 +429,7 @@ export default function PRsPage() {
                     display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
                     gap: '10px', padding: '2px 14px 4px',
                     fontFamily: 'var(--font-label)', textTransform: 'uppercase',
-                    letterSpacing: '0.08em', fontWeight: 600, fontSize: '9px', color: '#555',
+                    letterSpacing: '0.08em', fontWeight: 600, fontSize: '10px', color: '#777',
                   }}>
                     <span style={{ width: '84px', textAlign: 'right' }}>Personal best</span>
                     <span style={{ width: '38px', textAlign: 'right' }}>Avg</span>
