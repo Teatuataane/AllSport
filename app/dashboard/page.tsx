@@ -226,7 +226,12 @@ function DashboardInner() {
   }
 
   const nextSession = nextScheduledSession()
+  // `household` is null while the RPC is in flight, and "no data yet" must not
+  // be mistaken for "no games ever" — otherwise every returning player gets a
+  // flash of the first-run screen before their real stats arrive.
+  const householdLoaded = household !== null
   const hasPlayed = (counts?.games ?? 0) > 0
+  const firstRun = householdLoaded && !hasPlayed
 
   return (
     <>
@@ -252,7 +257,7 @@ function DashboardInner() {
           <div id="join">
             <JoinBlock
               nextSession={nextSession}
-              highlight={!hasPlayed}
+              highlight={firstRun}
               code={joinCode}
               onCode={setJoinCode}
               onJoin={() => handleJoinByCode(joinCode.trim().toUpperCase())}
@@ -316,7 +321,15 @@ function DashboardInner() {
           />
         )}
 
-        {/* ── 3. Four numbers ─────────────────────────────────────────────── */}
+        {/* ── 3 + 4. Stats, or an honest empty state ──────────────────────
+            A player with no games has nothing to put in four stat tiles or a
+            radar: they get four zeros and a shape collapsed to a dot at the
+            centre, which reads as a broken page rather than a new one. The
+            first-run panel is design-canvas/FirstRun.dc.html. */}
+        {firstRun ? (
+          <FirstRunPanel />
+        ) : (
+        <>
         <div style={{
           display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
           gap: 8, marginBottom: 16,
@@ -392,9 +405,11 @@ function DashboardInner() {
             fontFamily: 'var(--font-label)', textTransform: 'uppercase',
             letterSpacing: '0.1em', fontWeight: 600, fontSize: 12, color: 'var(--blue)',
           }}>
-            All 120 events →
+            All {EVENTS.length} events →
           </Link>
         </div>
+        </>
+        )}
 
         {userId && activePlayerId && (
           <div style={{ marginTop: 16 }}>
@@ -416,6 +431,64 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
     }}>
       {children}
     </span>
+  )
+}
+
+/**
+ * The zero-games dashboard. Says what will fill this page and what it costs to
+ * fill it, instead of four zeros and an empty radar.
+ *
+ * The event count is the only real number here on purpose — it is a fact about
+ * the sport rather than about the player, so it is the one figure that is
+ * genuinely theirs to look forward to.
+ */
+function FirstRunPanel() {
+  return (
+    <div style={{
+      background: 'var(--surface)', border: '1px solid var(--border)',
+      borderRadius: 16, padding: '26px 20px', marginBottom: 16, textAlign: 'center',
+    }}>
+      <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#2a2a2a"
+           strokeWidth="1.6" strokeLinecap="round" aria-hidden
+           style={{ marginBottom: 14 }}>
+        <path d="M5 19V11" /><path d="M12 19V5" /><path d="M19 19v-5" />
+      </svg>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 24, letterSpacing: '0.04em' }}>
+        NO GAMES YET
+      </div>
+      <p style={{
+        fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6,
+        maxWidth: 280, margin: '8px auto 0',
+      }}>
+        Play one 100-minute session and this page fills with your placements,
+        your personal bests, and every event you have tried.
+      </p>
+
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        gap: 12, marginTop: 18, paddingTop: 16, borderTop: '1px solid var(--border)',
+        textAlign: 'left',
+      }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{
+            fontFamily: 'var(--font-label)', textTransform: 'uppercase',
+            letterSpacing: '0.12em', fontWeight: 600, fontSize: 10, color: '#555',
+          }}>
+            Waiting for you
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 3, lineHeight: 1.5 }}>
+            {EVENTS.length} events across 10 domains. You play 10 of them a session.
+          </div>
+        </div>
+        <Link href="/events" style={{
+          fontFamily: 'var(--font-label)', textTransform: 'uppercase',
+          letterSpacing: '0.1em', fontWeight: 600, fontSize: 12,
+          color: 'var(--blue)', flexShrink: 0,
+        }}>
+          See them →
+        </Link>
+      </div>
+    </div>
   )
 }
 
