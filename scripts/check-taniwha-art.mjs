@@ -36,7 +36,18 @@ const ACCENT = {
   mataara: '#B87333', ruruku: '#F2F2F2', tika: '#8C9199', kahui: '#F9B051',
 }
 
-/** width, height and whether the PNG carries an alpha channel. */
+/** True if the PNG contains a chunk of this type. Walks the chunk table. */
+function hasChunk(b, type) {
+  let i = 8 // past the 8-byte signature
+  while (i + 8 <= b.length) {
+    const len = b.readUInt32BE(i)
+    if (b.toString('ascii', i + 4, i + 8) === type) return true
+    i += 12 + len // length + type + data + CRC
+  }
+  return false
+}
+
+/** width, height and whether the PNG carries transparency. */
 function pngInfo(file) {
   const b = readFileSync(file)
   if (b.length < 26 || b.readUInt32BE(0) !== 0x89504e47) return { error: 'not a PNG' }
@@ -44,8 +55,18 @@ function pngInfo(file) {
   return {
     width: b.readUInt32BE(16),
     height: b.readUInt32BE(20),
-    // 4 = grey+alpha, 6 = RGBA. 0/2/3 carry no alpha at all.
-    hasAlpha: colourType === 4 || colourType === 6,
+    // 4 = grey+alpha and 6 = RGBA carry a per-pixel alpha channel outright.
+    //
+    // 3 = palette has no alpha channel but IS transparent when a tRNS chunk
+    // gives the palette entries their alpha — which is exactly what
+    // scripts/optimize-icons.mjs produces, because a palette PNG is a fraction
+    // of the size of RGBA and the mask only reads alpha anyway. Rejecting
+    // colour type 3 outright would fail every optimised asset.
+    //
+    // 0 and 2 have neither, and that IS the failure this guard exists to catch:
+    // an export without transparency tints the whole square solid.
+    hasAlpha: colourType === 4 || colourType === 6 ||
+      (colourType === 3 && hasChunk(b, 'tRNS')),
     colourType,
   }
 }
@@ -62,7 +83,8 @@ function checkOne(slug) {
     const i = pngInfo(f)
     if (i.error) { problems.push(`${p}.png — ${i.error}`); continue }
     if (!i.hasAlpha) {
-      problems.push(`${p}.png — no alpha channel (colour type ${i.colourType}). ` +
+      problems.push(`${p}.png — no transparency (colour type ${i.colourType}` +
+        `${i.colourType === 3 ? ', palette with no tRNS chunk' : ''}). ` +
         `Canva must download as "PNG · transparent background", or the whole square tints solid.`)
     }
     found.push({ part: p, ...i })

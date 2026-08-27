@@ -6,10 +6,13 @@
 // hour and that was already one copy too many.
 
 import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase-browser'
 import { useActivePlayer } from '@/lib/useActivePlayer'
 
-const supabase = createClient()
+// Dynamic, not module scope: this hook is what Navbar and BottomNav call, so a
+// static import would drag the Supabase client into every page's bundle. See
+// lib/authCookie.ts. The effect below already runs only for a signed-in user,
+// so the import happens exactly when there is a session to query for.
+const supabaseModule = () => import('@/lib/supabase-browser')
 
 export type NavState = {
   userId: string | null
@@ -36,6 +39,10 @@ export function useNavState(): NavState {
     let cancelled = false
 
     const check = async () => {
+      const { createClient } = await supabaseModule()
+      if (cancelled) return
+      const supabase = createClient()
+
       // A session whose 100 minutes ran out while the app was closed never fires
       // award_session_points, so nobody in it gets placements or points. This RPC
       // derives expiry from started_at server-side, so a caller can only ask it to
@@ -46,8 +53,13 @@ export function useNavState(): NavState {
       if (!cancelled) setLiveSessionId(data?.id ?? null)
     }
 
-    check()
-    const t = setInterval(check, 60_000)
+    // Swallowed on purpose: the interval below retries every 60s, so a failed
+    // import or a dropped request self-heals. Without the catch it is an
+    // unhandled rejection on every flaky load.
+    const run = () => { check().catch(() => {}) }
+
+    run()
+    const t = setInterval(run, 60_000)
     return () => { cancelled = true; clearInterval(t) }
   }, [userId])
 

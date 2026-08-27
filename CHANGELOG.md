@@ -2,6 +2,20 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.6.3.0] - 2026-08-28
+
+### Changed
+- **The live session screen opens much faster on gym wifi.** Before it could show you anything it asked the database five questions in a row — your profile, your whānau, the session, its events, then everyone's scores — each one waiting for the answer to the one before it. None of them actually needed the others. It now asks all five at once. That is the difference between staring at a blank screen for several seconds when the connection is poor and having it fill straight away, on the one screen you are using while a game is running.
+- **The front page no longer downloads the live-scoring machinery just to say hello.** Every page in the app was quietly loading the code that keeps scores updating in real time during a game — including the front page, where nothing updates and nobody is signed in. It is only fetched now once you are actually signed in.
+- **The front page also stopped carrying the rulebook.** It lists the ten domains and their events, and to do that it was sending your phone the full written how-to and judging rules for all 120 events. It now sends the names, which is all it was ever showing. Between these two, opening the front page is about a third lighter than it was, and it becomes usable sooner.
+- **Event and taniwha pictures appear straight away instead of popping in.** Every icon used to show its emoji stand-in first and swap to the real picture a moment later, once the app had checked the picture existed. Now every event has a picture, that check was only ever adding a flicker. Most noticeable on Personal Bests, where dozens changed at once.
+- **The pictures themselves are a lot smaller.** The taniwha artwork is a tenth of the weight it was and the event icons about half, with no visible difference at any size they are drawn. They were being stored at several times the size the app ever uses, and a mistake in the tool that shrinks them meant it had been reporting the small size while quietly saving the big one.
+- **The leaderboard asks the database once instead of twice**, and the check that closes a game whose hundred minutes ran out now happens inside that single request instead of ahead of it.
+
+### Fixed
+- **The top bar can no longer come up empty.** If your phone failed to fetch part of the app — a dropped moment on mobile data is enough — the bar could be left with no Dashboard and no Sign out at all, and stay that way until you closed and reopened the page. It now falls back to something you can actually use, and tries again the next time you move between pages.
+- **Signing out on a patchy connection no longer looks like it worked when it didn't.** The menu closed the moment you tapped, whether or not the sign-out had gone through. It now stays open until it has, so a tap that failed is visible and you can tap it again.
+
 ## [0.6.2.0] - 2026-08-27
 
 ### Added

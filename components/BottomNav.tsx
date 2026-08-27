@@ -17,10 +17,13 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase-browser'
 import { useNavState } from '@/lib/useNavState'
 
-const supabase = createClient()
+// Dynamic, not module scope. This bar renders on every route from the root
+// layout, so a static import put the Supabase client and its realtime stack
+// into every page's bundle (see lib/authCookie.ts) — for a single signOut call
+// that only a signed-in player can ever reach.
+const supabaseModule = () => import('@/lib/supabase-browser')
 
 const BAR_HEIGHT = 64
 
@@ -168,9 +171,18 @@ export default function BottomNav() {
           isJudge={isJudge}
           onClose={() => setMoreOpen(false)}
           onSignOut={async () => {
-            setMoreOpen(false)
-            await supabase.auth.signOut()
-            router.push('/')
+            // Close the sheet only AFTER the sign-out lands. Closing first read
+            // as success even when the dynamic import failed, so a tap on flaky
+            // mobile dismissed the sheet and left the player signed in with no
+            // feedback. Leaving it open makes a failed tap visible and retryable.
+            try {
+              const { createClient } = await supabaseModule()
+              await createClient().auth.signOut()
+              setMoreOpen(false)
+              router.push('/')
+            } catch {
+              // Sheet stays open; the player can tap again.
+            }
           }}
         />
       )}

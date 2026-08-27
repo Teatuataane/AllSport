@@ -13,34 +13,105 @@
 // links instead — `useNavState` is shared with BottomNav so PLAY cannot point
 // two different ways on two different widths.
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { createClient } from '@/lib/supabase-browser'
+import { hasAuthCookie } from '@/lib/authCookie'
 import { useNavState } from '@/lib/useNavState'
+
+// Dynamic, not module scope: the navbar is in the root layout, so a static
+// import shipped the Supabase client and its realtime stack on every route —
+// including the marketing homepage, purely to decide whether this bar says
+// "Sign in". See lib/authCookie.ts for the measurement.
+const supabaseModule = () => import('@/lib/supabase-browser')
+
+// The cookie cannot change without a navigation (sign-in and sign-out both
+// route), and this component re-renders on `pathname` anyway — so there is
+// nothing to subscribe to. Required by useSyncExternalStore all the same.
+const subscribeNothing = () => () => {}
 
 export const TOP_BAR_HEIGHT = 48
 export const RAINBOW_HEIGHT = 5
 
 export default function Navbar() {
   const [user, setUser] = useState<any>(null)
-  const [authLoading, setAuthLoading] = useState(true)
+  const [authResolved, setAuthResolved] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const pathname = usePathname()
-  const supabase = createClient()
   const { isJudge, playHref, playLabel, playColour } = useNavState()
 
+  // "No auth cookie" is knowable on the client with certainty and with no
+  // network and no Supabase bundle — but NOT during prerender, where there is no
+  // document. useSyncExternalStore is the sanctioned way to read a client-only
+  // value on a prerendered component: it hands back the server snapshot while
+  // hydrating and the real one immediately after, with no setState in an effect
+  // and no hydration mismatch. A lazy useState initialiser would give one.
+  //
+  // The server snapshot is `false` — "not known to be signed out" — so the bar
+  // prerenders in its neutral state exactly as it does today.
+  const knownSignedOut = useSyncExternalStore(
+    subscribeNothing,
+    () => !hasAuthCookie(),
+    () => false,
+  )
+
+  // Still waiting only if we have not ruled a session out AND have not confirmed
+  // one. Derived, so nothing has to be set to `false` from inside an effect.
+  const authLoading = !knownSignedOut && !authResolved
+
+  // Loaded at most once per mount, then kept for the life of it.
+  const auth = useRef<{ started: boolean; unsub?: () => void }>({ started: false })
+
+  // Keyed on `pathname`, not `[]`, and that is load-bearing. Signing in from
+  // /login calls router.push('/dashboard') — a CLIENT-side navigation — so this
+  // component never remounts. Without the re-check, a visitor who arrived with
+  // no cookie (the only people who ever see /login) would keep the logged-out
+  // bar until a hard reload. The ref makes it idempotent, so navigating around
+  // afterwards neither re-imports nor re-subscribes.
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setUser(data.session?.user ?? null)
-      setAuthLoading(false)
-    })
-    const { data: listener } = supabase.auth.onAuthStateChange((_e, session) => {
-      setUser(session?.user ?? null)
-      setAuthLoading(false)
-    })
-    return () => listener.subscription.unsubscribe()
-  }, [])
+    if (auth.current.started) return
+    // Nobody is signed in: don't spend 59 KB gzipped being told so. Checked
+    // again on the next navigation, which is when it can have changed.
+    if (!hasAuthCookie()) return
+    auth.current.started = true
+
+    void (async () => {
+      try {
+        const { createClient } = await supabaseModule()
+        const supabase = createClient()
+
+        const { data } = await supabase.auth.getSession()
+        setUser(data.session?.user ?? null)
+        setAuthResolved(true)
+
+        // Keeps the bar honest for sign-in and sign-out that happen under a
+        // client-side navigation, which is every one of them in this app.
+        const { data: listener } = supabase.auth.onAuthStateChange((_e, session) => {
+          setUser(session?.user ?? null)
+          setAuthResolved(true)
+        })
+        auth.current.unsub = () => listener.subscription.unsubscribe()
+      } catch {
+        // The code-split chunk failed to load, or the session read threw. This
+        // is a NEW failure mode: the import used to be static and could not
+        // fail. Without this catch, `authResolved` stays false while
+        // `knownSignedOut` is false, so `authLoading` is pinned true and the
+        // auth slot renders NOTHING — a signed-in player gets a bar with no
+        // Dashboard and no Sign out, permanently, until a hard reload. On flaky
+        // mobile, which is exactly what this pass is about.
+        //
+        // Resolve so the bar renders its logged-out state (wrong for a
+        // signed-in player, but visible and actionable), and clear `started` so
+        // the next navigation retries the import rather than giving up for the
+        // life of the mount.
+        auth.current.started = false
+        setAuthResolved(true)
+      }
+    })()
+  }, [pathname])
+
+  // Unmount only — the subscription above must survive navigation.
+  useEffect(() => () => { auth.current.unsub?.() }, [])
 
   useEffect(() => { setMenuOpen(false) }, [pathname])
 

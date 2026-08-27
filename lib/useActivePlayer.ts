@@ -19,12 +19,16 @@
 // which anyone can edit from a console.
 
 import { useCallback, useEffect, useState } from 'react'
-import { createClient, getSessionUser } from '@/lib/supabase-browser'
+import { hasAuthCookie } from '@/lib/authCookie'
 import {
   ACTIVE_PLAYER_KEY, resolveActiveId, playerLabel, type ActivePlayerRow,
 } from '@/lib/activePlayer'
 
-const supabase = createClient()
+// Imported dynamically, NOT at module scope. This hook is reached from the
+// global shell (Navbar -> useNavState -> here), so a static import would put
+// the Supabase client and its realtime stack into every page's bundle — see
+// lib/authCookie.ts for the measurement. Logged-out visitors never load it.
+const supabaseModule = () => import('@/lib/supabase-browser')
 
 // Re-exported so callers have one import for the whole feature. The definitions
 // live in lib/activePlayer.ts, which has no Supabase client at module scope and
@@ -99,6 +103,18 @@ export function useActivePlayer(): UseActivePlayer {
     let cancelled = false
 
     const load = async () => {
+      // No auth cookie means nobody is signed in, and answering that costs one
+      // string search instead of downloading and parsing the Supabase client.
+      if (!hasAuthCookie()) {
+        setUserId(null)
+        setLoading(false)
+        return
+      }
+
+      const { createClient, getSessionUser } = await supabaseModule()
+      if (cancelled) return
+      const supabase = createClient()
+
       const user = await getSessionUser()
       if (cancelled) return
       if (!user) {
@@ -126,7 +142,9 @@ export function useActivePlayer(): UseActivePlayer {
       setLoading(false)
     }
 
-    load()
+    // A rejected dynamic import would otherwise leave `loading` true forever,
+    // and every consumer gates its render on it.
+    load().catch(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [])
 

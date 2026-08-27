@@ -1061,6 +1061,9 @@ RLS: own + parent (family) + judge.
     activePlayer.ts                 # Pure half of the family switcher — resolveActiveId/playerLabel. No React, no Supabase, so it is testable
     useActivePlayer.ts              # The hook over allsport_active_player_id. Cross-component + cross-tab sync
     useNavState.ts                  # Shared PLAY destination for BottomNav and the desktop top bar
+    authCookie.ts                   # hasAuthCookie() — the cheap 'is anyone signed in?' probe. NO Supabase import, on purpose:
+                                    #   it is what lets the shell decide without pulling the client + realtime into every page.
+                                    #   FAILS OPEN (uncertain -> true). Safe only because httpOnly is off on the auth cookie
     colours.ts                      # RETIRED ladder, kept as a LOOKUP TABLE so the dashboard timeline can render historical colour_awards. Do not add to it
     domainColours.ts                # THE ten domain colours. In lib/ so SERVER components can import it
     taniwha.ts                      # THE taniwha ladder — 12 taniwha, 10 parts, budget/capacity map, crown predicates
@@ -1069,7 +1072,9 @@ RLS: own + parent (family) + judge.
     judgeRoster.ts                  # Kaiwhakawā roster derivation — buildJudgeRoster/resolveJudgeTarget/resultsForTarget/scoredEventIds(ByTarget)/rosterKeyFor; guests keyed `guest:{player_name}`
     # fetchAll.ts DELETED Aug 2026 — /leaderboard + /dashboard moved to the stats_bundle/leaderboard_page RPCs, which have no 1000-row cap to page around
   app/
-    page.tsx                        # Homepage — colour list sourced from lib/colours.ts (cycle 1 + Ngā Taniwha teaser)
+    page.tsx                        # Homepage — SERVER component (Aug 2026). Colour list sourced from lib/colours.ts
+    DomainList.tsx                  # Client island for the homepage domain accordion. `domains` is derived server-side
+                                    #   and passed down as name strings, which is what keeps eventData.ts off the client
     layout.tsx                      # Root layout
     globals.css                     # Design system
     play/page.tsx
@@ -1174,6 +1179,15 @@ RLS: own + parent (family) + judge.
       20260826004819_player_dashboard_rpc.sql  # APPLIED 2026-08-26. player_dashboard(uuid[]) — whole household in
                                                #   one call. INVOKER rights; taniwha data deliberately excluded.
                                                #   ⚠ VERIFY THIS ONE AS `authenticated`, NOT `anon` — see below.
+      20260827211610_fold_heal_into_leaderboard_page.sql # ⚠ NOT YET APPLIED. Folds close_expired_sessions()
+                                               #   into leaderboard_page(): 2 round trips -> 1. Measured against prod:
+                                               #   298ms sequential, 237ms parallel (they contend), 172ms as one call.
+                                               #   language sql->plpgsql and stable->VOLATILE, because it now writes.
+                                               #   The heal is exception-guarded ON PURPOSE: the client awaited it and
+                                               #   never checked the error, so a failing heal has always been survivable;
+                                               #   unguarded, one failure would blank the whole board.
+                                               #   Migration first, then code — but the code degrades safely either way
+                                               #   (correct payload, just no healing; pg_cron sweeps within 5 min).
       20260822000000_privacy_tidyup.sql        # self-serve export/erasure, optional legal name, drops players.bodyweight_kg.
                                                #   RENUMBERED from 20260821000000 — see the collision note below.
       # ── 20260813000003 needed `supabase db push --include-all`: its 13-Aug timestamp is older than the
@@ -1499,7 +1513,15 @@ real host is `evil.com`. `safeNext()` now rejects that plus the `//` and `/\` va
 
 ---
 
-*Last updated: August 2026 (session 31b — **the taniwha migrations are APPLIED and verified in production**, and the Colours fallbacks are gone. Verified by querying the objects with the public anon key, never by trusting `db push`: 120 event_domains rows, 27 player_taniwha rows, **197 wins backfilled**, budget invariant zero breaches, no guest row with a placement, nobody building two taniwha. The backfill showed Tāne already holds three domains past 9 of 12 and RGFell one, but **nobody has crown room** because everyone is under 10,000 points — points are the binding constraint, exactly as the calibration assumed. Cleanup in the same pass: `lib/colourAlerts.ts` and the two colour components deleted, every fallback branch removed, the points economy moved into `lib/taniwha.ts`, RAINBOW into `lib/domainColours.ts`, and `player_taniwha` folded into `leaderboard_page()` so the performance pass's 7-into-1 collapse stops being 2. Coverage moved with the code rather than being lost — the component test was PORTED to the taniwha components, and the generic ranking helpers are tested in `__tests__/sessionRanking.test.ts`. `npm install` fixed the stale node_modules that had made `colourComponents.test.tsx` unrunnable. See the "Taniwha grading system" block above.)*
+*Last updated: August 2026 (session 33 — **second mobile performance pass**, shipped as v0.6.3.0. Measured against a production build and the real prod Supabase, not estimated. Four fixes: the live session's FIVE SERIAL round trips became one wave (nothing depended on anything else — the screen a player opens in the gym cost five sequential requests before rendering); Supabase and its realtime stack came off the global shell, which required making all FOUR module-scope `createClient()` calls dynamic behind the new `lib/authCookie.ts` gate, because any one static import keeps the 223 KB chunk in every page's bundle; the homepage became a server component so `lib/eventData.ts` (112 KB of how-to prose for 120 events) stops shipping to render ~120 names; and the mask assets shrank 556 KB → 214 KB. Homepage JS 220.8 → 137.8 KB gzipped, 1015 → 634 KB total.
+
+**Two bugs found while doing it, both invisible.** `scripts/optimize-icons.mjs` wrote its optimised buffer back through `sharp(out).toFile(p)`, which decodes and re-encodes with DEFAULT options — silently discarding greyscale+palette. It reported 19.5 KB while writing 88.5 KB, and its size-only idempotency guard then SKIPPED the damaged files, so all 139 icons sat as full RGBA reading as "already done". Nothing caught it because a CSS mask reads only alpha, so the app looked right the whole time. The guard now checks size AND encoding, and `__tests__/maskAssets.test.ts` asserts the invariant. Separately, making the shell's imports dynamic introduced a failure mode that could not exist when they were static: a rejected code-split chunk left Navbar's `authLoading` pinned true, rendering an EMPTY auth slot — no Dashboard, no Sign out — until a hard reload.
+
+**`check-taniwha-art.mjs` had to learn about tRNS**: a palette PNG carries transparency in a chunk, not an alpha channel, so rejecting colour type 3 outright would fail every optimised asset. The guard's real purpose still works — a flattened opaque export is still rejected, verified with a negative control.
+
+**NOT applied: `20260827211610`.** Apply from main, then verify by querying `pg_proc` (expect `provolatile='v'`) and running the function as `anon`. The client degrades safely against an un-migrated database. Tests 340 → 376. Deferred deliberately: Barlow italic and weight 300 (~15 KB each) are a typography call, logged at P3.)*
+
+*Previous: August 2026 (session 31b — **the taniwha migrations are APPLIED and verified in production**, and the Colours fallbacks are gone. Verified by querying the objects with the public anon key, never by trusting `db push`: 120 event_domains rows, 27 player_taniwha rows, **197 wins backfilled**, budget invariant zero breaches, no guest row with a placement, nobody building two taniwha. The backfill showed Tāne already holds three domains past 9 of 12 and RGFell one, but **nobody has crown room** because everyone is under 10,000 points — points are the binding constraint, exactly as the calibration assumed. Cleanup in the same pass: `lib/colourAlerts.ts` and the two colour components deleted, every fallback branch removed, the points economy moved into `lib/taniwha.ts`, RAINBOW into `lib/domainColours.ts`, and `player_taniwha` folded into `leaderboard_page()` so the performance pass's 7-into-1 collapse stops being 2. Coverage moved with the code rather than being lost — the component test was PORTED to the taniwha components, and the generic ranking helpers are tested in `__tests__/sessionRanking.test.ts`. `npm install` fixed the stale node_modules that had made `colourComponents.test.tsx` unrunnable. See the "Taniwha grading system" block above.)*
 
 *Previous: August 2026 (session 31 — **the Colours ladder became a collection of twelve taniwha**, shipped as v0.6.0.0. Design settled via `/grill-me`; 28 locked decisions in `TANIWHA_SYSTEM_PLAN.md`. Nine parts of every taniwha are bought with lifetime points and the crown must be EARNED: one qualified referral for the whānau taniwha, 9 of 12 event wins for a domain. **The two migrations are written and NOT applied** — apply from `main`, in order, then verify by querying the objects. Until then production still runs Colours and every surface falls back to it, which was verified against prod with the anon key rather than assumed. Findings along the way: the domain palette had **six colours across ten domains in three separate copies**, so four pairs of domains were identical; `session_events.domain_number` cannot be used for domain rollup because June 2026 renumbered the domains and August moved five events, which is why `event_domains` mirrors the roster into SQL; `close_expired_sessions()` has been **failing for every logged-in non-judge caller** since 20260820000000 and only worked because anon callers and pg_cron hid it; and the referral system this doc listed as "Planned" has been built since May. 369 tests. Still blocked on people: the reo review (four domain words are placeholders, plus Hiko/Hiku and two other near-collisions) and the twelve drawings. See the "Taniwha grading system" block above.)*
 
