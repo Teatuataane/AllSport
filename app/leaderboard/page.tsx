@@ -29,13 +29,15 @@ import {
 function TaniwhaCell({ player, size = 'wide' }: { player: EnrichedPlayer; size?: 'wide' | 'narrow' }) {
   const { building, crowned, pieces } = player
   const accent = building ? taniwhaOnDark(building) : '#444444'
-  const isGradient = building?.accent.startsWith('linear-gradient') ?? false
+  // Derived from `building` rather than tested inline, so the gradient branch
+  // below cannot outlive a null check TypeScript can no longer see.
+  const gradient = building?.accent.startsWith('linear-gradient') ? building.accent : null
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
       <div style={{
         width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0,
-        background: building && !isGradient ? building.accent : '#333333',
-        backgroundImage: isGradient ? building!.accent : undefined,
+        background: building && !gradient ? building.accent : '#333333',
+        backgroundImage: gradient ?? undefined,
       }} />
       <span style={{
         fontFamily: 'var(--font-display)',
@@ -472,8 +474,9 @@ export default function Leaderboard() {
       }
 
       if (error || !data) {
-        // Leave the board empty rather than half-populated; colours already
-        // fall back to rung 1 (Mā) when the map has no entry for a player.
+        // Leave the board empty rather than half-populated. The taniwha cell
+        // already renders "—" for a player the maps have no entry for, so a
+        // partial render would be indistinguishable from a real empty board.
         setLoading(false)
         return
       }
