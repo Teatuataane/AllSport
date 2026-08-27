@@ -1179,7 +1179,7 @@ RLS: own + parent (family) + judge.
       20260826004819_player_dashboard_rpc.sql  # APPLIED 2026-08-26. player_dashboard(uuid[]) — whole household in
                                                #   one call. INVOKER rights; taniwha data deliberately excluded.
                                                #   ⚠ VERIFY THIS ONE AS `authenticated`, NOT `anon` — see below.
-      20260827211610_fold_heal_into_leaderboard_page.sql # ⚠ NOT YET APPLIED. Folds close_expired_sessions()
+      20260827211610_fold_heal_into_leaderboard_page.sql # APPLIED 2026-08-28. Folds close_expired_sessions()
                                                #   into leaderboard_page(): 2 round trips -> 1. Measured against prod:
                                                #   298ms sequential, 237ms parallel (they contend), 172ms as one call.
                                                #   language sql->plpgsql and stable->VOLATILE, because it now writes.
@@ -1188,6 +1188,20 @@ RLS: own + parent (family) + judge.
                                                #   unguarded, one failure would blank the whole board.
                                                #   Migration first, then code — but the code degrades safely either way
                                                #   (correct payload, just no healing; pg_cron sweeps within 5 min).
+                                               #   VERIFIED: ledger went pending -> applied in one session with no
+                                               #   timestamp collision, which rules out the silent-skip failure mode
+                                               #   (that needs the version pre-recorded; it was remote:"" beforehand).
+                                               #   Function re-checked AS ANON after: 20 rankings / 27 taniwha /
+                                               #   27 players, same five top-level keys, 195ms.
+                                               #   ⚠ STILL UNCONFIRMED: the pg_proc provolatile='v' check. No psql on
+                                               #   this machine, `db dump` needs Docker, and supabase/.temp/pooler-url's
+                                               #   stored credentials fail auth. Run it in the SQL Editor:
+                                               #     select provolatile, prosecdef from pg_proc
+                                               #      where proname = 'leaderboard_page';   -- expect 'v', false
+                                               #   Do NOT try to prove volatility through PostgREST: a GET on this
+                                               #   function returns 200 either way, and with no expired session the
+                                               #   heal writes zero rows, so the two versions are indistinguishable
+                                               #   from outside. That test was tried and is worthless here.
       20260822000000_privacy_tidyup.sql        # self-serve export/erasure, optional legal name, drops players.bodyweight_kg.
                                                #   RENUMBERED from 20260821000000 — see the collision note below.
       # ── 20260813000003 needed `supabase db push --include-all`: its 13-Aug timestamp is older than the
@@ -1519,7 +1533,7 @@ real host is `evil.com`. `safeNext()` now rejects that plus the `//` and `/\` va
 
 **`check-taniwha-art.mjs` had to learn about tRNS**: a palette PNG carries transparency in a chunk, not an alpha channel, so rejecting colour type 3 outright would fail every optimised asset. The guard's real purpose still works — a flattened opaque export is still rejected, verified with a negative control.
 
-**NOT applied: `20260827211610`.** Apply from main, then verify by querying `pg_proc` (expect `provolatile='v'`) and running the function as `anon`. The client degrades safely against an un-migrated database. Tests 340 → 376. Deferred deliberately: Barlow italic and weight 300 (~15 KB each) are a typography call, logged at P3.)*
+**`20260827211610` was applied to prod on 2026-08-28**, from main, after the PR merged. The ledger moved pending -> applied in one session with no timestamp collision (which is what rules out the silent-skip mode), and the function was re-checked as `anon` afterwards: 20 rankings, 27 taniwha rows, 27 players, unchanged payload shape. The `pg_proc` volatility check is the one thing still unconfirmed — no psql, `db dump` wants Docker, stored pooler credentials fail auth. It is a ten-second query in the SQL Editor and is written out in the migration ledger above. Tests 340 → 376. Deferred deliberately: Barlow italic and weight 300 (~15 KB each) are a typography call, logged at P3.)*
 
 *Previous: August 2026 (session 31b — **the taniwha migrations are APPLIED and verified in production**, and the Colours fallbacks are gone. Verified by querying the objects with the public anon key, never by trusting `db push`: 120 event_domains rows, 27 player_taniwha rows, **197 wins backfilled**, budget invariant zero breaches, no guest row with a placement, nobody building two taniwha. The backfill showed Tāne already holds three domains past 9 of 12 and RGFell one, but **nobody has crown room** because everyone is under 10,000 points — points are the binding constraint, exactly as the calibration assumed. Cleanup in the same pass: `lib/colourAlerts.ts` and the two colour components deleted, every fallback branch removed, the points economy moved into `lib/taniwha.ts`, RAINBOW into `lib/domainColours.ts`, and `player_taniwha` folded into `leaderboard_page()` so the performance pass's 7-into-1 collapse stops being 2. Coverage moved with the code rather than being lost — the component test was PORTED to the taniwha components, and the generic ranking helpers are tested in `__tests__/sessionRanking.test.ts`. `npm install` fixed the stale node_modules that had made `colourComponents.test.tsx` unrunnable. See the "Taniwha grading system" block above.)*
 
