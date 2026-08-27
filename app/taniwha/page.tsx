@@ -25,7 +25,7 @@ import {
   PARTS, PARTS_PER_TANIWHA, PART_POINTS, BODY_PARTS_PER_TANIWHA, partFor,
   TOTAL_BODY_PARTS, MAX_CROWNS, TOTAL_TANIWHA, WIN_TARGET, EVENTS_PER_DOMAIN,
   WHANAU, KAHUI, DOMAIN_TANIWHA, taniwhaCardStyle, taniwhaOnDark,
-  winsToGo, type Taniwha,
+  winsToGo, WIN_MIN_FIELD, type Taniwha,
 } from '@/lib/taniwha'
 
 const supabase = createClient()
@@ -116,6 +116,18 @@ export default function MyTaniwhaPage() {
           <span style={{ color: 'var(--amber)' }}>Tikitiki</span>, has to be earned.
           Your pieces stay where you put them, so switching changes what your next
           ones build, not what you already hold.
+        </p>
+
+        {/* The field-of-three rule, said out loud. It is enforced in the
+            player_event_wins view and was never explained anywhere, so a
+            player who beat one opponent saw their counter refuse to move and
+            had no way to find out why. */}
+        <p style={{ fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.55, marginBottom: 18 }}>
+          A domain crown needs {WIN_TARGET} of its {EVENTS_PER_DOMAIN} events won.
+          A win counts when you finish first and at least{' '}
+          <span style={{ color: 'var(--white)' }}>{WIN_MIN_FIELD} players</span> in your
+          division pool played that event — so a head-to-head with one other
+          player does not count towards a crown. Ties share the win.
         </p>
 
         {!state ? (
