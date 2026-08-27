@@ -32,6 +32,11 @@ import {
   TOTAL_BODY_PARTS,
   limbCrossings,
   limbsHeld,
+  sessionsToGo,
+  sessionsToGoLabel,
+  shortTaniwhaName,
+  GOOD_SESSION_POINTS_LOW,
+  GOOD_SESSION_POINTS_HIGH,
   MAX_CROWNS,
   BODY_PARTS_PER_TANIWHA,
   nextSlot,
@@ -590,5 +595,84 @@ describe('limbsHeld', () => {
   it('clamps a body_parts value the server should never send', () => {
     expect(limbsHeld({ body_parts: 40, crowned_at: null })).toBe(BODY_PARTS_PER_TANIWHA)
     expect(limbsHeld({ body_parts: -3, crowned_at: null })).toBe(0)
+  })
+})
+
+// ── Points, priced in games ──────────────────────────────────────────────────
+// The design review's headline finding: every taniwha surface quoted points and
+// nothing said what a session was worth, so the ladder had no denominator.
+// These convert it. The estimate must never be optimistic — see the divisor
+// test, which is the one that matters.
+
+describe('sessionsToGo', () => {
+  it('prices a full piece in whole games', () => {
+    expect(sessionsToGo(PART_POINTS)).toBe(PART_POINTS / GOOD_SESSION_POINTS_LOW)
+  })
+
+  it('divides by the BOTTOM of the good-session range, never the top', () => {
+    // The whole safety property. A winner averages ~149 a session and a
+    // runner-up ~93, so dividing by the low end means a player arrives SOONER
+    // than promised. Dividing by GOOD_SESSION_POINTS_HIGH would halve every
+    // estimate and make the app lie to slower players every single week.
+    const optimistic = Math.round(PART_POINTS / GOOD_SESSION_POINTS_HIGH)
+    expect(sessionsToGo(PART_POINTS)).toBeGreaterThan(optimistic)
+  })
+
+  it('is zero once nothing is owed, and never negative', () => {
+    expect(sessionsToGo(0)).toBe(0)
+    expect(sessionsToGo(-500)).toBe(0)
+  })
+
+  it('never rounds a real debt down to zero games', () => {
+    // 1 point short still costs you a game. Rounding alone would say "0 more
+    // games" while the piece is unearned, which reads as a bug on the card.
+    expect(sessionsToGo(1)).toBe(1)
+    expect(sessionsToGo(GOOD_SESSION_POINTS_LOW / 4)).toBe(1)
+  })
+
+  it('scales with the debt', () => {
+    expect(sessionsToGo(GOOD_SESSION_POINTS_LOW * 3)).toBe(3)
+    expect(sessionsToGo(GOOD_SESSION_POINTS_LOW * 7)).toBe(7)
+  })
+})
+
+describe('sessionsToGoLabel', () => {
+  it('says "game" for one and "games" for more', () => {
+    expect(sessionsToGoLabel(GOOD_SESSION_POINTS_LOW)).toBe('About 1 more game')
+    expect(sessionsToGoLabel(GOOD_SESSION_POINTS_LOW * 2)).toBe('About 2 more games')
+  })
+
+  it('is empty when nothing is owed, so no surface renders a stray sentence', () => {
+    expect(sessionsToGoLabel(0)).toBe('')
+    expect(sessionsToGoLabel(-1)).toBe('')
+  })
+
+  it('agrees with sessionsToGo for a whole piece', () => {
+    expect(sessionsToGoLabel(PART_POINTS))
+      .toBe(`About ${sessionsToGo(PART_POINTS)} more games`)
+  })
+})
+
+describe('shortTaniwhaName', () => {
+  it('strips the display prefix from every taniwha', () => {
+    // The prefix is stripped by LITERAL string match, so this is the test that
+    // fails loudly if `Te Taniwha o te ___` is ever respelled — including the
+    // macron question on the particle, which is settled as the bare `o`.
+    for (const t of DOMAIN_TANIWHA) {
+      const short = shortTaniwhaName(t)
+      expect(short).not.toContain('Taniwha')
+      expect(short).not.toContain(' o te ')
+      expect(t.name).toContain(short)
+      expect(short.length).toBeGreaterThan(0)
+    }
+  })
+
+  it('handles the two crest taniwha, which are named differently', () => {
+    expect(shortTaniwhaName(WHANAU)).toBe('Whānau')
+    expect(shortTaniwhaName(KAHUI)).toBe('Kāhui')
+  })
+
+  it('leaves the short forms distinct, so a chip never reads ambiguously', () => {
+    expect(new Set(TANIWHA.map(shortTaniwhaName)).size).toBe(TOTAL_TANIWHA)
   })
 })

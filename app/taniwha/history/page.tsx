@@ -18,6 +18,9 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase-browser'
 import { formatNZDate } from '@/lib/dates'
+// The retired ladder, still the source of truth for what a past award LOOKED
+// like. This page is the only consumer left, by design.
+import { colourByRung } from '@/lib/colours'
 import { useActivePlayer, playerLabel } from '@/lib/useActivePlayer'
 import PlayerTabs, { ViewingAsBanner } from '@/components/PlayerTabs'
 import TaniwhaFigure, { figureInk } from '@/components/TaniwhaFigure'
@@ -173,7 +176,7 @@ export default function TaniwhaHistoryPage() {
               <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, color: ink }}>
                 {limbs}/{PARTS_PER_TANIWHA}
               </div>
-              <Label ink={ink}>Limbs</Label>
+              <Label ink={ink}>Pieces</Label>
             </div>
           </div>
         )}
@@ -184,10 +187,10 @@ export default function TaniwhaHistoryPage() {
         )}
 
         {/* 3 — limbs earned */}
-        <Section>Limbs earned</Section>
+        <Section>Pieces earned</Section>
         <Panel>
           {crossings.length === 0 ? (
-            <Empty>Your first limb lands at 1,000 points.</Empty>
+            <Empty>Your first piece lands at 1,000 points.</Empty>
           ) : (
             crossings.slice(0, 6).map(c => {
               // Body parts only — crowns are earned, not bought, so they are not
@@ -276,11 +279,18 @@ export default function TaniwhaHistoryPage() {
           <>
             <Section>The colours era</Section>
             <Panel>
-              {myAwards.map(a => (
+              {myAwards.map(a => {
+                // lib/colours.ts survives precisely so this row can be the
+                // colour it commemorates. Every award rendered the same grey
+                // dot, which made the colours era look like a list of dates.
+                const c = colourByRung(a.rung)
+                return (
                 <Row key={a.rung}>
                   <div style={{
                     width: 11, height: 11, borderRadius: 999, flexShrink: 0,
-                    background: 'var(--grey)',
+                    background: c ? (c.accent.startsWith('linear-gradient') ? undefined : c.accent) : 'var(--grey)',
+                    backgroundImage: c?.accent.startsWith('linear-gradient') ? c.accent : undefined,
+                    border: c?.english.toLowerCase() === 'white' ? '1px solid #333' : undefined,
                   }} />
                   <div style={{ flexGrow: 1, minWidth: 0 }}>
                     <div style={{
@@ -295,13 +305,14 @@ export default function TaniwhaHistoryPage() {
                   </div>
                   <Muted>{a.points_at_award.toLocaleString()}</Muted>
                 </Row>
-              ))}
+                )
+              })}
               <div style={{
                 fontSize: 11, color: '#444', lineHeight: 1.5,
                 padding: '12px 14px', borderTop: '1px solid var(--border)',
               }}>
                 Colours you really earned, on the dates you earned them. Kept as
-                history — never rewritten as taniwha limbs.
+                history — never rewritten as taniwha pieces.
               </div>
             </Panel>
           </>

@@ -2,6 +2,8 @@
 
 ## ✅ Done
 
+- **Design review of the taniwha work, acted on** (2026-08-28, branch `claude/allsport-taniwha-review-71d18c`). Full report and reasoning in the review artifact; the headline was that **every taniwha surface priced progress in points and nothing said what a session was worth**, so the ladder had no denominator. Shipped: the calibration line (`sessionsToGo` in `lib/taniwha.ts`, on the card and the session-end takeover); the first-run dashboard the FirstRun canvas specified, replacing four zeros and an empty radar; `/leaderboard` rebuilt for phones (it needed 860px inside a 342px column, hiding **Season Pts — the column it sorts by** — behind an unsignalled scroll); the Taniwha column switched from crowns to **pieces**, which differentiate today where crowns read `0` on all 27 rows; the **field-of-three win rule** stated on `/taniwha` and `/prs` after being enforced-but-unexplained since launch; one word ("pieces") for the unit that had three; and the last Colours-era copy off the public pages. `/events` also regained a nav entry — the EVENTS tab is `/prs`, which had left the catalogue unreachable when logged in.
+
 - **Taniwha grading system live** (v0.6.0.0, applied and verified 2026-08-25). Both migrations pushed from `main` and confirmed by querying the objects with the public anon key rather than trusting `db push`:
   - `event_domains` **120 rows**, `player_taniwha` seeded for all **27 players**, **197 wins backfilled** from history, `results.event_placement` present.
   - The budget invariant — `SUM(body_parts) <= taniwha_body_budget(lifetime_points)` for every player — returns **zero breaches**. Nobody is building two taniwha. No guest row carries a placement.
@@ -174,6 +176,14 @@
 **Supersedes** the old "export the two colour emblem PNGs" item — that ladder is retired and `emblemSrc` is deleted, so those two assets are no longer wanted.
 **Noticed:** /ship v0.6.0.0, 2026-08-25; first one landed v0.6.1.0, 2026-08-26
 **Effort:** M (art, no code) — about 11/12 remaining
+**Draw them in the order players will actually meet them** (design review, 2026-08-28): the
+backfill set everyone building Whānau, which IS drawn, so today's players mostly see real art
+and the filler geometry is nearly invisible. That protection ends the first time anyone uses
+the picker. The domains real players are closest to crowning are the ones they will switch to —
+Coordination, Calisthenics and Maximal Strength are already at 9–11 of 12 wins for Tāne, and
+RGFell holds one — so `ruruku`, `kaha-tinana` and `kaha` cover most plausible switches for the
+next few months. At 150px the filler reads as abstract polygons rather than a creature, and at
+the 96px and 74px sizes it reads as nothing.
 
 ### Component-test infrastructure — supabase mocking strategy
 **What is now done:** `npm install` (v0.6.0.1) finally installed `@testing-library/react` and `jsdom`, which were declared but missing — the component test had been permanently red and React components had zero coverage. `__tests__/taniwhaComponents.test.tsx` now covers `TaniwhaAlertBanner` and `TaniwhaWatchlist` with 15 tests.
@@ -228,6 +238,19 @@
 ---
 
 ## P2 — Soon
+
+### Fold lifetime points into `leaderboard_page()` (needs a migration)
+**What:** The board's Taniwha column shows PIECES, because nobody has a crown yet and a
+crowns-only cell rendered "0" on all 27 rows. Pieces come from `player_totals.lifetime_points`,
+which `leaderboard_page()` does not return, so the page reads that table in a `Promise.all`
+alongside the RPC.
+**Why it is fine for now:** the two requests are parallel, so it costs no extra wall time and
+the 7-into-1 collapse still holds. It is two round trips, same as before this change.
+**The tidier fix** is one more key on `leaderboard_page()`'s payload, the same way
+`20260824233516` folded the taniwha read in. Deferred here because migrations must be applied
+from `main` and this is a review branch.
+**Where:** `app/leaderboard/page.tsx`, the `Promise.all` in the main load effect
+**Noticed:** design review, 2026-08-28
 
 ### Move the ranking maths into SQL (PERF_AGGREGATION_PLAN.md Stage 2)
 **What:** `/leaderboard` and `/dashboard` still ship the full result history to the browser and compute percentiles and wins there. Stage 1 collapsed the request fan-out into one RPC, which fixed the latency; Stage 2 would aggregate server-side and return ~20 rows instead of ~1500.

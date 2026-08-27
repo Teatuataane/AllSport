@@ -28,7 +28,6 @@ import {
   BODY_PARTS_PER_TANIWHA,
   PARTS_PER_TANIWHA,
   WIN_TARGET,
-  MAX_CROWNS,
   WHANAU,
   taniwhaBySlug,
   taniwhaForDomain,
@@ -39,6 +38,9 @@ import {
   limbsHeld,
   partFor,
   CROWN_PART,
+  sessionsToGoLabel,
+  GOOD_SESSION_POINTS_LOW,
+  GOOD_SESSION_POINTS_HIGH,
   type Taniwha,
 } from '@/lib/taniwha'
 import { winsByDomain } from '@/lib/taniwhaAlerts'
@@ -173,8 +175,8 @@ export default function TaniwhaCard({
 
       {idle ? (
         <div style={{ fontSize: 13, color: ink, opacity: 0.75, marginTop: 14, lineHeight: 1.5 }}>
-          Your next limbs will build whichever taniwha you pick.
-          {banked > 0 && ` ${banked} limb${banked === 1 ? '' : 's'} waiting.`}
+          Your next pieces will build whichever taniwha you pick.
+          {banked > 0 && ` ${banked} piece${banked === 1 ? '' : 's'} waiting.`}
         </div>
       ) : (
         <>
@@ -196,7 +198,7 @@ export default function TaniwhaCard({
                 letterSpacing: '0.1em', fontWeight: 600, fontSize: 10,
                 color: ink, opacity: 0.55, marginTop: 2,
               }}>
-                Limbs
+                Pieces
               </div>
               <div style={{ height: 1, background: rule, margin: '12px 0' }} />
               <div style={{
@@ -231,12 +233,21 @@ export default function TaniwhaCard({
             <div style={{ width: `${nextPct}%`, height: '100%', borderRadius: 3, background: ink }} />
           </div>
 
+          {/* Points priced in games. Without this the whole ladder is a number
+              with no denominator — see the design review's headline finding. */}
+          {!bodyDone && (
+            <div style={{ marginTop: 8, fontSize: 11.5, color: ink, opacity: 0.62, lineHeight: 1.45 }}>
+              {sessionsToGoLabel(PART_POINTS - towardNext)} — a good session is worth{' '}
+              {GOOD_SESSION_POINTS_LOW}–{GOOD_SESSION_POINTS_HIGH} points.
+            </div>
+          )}
+
           {banked > 0 && bodyDone && (
             <div style={{
               marginTop: 10, fontSize: 11, color: ink, opacity: 0.9,
               fontFamily: 'var(--font-label)', letterSpacing: '0.04em',
             }}>
-              {banked} limb{banked === 1 ? '' : 's'} waiting
+              {banked} piece{banked === 1 ? '' : 's'} waiting
             </div>
           )}
         </>
@@ -245,8 +256,11 @@ export default function TaniwhaCard({
       <div style={{
         position: 'absolute', top: 18, right: 20, textAlign: 'right',
       }}>
+        {/* No denominator here. PARTS_PER_TANIWHA and MAX_CROWNS are both 11,
+            so "0/11 Pieces" and "0/11 Crowned" sat on the same card meaning
+            entirely different things. The label carries it. */}
         <div style={{ fontSize: 30, fontWeight: 'bold', color: ink, lineHeight: 1 }}>
-          {crowned.length}<span style={{ fontSize: 16, opacity: 0.5 }}>/{MAX_CROWNS}</span>
+          {crowned.length}
         </div>
         <div style={{
           fontFamily: 'var(--font-label)', textTransform: 'uppercase',
@@ -269,8 +283,8 @@ function Figure({ ink, label, value, suffix }: {
       </div>
       <div style={{
         fontFamily: 'var(--font-label)', textTransform: 'uppercase',
-        letterSpacing: '0.1em', fontWeight: 600, fontSize: 9,
-        color: ink, opacity: 0.55, marginTop: 2,
+        letterSpacing: '0.1em', fontWeight: 600, fontSize: 10,
+        color: ink, opacity: 0.7, marginTop: 2,
       }}>
         {label}
       </div>
@@ -318,7 +332,7 @@ export function TaniwhaPicker({ state, points, onChanged }: {
         Change what you are building
       </div>
       <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: 12 }}>
-        Your limbs stay where you put them. Switching changes what your next limbs
+        Your pieces stay where you put them. Switching changes what your next pieces
         build, not what you already hold.
         {roomLeft <= 0 && ' You have no crown room until your next 10,000 points.'}
       </div>
@@ -352,7 +366,7 @@ export function TaniwhaPicker({ state, points, onChanged }: {
                   fontFamily: 'var(--font-label)', letterSpacing: '0.04em',
                 }}>
                   {name} · {done ? 'crowned' : `${w}/${WIN_TARGET} wins`}
-                  {row && !done && row.body_parts > 0 ? ` · ${row.body_parts}/${BODY_PARTS_PER_TANIWHA} limbs` : ''}
+                  {row && !done && row.body_parts > 0 ? ` · ${row.body_parts}/${BODY_PARTS_PER_TANIWHA} pieces` : ''}
                 </div>
               </div>
               {row?.is_building && (

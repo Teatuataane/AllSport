@@ -14,8 +14,50 @@ import {
 import {
   MAX_CROWNS, WIN_TARGET, EVENTS_PER_DOMAIN, BODY_PARTS_PER_TANIWHA,
   PART_POINTS, PEAK_POINTS as TANIWHA_PEAK_POINTS, TANIWHA,
-  taniwhaBySlug, taniwhaOnDark, type Taniwha,
+  taniwhaBySlug, taniwhaOnDark, bodyPartBudget, shortTaniwhaName, type Taniwha,
 } from '@/lib/taniwha'
+
+/**
+ * The taniwha cell, shared by the wide table and the narrow cards.
+ *
+ * It leads with PIECES, not crowns. Nobody in the club has a crown yet (they
+ * need 10,000 lifetime points and the top player is on 5,310), so a
+ * crowns-first cell renders as "0" on every row and the column that introduces
+ * the whole system carries no information. Pieces differentiate today and
+ * crowns take over the moment they exist.
+ */
+function TaniwhaCell({ player, size = 'wide' }: { player: EnrichedPlayer; size?: 'wide' | 'narrow' }) {
+  const { building, crowned, pieces } = player
+  const accent = building ? taniwhaOnDark(building) : '#444444'
+  // Derived from `building` rather than tested inline, so the gradient branch
+  // below cannot outlive a null check TypeScript can no longer see.
+  const gradient = building?.accent.startsWith('linear-gradient') ? building.accent : null
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+      <div style={{
+        width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0,
+        background: building && !gradient ? building.accent : '#333333',
+        backgroundImage: gradient ?? undefined,
+      }} />
+      <span style={{
+        fontFamily: 'var(--font-display)',
+        fontSize: size === 'wide' ? '20px' : '18px',
+        color: pieces > 0 ? '#ffffff' : '#444444', lineHeight: 1, flexShrink: 0,
+      }}>
+        {crowned > 0 ? crowned : pieces}
+      </span>
+      <span style={{
+        fontFamily: 'var(--font-label)', fontWeight: 700,
+        fontSize: size === 'wide' ? '12px' : '11.5px', color: accent,
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+      }}>
+        {crowned > 0
+          ? `crowned · ${building ? shortTaniwhaName(building) : '—'}`
+          : building ? `${pieces === 1 ? 'piece' : 'pieces'} · ${shortTaniwhaName(building)}` : '—'}
+      </span>
+    </div>
+  )
+}
 
 const DOMAIN_NAMES = Array.from({ length: 10 }, (_, i) => EVENTS.find(e => e.domainNumber === i + 1)?.domain ?? '')
 const EVENT_DOMAIN = new Map(EVENTS.map(e => [e.name, e.domainNumber]))
@@ -84,6 +126,8 @@ type EnrichedPlayer = {
   crowned: number
   /** The taniwha they are building, for the accent dot. */
   building: Taniwha | null
+  /** Body parts held, lifetime. Derived from player_totals, NOT season points. */
+  pieces: number
 }
 
 const DIVISION_MAP: Record<string, string> = {
@@ -107,6 +151,14 @@ const tabs = [
   { key: 'grandmaster-men', label: 'Grandmaster Men', color: '#888888' },
   { key: 'grandmaster-women', label: 'Grandmaster Women', color: '#F397C0' },
 ]
+
+/** Podium sub-line. Same reasoning as TaniwhaCell: pieces until crowns exist. */
+function podiumTaniwhaLabel(p: EnrichedPlayer | undefined): string {
+  if (!p) return '—'
+  if (p.crowned > 0) return `${p.crowned} crowned`
+  if (p.pieces > 0) return `${p.pieces} piece${p.pieces === 1 ? '' : 's'}`
+  return 'Getting started'
+}
 
 function LeaderboardTable({ data, accentColor, loading }: { data: EnrichedPlayer[]; accentColor: string; loading: boolean }) {
   if (loading) {
@@ -138,7 +190,7 @@ function LeaderboardTable({ data, accentColor, loading }: { data: EnrichedPlayer
             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: '#c0c0c0' }} />
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '44px', color: '#c0c0c0', lineHeight: 1 }}>2</div>
             <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '14px', color: '#ffffff', marginTop: '6px' }}>{data[1]?.username ?? '—'}</div>
-            <div style={{ color: '#F9B051', fontFamily: 'var(--font-label)', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '3px' }}>{`${data[1]?.crowned ?? 0} taniwha`}</div>
+            <div style={{ color: '#F9B051', fontFamily: 'var(--font-label)', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '3px' }}>{podiumTaniwhaLabel(data[1])}</div>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', color: '#666666', marginTop: '8px' }}>{data[1]?.totalPoints} pts</div>
           </div>
           {/* 1st */}
@@ -146,7 +198,7 @@ function LeaderboardTable({ data, accentColor, loading }: { data: EnrichedPlayer
             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: `linear-gradient(90deg, ${accentColor}, var(--amber))` }} />
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '56px', color: accentColor, lineHeight: 1 }}>1</div>
             <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '16px', color: '#ffffff', marginTop: '6px' }}>{data[0]?.username ?? '—'}</div>
-            <div style={{ color: '#F9B051', fontFamily: 'var(--font-label)', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '3px' }}>{`${data[0]?.crowned ?? 0} taniwha`}</div>
+            <div style={{ color: '#F9B051', fontFamily: 'var(--font-label)', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '3px' }}>{podiumTaniwhaLabel(data[0])}</div>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '28px', color: accentColor, marginTop: '8px' }}>{data[0]?.totalPoints} pts</div>
           </div>
           {/* 3rd */}
@@ -154,14 +206,96 @@ function LeaderboardTable({ data, accentColor, loading }: { data: EnrichedPlayer
             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: '#cd7f32' }} />
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '44px', color: '#cd7f32', lineHeight: 1 }}>3</div>
             <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '14px', color: '#ffffff', marginTop: '6px' }}>{data[2]?.username ?? '—'}</div>
-            <div style={{ color: '#F9B051', fontFamily: 'var(--font-label)', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '3px' }}>{`${data[2]?.crowned ?? 0} taniwha`}</div>
+            <div style={{ color: '#F9B051', fontFamily: 'var(--font-label)', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '3px' }}>{podiumTaniwhaLabel(data[2])}</div>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', color: '#666666', marginTop: '8px' }}>{data[2]?.totalPoints} pts</div>
           </div>
         </div>
       )}
 
-      {/* Table — horizontally scrollable on narrow screens */}
-      <div style={{ overflowX: 'auto' }}>
+      {/* ── Narrow: one card per player ───────────────────────────────────────
+          The wide table needs 860px inside a 342px column on a phone, so four
+          of its eight columns were off-screen behind a scroll with no
+          scrollbar, no fade and no affordance — including Season Pts, the
+          number the board is SORTED BY, and the Taniwha column. A phone gets
+          cards instead: rank, name and points on one line, then the meta the
+          table spends four columns on. */}
+      <div className="lb-narrow" style={{ flexDirection: 'column', gap: '8px' }}>
+        {data.map(player => (
+          <div key={player.rank} style={{
+            border: '1px solid', borderColor: player.rank === 1 ? `${accentColor}33` : '#1a1a1a',
+            background: '#0d0d0d', borderRadius: '10px', padding: '13px 14px',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '11px' }}>
+              <span style={{
+                fontFamily: 'var(--font-display)', fontSize: '24px', lineHeight: 1, flexShrink: 0,
+                minWidth: '26px',
+                color: player.rank <= 3 ? (player.building ? taniwhaOnDark(player.building) : '#F9B051') : '#333333',
+              }}>
+                {player.rank}
+              </span>
+              <span style={{
+                fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '16px',
+                color: '#ffffff', flexGrow: 1, minWidth: 0,
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>
+                {player.username}
+              </span>
+              <span style={{
+                fontFamily: 'var(--font-display)', fontSize: '22px', color: '#ffffff',
+                lineHeight: 1, flexShrink: 0, fontVariantNumeric: 'tabular-nums',
+              }}>
+                {player.totalPoints}
+                <span style={{
+                  fontFamily: 'var(--font-label)', fontSize: '10px', color: '#555',
+                  letterSpacing: '0.1em', marginLeft: '4px',
+                }}>
+                  PTS
+                </span>
+              </span>
+            </div>
+
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap',
+              marginTop: '9px', paddingLeft: '37px',
+            }}>
+              <TaniwhaCell player={player} size="narrow" />
+              <span style={{ color: '#2a2a2a' }}>·</span>
+              <span style={{ fontFamily: 'var(--font-label)', fontSize: '12px', color: '#666' }}>
+                {player.sessions} game{player.sessions === 1 ? '' : 's'}
+              </span>
+              {player.wins > 0 && (
+                <>
+                  <span style={{ color: '#2a2a2a' }}>·</span>
+                  <span style={{ fontFamily: 'var(--font-label)', fontSize: '12px', color: accentColor, fontWeight: 700 }}>
+                    {player.wins} win{player.wins === 1 ? '' : 's'}
+                  </span>
+                </>
+              )}
+            </div>
+
+            {(player.topDomain !== '—' || player.topEvent !== '—') && (
+              <div style={{
+                marginTop: '7px', paddingLeft: '37px',
+                fontFamily: 'var(--font-label)', fontSize: '11.5px', color: '#777',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>
+                {player.topDomain !== '—' && (
+                  <>{player.topDomain}{player.topDomainPct && ` ${player.topDomainPct}`}</>
+                )}
+                {player.topDomain !== '—' && player.topEvent !== '—' && ' · '}
+                {player.topEvent !== '—' && (
+                  <span style={{ color: player.topEventPct === '1st' ? '#F9B051' : '#777' }}>
+                    {player.topEvent}{player.topEventPct && ` ${player.topEventPct}`}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Wide: the full table, unchanged. */}
+      <div className="lb-wide" style={{ overflowX: 'auto' }}>
         <div style={{ minWidth: '860px' }}>
           {/* Table header */}
           <div style={{ display: 'grid', gridTemplateColumns: '56px 1fr 90px 70px 150px 150px 110px 150px', gap: '16px', padding: '10px 24px' }}>
@@ -187,23 +321,7 @@ function LeaderboardTable({ data, accentColor, loading }: { data: EnrichedPlayer
                   {player.topEventPct && <span style={{ color: player.topEventPct === '1st' ? '#F9B051' : '#777777', fontWeight: player.topEventPct === '1st' ? 700 : 400 }}> · {player.topEventPct}</span>}
                 </div>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', color: '#ffffff' }}>{player.totalPoints}</div>
-                {(
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <div style={{
-                      width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0,
-                      background: player.building && !player.building.accent.startsWith('linear-gradient')
-                        ? player.building.accent : '#333333',
-                      backgroundImage: player.building?.accent.startsWith('linear-gradient')
-                        ? player.building.accent : undefined,
-                    }} />
-                    <span style={{ fontFamily: 'var(--font-display)', fontSize: '20px', color: '#ffffff', lineHeight: 1 }}>
-                      {player.crowned}
-                    </span>
-                    <span style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '12px', color: player.building ? taniwhaOnDark(player.building) : '#444444' }}>
-                      {player.building ? player.building.name.replace('Te Taniwha o te ', '').replace('Te ', '') : '—'}
-                    </span>
-                  </div>
-                )}
+                <TaniwhaCell player={player} />
               </div>
             ))}
           </div>
@@ -247,6 +365,10 @@ export default function Leaderboard() {
   // the RPC once the migrations are live (logged in TANIWHA_SYSTEM_PLAN.md).
   const [taniwhaByPlayer, setTaniwhaByPlayer] =
     useState<Map<string, { crowned: number; building: Taniwha | null }> | null>(null)
+  // Lifetime points, for the pieces figure in the Taniwha column. `rankings`
+  // carries the SEASONAL total, which is a different number and would give a
+  // January player zero pieces on a body they have already built.
+  const [lifetimeByPlayer, setLifetimeByPlayer] = useState<Map<string, number>>(new Map())
   const [loading, setLoading] = useState(true)
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null)
   const [sessionLeader, setSessionLeader] = useState<SessionLeader | null>(null)
@@ -325,13 +447,36 @@ export default function Leaderboard() {
       // REQUIRES migration 20260827211610. Against an older database this still
       // returns the right payload; it just stops healing here, and pg_cron
       // picks the session up within five minutes.
-      const { data, error } = await supabase
-        .rpc('leaderboard_page', { p_season: new Date().getFullYear() })
+      //
+      // player_totals rides ALONGSIDE it rather than after it. It carries
+      // LIFETIME points, which this payload does not return and which the
+      // Taniwha column needs for its pieces figure — without it that column
+      // reads "0" on every row, because nobody has a crown yet. Parallel is
+      // safe here where it was not for the heal: this is a pure read and the
+      // payload does not depend on its result, so there is no ordering
+      // guarantee to give up. It is NOT free — the measurement above is
+      // exactly the concurrent-contention case — which is why folding this one
+      // key into leaderboard_page() is logged in TODOS.md rather than accepted
+      // as a permanent second request.
+      const [payloadRes, totalsRes] = await Promise.all([
+        supabase.rpc('leaderboard_page', { p_season: new Date().getFullYear() }),
+        supabase.from('player_totals').select('player_id, lifetime_points'),
+      ])
       if (cancelled) return
 
+      const { data, error } = payloadRes
+
+      // Verified as `anon` against production 2026-08-28: public read, 27 rows.
+      // A failure here costs the pieces figure only — the board still renders.
+      if (!totalsRes.error && totalsRes.data) {
+        setLifetimeByPlayer(new Map((totalsRes.data as { player_id: string; lifetime_points: number }[])
+          .map(r => [r.player_id, Number(r.lifetime_points) || 0])))
+      }
+
       if (error || !data) {
-        // Leave the board empty rather than half-populated; colours already
-        // fall back to rung 1 (Mā) when the map has no entry for a player.
+        // Leave the board empty rather than half-populated. The taniwha cell
+        // already renders "—" for a player the maps have no entry for, so a
+        // partial render would be indistinguishable from a real empty board.
         setLoading(false)
         return
       }
@@ -406,6 +551,7 @@ export default function Leaderboard() {
         totalPoints: r.total_points,
         crowned: taniwhaByPlayer?.get(r.player_id)?.crowned ?? 0,
         building: taniwhaByPlayer?.get(r.player_id)?.building ?? null,
+        pieces: bodyPartBudget(lifetimeByPlayer.get(r.player_id) ?? 0),
       }
     })
   }
@@ -421,6 +567,14 @@ export default function Leaderboard() {
         .tab-btn { font-family: var(--font-display); font-size: 22px; letter-spacing: 0.08em; padding: 12px 32px; cursor: pointer; border: 1px solid #1e1e1e; background: #0d0d0d; color: #555555; transition: all 0.2s; }
         .tab-btn:hover { color: #ffffff; border-color: #333; }
         .tab-btn.active { color: #ffffff; }
+        /* 768px is the app's existing phone boundary — the same one
+           .bottom-nav switches on in globals.css. Keep them in step. */
+        .lb-narrow { display: flex; }
+        .lb-wide { display: none; }
+        @media (min-width: 769px) {
+          .lb-narrow { display: none; }
+          .lb-wide { display: block; }
+        }
       `}</style>
 
       {/* Hero */}
@@ -434,7 +588,7 @@ export default function Leaderboard() {
           </h1>
           <div className="rainbow-line" style={{ width: '80px', marginBottom: '28px' }} />
           <p style={{ color: '#cccccc', fontSize: '20px', maxWidth: '560px', lineHeight: 1.7 }}>
-            Current season standings across all divisions. The board resets each January so there is always a fresh race. Your colour does not: it comes from your lifetime points, and the moment you cross a threshold that colour is yours for good.
+            Current season standings across all divisions. The board resets each January so there is always a fresh race. Your taniwha do not: they are built from your lifetime points, and once a piece is placed it is yours for good.
           </p>
         </div>
       </section>
@@ -544,8 +698,8 @@ export default function Leaderboard() {
         </h2>
         <div className="rainbow-line" style={{ width: '60px', marginBottom: '16px' }} />
         <p style={{ color: '#888888', fontSize: '15px', maxWidth: '620px', marginBottom: '10px', lineHeight: 1.7 }}>
-          Twelve taniwha, each built from {BODY_PARTS_PER_TANIWHA} body parts and a crown. The
-          body comes from turning up — one part for every {PART_POINTS.toLocaleString()} lifetime
+          Twelve taniwha, each built from {BODY_PARTS_PER_TANIWHA} pieces and a crown. The
+          body comes from turning up — one piece for every {PART_POINTS.toLocaleString()} lifetime
           points, and those never reset. The last of them is the implement, the tool of that
           discipline. The crown has to be earned.
         </p>
@@ -588,7 +742,7 @@ export default function Leaderboard() {
           </h2>
           <div className="rainbow-line" style={{ width: '60px', margin: '0 auto 24px' }} />
           <p style={{ color: '#888888', fontSize: '16px', maxWidth: '400px', margin: '0 auto 32px', lineHeight: 1.7 }}>
-            The only way to appear on this leaderboard is to register and compete. Your journey starts at Mā.
+            The only way to appear on this leaderboard is to register and compete. Your first taniwha starts with its head.
           </p>
           <Link href="/register" className="btn btn-primary" style={{ fontSize: '20px' }}>Register Now</Link>
         </div>

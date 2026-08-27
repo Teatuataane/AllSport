@@ -13,6 +13,7 @@ import type {
   RatingResultRow, RatingEventRow, RatingPlayerRow,
 } from '@/lib/rating'
 import { EVENTS, DOMAIN_ORDER, getEventsByDomain } from '@/lib/eventData'
+import { WIN_MIN_FIELD } from '@/lib/taniwha'
 import { formatNZDate } from '@/lib/dates'
 import DomainIcon from '@/components/DomainIcon'
 import EventIcon from '@/components/EventIcon'
@@ -333,10 +334,20 @@ export default function PRsPage() {
                   {totalPBs} / {totalEvents} events {tab === 'season' ? `in ${CURRENT_YEAR}` : 'all time'}
                 </div>
               )}
-              {!loading && winsReady && totalWins > 0 && (
-                <div style={{ color: '#555', fontSize: '12px', marginTop: '6px', fontFamily: 'var(--font-body)', display: 'flex', alignItems: 'center', gap: '7px' }}>
-                  <span style={WIN_CHIP}>WON</span>
-                  <span>{totalWins} of {totalEvents} events won outright, all time</span>
+              {/* "outright" was wrong: ties share a win, by the sport's own
+                  rule and by the player_event_wins view. The field-of-three
+                  rule is stated here because this is where a player counts
+                  their wins and wonders why one is missing. */}
+              {!loading && winsReady && (
+                <div style={{ color: '#555', fontSize: '12px', marginTop: '6px', fontFamily: 'var(--font-body)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                    <span style={WIN_CHIP}>WON</span>
+                    <span>{totalWins} of {totalEvents} events won, all time</span>
+                  </div>
+                  <div style={{ color: '#4a4a4a', fontSize: '11.5px', marginTop: '5px', lineHeight: 1.5, maxWidth: '340px' }}>
+                    A win counts when you finish first and at least {WIN_MIN_FIELD} players
+                    in your division pool played that event.
+                  </div>
                 </div>
               )}
             </div>
@@ -418,7 +429,7 @@ export default function PRsPage() {
                     display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
                     gap: '10px', padding: '2px 14px 4px',
                     fontFamily: 'var(--font-label)', textTransform: 'uppercase',
-                    letterSpacing: '0.08em', fontWeight: 600, fontSize: '9px', color: '#555',
+                    letterSpacing: '0.08em', fontWeight: 600, fontSize: '10px', color: '#777',
                   }}>
                     <span style={{ width: '84px', textAlign: 'right' }}>Personal best</span>
                     <span style={{ width: '38px', textAlign: 'right' }}>Avg</span>

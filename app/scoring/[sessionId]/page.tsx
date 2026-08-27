@@ -20,6 +20,7 @@ import {
 import {
   MAX_CROWNS, bodyPartBudget, nextSlot, progressToNextSlot,
   partFor, BODY_PARTS_PER_TANIWHA, taniwhaBySlug, taniwhaCardStyle, taniwhaOnDark,
+  sessionsToGoLabel, GOOD_SESSION_POINTS_LOW, GOOD_SESSION_POINTS_HIGH,
 } from '@/lib/taniwha'
 
 const supabase = createClient()
@@ -1847,7 +1848,7 @@ function SessionEndTakeover({
                 fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px',
                 letterSpacing: '0.06em', textTransform: 'uppercase', color: '#F9B051',
               }}>
-                +{gained} taniwha part{gained === 1 ? '' : 's'} today
+                +{gained} taniwha piece{gained === 1 ? '' : 's'} today
               </div>
             )
           })()}
@@ -1918,6 +1919,13 @@ function SessionEndTakeover({
                 transition: 'width 1.2s cubic-bezier(0.16,1,0.3,1)',
               }} />
             </div>
+            {/* The number above is points; this is what it costs in games. */}
+            {nextPartSlot && (
+              <div style={{ marginTop: '9px', fontSize: '11.5px', color: '#777', lineHeight: 1.45 }}>
+                {sessionsToGoLabel(nextPartSlot.pointsToGo)} — a good session is worth{' '}
+                {GOOD_SESSION_POINTS_LOW}–{GOOD_SESSION_POINTS_HIGH} points.
+              </div>
+            )}
           </div>
 
           {/* Session-count milestone */}

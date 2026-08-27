@@ -2,6 +2,27 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.6.4.0] - 2026-08-28
+
+### Added
+- **Your taniwha now tells you how many games the next piece costs.** Every screen that mentioned your progress quoted it in points — "310 of 1,000", "690 to go" — and nothing anywhere said what a session is actually worth, so the number meant nothing unless you had sat down and worked it out. The card and the end-of-game screen now say "About 7 more games", alongside the note that a good session is worth 100 to 200 points. The estimate deliberately assumes the slower end of that range, so if you are winning you will get there sooner than it said rather than later.
+- **A first screen for players who have not played yet.** Signing up and opening your stats used to show four zeros and an empty chart, which reads as something broken rather than something not started. It now says what will fill the page once you play, and points at the 120 events waiting for you.
+
+### Changed
+- **The leaderboard works on a phone.** It was a wide table squeezed into a phone-width column, so more than half of it sat off the right-hand edge with nothing to suggest you could scroll — including the season points, which is the column the whole board is sorted by. On a phone each player is now a card showing every figure the table had: rank, name, points, taniwha, games, wins, and your strongest domain and event. The full table is unchanged on a laptop.
+- **The Taniwha column on the leaderboard shows something real.** It counted crowns, and nobody has one yet — a crown needs 10,000 lifetime points and the highest anyone has reached is a little over 5,000 — so it read "0 Whānau" against all 27 players. It now counts the pieces you have actually placed, which differ from player to player today, and switches back to crowns the moment somebody earns one.
+- **One word for the pieces you collect.** They were called limbs in one place, pieces in another and parts in a third, and "limbs" was wrong anyway for a head, a tongue or a barbell. Everything says pieces now.
+- **The event guide is reachable again when you are signed in.** The Events tab goes to your own events and bests, which left the guide to all 120 — how to perform each one, what the judge is looking for, the difficulty tiers — with no way in. It is in the More menu.
+- **My Koha and Koha no longer sit next to each other looking identical.** The public one is now "Give koha".
+- **Small labels across the stats screens got bigger and lighter** so they can actually be read. The worst was the note explaining which way round the skill chart works, which was the least legible text on the page.
+
+### Fixed
+- **The rule that decides whether a win counts is now written down.** A win needs you to finish first in an event that at least three players in your division pool actually played. That has always been true, and it was explained nowhere, so beating one other player and watching your win count stay at zero looked like a fault. It is stated on My Taniwha and on My Events.
+- **"Won outright" no longer claims something the sport does not do.** Ties share a win, so the word was wrong.
+- **The colours era shows its real colours again.** The history of colours you earned before the taniwha replaced them was drawing every single one as the same grey dot.
+- **The last few mentions of the old colours ladder are gone from the public pages.** The leaderboard was still explaining how colours worked directly above the panel explaining taniwha, and inviting you to start at Mā.
+- **The taniwha card no longer shows two different totals out of eleven.** Pieces out of eleven and crowns out of eleven sat side by side meaning entirely different things.
+
 ## [0.6.3.0] - 2026-08-28
 
 ### Changed

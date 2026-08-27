@@ -198,12 +198,12 @@ export default function Home() {
               </h2>
               <div className="lp-rainbow-line" style={{ width: '60px', marginBottom: '28px' }} />
               <p style={{ color: '#cccccc', fontSize: '16px', lineHeight: 1.8, marginBottom: '16px' }}>
-                There are twelve taniwha, and each one is built from eleven parts — a head, a
+                There are twelve taniwha, and each one is built from eleven pieces — a head, a
                 body, a tail, four limbs, wings, a tongue, the tool of its own discipline, and
                 finally a crown.
               </p>
               <p style={{ color: '#888', fontSize: '15px', lineHeight: 1.8, marginBottom: '16px' }}>
-                The {BODY_PARTS_PER_TANIWHA} body parts are earned by turning up. Every{' '}
+                The first {BODY_PARTS_PER_TANIWHA} pieces are earned by turning up. Every{' '}
                 {PART_POINTS.toLocaleString()} points you have ever scored adds another one, and
                 those points never reset. The tenth is the implement — a barbell, a bow, an oar —
                 the tool of that taniwha&apos;s discipline. The crown is different again: it has
@@ -314,7 +314,7 @@ export default function Home() {
           </h2>
           <div className="lp-rainbow-line" style={{ width: '88px', margin: '0 auto 30px' }} />
           <p style={{ color: '#888', fontSize: '18px', maxWidth: '480px', margin: '0 auto 38px', lineHeight: 1.7 }}>
-            Koha only. No fees, no barriers. Bring what you&apos;ve got and earn your first colour.
+            Koha only. No fees, no barriers. Bring what you&apos;ve got and start your first taniwha.
           </p>
           <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
             <Link href="/register" className="lp-btn lp-primary" style={{ fontSize: '22px' }}>Register Now</Link>

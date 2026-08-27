@@ -25,7 +25,7 @@ import {
   PARTS, PARTS_PER_TANIWHA, PART_POINTS, BODY_PARTS_PER_TANIWHA, partFor,
   TOTAL_BODY_PARTS, MAX_CROWNS, TOTAL_TANIWHA, WIN_TARGET, EVENTS_PER_DOMAIN,
   WHANAU, KAHUI, DOMAIN_TANIWHA, taniwhaCardStyle, taniwhaOnDark,
-  winsToGo, type Taniwha,
+  winsToGo, WIN_MIN_FIELD, type Taniwha,
 } from '@/lib/taniwha'
 
 const supabase = createClient()
@@ -103,7 +103,7 @@ export default function MyTaniwhaPage() {
           gap: 8, marginBottom: 16,
         }}>
           <Count value={started} of={TOTAL_TANIWHA} label="Taniwha" />
-          <Count value={limbsPlaced} of={TOTAL_BODY_PARTS} label="Limbs" colour="var(--amber)" />
+          <Count value={limbsPlaced} of={TOTAL_BODY_PARTS} label="Pieces" colour="var(--amber)" />
           <Count value={crowned} of={MAX_CROWNS} label="Crowns" />
           <Count value={points.toLocaleString()} label="Points" />
         </div>
@@ -116,6 +116,18 @@ export default function MyTaniwhaPage() {
           <span style={{ color: 'var(--amber)' }}>Tikitiki</span>, has to be earned.
           Your pieces stay where you put them, so switching changes what your next
           ones build, not what you already hold.
+        </p>
+
+        {/* The field-of-three rule, said out loud. It is enforced in the
+            player_event_wins view and was never explained anywhere, so a
+            player who beat one opponent saw their counter refuse to move and
+            had no way to find out why. */}
+        <p style={{ fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.55, marginBottom: 18 }}>
+          A domain crown needs {WIN_TARGET} of its {EVENTS_PER_DOMAIN} events won.
+          A win counts when you finish first and at least{' '}
+          <span style={{ color: 'var(--white)' }}>{WIN_MIN_FIELD} players</span> in your
+          division pool played that event — so a head-to-head with one other
+          player does not count towards a crown. Ties share the win.
         </p>
 
         {!state ? (
@@ -204,7 +216,7 @@ function Count({ value, of, label, colour = 'var(--white)' }: {
       </div>
       <div style={{
         fontFamily: 'var(--font-label)', textTransform: 'uppercase',
-        letterSpacing: '0.1em', fontWeight: 600, fontSize: 9,
+        letterSpacing: '0.1em', fontWeight: 600, fontSize: 10,
         color: 'var(--text-muted)', marginTop: 3,
       }}>
         {label}
@@ -276,9 +288,9 @@ function TaniwhaRow({ t, row, wins, domainName, open, onToggle }: {
           </div>
           <div style={{
             fontFamily: 'var(--font-label)', textTransform: 'uppercase',
-            fontSize: 9, color: '#555',
+            fontSize: 10, color: 'var(--text-muted)',
           }}>
-            {row?.is_building ? 'Building' : 'Limbs'}
+            {row?.is_building ? 'Building' : 'Pieces'}
           </div>
         </div>
         <span style={{
@@ -301,7 +313,7 @@ function TaniwhaRow({ t, row, wins, domainName, open, onToggle }: {
             />
             <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
               {limbs === 0
-                ? 'Not started. Pick this taniwha and your next limbs build it.'
+                ? 'Not started. Pick this taniwha and your next pieces build it.'
                 : crownedHere
                 ? 'Complete — body and crown.'
                 : `${limbs} of ${PARTS_PER_TANIWHA} pieces placed.`}

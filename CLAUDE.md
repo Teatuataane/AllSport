@@ -681,6 +681,96 @@ and must never produce half a creature. Whānau is drawn (11/11, verified by
 
 ---
 
+## Design review of the taniwha work (August 2026 session 34)
+
+A designer's pass over everything v0.6.0.0–v0.6.2.0 shipped, then the fixes. The
+review judged the taniwha system against its own stated goal — a stronger
+NARRATIVE than a points ladder — and the verdict was that the structure is a
+better story but the delivery gave half of it away.
+
+**THE HEADLINE, and the thing not to undo: points now have a denominator.**
+Every taniwha surface quoted points ("310 / 1,000", "690pts to go") and nothing
+anywhere said what a session was worth, so the ladder was an arbitrary number to
+anyone who had not counted one. `sessionsToGo` / `sessionsToGoLabel` in
+`lib/taniwha.ts` convert it into games, on the dashboard card and the
+session-end takeover. **The divisor is `GOOD_SESSION_POINTS_LOW` (100), the
+BOTTOM of the real range, deliberately** — a winner averages 149 a session and a
+runner-up 93, so an estimate can only ever be pessimistic and a player who is
+winning arrives sooner than we promised. Do not "improve" this by using the
+average; the only safe direction for this number to be wrong in is slow.
+`design-canvas/FirstRun.dc.html` specified this line back in session 32 and it
+never shipped, which is the whole reason the gap existed.
+
+**A cold-start screen is a design state, not an absence of one.** A player with
+no games got four "0" tiles and a radar collapsed to a dot at the centre — a
+page that reads as broken rather than as new, and it is the FIRST screen every
+registrant sees. `FirstRunPanel` in `app/dashboard/page.tsx` replaces both
+blocks. It is gated on `household !== null` — the RPC having ANSWERED — not on
+the count being zero, or every returning player flashes the first-run screen
+while their stats are still in flight.
+
+**`/leaderboard` was unusable on the primary viewport.** The table needs 860px
+inside a 342px column at 390px, so four of eight columns sat off-screen behind a
+scroll with no scrollbar, no fade and no affordance — **including Season Pts,
+the column the board is sorted by**. Phones now get one card per player
+(`.lb-narrow`); the table survives unchanged above 769px (`.lb-wide`), the same
+boundary `.bottom-nav` uses in globals.css. Keep them in step. Measured before:
+one container 1037px wide in a 342px box. After: zero overflowing containers.
+
+**The Taniwha column leads with PIECES, not crowns, and that is deliberate.** A
+crown needs 10,000 lifetime points and the top player is on 5,310, so a
+crowns-first cell rendered `0 · Whānau` on all 27 rows — the column introducing
+the whole system carried no information. Pieces differentiate today (5/5/3/3/0)
+and the cell switches to crowns the moment anyone holds one. **Pieces need
+LIFETIME points, which `leaderboard_page()` does not return**, so
+`player_totals` is read in a `Promise.all` ALONGSIDE the RPC — parallel, so it
+costs no extra wall time and the 7-into-1 collapse still holds. It was verified
+as `anon` before being relied on, because that page is public. Folding it into
+the RPC is a migration, logged in TODOS.md.
+
+**`WIN_MIN_FIELD` was enforced and never explained.** A win needs a field of at
+least three same-pool players, so a player who wins a head-to-head watches "0 of
+9 wins" refuse to move with no way to find out why — in a club this size, most
+weeks. Now stated on `/taniwha` and `/prs`. Also dropped "outright" from the
+/prs total: **ties SHARE a win**, by the sport's own rule and by the
+`player_event_wins` view, so the word claimed the opposite of the code.
+
+**One word for the unit: "pieces".** It had three — the card counted "Limbs",
+`/taniwha` said "Limbs" in counters and "pieces" in prose, the homepage and
+leaderboard said "parts", the takeover awarded "taniwha parts". "Limbs" was also
+wrong: four of the eleven are limbs, the rest are a head, body, tail, wings, a
+tongue, an implement and a crown. **Internal identifiers (`limbsHeld`,
+`limbCrossings`, `limbsEarned`) are deliberately untouched** — they are named in
+this file and in migration comments, and renaming them is a refactor, not a copy
+fix. The homepage keeps "four limbs" inside its anatomical list, which is correct.
+
+**The EVENTS tab is `/prs`, which orphaned the catalogue.** That routing is
+deliberate and stays, but it left `/events` — how to perform all 120, judge
+standards, tiers — with no entry point in the logged-in nav, which is exactly
+what a player wants mid-session on an event they have never drawn. It is now
+"Event guide" in the MORE sheet. The two names must stay distinguishable.
+
+**Three Colours-era lines were still on public pages** — the `/leaderboard` hero
+explained threshold-crossing colours directly above the taniwha explainer, its
+CTA said "Your journey starts at Mā", and the homepage closed on "earn your
+first colour". A visitor was reading two contradictory grading systems on one
+page. `lib/colours.ts` is still the right home for what a past award LOOKED
+like, and the history timeline now renders each award in its real colour instead
+of a uniform grey dot — that is its one remaining consumer, as intended.
+
+**The dev server caches a FAILED compile.** After fixing malformed JSX, Next
+kept reporting the old parse error on every navigate; the tell is that the error
+text quotes source lines **offset** from the current file. `npm run build` is
+authoritative, and stopping/restarting the preview clears it. This cost a false
+alarm during this session.
+
+**Left undone on purpose:** the taniwha art (11 of 12 still undrawn — TODOS.md
+now carries a DRAWING ORDER, because everyone building Whānau is the only reason
+today's filler geometry is nearly invisible, and that ends at the first picker
+switch), and folding lifetime points into `leaderboard_page()`.
+
+---
+
 ## Security posture (August 2026) — read before touching RLS or players_public
 
 An OWASP pass (SQL injection / XSS / auth / access control) found three
@@ -866,8 +956,8 @@ update players set role = 'judge' where id = '[uuid]';
 | Play | /play | Complete | Login/register landing, Google OAuth |
 | Register | /register | Complete | 3-step form, division, display prefs, junior parent fields |
 | Login | /login | Complete | Email + Google OAuth |
-| Dashboard | /dashboard | Complete | **Stats page** (v0.6.2.0): identity + seasonal division rank, the taniwha card (pieces assembling, three point figures), four numbers (Games · Events Won · Games Won · PRs), and a ten-spoke skill radar driven by Top %. One conditional action strip at the top: live session > active vote > next-session countdown. The bento grid is gone — judge/koha/profile/PRs are nav destinations, play history and the taniwha picker live behind the card |
-| My Taniwha | /taniwha | Complete | All twelve. Four counts (Taniwha · Limbs · Crowns · Points), then each taniwha as an expandable row revealing its eleven named pieces and what its crown still needs |
+| Dashboard | /dashboard | Complete | **Stats page** (v0.6.2.0): identity + seasonal division rank, the taniwha card (pieces assembling, three point figures, and how many games the next piece costs), four numbers (Games · Events Won · Games Won · PRs), and a ten-spoke skill radar driven by Top %. One conditional action strip at the top: live session > active vote > next-session countdown. **A player with zero games gets `FirstRunPanel` instead of the numbers and the radar.** The bento grid is gone — judge/koha/profile/PRs are nav destinations, play history and the taniwha picker live behind the card |
+| My Taniwha | /taniwha | Complete | All twelve. Four counts (Taniwha · Pieces · Crowns · Points), then each taniwha as an expandable row revealing its eleven named pieces and what its crown still needs. States the field-of-three win rule |
 | Taniwha History | /taniwha/history | Complete | What the taniwha card opens: the choose/switch picker, pieces earned with the session each landed in (derived — see `limbCrossings`), the play-history timeline, and the colours era |
 | Judge Panel | /judge | Complete | Players tab opens with an **"Approaching a colour"** watchlist (sessions-away). Dedicated page — JudgeCard moved here. Create/end/void sessions, QR code, history, real-time player count, Event Votes panel (Kōwhiringa Tūāhuatanga). Judge bento card on dashboard links here. |
 | Player Profile | /profile | Complete | Icon picker (20 sport emojis), username/display name editing, leaderboard display prefs, family member management (add/remove), active profile switcher (localStorage) |
@@ -1528,7 +1618,9 @@ real host is `evil.com`. `safeNext()` now rejects that plus the `//` and `/\` va
 
 ---
 
-*Last updated: August 2026 (session 33 — **second mobile performance pass**, shipped as v0.6.3.0. Measured against a production build and the real prod Supabase, not estimated. Four fixes: the live session's FIVE SERIAL round trips became one wave (nothing depended on anything else — the screen a player opens in the gym cost five sequential requests before rendering); Supabase and its realtime stack came off the global shell, which required making all FOUR module-scope `createClient()` calls dynamic behind the new `lib/authCookie.ts` gate, because any one static import keeps the 223 KB chunk in every page's bundle; the homepage became a server component so `lib/eventData.ts` (112 KB of how-to prose for 120 events) stops shipping to render ~120 names; and the mask assets shrank 556 KB → 214 KB. Homepage JS 220.8 → 137.8 KB gzipped, 1015 → 634 KB total.
+*Last updated: August 2026 (session 34 — **a design review of everything v0.6.0.0–v0.6.2.0 shipped, then the fixes.** The taniwha system was judged against its own goal, a stronger narrative than a points ladder, and the verdict was that the structure is a better story but the delivery gave half of it away. The headline: **every taniwha surface priced progress in points and nothing said what a session was worth**, so the ladder had no denominator — `sessionsToGo` now converts it to games, using the BOTTOM of the real range so the estimate can only be pessimistic. Also shipped: the first-run dashboard the FirstRun canvas specified back in session 32 and never delivered; `/leaderboard` rebuilt for phones, where it had been hiding **Season Pts, the column it sorts by**, behind an unsignalled 860px-in-342px scroll; the Taniwha column switched from crowns to **pieces**, because crowns read `0` on all 27 rows and will for months; the **field-of-three win rule** finally stated after being enforced-but-unexplained since launch; one word ("pieces") for a unit that had three; and the last Colours-era copy off the public pages. Two findings were left undone on purpose and both are in TODOS.md — the eleven undrawn taniwha (now with a DRAWING ORDER, because everyone building Whānau is the only reason the filler geometry is currently invisible) and folding lifetime points into `leaderboard_page()`, which needs a migration from `main`. Shipped as v0.6.4.0; 387 tests, build clean. `shortTaniwhaName` moved into `lib/taniwha.ts` on the way out, because that file already warned the leaderboard stripped its prefix by literal match "so the two must not drift apart again" — and with the function living in the page, nothing failed when they did. See the "Design review of the taniwha work" block above.)*
+
+*Previous: August 2026 (session 33 — **second mobile performance pass**, shipped as v0.6.3.0. Measured against a production build and the real prod Supabase, not estimated. Four fixes: the live session's FIVE SERIAL round trips became one wave (nothing depended on anything else — the screen a player opens in the gym cost five sequential requests before rendering); Supabase and its realtime stack came off the global shell, which required making all FOUR module-scope `createClient()` calls dynamic behind the new `lib/authCookie.ts` gate, because any one static import keeps the 223 KB chunk in every page's bundle; the homepage became a server component so `lib/eventData.ts` (112 KB of how-to prose for 120 events) stops shipping to render ~120 names; and the mask assets shrank 556 KB → 214 KB. Homepage JS 220.8 → 137.8 KB gzipped, 1015 → 634 KB total.
 
 **Two bugs found while doing it, both invisible.** `scripts/optimize-icons.mjs` wrote its optimised buffer back through `sharp(out).toFile(p)`, which decodes and re-encodes with DEFAULT options — silently discarding greyscale+palette. It reported 19.5 KB while writing 88.5 KB, and its size-only idempotency guard then SKIPPED the damaged files, so all 139 icons sat as full RGBA reading as "already done". Nothing caught it because a CSS mask reads only alpha, so the app looked right the whole time. The guard now checks size AND encoding, and `__tests__/maskAssets.test.ts` asserts the invariant. Separately, making the shell's imports dynamic introduced a failure mode that could not exist when they were static: a rejected code-split chunk left Navbar's `authLoading` pinned true, rendering an EMPTY auth slot — no Dashboard, no Sign out — until a hard reload.
 
