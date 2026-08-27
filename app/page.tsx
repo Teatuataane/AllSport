@@ -1,8 +1,12 @@
-'use client'
-
-import { useState } from 'react'
+// Server component. The only interactive part of this page is the domain
+// accordion, which lives in its own client island (DomainList) — so the ~340
+// lines of static marketing copy no longer ship as client JS, and neither does
+// lib/eventData.ts. `domains` is derived here and passed down already flattened
+// to name strings, which is what keeps the roster (and its 120 events' worth of
+// how-to prose) on the server. Same split as /how-to-play.
 import Link from 'next/link'
 import { EVENTS, DOMAIN_ORDER } from '@/lib/eventData'
+import DomainList, { type LandingDomain } from './DomainList'
 import { DOMAIN_COLORS } from '@/lib/domainColours'
 import {
   TANIWHA, PARTS, PEAK_POINTS, MAX_CROWNS, WIN_TARGET, EVENTS_PER_DOMAIN,
@@ -25,7 +29,7 @@ const DOMAIN_META = DOMAIN_ORDER.map((name, i) => ({ name, color: DOMAIN_COLORS[
 
 // Event lists are derived from lib/eventData.ts (the single source of truth for
 // the roster) so domain moves, additions and removals propagate automatically.
-const domains = DOMAIN_META.map(d => ({
+const domains: LandingDomain[] = DOMAIN_META.map(d => ({
   ...d,
   events: EVENTS.filter(e => e.domain === d.name).map(e => e.name),
 }))
@@ -49,8 +53,6 @@ const sessions = [
 ]
 
 export default function Home() {
-  const [expandedDomain, setExpandedDomain] = useState<string | null>(null)
-
   return (
     <div className="landing">
       <style>{`
@@ -180,30 +182,7 @@ export default function Home() {
               <Link href="/how-to-play" className="lp-btn lp-primary">Learn The Rules</Link>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
-              {domains.map((domain) => {
-                const isOpen = expandedDomain === domain.name
-                return (
-                  <div key={domain.name} className="lp-domain" onClick={() => setExpandedDomain(isOpen ? null : domain.name)}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '14px 18px' }}>
-                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: domain.color, flexShrink: 0 }} />
-                      <span style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '14px', letterSpacing: '0.08em', textTransform: 'uppercase', flex: 1, color: isOpen ? domain.color : '#cccccc' }}>{domain.name}</span>
-                      <span style={{ fontFamily: 'var(--font-label)', fontSize: '12px', color: '#555', letterSpacing: '0.06em' }}>{domain.events.length} events</span>
-                      <span style={{ color: '#444', fontSize: '12px' }}>{isOpen ? '▴' : '▾'}</span>
-                    </div>
-                    {isOpen && (
-                      <div style={{ padding: '0 18px 16px', display: 'flex', flexWrap: 'wrap', gap: '6px', borderTop: `1px solid ${domain.color}22` }}>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', paddingTop: '12px' }}>
-                          {domain.events.map((event) => (
-                            <span key={event} className="lp-pill">{event}</span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
+            <DomainList domains={domains} />
           </div>
         </div>
       </section>

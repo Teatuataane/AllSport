@@ -34,6 +34,27 @@ taniwha — `hands`, `barbell`, `rings`, `javelin`, `flag`, `ab-wheel`, `oar`,
   screen is its size on that canvas. Anything under about 150px across becomes a
   2px smudge at the 24px the leaderboard renders at.
 
+## After importing: shrink them
+
+```
+node scripts/optimize-icons.mjs        # --dry to preview
+```
+
+**Export at 1000 × 1000 anyway** — that is the authoring size and the rules above
+still stand. This script then downscales what ships to **512 × 512** greyscale,
+because the app never draws a taniwha wider than 150 CSS px (the dashboard card;
+/taniwha uses 96 and the history page 74), and a CSS mask reads only the alpha
+channel, so the colour data is waste. Measured on Whānau: **201.5 KB → 19.5 KB,
+90% smaller**, with the difference confined to anti-aliased edge pixels.
+
+So the files you find in these folders are 512 px even though the spec says 1000.
+That is expected. Re-running the script skips anything already small, so it will
+not re-encode and degrade existing art — but the 1000 px originals live in git
+history, and the real master is the Canva document.
+
+512 is also the floor: `check-taniwha-art.mjs` rejects a canvas under 500 px as a
+mis-export, and that guard is worth keeping.
+
 ## Check before drawing the next one
 
 ```

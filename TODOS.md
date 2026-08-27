@@ -183,10 +183,31 @@ the 96px and 74px sizes it reads as nothing.
 ### Component-test infrastructure — supabase mocking strategy
 **What is now done:** `npm install` (v0.6.0.1) finally installed `@testing-library/react` and `jsdom`, which were declared but missing — the component test had been permanently red and React components had zero coverage. `__tests__/taniwhaComponents.test.tsx` now covers `TaniwhaAlertBanner` and `TaniwhaWatchlist` with 15 tests.
 **What is still untestable:** anything that fetches — the dashboard taniwha card and its choose/switch picker, the profile badge, the leaderboard column, `/prs`, the session-end takeover. All need a decision on how to mock `supabase-browser` before they can be tested at all. This is a project-wide gap that predates the taniwha work by the whole life of the repo.
-**Suggested:** `vi.mock('@/lib/supabase-browser')` with a small chainable query-builder fake, or MSW at the PostgREST layer.
+**Half of this is now settled (v0.6.3.0).** `__tests__/navbarAuthGate.test.tsx` proves the `vi.mock('@/lib/supabase-browser')` route for the AUTH surface — it mocks `createClient` to return a fake `auth` with `getSession`/`onAuthStateChange`, and drives the whole cookie-gate contract off it, including the post-login `router.push` case and a failed code-split chunk. Copy that file's mock block as the starting point.
+**What that leaves:** the chainable query-builder fake for `.from().select().eq()`, which is what the dashboard card, `/prs` and the session-end takeover actually need. The auth mock does not help them.
+**Suggested for the rest:** extend that mock with a small chainable query-builder fake, or MSW at the PostgREST layer.
 **Sharpest reason to do it:** the taniwha card's choose-and-switch flow calls an RPC that writes permanent, never-revoked progression. It is the highest-consequence untested path in the app.
 **Noticed:** v0.5.4.0 coverage gate; half-closed v0.6.0.1
 **Effort:** M
+
+### Confirm `leaderboard_page` really is VOLATILE in prod
+**Applied 2026-08-28** — `20260827211610` is in, from main, after PR #94 merged. What is left is one query, and it is the only part of the standing "verify the objects, never the ledger" rule that could not be completed on this machine:
+
+```sql
+select provolatile, prosecdef from pg_proc where proname = 'leaderboard_page';
+-- expect provolatile = 'v', prosecdef = false
+```
+
+**Why it could not be done here:** no psql installed, `supabase db dump` requires Docker (not running), and the credentials in `supabase/.temp/pooler-url` fail auth. **Do not try to prove it through PostgREST** — a GET on the function returns 200 whether it is stable or volatile, and with no expired session the heal writes zero rows, so the old and new bodies are indistinguishable from outside. That was tried; it proves nothing.
+
+**What IS confirmed:** the ledger moved `remote:""` -> `remote:"20260827211610"` inside one session with zero timestamp collisions, which rules out the silent-skip failure mode (it needs the version already recorded). The function answers as `anon` with an unchanged payload: 20 rankings, 27 taniwha rows, 27 players, same five top-level keys, 195 ms.
+
+**Original context:** the migration folds `close_expired_sessions()` into `leaderboard_page()`, taking `/leaderboard` from two round trips to one — per the standing rule, migrations are applied from `main`, and there is no local Postgres in the worktree to verify against.
+**Deploy order is migration first, then code — but the code is safe either way here.** Against an un-migrated database `leaderboard_page()` still returns the correct payload; it just stops healing expired sessions on a leaderboard view, and pg_cron sweeps them within five minutes. Verified in the browser against today's un-migrated prod: one request, real data.
+**Verify by querying the objects, not `migration list`:** `select provolatile, prosecdef from pg_proc where proname = 'leaderboard_page'` should return `v` and `false`. Then run the function `set local role anon` and confirm the same row counts as before (20 rankings, 27 players). Both queries are written out in the migration file's footer.
+**Watch for:** the function goes `stable` → `volatile` because it now writes. Anything that assumed it was side-effect-free needs a second look.
+**Noticed:** /ship v0.6.3.0, 2026-08-28
+**Effort:** XS
 
 ### Drop the Leg Extension archive table once settled
 **What:** `results_leg_extension_archive_20260801` holds the 17 result rows deleted when Leg Extension became Leg Ext Hold (a `strength` raw_score can't be decoded as a `difficulty+time` hold). Verified locked down: it returns HTTP 401 / `42501 insufficient_privilege` through PostgREST, so RLS is on and no policy exposes it. Drop it once the Leg Ext Hold call is settled and you're sure nobody wants those weights back.
@@ -295,6 +316,13 @@ from `main` and this is a review branch.
 ### Leaderboard icons
 **What:** Add player icon emoji next to name on /leaderboard and /scoring/[sessionId].
 **When:** After icon system is proven stable on /dashboard.
+
+### Decide whether to drop Barlow italic and weight 300
+**What:** The homepage fetches eight font files (108.7 KB), and one of them is Barlow 400 italic, pulled in by a single grey caption line. Barlow 300 is fetched only on the live session screen, for four paragraphs. Roughly 15 KB each.
+**Why it is not already done:** removing italic means the browser synthesises an oblique from the regular, and Barlow's true italic is a genuinely different drawing, not a slant. Dropping 300 renders that body text at 400. Both are visible changes to the brand type for about 6% of transfer — a typography call, not an engineering one.
+**Where:** the `Barlow(...)` declaration in `app/layout.tsx`. Two lines.
+**Noticed:** /ship v0.6.3.0 performance audit, 2026-08-28
+**Effort:** XS
 
 ### Verify Te Reo "Kaiwāwao"
 **What:** Confirm "Kaiwāwao" is correct and culturally appropriate for judge/referee in a sports context.

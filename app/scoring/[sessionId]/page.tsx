@@ -2257,44 +2257,72 @@ export default function SessionPage() {
 
   useEffect(() => {
     const load = async () => {
+      // Reads the locally stored session — no network round trip. See the note
+      // on getSessionUser() in lib/supabase-browser.ts.
       const authUser = await getSessionUser()
-      if (authUser) {
-        const { data: p } = await supabase.from('players').select('*').eq('id', authUser.id).single()
-        if (p) {
-          setPlayer(p as Record<string, unknown>)
-          const { data: children } = await supabase.from('players').select('*').eq('parent_id', authUser.id).order('full_name')
-          setFamilyMembers((children ?? []) as Record<string, unknown>[])
 
-          // Land on the tab of whoever the rest of the app is currently showing.
-          // A parent who switched to their child on the stats page and then taps
-          // PLAY expects to arrive on that child, not to hunt for them again.
-          //
-          // Only honoured when the stored id is genuinely one of this account's
-          // children — localStorage is user-editable, and the scoring screen is
-          // the one place where landing on the wrong tab could mis-attribute a
-          // score. Attribution itself is unchanged: a submission still belongs to
-          // whichever tab you are on.
-          let landOn = authUser.id
-          try {
-            const stored = window.localStorage.getItem('allsport_active_player_id')
-            if (stored && (children ?? []).some(c => (c as { id: string }).id === stored)) {
-              landOn = stored
-            }
-          } catch {
-            // Blocked site data. Fall back to the account holder.
+      // Every query below needs either sessionId (known before this effect ran)
+      // or authUser.id (known now), and none of them needs another one's answer.
+      // They used to run as five sequential awaits, so the screen a player opens
+      // standing in the gym cost five serial round trips before it rendered
+      // anything — ~250ms each warm, and PERF_AGGREGATION_PLAN.md measured
+      // 1–2.8s each when the backend is cold or requests contend. One wave now.
+      //
+      // supabase-js resolves to { data, error } instead of rejecting, so one
+      // failing query cannot reject the whole wave and lose the others.
+      //
+      // Landing them together also collapses what were five separate renders
+      // into one, so the page no longer paints half-loaded intermediate states.
+      const [playerRes, childrenRes, sessionRes, eventsRes] = await Promise.all([
+        authUser
+          ? supabase.from('players').select('*').eq('id', authUser.id).single()
+          : Promise.resolve({ data: null }),
+        authUser
+          ? supabase.from('players').select('*').eq('parent_id', authUser.id).order('full_name')
+          : Promise.resolve({ data: null }),
+        supabase.from('sessions').select('*').eq('id', sessionId).single(),
+        supabase.from('session_events').select('*').eq('session_id', sessionId).order('domain_number'),
+        // Sets its own state; it is in the wave for the round trip, not a value.
+        loadResults(),
+      ])
+
+      // `authUser &&` is redundant at runtime — playerRes.data is only non-null
+      // when there was a user to query for — but it keeps `landOn` below free of
+      // a non-null assertion, so the guard is visible rather than inferred.
+      const p = playerRes.data
+      if (authUser && p) {
+        setPlayer(p as Record<string, unknown>)
+        const children = childrenRes.data
+        setFamilyMembers((children ?? []) as Record<string, unknown>[])
+
+        // Land on the tab of whoever the rest of the app is currently showing.
+        // A parent who switched to their child on the stats page and then taps
+        // PLAY expects to arrive on that child, not to hunt for them again.
+        //
+        // Only honoured when the stored id is genuinely one of this account's
+        // children — localStorage is user-editable, and the scoring screen is
+        // the one place where landing on the wrong tab could mis-attribute a
+        // score. Attribution itself is unchanged: a submission still belongs to
+        // whichever tab you are on.
+        let landOn = authUser.id
+        try {
+          const stored = window.localStorage.getItem('allsport_active_player_id')
+          if (stored && (children ?? []).some(c => (c as { id: string }).id === stored)) {
+            landOn = stored
           }
-          setActivePlayerId(landOn)
-          setActiveTab(`player-${landOn}`) // leaderboard stays one tap away
-          if ((p as Record<string, unknown>).role === 'judge') setIsJudge(true)
+        } catch {
+          // Blocked site data. Fall back to the account holder.
         }
+        setActivePlayerId(landOn)
+        setActiveTab(`player-${landOn}`) // leaderboard stays one tap away
+        if ((p as Record<string, unknown>).role === 'judge') setIsJudge(true)
       }
-      const { data: s } = await supabase.from('sessions').select('*').eq('id', sessionId).single()
+
+      const s = sessionRes.data
       setSession(s as Record<string, unknown> | null)
       if (s && !(s as Record<string, unknown>).is_active) setSessionEnded(true)
 
-      const { data: ev } = await supabase.from('session_events').select('*').eq('session_id', sessionId).order('domain_number')
-      setEvents((ev ?? []) as SessionEvent[])
-      await loadResults()
+      setEvents((eventsRes.data ?? []) as SessionEvent[])
     }
     load()
   }, [sessionId, loadResults])
