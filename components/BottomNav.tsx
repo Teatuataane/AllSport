@@ -284,6 +284,17 @@ function MoreSheet({ isJudge, onClose, onSignOut }: {
           </svg>
         </SheetRow>
 
+        {/* /my-koha's only entry point used to be the dashboard's My Koha bento
+            card. The stats-page rewrite deleted that card, which orphaned the
+            page — it still worked, nothing linked to it. It lives here now,
+            above the public Koha page it is the personal half of. */}
+        <SheetRow href="/my-koha" label="My koha">
+          <svg {...stroke()} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 21s-7-4.6-7-10a4 4 0 017-2.6A4 4 0 0119 11c0 5.4-7 10-7 10z" />
+            <path d="M9 11h6" /><path d="M12 8v6" />
+          </svg>
+        </SheetRow>
+
         <SheetRow href="/koha" label="Koha">
           <svg {...stroke()} strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 21s-7-4.6-7-10a4 4 0 017-2.6A4 4 0 0119 11c0 5.4-7 10-7 10z" />

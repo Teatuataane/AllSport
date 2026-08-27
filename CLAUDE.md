@@ -866,12 +866,14 @@ update players set role = 'judge' where id = '[uuid]';
 | Play | /play | Complete | Login/register landing, Google OAuth |
 | Register | /register | Complete | 3-step form, division, display prefs, junior parent fields |
 | Login | /login | Complete | Email + Google OAuth |
-| Dashboard | /dashboard | Complete | Bento grid: Judge card (judge-only), Vote card (when active), Player Profile card, Colours card (points history on click), Personal Bests card, My Events card (segmented coverage bar + Top Domain/Event percentiles, opens My Events modal — session 24 redesign of the former "My 100" card), Join a Game card (next-session countdown when idle) |
+| Dashboard | /dashboard | Complete | **Stats page** (v0.6.2.0): identity + seasonal division rank, the taniwha card (pieces assembling, three point figures), four numbers (Games · Events Won · Games Won · PRs), and a ten-spoke skill radar driven by Top %. One conditional action strip at the top: live session > active vote > next-session countdown. The bento grid is gone — judge/koha/profile/PRs are nav destinations, play history and the taniwha picker live behind the card |
+| My Taniwha | /taniwha | Complete | All twelve. Four counts (Taniwha · Limbs · Crowns · Points), then each taniwha as an expandable row revealing its eleven named pieces and what its crown still needs |
+| Taniwha History | /taniwha/history | Complete | What the taniwha card opens: the choose/switch picker, pieces earned with the session each landed in (derived — see `limbCrossings`), the play-history timeline, and the colours era |
 | Judge Panel | /judge | Complete | Players tab opens with an **"Approaching a colour"** watchlist (sessions-away). Dedicated page — JudgeCard moved here. Create/end/void sessions, QR code, history, real-time player count, Event Votes panel (Kōwhiringa Tūāhuatanga). Judge bento card on dashboard links here. |
 | Player Profile | /profile | Complete | Icon picker (20 sport emojis), username/display name editing, leaderboard display prefs, family member management (add/remove), active profile switcher (localStorage) |
 | Scoring Setup | /scoring | Complete | Select 10 events, editable start time, create session |
 | Live Session | /scoring/[sessionId] | Complete | Per-division leaderboard tabs, Kaiwhakawā mode (player picker + score/edit/delete for any player), difficulty tier selector, sport W/D/L display, missing scores = last place, post-game popup on session end |
-| Personal Bests | /prs | Complete | Collapsible domain sections (collapsed by default, `DomainIcon` + `n/total` PB count + chevron per domain); expanded domain reveals event rows each with a 36px `EventIcon` (dimmed when no result); PR per event, expandable per-event history, this season + previous seasons tabs |
+| My Events | /prs | Complete | Retitled from Personal Bests (v0.6.2.0). Ten domains ranked strongest to weakest by Top % above the list; collapsible domain sections below, each event row showing **PR, average placement and wins side by side** (no lens toggle). Honours the active player. Per-event history still expands |
 | Vote | /vote/[voteId] | Complete | Step-by-step voting flow, one domain per screen, partial save, review screen, locked on submit |
 | Vote Results | /vote/[voteId]/results | Complete | Spoiler-free until voted, bar chart per domain, counts only while open / percentages on close, judge full breakdown |
 | Game Review | /games/[sessionId] | Complete | Full all-player game report — every division, every event with score + placement, division standings. Linked from dashboard session history. Any logged-in player. Placements computed live from raw_score |
@@ -1106,7 +1108,7 @@ RLS: own + parent (family) + judge.
     Footer.tsx                      # Rainbow rule, HQ address + session times
     ui.tsx                          # Shared brand UI kit — Button, Card, Badge, Tag, Input, Select, Dialog, RainbowText, RainbowRule, SectionLabel, StatBlock
     EventIcon.tsx                   # Event pictogram tile — CSS-mask of /event-icons/{slug}.png in domain colour, emoji fallback
-    BottomNav.tsx                   # Five-tab bottom bar (phones) + the MORE sheet. Hidden >768px by .bottom-nav in globals.css
+    BottomNav.tsx                   # Five-tab bottom bar (phones) + the MORE sheet (judge · my taniwha · profile · my koha · koha · schedule · how to play · supporters · sign out). Hidden >768px by .bottom-nav in globals.css
     PlayerTabs.tsx                  # Sticky family switcher + ViewingAsBanner. Renders null on a solo account
     DomainRadar.tsx                 # Ten-spoke skill radar, one spoke per domain, driven by Top %
     TaniwhaFigure.tsx               # The eleven pieces assembling. Real art via CSS mask where drawn, filler geometry where not

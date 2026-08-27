@@ -2,6 +2,27 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.6.2.0] - 2026-08-27
+
+### Added
+- **Your dashboard is a stats page now.** It opens on who you are and where you sit on the board, then the taniwha you are currently building — assembling piece by piece, with the points that bought each one — then four numbers that sum up your playing: games, events won, games won, personal bests. Everything that used to be a wall of coloured tiles is either a button along the bottom or one tap behind the taniwha.
+- **A shape that shows what you are good at.** Ten spokes, one per discipline, each reaching further out the better you rank against everyone in your division who has played those events. Your strongest and weakest are named underneath so you never have to work the shape out. It is the first screen in the app that answers "what should I train" without you doing the arithmetic.
+- **A bar along the bottom of every screen.** Play, Stats, Board, Events, More — always there, always one tap. Play knows what you are doing: it takes you straight into a session that is running, and straight to the kaiwhakawā panel if you are running it. The hamburger menu is gone, and so is everything that was hidden inside it.
+- **Switch between everyone on your account, from anywhere.** If you have tamariki on your account their names sit in a row at the top of the screen. Tap one and the whole app follows — stats, personal bests, taniwha. A red band tells you whose numbers you are reading, and it only appears when you are not looking at your own. If you are the only person on your account you will never see any of this.
+- **My Taniwha.** All twelve in one place: how many you have started, how many pieces you have placed, how many crowns. Open any one to see its eleven pieces by name and exactly what its crown still needs.
+- **Taniwha History.** Every piece you have earned with the date and the session it landed in, every game you have played, and the colours you earned back when the app still had colours. This is also where you change which taniwha you are building.
+- **The first taniwha actually draws now.** Te Taniwha o te Whānau assembles from its real artwork as you earn each piece. The other eleven show a placeholder outline until they are drawn.
+
+### Changed
+- **My Events shows three numbers at once.** Your best, your average placing, and how many times you have won it — side by side for every event, instead of one at a time behind a toggle. Above the list, the ten disciplines are ranked strongest to weakest, so what you are good at is the first thing you see.
+- **Switching between people on your account is instant.** The app fetches everybody's numbers together when the page opens, so tapping between you and your tamariki has nothing to wait for.
+- **The taniwha names lost a macron.** They read `Te Taniwha o te ___` now. Still awaiting a reo speaker on four of the discipline names.
+
+### Fixed
+- **Switching to your child now works everywhere.** It only ever changed the dashboard. Open Personal Bests after switching and you were quietly looking at your own scores under their name — no error, nothing to notice. Every screen follows the switch now, and a stored choice that does not belong to your account is ignored rather than trusted.
+- **The buttons along the bottom are big enough to hit.** They were a little under the size a thumb reliably lands on.
+- **My Koha is reachable again.** Its only way in was the old dashboard tile, so the redesign left the page working but with nothing pointing at it. It sits under More now, above the public Koha page.
+
 ## [0.6.1.0] - 2026-08-26
 
 ### Changed
