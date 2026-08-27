@@ -347,6 +347,19 @@ export function taniwhaBySlug(slug: string): Taniwha | null {
   return TANIWHA.find(t => t.slug === slug) ?? null
 }
 
+/**
+ * "Te Taniwha o te Tere" -> "Tere". The short form for a table cell or chip.
+ *
+ * It lives HERE, beside the name construction it undoes, because it strips the
+ * prefix by literal string match — the drift hazard the naming note above
+ * warns about. When it sat in app/leaderboard/page.tsx the two could be changed
+ * independently and nothing would fail; now a prefix change breaks a test in
+ * the same module.
+ */
+export function shortTaniwhaName(t: Taniwha): string {
+  return t.name.replace('Te Taniwha o te ', '').replace('Te ', '')
+}
+
 // ── The points map ───────────────────────────────────────────────────────────
 // Every 1,000 lifetime points is one body part. That is the whole rule.
 //

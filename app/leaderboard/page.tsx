@@ -14,17 +14,8 @@ import {
 import {
   MAX_CROWNS, WIN_TARGET, EVENTS_PER_DOMAIN, BODY_PARTS_PER_TANIWHA,
   PART_POINTS, PEAK_POINTS as TANIWHA_PEAK_POINTS, TANIWHA,
-  taniwhaBySlug, taniwhaOnDark, bodyPartBudget, type Taniwha,
+  taniwhaBySlug, taniwhaOnDark, bodyPartBudget, shortTaniwhaName, type Taniwha,
 } from '@/lib/taniwha'
-
-/**
- * "Te Taniwha o te Tere" -> "Tere". lib/taniwha.ts warns that this page strips
- * the prefix by literal string match, so it is done ONCE, here, rather than
- * inline at each call site where a rename could miss one.
- */
-function shortTaniwhaName(t: Taniwha): string {
-  return t.name.replace('Te Taniwha o te ', '').replace('Te ', '')
-}
 
 /**
  * The taniwha cell, shared by the wide table and the narrow cards.
