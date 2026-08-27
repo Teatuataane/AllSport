@@ -2,6 +2,8 @@
 
 ## ✅ Done
 
+- **Design review of the taniwha work, acted on** (2026-08-28, branch `claude/allsport-taniwha-review-71d18c`). Full report and reasoning in the review artifact; the headline was that **every taniwha surface priced progress in points and nothing said what a session was worth**, so the ladder had no denominator. Shipped: the calibration line (`sessionsToGo` in `lib/taniwha.ts`, on the card and the session-end takeover); the first-run dashboard the FirstRun canvas specified, replacing four zeros and an empty radar; `/leaderboard` rebuilt for phones (it needed 860px inside a 342px column, hiding **Season Pts — the column it sorts by** — behind an unsignalled scroll); the Taniwha column switched from crowns to **pieces**, which differentiate today where crowns read `0` on all 27 rows; the **field-of-three win rule** stated on `/taniwha` and `/prs` after being enforced-but-unexplained since launch; one word ("pieces") for the unit that had three; and the last Colours-era copy off the public pages. `/events` also regained a nav entry — the EVENTS tab is `/prs`, which had left the catalogue unreachable when logged in.
+
 - **Taniwha grading system live** (v0.6.0.0, applied and verified 2026-08-25). Both migrations pushed from `main` and confirmed by querying the objects with the public anon key rather than trusting `db push`:
   - `event_domains` **120 rows**, `player_taniwha` seeded for all **27 players**, **197 wins backfilled** from history, `results.event_placement` present.
   - The budget invariant — `SUM(body_parts) <= taniwha_body_budget(lifetime_points)` for every player — returns **zero breaches**. Nobody is building two taniwha. No guest row carries a placement.
@@ -241,15 +243,6 @@ the 7-into-1 collapse still holds. It is two round trips, same as before this ch
 `20260824233516` folded the taniwha read in. Deferred here because migrations must be applied
 from `main` and this is a review branch.
 **Where:** `app/leaderboard/page.tsx`, the `Promise.all` in the main load effect
-**Noticed:** design review, 2026-08-28
-
-### The EVENTS tab points at /prs, so the event catalogue has no nav entry
-**What:** The bottom bar's EVENTS tab goes to `/prs` (My Events). That is deliberate — the
-sheet comment explains Personal Bests is the EVENTS tab now — but it leaves `/events`, the
-public 120-event catalogue with the how-to and rules for each one, unreachable from the
-logged-in nav. The dashboard's first-run panel now links there, which covers a new player, but
-not a returning one mid-session wondering what Kubb is.
-**Options:** a row in the MORE sheet, or a link from `/prs` itself.
 **Noticed:** design review, 2026-08-28
 
 ### Move the ranking maths into SQL (PERF_AGGREGATION_PLAN.md Stage 2)

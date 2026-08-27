@@ -182,6 +182,13 @@ export default function BottomNav() {
 // Absorbs the whole logged-in hamburger. Personal Bests is deliberately absent:
 // it is the EVENTS tab now, and listing it twice teaches people the tab is
 // something else.
+//
+// "Event guide" is NOT that duplicate. The EVENTS tab is /prs — YOUR events,
+// your bests and placements. /events is the catalogue: how to perform all 120,
+// the judge standards and the difficulty tiers. Sending the tab to /prs left
+// the catalogue with no entry point anywhere in the logged-in nav, which is
+// the surface a player wants mid-session when they have drawn an event they
+// have never done. The two names have to stay distinguishable.
 
 function SheetRow({ href, label, accent, children, onClick }: {
   href?: string
@@ -303,6 +310,13 @@ function MoreSheet({ isJudge, onClose, onSignOut }: {
             <path d="M20 12v7a2 2 0 01-2 2H6a2 2 0 01-2-2v-7" /><path d="M3 8h18v4H3z" />
             <path d="M12 21V8" /><path d="M12 8S9.5 3.5 7.5 5.5 12 8 12 8z" />
             <path d="M12 8s2.5-4.5 4.5-2.5S12 8 12 8z" />
+          </svg>
+        </SheetRow>
+
+        <SheetRow href="/events" label="Event guide">
+          <svg {...stroke()} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 5a2 2 0 012-2h12a2 2 0 012 2v16l-4-2-4 2-4-2-4 2z" />
+            <path d="M8 8h8" /><path d="M8 12h5" />
           </svg>
         </SheetRow>
 
