@@ -304,19 +304,27 @@ export default function Leaderboard() {
     let cancelled = false
 
     const load = async () => {
-      // Heal any session whose 100 minutes elapsed while nobody had the app
-      // open. Until this existed, a game that nobody closed stayed "active"
-      // forever and awarded nobody any points, because award_session_points
-      // only fires on the is_active true -> false transition. Derived from
-      // started_at server-side, so this cannot end a game that is still running.
+      // ONE round trip. leaderboard_page() now heals expired sessions itself,
+      // as its first statement, before reading anything (migration
+      // 20260827211610).
       //
-      // Sequential before the payload below, not folded into it: this WRITES,
-      // and leaderboard_page() is STABLE. It also has to land first, or the
-      // payload reports the stale active session. Two round trips, still down
-      // from seven.
-      await supabase.rpc('close_expired_sessions')
-      if (cancelled) return
-
+      // The heal matters: until it existed, a game nobody closed stayed
+      // "active" forever and awarded nobody any points, because
+      // award_session_points only fires on the is_active true -> false
+      // transition. It derives expiry from started_at server-side, so it can
+      // never end a game that is still running.
+      //
+      // It used to be a separate `await` in front of this one, because the heal
+      // WRITES while leaderboard_page() was STABLE, and because the payload has
+      // to observe the heal or it reports a just-ended session as still live.
+      // Measured against production: 298 ms sequential, 237 ms in parallel
+      // (the two requests contend), 172 ms as this single call. Running them
+      // concurrently was the worst of both — it recovered a third of the time
+      // and gave up the ordering guarantee.
+      //
+      // REQUIRES migration 20260827211610. Against an older database this still
+      // returns the right payload; it just stops healing here, and pg_cron
+      // picks the session up within five minutes.
       const { data, error } = await supabase
         .rpc('leaderboard_page', { p_season: new Date().getFullYear() })
       if (cancelled) return

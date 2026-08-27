@@ -17,10 +17,13 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase-browser'
 import { useNavState } from '@/lib/useNavState'
 
-const supabase = createClient()
+// Dynamic, not module scope. This bar renders on every route from the root
+// layout, so a static import put the Supabase client and its realtime stack
+// into every page's bundle (see lib/authCookie.ts) — for a single signOut call
+// that only a signed-in player can ever reach.
+const supabaseModule = () => import('@/lib/supabase-browser')
 
 const BAR_HEIGHT = 64
 
@@ -169,7 +172,8 @@ export default function BottomNav() {
           onClose={() => setMoreOpen(false)}
           onSignOut={async () => {
             setMoreOpen(false)
-            await supabase.auth.signOut()
+            const { createClient } = await supabaseModule()
+            await createClient().auth.signOut()
             router.push('/')
           }}
         />

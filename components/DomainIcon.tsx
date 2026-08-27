@@ -23,7 +23,8 @@ export function domainSlug(domainName: string): string {
     || domainName.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 }
 
-// Module-level cache: probe each icon URL once per page load, not once per render
+// Module-level cache: probe each icon URL once per page load, not once per render.
+// Absent = not yet probed, and an unprobed icon is ASSUMED PRESENT — see EventIcon.
 const iconStatus: Record<string, boolean> = {}
 
 /**
@@ -43,7 +44,10 @@ export default function DomainIcon({
   size?: number
 }) {
   const slug = domainSlug(domainName)
-  const [hasIcon, setHasIcon] = useState<boolean>(iconStatus[slug] === true)
+  // Optimistic, mirroring EventIcon: an unprobed icon renders its mask straight
+  // away rather than showing the domain-number fallback and swapping after
+  // hydration. All ten domain PNGs exist; the probe is the error path.
+  const [hasIcon, setHasIcon] = useState<boolean>(iconStatus[slug] !== false)
 
   useEffect(() => {
     if (iconStatus[slug] !== undefined) { setHasIcon(iconStatus[slug]); return }
