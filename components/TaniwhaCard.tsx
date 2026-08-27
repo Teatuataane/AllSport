@@ -176,8 +176,8 @@ export default function TaniwhaCard({
 
       {idle ? (
         <div style={{ fontSize: 13, color: ink, opacity: 0.75, marginTop: 14, lineHeight: 1.5 }}>
-          Your next limbs will build whichever taniwha you pick.
-          {banked > 0 && ` ${banked} limb${banked === 1 ? '' : 's'} waiting.`}
+          Your next pieces will build whichever taniwha you pick.
+          {banked > 0 && ` ${banked} piece${banked === 1 ? '' : 's'} waiting.`}
         </div>
       ) : (
         <>
@@ -199,7 +199,7 @@ export default function TaniwhaCard({
                 letterSpacing: '0.1em', fontWeight: 600, fontSize: 10,
                 color: ink, opacity: 0.55, marginTop: 2,
               }}>
-                Limbs
+                Pieces
               </div>
               <div style={{ height: 1, background: rule, margin: '12px 0' }} />
               <div style={{
@@ -248,7 +248,7 @@ export default function TaniwhaCard({
               marginTop: 10, fontSize: 11, color: ink, opacity: 0.9,
               fontFamily: 'var(--font-label)', letterSpacing: '0.04em',
             }}>
-              {banked} limb{banked === 1 ? '' : 's'} waiting
+              {banked} piece{banked === 1 ? '' : 's'} waiting
             </div>
           )}
         </>
@@ -330,7 +330,7 @@ export function TaniwhaPicker({ state, points, onChanged }: {
         Change what you are building
       </div>
       <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: 12 }}>
-        Your limbs stay where you put them. Switching changes what your next limbs
+        Your pieces stay where you put them. Switching changes what your next pieces
         build, not what you already hold.
         {roomLeft <= 0 && ' You have no crown room until your next 10,000 points.'}
       </div>
@@ -364,7 +364,7 @@ export function TaniwhaPicker({ state, points, onChanged }: {
                   fontFamily: 'var(--font-label)', letterSpacing: '0.04em',
                 }}>
                   {name} · {done ? 'crowned' : `${w}/${WIN_TARGET} wins`}
-                  {row && !done && row.body_parts > 0 ? ` · ${row.body_parts}/${BODY_PARTS_PER_TANIWHA} limbs` : ''}
+                  {row && !done && row.body_parts > 0 ? ` · ${row.body_parts}/${BODY_PARTS_PER_TANIWHA} pieces` : ''}
                 </div>
               </div>
               {row?.is_building && (

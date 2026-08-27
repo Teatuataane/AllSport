@@ -1848,7 +1848,7 @@ function SessionEndTakeover({
                 fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px',
                 letterSpacing: '0.06em', textTransform: 'uppercase', color: '#F9B051',
               }}>
-                +{gained} taniwha part{gained === 1 ? '' : 's'} today
+                +{gained} taniwha piece{gained === 1 ? '' : 's'} today
               </div>
             )
           })()}

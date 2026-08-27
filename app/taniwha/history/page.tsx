@@ -173,7 +173,7 @@ export default function TaniwhaHistoryPage() {
               <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, color: ink }}>
                 {limbs}/{PARTS_PER_TANIWHA}
               </div>
-              <Label ink={ink}>Limbs</Label>
+              <Label ink={ink}>Pieces</Label>
             </div>
           </div>
         )}
@@ -184,10 +184,10 @@ export default function TaniwhaHistoryPage() {
         )}
 
         {/* 3 — limbs earned */}
-        <Section>Limbs earned</Section>
+        <Section>Pieces earned</Section>
         <Panel>
           {crossings.length === 0 ? (
-            <Empty>Your first limb lands at 1,000 points.</Empty>
+            <Empty>Your first piece lands at 1,000 points.</Empty>
           ) : (
             crossings.slice(0, 6).map(c => {
               // Body parts only — crowns are earned, not bought, so they are not

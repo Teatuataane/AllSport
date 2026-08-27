@@ -103,7 +103,7 @@ export default function MyTaniwhaPage() {
           gap: 8, marginBottom: 16,
         }}>
           <Count value={started} of={TOTAL_TANIWHA} label="Taniwha" />
-          <Count value={limbsPlaced} of={TOTAL_BODY_PARTS} label="Limbs" colour="var(--amber)" />
+          <Count value={limbsPlaced} of={TOTAL_BODY_PARTS} label="Pieces" colour="var(--amber)" />
           <Count value={crowned} of={MAX_CROWNS} label="Crowns" />
           <Count value={points.toLocaleString()} label="Points" />
         </div>
@@ -290,7 +290,7 @@ function TaniwhaRow({ t, row, wins, domainName, open, onToggle }: {
             fontFamily: 'var(--font-label)', textTransform: 'uppercase',
             fontSize: 9, color: '#555',
           }}>
-            {row?.is_building ? 'Building' : 'Limbs'}
+            {row?.is_building ? 'Building' : 'Pieces'}
           </div>
         </div>
         <span style={{
@@ -313,7 +313,7 @@ function TaniwhaRow({ t, row, wins, domainName, open, onToggle }: {
             />
             <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
               {limbs === 0
-                ? 'Not started. Pick this taniwha and your next limbs build it.'
+                ? 'Not started. Pick this taniwha and your next pieces build it.'
                 : crownedHere
                 ? 'Complete — body and crown.'
                 : `${limbs} of ${PARTS_PER_TANIWHA} pieces placed.`}
