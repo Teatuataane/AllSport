@@ -8,6 +8,11 @@
   - **The interesting part:** Tāne already holds three domains at or past 9 of 12 (Coordination 11, Calisthenics 10, Maximal Strength 9) and RGFell holds one, but **nobody has crown room** — everyone is under 10,000 lifetime points. The crowns are earned and waiting on points. That is the calibration working, not a bug: don't lower a threshold to "fix" it.
   - `/leaderboard` switched over on its own — column header reads TANIWHA, the Taniwha Key replaced the Colour Key, every player shows `0 · Whānau`.
 
+- **The v0.6.3.0 performance migration is applied and fully verified** (`20260827211610`, 2026-08-28). `close_expired_sessions()` now runs inside `leaderboard_page()`, so `/leaderboard` makes one round trip instead of two. Measured against prod: 298 ms sequential, 237 ms in parallel (the two requests contend), **172 ms as one call**.
+  - Verified by querying the object, not the ledger: `select provolatile, prosecdef from pg_proc where proname = 'leaderboard_page'` returns **`v`, `false`**. The ledger also moved `remote:"" -> remote:"20260827211610"` in one session with zero timestamp collisions, which independently rules out the silent-skip mode.
+  - Re-checked as `anon` afterwards — 20 rankings, 27 taniwha rows, 27 players, unchanged payload shape — and `/leaderboard` loaded against the migrated database with one request and real players.
+  - **Do not try to verify a volatility change through PostgREST.** A GET on the function returns 200 whether it is stable or volatile; with no expired session the heal writes zero rows, so old and new bodies look identical from outside, and the OpenAPI spec that would reveal it is 401 for anon. That was tried. `pg_proc` is the only route.
+
 - **The Colours fallbacks are gone** (v0.6.0.1). Deploy-order insurance, spent once the migrations landed. Deleted `lib/colourAlerts.ts`, `components/ColourAlertBanner.tsx`, `components/ColourWatchlist.tsx` and every fallback branch. `lib/colours.ts` survives shrunk to a lookup table, because `colour_awards` records colours really earned on real dates and the timeline still shows them. The points economy moved to `lib/taniwha.ts`; `RAINBOW` to `lib/domainColours.ts`. **Coverage moved with the code**: the component test was ported to the taniwha components rather than deleted, and the generic ranking helpers are now tested in `__tests__/sessionRanking.test.ts`.
 
 - **`player_taniwha` folded into `leaderboard_page()`** (`20260824233516`). The separate query was correct while the progression migrations were pending; it is not any more, and it had turned the performance pass's 7-requests-into-1 back into 2. `/prs` runs its two queries concurrently for the same reason.
@@ -179,25 +184,6 @@
 **Sharpest reason to do it:** the taniwha card's choose-and-switch flow calls an RPC that writes permanent, never-revoked progression. It is the highest-consequence untested path in the app.
 **Noticed:** v0.5.4.0 coverage gate; half-closed v0.6.0.1
 **Effort:** M
-
-### Confirm `leaderboard_page` really is VOLATILE in prod
-**Applied 2026-08-28** — `20260827211610` is in, from main, after PR #94 merged. What is left is one query, and it is the only part of the standing "verify the objects, never the ledger" rule that could not be completed on this machine:
-
-```sql
-select provolatile, prosecdef from pg_proc where proname = 'leaderboard_page';
--- expect provolatile = 'v', prosecdef = false
-```
-
-**Why it could not be done here:** no psql installed, `supabase db dump` requires Docker (not running), and the credentials in `supabase/.temp/pooler-url` fail auth. **Do not try to prove it through PostgREST** — a GET on the function returns 200 whether it is stable or volatile, and with no expired session the heal writes zero rows, so the old and new bodies are indistinguishable from outside. That was tried; it proves nothing.
-
-**What IS confirmed:** the ledger moved `remote:""` -> `remote:"20260827211610"` inside one session with zero timestamp collisions, which rules out the silent-skip failure mode (it needs the version already recorded). The function answers as `anon` with an unchanged payload: 20 rankings, 27 taniwha rows, 27 players, same five top-level keys, 195 ms.
-
-**Original context:** the migration folds `close_expired_sessions()` into `leaderboard_page()`, taking `/leaderboard` from two round trips to one — per the standing rule, migrations are applied from `main`, and there is no local Postgres in the worktree to verify against.
-**Deploy order is migration first, then code — but the code is safe either way here.** Against an un-migrated database `leaderboard_page()` still returns the correct payload; it just stops healing expired sessions on a leaderboard view, and pg_cron sweeps them within five minutes. Verified in the browser against today's un-migrated prod: one request, real data.
-**Verify by querying the objects, not `migration list`:** `select provolatile, prosecdef from pg_proc where proname = 'leaderboard_page'` should return `v` and `false`. Then run the function `set local role anon` and confirm the same row counts as before (20 rankings, 27 players). Both queries are written out in the migration file's footer.
-**Watch for:** the function goes `stable` → `volatile` because it now writes. Anything that assumed it was side-effect-free needs a second look.
-**Noticed:** /ship v0.6.3.0, 2026-08-28
-**Effort:** XS
 
 ### Drop the Leg Extension archive table once settled
 **What:** `results_leg_extension_archive_20260801` holds the 17 result rows deleted when Leg Extension became Leg Ext Hold (a `strength` raw_score can't be decoded as a `difficulty+time` hold). Verified locked down: it returns HTTP 401 / `42501 insufficient_privilege` through PostgREST, so RLS is on and no policy exposes it. Drop it once the Leg Ext Hold call is settled and you're sure nobody wants those weights back.
