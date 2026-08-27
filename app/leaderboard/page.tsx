@@ -426,7 +426,7 @@ export default function Leaderboard() {
           </h1>
           <div className="rainbow-line" style={{ width: '80px', marginBottom: '28px' }} />
           <p style={{ color: '#cccccc', fontSize: '20px', maxWidth: '560px', lineHeight: 1.7 }}>
-            Current season standings across all divisions. The board resets each January so there is always a fresh race. Your colour does not: it comes from your lifetime points, and the moment you cross a threshold that colour is yours for good.
+            Current season standings across all divisions. The board resets each January so there is always a fresh race. Your taniwha do not: they are built from your lifetime points, and once a piece is placed it is yours for good.
           </p>
         </div>
       </section>
@@ -580,7 +580,7 @@ export default function Leaderboard() {
           </h2>
           <div className="rainbow-line" style={{ width: '60px', margin: '0 auto 24px' }} />
           <p style={{ color: '#888888', fontSize: '16px', maxWidth: '400px', margin: '0 auto 32px', lineHeight: 1.7 }}>
-            The only way to appear on this leaderboard is to register and compete. Your journey starts at Mā.
+            The only way to appear on this leaderboard is to register and compete. Your first taniwha starts with its head.
           </p>
           <Link href="/register" className="btn btn-primary" style={{ fontSize: '20px' }}>Register Now</Link>
         </div>

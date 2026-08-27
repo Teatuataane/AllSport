@@ -335,7 +335,7 @@ export default function Home() {
           </h2>
           <div className="lp-rainbow-line" style={{ width: '88px', margin: '0 auto 30px' }} />
           <p style={{ color: '#888', fontSize: '18px', maxWidth: '480px', margin: '0 auto 38px', lineHeight: 1.7 }}>
-            Koha only. No fees, no barriers. Bring what you&apos;ve got and earn your first colour.
+            Koha only. No fees, no barriers. Bring what you&apos;ve got and start your first taniwha.
           </p>
           <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
             <Link href="/register" className="lp-btn lp-primary" style={{ fontSize: '22px' }}>Register Now</Link>
