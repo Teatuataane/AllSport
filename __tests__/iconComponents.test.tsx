@@ -16,8 +16,8 @@
 // fallback only on a real load error. If someone restores `=== true`, the flash
 // comes back silently — nothing else in the suite would notice.
 
-import { describe, it, expect, afterEach } from 'vitest'
-import { render, cleanup } from '@testing-library/react'
+import { describe, it, expect, afterEach, vi } from 'vitest'
+import { render, cleanup, waitFor } from '@testing-library/react'
 import EventIcon from '@/components/EventIcon'
 import DomainIcon from '@/components/DomainIcon'
 
@@ -73,5 +73,72 @@ describe('DomainIcon', () => {
       <DomainIcon domainName="Aim & Precision" domainNumber={10} />
     )
     expect(maskLayer(container)!.style.maskImage).toContain('/domain-icons/aim-and-precision.png')
+  })
+})
+
+// ── The probe's remaining job: demote to the fallback on a real load error ───
+// Inverting the default made the mask optimistic, which is the point — but the
+// fallback still has to work, or a slug with no PNG renders an empty tile
+// forever. That is the ONLY case the probe still exists for, so it is the case
+// most worth pinning.
+//
+// `new Image()` does not fetch in jsdom, so the probe is driven directly. Each
+// test uses a slug of its own: iconStatus is a MODULE-level cache, so a shared
+// slug would leak a resolved result into the next test and pass for the wrong
+// reason.
+
+type FakeImg = { onload?: () => void; onerror?: () => void; src: string }
+
+function stubImage(outcome: 'load' | 'error') {
+  const created: FakeImg[] = []
+  class Stub {
+    onload?: () => void
+    onerror?: () => void
+    #src = ''
+    set src(v: string) {
+      this.#src = v
+      queueMicrotask(() => {
+        if (outcome === 'error') this.onerror?.()
+        else this.onload?.()
+      })
+    }
+    get src() { return this.#src }
+  }
+  vi.stubGlobal('Image', Stub as unknown as typeof Image)
+  return created
+}
+
+afterEach(() => { vi.unstubAllGlobals() })
+
+describe('icon probe error path', () => {
+  it('EventIcon falls back to the emoji when the PNG fails to load', async () => {
+    stubImage('error')
+    const { container } = render(
+      <EventIcon slug="no-such-event-icon-a" emoji="🛼" domainNumber={8} />
+    )
+    // Optimistic first, as designed...
+    expect(maskLayer(container)).not.toBeNull()
+    // ...then demoted once the probe reports the miss.
+    await waitFor(() => expect(container.textContent).toContain('🛼'))
+    expect(maskLayer(container)).toBeNull()
+  })
+
+  it('EventIcon keeps the mask when the PNG loads', async () => {
+    stubImage('load')
+    const { container } = render(
+      <EventIcon slug="no-such-event-icon-b" emoji="🛼" domainNumber={8} />
+    )
+    await waitFor(() => expect(maskLayer(container)).not.toBeNull())
+    expect(container.textContent).not.toContain('🛼')
+  })
+
+  it('DomainIcon falls back to the domain number when the PNG fails', async () => {
+    stubImage('error')
+    const { container } = render(
+      <DomainIcon domainName="Not A Real Domain X" domainNumber={7} />
+    )
+    expect(maskLayer(container)).not.toBeNull()
+    await waitFor(() => expect(container.textContent).toContain('7'))
+    expect(maskLayer(container)).toBeNull()
   })
 })

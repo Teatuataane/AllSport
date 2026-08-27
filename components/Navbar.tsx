@@ -76,20 +76,37 @@ export default function Navbar() {
     auth.current.started = true
 
     void (async () => {
-      const { createClient } = await supabaseModule()
-      const supabase = createClient()
+      try {
+        const { createClient } = await supabaseModule()
+        const supabase = createClient()
 
-      const { data } = await supabase.auth.getSession()
-      setUser(data.session?.user ?? null)
-      setAuthResolved(true)
-
-      // Keeps the bar honest for sign-in and sign-out that happen under a
-      // client-side navigation, which is every one of them in this app.
-      const { data: listener } = supabase.auth.onAuthStateChange((_e, session) => {
-        setUser(session?.user ?? null)
+        const { data } = await supabase.auth.getSession()
+        setUser(data.session?.user ?? null)
         setAuthResolved(true)
-      })
-      auth.current.unsub = () => listener.subscription.unsubscribe()
+
+        // Keeps the bar honest for sign-in and sign-out that happen under a
+        // client-side navigation, which is every one of them in this app.
+        const { data: listener } = supabase.auth.onAuthStateChange((_e, session) => {
+          setUser(session?.user ?? null)
+          setAuthResolved(true)
+        })
+        auth.current.unsub = () => listener.subscription.unsubscribe()
+      } catch {
+        // The code-split chunk failed to load, or the session read threw. This
+        // is a NEW failure mode: the import used to be static and could not
+        // fail. Without this catch, `authResolved` stays false while
+        // `knownSignedOut` is false, so `authLoading` is pinned true and the
+        // auth slot renders NOTHING — a signed-in player gets a bar with no
+        // Dashboard and no Sign out, permanently, until a hard reload. On flaky
+        // mobile, which is exactly what this pass is about.
+        //
+        // Resolve so the bar renders its logged-out state (wrong for a
+        // signed-in player, but visible and actionable), and clear `started` so
+        // the next navigation retries the import rather than giving up for the
+        // life of the mount.
+        auth.current.started = false
+        setAuthResolved(true)
+      }
     })()
   }, [pathname])
 

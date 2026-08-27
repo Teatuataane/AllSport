@@ -94,6 +94,21 @@ describe('hasAuthCookie', () => {
     expect(await (await load())()).toBe(false)
   })
 
+  it('fails OPEN when document.cookie cannot be read', async () => {
+    // Blocked site data (private window, hardened browser). Returning false here
+    // would show a signed-in player the logged-out navbar; returning true only
+    // costs the bytes we would have spent anyway. The whole contract is that the
+    // uncertain case is the SAFE one.
+    const spy = vi.spyOn(document, 'cookie', 'get').mockImplementation(() => {
+      throw new Error('site data blocked')
+    })
+    try {
+      expect(await (await load())()).toBe(true)
+    } finally {
+      spy.mockRestore()
+    }
+  })
+
   it('does not confuse another project’s cookie for this one', async () => {
     // The ref IS known here, so the generic fallback must not apply: a stray
     // cookie from a different Supabase project is not a session for this app.

@@ -171,10 +171,18 @@ export default function BottomNav() {
           isJudge={isJudge}
           onClose={() => setMoreOpen(false)}
           onSignOut={async () => {
-            setMoreOpen(false)
-            const { createClient } = await supabaseModule()
-            await createClient().auth.signOut()
-            router.push('/')
+            // Close the sheet only AFTER the sign-out lands. Closing first read
+            // as success even when the dynamic import failed, so a tap on flaky
+            // mobile dismissed the sheet and left the player signed in with no
+            // feedback. Leaving it open makes a failed tap visible and retryable.
+            try {
+              const { createClient } = await supabaseModule()
+              await createClient().auth.signOut()
+              setMoreOpen(false)
+              router.push('/')
+            } catch {
+              // Sheet stays open; the player can tap again.
+            }
           }}
         />
       )}

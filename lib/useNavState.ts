@@ -53,8 +53,13 @@ export function useNavState(): NavState {
       if (!cancelled) setLiveSessionId(data?.id ?? null)
     }
 
-    check()
-    const t = setInterval(check, 60_000)
+    // Swallowed on purpose: the interval below retries every 60s, so a failed
+    // import or a dropped request self-heals. Without the catch it is an
+    // unhandled rejection on every flaky load.
+    const run = () => { check().catch(() => {}) }
+
+    run()
+    const t = setInterval(run, 60_000)
     return () => { cancelled = true; clearInterval(t) }
   }, [userId])
 

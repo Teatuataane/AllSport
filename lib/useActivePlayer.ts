@@ -142,7 +142,9 @@ export function useActivePlayer(): UseActivePlayer {
       setLoading(false)
     }
 
-    load()
+    // A rejected dynamic import would otherwise leave `loading` true forever,
+    // and every consumer gates its render on it.
+    load().catch(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [])
 
