@@ -180,8 +180,19 @@
 **Noticed:** v0.5.4.0 coverage gate; half-closed v0.6.0.1
 **Effort:** M
 
-### Apply migration `20260827211610_fold_heal_into_leaderboard_page`
-**What:** v0.6.3.0 ships a migration that folds `close_expired_sessions()` into `leaderboard_page()`, taking `/leaderboard` from two round trips to one. It is **written and committed but NOT applied** — per the standing rule, migrations are applied from `main`, and there is no local Postgres in the worktree to verify against.
+### Confirm `leaderboard_page` really is VOLATILE in prod
+**Applied 2026-08-28** — `20260827211610` is in, from main, after PR #94 merged. What is left is one query, and it is the only part of the standing "verify the objects, never the ledger" rule that could not be completed on this machine:
+
+```sql
+select provolatile, prosecdef from pg_proc where proname = 'leaderboard_page';
+-- expect provolatile = 'v', prosecdef = false
+```
+
+**Why it could not be done here:** no psql installed, `supabase db dump` requires Docker (not running), and the credentials in `supabase/.temp/pooler-url` fail auth. **Do not try to prove it through PostgREST** — a GET on the function returns 200 whether it is stable or volatile, and with no expired session the heal writes zero rows, so the old and new bodies are indistinguishable from outside. That was tried; it proves nothing.
+
+**What IS confirmed:** the ledger moved `remote:""` -> `remote:"20260827211610"` inside one session with zero timestamp collisions, which rules out the silent-skip failure mode (it needs the version already recorded). The function answers as `anon` with an unchanged payload: 20 rankings, 27 taniwha rows, 27 players, same five top-level keys, 195 ms.
+
+**Original context:** the migration folds `close_expired_sessions()` into `leaderboard_page()`, taking `/leaderboard` from two round trips to one — per the standing rule, migrations are applied from `main`, and there is no local Postgres in the worktree to verify against.
 **Deploy order is migration first, then code — but the code is safe either way here.** Against an un-migrated database `leaderboard_page()` still returns the correct payload; it just stops healing expired sessions on a leaderboard view, and pg_cron sweeps them within five minutes. Verified in the browser against today's un-migrated prod: one request, real data.
 **Verify by querying the objects, not `migration list`:** `select provolatile, prosecdef from pg_proc where proname = 'leaderboard_page'` should return `v` and `false`. Then run the function `set local role anon` and confirm the same row counts as before (20 rankings, 27 players). Both queries are written out in the migration file's footer.
 **Watch for:** the function goes `stable` → `volatile` because it now writes. Anything that assumed it was side-effect-free needs a second look.
