@@ -169,6 +169,14 @@
 **Supersedes** the old "export the two colour emblem PNGs" item — that ladder is retired and `emblemSrc` is deleted, so those two assets are no longer wanted.
 **Noticed:** /ship v0.6.0.0, 2026-08-25; first one landed v0.6.1.0, 2026-08-26
 **Effort:** M (art, no code) — about 11/12 remaining
+**Draw them in the order players will actually meet them** (design review, 2026-08-28): the
+backfill set everyone building Whānau, which IS drawn, so today's players mostly see real art
+and the filler geometry is nearly invisible. That protection ends the first time anyone uses
+the picker. The domains real players are closest to crowning are the ones they will switch to —
+Coordination, Calisthenics and Maximal Strength are already at 9–11 of 12 wins for Tāne, and
+RGFell holds one — so `ruruku`, `kaha-tinana` and `kaha` cover most plausible switches for the
+next few months. At 150px the filler reads as abstract polygons rather than a creature, and at
+the 96px and 74px sizes it reads as nothing.
 
 ### Component-test infrastructure — supabase mocking strategy
 **What is now done:** `npm install` (v0.6.0.1) finally installed `@testing-library/react` and `jsdom`, which were declared but missing — the component test had been permanently red and React components had zero coverage. `__tests__/taniwhaComponents.test.tsx` now covers `TaniwhaAlertBanner` and `TaniwhaWatchlist` with 15 tests.
@@ -221,6 +229,28 @@
 ---
 
 ## P2 — Soon
+
+### Fold lifetime points into `leaderboard_page()` (needs a migration)
+**What:** The board's Taniwha column shows PIECES, because nobody has a crown yet and a
+crowns-only cell rendered "0" on all 27 rows. Pieces come from `player_totals.lifetime_points`,
+which `leaderboard_page()` does not return, so the page reads that table in a `Promise.all`
+alongside the RPC.
+**Why it is fine for now:** the two requests are parallel, so it costs no extra wall time and
+the 7-into-1 collapse still holds. It is two round trips, same as before this change.
+**The tidier fix** is one more key on `leaderboard_page()`'s payload, the same way
+`20260824233516` folded the taniwha read in. Deferred here because migrations must be applied
+from `main` and this is a review branch.
+**Where:** `app/leaderboard/page.tsx`, the `Promise.all` in the main load effect
+**Noticed:** design review, 2026-08-28
+
+### The EVENTS tab points at /prs, so the event catalogue has no nav entry
+**What:** The bottom bar's EVENTS tab goes to `/prs` (My Events). That is deliberate — the
+sheet comment explains Personal Bests is the EVENTS tab now — but it leaves `/events`, the
+public 120-event catalogue with the how-to and rules for each one, unreachable from the
+logged-in nav. The dashboard's first-run panel now links there, which covers a new player, but
+not a returning one mid-session wondering what Kubb is.
+**Options:** a row in the MORE sheet, or a link from `/prs` itself.
+**Noticed:** design review, 2026-08-28
 
 ### Move the ranking maths into SQL (PERF_AGGREGATION_PLAN.md Stage 2)
 **What:** `/leaderboard` and `/dashboard` still ship the full result history to the browser and compute percentiles and wins there. Stage 1 collapsed the request fan-out into one RPC, which fixed the latency; Stage 2 would aggregate server-side and return ~20 rows instead of ~1500.
