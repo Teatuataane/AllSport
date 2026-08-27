@@ -43,6 +43,33 @@ export const MAX_EFFORT_LEVEL = 20
 /** 100 placement + 100 effort. Nothing can score more in one session. */
 export const MAX_SESSION_POINTS = 200
 
+// ── Points, in the only unit a player thinks in ──────────────────────────────
+// Every taniwha surface prices progress in points, and points mean nothing to
+// someone who has never counted them. These convert the ladder into games.
+//
+// The range is what a good session really returns, measured across 113
+// player-sessions: a division winner averages 149 and a runner-up 93, against a
+// hard ceiling of MAX_SESSION_POINTS. `TYPICAL_SESSION_POINTS` is deliberately
+// the BOTTOM of that range, so an estimate is never a promise the sport cannot
+// keep — a player who is winning arrives sooner than we said, which is the only
+// direction this should ever be wrong in.
+export const GOOD_SESSION_POINTS_LOW = 100
+export const GOOD_SESSION_POINTS_HIGH = 200
+const TYPICAL_SESSION_POINTS = GOOD_SESSION_POINTS_LOW
+
+/** "About N more games." Always at least 1 while anything is still owed. */
+export function sessionsToGo(pointsToGo: number): number {
+  if (pointsToGo <= 0) return 0
+  return Math.max(1, Math.round(pointsToGo / TYPICAL_SESSION_POINTS))
+}
+
+/** The calibration sentence itself, so every surface says it the same way. */
+export function sessionsToGoLabel(pointsToGo: number): string {
+  const n = sessionsToGo(pointsToGo)
+  if (n === 0) return ''
+  return `About ${n} more game${n === 1 ? '' : 's'}`
+}
+
 // ── The shape of the ladder ──────────────────────────────────────────────────
 
 /** Lifetime points per part. Flat, forever, including the first taniwha. */

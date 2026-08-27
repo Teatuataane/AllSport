@@ -39,6 +39,9 @@ import {
   limbsHeld,
   partFor,
   CROWN_PART,
+  sessionsToGoLabel,
+  GOOD_SESSION_POINTS_LOW,
+  GOOD_SESSION_POINTS_HIGH,
   type Taniwha,
 } from '@/lib/taniwha'
 import { winsByDomain } from '@/lib/taniwhaAlerts'
@@ -230,6 +233,15 @@ export default function TaniwhaCard({
           <div style={{ height: 5, borderRadius: 3, background: rule, marginTop: 10, overflow: 'hidden' }}>
             <div style={{ width: `${nextPct}%`, height: '100%', borderRadius: 3, background: ink }} />
           </div>
+
+          {/* Points priced in games. Without this the whole ladder is a number
+              with no denominator — see the design review's headline finding. */}
+          {!bodyDone && (
+            <div style={{ marginTop: 8, fontSize: 11.5, color: ink, opacity: 0.62, lineHeight: 1.45 }}>
+              {sessionsToGoLabel(PART_POINTS - towardNext)} — a good session is worth{' '}
+              {GOOD_SESSION_POINTS_LOW}–{GOOD_SESSION_POINTS_HIGH} points.
+            </div>
+          )}
 
           {banked > 0 && bodyDone && (
             <div style={{
