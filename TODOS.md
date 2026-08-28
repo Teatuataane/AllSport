@@ -2,12 +2,16 @@
 
 ## ✅ Done
 
+- Applied `20260828192753` (Lunges replaces Toe Squat in the event_domains roster mirror) and `20260828192844` (choose_taniwha(NULL) = whanau) to production on 2026-08-29, from main after PR #98. Verified by querying the objects, not the ledger: 120 event_domains rows with 12 in every domain, Lunges present and Toe Squat gone, and pg_proc confirming the new function body and that anon is still not in its ACL. Zero budget breaches, zero wins orphaned by the swap.
+
+- Fixed `compute_event_placements` ranking ROWS rather than players (`20260828204652`). It counted a player once per submission, so `event_field_size` measured submissions instead of people, placements were skewed, and `player_event_wins` counted one win once per row — 328 winning rows against 151 true. Deduped to the best row per player per event before ranking, recomputed the whole history, and asserted the invariant at the end of the migration. Domain win counts dropped; no crown was revoked because none had been earned.
+
 - **Design review of the taniwha work, acted on** (2026-08-28, branch `claude/allsport-taniwha-review-71d18c`). Full report and reasoning in the review artifact; the headline was that **every taniwha surface priced progress in points and nothing said what a session was worth**, so the ladder had no denominator. Shipped: the calibration line (`sessionsToGo` in `lib/taniwha.ts`, on the card and the session-end takeover); the first-run dashboard the FirstRun canvas specified, replacing four zeros and an empty radar; `/leaderboard` rebuilt for phones (it needed 860px inside a 342px column, hiding **Season Pts — the column it sorts by** — behind an unsignalled scroll); the Taniwha column switched from crowns to **pieces**, which differentiate today where crowns read `0` on all 27 rows; the **field-of-three win rule** stated on `/taniwha` and `/prs` after being enforced-but-unexplained since launch; one word ("pieces") for the unit that had three; and the last Colours-era copy off the public pages. `/events` also regained a nav entry — the EVENTS tab is `/prs`, which had left the catalogue unreachable when logged in.
 
 - **Taniwha grading system live** (v0.6.0.0, applied and verified 2026-08-25). Both migrations pushed from `main` and confirmed by querying the objects with the public anon key rather than trusting `db push`:
   - `event_domains` **120 rows**, `player_taniwha` seeded for all **27 players**, **197 wins backfilled** from history, `results.event_placement` present.
   - The budget invariant — `SUM(body_parts) <= taniwha_body_budget(lifetime_points)` for every player — returns **zero breaches**. Nobody is building two taniwha. No guest row carries a placement.
-  - **The interesting part:** Tāne already holds three domains at or past 9 of 12 (Coordination 11, Calisthenics 10, Maximal Strength 9) and RGFell holds one, but **nobody has crown room** — everyone is under 10,000 lifetime points. The crowns are earned and waiting on points. That is the calibration working, not a bug: don't lower a threshold to "fix" it.
+  - **The interesting part:** **nobody has crown room** — everyone is under 10,000 lifetime points. The crowns are earned and waiting on points. That is the calibration working, not a bug: don't lower a threshold to "fix" it. *(The win counts originally recorded here — Tāne at Coordination 11, Calisthenics 10, Maximal Strength 9 — were inflated by the `compute_event_placements` row-vs-player bug and are corrected by `20260828204652`. The true figures are Coordination 9 for Tāne and nothing else at the threshold.)*
   - `/leaderboard` switched over on its own — column header reads TANIWHA, the Taniwha Key replaced the Colour Key, every player shows `0 · Whānau`.
 
 - **The v0.6.3.0 performance migration is applied and fully verified** (`20260827211610`, 2026-08-28). `close_expired_sessions()` now runs inside `leaderboard_page()`, so `/leaderboard` makes one round trip instead of two. Measured against prod: 298 ms sequential, 237 ms in parallel (the two requests contend), **172 ms as one call**.
@@ -134,20 +138,6 @@
 
 ## P1 — Do Next
 
-### Apply the two migrations from this pass, from `main`
-**What:** `20260828192753_lunges_replaces_toe_squat.sql` (re-seeds `event_domains` with Lunges in, Toe Squat out) and `20260828192844_choose_whanau_again.sql` (`choose_taniwha(NULL)` = whānau). Both written, neither applied.
-**Order:** either way is safe. The roster mirror only feeds domain crowns and nobody has crown room; the RPC keeps its signature, so code-first just surfaces the old `22023` in the picker's error box until it lands.
-**Verify by querying the objects, never the ledger:** `select count(*) from event_domains` → 120; `… where event_name='Lunges'` → 1 row, domain 5; `… where event_name='Toe Squat'` → 0 rows. Then, signed in: `select choose_taniwha(null);` succeeds and `player_taniwha` shows exactly one `is_building`.
-**First:** `ls supabase/migrations | cut -c1-14 | sort | uniq -d` — clean when written, but this branch may sit a while.
-**Effort:** S
-
-### `compute_event_placements` ranks ROWS, not players
-**What:** the ranking CTE in `20260824220633_event_placements.sql` does `RANK() OVER (PARTITION BY event_id, pool ORDER BY raw_score DESC)` over every result row, with no reduction to one row per player. A player who submits three times for one event occupies three slots.
-**Why it matters:** `event_field_size` counts SUBMISSIONS rather than people, and that field size is exactly what the `WIN_MIN_FIELD` ≥3 rule reads — so one player logging three rounds can manufacture the qualifying field a win needs. `event_placement` skews with it. Sport events are the worst case, because several rounds in one session is the normal way they are played.
-**Why it went unnoticed:** most events get one submission per player, so the bug only bites where extra rows are routine — and extra rows are also how effort points are earned, so it is invisible in the common path.
-**Not fixed deliberately:** correcting it re-prices historical `event_placement` and could retract wins already counted toward a domain crown. That is Tāne's call, not a silent fix.
-**Noticed:** session 35 audit, 2026-08-29
-**Effort:** M (a `DISTINCT ON (player_id, event_id)` in the CTE, plus a backfill and a decision about existing rows)
 
 ### Settle which migration file owns prod's `20260821000000` row
 **What:** two different files were written under version `20260821000000` — `leaderboard_rpc` (v0.5.11.0) and `privacy_tidyup` (v0.5.10.0). Only one row can exist per version, but the objects from BOTH exist in production, so one of them was applied by a route other than `db push`. `privacy_tidyup` has since been renumbered to `20260822000000`; `leaderboard_rpc` keeps `20260821000000`. Confirm the ledger row actually corresponds to `leaderboard_rpc`, and that `20260822000000` has since been applied and recorded.

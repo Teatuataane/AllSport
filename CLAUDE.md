@@ -509,11 +509,17 @@ for all 27 players, **197 wins backfilled**, `results.event_placement` present. 
 invariant (`SUM(body_parts) <= taniwha_body_budget(lifetime_points)`) returns **zero breaches**,
 nobody is building two taniwha, and no guest row carries a placement.
 
-**What the backfill revealed, and it is the design working:** Tāne already holds **three domains
-at or past 9 of 12** (Coordination 11, Calisthenics 10, Maximal Strength 9) and RGFell holds
-one — but **nobody has crown room**, because everyone is under 10,000 lifetime points. The
-crowns are earned and waiting on points. Points are the binding constraint, exactly as the
-calibration assumed. Do not "fix" this by lowering a threshold; it is the intended shape.
+**Those win counts were INFLATED and are corrected by `20260828204652` — see the block below.**
+The backfill originally read Tāne at three domains at or past 9 of 12 (Coordination 11,
+Calisthenics 10, Maximal Strength 9) with RGFell holding one. Every one of those numbers came
+from a ranking that counted a player once per SUBMISSION rather than once per player. The true
+figures are **Coordination 9 for Tāne and nothing else at the threshold**; RGFell's Coordination
+is 8. Do not quote the old numbers.
+
+**What still holds, and it is the design working:** **nobody has crown room**, because everyone
+is under 10,000 lifetime points. The crowns are earned and waiting on points. Points are the
+binding constraint, exactly as the calibration assumed. Do not "fix" this by lowering a
+threshold; it is the intended shape.
 
 - **Twelve taniwha, eleven parts each.** Te Taniwha ō te Whānau, one per domain, then
   **Te Kāhui** for holding all eleven. Parts in order: Pane (head), Tinana (body), Hiku (tail),
@@ -682,7 +688,80 @@ and must never produce half a creature. Whānau is drawn (11/11, verified by
 
 ---
 
+## compute_event_placements ranked ROWS, not players (August 2026)
+
+**A correctness bug present in every placement ever computed**, from
+`20260824220633` until `20260828204652` fixed it. The ranking CTE ran `RANK()`
+over every result ROW with no reduction to one row per player, so a player who
+scored an event more than once in a session sat in the field more than once —
+and scoring an event repeatedly is not an edge case, it is how effort points are
+earned and how sport events are normally played.
+
+Three consequences, all silent:
+
+1. **`event_field_size` counted SUBMISSIONS, not people.** That is the number
+   `WIN_MIN_FIELD >= 3` reads, so one player logging three rounds could
+   manufacture the qualifying field a win requires.
+2. **`event_placement` ranked a player against their own other rows**, pushing
+   everyone below them down the order.
+3. **`player_event_wins` does `COUNT(*)`** over rows with `event_placement = 1`,
+   so one win counted once per row — running progress toward the 9-of-12 domain
+   crown well ahead of reality.
+
+Measured against production before the fix was written: 1183 rows carried a
+placement, **227 player-events were double-placed**, **328 winning rows against
+151 true wins** (2.2x inflation), **147 rows sat in a field that only reached
+three because of duplicates**, and 153 placements changed.
+
+**THE CLIENT WAS ALREADY RIGHT.** `provisionalWins` in `lib/taniwhaAlerts.ts`
+takes the best score per `(player, event)` and counts distinct players for the
+field, and its comment says it "must agree exactly with
+`compute_event_placements()`". It never did. The fix makes the SQL match the
+client, not the reverse — the client's reading is what the sport means.
+
+The fix reduces to `DISTINCT ON (event_id, player_id)` ordered by
+`raw_score DESC, id` before ranking. Exactly one placed row per player per event
+per session is what keeps `player_event_wins`' `COUNT(*)` correct (one win per
+session, still counting repeats across DIFFERENT sessions) and what makes /prs
+average placement an average over players rather than over submissions — so
+neither the view nor any client query changed.
+
+**No crown was revoked**, because `player_taniwha` held zero crowns. Correcting
+before any crown could be banked on inflated wins was the only cheap moment this
+fix would ever have — crowns are append-only and never taken back. Domain win
+counts DID drop: Tāne went from three domains at or past nine wins to one.
+
+**A migration that rewrites derived data must assert its invariant at the end.**
+This one raises if any `(session, event, player)` still holds more than one
+placed row, so a dedupe that silently fails to take cannot report success.
+
 ## Roster, taniwha and coherency pass (August 2026 session 35)
+
+**BOTH MIGRATIONS APPLIED AND VERIFIED IN PRODUCTION, 2026-08-29**, from `main`
+after PR #98 merged, and checked by querying the objects rather than trusting
+`supabase migration list`: `event_domains` holds 120 rows with **exactly 12 in
+every one of the ten domains**, Lunges is present in domain 5 as `lunges`, Toe
+Squat returns zero rows, and `pg_proc` shows `choose_taniwha` carrying the NULL
+branch, the whanau mapping and the slug-based crowned guard, with the old
+`domain_number` guard gone and `proacl` granting `authenticated` and
+`service_role` but **not `anon`**. Budget invariant: **zero breaches** across all
+29 `player_taniwha` rows; nobody is building two; crowns held is still 0.
+
+**The roster swap orphaned no wins.** Nine wins across seven event names have no
+`event_domains` row, and all nine predate this change (Triple Jump, 400m Race,
+200m Carry and the rest of the session-27 removals). **Toe Squat contributes
+zero**, which is what the pre-flight check against prod predicted.
+
+**`supabase db query` defaults to the LOCAL database** and fails with
+`PgClient: Failed to connect` when Docker is not running. Pass `--linked` to
+reach production. This is the route to a real `pg_proc` check — the thing this
+file has been asking for since `20260827211610` and previously had to be done by
+hand in the SQL Editor.
+
+**A worktree is never CLI-linked** (`supabase/.temp/` is gitignored), so the push
+had to run from a worktree fast-forwarded to `main` with the main checkout's
+`supabase/.temp/` copied in. Do NOT run `db push` from the main checkout instead:
+its working tree may be on an older ref and would push a different set of files.
 
 Four requested changes plus a live audit of every public page. **The audit found
 more than the requested work did**, and most of it was Colours-era copy that
@@ -1406,7 +1485,7 @@ RLS: own + parent (family) + judge.
                                                #   nothing.
       20260822000000_privacy_tidyup.sql        # self-serve export/erasure, optional legal name, drops players.bodyweight_kg.
                                                #   RENUMBERED from 20260821000000 — see the collision note below.
-      20260828192753_lunges_replaces_toe_squat.sql # NOT YET APPLIED. Re-seeds event_domains IN FULL (120 rows,
+      20260828192753_lunges_replaces_toe_squat.sql # APPLIED 2026-08-29. Re-seeds event_domains IN FULL (120 rows,
                                                #   GENERATED from EVENTS and diffed against the previous seed) with
                                                #   Toe Squat out and Lunges in. It is now THE definition of the roster
                                                #   mirror, the way 20260816000000 is THE definition of players_public;
@@ -1414,13 +1493,30 @@ RLS: own + parent (family) + judge.
                                                #   No session_events sweep — Lunges is a different movement, not a
                                                #   rename. Code-first or migration-first are both safe: the events
                                                #   table only feeds domain crowns, and nobody has crown room yet.
-      20260828192844_choose_whanau_again.sql   # NOT YET APPLIED. choose_taniwha(NULL) now means whanau, so leaving
+      20260828192844_choose_whanau_again.sql   # APPLIED 2026-08-29. choose_taniwha(NULL) now means whanau, so leaving
                                                #   Te Taniwha o te Whanau stops being a one-way door. Also moves the
                                                #   already-crowned guard off domain_number onto the slug, because
                                                #   `domain_number = NULL` is never true and would have let a crowned
                                                #   whanau be rebuilt. Signature unchanged, so PostgREST resolution and
                                                #   the existing call site are untouched. Degrades safely either order:
                                                #   code-first just surfaces the old 22023 in the picker's error box.
+                                               #   VERIFIED IN PROD 2026-08-29 by querying pg_proc, not the ledger:
+                                               #   prosecdef=true, proacl has authenticated+service_role and NOT anon,
+                                               #   and prosrc carries the NULL branch, the whanau mapping and the
+                                               #   slug-based crowned guard, with the old domain_number guard ABSENT.
+                                               #   `supabase db query --linked` is the route — `db query` alone hits
+                                               #   the LOCAL database and fails with PgClient: Failed to connect.
+      20260828204652_fix_event_placement_dedupe.sql # compute_event_placements ranked ROWS, not
+                                               #   players — a player who scored an event twice sat in the field
+                                               #   twice, inflating event_field_size (the number WIN_MIN_FIELD
+                                               #   reads), skewing event_placement, and counting one win once per
+                                               #   row through player_event_wins' COUNT(*). Measured before the fix:
+                                               #   328 winning rows vs 151 true. DISTINCT ON (event_id, player_id)
+                                               #   ordered by raw_score DESC, id now picks one best row per player
+                                               #   before ranking, and the whole history is recomputed. Ends with an
+                                               #   assertion that no player-event holds two placed rows.
+                                               #   ⚠ REWRITES DERIVED DATA. Domain win counts drop; no crown is
+                                               #   revoked because none had been earned.
       # ── 20260813000003 needed `supabase db push --include-all`: its 13-Aug timestamp is older than the
       #    19-Aug migration already applied, and the CLI refuses out-of-order inserts without that flag.
       #
