@@ -72,8 +72,8 @@ const competitionData: Row[] = [
     who: 'Public, next to your display name.',
   },
   {
-    what: 'Placements, points and colours',
-    why: 'To run leaderboards and the colour ladder, and to report participation to funders in aggregate.',
+    what: 'Placements, points, taniwha and the colours earned before them',
+    why: 'To run leaderboards and the taniwha collection, and to report participation to funders in aggregate. Colours were the grading system until August 2026; the awards already earned are kept so your history stays intact.',
     who: 'Public.',
   },
   {
@@ -193,7 +193,7 @@ const rights = [
   },
   {
     title: 'Skip the wellbeing check-in',
-    body: 'The wellbeing check-in is entirely voluntary. Close it and nothing is recorded. It will not affect your scores, your colour or anything else.',
+    body: 'The wellbeing check-in is entirely voluntary. Close it and nothing is recorded. It will not affect your scores, your taniwha or anything else.',
   },
   {
     title: 'Choose what is public',

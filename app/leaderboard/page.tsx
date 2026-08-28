@@ -12,7 +12,7 @@ import {
   computePercentiles, strongestEvent, topDomain as pctTopDomain, eventPctLabel,
 } from '@/lib/percentile'
 import {
-  MAX_CROWNS, WIN_TARGET, EVENTS_PER_DOMAIN, BODY_PARTS_PER_TANIWHA,
+  MAX_CROWNS, WIN_TARGET, EVENTS_PER_DOMAIN, BODY_PARTS_PER_TANIWHA, PARTS_PER_TANIWHA,
   PART_POINTS, PEAK_POINTS as TANIWHA_PEAK_POINTS, TANIWHA,
   taniwhaBySlug, taniwhaOnDark, bodyPartBudget, shortTaniwhaName, type Taniwha,
 } from '@/lib/taniwha'
@@ -676,7 +676,7 @@ export default function Leaderboard() {
               <p style={{ color: 'var(--grey)', fontSize: '13px', lineHeight: 1.6, margin: 0 }}>
                 {(
                   <>
-                    <strong style={{ color: 'var(--white)' }}>Taniwha</strong> — how many you have crowned, out of {MAX_CROWNS}, and which one you are building now. Built from your <strong style={{ color: 'var(--white)' }}>lifetime</strong> points, not the season total in the points column, and never lost. See the key below.
+                    <strong style={{ color: 'var(--white)' }}>Taniwha</strong> — the pieces you hold on the taniwha you are building, out of {PARTS_PER_TANIWHA}, and which one it is. Once anyone holds a crown the column counts crowns instead, out of {MAX_CROWNS}. Either way it is built from your <strong style={{ color: 'var(--white)' }}>lifetime</strong> points, not the season total in the points column, and never lost. See the key below.
                   </>
                 )}
               </p>
