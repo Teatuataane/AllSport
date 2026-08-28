@@ -108,7 +108,7 @@ linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)
 | 2 | Calisthenics | 1 Leg Squat, Human Flag, Windshield Wipers, Planche, Back Lever, Iron Cross, Front Lever, Chin Hang, Climbing, Handstand, Headstand, L-Sit Hold |
 | 3 | Power | Kelly Snatch, 1A Snatch, Javelin, Shotput, Australian Football, Vertical Jump, Clean & Jerk, Snatch, Standing Broad Jump, High Jump, Arm Wrestling, Tug of War |
 | 4 | Speed | 100m Sprint, Tag, T-Race, Beach Flags, 200m Sprint, Touch Rugby, Repeat High Jump, Rats & Rabbits, Speed Chess, American Football, Capture the Flag, Kabaddi |
-| 5 | Anaerobic Endurance | Chinup Contest, Pushup Contest, Tibialis Curl, Finger Pushup, GHD Situp, Leg Ext Hold, Ab Rollout, Hamstring Curl, Sandbag to Shoulder, Wall Sit, Toe Lift, Toe Squat |
+| 5 | Anaerobic Endurance | Chinup Contest, Pushup Contest, Tibialis Curl, Finger Pushup, GHD Situp, Leg Ext Hold, Ab Rollout, Hamstring Curl, Sandbag to Shoulder, Wall Sit, Toe Lift, Lunges |
 | 6 | Aerobic Endurance | Burpee Broad Jump, Running, Cycling, Ski Erg, Row Erg, Breath Hold, Weighted Carry, Duck Walk, Bronco, Scooting, Wheelbarrow Push, Wheelbarrow Pull |
 | 7 | Flexibility | Rear Hand Clasp, Bridge, Forward Fold, Needle Pose, Forward Split, Middle Split, Standing Split, Foot Behind Head Pose, Shoulder Dislocate, Pancake, Side Bend, Full Bound Twist |
 | 8 | Body Awareness | Tae Kwon Do, Breakdancing, Trampolining, Jump Rope, Wrestling, Gymnastics, Balance Ball, SKATE, Fencing, Juggling, Foot Juggling, Slackline |
@@ -350,6 +350,7 @@ Full tier data defined in `lib/eventData.ts`. Summary:
 | Foot Behind Head | D1–D6 |
 | Weighted Carry | D1–D6 (5kg/10kg/25kg/50kg/80kg/100kg, all 200m) |
 | Sandbag to Shoulder | D1–D6 (5kg/10kg/25kg/50kg/80kg/100kg) |
+| Lunges | D1–D4 (Assisted Elevated / Elevated / Floor / Jumping) |
 | Leg Ext Hold | D1–D7 (Bodyweight/2kg/4kg/8kg/12kg/16kg/24kg) — hold, longer wins |
 | Wheelbarrow Push / Pull | D1–D6 (5kg/10kg/25kg/50kg/80kg/100kg, always 200m) — timed effort, faster wins |
 | Jump Rope | D1–D5 |
@@ -680,6 +681,116 @@ and must never produce half a creature. Whānau is drawn (11/11, verified by
 `node scripts/check-taniwha-art.mjs whanau`); the other eleven are not.
 
 ---
+
+## Roster, taniwha and coherency pass (August 2026 session 35)
+
+Four requested changes plus a live audit of every public page. **The audit found
+more than the requested work did**, and most of it was Colours-era copy that
+session 34's sweep had missed.
+
+**Lunges replaces Toe Squat**, and it is NOT a rename. `difficulty+reps`, four
+tiers, Anaerobic Endurance, slug `lunges`, so domain 5 still holds twelve. A
+squat on your toes and a lunge are different movements, so there is deliberately
+no `session_events` sweep and Toe Squat's rows stay orphaned — the OHP/Clean &
+Press rule. Consequence stated in the migration: Toe Squat wins stop counting
+toward the Anaerobic Endurance crown, because the crown asks for 9 of the
+domain's CURRENT twelve. Nobody has crown room, so this demotes no one.
+
+**D3 was renamed from "Lunges" to "Floor" against the brief**, because a tier
+name never repeats its event name — the rule that turned Human Flag's D6 into
+"Full Flag". Flagged to Tāne; a one-line revert if he wants his wording back.
+
+**`event_domains` is now re-seeded IN FULL by whichever migration changes the
+roster**, and `__tests__/taniwha.test.ts` reads the NEWEST file carrying the
+seed. Before this the drift test read the ORIGINAL migration by hunting for
+`taniwha_body_budget`, so a delta migration would have left the test asserting
+against a roster prod no longer had. Same rule as players_public: one file is
+the definition, and it is the latest one. The 120 rows are generated from
+`EVENTS` and diffed against the previous seed, never typed.
+
+**Leaving Te Taniwha o te Whānau was a one-way door.** `choose_taniwha` took a
+domain number 1–10, Whānau is the one taniwha whose `domain_number` is NULL
+(pinned by a CHECK), and `TaniwhaPicker` listed only the ten domains. So nothing
+could name Whānau, and a player who switched away watched their part-built
+Whānau sit there unreachable — the exact case the design says switching must
+support. NULL now means Whānau. Two things fell out of it:
+  · the already-crowned guard had to move off `domain_number` onto the slug,
+    because `domain_number = NULL` is never true and a crowned Whānau would have
+    walked straight through it and been rebuilt;
+  · the picker's `takenDomains.size >= 10` early return hid the WHOLE picker once
+    the ten domains were crowned, which is precisely the state a player returning
+    to Whānau is in.
+
+**Undrawn taniwha now borrow Whānau's art instead of filler geometry**, inked in
+their own colour so they still read as distinct creatures. Eleven of twelve are
+undrawn, so this is the normal path, not the fallback. The fallback resolves
+piece TEN through `partFor(artSource, …)`, not the taniwha being displayed —
+piece ten is the implement, and asking for Kaha's `barbell.png` inside Whānau's
+folder would 404 and silently drop a piece the player has earned. **Te Kāhui
+never borrows**: it is the assembly of the other eleven, not a creature drawn in
+pieces. Dropping a folder into `public/taniwha/{slug}/` retires the stand-in with
+no code change — the probe finds it on the next page load.
+
+### What the live audit found
+
+**Four more Colours-era survivors on public pages.** Session 34 fixed three and
+believed it was done. `/how-to-play` step 06 was still titled "Earn Your Colours"
+and said points "build your **annual total**" on a ladder "from Mā (White) to
+Taniwha (Black)" — a retired ladder AND a reset that has not happened since
+points went lifetime, on the page a newcomer reads to learn the sport. Step 05
+still said points stack "toward your **grade**", a name retired two systems ago.
+`/koha` said "Your **colour** is earned by playing" and offered merch "in your
+Colour". `/privacy` described the "colour ladder" — reworded to name both, since
+`colour_awards` genuinely still holds data and a privacy policy has to be
+accurate about what is stored rather than merely current.
+
+**The homepage overflowed its viewport by 55px on a phone and nobody could see
+it**, because `body { overflow-x: hidden }` clips the page. Cause: each of the
+twelve taniwha rows put a 210px fixed-width name beside a dot, a colour name and
+a discipline inside a ~327px column. The tell was the **fixed rainbow stripe
+measuring 430px** — a `position: fixed; left:0; right:0` element sizes to the
+initial containing block, so it silently stretched to the overflowing width and
+its green end was cut off the screen. **A clipped overflow is still a bug, and
+`overflow-x: hidden` is what hides it from you.** Rows wrap to two lines under
+640px now. Every public page re-measured at 375px: zero overflow.
+
+**`/how-to-play`'s effort table disagreed with the app on two of six rows** —
+"Hold for 2 minutes" is only true for TIERED holds (a plain hold is 80% of PR,
+changed in session 22), and it promised an extra match "vs any opponent" where
+the app requires a NEW one. Split into three accurate rows.
+
+**The `/leaderboard` legend described a column that no longer exists.** Session
+34 switched the Taniwha column from crowns to pieces and left the legend
+explaining crowns. It now describes both states, which is what the cell does.
+
+**"AllSport Kura Kaha" appeared on `/play` and `/register`** and is not the
+registered entity — `/privacy` correctly says Te Kura ō ngā Koha/Allsport
+Aotearoa. Removed rather than replaced, since a login footer is no place to
+assert a legal name.
+
+**The homepage advertised "100+" events** and "over one hundred events" while
+`/events` said 120 and the accordion beneath it said 12 × 10. Both now derive
+from `EVENTS.length`, which cannot drift.
+
+**One user-facing "limb" survived** the session-34 vocabulary pass, on the
+dashboard taniwha card ("This limb"). Internal identifiers stay `limb*` on
+purpose. And `limbsHeld`'s doc comment still described the NINE-part ladder two
+releases after the re-cut — the body was written against the constants and
+survived; the comment was not and did not.
+
+**Logged, not fixed, because they need Tāne:** `compute_event_placements` ranks
+ROWS not players (see TODOS.md — it inflates `event_field_size`, which is what
+the ≥3-player win rule reads); the Selwyn Winter Jam champions on `/schedule`
+disagree with this file on two of four divisions; and a player whose best is last
+in the field reads "Top 100%" as their *strongest* event.
+
+**2v2 / 5v5 was investigated and deliberately not built.** Team play already
+scores correctly by way of shared placement — a 5v5 writes five players on
+raw_score 2 and five on 0, tying 1st and 6th. The genuine gap is that a player's
+event score is their BEST row, so winning one match of five scores the same as
+winning all five (extra matches earn effort points, so playing more counts but
+winning more does not). Tāne's call was to keep the current system. Do not
+"fix" this without asking; it re-prices every historical sport result.
 
 ## Design review of the taniwha work (August 2026 session 34)
 
@@ -1295,6 +1406,21 @@ RLS: own + parent (family) + judge.
                                                #   nothing.
       20260822000000_privacy_tidyup.sql        # self-serve export/erasure, optional legal name, drops players.bodyweight_kg.
                                                #   RENUMBERED from 20260821000000 — see the collision note below.
+      20260828192753_lunges_replaces_toe_squat.sql # NOT YET APPLIED. Re-seeds event_domains IN FULL (120 rows,
+                                               #   GENERATED from EVENTS and diffed against the previous seed) with
+                                               #   Toe Squat out and Lunges in. It is now THE definition of the roster
+                                               #   mirror, the way 20260816000000 is THE definition of players_public;
+                                               #   __tests__/taniwha.test.ts reads the NEWEST file carrying the seed.
+                                               #   No session_events sweep — Lunges is a different movement, not a
+                                               #   rename. Code-first or migration-first are both safe: the events
+                                               #   table only feeds domain crowns, and nobody has crown room yet.
+      20260828192844_choose_whanau_again.sql   # NOT YET APPLIED. choose_taniwha(NULL) now means whanau, so leaving
+                                               #   Te Taniwha o te Whanau stops being a one-way door. Also moves the
+                                               #   already-crowned guard off domain_number onto the slug, because
+                                               #   `domain_number = NULL` is never true and would have let a crowned
+                                               #   whanau be rebuilt. Signature unchanged, so PostgREST resolution and
+                                               #   the existing call site are untouched. Degrades safely either order:
+                                               #   code-first just surfaces the old 22023 in the picker's error box.
       # ── 20260813000003 needed `supabase db push --include-all`: its 13-Aug timestamp is older than the
       #    19-Aug migration already applied, and the CLI refuses out-of-order inserts without that flag.
       #
@@ -1524,7 +1650,7 @@ real host is `evil.com`. `safeNext()` now rejects that plus the `//` and `/\` va
 ## Key Decisions
 
 - Koha only — no set fees
-- Tagline: Play EVERYTHING
+- Tagline: **One sport, every sport** — the canonical strapline, and the one the hero, the `<title>` and the footer all carry. It states the whole proposition: AllSport is not a sampler of ten sports, it is one sport that contains them all. (Was "Play EVERYTHING", which only ever lived in this file and was never rendered anywhere.)
 - Te reo Māori identity throughout
 - Taniwha = Black = black belt equivalent, and the top of CYCLE 1. The peak of the whole ladder is **Ngā Taniwha** (rung 19, 100,000)
 - **Colour points are LIFETIME (Aug 2026)** — never reset, never revoked. The seasonal `rankings` table still drives the /leaderboard ranking, so the board resets each January but the colour does not

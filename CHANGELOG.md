@@ -2,6 +2,26 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.6.5.0] - 2026-08-29
+
+### Added
+- **Lunges joins Anaerobic Endurance**, with four tiers to pick from: assisted elevated, elevated, floor, and jumping. Declare your tier, count both legs, and a higher tier always beats a lower one no matter the reps.
+
+### Changed
+- **The eleven taniwha nobody has drawn yet now look like taniwha.** Until their artwork exists they borrow the whānau taniwha's body, drawn in their own colour — so picking Te Tere or Te Kaha shows you a creature assembling piece by piece instead of the faint outline it used to. They will each get their own artwork; until then the piece they carry is a pair of hands rather than the bow or barbell they will end up with.
+- **How To Play tells you about taniwha, not colours.** The last step still said your points build an annual total and named a ladder from Mā to Taniwha — a system that was replaced, and a yearly reset that stopped happening when points went lifetime. It now explains the twelve taniwha, the piece every 1,000 points buys, and that the crown has to be earned.
+- **The effort tasks listed on How To Play match what the app actually asks of you.** Holds said two minutes when a plain hold wants 80% of your best, timed events were lumped in with holds, and an extra match said "any opponent" when it has to be a new one.
+- **The front page counts the events instead of rounding them.** It said "100+" while the events page said 120.
+
+### Fixed
+- **You can go back to Te Taniwha o te Whānau.** Switching away from it was a one-way door: the whānau taniwha is the only one that does not belong to a discipline, and the switcher only offered the ten disciplines, so once you left, the pieces you had already placed on it were stranded with no way to return. It is now first in the list, and the pieces waiting there are shown before you switch.
+- **The front page fits on a phone.** The list of twelve taniwha was about 55 pixels wider than a phone screen, which pushed the whole page out and cut the end off the rainbow stripe across the top. Each taniwha now wraps onto two lines.
+- **The leaderboard explains the column it is actually showing.** The key described crowns; the column has shown pieces since the last release.
+- **Sign-in and registration name the right organisation.** Two pages carried a name that is not ours.
+
+### Removed
+- **Toe Squat** leaves the roster, replaced by Lunges. Anaerobic Endurance still holds twelve events. Toe Squat scores you have already set stay in your history, but they do not carry over to Lunges — it is a different movement, and crediting one to the other would claim you had done something you had not.
+
 ## [0.6.4.0] - 2026-08-28
 
 ### Added
