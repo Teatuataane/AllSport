@@ -388,8 +388,20 @@ const ladderSql = (() => {
   return readFileSync(`${dir}/${f}`, 'utf8')
 })()
 
+// The roster mirror is re-seeded IN FULL by every migration that changes the
+// roster, so the newest file carrying the seed is the current definition —
+// exactly the pattern players_public uses. Reading the original migration
+// instead would test a roster two changes out of date.
+const rosterSql = (() => {
+  const dir = 'supabase/migrations'
+  const f = readdirSync(dir).sort().reverse()
+    .find(n => /INSERT INTO event_domains/i.test(readFileSync(`${dir}/${n}`, 'utf8')))
+  if (!f) throw new Error('event_domains seed migration not found')
+  return readFileSync(`${dir}/${f}`, 'utf8')
+})()
+
 describe('event_domains mirrors lib/eventData.ts', () => {
-  const seeded = [...migrationSql.matchAll(/^ {2}\('(.+?)', (\d+), '(.+?)'\)/gm)]
+  const seeded = [...rosterSql.matchAll(/^ {2}\('(.+?)', (\d+), '(.+?)'\)/gm)]
     .map(m => ({ name: m[1], domainNumber: Number(m[2]), slug: m[3] }))
 
   it('seeds every event, and only real events', () => {
@@ -413,9 +425,20 @@ describe('event_domains mirrors lib/eventData.ts', () => {
   })
 })
 
+// CREATE OR REPLACE means the newest file wins, so read that one rather than
+// the original — otherwise this asserts against a definition prod has replaced.
+const chooseSql = (() => {
+  const dir = 'supabase/migrations'
+  const f = readdirSync(dir).sort().reverse()
+    .find(n => /FUNCTION public\.choose_taniwha/i.test(readFileSync(`${dir}/${n}`, 'utf8')))
+  if (!f) throw new Error('choose_taniwha migration not found')
+  return readFileSync(`${dir}/${f}`, 'utf8')
+})()
+
 describe('choose_taniwha slug list mirrors DOMAIN_TANIWHA', () => {
+  const block = chooseSql.slice(chooseSql.indexOf('FUNCTION public.choose_taniwha'))
+
   it('maps every domain number to the same slug the module does', () => {
-    const block = migrationSql.slice(migrationSql.indexOf('FUNCTION public.choose_taniwha'))
     const pairs = [...block.matchAll(/\((\d+),\s*'([a-z-]+)'\)/g)]
       .map(m => ({ n: Number(m[1]), slug: m[2] }))
       .filter(x => x.n >= 1 && x.n <= 10)
@@ -423,6 +446,23 @@ describe('choose_taniwha slug list mirrors DOMAIN_TANIWHA', () => {
     for (const { n, slug } of pairs) {
       expect(taniwhaForDomain(n)?.slug, `domain ${n}`).toBe(slug)
     }
+  })
+
+  // Leaving Whānau used to be a one-way door: the RPC took a domain number,
+  // Whānau has no domain, so nothing could name it and TaniwhaPicker did not
+  // offer it. If NULL ever stops meaning Whānau again, that bug is back.
+  it('accepts NULL as Te Taniwha o te Whanau', () => {
+    expect(block).toMatch(/IF p_domain_number IS NULL THEN\s*\n\s*v_slug := 'whanau';/)
+    expect(WHANAU.slug).toBe('whanau')
+    expect(WHANAU.kind).not.toBe('domain')
+  })
+
+  // `domain_number = NULL` is never true, so the old guard would have waved a
+  // crowned Whanau straight through and let it be rebuilt.
+  it('guards "already crowned" on the slug, not the domain number', () => {
+    const guard = block.slice(block.indexOf('already crowned') - 400, block.indexOf('already crowned'))
+    expect(guard).toContain('taniwha_slug = v_slug')
+    expect(guard).not.toContain('domain_number = p_domain_number')
   })
 })
 
