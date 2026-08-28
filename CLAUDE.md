@@ -684,6 +684,32 @@ and must never produce half a creature. Whānau is drawn (11/11, verified by
 
 ## Roster, taniwha and coherency pass (August 2026 session 35)
 
+**BOTH MIGRATIONS APPLIED AND VERIFIED IN PRODUCTION, 2026-08-29**, from `main`
+after PR #98 merged, and checked by querying the objects rather than trusting
+`supabase migration list`: `event_domains` holds 120 rows with **exactly 12 in
+every one of the ten domains**, Lunges is present in domain 5 as `lunges`, Toe
+Squat returns zero rows, and `pg_proc` shows `choose_taniwha` carrying the NULL
+branch, the whanau mapping and the slug-based crowned guard, with the old
+`domain_number` guard gone and `proacl` granting `authenticated` and
+`service_role` but **not `anon`**. Budget invariant: **zero breaches** across all
+29 `player_taniwha` rows; nobody is building two; crowns held is still 0.
+
+**The roster swap orphaned no wins.** Nine wins across seven event names have no
+`event_domains` row, and all nine predate this change (Triple Jump, 400m Race,
+200m Carry and the rest of the session-27 removals). **Toe Squat contributes
+zero**, which is what the pre-flight check against prod predicted.
+
+**`supabase db query` defaults to the LOCAL database** and fails with
+`PgClient: Failed to connect` when Docker is not running. Pass `--linked` to
+reach production. This is the route to a real `pg_proc` check — the thing this
+file has been asking for since `20260827211610` and previously had to be done by
+hand in the SQL Editor.
+
+**A worktree is never CLI-linked** (`supabase/.temp/` is gitignored), so the push
+had to run from a worktree fast-forwarded to `main` with the main checkout's
+`supabase/.temp/` copied in. Do NOT run `db push` from the main checkout instead:
+its working tree may be on an older ref and would push a different set of files.
+
 Four requested changes plus a live audit of every public page. **The audit found
 more than the requested work did**, and most of it was Colours-era copy that
 session 34's sweep had missed.
@@ -1406,7 +1432,7 @@ RLS: own + parent (family) + judge.
                                                #   nothing.
       20260822000000_privacy_tidyup.sql        # self-serve export/erasure, optional legal name, drops players.bodyweight_kg.
                                                #   RENUMBERED from 20260821000000 — see the collision note below.
-      20260828192753_lunges_replaces_toe_squat.sql # NOT YET APPLIED. Re-seeds event_domains IN FULL (120 rows,
+      20260828192753_lunges_replaces_toe_squat.sql # APPLIED 2026-08-29. Re-seeds event_domains IN FULL (120 rows,
                                                #   GENERATED from EVENTS and diffed against the previous seed) with
                                                #   Toe Squat out and Lunges in. It is now THE definition of the roster
                                                #   mirror, the way 20260816000000 is THE definition of players_public;
@@ -1414,13 +1440,19 @@ RLS: own + parent (family) + judge.
                                                #   No session_events sweep — Lunges is a different movement, not a
                                                #   rename. Code-first or migration-first are both safe: the events
                                                #   table only feeds domain crowns, and nobody has crown room yet.
-      20260828192844_choose_whanau_again.sql   # NOT YET APPLIED. choose_taniwha(NULL) now means whanau, so leaving
+      20260828192844_choose_whanau_again.sql   # APPLIED 2026-08-29. choose_taniwha(NULL) now means whanau, so leaving
                                                #   Te Taniwha o te Whanau stops being a one-way door. Also moves the
                                                #   already-crowned guard off domain_number onto the slug, because
                                                #   `domain_number = NULL` is never true and would have let a crowned
                                                #   whanau be rebuilt. Signature unchanged, so PostgREST resolution and
                                                #   the existing call site are untouched. Degrades safely either order:
                                                #   code-first just surfaces the old 22023 in the picker's error box.
+                                               #   VERIFIED IN PROD 2026-08-29 by querying pg_proc, not the ledger:
+                                               #   prosecdef=true, proacl has authenticated+service_role and NOT anon,
+                                               #   and prosrc carries the NULL branch, the whanau mapping and the
+                                               #   slug-based crowned guard, with the old domain_number guard ABSENT.
+                                               #   `supabase db query --linked` is the route — `db query` alone hits
+                                               #   the LOCAL database and fails with PgClient: Failed to connect.
       # ── 20260813000003 needed `supabase db push --include-all`: its 13-Aug timestamp is older than the
       #    19-Aug migration already applied, and the CLI refuses out-of-order inserts without that flag.
       #

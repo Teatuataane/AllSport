@@ -2,6 +2,8 @@
 
 ## ✅ Done
 
+- Applied `20260828192753` (Lunges replaces Toe Squat in the event_domains roster mirror) and `20260828192844` (choose_taniwha(NULL) = whanau) to production on 2026-08-29, from main after PR #98. Verified by querying the objects, not the ledger: 120 event_domains rows with 12 in every domain, Lunges present and Toe Squat gone, and pg_proc confirming the new function body and that anon is still not in its ACL. Zero budget breaches, zero wins orphaned by the swap.
+
 - **Design review of the taniwha work, acted on** (2026-08-28, branch `claude/allsport-taniwha-review-71d18c`). Full report and reasoning in the review artifact; the headline was that **every taniwha surface priced progress in points and nothing said what a session was worth**, so the ladder had no denominator. Shipped: the calibration line (`sessionsToGo` in `lib/taniwha.ts`, on the card and the session-end takeover); the first-run dashboard the FirstRun canvas specified, replacing four zeros and an empty radar; `/leaderboard` rebuilt for phones (it needed 860px inside a 342px column, hiding **Season Pts — the column it sorts by** — behind an unsignalled scroll); the Taniwha column switched from crowns to **pieces**, which differentiate today where crowns read `0` on all 27 rows; the **field-of-three win rule** stated on `/taniwha` and `/prs` after being enforced-but-unexplained since launch; one word ("pieces") for the unit that had three; and the last Colours-era copy off the public pages. `/events` also regained a nav entry — the EVENTS tab is `/prs`, which had left the catalogue unreachable when logged in.
 
 - **Taniwha grading system live** (v0.6.0.0, applied and verified 2026-08-25). Both migrations pushed from `main` and confirmed by querying the objects with the public anon key rather than trusting `db push`:
@@ -133,13 +135,6 @@
 ---
 
 ## P1 — Do Next
-
-### Apply the two migrations from this pass, from `main`
-**What:** `20260828192753_lunges_replaces_toe_squat.sql` (re-seeds `event_domains` with Lunges in, Toe Squat out) and `20260828192844_choose_whanau_again.sql` (`choose_taniwha(NULL)` = whānau). Both written, neither applied.
-**Order:** either way is safe. The roster mirror only feeds domain crowns and nobody has crown room; the RPC keeps its signature, so code-first just surfaces the old `22023` in the picker's error box until it lands.
-**Verify by querying the objects, never the ledger:** `select count(*) from event_domains` → 120; `… where event_name='Lunges'` → 1 row, domain 5; `… where event_name='Toe Squat'` → 0 rows. Then, signed in: `select choose_taniwha(null);` succeeds and `player_taniwha` shows exactly one `is_building`.
-**First:** `ls supabase/migrations | cut -c1-14 | sort | uniq -d` — clean when written, but this branch may sit a while.
-**Effort:** S
 
 ### `compute_event_placements` ranks ROWS, not players
 **What:** the ranking CTE in `20260824220633_event_placements.sql` does `RANK() OVER (PARTITION BY event_id, pool ORDER BY raw_score DESC)` over every result row, with no reduction to one row per player. A player who submits three times for one event occupies three slots.
