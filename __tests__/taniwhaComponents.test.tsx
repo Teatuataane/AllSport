@@ -6,10 +6,15 @@
 // be disabled — so the assertions carry straight over to the taniwha versions.
 
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, screen, cleanup, fireEvent } from '@testing-library/react'
+import { render, screen, cleanup, fireEvent, act } from '@testing-library/react'
 import TaniwhaAlertBanner from '@/components/TaniwhaAlertBanner'
+import TaniwhaFigure from '@/components/TaniwhaFigure'
+import { TaniwhaPicker, type PlayerTaniwhaRow, type TaniwhaState } from '@/components/TaniwhaCard'
 import TaniwhaWatchlist from '@/components/TaniwhaWatchlist'
-import { taniwhaForDomain, KAHUI, WHANAU } from '@/lib/taniwha'
+import {
+  taniwhaForDomain, KAHUI, WHANAU, PARTS, IMPLEMENT_PART, partFor,
+  BODY_PARTS_PER_TANIWHA,
+} from '@/lib/taniwha'
 import type { TaniwhaAlert, TaniwhaWatchEntry } from '@/lib/taniwhaAlerts'
 
 afterEach(cleanup)
@@ -167,5 +172,238 @@ describe('TaniwhaWatchlist', () => {
   it('formats a four-figure gap with a thousands separator', () => {
     render(<TaniwhaWatchlist entries={[entry({ pointsToGo: 4200, sessionsAway: 28 })]} />)
     expect(screen.getByText(/4,200 pts/)).toBeTruthy()
+  })
+})
+
+
+// ─── TaniwhaFigure art fallback ───────────────────────────────────────────────
+// Eleven of the twelve taniwha are not drawn yet. Rather than showing them as
+// barely-visible filler geometry, they borrow Whānau's pieces and ink them in
+// their own colour. These tests pin the two things that are easy to get wrong
+// and invisible when you do.
+
+function maskUrls(container: HTMLElement): string[] {
+  return [...container.querySelectorAll<HTMLElement>('div[aria-hidden]')]
+    .map(el => el.style.getPropertyValue('mask-image') || el.style.getPropertyValue('-webkit-mask-image'))
+    .filter(Boolean)
+}
+
+describe('TaniwhaFigure art fallback', () => {
+  it('draws an undrawn taniwha with Whanau pieces, before any probe resolves', () => {
+    const { container } = render(
+      <TaniwhaFigure taniwha={TERE} limbsEarned={4} ink={TERE.accent} ghost="#111" ghostStroke="#222" />
+    )
+    const urls = maskUrls(container)
+    expect(urls.length).toBeGreaterThan(0)
+    // Every piece comes from Whanau's folder, never Te Tere's, which has no art.
+    for (const u of urls) {
+      expect(u).toContain(`/taniwha/${WHANAU.slug}/`)
+      expect(u).not.toContain(`/taniwha/${TERE.slug}/`)
+    }
+  })
+
+  it("borrows Whanau's implement, not the one the taniwha will eventually carry", () => {
+    const { container } = render(
+      <TaniwhaFigure taniwha={TERE} limbsEarned={10} ink={TERE.accent} ghost="#111" ghostStroke="#222" />
+    )
+    const urls = maskUrls(container).join(' ')
+    // Piece ten is the only piece that differs between taniwha. Asking for Te
+    // Tere's implement inside Whanau's folder would 404 and lose the piece.
+    expect(urls).toContain(`${partFor(WHANAU, IMPLEMENT_PART)!.slug}.png`)
+    expect(urls).not.toContain(`${partFor(TERE, IMPLEMENT_PART)!.slug}.png`)
+  })
+
+  it('inks the borrowed art in the taniwha own colour, so they stay distinct', () => {
+    const { container } = render(
+      <TaniwhaFigure taniwha={TERE} limbsEarned={3} ink={TERE.accent} ghost="#111" ghostStroke="#222" />
+    )
+    const painted = [...container.querySelectorAll<HTMLElement>('div[aria-hidden]')]
+    expect(painted.length).toBe(PARTS.length)
+    for (const el of painted) expect(el.style.backgroundColor).toBeTruthy()
+  })
+
+  it('leaves Te Kahui on geometry — it is an assembly, not a borrowed creature', () => {
+    const { container } = render(
+      <TaniwhaFigure taniwha={KAHUI} limbsEarned={5} ink={KAHUI.accent} ghost="#111" ghostStroke="#222" />
+    )
+    expect(maskUrls(container)).toHaveLength(0)
+    expect(container.querySelector('svg')).not.toBeNull()
+  })
+})
+
+// ─── TaniwhaPicker ────────────────────────────────────────────────────────────
+// Leaving Whanau used to be a one-way door: choose_taniwha took a domain number,
+// Whanau is the one taniwha without a domain, and this list offered only the
+// ten domains. A player who switched could never switch back, and their
+// part-built Whanau sat there with no way to resume it.
+
+const rpc = vi.fn<(...a: unknown[]) => Promise<{ error: { message: string } | null }>>(async () => ({ error: null }))
+vi.mock('@/lib/supabase-browser', () => ({
+  createClient: () => ({ rpc: (...a: unknown[]) => rpc(...(a as [])) }),
+}))
+
+function row(over: Partial<PlayerTaniwhaRow> & { taniwha_slug: string }): PlayerTaniwhaRow {
+  return {
+    domain_number: null, body_parts: 0, is_building: false,
+    crowned_at: null, crown_order: null, crowned_session_id: null, ...over,
+  }
+}
+
+function pickerState(rows: PlayerTaniwhaRow[]): TaniwhaState {
+  return { rows, winsByEvent: {}, points: 4_000 }
+}
+
+describe('TaniwhaPicker', () => {
+  it('offers Whanau alongside the ten domains', () => {
+    render(<TaniwhaPicker state={pickerState([row({ taniwha_slug: 'whanau' })])} points={4_000} onChanged={() => {}} />)
+    expect(screen.getByText(WHANAU.name)).toBeTruthy()
+    // Ten domains plus Whanau.
+    expect(screen.getAllByRole('button')).toHaveLength(11)
+  })
+
+  it('asks for Whanau with NULL, the only value that names it', async () => {
+    rpc.mockClear()
+    render(<TaniwhaPicker
+      state={pickerState([
+        row({ taniwha_slug: 'whanau', body_parts: 4 }),
+        row({ taniwha_slug: TERE.slug, domain_number: 4, is_building: true }),
+      ])}
+      points={4_000} onChanged={() => {}}
+    />)
+    fireEvent.click(screen.getByText(WHANAU.name))
+    expect(rpc).toHaveBeenCalledWith('choose_taniwha', { p_domain_number: null })
+  })
+
+  it('shows the pieces already banked on Whanau, so switching back looks safe', () => {
+    render(<TaniwhaPicker state={pickerState([row({ taniwha_slug: 'whanau', body_parts: 4 })])} points={4_000} onChanged={() => {}} />)
+    expect(screen.getByText(new RegExp(`4/${BODY_PARTS_PER_TANIWHA} pieces`))).toBeTruthy()
+  })
+
+  it('still renders while every domain is crowned but Whanau is not', () => {
+    const rows = [
+      row({ taniwha_slug: 'whanau' }),
+      ...Array.from({ length: 10 }, (_, i) => row({
+        taniwha_slug: taniwhaForDomain(i + 1)!.slug,
+        domain_number: i + 1,
+        crowned_at: '2026-08-01T00:00:00Z',
+        crown_order: i + 1,
+      })),
+    ]
+    // The old early-return counted the ten domains alone and hid the whole
+    // picker here — the exact state a player switching back is in.
+    render(<TaniwhaPicker state={pickerState(rows)} points={40_000} onChanged={() => {}} />)
+    expect(screen.getByText(WHANAU.name)).toBeTruthy()
+  })
+})
+
+// ─── TaniwhaFigure art probe (async) ─────────────────────────────────────────
+// The first-paint tests above only exercise the SYNCHRONOUS initial state. The
+// probe itself is what retires the stand-in when a taniwha is finally drawn, and
+// if it broke, every taniwha would render Whānau art forever — dropping in new
+// art would silently do nothing, which is exactly the failure class that has
+// cost this repo before (a CSS mask reads only alpha, so wrong-but-present art
+// still looks right).
+//
+// jsdom never loads images, so neither onload nor onerror fires on its own.
+// Driving them by hand is the only way to reach these branches.
+
+class FakeImage {
+  onload: (() => void) | null = null
+  onerror: (() => void) | null = null
+  private _src = ''
+  static last: FakeImage | null = null
+  set src(v: string) { this._src = v; FakeImage.last = this }
+  get src() { return this._src }
+}
+
+function withFakeImage<T>(fn: () => T): T {
+  const real = globalThis.Image
+  ;(globalThis as { Image: unknown }).Image = FakeImage
+  try { return fn() } finally { (globalThis as { Image: unknown }).Image = real }
+}
+
+describe('TaniwhaFigure art probe', () => {
+  it('renders a taniwha OWN art once the probe succeeds', () => {
+    // kaha is used by no other test here, so the module-scope probe cache
+    // cannot pre-answer for it.
+    const KAHA = taniwhaForDomain(1)!
+    const { container } = withFakeImage(() => {
+      const r = render(
+        <TaniwhaFigure taniwha={KAHA} limbsEarned={3} ink={KAHA.accent} ghost="#111" ghostStroke="#222" />
+      )
+      act(() => { FakeImage.last?.onload?.() })
+      return r
+    })
+    const urls = maskUrls(container).join(' ')
+    expect(urls).toContain(`/taniwha/${KAHA.slug}/`)
+    expect(urls).not.toContain(`/taniwha/${WHANAU.slug}/`)
+  })
+
+  it('falls back to Whanau art when the probe fails', () => {
+    const KAHA_TINANA = taniwhaForDomain(2)!
+    const { container } = withFakeImage(() => {
+      const r = render(
+        <TaniwhaFigure taniwha={KAHA_TINANA} limbsEarned={3} ink={KAHA_TINANA.accent} ghost="#111" ghostStroke="#222" />
+      )
+      act(() => { FakeImage.last?.onerror?.() })
+      return r
+    })
+    const urls = maskUrls(container).join(' ')
+    expect(urls).toContain(`/taniwha/${WHANAU.slug}/`)
+    expect(urls).not.toContain(`/taniwha/${KAHA_TINANA.slug}/`)
+  })
+
+  it('drops Whanau itself to geometry rather than borrowing from itself', () => {
+    // The infinite-regress guard. Without it, whānau with missing art would ask
+    // for whānau art forever and render an empty frame.
+    const { container } = withFakeImage(() => {
+      const r = render(
+        <TaniwhaFigure taniwha={WHANAU} limbsEarned={3} ink={WHANAU.accent} ghost="#111" ghostStroke="#222" />
+      )
+      act(() => { FakeImage.last?.onerror?.() })
+      return r
+    })
+    expect(maskUrls(container)).toHaveLength(0)
+    expect(container.querySelector('svg')).not.toBeNull()
+  })
+
+  it('remembers a probe result, so it costs one image load per taniwha per page', () => {
+    const HIKO = taniwhaForDomain(3)!
+    withFakeImage(() => {
+      render(<TaniwhaFigure taniwha={HIKO} limbsEarned={1} ink={HIKO.accent} ghost="#111" ghostStroke="#222" />)
+      act(() => { FakeImage.last?.onload?.() })
+    })
+    cleanup()
+    FakeImage.last = null
+    // Second mount: the cached answer must settle it with no new Image at all.
+    const { container } = withFakeImage(() => render(
+      <TaniwhaFigure taniwha={HIKO} limbsEarned={1} ink={HIKO.accent} ghost="#111" ghostStroke="#222" />
+    ))
+    expect(FakeImage.last).toBeNull()
+    expect(maskUrls(container).join(' ')).toContain(`/taniwha/${HIKO.slug}/`)
+  })
+})
+
+describe('TaniwhaPicker failure and empty states', () => {
+  it('shows the server refusal instead of failing silently', async () => {
+    // choose_taniwha refuses mid-session (55006) so a crown condition cannot
+    // move under a kaiwhakawa about to announce it. Players WILL hit this, and
+    // without the message the row just looks dead.
+    rpc.mockClear()
+    rpc.mockResolvedValueOnce({ error: { message: 'choose_taniwha: not while a session is live — finish the game first' } })
+    render(<TaniwhaPicker state={pickerState([row({ taniwha_slug: 'whanau' })])} points={4_000} onChanged={() => {}} />)
+    fireEvent.click(screen.getByText(WHANAU.name))
+    expect(await screen.findByText(/not while a session is live/)).toBeTruthy()
+  })
+
+  it('renders for a player with no taniwha rows at all', () => {
+    // A brand-new account before the seed lands. rows.find returns undefined
+    // the whole way down, so every optional chain has to hold.
+    const { container } = render(<TaniwhaPicker state={pickerState([])} points={0} onChanged={() => {}} />)
+    expect(screen.getByText(WHANAU.name)).toBeTruthy()
+    expect(container.querySelectorAll('button')).toHaveLength(11)
+    // No row means no piece COUNT on any subtitle (the explainer prose above
+    // legitimately contains the word "pieces").
+    expect(screen.queryByText(new RegExp(`\\d+/${BODY_PARTS_PER_TANIWHA} pieces`))).toBeNull()
   })
 })

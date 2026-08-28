@@ -74,6 +74,20 @@ export default function Home() {
         .lp-pill { font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; padding: 4px 10px; border-radius: 3px; background: #1a1a1a; color: #888; border: 1px solid #242424; }
         .lp-rank { display: flex; align-items: center; gap: 18px; padding: 14px 20px; border: 1px solid #1a1a1a; background: #0d0d0d; border-radius: 6px; transition: background 0.2s, transform 0.2s; }
         .lp-rank:hover { background: #141414; transform: translateX(4px); }
+        .lp-rank-name { min-width: 210px; }
+        /* On a phone the row is dot + a 210px name + colour + condition inside a
+           ~327px column, so every one of the twelve overflowed. Nobody saw it
+           because body{overflow-x:hidden} clips the page — which also stretched
+           the fixed rainbow stripe to the overflowing width and cut its green
+           end off. Wrap to two lines instead: name on top, colour and condition
+           beneath it. */
+        /* 640, not the 768 the nav and .lb-* boundaries use: this is a row
+           that stops fitting, not a switch between layout modes. The rows fit
+           down to about 510px, so 640 wraps slightly early and never late. */
+        @media (max-width: 640px) {
+          .lp-rank { flex-wrap: wrap; gap: 4px 10px; padding: 12px 14px; }
+          .lp-rank-name { min-width: 0; flex: 1 1 100%; font-size: 17px; }
+        }
         .lp-rainbow-line { height: 4px; background: ${RAINBOW}; border-radius: 2px; }
       `}</style>
 
@@ -118,7 +132,7 @@ export default function Home() {
                   <div style={{ fontFamily: 'var(--font-label)', fontSize: '12px', letterSpacing: '0.18em', textTransform: 'uppercase', color: '#666', marginTop: '4px' }}>Disciplines</div>
                 </div>
                 <div style={{ padding: '24px 40px 0 0', marginRight: '40px', borderRight: '1px solid #1e1e1e' }}>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '54px', lineHeight: 1, background: 'linear-gradient(90deg,#4DB26E,#2371BB)', WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>100+</div>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '54px', lineHeight: 1, background: 'linear-gradient(90deg,#4DB26E,#2371BB)', WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{EVENTS.length}</div>
                   <div style={{ fontFamily: 'var(--font-label)', fontSize: '12px', letterSpacing: '0.18em', textTransform: 'uppercase', color: '#666', marginTop: '4px' }}>Events</div>
                 </div>
                 <div style={{ padding: '24px 0 0 0' }}>
@@ -163,7 +177,7 @@ export default function Home() {
                 Every sport you&apos;ve played tested only a fraction of you. Running tests speed, not strength. Gymnastics tests control, not hand-eye. <strong style={{ color: '#fff' }}>AllSport tests all of you — at once.</strong>
               </p>
               <p style={{ color: '#888', fontSize: '15px', lineHeight: 1.8, marginBottom: '24px' }}>
-                Ten domains, drawn from over one hundred events. One event per domain, chosen fresh each session. The same system that challenges an elite competitor rebuilds someone returning from injury. That&apos;s the design.
+                Ten domains, {EVENTS.length} events. One event per domain, chosen fresh each session. The same system that challenges an elite competitor rebuilds someone returning from injury. That&apos;s the design.
               </p>
 
               <div style={{ display: 'flex', gap: '36px', flexWrap: 'wrap', padding: '22px 0 6px', borderTop: '1px solid #1e1e1e', marginBottom: '28px' }}>
@@ -230,7 +244,7 @@ export default function Home() {
                     backgroundImage: r.accent.startsWith('linear-gradient') ? r.accent : undefined,
                     border: r.inverted ? '1px solid #555' : 'none',
                   }} />
-                  <span style={{ fontFamily: 'var(--font-display)', fontSize: '19px', minWidth: '210px', letterSpacing: '0.04em', color: taniwhaOnDark(r) }}>
+                  <span className="lp-rank-name" style={{ fontFamily: 'var(--font-display)', fontSize: '19px', letterSpacing: '0.04em', color: taniwhaOnDark(r) }}>
                     {r.name}
                   </span>
                   <span style={{ fontFamily: 'var(--font-label)', fontSize: '12px', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#555' }}>

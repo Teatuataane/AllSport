@@ -134,6 +134,21 @@
 
 ## P1 — Do Next
 
+### Apply the two migrations from this pass, from `main`
+**What:** `20260828192753_lunges_replaces_toe_squat.sql` (re-seeds `event_domains` with Lunges in, Toe Squat out) and `20260828192844_choose_whanau_again.sql` (`choose_taniwha(NULL)` = whānau). Both written, neither applied.
+**Order:** either way is safe. The roster mirror only feeds domain crowns and nobody has crown room; the RPC keeps its signature, so code-first just surfaces the old `22023` in the picker's error box until it lands.
+**Verify by querying the objects, never the ledger:** `select count(*) from event_domains` → 120; `… where event_name='Lunges'` → 1 row, domain 5; `… where event_name='Toe Squat'` → 0 rows. Then, signed in: `select choose_taniwha(null);` succeeds and `player_taniwha` shows exactly one `is_building`.
+**First:** `ls supabase/migrations | cut -c1-14 | sort | uniq -d` — clean when written, but this branch may sit a while.
+**Effort:** S
+
+### `compute_event_placements` ranks ROWS, not players
+**What:** the ranking CTE in `20260824220633_event_placements.sql` does `RANK() OVER (PARTITION BY event_id, pool ORDER BY raw_score DESC)` over every result row, with no reduction to one row per player. A player who submits three times for one event occupies three slots.
+**Why it matters:** `event_field_size` counts SUBMISSIONS rather than people, and that field size is exactly what the `WIN_MIN_FIELD` ≥3 rule reads — so one player logging three rounds can manufacture the qualifying field a win needs. `event_placement` skews with it. Sport events are the worst case, because several rounds in one session is the normal way they are played.
+**Why it went unnoticed:** most events get one submission per player, so the bug only bites where extra rows are routine — and extra rows are also how effort points are earned, so it is invisible in the common path.
+**Not fixed deliberately:** correcting it re-prices historical `event_placement` and could retract wins already counted toward a domain crown. That is Tāne's call, not a silent fix.
+**Noticed:** session 35 audit, 2026-08-29
+**Effort:** M (a `DISTINCT ON (player_id, event_id)` in the CTE, plus a backfill and a decision about existing rows)
+
 ### Settle which migration file owns prod's `20260821000000` row
 **What:** two different files were written under version `20260821000000` — `leaderboard_rpc` (v0.5.11.0) and `privacy_tidyup` (v0.5.10.0). Only one row can exist per version, but the objects from BOTH exist in production, so one of them was applied by a route other than `db push`. `privacy_tidyup` has since been renumbered to `20260822000000`; `leaderboard_rpc` keeps `20260821000000`. Confirm the ledger row actually corresponds to `leaderboard_rpc`, and that `20260822000000` has since been applied and recorded.
 **Why it matters:** nothing is broken today — `leaderboard_page`, `stats_bundle` and `delete_my_account` all exist and are verified. The risk is a `supabase db reset` or any rebuild-from-migrations, where the recorded history would replay something different from what actually shaped production.
@@ -177,21 +192,23 @@
 **Noticed:** /ship v0.6.0.0, 2026-08-25; first one landed v0.6.1.0, 2026-08-26
 **Effort:** M (art, no code) — about 11/12 remaining
 **Draw them in the order players will actually meet them** (design review, 2026-08-28): the
-backfill set everyone building Whānau, which IS drawn, so today's players mostly see real art
-and the filler geometry is nearly invisible. That protection ends the first time anyone uses
-the picker. The domains real players are closest to crowning are the ones they will switch to —
-Coordination, Calisthenics and Maximal Strength are already at 9–11 of 12 wins for Tāne, and
-RGFell holds one — so `ruruku`, `kaha-tinana` and `kaha` cover most plausible switches for the
-next few months. At 150px the filler reads as abstract polygons rather than a creature, and at
-the 96px and 74px sizes it reads as nothing.
+domains real players are closest to crowning are the ones they will switch to — Coordination,
+Calisthenics and Maximal Strength are already at 9–11 of 12 wins for Tāne, and RGFell holds one
+— so `ruruku`, `kaha-tinana` and `kaha` cover most plausible switches for the next few months.
+**Less urgent since session 35, but not less wanted.** An undrawn taniwha no longer falls back
+to filler geometry; it borrows Whānau's eleven pieces, inked in its own colour, so it reads as
+a real creature at every size. What it does NOT get is its own identity: eleven of the twelve
+currently share one silhouette and differ only in colour, and the borrowed piece ten is Whānau's
+hands rather than the barbell or bow that taniwha is supposed to carry. The filler geometry is
+now only reachable if Whānau's own art goes missing, and for Te Kāhui, which never borrows.
 
 ### Component-test infrastructure — supabase mocking strategy
 **What is now done:** `npm install` (v0.6.0.1) finally installed `@testing-library/react` and `jsdom`, which were declared but missing — the component test had been permanently red and React components had zero coverage. `__tests__/taniwhaComponents.test.tsx` now covers `TaniwhaAlertBanner` and `TaniwhaWatchlist` with 15 tests.
 **What is still untestable:** anything that fetches — the dashboard taniwha card and its choose/switch picker, the profile badge, the leaderboard column, `/prs`, the session-end takeover. All need a decision on how to mock `supabase-browser` before they can be tested at all. This is a project-wide gap that predates the taniwha work by the whole life of the repo.
 **Half of this is now settled (v0.6.3.0).** `__tests__/navbarAuthGate.test.tsx` proves the `vi.mock('@/lib/supabase-browser')` route for the AUTH surface — it mocks `createClient` to return a fake `auth` with `getSession`/`onAuthStateChange`, and drives the whole cookie-gate contract off it, including the post-login `router.push` case and a failed code-split chunk. Copy that file's mock block as the starting point.
-**What that leaves:** the chainable query-builder fake for `.from().select().eq()`, which is what the dashboard card, `/prs` and the session-end takeover actually need. The auth mock does not help them.
-**Suggested for the rest:** extend that mock with a small chainable query-builder fake, or MSW at the PostgREST layer.
-**Sharpest reason to do it:** the taniwha card's choose-and-switch flow calls an RPC that writes permanent, never-revoked progression. It is the highest-consequence untested path in the app.
+**The RPC surface is now settled too (session 35).** `TaniwhaPicker` is covered in `__tests__/taniwhaComponents.test.tsx` with the same `vi.mock('@/lib/supabase-browser')` route, mocking `rpc` alone — which is enough because the picker takes its data as props and only WRITES through Supabase. Four tests, including the two that pin the whānau one-way-door fix. So the previously "sharpest reason to do it" — the choose/switch flow writing permanent, never-revoked progression untested — is closed.
+**What that leaves:** the chainable query-builder fake for `.from().select().eq()`, which is what components that READ need — the dashboard card's `loadTaniwhaState`, `/prs` and the session-end takeover. Neither the auth mock nor the rpc mock helps them.
+**Suggested for the rest:** extend the mock with a small chainable query-builder fake, or MSW at the PostgREST layer.
 **Noticed:** v0.5.4.0 coverage gate; half-closed v0.6.0.1
 **Effort:** M
 
@@ -238,6 +255,25 @@ the 96px and 74px sizes it reads as nothing.
 ---
 
 ## P2 — Soon
+
+### `/schedule` and CLAUDE.md disagree on the Selwyn Winter Jam champions
+**What:** the page credits Women's to Meredith alone and Masters Women to Tarsh. CLAUDE.md (session 22) records Women's as Meredith **and Clairebear, shared 1st**, and Masters Women as **Jing**. Two of four divisions differ.
+**Why it matters:** it is a public results record with someone's name on it, and one of the two is wrong.
+**How to settle it:** the Jam is session `e032cb24-…` (stored 2026-07-03 by the old UTC date bug; the page correctly shows Saturday 4 July). Open `/games/e032cb24-…` and read the real division standings, then correct whichever source is wrong.
+**Noticed:** session 35 audit, 2026-08-29
+**Effort:** S
+
+### A player's strongest event can read "Top 100%"
+**What:** on `/leaderboard`, a player beaten by everyone in the pool shows `Top 100%` — and because it is their TOP domain and TOP event, that is presented as their best.
+**Why it matters:** the label is arithmetically right and reads as an insult. "Top 100%" in the strongest-event column is the least encouraging thing on a page a beginner will read about themselves.
+**Options:** a floor label ("Still climbing", "No wins yet"), or suppress the percentage below some threshold and show coverage instead. Copy call, not a bug.
+**Noticed:** session 35 audit, 2026-08-29 (Amanda, 2 games)
+**Effort:** S
+
+### Lunges has no icon
+**What:** `public/event-icons/lunges.png` does not exist, so Lunges falls back to the 🦵 emoji on `/prs` and in the live session. `toe-balance.png` is now an orphan (harmless — nine others already are).
+**Reminder:** the filename must be the exact slug, or it silently falls back to emoji.
+**Effort:** S (one Canva export)
 
 ### Fold lifetime points into `leaderboard_page()` (needs a migration)
 **What:** The board's Taniwha column shows PIECES, because nobody has a crown yet and a

@@ -435,12 +435,16 @@ export function progressToNextSlot(points: number): number {
 }
 
 /**
- * Limbs held on one taniwha, counting the crown as the tenth.
+ * Pieces held on one taniwha, counting the crown as the eleventh.
  *
- * `body_parts` maxes at 9 because the crown is not bought with points, so a
- * crowned taniwha STORES 9 and must DISPLAY 10. Getting this wrong shows a
- * finished taniwha as "9 of 10" forever, which is the kind of off-by-one nobody
- * reports because it looks deliberate.
+ * `body_parts` maxes at BODY_PARTS_PER_TANIWHA (ten) because the crown is not
+ * bought with points, so a crowned taniwha STORES 10 and must DISPLAY 11.
+ * Getting this wrong shows a finished taniwha as "10 of 11" forever, which is
+ * the kind of off-by-one nobody reports because it looks deliberate.
+ *
+ * Written against the constants rather than literals, which is why the body of
+ * this function survived the ten-parts re-cut unaltered while this comment did
+ * not — it described the nine-part ladder for two releases after it was gone.
  */
 export function limbsHeld(
   row: { body_parts: number; crowned_at: string | null } | null | undefined,

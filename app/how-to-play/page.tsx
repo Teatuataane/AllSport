@@ -113,19 +113,21 @@ const steps = [
   {
     number: '05',
     title: 'Get Placed',
-    desc: 'In each event, players are ranked by their result. Your placement in each event (1st, 2nd, 3rd...) is recorded. Lowest total placement across all 10 events wins. Points are awarded based on placement, and stack across sessions toward your grade.',
+    desc: 'In each event, players are ranked by their result. Your placement in each event (1st, 2nd, 3rd...) is recorded. Lowest total placement across all 10 events wins. Points are awarded based on placement, and every point you have ever scored counts toward your taniwha.',
   },
   {
     number: '06',
-    title: 'Earn Your Colours',
-    desc: 'Your session points build your annual total. From Mā (White) all the way to Taniwha (Black) — the AllSport equivalent of a black belt.',
+    title: 'Build Your Taniwha',
+    desc: 'There are twelve taniwha, each built from eleven pieces. Every 1,000 points you have ever scored adds a piece — those points never reset. The crown has to be earned: win 9 of a discipline’s 12 events, or bring someone new into the sport.',
   },
 ]
 
 const effortRules = [
   { label: 'Strength events', rule: '5 reps at 80% of your PR weight' },
-  { label: 'Hold / timed events', rule: 'Hold for 2 minutes (or at target difficulty)' },
-  { label: 'Sport / match events', rule: 'Play an extra match vs any opponent' },
+  { label: 'Hold events', rule: 'Hold for 80% of your PR time or longer' },
+  { label: 'Tiered holds', rule: 'Hold one tier down for 2 minutes' },
+  { label: 'Timed events', rule: 'Complete it in 80% of your PR pace or faster' },
+  { label: 'Sport / match events', rule: 'Play an extra match vs a new opponent' },
   { label: 'Sprint events', rule: 'Each sprint within 80% of PR pace' },
   { label: 'Distance events', rule: 'Each attempt ≥80% of PR distance' },
   { label: 'Score events (Golf/Disc Golf)', rule: 'Complete an additional 4-hole round' },

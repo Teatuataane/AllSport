@@ -247,7 +247,7 @@ function RegisterInner() {
         <h1 style={{ fontSize: '44px', marginBottom: '2px' }}>
           REGIS<span style={{ color: 'var(--red)' }}>TER</span>
         </h1>
-        <p style={{ color: 'var(--grey)', fontSize: '14px' }}>Join AllSport Kura Kaha — koha only, everyone welcome</p>
+        <p style={{ color: 'var(--grey)', fontSize: '14px' }}>Join AllSport — koha only, everyone welcome</p>
         <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
           {[1, 2, 3].map(s => (
             <div key={s} style={{ flex: 1, height: '4px', borderRadius: '2px', background: step >= s ? 'var(--rainbow)' : '#222' }} />

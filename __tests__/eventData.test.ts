@@ -149,7 +149,6 @@ describe('getEventByName', () => {
     ['Finger Pushup', 'finger-push-up'],
     ['Hamstring Curl', 'hamstring-curl'],
     ['Foot Behind Head Pose', 'foot-behind-head'],
-    ['Toe Squat', 'toe-balance'],
     ['Leg Ext Hold', 'leg-extension'],
   ])('renamed %s keeps slug %s', (name, slug) => {
     const e = getEventByName(name)
@@ -161,7 +160,6 @@ describe('getEventByName', () => {
     ['Headstand', 'Calisthenics', 2],
     ['L-Sit Hold', 'Calisthenics', 2],
     ['Toe Lift', 'Anaerobic Endurance', 5],
-    ['Toe Squat', 'Anaerobic Endurance', 5],
     ['American Football', 'Speed', 4],
   ])('moved %s now sits in %s', (name, domain, domainNumber) => {
     const e = getEventByName(name)
@@ -183,8 +181,26 @@ describe('getEventByName', () => {
   it.each([
     'Reverse Hyper', 'Triple Jump', '400m Race', '50m Sprint',
     'Football Dribble', 'Hockey Dribble', 'Walking', 'Backwards Walk', 'Airsoft',
+    // Replaced by Lunges, August 2026. A different movement, so its history is
+    // deliberately NOT swept onto the new slug — see the Lunges test below.
+    'Toe Squat',
   ])('removed event %s is gone from the roster', (name) => {
     expect(getEventByName(name)).toBeUndefined()
+  })
+
+  it('Lunges replaced Toe Squat without inheriting its slug', () => {
+    const e = getEventByName('Lunges')!
+    expect(e.slug).toBe('lunges')
+    // The whole point: a squat on your toes and a lunge are different
+    // movements, so reusing `toe-balance` would credit every Toe Squat score
+    // ever set to a lift nobody did. Same rule that kept OHP off Clean & Press.
+    expect(e.slug).not.toBe('toe-balance')
+    expect(e.domain).toBe('Anaerobic Endurance')
+    expect(e.domainNumber).toBe(5)
+    expect(e.inputMode).toBe('difficulty+reps')
+    expect(e.difficultyTiers).toHaveLength(4)
+    expect(e.howToPerform).not.toContain('coming soon')
+    expect(e.rules).not.toContain('coming soon')
   })
 
   it('Leg Ext Hold is a tiered hold, not a strength lift', () => {

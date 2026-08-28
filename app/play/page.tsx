@@ -171,7 +171,7 @@ function PlayPageInner() {
         </div>
 
         <p style={{ textAlign: 'center', color: '#555', fontSize: '12px', marginTop: '20px' }}>
-          AllSport Kura Kaha · Ōtautahi, Aotearoa
+          AllSport · Ōtautahi, Aotearoa
         </p>
       </div>
     </div>

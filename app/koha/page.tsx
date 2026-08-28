@@ -50,7 +50,7 @@ const tiers = [
     amount: '>$2,000',
     referrals: '25 referrals',
     reward: 'Clothing Stack',
-    desc: '$2,000 worth of AllSport merch — your choice of hoodies, shirts, or any combination. In your Colour.',
+    desc: '$2,000 worth of AllSport merch — your choice of hoodies, shirts, or any combination. In the colours of the taniwha you are building.',
     color: 'var(--pink)',
     referralPath: true,
   },
@@ -93,7 +93,7 @@ const kohaFacts = [
   'AllSport is a community-led charitable initiative',
   'IRD 33% tax rebate applies to all koha contributions',
   'Koha acknowledgements range from the supporters wall to personal coaching',
-  'Your colour is earned by playing — not by giving',
+  'Your taniwha is earned by playing — not by giving',
   'We collaborate with local sports clubs so more people benefit from more sport',
 ]
 

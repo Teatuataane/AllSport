@@ -28,6 +28,7 @@ import {
   BODY_PARTS_PER_TANIWHA,
   PARTS_PER_TANIWHA,
   WIN_TARGET,
+  WHANAU_REFERRALS,
   WHANAU,
   taniwhaBySlug,
   taniwhaForDomain,
@@ -225,7 +226,7 @@ export default function TaniwhaCard({
             marginTop: 14, paddingTop: 14, borderTop: `1px solid ${rule}`,
           }}>
             <Figure ink={ink} label="This taniwha" value={fmt(pointsHere)} />
-            <Figure ink={ink} label="This limb"
+            <Figure ink={ink} label="This piece"
                     value={`${fmt(towardNext)}`} suffix={`/${fmt(PART_POINTS)}`} />
             <Figure ink={ink} label="All time" value={fmt(points)} />
           </div>
@@ -295,6 +296,63 @@ function Figure({ ink, label, value, suffix }: {
 // ── The picker ───────────────────────────────────────────────────────────────
 // Moved off the card and onto Taniwha History. Same `choose_taniwha` RPC.
 
+/**
+ * One row of the picker. Whanau and the ten domains render identically apart
+ * from their icon and subtitle, so they share this rather than carrying two
+ * copies of the same inline styles that can drift apart.
+ *
+ * A crowned taniwha is finished and cannot be built again, so it is the one
+ * state that disables the row — read off `row.crowned_at` here rather than
+ * passed in, so a caller cannot forget it.
+ */
+function PickerRow({ taniwha, row, busy, onChoose, subtitle, icon }: {
+  taniwha: Taniwha
+  row: PlayerTaniwhaRow | undefined
+  busy: boolean
+  onChoose: () => void
+  subtitle: string
+  icon: React.ReactNode
+}) {
+  const done = !!row?.crowned_at
+  const building = !!row?.is_building
+  const pieces = row && !done && row.body_parts > 0
+    ? ` · ${row.body_parts}/${BODY_PARTS_PER_TANIWHA} pieces`
+    : ''
+  return (
+    <button
+      disabled={done || busy}
+      onClick={onChoose}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 11, textAlign: 'left',
+        padding: '10px 12px', borderRadius: 10, minHeight: 48,
+        cursor: done ? 'default' : 'pointer',
+        background: building ? `${taniwha.accent}1e` : 'var(--surface)',
+        border: `1px solid ${building ? `${taniwha.accent}77` : '#1a1a1a'}`,
+        opacity: done ? 0.45 : 1,
+      }}
+    >
+      {icon}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--white)' }}>{taniwha.name}</div>
+        <div style={{
+          fontSize: 11, color: 'var(--text-muted)',
+          fontFamily: 'var(--font-label)', letterSpacing: '0.04em',
+        }}>
+          {subtitle}{pieces}
+        </div>
+      </div>
+      {building && (
+        <div style={{
+          fontSize: 10, color: taniwhaOnDark(taniwha), fontFamily: 'var(--font-label)',
+          fontWeight: 700, letterSpacing: '0.08em',
+        }}>
+          BUILDING
+        </div>
+      )}
+    </button>
+  )
+}
+
 export function TaniwhaPicker({ state, points, onChanged }: {
   state: TaniwhaState
   points: number
@@ -309,7 +367,11 @@ export function TaniwhaPicker({ state, points, onChanged }: {
   const roomLeft = crownCapacity(points) - crowned.length
   const takenDomains = new Set(rows.filter(r => r.crowned_at && r.domain_number).map(r => r.domain_number))
 
-  const choose = async (domainNumber: number) => {
+  // NULL is Te Taniwha o te Whanau — it is the one taniwha with no domain, so
+  // there is no number that could name it. Before 20260828192844 the RPC
+  // refused NULL and this list offered only the ten domains, which made leaving
+  // Whanau a one-way door.
+  const choose = async (domainNumber: number | null) => {
     setBusy(true); setError('')
     const { error: e } = await supabase.rpc('choose_taniwha', { p_domain_number: domainNumber })
     if (e) setError(e.message)
@@ -317,7 +379,13 @@ export function TaniwhaPicker({ state, points, onChanged }: {
     setBusy(false)
   }
 
-  if (takenDomains.size >= 10) return null
+  const whanauRow = rows.find(r => r.taniwha_slug === WHANAU.slug)
+  const whanauDone = !!whanauRow?.crowned_at
+
+  // Every buildable taniwha is crowned, so there is nothing left to choose.
+  // This used to test the ten domains alone and hid the picker while Whanau was
+  // still unfinished — the exact state a player switching back is in.
+  if (takenDomains.size >= 10 && whanauDone) return null
 
   return (
     <div style={{
@@ -338,46 +406,46 @@ export function TaniwhaPicker({ state, points, onChanged }: {
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {/* Whanau first, because it is where everyone starts and the only one
+            you can return to without having chosen it in the first place. It
+            carries a figure rather than a DomainIcon for the obvious reason
+            that it has no domain, and NULL rather than a number because that is
+            the only value choose_taniwha accepts for it. */}
+        <PickerRow
+          taniwha={WHANAU}
+          row={whanauRow}
+          busy={busy}
+          onChoose={() => choose(null)}
+          subtitle={whanauDone ? 'crowned' : `${WHANAU_REFERRALS} qualified referral`}
+          icon={
+            <span style={{ display: 'flex', width: 34, height: 34, flexShrink: 0, alignItems: 'center', justifyContent: 'center' }}>
+              <TaniwhaFigure
+                taniwha={WHANAU}
+                limbsEarned={limbsHeld(whanauRow ?? null)}
+                ink={WHANAU.accent}
+                ghost={`${WHANAU.accent}1a`}
+                ghostStroke={`${WHANAU.accent}44`}
+                width={34} showEye={false}
+              />
+            </span>
+          }
+        />
+
         {DOMAIN_ORDER.map((name, i) => {
           const dn = i + 1
           const t = taniwhaForDomain(dn)!
           const row = rows.find(r => r.domain_number === dn)
-          const done = !!row?.crowned_at
           const w = wins[dn] ?? 0
           return (
-            <button
+            <PickerRow
               key={dn}
-              disabled={done || busy}
-              onClick={() => choose(dn)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 11, textAlign: 'left',
-                padding: '10px 12px', borderRadius: 10, minHeight: 48,
-                cursor: done ? 'default' : 'pointer',
-                background: row?.is_building ? `${t.accent}1e` : 'var(--surface)',
-                border: `1px solid ${row?.is_building ? `${t.accent}77` : '#1a1a1a'}`,
-                opacity: done ? 0.45 : 1,
-              }}
-            >
-              <DomainIcon domainName={name} domainNumber={dn} size={34} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--white)' }}>{t.name}</div>
-                <div style={{
-                  fontSize: 11, color: 'var(--text-muted)',
-                  fontFamily: 'var(--font-label)', letterSpacing: '0.04em',
-                }}>
-                  {name} · {done ? 'crowned' : `${w}/${WIN_TARGET} wins`}
-                  {row && !done && row.body_parts > 0 ? ` · ${row.body_parts}/${BODY_PARTS_PER_TANIWHA} pieces` : ''}
-                </div>
-              </div>
-              {row?.is_building && (
-                <div style={{
-                  fontSize: 10, color: taniwhaOnDark(t), fontFamily: 'var(--font-label)',
-                  fontWeight: 700, letterSpacing: '0.08em',
-                }}>
-                  BUILDING
-                </div>
-              )}
-            </button>
+              taniwha={t}
+              row={row}
+              busy={busy}
+              onChoose={() => choose(dn)}
+              subtitle={`${name} · ${row?.crowned_at ? 'crowned' : `${w}/${WIN_TARGET} wins`}`}
+              icon={<DomainIcon domainName={name} domainNumber={dn} size={34} />}
+            />
           )
         })}
       </div>

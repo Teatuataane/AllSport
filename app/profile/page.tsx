@@ -60,7 +60,7 @@ export default function ProfilePage() {
     show_location: false,
   })
 
-  // Rankings for grade display
+  // Rankings for the seasonal division rank shown on the profile card.
 
   useEffect(() => {
     const load = async () => {
