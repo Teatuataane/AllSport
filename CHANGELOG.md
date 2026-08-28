@@ -2,6 +2,11 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.6.5.1] - 2026-08-29
+
+### Fixed
+- **Event placements counted your extra attempts as extra players.** When the app worked out who came first in an event, it treated every score you submitted as a separate competitor — so playing three rounds of a sport event, or logging effort work, put you in the field three times. Three things went wrong quietly. The "at least three players" rule that decides whether a win counts could be satisfied by one person submitting three times. Everyone below you in an event was pushed down the order. And a single win was counted once for every score you had logged, so progress toward a discipline's crown ran ahead of reality — wins were running at more than double the true number. Every placement in the app's history has been recomputed from the corrected rule: your best score in an event is your one entry, and the field is the number of players in it. **Domain win counts have come down as a result — they were overstated, and the new numbers are the real ones.** No crown has been taken away; nobody had earned one yet, which is why this was worth correcting now rather than later.
+
 ## [0.6.5.0] - 2026-08-29
 
 ### Added

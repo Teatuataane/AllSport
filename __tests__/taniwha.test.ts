@@ -466,6 +466,44 @@ describe('choose_taniwha slug list mirrors DOMAIN_TANIWHA', () => {
   })
 })
 
+// CREATE OR REPLACE means the newest definition wins, so read that one.
+const placementsSql = (() => {
+  const dir = 'supabase/migrations'
+  const f = readdirSync(dir).sort().reverse()
+    .find(n => /FUNCTION public\.compute_event_placements/i.test(readFileSync(`${dir}/${n}`, 'utf8')))
+  if (!f) throw new Error('compute_event_placements migration not found')
+  return readFileSync(`${dir}/${f}`, 'utf8')
+})()
+
+describe('compute_event_placements ranks players, not rows', () => {
+  const body = placementsSql.slice(placementsSql.indexOf('FUNCTION public.compute_event_placements'))
+
+  // The original definition ran RANK() straight over every result ROW, so a
+  // player who scored an event three times sat in the field three times. That
+  // inflated event_field_size — the number WIN_MIN_FIELD reads — and counted
+  // one win up to three times through player_event_wins' COUNT(*).
+  it('reduces to one row per player per event before ranking', () => {
+    expect(body).toMatch(/DISTINCT ON \(event_id, player_id\)/)
+  })
+
+  it('picks the best submission, deterministically', () => {
+    expect(body).toMatch(/ORDER BY event_id, player_id, raw_score DESC, id/)
+  })
+
+  it('ranks and sizes the field over the DEDUPED set, not the raw rows', () => {
+    const ranked = body.slice(body.indexOf('ranked AS'), body.indexOf('UPDATE results r'))
+    expect(ranked).toContain('FROM best')
+    expect(ranked).toMatch(/COUNT\(\*\)\s+OVER \(PARTITION BY event_id, pool\)/)
+  })
+
+  // lib/taniwhaAlerts.ts says provisionalWins "must agree exactly with
+  // compute_event_placements()". It always took the best score per player and
+  // counted distinct players; the SQL is what drifted.
+  it('uses the same field threshold the client does', () => {
+    expect(WIN_MIN_FIELD).toBe(3)
+  })
+})
+
 describe('the migration keeps the ladder numbers it hardcodes', () => {
   it('uses the same budget arithmetic as bodyPartBudget/crownCapacity', () => {
     // SQL cannot import the module, so the constants are inlined there.
