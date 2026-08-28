@@ -7,11 +7,22 @@
 //
 // TWO RENDERERS, and which one runs depends on whether the art exists yet.
 //
-//  1. REAL ART — /taniwha/{slug}/{piece}.png layered as CSS masks and filled
+//  1. ITS OWN ART — /taniwha/{slug}/{piece}.png layered as CSS masks and filled
 //     with the taniwha's ink, the same pipeline as EventIcon. Every piece is
 //     exported on one 1000×1000 canvas with the same registration, so stacking
 //     them at identical size is what makes them line up. See public/taniwha/README.md.
-//  2. FILLER GEOMETRY — the shapes below, for the eleven taniwha not yet drawn.
+//  2. WHĀNAU'S ART, IN ITS OWN INK — for the eleven taniwha not yet drawn.
+//     Whānau is the only one drawn, and its pieces are the placeholder for the
+//     rest until each is illustrated. They still read as distinct creatures
+//     because the ink is the taniwha's own, not Whānau's.
+//  3. FILLER GEOMETRY — the shapes below. Only reachable if Whānau's art is
+//     missing too, and for Te Kāhui, which is assembled from the other eleven
+//     rather than drawn in pieces at all.
+//
+// Falling back to Whānau means BORROWING ITS IMPLEMENT: piece ten is the only
+// piece that differs between taniwha, and Kaha's barbell.png does not exist
+// yet. A borrowed pair of hands is better than a taniwha missing a piece it has
+// actually earned.
 //
 // The probe is one HEAD-equivalent image load per taniwha per page load, cached
 // at module scope. A missing folder falls back silently, exactly as event icons
@@ -20,10 +31,14 @@
 import { useEffect, useState } from 'react'
 import {
   PARTS, CROWN_PART, IMPLEMENT_PART, BODY_PARTS_PER_TANIWHA,
-  partFor, partAssetSrc, type Taniwha,
+  WHANAU, partFor, partAssetSrc, type Taniwha,
 } from '@/lib/taniwha'
 
 // ── Filler geometry ──────────────────────────────────────────────────────────
+// The last resort, not the normal path: an undrawn taniwha borrows Whānau's art
+// now, so these shapes are only reached if Whānau's own PNGs go missing, and for
+// Te Kāhui. Kept because the figure must never render nothing.
+//
 // Keyed by PART NUMBER so it tracks PARTS exactly. Head is one piece now — neck
 // merged into it in the August 2026 pass, because "you have unlocked a neck" was
 // never going to feel like anything.
@@ -45,21 +60,37 @@ const SHAPES: Record<number, { d?: string; ellipse?: { cx: number; cy: number; r
 const PAINT_ORDER = [8, 3, 2, 11, 1, 9, 6, 7, 4, 5, 10]
 
 // ── Art probe ────────────────────────────────────────────────────────────────
-// slug -> has art. `undefined` while unknown, so the first paint uses geometry
-// rather than flashing an empty frame.
+// slug -> has art of its own. `undefined` while unknown, so the first paint
+// uses the fallback rather than flashing an empty frame.
 const artStatus: Record<string, boolean> = {}
 
-function probeArt(t: Taniwha, onResult: (ok: boolean) => void): void {
-  if (t.kind === 'kahui') { onResult(false); return }
+/**
+ * Which taniwha's PNGs to draw: this one if it has been illustrated, otherwise
+ * Whānau's as the stand-in, otherwise null for geometry.
+ *
+ * Te Kāhui never has art — it is the assembly of the other eleven, not a
+ * creature drawn in pieces — so it is answered without a network request and
+ * does NOT borrow Whānau's, which would misrepresent what it is.
+ */
+function probeArt(t: Taniwha, onResult: (source: Taniwha | null) => void): void {
+  if (t.kind === 'kahui') { onResult(null); return }
+
+  const settle = (ownArt: boolean) => {
+    if (ownArt) { onResult(t); return }
+    // Whānau standing in for itself would be an infinite regress; if its own
+    // art is missing there is nothing left but geometry.
+    onResult(t.slug === WHANAU.slug ? null : WHANAU)
+  }
+
   const cached = artStatus[t.slug]
-  if (cached !== undefined) { onResult(cached); return }
+  if (cached !== undefined) { settle(cached); return }
 
   const src = partAssetSrc(t, PARTS[0])
-  if (!src) { onResult(false); return }
+  if (!src) { settle(false); return }
 
   const img = new Image()
-  img.onload = () => { artStatus[t.slug] = true; onResult(true) }
-  img.onerror = () => { artStatus[t.slug] = false; onResult(false) }
+  img.onload = () => { artStatus[t.slug] = true; settle(true) }
+  img.onerror = () => { artStatus[t.slug] = false; settle(false) }
   img.src = src
 }
 
@@ -81,11 +112,20 @@ export type TaniwhaFigureProps = {
 export default function TaniwhaFigure({
   taniwha, limbsEarned, ink, ghost, ghostStroke, width = 150, showEye = true,
 }: TaniwhaFigureProps) {
-  const [hasArt, setHasArt] = useState(artStatus[taniwha.slug] ?? false)
+  // Whose art to draw. Starts on the best answer available without a request:
+  // this taniwha's if a previous probe proved it, otherwise Whānau's — so an
+  // undrawn taniwha paints a real creature immediately instead of showing
+  // geometry for a frame and then swapping.
+  const [artSource, setArtSource] = useState<Taniwha | null>(() =>
+    taniwha.kind === 'kahui' ? null
+      : artStatus[taniwha.slug] ? taniwha
+      : taniwha.slug === WHANAU.slug ? null
+      : WHANAU
+  )
 
   useEffect(() => {
     let cancelled = false
-    probeArt(taniwha, ok => { if (!cancelled) setHasArt(ok) })
+    probeArt(taniwha, src => { if (!cancelled) setArtSource(src) })
     return () => { cancelled = true }
   }, [taniwha.slug])
 
@@ -103,7 +143,7 @@ export default function TaniwhaFigure({
 
   const label = `${taniwha.name}, ${limbsEarned} of ${PARTS.length} pieces`
 
-  if (hasArt) {
+  if (artSource) {
     return (
       <div
         role="img"
@@ -113,8 +153,13 @@ export default function TaniwhaFigure({
         {PARTS.map(p => {
           // partFor, not partByNumber: piece ten is the implement and its file is
           // named for the tool, so Kaha loads barbell.png and Tika loads bow.png.
-          const part = partFor(taniwha, p.number) ?? p
-          const src = partAssetSrc(taniwha, part)
+          //
+          // Both calls take artSource, never `taniwha`. When Whānau is standing
+          // in, piece ten must resolve to ITS implement (hands.png) — asking
+          // `taniwha` would request Kaha's barbell.png from Whānau's folder and
+          // drop the one piece that differs between them.
+          const part = partFor(artSource, p.number) ?? p
+          const src = partAssetSrc(artSource, part)
           if (!src) return null
           const state = stateOf(p.number)
           return (

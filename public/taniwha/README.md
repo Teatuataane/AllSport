@@ -55,6 +55,23 @@ history, and the real master is the Canva document.
 512 is also the floor: `check-taniwha-art.mjs` rejects a canvas under 500 px as a
 mis-export, and that guard is worth keeping.
 
+## Until a taniwha is drawn, it borrows Whānau's
+
+`TaniwhaFigure` probes for `pane.png` in a taniwha's own folder. If it is not
+there, the figure draws **Whānau's eleven pieces instead**, filled with the
+taniwha's own ink — so an undrawn taniwha still reads as a real creature, and as
+a distinct one, because the colour differs even though the silhouette does not.
+
+That includes piece ten: the fallback borrows Whānau's `hands.png`, not the
+implement the taniwha will eventually carry. A taniwha showing hands where you
+expected a barbell has not lost a piece — it has not been drawn yet.
+
+Adding a folder is therefore all it takes to retire the stand-in. There is no
+list to update and no flag to flip; the probe finds it on the next page load.
+
+Te Kāhui is the one exception and never borrows. It is the assembly of the other
+eleven rather than a creature drawn in pieces, so it stays on filler geometry.
+
 ## Check before drawing the next one
 
 ```
