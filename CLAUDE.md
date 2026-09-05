@@ -205,7 +205,7 @@ Roster reconciled against Tāne's programming spreadsheet. **122 events total** 
 - **Timed-effort events now rank by FASTEST time** — `difficulty+time` carries two semantics: HOLDS (longer time wins) and TIMED EFFORTS (faster time wins). Previously every `difficulty+time` event ranked longer time as better, so e.g. Running 4:20 beat 4:19. The 10 timed-effort events (Running, Cycling, Ski Erg, Row Erg, Weighted Carry, Bronco, Walking, Burpee Broad Jump, Climbing, Repeat High Jump) now rank faster as better. Rule: a higher difficulty tier always outranks a lower one; within a tier, faster wins. See "difficulty+time encoding" below. **Duck Walk is intentionally excluded** (mixed hold + walk tiers) — pending tier redesign (see What's Next).
 - **Overall placement fix** — the points trigger now ranks each scored player across EVERY session event; a missed event = last place in the division (= number of players in that division who played the session). Previously only scored events were summed, so playing fewer events gave an unfairly low (better) total.
 - **Points doubling fix** — production was running a stale award function that summed `points_earned` (duplicated across every event row); season total is now placement + effort, added once. Fixed in migration `20260629000000_fix_placement_and_timed_events.sql`.
-- **Date off-by-one fix** — DATE columns ('YYYY-MM-DD') were parsed as UTC midnight, rendering the previous day in behind-UTC contexts. New `lib/dates.ts` (`parseLocalDate` / `formatNZDate`) parses dates in local time. Applied to all session-date renders.
+- **Date off-by-one fix** — DATE columns ('YYYY-MM-DD') were parsed as UTC midnight, rendering the previous day in behind-UTC contexts. New `lib/dates.ts` (`parseLocalDate` / `formatNZDate`) parses dates in local time. Applied to all session-date renders. **This fixed the READ side only — the WRITE side kept producing bad rows until v0.6.5.2 (September 2026). See "session_date was written a day early" below.**
 - **Game review page** — new `/games/[sessionId]` full all-player report (every division, event, score + placement, standings), linked from dashboard session history; any logged-in player. Placements computed live from `raw_score` (so the encoding + missing-event fixes reflect for past games too).
 
 #### difficulty+time encoding
@@ -240,7 +240,7 @@ All in `app/scoring/[sessionId]/page.tsx`, player flow only (judge EventCard unt
 - **Bowling added** (105 events total) — Aim & Precision, `sport` mode W/D/L head-to-head over set frames; slug `bowling`; emoji fallback 🎳 (icon PNG exported in session 25). Pre-May-2026 "Bowling" history (renamed to Kubb back then) re-attaches to this event's PR history by name — harmless.
 - **Breath Hold → `hold` mode** (longer wins) + effort task = 80% of PR; **Duck Walk → all-walk tiers** D1–D5 (10m/25m/50m/100m/200m), joined `TIMED_EFFORT_SLUGS`. Historic raw_scores re-encoded by `20260713000001_breath_hold_duck_walk.sql`. `time` input mode now has zero events (kept in the type).
 - **Tier names shortened** (73 renamed) — tier chips no longer repeat the event name or carry judge criteria; new optional `detail` field on `DifficultyTier` holds the criteria, rendered in the quick-entry sheet HOW TO tier list and on /events/[slug]. NOTE: `results.difficulty_tier` stores the NAME string, so pre-rename rows display their old stored labels (fine) but won't match `findIndex` tier lookups (same accepted trade-off as the Handbalance rename).
-- **Selwyn Winter Jam recap** — /schedule block converted from advert to results recap with division champions (derived from the 2026-07-03 session `e032cb24-…`, the Jam stored a day early by the old UTC date bug): Men's kiwigyver, Women's Meredith & Clairebear (shared 1st), Masters Men Blair, Masters Women Jing.
+- **Selwyn Winter Jam recap** — /schedule block converted from advert to results recap with division champions (derived from session `e032cb24-…`, which was stored as 2026-07-03 by the write-side UTC date bug and corrected to its true date, Saturday 2026-07-04, by migration `20260902020602`): Men's kiwigyver, Women's Meredith & Clairebear (shared 1st), Masters Men Blair, Masters Women Jing.
 - ~~**Skill rating system (`lib/rating.ts`)** — multiplayer Elo~~ **REMOVED August 2026.** Session 24 replaced the player-facing skill score with best-score percentiles (`lib/percentile.ts`) and kept the Elo "for `sessionWins`" — but `sessionWins` is a plain `placement = 1` count that never touched a rating, so `computeRatings`/`eloTo100`/`domainRatings`/`topEvent`/`topDomain` had **zero call sites** and were deleted. `lib/rating.ts` now holds only `divisionPool` + `sessionWins` + the `Rating*` row types (names kept — they describe row shapes, not ratings). `lib/fetchAll.ts` deleted in the same pass. Percentiles are now the single ranking metric: do not reintroduce a second one without deciding which is authoritative — the old pair exported `topDomain` from BOTH modules, which is why the leaderboard still imports the survivor as `pctTopDomain`. See PERF_AGGREGATION_PLAN.md.
 - **My 100 → player stat card** — header stat row (Wins · Avg Place · Events), domain coverage dots + per-domain 0–100 skill score, top-event line; tap opens a full-screen **My Stats modal** (headline stats, top event/domain cards, per-domain skill bars + coverage, explainer, link to /prs). Wins = sessions finished 1st in division (`results.placement = 1`, distinct sessions; placement has meant overall division rank since 20260514, older rows are NULL so wins can only undercount).
 - **/leaderboard columns** — Avg Place column replaced by **Wins**, **Top Domain**, **Top Event** (Elo-derived, lifetime; wins are current-season). Also fixed a latent bug: rankings query now filters `season_year = current year` (previously all seasons' rows were listed together). Explainer copy updated.
@@ -687,6 +687,56 @@ and must never produce half a creature. Whānau is drawn (11/11, verified by
 `node scripts/check-taniwha-art.mjs whanau`); the other eleven are not.
 
 ---
+
+## session_date was written a day early (September 2026) — v0.6.5.2
+
+**Present in every session ever created**, from the April 2026 rebuild until
+`20260902020602` fixed it. `app/scoring/page.tsx` derived `session_date` from
+`new Date().toISOString().split('T')[0]`, which is the **UTC** day. Any session
+starting before noon NZ is therefore stamped with the previous date: 9:00am
+NZST Saturday is 21:00 UTC Friday.
+
+**25 of 62 sessions were wrong** — every Saturday morning game, and roughly as
+many weekday mornings. Afternoon sessions (Tue/Thu 4:30pm) were never affected,
+which is why it hid for four months.
+
+**The June 2026 `lib/dates.ts` work fixed the READ side and was widely believed
+to have fixed the whole thing.** It did not touch session creation. The 29
+August 2026 session was still stored as the 28th.
+
+**This corrupts any weekday analysis of the schedule.** Reading
+`session_date` directly said Saturday 9am had run ONCE in 61 sessions and that
+15 sessions fell on a Friday — a slot the club has never advertised. Derived
+from `started_at` in real NZ time, the true figures are **Saturday 15, Friday
+0**, and 87% of sessions fall on an advertised day. Two opposite conclusions
+about whether the club keeps its own timetable. **Derive the local day from
+`started_at`, never from `session_date`, for any data older than v0.6.5.2.**
+
+**The invariant is now enforced in the database**, not in the caller:
+`set_session_date_from_started_at()` is a BEFORE INSERT/UPDATE trigger deriving
+`session_date` from `started_at` at `Pacific/Auckland` (named zone, never a
+fixed +12 — NZDT is +13 from late September). A future advance-scheduling UI
+cannot reintroduce it. Client-side, `sessionStart()` in `lib/dates.ts` returns
+`startedAt` and `sessionDate` from ONE derivation, because the bug existed
+precisely because two callers answered the same question differently.
+
+**The backfill deliberately never touches `is_active`.** `sessions` carries
+three AFTER UPDATE triggers (`auto_award_points`, `trg_event_placements`,
+`trg_taniwha_sync`), all gated on the `is_active` true→false transition.
+Widening that UPDATE would re-run the entire points, placement and taniwha
+pipeline across the whole history.
+
+**Known remaining limit, logged at P3:** `sessionStart()` still builds the
+instant with `setHours()`, which resolves in the DEVICE's zone. A phone set to
+something other than NZ produces a wrong `started_at`, and `session_date` then
+faithfully reports the NZ day of that wrong instant. The pair stays
+self-consistent; neither is rescued from a mis-set clock.
+
+**Correcting these dates reorders history.** 15 of 62 sessions change
+chronological position. `limbCrossings()` in `lib/taniwha.ts` replays sessions
+in `session_date` order to reconstruct when each taniwha piece landed, so some
+historical piece dates and the colours timeline shift by a day. That is the
+correction landing, not a regression.
 
 ## compute_event_placements ranked ROWS, not players (August 2026)
 
