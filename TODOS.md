@@ -325,6 +325,21 @@ from `main` and this is a review branch.
 
 ## P3 — Later
 
+### A session created on a non-NZ device still gets the wrong time
+**What:** `sessionStart()` in `lib/dates.ts` builds the start instant with `setHours()`, which resolves in the DEVICE's timezone. A kaiwhakawā whose phone is set to something other than NZ produces a `started_at` wrong by the offset — and `session_date` then faithfully reports the NZ day of that wrong instant. The pair stays self-consistent (the DB trigger enforces the same rule), so the data is never internally contradictory, but neither half is rescued from a mis-set clock. The 100-minute expiry would also be off, so `close_expired_sessions()` could close the game early or late.
+**Why it is not already done:** fixing it means interpreting the setup form's "09:00" as NZ wall-clock rather than device wall-clock, which changes what `started_at` MEANS and needs its own decision. Every session so far has been created in the room, on a NZ phone, so this is latent rather than live.
+**Where:** `sessionStart()` in `lib/dates.ts`. Verified by running the helper under `TZ=UTC`.
+**Noticed:** /ship v0.6.5.2 pre-landing review, 2026-09-06
+**Effort:** S
+
+### Database-level tests for migrations (pgTAP or a seeded test DB)
+**What:** The `20260902020602` migration's trigger, backfill and closing assertion have no automated coverage, because vitest cannot execute Postgres. The same is true of `award_session_points`, `compute_event_placements`, `close_expired_sessions` and every RLS guard — none has ever had a test, and all of them mutate production data.
+**Why it is not already done:** already tracked as deferred item 12 in CLAUDE.md's "What's Next". Standing up the harness needs Docker running for a local Supabase, which is often not the case on this machine.
+**Where:** new `supabase/tests/`. Would unblock testing for every future migration.
+**Noticed:** /ship v0.6.5.2 coverage gate — 5 SQL paths marked intentionally uncovered, 2026-09-06
+**Effort:** M
+
+
 ### Leaderboard icons
 **What:** Add player icon emoji next to name on /leaderboard and /scoring/[sessionId].
 **When:** After icon system is proven stable on /dashboard.

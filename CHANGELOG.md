@@ -2,6 +2,11 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.6.5.2] - 2026-09-06
+
+### Fixed
+- **Every Saturday morning game was recorded on the wrong day.** The app worked out a game's date from Coordinated Universal Time rather than New Zealand time, and at 9am in Ōtautahi it is still the previous evening in UTC. So a Saturday game was filed as Friday. Twenty-five of the sixty-two games AllSport has played carried the wrong date — every Saturday morning session, and about as many weekday mornings. The Selwyn Winter Jam of Saturday 4 July sat in the records as the 3rd. Every one of those dates has been corrected, and the date a game is filed under is now worked out by the database itself from the moment the game actually started, so no future version of the app can get it wrong again. You will see this on your play history, your personal bests, and any game report: sessions that used to read Friday now read Saturday, and a few games shift a day in the order they are listed. Those dates were wrong before; these are the real ones.
+
 ## [0.6.5.1] - 2026-08-29
 
 ### Fixed
