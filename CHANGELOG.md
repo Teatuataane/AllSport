@@ -2,6 +2,16 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.7.0.1] - 2026-09-10
+
+### Fixed
+- **Your win/loss record came back on 26 events.** Volleyball, Tennis, Basketball, Netball, Archery and twenty-one more gained difficulty levels in the last release, and Personal Bests was still looking for wins in the old place, so those events showed a score label instead of your record. It reads the result off the level now, so a win counts as a win whichever way the event is scored.
+- **A win on the Game level of a sprint or T-Race showed as a time.** Those three events are races, so the app reads the number as seconds, and a win came out as two hours and forty-six minutes. It now shows Win, Draw or Loss.
+- **Javelin, Shotput and Leg Ext Hold can earn effort points again.** They changed how they are scored last release and the effort tasks were not updated with them, so there was nothing to earn.
+
+### Changed
+- Personal Bests and the event pages now ask one shared rule whether an event records a win, draw or loss, instead of each deciding for itself. A test now checks every event on the roster can actually be scored, which is what these three fixes have in common.
+
 ## [0.7.0.0] - 2026-09-10
 
 ### Added

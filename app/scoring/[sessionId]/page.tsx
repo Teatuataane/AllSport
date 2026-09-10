@@ -84,6 +84,11 @@ function formatPR(rawScore: number, inputMode: string, slug?: string, eventData?
     case 'sport':      return rawScore === 2 ? 'Win' : rawScore === 1 ? 'Draw' : 'Loss'
     case 'score':      return `${Math.abs(rawScore)} strokes`
     case 'difficulty+time': {
+      const bandIdx = Math.floor(rawScore / 10000)
+      if (tierScoring(eventData, bandIdx) === 'sport') {
+        const term = rawScore % 10000
+        return `D${bandIdx + 1} · ${term === 2 ? 'Win' : term === 1 ? 'Draw' : 'Loss'}`
+      }
       const { tierIdx, secs } = decodeDiffTime(rawScore, isTimedEffort(slug))
       return `D${tierIdx + 1} · ${fmtTime(secs)}`
     }
@@ -236,15 +241,60 @@ function computeEffortTasks(
   if (mode === 'difficulty+reps') {
     if (!eventData.difficultyTiers) return []
     const prTierIdx = Math.floor(effectivePR / 10000)
-    const prReps = effectivePR % 10000
     const tiers = eventData.difficultyTiers
     const tierName = tiers[prTierIdx]?.name ?? `D${prTierIdx + 1}`
+    const scoring = tiers[prTierIdx]?.scoring
+
+    // The within-tier term is only a rep count on an ordinary rung.
+    if (scoring === 'sport') {
+      const extras = myEventResults.slice(1).length
+      return [{ label: `Play ${tierName} vs a new opponent`, count: extras, isRepeatable: true }]
+    }
+    if (scoring === 'weight') {
+      const prKg = (effectivePR % 10000) / 100
+      if (prKg <= 0) return []
+      const targetKg = Math.round(prKg * 0.8 * 10) / 10
+      const count = myEventResults.filter(r => {
+        const rTierIdx = tiers.findIndex(t => t.name === r.difficulty_tier)
+        return rTierIdx === prTierIdx && (r.weight_kg ?? 0) >= targetKg
+      }).length
+      return [{ label: `Lift ${targetKg}kg at ${tierName}`, count, isRepeatable: true }]
+    }
+
+    const prReps = effectivePR % 10000
     const targetReps = Math.max(1, Math.round(prReps * 0.8))
     const count = myEventResults.filter(r => {
       const rTierIdx = tiers.findIndex(t => t.name === r.difficulty_tier)
       return rTierIdx === prTierIdx && (r.reps ?? 0) >= targetReps
     }).length
     return [{ label: `Complete ${targetReps}+ reps at ${tierName}`, count, isRepeatable: true }]
+  }
+  if (mode === 'difficulty+distance') {
+    if (!eventData.difficultyTiers) return []
+    const tiers = eventData.difficultyTiers
+    const prTierIdx = Math.floor(effectivePR / 10000)
+    const prMetres = (effectivePR % 10000) / 10
+    if (prMetres <= 0) return []
+    const tierName = tiers[prTierIdx]?.name ?? `D${prTierIdx + 1}`
+    const target = Math.round(prMetres * 0.8 * 10) / 10
+    const count = myEventResults.filter(r => {
+      const rTierIdx = tiers.findIndex(t => t.name === r.difficulty_tier)
+      // Decoded from raw_score rather than a column: the live-session Result
+      // select does not carry distance_m, and the band already holds it.
+      return rTierIdx === prTierIdx && (r.raw_score % 10000) / 10 >= target
+    }).length
+    return [{ label: `Throw ${target}m+ with the ${tierName}`, count, isRepeatable: true }]
+  }
+  if (mode === 'weight+time') {
+    const prKg = Math.floor(effectivePR / 10000) / 100
+    const prSecs = effectivePR % 10000
+    if (prSecs <= 0) return []
+    const targetKg = Math.round(prKg * 0.8 * 10) / 10
+    const targetSecs = Math.round(prSecs * 0.8)
+    const load = targetKg > 0 ? `${targetKg}kg` : 'bodyweight'
+    const count = myEventResults.filter(r =>
+      (r.weight_kg ?? 0) >= targetKg && (r.time_seconds ?? 0) >= targetSecs).length
+    return [{ label: `Hold ${load} for ${fmtTime(targetSecs)}`, count, isRepeatable: true }]
   }
   return []
 }
@@ -305,12 +355,30 @@ function calcSubmissionEffortTasks(
   if (mode === 'difficulty+reps') {
     if (!eventData.difficultyTiers || !difficultyTierName) return 0
     const prTierIdx = Math.floor(effectivePR / 10000)
-    const prReps = effectivePR % 10000
     const tiers = eventData.difficultyTiers
     const rTierIdx = tiers.findIndex(t => t.name === difficultyTierName)
-    const r = reps ?? 0
-    const targetReps = Math.max(1, Math.round(prReps * 0.8))
-    return rTierIdx === prTierIdx && r >= targetReps ? 1 : 0
+    const scoring = tiers[prTierIdx]?.scoring
+    if (scoring === 'sport') return opponentName ? 1 : 0
+    if (scoring === 'weight') {
+      const targetKg = Math.round(((effectivePR % 10000) / 100) * 0.8 * 10) / 10
+      return rTierIdx === prTierIdx && (weightKg ?? 0) >= targetKg ? 1 : 0
+    }
+    const targetReps = Math.max(1, Math.round((effectivePR % 10000) * 0.8))
+    return rTierIdx === prTierIdx && (reps ?? 0) >= targetReps ? 1 : 0
+  }
+  if (mode === 'difficulty+distance') {
+    if (!eventData.difficultyTiers || !difficultyTierName) return 0
+    const tiers = eventData.difficultyTiers
+    const prTierIdx = Math.floor(effectivePR / 10000)
+    const rTierIdx = tiers.findIndex(t => t.name === difficultyTierName)
+    const target = Math.round(((effectivePR % 10000) / 10) * 0.8 * 10) / 10
+    const metres = (newRawScore % 10000) / 10
+    return rTierIdx === prTierIdx && metres >= target ? 1 : 0
+  }
+  if (mode === 'weight+time') {
+    const targetKg = Math.round((Math.floor(effectivePR / 10000) / 100) * 0.8 * 10) / 10
+    const targetSecs = Math.round((effectivePR % 10000) * 0.8)
+    return (weightKg ?? 0) >= targetKg && (timeSecs ?? 0) >= targetSecs ? 1 : 0
   }
   return 0
 }
