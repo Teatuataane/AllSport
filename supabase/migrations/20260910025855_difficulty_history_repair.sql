@@ -12,6 +12,14 @@
 -- 20260908221459_event_domains_animal_crawl.sql, so the roster mirror can land
 -- with the code while this repair takes its own review.
 --
+-- ⚠ APPLY WITH `supabase db push`, or with `psql -1`. Every working table here is
+-- TEMP … ON COMMIT DROP, so the file must run inside ONE transaction. The CLI
+-- wraps a migration and its schema_migrations row together; an explicit
+-- BEGIN/COMMIT inside the file would end that transaction before the ledger row
+-- is written, which is the invisible ledger-drift class CLAUDE.md's migration
+-- rules exist for. No other migration here carries its own transaction control,
+-- and neither does this one.
+--
 -- ⚠ DEPLOY THE CODE FIRST, THEN THIS. Reversed, session_events holds levels the
 -- deployed bundle does not know and live sessions lose their tier chips
 -- mid-game. Code-first only degrades ranking until this lands.
@@ -35,7 +43,132 @@
 -- Duck Walk's rows are left to the archive. Same rule that kept OHP off
 -- Clean & Press and Toe Squat off Lunges.
 
-BEGIN;
+-- event_domains: the roster mirrored into SQL, 120 rows.
+-- Generated from lib/eventData.ts by scripts/gen-difficulty-migration.mjs.
+-- THIS FILE IS NOW THE DEFINITION of the mirror (the newest file carrying
+-- the seed), which is what __tests__/taniwha.test.ts reads.
+DELETE FROM event_domains;
+INSERT INTO event_domains (event_name, domain_number, slug) VALUES
+  ('1A Press', 1, 'one-arm-press'),
+  ('Arthur Lift', 1, 'arthur-lift'),
+  ('Clean & Press', 1, 'clean-and-press'),
+  ('Deadlift', 1, 'deadlift'),
+  ('Pause Back Squat', 1, 'pause-squat'),
+  ('Pause Bench', 1, 'pause-bench'),
+  ('Pause Chinup', 1, 'pause-chin-up'),
+  ('Pause Dips', 1, 'pause-dips'),
+  ('Pause Front Squat', 1, 'pause-front-squat'),
+  ('Pause Row', 1, 'pause-row'),
+  ('Turkish Getup', 1, 'turkish-get-up'),
+  ('Zercher Dead', 1, 'zercher-deadlift'),
+  ('1 Leg Squat', 2, '1-leg-squat'),
+  ('Back Lever', 2, 'back-lever'),
+  ('Chin Hang', 2, 'chin-hang'),
+  ('Climbing', 2, 'rope-climb'),
+  ('Front Lever', 2, 'front-lever'),
+  ('Handstand', 2, 'hand-walk'),
+  ('Headstand', 2, 'headstand'),
+  ('Human Flag', 2, 'flag'),
+  ('Iron Cross', 2, 'iron-cross'),
+  ('L-Sit Hold', 2, 'l-sit-hold'),
+  ('Planche', 2, 'planche'),
+  ('Windshield Wipers', 2, 'windshield-wipers'),
+  ('1A Snatch', 3, 'one-arm-snatch'),
+  ('Arm Wrestling', 3, 'arm-wrestling'),
+  ('Australian Football', 3, 'australian-football'),
+  ('Clean & Jerk', 3, 'clean-and-jerk'),
+  ('High Jump', 3, 'high-jump'),
+  ('Javelin', 3, 'javelin-throw'),
+  ('Kelly Snatch', 3, 'kelly-snatch'),
+  ('Shotput', 3, 'shot-put'),
+  ('Snatch', 3, 'snatch'),
+  ('Standing Broad Jump', 3, 'standing-broad-jump'),
+  ('Tug of War', 3, 'tug-of-war'),
+  ('Vertical Jump', 3, 'vertical-jump'),
+  ('100m Sprint', 4, '100m-sprint'),
+  ('200m Sprint', 4, '200m-sprint'),
+  ('American Football', 4, 'american-football'),
+  ('Beach Flags', 4, 'beach-flags'),
+  ('Capture the Flag', 4, 'capture-the-flag'),
+  ('Kabaddi', 4, 'kabaddi'),
+  ('Rats & Rabbits', 4, 'rats-and-rabbits'),
+  ('Repeat High Jump', 4, 'repeat-high-jump'),
+  ('Speed Chess', 4, 'speed-chess'),
+  ('T-Race', 4, 't-race'),
+  ('Tag', 4, 'tag'),
+  ('Touch Rugby', 4, 'touch-rugby'),
+  ('Ab Rollout', 5, 'ab-wheel-rollout'),
+  ('Chinup Contest', 5, 'chin-up-contest'),
+  ('Finger Pushup', 5, 'finger-push-up'),
+  ('GHD Situp', 5, 'ghd-situp'),
+  ('Hamstring Curl', 5, 'hamstring-curl'),
+  ('Leg Ext Hold', 5, 'leg-extension'),
+  ('Lunges', 5, 'lunges'),
+  ('Pushup Contest', 5, 'push-up-contest'),
+  ('Sandbag to Shoulder', 5, 'sandbag-to-shoulder'),
+  ('Tibialis Curl', 5, 'tibialis-curl'),
+  ('Toe Lift', 5, 'toe-lift'),
+  ('Wall Sit', 5, 'wall-sit'),
+  ('Animal Crawl', 6, 'animal-crawl'),
+  ('Breath Hold', 6, 'breath-hold'),
+  ('Bronco', 6, 'bronco'),
+  ('Burpee Broad Jump', 6, 'burpee-broad-jump'),
+  ('Cycling', 6, 'cycling'),
+  ('Row Erg', 6, 'row-erg'),
+  ('Running', 6, 'running'),
+  ('Scooting', 6, 'scooting'),
+  ('Ski Erg', 6, 'ski-erg'),
+  ('Weighted Carry', 6, 'weighted-carry'),
+  ('Wheelbarrow Pull', 6, 'wheelbarrow-pull'),
+  ('Wheelbarrow Push', 6, 'wheelbarrow-push'),
+  ('Bridge', 7, 'bridge'),
+  ('Foot Behind Head Pose', 7, 'foot-behind-head'),
+  ('Forward Fold', 7, 'forward-fold'),
+  ('Forward Split', 7, 'front-split'),
+  ('Full Bound Twist', 7, 'full-bound-twist'),
+  ('Middle Split', 7, 'middle-split'),
+  ('Needle Pose', 7, 'needle-pose'),
+  ('Pancake', 7, 'pancake'),
+  ('Rear Hand Clasp', 7, 'rear-hand-clasp'),
+  ('Shoulder Dislocate', 7, 'shoulder-dislocate'),
+  ('Side Bend', 7, 'side-bend'),
+  ('Standing Split', 7, 'standing-split'),
+  ('Balance Ball', 8, 'balance-ball'),
+  ('Breakdancing', 8, 'breakdancing'),
+  ('Fencing', 8, 'fencing'),
+  ('Foot Juggling', 8, 'foot-juggling'),
+  ('Gymnastics', 8, 'gymnastics'),
+  ('Juggling', 8, 'juggling'),
+  ('Jump Rope', 8, 'jump-rope'),
+  ('SKATE', 8, 'skate'),
+  ('Slackline', 8, 'slackline'),
+  ('Tae Kwon Do', 8, 'tae-kwon-do'),
+  ('Trampolining', 8, 'trampolining'),
+  ('Wrestling', 8, 'wrestling'),
+  ('Badminton', 9, 'badminton'),
+  ('Baseball', 9, 'baseball'),
+  ('Basketball', 9, 'basketball'),
+  ('Cricket', 9, 'cricket'),
+  ('Football', 9, 'football'),
+  ('Hockey', 9, 'hockey'),
+  ('Lacrosse', 9, 'lacrosse'),
+  ('Squash', 9, 'squash'),
+  ('Tennis', 9, 'tennis'),
+  ('Teqball', 9, 'teqball'),
+  ('Ultimate Frisbee', 9, 'ultimate-frisbee'),
+  ('Volleyball', 9, 'volleyball'),
+  ('Archery', 10, 'archery'),
+  ('Bocce', 10, 'bocce'),
+  ('Bowling', 10, 'bowling'),
+  ('Carrom', 10, 'carrom'),
+  ('Darts', 10, 'darts'),
+  ('Disc Golf', 10, 'disc-golf'),
+  ('Dodgeball', 10, 'dodgeball'),
+  ('Golf', 10, 'golf'),
+  ('Handball', 10, 'handball'),
+  ('Kubb', 10, 'kubb'),
+  ('Netball', 10, 'netball'),
+  ('Table Tennis', 10, 'table-tennis');
 
 -- Surviving (event, level) pairs with their new 0-based index.
 CREATE TEMP TABLE tier_map (
@@ -505,28 +638,55 @@ INSERT INTO tier_map VALUES
 -- place, so a snapshot taken after them is not a pre-image at all. Covers
 -- every row any later statement can touch — those already carrying a level,
 -- and those on an event that is gaining one.
-CREATE TABLE public.results_difficulty_preimage_20260908 AS
+CREATE TABLE public.results_difficulty_preimage_20260910025855 AS
 SELECT r.id, r.raw_score, r.difficulty_tier, r.score_label, r.result_type,
        r.time_seconds, r.distance_m, se.event_name, now() AS captured_at
 FROM results r
 JOIN session_events se ON se.id = r.event_id
 WHERE EXISTS (SELECT 1 FROM tier_map m WHERE m.event_name = se.event_name)
    OR r.difficulty_tier IS NOT NULL;
-ALTER TABLE public.results_difficulty_preimage_20260908 ENABLE ROW LEVEL SECURITY;
-REVOKE ALL ON public.results_difficulty_preimage_20260908 FROM anon, authenticated;
+ALTER TABLE public.results_difficulty_preimage_20260910025855 ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.results_difficulty_preimage_20260910025855 FROM anon, authenticated;
 
 -- Rung renames: same movement, new label. Applied BEFORE anything keys on
 -- difficulty_tier, so a renamed rung's history survives instead of being
 -- archived as an orphan.
 CREATE TEMP TABLE rung_rename (event_name text, old_name text, new_name text) ON COMMIT DROP;
 INSERT INTO rung_rename VALUES
+  ('Human Flag', 'Partial Flag', 'Assisted Flag'),
+  ('Iron Cross', 'Assisted · 2 Feet', '2 Feet Top Hold'),
+  ('Chin Hang', 'Assisted · 2 Feet', 'Feet Assisted'),
+  ('Chin Hang', 'Assisted · 1 Foot', 'Feet Assisted'),
+  ('Chin Hang', 'Two-Hand Hang', 'Two-Hand Chin Hang'),
+  ('Chin Hang', 'One-Hand Hang', 'One-Hand Chin Hang'),
+  ('Chin Hang', 'Band-Assisted', 'Banded Hands-Free'),
+  ('Chin Hang', 'Hands-Free', 'Chin Hang'),
+  ('Climbing', 'Assisted Rope Climb', 'Feet Assisted Climb'),
+  ('Climbing', 'Pegboard · Feet OK', 'Assisted Pegboard'),
+  ('Climbing', 'Pegboard · No Feet', 'Pegboard Climb'),
+  ('Headstand', 'Wall · No Hands', 'Wall Assisted'),
+  ('L-Sit Hold', 'Support · Feet Down', '2 Feet Assisted Tuck'),
+  ('L-Sit Hold', 'Support · One Foot', '1 Foot Assisted Tuck'),
+  ('L-Sit Hold', 'Tucked L-Sit', '1 Leg L-Sit'),
+  ('L-Sit Hold', 'Full L-Sit', 'L-Sit'),
+  ('Chinup Contest', 'Ring Row', 'High Ring Row'),
+  ('Lunges', 'Elevated', 'Elevated Lunge'),
+  ('Lunges', 'Floor', 'Lunge'),
+  ('Lunges', 'Jumping', 'Jumping Switch Lunges'),
+  ('Standing Split', 'Lift · Ankle Height', 'Ankle Height'),
+  ('Standing Split', 'Lift · Knee Height', 'Knee Height'),
+  ('Standing Split', 'Lift · Hip Height', 'Hip Height'),
+  ('Standing Split', 'Hip · Knee Locked', 'Hip Height'),
+  ('Standing Split', 'Above Hip · Assisted', 'Rib Height'),
+  ('Standing Split', 'Above Hip · Free', 'Rib Height'),
+  ('Standing Split', 'Head · Assisted', 'Head Height'),
+  ('Standing Split', 'Head · Free', 'Head Height'),
+  ('Foot Juggling', 'No Bounce', '0 Bounce'),
   ('Ab Rollout', 'Kneeling Ab Rollout', 'Kneeling Rollout'),
   ('Ab Rollout', 'Elevated Kneeling Ab Rollout', 'Elevated Kneeling'),
   ('Balance Ball', '1 Leg Standing (no hands)', '1 Leg · No Hands'),
   ('Balance Ball', 'Kneeling (no hands)', 'Kneeling · No Hands'),
-  ('Chin Hang', 'Two-Hand Hang', 'Two-Hand Chin Hang'),
   ('Chin Hang', 'Assisted Chin Hang (1 Foot)', 'Feet Assisted'),
-  ('Climbing', 'Assisted Rope Climb', 'Feet Assisted Climb'),
   ('Forward Fold', 'Standing Forward Fold (knees bent)', 'Standing · Bent Knees'),
   ('Forward Fold', 'Standing Forward Fold (finger-tips to floor)', 'Fingertips to Floor'),
   ('Forward Split', 'Assisted Front Split (1 Block)', '1 Block'),
@@ -547,10 +707,7 @@ INSERT INTO rung_rename VALUES
   ('Planche', 'Elevated Pseudo Planche Lean', 'Elevated Pseudo Lean'),
   ('Rear Hand Clasp', 'Towel-Assisted (hands hold opposite ends of towel)', 'Towel-Assisted'),
   ('Standing Split', 'Standing Split (Hip height, knee locked)', 'Hip Height'),
-  ('Standing Split', 'Standing Leg Lift (Hip height)', 'Hip Height'),
-  ('Standing Split', 'Lift · Hip Height', 'Hip Height'),
-  ('Standing Split', 'Hip · Knee Locked', 'Hip Height'),
-  ('Standing Split', 'Above Hip · Assisted', 'Rib Height');
+  ('Standing Split', 'Standing Leg Lift (Hip height)', 'Hip Height');
 UPDATE results r SET difficulty_tier = m.new_name
 FROM session_events se, rung_rename m
 WHERE se.id = r.event_id AND se.event_name = m.event_name
@@ -605,6 +762,8 @@ WITH upd AS (
   UPDATE results r SET
     difficulty_tier = g.rung,
     raw_score = g.new_idx * 10000 + (GREATEST(LEAST(r.raw_score, 2), 0)),
+    score_label = 'D' || (g.new_idx + 1) || ' ' || g.rung || ' · ' ||
+      COALESCE(NULLIF(r.score_label, ''), ''),
     result_type = COALESCE(r.result_type, CASE r.raw_score WHEN 2 THEN 'win' WHEN 1 THEN 'draw' ELSE 'loss' END)
   FROM session_events se, gained g
   WHERE se.id = r.event_id AND se.event_name = g.event_name
@@ -619,17 +778,28 @@ WITH upd AS (
   UPDATE results r SET
     difficulty_tier = g.rung,
     raw_score = g.new_idx * 10000 + (g2.term),
+    score_label = 'D' || (g.new_idx + 1) || ' ' || g.rung || ' · ' ||
+      COALESCE(NULLIF(r.score_label, ''), ''),
     match_score = COALESCE(r.match_score, ABS(r.raw_score)::text || ' strokes'),
     result_type = COALESCE(r.result_type, CASE g2.term WHEN 2 THEN 'win' WHEN 1 THEN 'draw' ELSE 'loss' END)
   FROM session_events se, gained g, (
-    SELECT rr.id,
-      CASE WHEN COUNT(*) OVER (PARTITION BY rr.event_id) = 1 THEN 0
-           WHEN RANK() OVER (PARTITION BY rr.event_id ORDER BY ABS(rr.raw_score)) > 1 THEN 0
-           WHEN COUNT(*) OVER (PARTITION BY rr.event_id, ABS(rr.raw_score)) > 1 THEN 1
+    WITH best AS (
+      -- One row per PLAYER before ranking. Counting rows would let a
+      -- player's own extra rounds sit in the field beside them, which
+      -- is the defect 20260828204652 fixed in compute_event_placements.
+      SELECT DISTINCT ON (rr.event_id, COALESCE(rr.player_id::text, rr.player_name))
+             rr.id, rr.event_id, ABS(rr.raw_score) AS strokes
+      FROM results rr JOIN session_events sse ON sse.id = rr.event_id
+      JOIN gained gg ON gg.event_name = sse.event_name AND gg.old_mode = 'score'
+      WHERE rr.difficulty_tier IS NULL AND rr.raw_score IS NOT NULL
+      ORDER BY rr.event_id, COALESCE(rr.player_id::text, rr.player_name), ABS(rr.raw_score), rr.id
+    )
+    SELECT b.id,
+      CASE WHEN COUNT(*) OVER (PARTITION BY b.event_id) = 1 THEN 0
+           WHEN RANK() OVER (PARTITION BY b.event_id ORDER BY b.strokes) > 1 THEN 0
+           WHEN COUNT(*) OVER (PARTITION BY b.event_id, b.strokes) > 1 THEN 1
            ELSE 2 END AS term
-    FROM results rr JOIN session_events sse ON sse.id = rr.event_id
-    JOIN gained gg ON gg.event_name = sse.event_name AND gg.old_mode = 'score'
-    WHERE rr.difficulty_tier IS NULL AND rr.raw_score IS NOT NULL
+    FROM best b
   ) g2
   WHERE se.id = r.event_id AND se.event_name = g.event_name AND g2.id = r.id
     AND g.old_mode = 'score' AND r.difficulty_tier IS NULL
@@ -643,6 +813,8 @@ WITH upd AS (
   UPDATE results r SET
     difficulty_tier = g.rung,
     raw_score = g.new_idx * 10000 + (10000 - GREATEST(LEAST(ABS(r.raw_score) / 100.0, 9999), 0.01)),
+    score_label = 'D' || (g.new_idx + 1) || ' ' || g.rung || ' · ' ||
+      COALESCE(NULLIF(r.score_label, ''), ''),
     time_seconds = COALESCE(r.time_seconds, ABS(r.raw_score) / 100.0)
   FROM session_events se, gained g
   WHERE se.id = r.event_id AND se.event_name = g.event_name
@@ -657,6 +829,8 @@ WITH upd AS (
   UPDATE results r SET
     difficulty_tier = g.rung,
     raw_score = g.new_idx * 10000 + (LEAST(ROUND(ABS(r.raw_score) / 10.0), 9999)),
+    score_label = 'D' || (g.new_idx + 1) || ' ' || g.rung || ' · ' ||
+      COALESCE(NULLIF(r.score_label, ''), ''),
     distance_m = COALESCE(r.distance_m, ABS(r.raw_score) / 100.0)
   FROM session_events se, gained g
   WHERE se.id = r.event_id AND se.event_name = g.event_name
@@ -671,11 +845,43 @@ WITH upd AS (
   UPDATE results r SET
     difficulty_tier = g.rung,
     raw_score = g.new_idx * 10000 + (GREATEST(LEAST(ROUND(ABS(r.raw_score)), 9999), 1)),
+    score_label = 'D' || (g.new_idx + 1) || ' ' || g.rung || ' · ' ||
+      COALESCE(NULLIF(r.score_label, ''), ''),
     time_seconds = COALESCE(r.time_seconds, ABS(r.raw_score))
   FROM session_events se, gained g
   WHERE se.id = r.event_id AND se.event_name = g.event_name
     AND g.old_mode = 'hold' AND r.difficulty_tier IS NULL
     AND r.raw_score IS NOT NULL 
+  RETURNING r.id
+)
+INSERT INTO gained_ids SELECT id FROM upd ON CONFLICT DO NOTHING;
+
+-- ── Leg Ext Hold lost its ladder, and every row converts exactly ────────────
+-- Its old rung name IS the load ('Bodyweight', '2kg' … '24kg') and time_seconds
+-- is intact, which is precisely what `weight+time` encodes:
+--   raw = round(kg * 100) * 10000 + secs
+-- Deleting these would contradict this migration's own principle that a score is
+-- rebuilt from its source columns whenever the source survives.
+CREATE TEMP TABLE leg_ext_loads (rung text PRIMARY KEY, kg numeric) ON COMMIT DROP;
+INSERT INTO leg_ext_loads VALUES
+  ('Bodyweight', 0), ('2kg', 2), ('4kg', 4), ('8kg', 8),
+  ('12kg', 12), ('16kg', 16), ('24kg', 24);
+
+WITH upd AS (
+  UPDATE results r SET
+    difficulty_tier = NULL,
+    weight_kg = COALESCE(r.weight_kg, l.kg),
+    raw_score = ROUND(COALESCE(r.weight_kg, l.kg) * 100) * 10000
+                + GREATEST(LEAST(ROUND(r.time_seconds), 9999), 1),
+    score_label = CASE WHEN COALESCE(r.weight_kg, l.kg) > 0
+                       THEN COALESCE(r.weight_kg, l.kg)::text || 'kg' ELSE 'Bodyweight' END
+                  || ' · ' || floor(ROUND(r.time_seconds) / 60)::text || ':' ||
+                  lpad((ROUND(r.time_seconds)::int % 60)::text, 2, '0')
+  FROM session_events se, leg_ext_loads l
+  WHERE se.id = r.event_id
+    AND se.event_name = 'Leg Ext Hold'
+    AND r.difficulty_tier = l.rung
+    AND ROUND(COALESCE(r.time_seconds, 0)) > 0
   RETURNING r.id
 )
 INSERT INTO gained_ids SELECT id FROM upd ON CONFLICT DO NOTHING;
@@ -695,7 +901,7 @@ WHERE r.session_id IS NOT NULL
   AND s.points_awarded_at IS NOT NULL
   AND (
     EXISTS (SELECT 1 FROM session_player_summary sp WHERE sp.session_id = s.id)
-    OR EXISTS (SELECT 1 FROM results r2 WHERE r2.session_id = s.id AND COALESCE(r2.points_earned, 0) > 0)
+    OR EXISTS (SELECT 1 FROM results r2 WHERE r2.session_id = s.id AND r2.points_earned IS NOT NULL)
   )
 ON CONFLICT DO NOTHING;
 
@@ -729,14 +935,20 @@ WHERE r.difficulty_tier IS NOT NULL
 -- Deliberately NOT `IF NOT EXISTS`: a pre-existing table means a prior partial
 -- apply, and silently skipping the archive while still running the DELETE would
 -- destroy rows with no pre-image.
-CREATE TABLE public.results_difficulty_archive_20260908 AS
+CREATE TABLE public.results_difficulty_archive_20260910025855 AS
 SELECT r.*, se.event_name AS archived_event_name, now() AS archived_at
 FROM results r
 JOIN session_events se ON se.id = r.event_id
 WHERE r.id IN (SELECT id FROM doomed);
 
-ALTER TABLE public.results_difficulty_archive_20260908 ENABLE ROW LEVEL SECURITY;
-REVOKE ALL ON public.results_difficulty_archive_20260908 FROM anon, authenticated;
+ALTER TABLE public.results_difficulty_archive_20260910025855 ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.results_difficulty_archive_20260910025855 FROM anon, authenticated;
+
+CREATE TEMP TABLE affected_players (player_id uuid PRIMARY KEY) ON COMMIT DROP;
+INSERT INTO affected_players
+SELECT DISTINCT r.player_id FROM results r
+WHERE r.id IN (SELECT id FROM doomed) AND r.player_id IS NOT NULL
+ON CONFLICT DO NOTHING;
 
 DELETE FROM results WHERE id IN (SELECT id FROM doomed);
 
@@ -748,10 +960,16 @@ DELETE FROM results WHERE id IN (SELECT id FROM doomed);
 -- pushed a level up with its seconds zeroed. Those remainders are worthless; the
 -- source columns are intact.
 UPDATE results r
-SET score_label = CASE
-      WHEN r.score_label ~ '^D[0-9]+ '
-        THEN regexp_replace(r.score_label, '^D[0-9]+ [^·]*', 'D' || (m.new_idx + 1) || ' ' || m.tier_name || ' ')
-      ELSE r.score_label
+SET score_label = 'D' || (m.new_idx + 1) || ' ' || m.tier_name || ' · ' || CASE
+      WHEN m.scoring = 'weight'
+        THEN COALESCE(r.weight_kg, 0)::text || 'kg'
+             || CASE WHEN COALESCE(r.reps, 0) > 0 THEN ' × ' || r.reps ELSE '' END
+      WHEN m.mode = 'difficulty+distance'
+        THEN COALESCE(r.distance_m, 0)::text || 'm'
+      WHEN m.mode = 'difficulty+time'
+        THEN floor(ROUND(r.time_seconds) / 60)::text || ':' ||
+             lpad((ROUND(r.time_seconds)::int % 60)::text, 2, '0')
+      ELSE COALESCE(r.reps, 0)::text || ' reps'
     END,
     raw_score = CASE
       WHEN m.scoring = 'weight'
@@ -789,6 +1007,20 @@ BEGIN
   END LOOP;
 END $$;
 
+-- Deleting a scored row changes what recompute_player_total() derives from
+-- results.points_earned, and a lifetime total must be RECOMPUTED, never left to
+-- drift (CLAUDE.md). This matters more than it looks: sync_player_taniwha only
+-- ever does `body_parts = body_parts + take` and never reduces, so if
+-- lifetime_points falls without the totals being rebuilt here, the append-only
+-- budget invariant breaks permanently and silently.
+DO $$
+DECLARE p record;
+BEGIN
+  FOR p IN SELECT player_id FROM affected_players LOOP
+    PERFORM public.recompute_player_total(p.player_id);
+  END LOOP;
+END $$;
+
 -- ── Assertions. A rewrite that silently fails must not report success. ───────
 DO $$
 DECLARE
@@ -822,7 +1054,7 @@ BEGIN
     RAISE EXCEPTION 'difficulty rebuild: % rows on tiered events still carry no level', v_untiered;
   END IF;
 
-  SELECT count(*) INTO v_archived FROM public.results_difficulty_archive_20260908;
+  SELECT count(*) INTO v_archived FROM public.results_difficulty_archive_20260910025855;
   RAISE NOTICE 'difficulty rebuild: archived % rows', v_archived;
 
   SELECT count(*) INTO v_events FROM event_domains;
@@ -851,4 +1083,22 @@ BEGIN
   END IF;
 END $$;
 
-COMMIT;
+-- The taniwha budget invariant, which this migration can break by lowering a
+-- lifetime total. Guarded rather than assumed: body_parts only ever increases,
+-- so a breach here is permanent and would not surface until someone checked.
+DO $$
+DECLARE v_breaches int;
+BEGIN
+  IF to_regclass('public.player_taniwha') IS NULL THEN RETURN; END IF;
+  SELECT count(*) INTO v_breaches FROM (
+    SELECT pt.player_id
+    FROM public.player_taniwha pt
+    JOIN public.player_totals t ON t.player_id = pt.player_id
+    GROUP BY pt.player_id, t.lifetime_points
+    HAVING SUM(pt.body_parts) > public.taniwha_body_budget(t.lifetime_points)
+  ) x;
+  IF v_breaches > 0 THEN
+    RAISE EXCEPTION
+      'difficulty rebuild: % players now hold more taniwha pieces than their lifetime points allow', v_breaches;
+  END IF;
+END $$;

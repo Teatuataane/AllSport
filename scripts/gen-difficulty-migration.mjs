@@ -10,10 +10,14 @@ import fs from 'node:fs'
 import { execFileSync } from 'node:child_process'
 
 const src = fs.readFileSync('lib/eventData.ts', 'utf8')
-// The PREVIOUS ladders, read from git rather than remembered — the working copy
-// has already been rewritten, and CLAUDE.md's rename rule is explicit that old
-// names must come from git history.
-const oldSrc = execFileSync('git', ['show', 'HEAD:lib/eventData.ts'], { encoding: 'utf8', maxBuffer: 1 << 24 })
+// The PRE-REVIEW ladders, from a PINNED ref rather than HEAD. This matters: once
+// the rebuild merged, HEAD carried the NEW modes, so reading HEAD made every
+// event look unchanged and the gained-ladder map came out EMPTY — silently, with
+// the migration still generating cleanly. f05b8b1 is the commit immediately
+// before `feat(events): rebuild every difficulty ladder`, i.e. the last state in
+// which production's scores and lib/eventData.ts agreed.
+const PRE_REVIEW_REF = process.env.PRE_REVIEW_REF ?? 'f05b8b1'
+const oldSrc = execFileSync('git', ['show', `${PRE_REVIEW_REF}:lib/eventData.ts`], { encoding: 'utf8', maxBuffer: 1 << 24 })
 const oldMode = new Map()
 for (const b of oldSrc.split(/\n  \{\n/).slice(1)) {
   const nm = b.match(/\n    name: '((?:[^'\\\\]|\\\\.)*)'/)
@@ -57,13 +61,49 @@ const q = v => `'${String(v).replace(/'/g, "''")}'`
 //   Weighted Carry "x0.25 BW" — a bodyweight multiple cannot become a fixed kg.
 //   Pause Dips "Assisted Dips (1 Foot)" — that rung left the ladder.
 const RUNG_RENAMES = [
+  // ── From the PRE-REVIEW ladders (git show f05b8b1:lib/eventData.ts) ────────
+  // Every rung name that existed before the review and is absent after it, one
+  // decision each. Derived from a diff of the two ladders, not from a snapshot
+  // of production: a snapshot only sees labels someone happened to have scored
+  // on, so a row written between the snapshot and the apply would be deleted.
+  ['Human Flag', 'Partial Flag', 'Assisted Flag'],
+  ['Iron Cross', 'Assisted · 2 Feet', '2 Feet Top Hold'],
+  ['Chin Hang', 'Assisted · 2 Feet', 'Feet Assisted'],
+  ['Chin Hang', 'Assisted · 1 Foot', 'Feet Assisted'],
+  ['Chin Hang', 'Two-Hand Hang', 'Two-Hand Chin Hang'],
+  ['Chin Hang', 'One-Hand Hang', 'One-Hand Chin Hang'],
+  ['Chin Hang', 'Band-Assisted', 'Banded Hands-Free'],
+  ['Chin Hang', 'Hands-Free', 'Chin Hang'],
+  ['Climbing', 'Assisted Rope Climb', 'Feet Assisted Climb'],
+  ['Climbing', 'Pegboard · Feet OK', 'Assisted Pegboard'],
+  ['Climbing', 'Pegboard · No Feet', 'Pegboard Climb'],
+  ['Headstand', 'Wall · No Hands', 'Wall Assisted'],
+  ['L-Sit Hold', 'Support · Feet Down', '2 Feet Assisted Tuck'],
+  ['L-Sit Hold', 'Support · One Foot', '1 Foot Assisted Tuck'],
+  ['L-Sit Hold', 'Tucked L-Sit', '1 Leg L-Sit'],
+  ['L-Sit Hold', 'Full L-Sit', 'L-Sit'],
+  ['Chinup Contest', 'Ring Row', 'High Ring Row'],
+  ['Lunges', 'Elevated', 'Elevated Lunge'],
+  ['Lunges', 'Floor', 'Lunge'],
+  ['Lunges', 'Jumping', 'Jumping Switch Lunges'],
+  ['Standing Split', 'Lift · Ankle Height', 'Ankle Height'],
+  ['Standing Split', 'Lift · Knee Height', 'Knee Height'],
+  ['Standing Split', 'Lift · Hip Height', 'Hip Height'],
+  ['Standing Split', 'Hip · Knee Locked', 'Hip Height'],
+  ['Standing Split', 'Above Hip · Assisted', 'Rib Height'],
+  ['Standing Split', 'Above Hip · Free', 'Rib Height'],
+  ['Standing Split', 'Head · Assisted', 'Head Height'],
+  ['Standing Split', 'Head · Free', 'Head Height'],
+  ['Foot Juggling', 'No Bounce', '0 Bounce'],
+
+  // ── From production, labels older than the pre-review ladders ─────────────
+  // Rows still carrying a name from an even earlier revision. Found by diffing
+  // the stored difficulty_tier values against the new ladders.
   ['Ab Rollout', 'Kneeling Ab Rollout', 'Kneeling Rollout'],
   ['Ab Rollout', 'Elevated Kneeling Ab Rollout', 'Elevated Kneeling'],
   ['Balance Ball', '1 Leg Standing (no hands)', '1 Leg · No Hands'],
   ['Balance Ball', 'Kneeling (no hands)', 'Kneeling · No Hands'],
-  ['Chin Hang', 'Two-Hand Hang', 'Two-Hand Chin Hang'],
   ['Chin Hang', 'Assisted Chin Hang (1 Foot)', 'Feet Assisted'],
-  ['Climbing', 'Assisted Rope Climb', 'Feet Assisted Climb'],
   ['Forward Fold', 'Standing Forward Fold (knees bent)', 'Standing · Bent Knees'],
   ['Forward Fold', 'Standing Forward Fold (finger-tips to floor)', 'Fingertips to Floor'],
   ['Forward Split', 'Assisted Front Split (1 Block)', '1 Block'],
@@ -85,10 +125,28 @@ const RUNG_RENAMES = [
   ['Rear Hand Clasp', 'Towel-Assisted (hands hold opposite ends of towel)', 'Towel-Assisted'],
   ['Standing Split', 'Standing Split (Hip height, knee locked)', 'Hip Height'],
   ['Standing Split', 'Standing Leg Lift (Hip height)', 'Hip Height'],
-  ['Standing Split', 'Lift · Hip Height', 'Hip Height'],
-  ['Standing Split', 'Hip · Knee Locked', 'Hip Height'],
-  ['Standing Split', 'Above Hip · Assisted', 'Rib Height'],
 ]
+
+// Deliberately NOT mapped. Each is a rung whose MOVEMENT changed, not its label,
+// and crediting a score across one would record a lift nobody did — the rule that
+// kept OHP off Clean & Press and Toe Squat off Lunges.
+//   Pause Dips / Pause Chinup 'Assisted · 1 Foot'  -> replaced by top holds and
+//     negatives, which are different movements.
+//   Back Lever 'Straddle Back Lever'               -> replaced by 'Banded'.
+//   Iron Cross 'Assisted · 1 Foot', 'Partial Iron Cross'
+//   Front Lever '1 Leg Front Lever'
+//   L-Sit Hold 'Half L-Sit'                        -> no equivalent rung.
+//   Pancake 'Hands to Floor'                       -> the standard became elbows,
+//     which is HARDER; mapping it would promote the score.
+//   Needle Pose (all six)                          -> the ladder changed family,
+//     from leg lifts and scales to quad stretches.
+//   Windshield Wipers 'Hanging Wiper Circles'      -> split in two, and Tāne's
+//     answer was to remove the scores that conflict rather than pick one.
+//   Scooting (all five)                            -> the distances no longer
+//     overlap: the old ladder topped out at 200m, the new one starts at 250m.
+//   Jump Rope 'Crossover Doubles', Gymnastics 'Back Handspring', Juggling
+//     '4 Ball'                                     -> rungs that left the ladder.
+//   Handstand walk rungs, Weighted Carry 'x0.25 BW', Duck Walk (event replaced).
 
 // ── Events GAINING a ladder ──────────────────────────────────────────────────
 // 477 rows sit on events that had no ladder and now have one. They carry
@@ -196,6 +254,12 @@ L.push(`-- raw_score on the abandoned scale, so they are invisible to anything k
 L.push(`-- on difficulty_tier. Each lands on a named rung with its real value kept.`)
 L.push(`-- new_idx leads for the same reason tier_map's does: see the note there.`)
 L.push(`CREATE TEMP TABLE gained (new_idx int, event_name text, rung text, old_mode text) ON COMMIT DROP;`)
+if (!gained.length) {
+  throw new Error(
+    `No events resolved as gaining a ladder. PRE_REVIEW_REF (${PRE_REVIEW_REF}) probably ` +
+    `already contains the new modes, which makes every event look unchanged. ` +
+    `This is the failure that produced an empty repair map once already.`)
+}
 L.push(`INSERT INTO gained VALUES\n` +
   gained.map(g => `  (${g.idx}, ${q(g.name)}, ${q(g.rung)}, ${q(g.prev)})`).join(',\n') + ';')
 L.push('')
@@ -208,6 +272,9 @@ for (const [mode, rule] of Object.entries(GAINED_LADDER)) {
   const sets = [
     `    difficulty_tier = g.rung`,
     `    raw_score = g.new_idx * 10000 + (${rule.ranked ? 'g2.term' : rule.term})`,
+    // Rebuilt, not patched: these rows have no D-prefix to replace.
+    `    score_label = 'D' || (g.new_idx + 1) || ' ' || g.rung || ' · ' ||\n` +
+    `      COALESCE(NULLIF(r.score_label, ''), '')`,
   ]
   if (rule.extra) sets.push(`    ${rule.extra}`)
   if (rule.keepStrokes) {
@@ -223,14 +290,23 @@ for (const [mode, rule] of Object.entries(GAINED_LADDER)) {
     // Fewest strokes in that session's field takes the win; a shared best is a
     // draw; a solo round beat nobody. Derived from the strokes really shot.
     L.push(`  FROM session_events se, gained g, (`)
-    L.push(`    SELECT rr.id,`)
-    L.push(`      CASE WHEN COUNT(*) OVER (PARTITION BY rr.event_id) = 1 THEN 0`)
-    L.push(`           WHEN RANK() OVER (PARTITION BY rr.event_id ORDER BY ABS(rr.raw_score)) > 1 THEN 0`)
-    L.push(`           WHEN COUNT(*) OVER (PARTITION BY rr.event_id, ABS(rr.raw_score)) > 1 THEN 1`)
+    L.push(`    WITH best AS (`)
+    L.push(`      -- One row per PLAYER before ranking. Counting rows would let a`)
+    L.push(`      -- player's own extra rounds sit in the field beside them, which`)
+    L.push(`      -- is the defect 20260828204652 fixed in compute_event_placements.`)
+    L.push(`      SELECT DISTINCT ON (rr.event_id, COALESCE(rr.player_id::text, rr.player_name))`)
+    L.push(`             rr.id, rr.event_id, ABS(rr.raw_score) AS strokes`)
+    L.push(`      FROM results rr JOIN session_events sse ON sse.id = rr.event_id`)
+    L.push(`      JOIN gained gg ON gg.event_name = sse.event_name AND gg.old_mode = ${q(mode)}`)
+    L.push(`      WHERE rr.difficulty_tier IS NULL AND rr.raw_score IS NOT NULL`)
+    L.push(`      ORDER BY rr.event_id, COALESCE(rr.player_id::text, rr.player_name), ABS(rr.raw_score), rr.id`)
+    L.push(`    )`)
+    L.push(`    SELECT b.id,`)
+    L.push(`      CASE WHEN COUNT(*) OVER (PARTITION BY b.event_id) = 1 THEN 0`)
+    L.push(`           WHEN RANK() OVER (PARTITION BY b.event_id ORDER BY b.strokes) > 1 THEN 0`)
+    L.push(`           WHEN COUNT(*) OVER (PARTITION BY b.event_id, b.strokes) > 1 THEN 1`)
     L.push(`           ELSE 2 END AS term`)
-    L.push(`    FROM results rr JOIN session_events sse ON sse.id = rr.event_id`)
-    L.push(`    JOIN gained gg ON gg.event_name = sse.event_name AND gg.old_mode = ${q(mode)}`)
-    L.push(`    WHERE rr.difficulty_tier IS NULL AND rr.raw_score IS NOT NULL`)
+    L.push(`    FROM best b`)
     L.push(`  ) g2`)
     L.push(`  WHERE se.id = r.event_id AND se.event_name = g.event_name AND g2.id = r.id`)
   } else {
