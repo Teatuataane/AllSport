@@ -2,6 +2,13 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.7.1.0] - 2026-09-10
+
+### Fixed
+- **Historical scores now line up with the levels they were set on.** The level review changed, renamed or removed rungs across the roster, and a score records the name of the level it was set on. Where a level was simply renamed, the score follows it, so your personal bests survive. Where a level genuinely left the ladder, the score is archived and removed, because it no longer describes anything you can do. Scores on the events that only just gained levels, like Carrom, Badminton and Basketball, are placed on the level they belong to with the real result kept: a win stays a win, a golf round keeps its strokes and is ranked against the others played that day, and a sprint keeps its time.
+- **Climbing scores set before this release are corrected.** Climbing had been ranked longest-time-wins on an event that is a race. The scores themselves were recorded correctly and are re-read the right way round now, so the Climbing order changes and the new order is the true one.
+- **Placements and win counts are recomputed** for every affected game, so nothing is left ranked against a score that no longer exists.
+
 ## [0.7.0.0] - 2026-09-10
 
 ### Added
