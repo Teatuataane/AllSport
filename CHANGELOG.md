@@ -2,6 +2,25 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.7.0.0] - 2026-09-10
+
+### Added
+- **Every event now has difficulty levels, and they have all been reviewed.** Eighty-six events carry a ladder; the other thirty-four deliberately carry none, because a deadlift or a sprint is already one honest number. Each level was set by hand rather than guessed, and the judging standard for each one is written next to it, so a kaiwhakawā can settle a level on the spot.
+- **Team and skill events now have a way in.** Volleyball, Tennis, Basketball, Archery, Darts and twenty more used to be a single win, draw or loss, so if you could not play the full game you scored nothing. They now start with the skill itself, a pass, a hit, a shot at the target, and step up through distance to the real contest at the top. Playing the game still beats every drill below it, whatever the result. A beginner, an injured player, or an odd number on the day now has something to record.
+- **Throws grade by the implement.** Javelin and Shotput step from a stick or a tennis ball up to the full weight, and the distance is still measured. A short throw with the real implement beats a long one with the light one.
+
+### Changed
+- **Weighted levels record your reps as well as the weight.** The top rung of Pause Dips, Pause Chinup and GHD Situp asks for both. Heaviest wins, and the reps you did are kept on the record beside it.
+- **Leg Ext Hold is graded by the load you choose,** not by a fixed ladder. Heavier wins; if two of you hold the same weight, the longer hold takes it.
+- **Duck Walk has become Animal Crawl,** with crawls and bear crawls below the duck walk itself. Duck Walk survives as two of its levels.
+
+### Fixed
+- **The hardest level on a weighted event used to rank below the second easiest.** A twenty kilogram weighted dip scored twenty, while five reps at the level below scored ten thousand and five, so loading the bar made your score worse. The weighted rung now sits at the top of its ladder where it belongs.
+- **Climbing was ranked backwards.** It is a race, so the fastest ascent should win, but a mismatch in the code meant the app had been ranking the longest time as the best since June 2026. Climbing scores set before this release are corrected by the history repair that follows this release.
+
+### Note
+Historical scores are corrected separately, in the release after this one. Until then, scores set before this release may show against the wrong level.
+
 ## [0.6.5.2] - 2026-09-06
 
 ### Fixed

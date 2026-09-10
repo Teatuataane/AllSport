@@ -7,6 +7,10 @@ export type InputMode =
   | 'hold'
   | 'difficulty+time'
   | 'difficulty+reps'
+  | 'difficulty+distance'
+  // Weight then longest hold: heavier always wins, time breaks the tie.
+  // Leg Ext Hold only — a loaded hold with no ladder (difficulty review, Sept 2026).
+  | 'weight+time'
   | 'distance'
   | 'sport'
   | 'sprint'
@@ -18,6 +22,19 @@ export type DifficultyTier = {
   // Judge criteria that used to bloat the name — shown in HOW TO and on
   // /events/[slug], never on the compact tier chips.
   detail?: string
+  // A tier that is scored differently from the rest of its ladder.
+  //   'weight' — the top rung of a rep ladder, where you load the movement
+  //              instead of adding reps (Weighted Chinup, Weighted RTO Dip).
+  //   'sport'  — a `Game` rung: the drill ladder tops out in the real contest,
+  //              so the rung records a win, draw or loss.
+  // Declared HERE, on the tier, and never matched by event name in scoring.ts.
+  // Name matching is what silently dropped the weight input across the
+  // 'Pause Chin Up' → 'Pause Chinup' rename (see CLAUDE.md); with 37 Game rungs
+  // on the roster that failure mode would be everywhere.
+  scoring?: 'weight' | 'sport'
+  // A second number captured alongside the score but not used to rank within
+  // the tier: reps on a weighted rung, strokes on a golf Game rung.
+  records?: 'reps' | 'strokes'
 }
 
 export type EventData = {
@@ -95,13 +112,14 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: true,
     difficultyTiers: [
       { level: 1, name: 'Assisted · 2 Feet', detail: 'Dips with both feet assisting on the ground or a box' },
-      { level: 2, name: 'Assisted · 1 Foot', detail: 'Dips with one foot assisting' },
-      { level: 3, name: 'Straight Bar Dips' },
-      { level: 4, name: 'Rings Turned Out Dip' },
-      { level: 5, name: 'Weighted RTO Dip' },
+      { level: 2, name: 'Dip Top Hold' },
+      { level: 3, name: 'Dip Negatives' },
+      { level: 4, name: 'Straight Bar Dips' },
+      { level: 5, name: 'Rings Turned Out Dip' },
+      { level: 6, name: 'Weighted RTO Dip', scoring: 'weight', records: 'reps' },
     ],
     howToPerform: "Choose your tier, then support yourself on the bars or rings. Lower under control until your shoulders sit below your elbows, hold a dead pause at the bottom, then press back to full lockout. Repeat for max reps.",
-    rules: "One-second dead pause at the bottom of every rep — no bounce. Full elbow lockout at the top. Depth standard: shoulder below elbow. Declare your tier before starting; most reps at your tier wins, and a higher tier always outranks a lower one. D5 (Weighted RTO Dip) is scored by added weight instead of reps.",
+    rules: "One-second dead pause at the bottom of every rep — no bounce. Full elbow lockout at the top. Depth standard: shoulder below elbow. Declare your tier before starting; most reps at your tier wins, and a higher tier always outranks a lower one. The top rung (Weighted RTO Dip) is scored by added weight, with reps recorded alongside it.",
     videoPlaceholder: true,
     emoji: '💪',
   },
@@ -113,14 +131,15 @@ export const EVENTS: EventData[] = [
     inputMode: 'difficulty+reps',
     hasDifficultyTiers: true,
     difficultyTiers: [
-      { level: 1, name: 'Assisted · 2 Feet', detail: 'Chin-ups with both feet assisting on the ground or a box' },
-      { level: 2, name: 'Assisted · 1 Foot', detail: 'Chin-ups with one foot assisting' },
-      { level: 3, name: 'Banded Chinup' },
-      { level: 4, name: 'Chinup' },
-      { level: 5, name: 'Weighted Chinup' },
+      { level: 1, name: 'High Ring Row' },
+      { level: 2, name: 'Low Ring Row' },
+      { level: 3, name: 'Chinup Negative' },
+      { level: 4, name: 'Banded Chinup' },
+      { level: 5, name: 'Chinup' },
+      { level: 6, name: 'Weighted Chinup', scoring: 'weight', records: 'reps' },
     ],
     howToPerform: "Choose your tier and hang from the bar with an underhand grip, arms fully extended. Pull until your chin is clearly over the bar, lower under control to a dead hang, and pause before the next rep. Repeat for max reps.",
-    rules: "One-second dead-hang pause at the bottom of every rep — no kipping or swinging. Chin clearly over the bar at the top. Declare your tier before starting; most reps at your tier wins, and a higher tier always outranks a lower one. D5 (Weighted Chinup) is scored by added weight instead of reps.",
+    rules: "One-second dead-hang pause at the bottom of every rep — no kipping or swinging. Chin clearly over the bar at the top. Declare your tier before starting; most reps at your tier wins, and a higher tier always outranks a lower one. The top rung (Weighted Chinup) is scored by added weight, with reps recorded alongside it.",
     videoPlaceholder: true,
     emoji: '💪',
   },
@@ -246,7 +265,7 @@ export const EVENTS: EventData[] = [
       { level: 1, name: 'Elevated Side Plank' },
       { level: 2, name: 'Side Plank' },
       { level: 3, name: '1 Leg Side Plank' },
-      { level: 4, name: 'Partial Flag' },
+      { level: 4, name: 'Assisted Flag' },
       { level: 5, name: 'Tuck Flag' },
       { level: 6, name: 'Full Flag' },
     ],
@@ -266,8 +285,9 @@ export const EVENTS: EventData[] = [
     difficultyTiers: [
       { level: 1, name: 'Tuck Floor Wiper' },
       { level: 2, name: 'Floor Wipers' },
-      { level: 3, name: 'Hanging Wiper Circles' },
-      { level: 4, name: 'Windshield Wipers' },
+      { level: 3, name: 'Hanging Tuck Circles' },
+      { level: 4, name: 'Hanging Circles' },
+      { level: 5, name: 'Windshield Wipers' },
     ],
     howToPerform: "Hang from a pull-up bar and raise your legs to vertical (or set up on the floor for the lower tiers). Keeping your legs together, sweep them side to side in a controlled arc like a windshield wiper. Repeat for max reps.",
     rules: "Declare your tier before starting. One rep = a full sweep from one side to the other, under control, legs together. No swinging or using momentum. Most reps at your tier wins; a higher tier always outranks a lower one.",
@@ -285,10 +305,11 @@ export const EVENTS: EventData[] = [
     difficultyTiers: [
       { level: 1, name: 'Pseudo Planche Lean' },
       { level: 2, name: 'Elevated Pseudo Lean', detail: 'Pseudo planche lean with hands elevated' },
-      { level: 3, name: 'Tuck Planche' },
-      { level: 4, name: 'Banded Planche' },
-      { level: 5, name: 'Straddle Planche' },
-      { level: 6, name: 'Full Planche' },
+      { level: 3, name: 'Banded Tuck Planche' },
+      { level: 4, name: 'Tuck Planche' },
+      { level: 5, name: 'Banded Planche' },
+      { level: 6, name: 'Straddle Planche' },
+      { level: 7, name: 'Full Planche' },
     ],
     howToPerform: "Set your hands on the floor (or parallettes), lean your shoulders forward past your wrists, and take your feet off the ground into the planche position for your tier — from a pseudo lean up to the full planche. Hold as long as you can.",
     rules: "Declare your tier before starting. Timer starts when your feet leave the floor (or the lean position is set) and stops when the position breaks. Arms straight for planche tiers; banded means heavy band. Longest hold at your tier wins; a higher tier always outranks a lower one.",
@@ -309,7 +330,7 @@ export const EVENTS: EventData[] = [
       { level: 3, name: 'Inverted Hang' },
       { level: 4, name: 'German Hang' },
       { level: 5, name: 'Tuck Back Lever' },
-      { level: 6, name: 'Straddle Back Lever' },
+      { level: 6, name: 'Banded Back Lever' },
       { level: 7, name: 'Back Lever' },
     ],
     howToPerform: "Hang from a bar or rings, pull your legs through into an inverted position, and lower your body backward toward horizontal, face down, at the tier you have chosen. Keep your arms straight and your body tight. Hold as long as you can.",
@@ -326,12 +347,13 @@ export const EVENTS: EventData[] = [
     inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
     difficultyTiers: [
-      { level: 1, name: 'Assisted · 2 Feet', detail: 'Iron cross with both feet supporting' },
-      { level: 2, name: 'Assisted · 1 Foot', detail: 'Iron cross with one foot supporting' },
+      { level: 1, name: '2 Feet Top Hold' },
+      { level: 2, name: 'Straight Bar Top Hold' },
       { level: 3, name: 'Ring Top Hold', detail: 'Support hold in the top position on rings' },
-      { level: 4, name: 'Banded Iron Cross' },
-      { level: 5, name: 'Partial Iron Cross' },
-      { level: 6, name: 'Iron Cross' },
+      { level: 4, name: 'Elbow Supported Cross' },
+      { level: 5, name: 'Forearm Supported Iron Cross' },
+      { level: 6, name: 'Banded Iron Cross' },
+      { level: 7, name: 'Iron Cross' },
     ],
     howToPerform: "On rings, lower from a support position until your arms are straight out to your sides and your body hangs vertically between them — the iron cross. Lower tiers use foot assistance, top-position holds, or a heavy band. Hold as long as you can.",
     rules: "Declare your tier before starting. Arms straight and in line with the shoulders — bent elbows end the attempt. Timer starts when the position is set and stops when it breaks. Banded means heavy band. Longest hold at your tier wins; a higher tier always outranks a lower one.",
@@ -350,9 +372,9 @@ export const EVENTS: EventData[] = [
       { level: 1, name: 'Assisted Hang' },
       { level: 2, name: 'Hang' },
       { level: 3, name: 'Inverted Hang' },
-      { level: 4, name: 'Tuck Front Lever' },
-      { level: 5, name: 'Banded Front Lever' },
-      { level: 6, name: '1 Leg Front Lever' },
+      { level: 4, name: 'Tuck Lever Negative' },
+      { level: 5, name: 'Tuck Front Lever' },
+      { level: 6, name: 'Banded Front Lever' },
       { level: 7, name: 'Front Lever' },
     ],
     howToPerform: "Hang from a bar or rings with straight arms and pull your body up to horizontal, face up, at the tier you have chosen — from a basic hang through tuck and one-leg variations to the full front lever. Hold as long as you can.",
@@ -369,12 +391,12 @@ export const EVENTS: EventData[] = [
     inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
     difficultyTiers: [
-      { level: 1, name: 'Assisted · 2 Feet', detail: 'Chin hang with both feet assisting' },
-      { level: 2, name: 'Assisted · 1 Foot', detail: 'Chin hang with one foot assisting' },
-      { level: 3, name: 'Two-Hand Hang', detail: 'Chin over the bar, both hands gripping' },
-      { level: 4, name: 'One-Hand Hang', detail: 'Chin over the bar, one hand gripping' },
-      { level: 5, name: 'Band-Assisted', detail: 'Hands-free chin hang with heavy band assistance' },
-      { level: 6, name: 'Hands-Free', detail: 'Chin over the bar with no hands on it' },
+      { level: 1, name: 'Feet Assisted', detail: 'Chin hang with both feet assisting on the ground or a box' },
+      { level: 2, name: 'Banded Hang', detail: 'Chin hang with heavy band assistance, hands on the bar' },
+      { level: 3, name: 'Two-Hand Chin Hang', detail: 'Chin over the bar, both hands gripping' },
+      { level: 4, name: 'One-Hand Chin Hang', detail: 'Chin over the bar, one hand gripping' },
+      { level: 5, name: 'Banded Hands-Free', detail: 'Hands-free chin hang with heavy band assistance' },
+      { level: 6, name: 'Chin Hang', detail: 'Chin over the bar with no hands on it' },
     ],
     howToPerform: "Pull to the top of a chin-up and hold with your chin over the bar, using the grip or assistance your tier allows. Stay tight and keep breathing. Hold as long as you can.",
     rules: "Declare your tier before starting. Chin clearly over the bar for the whole hold — the timer stops when your eyes drop below it. No resting your chin on the bar. Longest hold at your tier wins; a higher tier always outranks a lower one.",
@@ -393,11 +415,11 @@ export const EVENTS: EventData[] = [
       { level: 1, name: 'Leaning Rope Hold' },
       { level: 2, name: 'Assisted Rope Hang', detail: 'Feet may grip the rope' },
       { level: 3, name: 'No Feet Rope Hang' },
-      { level: 4, name: 'Assisted Rope Climb', detail: 'Feet may grip the rope' },
+      { level: 4, name: 'Feet Assisted Climb', detail: 'Feet may grip the rope' },
       { level: 5, name: 'No Feet Rope Climb' },
       { level: 6, name: 'L-Sit Rope Climb' },
-      { level: 7, name: 'Pegboard · Feet OK', detail: 'Feet allowed for support on the board or frame' },
-      { level: 8, name: 'Pegboard · No Feet' },
+      { level: 7, name: 'Assisted Pegboard', detail: 'Feet allowed for support on the board or frame' },
+      { level: 8, name: 'Pegboard Climb' },
     ],
     howToPerform: "Choose your tier: the lower tiers are rope holds and hangs, the upper tiers are climbs of the rope or pegboard, with or without feet. For climbs, start standing with both hands on the rope, climb to touch the marked top, then descend under control.",
     rules: "Declare your tier before starting. Rope and pegboard height is set and marked by the kaiwhakawā and must be the same for all players. Climbs are timed from the start signal to the top touch — fastest wins within a tier. No jumping start. Descend under control; sliding burns count as a safety fault. A higher tier always outranks a lower one.",
@@ -420,6 +442,7 @@ export const EVENTS: EventData[] = [
       { level: 2, name: 'Elevated Pushup Hold' },
       { level: 3, name: 'Wall Handstand' },
       { level: 4, name: 'Freestanding', detail: 'Freestanding handstand, no wall' },
+      { level: 5, name: '1 Arm Handstand' },
     ],
     howToPerform: "Choose your tier and set the hold: push-up hold, elevated push-up hold, wall handstand, or freestanding handstand. Lock your arms, squeeze your body tight, and hold the position as long as you can.",
     rules: "Declare your tier before starting. Timer starts when the position is set and stops when it breaks — for handstands, when your feet return to the floor or you walk more than a step out of position. Arms straight throughout. Longest hold at your tier wins; a higher tier always outranks a lower one.",
@@ -435,11 +458,12 @@ export const EVENTS: EventData[] = [
     inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
     difficultyTiers: [
-      { level: 1, name: 'Feet-Supported Tripod' },
-      { level: 2, name: 'Tripod Headstand' },
-      { level: 3, name: 'Forearm Headstand' },
-      { level: 4, name: 'Wall · No Hands', detail: 'Headstand with no hands, wall support allowed' },
-      { level: 5, name: 'Freestanding', detail: 'Freestanding headstand, no wall or hands' },
+      { level: 1, name: 'Wall Head Plank' },
+      { level: 2, name: 'Feet-Supported Tripod' },
+      { level: 3, name: 'Tripod Headstand' },
+      { level: 4, name: 'Forearm Headstand' },
+      { level: 5, name: 'Wall Assisted', detail: 'Headstand with no hands, wall support allowed' },
+      { level: 6, name: 'Freestanding', detail: 'Freestanding headstand, no wall or hands' },
     ],
     howToPerform: "Choose your tier and set your base — head and hands in a stable tripod, or forearms for that tier. Walk your feet in, lift into the headstand for your tier, and hold as long as you can. Come down under control.",
     rules: "Declare your tier before starting. Timer starts when your feet are up in the declared position and stops when they come down or the wall/support rules for your tier are broken. Use a mat. Longest hold at your tier wins; a higher tier always outranks a lower one.",
@@ -455,13 +479,12 @@ export const EVENTS: EventData[] = [
     inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
     difficultyTiers: [
-      { level: 1, name: 'Support · Feet Down', detail: 'Support hold — legs bent, feet touching the floor' },
-      { level: 2, name: 'Support · One Foot', detail: 'Support hold — legs straight, one foot touching the floor' },
+      { level: 1, name: '2 Feet Assisted Tuck' },
+      { level: 2, name: '1 Foot Assisted Tuck' },
       { level: 3, name: 'Tuck Hold', detail: 'Both knees pulled to the chest' },
-      { level: 4, name: 'Tucked L-Sit', detail: 'One leg extended' },
-      { level: 5, name: 'Half L-Sit', detail: 'Legs angled, not fully horizontal' },
-      { level: 6, name: 'Full L-Sit', detail: 'Legs fully horizontal, knees locked' },
-      { level: 7, name: 'V-Sit', detail: 'Thighs touching the chest, knees locked' },
+      { level: 4, name: '1 Leg L-Sit', detail: 'One leg extended' },
+      { level: 5, name: 'L-Sit' },
+      { level: 6, name: 'V-Sit' },
     ],
     howToPerform: "Support yourself on parallettes, a bench, or the floor with straight arms, and lift your legs into the position for your tier — from a bent-leg support hold up to the full L-sit or V-sit. Hold as long as you can.",
     rules: "Declare your tier before starting. Timer starts when the position is set and stops when the legs or hips drop below the tier standard. Knees locked where the tier states it. Longest hold at your tier wins; a higher tier always outranks a lower one.",
@@ -478,10 +501,12 @@ export const EVENTS: EventData[] = [
     inputMode: 'difficulty+reps',
     hasDifficultyTiers: true,
     difficultyTiers: [
-      { level: 1, name: 'Ring Row' },
-      { level: 2, name: 'Elevated Ring Row' },
-      { level: 3, name: 'Banded Chinup' },
-      { level: 4, name: 'Chin Up' },
+      { level: 1, name: 'High Ring Row' },
+      { level: 2, name: 'Low Ring Row' },
+      { level: 3, name: 'Elevated Ring Row' },
+      { level: 4, name: 'Banded Chinup' },
+      { level: 5, name: 'Chin Up' },
+      { level: 6, name: 'Muscle Up' },
     ],
     howToPerform: 'Start from a dead hang with palms facing you (supinated grip), hands shoulder-width apart. Pull your chin above the bar on every rep. Return to full dead hang between reps. Count total reps completed without stopping.',
     rules: 'Palms facing toward you (supinated grip). Full dead hang at the bottom of each rep — elbows fully extended. Chin must clear the bar on every rep. Kipping not allowed. No momentum from legs. Score is total reps completed in one continuous set.',
@@ -500,6 +525,8 @@ export const EVENTS: EventData[] = [
       { level: 2, name: 'Knee Push Up' },
       { level: 3, name: 'Push Up' },
       { level: 4, name: '1 Arm Pushup' },
+      { level: 5, name: 'Handstand Pushup' },
+      { level: 6, name: 'Deficit Handstand', detail: 'Handstand push-up from parallettes or blocks, below floor level' },
     ],
     howToPerform: "Choose your tier and set up in the push-up position for it. Lower until your chest reaches the floor, then press back to full lockout with your body in one straight line. Repeat for max reps without resting on the floor.",
     rules: "Declare your tier before starting. Chest touches the floor every rep; full elbow lockout at the top; hips stay in line — no sagging or piking. Resting is allowed in the top position only. Most reps at your tier wins; a higher tier always outranks a lower one.",
@@ -554,9 +581,10 @@ export const EVENTS: EventData[] = [
       { level: 2, name: 'Crunch' },
       { level: 3, name: 'Sit Up' },
       { level: 4, name: 'GHD Situp' },
+      { level: 5, name: 'Weighted GHD Situp', scoring: 'weight', records: 'reps' },
     ],
     howToPerform: "Choose your tier — from dead bugs and crunches up to the full GHD sit-up. Move through the full range for your tier under control, touching the stated points at top and bottom. Repeat for max reps.",
-    rules: "Declare your tier before starting. Full range every rep to your tier's standard. Most reps at your tier wins; a higher tier always outranks a lower one. D4 (GHD Situp) is scored by added weight instead of reps.",
+    rules: "Declare your tier before starting. Full range every rep to your tier's standard. Most reps at your tier wins; a higher tier always outranks a lower one. The top rung (Weighted GHD Situp) is scored by added weight, with reps recorded alongside it.",
 
     videoPlaceholder: true,
     emoji: '🦵',
@@ -566,19 +594,13 @@ export const EVENTS: EventData[] = [
     name: 'Leg Ext Hold',
     domain: 'Anaerobic Endurance',
     domainNumber: 5,
-    inputMode: 'difficulty+time',
-    hasDifficultyTiers: true,
-    difficultyTiers: [
-      { level: 1, name: 'Bodyweight', detail: 'No added load on the ankles' },
-      { level: 2, name: '2kg' },
-      { level: 3, name: '4kg' },
-      { level: 4, name: '8kg' },
-      { level: 5, name: '12kg' },
-      { level: 6, name: '16kg' },
-      { level: 7, name: '24kg' },
-    ],
-    howToPerform: "Sit tall on a bench or box with your knees in line with the edge and the load for your tier set across your ankles. Extend both legs until your knees are fully locked and level, then hold that position for as long as you can.",
-    rules: "Declare your tier before starting. The timer starts when both knees reach full lockout and stops the moment either leg drops below level. Hips stay on the bench and hands off the thighs. Longest hold at your tier wins; a higher tier always outranks a lower one.",
+    // Ladder removed Sept 2026 (difficulty review): the load IS the difficulty,
+    // so it is entered rather than picked off a ladder. Heavier wins, longest
+    // hold breaks the tie.
+    inputMode: 'weight+time',
+    hasDifficultyTiers: false,
+    howToPerform: "Sit tall on a bench or box with your knees in line with the edge and your chosen load set across your ankles. Extend both legs until your knees are fully locked and level, then hold that position for as long as you can.",
+    rules: "Record the load you used. The timer starts when both knees reach full lockout and stops the moment either leg drops below level. Hips stay on the bench and hands off the thighs. Heaviest load wins; within a load, the longest hold wins.",
 
     videoPlaceholder: true,
     emoji: '🦵',
@@ -677,9 +699,10 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: true,
     difficultyTiers: [
       { level: 1, name: 'Assisted Elevated', detail: 'Rear foot raised, hand on a support for balance' },
-      { level: 2, name: 'Elevated', detail: 'Rear foot raised, no support' },
-      { level: 3, name: 'Floor', detail: 'Both feet on the floor — the plain lunge' },
-      { level: 4, name: 'Jumping', detail: 'Switch legs in the air, no pause between reps' },
+      { level: 2, name: 'Elevated Lunge', detail: 'Rear foot raised, no support' },
+      { level: 3, name: 'Lunge', detail: 'Both feet on the floor — the plain lunge' },
+      { level: 4, name: 'Jumping Switch Lunges', detail: 'Switch legs in the air, no pause between reps' },
+      { level: 5, name: 'Jumping Bulgarian', detail: 'Rear foot raised on a box, switching legs in the air' },
     ],
     howToPerform: "Declare your tier, then step or lower into the lunge until your back knee is just off the floor and your front thigh reaches parallel. Drive back up to standing. Alternate legs each rep and keep going until you cannot complete another rep to depth.",
     rules: "Declare your tier before you start and stay on it for the whole set. Every rep reaches depth — front thigh at least parallel, back knee close to the floor — and returns to full standing. Torso stays upright; a rep is void if you push off the support on any tier above D1, or if the back knee rests on the floor. On Jumping the legs switch in the air with no pause between reps. Count both legs: a left and a right is two reps. A higher tier always outranks a lower one, and within a tier the most reps wins.",
@@ -761,12 +784,12 @@ export const EVENTS: EventData[] = [
     inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
     difficultyTiers: [
-      { level: 1, name: 'Lift · Below Hip', detail: 'Standing leg lift below hip height' },
-      { level: 2, name: 'Lift · Hip Height', detail: 'Standing leg lift at hip height (horizontal)' },
-      { level: 3, name: 'Scale · Above Hip', detail: 'Standing scale slightly above hip height' },
-      { level: 4, name: 'Scale · Extended', detail: 'Standing scale at hip height, leg fully extended' },
-      { level: 5, name: 'Scale · High', detail: 'Standing scale above head level' },
-      { level: 6, name: 'Leg to Head', detail: 'Full needle pose — leg drawn to the head' },
+      { level: 1, name: 'Seated Quad Stretch' },
+      { level: 2, name: 'Standing Quad Stretch' },
+      { level: 3, name: '2 Hands to Back Foot' },
+      { level: 4, name: '1 Foot, 1 Knee' },
+      { level: 5, name: '2 Knee' },
+      { level: 6, name: 'Full Needle Pose' },
     ],
     howToPerform: "Standing on one leg, lift the other leg behind you and raise it toward the height your tier requires, folding your torso forward as the leg climbs — all the way to leg-to-head for the top tier. Use the wall only if your tier allows it. Hold.",
     rules: "Declare your tier before starting. The lifted leg must reach and hold the height your tier states. Timer starts when the position is set and stops when the leg drops or balance is lost. Longest hold at your tier wins; a higher tier always outranks a lower one.",
@@ -825,14 +848,13 @@ export const EVENTS: EventData[] = [
     inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
     difficultyTiers: [
-      { level: 1, name: 'Lift · Ankle Height', detail: 'Standing leg lift to ankle height' },
-      { level: 2, name: 'Lift · Knee Height', detail: 'Standing leg lift to knee height' },
-      { level: 3, name: 'Lift · Hip Height', detail: 'Standing leg lift to hip height' },
-      { level: 4, name: 'Hip · Knee Locked', detail: 'Split at hip height, knee locked' },
-      { level: 5, name: 'Above Hip · Assisted', detail: 'Above hip height, hand assisted, knee locked' },
-      { level: 6, name: 'Above Hip · Free', detail: 'Above hip height, no hand assistance, knee locked' },
-      { level: 7, name: 'Head · Assisted', detail: 'Head height, hand assisted' },
-      { level: 8, name: 'Head · Free', detail: 'Head height, no hand assistance' },
+      { level: 1, name: 'Ankle Height', detail: 'Standing leg lift to ankle height' },
+      { level: 2, name: 'Knee Height', detail: 'Standing leg lift to knee height' },
+      { level: 3, name: 'Hip Height', detail: 'Standing leg lift to hip height' },
+      { level: 4, name: 'Rib Height' },
+      { level: 5, name: 'Shoulder Height' },
+      { level: 6, name: 'Head Height' },
+      { level: 7, name: 'Standing Split' },
     ],
     howToPerform: "Standing on one leg, raise the other leg in front or to the side to the height your tier requires — ankle, knee, hip, or all the way to head height — with hand assistance only where your tier allows. Lock the knee where stated and hold.",
     rules: "Declare your tier before starting. The lifted leg holds the stated height with the knee locked where required; hand assistance only at the tiers that allow it. Timer starts when the position is set and stops when the leg drops. Longest hold at your tier wins; a higher tier always outranks a lower one.",
@@ -854,6 +876,7 @@ export const EVENTS: EventData[] = [
       { level: 4, name: 'Elevated Pidgeon Pose' },
       { level: 5, name: 'Foot to Head Pose' },
       { level: 6, name: 'Foot Behind Head Pose' },
+      { level: 7, name: 'Both Feet Behind Head' },
     ],
     howToPerform: "Sit tall and work your leg up your body according to your tier — from assisted pigeon pose through to foot behind the head. Move in slowly, keep your spine as tall as you can, and hold the position.",
     rules: "Declare your tier before starting. The timer starts when the declared position is reached and stops when the leg slips or the position breaks. No forcing the leg with jerky movements. Either leg. Longest hold at your tier wins; a higher tier always outranks a lower one.",
@@ -886,7 +909,7 @@ export const EVENTS: EventData[] = [
       { level: 3, name: '1.5 Blocks', detail: 'Seated elevated on 1.5 blocks' },
       { level: 4, name: '1 Block', detail: 'Seated elevated on 1 block' },
       { level: 5, name: '0.5 Blocks', detail: 'Seated elevated on half a block' },
-      { level: 6, name: 'Hands to Floor', detail: 'Fold forward until the hands rest flat on the floor' },
+      { level: 6, name: 'Elbows to Floor', detail: 'Fold forward until the elbows rest flat on the floor' },
       { level: 7, name: 'Head to Floor', detail: 'Fold forward until the head touches the floor' },
     ],
     howToPerform: "Sit with your legs wide and fold your torso forward between them, resting at the block height your tier allows — down to hands, then head, on the floor for the top tiers. Keep your back long and legs straight. Hold.",
@@ -964,8 +987,13 @@ export const EVENTS: EventData[] = [
     name: 'Javelin',
     domain: 'Power',
     domainNumber: 3,
-    inputMode: 'distance',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+distance',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Stick' },
+      { level: 2, name: 'Short Javelin' },
+      { level: 3, name: 'Long Javelin' },
+    ],
     howToPerform: "Grip the javelin at the cord, draw it back over your shoulder, and throw it one-handed with an over-shoulder action after a short run-up. Follow through without crossing the throwing line.",
     rules: "One-handed over-the-shoulder throw only — no slinging or spinning. Release behind the line; crossing it is a foul. The javelin must land within the marked sector. Distance measured from the line to the first point of contact. Best attempt scores.",
 
@@ -977,8 +1005,13 @@ export const EVENTS: EventData[] = [
     name: 'Shotput',
     domain: 'Power',
     domainNumber: 3,
-    inputMode: 'distance',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+distance',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Tennis Ball' },
+      { level: 2, name: 'Half Weight' },
+      { level: 3, name: 'Full Weight' },
+    ],
     howToPerform: "Tuck the shot against your neck under your jaw. From behind the line, drive through your legs and hips and punch the shot forward in one putting action. Glide or standing put both allowed.",
     rules: "The shot must be putt from the neck with one hand — no throwing from behind the shoulder line. Release from behind the line and stay behind it until the shot lands. Distance measured from the line to first contact. Best attempt scores.",
 
@@ -990,8 +1023,15 @@ export const EVENTS: EventData[] = [
     name: 'Australian Football',
     domain: 'Power',
     domainNumber: 3,
-    inputMode: 'sport',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+reps',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Drop Kick' },
+      { level: 2, name: 'Drop Kick (5m)', detail: 'Drop kick to a partner' },
+      { level: 3, name: 'Drop Kick (10m)', detail: 'Drop kick to a partner' },
+      { level: 4, name: 'Drop Kick (20m)', detail: 'Drop kick to a partner' },
+      { level: 5, name: 'Game', scoring: 'sport' },
+    ],
     howToPerform: "Play a short-format game built on Australian Football skills — kicking, marking, and handballing. The kaiwhakawā sets the format on the day to suit numbers and space (kick-to-kick marking contests, or a small-sided game).",
     rules: "Format and scoring set by the kaiwhakawā before play and kept the same for all matches. Log your result as a win, draw, or loss with your opponent's name. Every extra match against a new opponent earns effort points.",
 
@@ -1098,9 +1138,10 @@ export const EVENTS: EventData[] = [
       { level: 1, name: '25m' },
       { level: 2, name: '50m' },
       { level: 3, name: '100m' },
+      { level: 4, name: '200m' },
     ],
     howToPerform: "Choose your distance tier. Perform a burpee — chest to the floor, back to your feet — then a two-foot broad jump forward. Repeat the burpee-jump sequence down the course until you cover the full distance.",
-    rules: "Declare your tier (25m, 50m, or 100m) before starting. Every rep is a full burpee (chest touches the floor) followed by a two-foot broad jump — no running or walking forward. Timed from start signal to crossing the line. Fastest time at your tier wins; a higher tier always outranks a lower one.",
+    rules: "Declare your tier before starting. Every rep is a full burpee (chest touches the floor) followed by a two-foot broad jump — no running or walking forward. Timed from start signal to crossing the line. Fastest time at your tier wins; a higher tier always outranks a lower one.",
     videoPlaceholder: true,
     emoji: '💨',
   },
@@ -1205,21 +1246,24 @@ export const EVENTS: EventData[] = [
     emoji: '📦',
   },
   {
-    slug: 'duck-walk',
-    name: 'Duck Walk',
+    // REPLACES Duck Walk (Sept 2026). Not a rename: a bear crawl is not a duck
+    // walk, so `duck-walk` history is deliberately NOT swept onto this slug.
+    // Duck Walk survives as two rungs of this ladder, not as an event.
+    slug: 'animal-crawl',
+    name: 'Animal Crawl',
     domain: 'Aerobic Endurance',
     domainNumber: 6,
     inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
     difficultyTiers: [
-      { level: 1, name: '10m Duck Walk' },
-      { level: 2, name: '25m Duck Walk' },
-      { level: 3, name: '50m Duck Walk' },
-      { level: 4, name: '100m Duck Walk' },
-      { level: 5, name: '200m Duck Walk' },
+      { level: 1, name: '25m Crawl', detail: 'Hands and knees, knees off the ground' },
+      { level: 2, name: '25m Bear Crawl', detail: 'Hands and feet, hips high, opposite hand and foot together' },
+      { level: 3, name: '25m Lizard Crawl', detail: 'Chest low, elbows bent, hips down' },
+      { level: 4, name: '25m Duck Walk', detail: 'Deep squat, hips below knees, stepping without standing up' },
+      { level: 5, name: '100m Duck Walk' },
     ],
-    howToPerform: "Choose your distance tier, then cover it in a deep squat — hips below knees, stepping forward without standing up. Faster time at your tier wins.",
-    rules: "Declare your tier before starting. Stay below parallel the whole way — standing up stops the clock until you are back in position. Fastest time at your tier wins; a higher tier always outranks a lower one.",
+    howToPerform: "Choose your tier, then cover the distance in that crawl without breaking position. Faster time at your tier wins.",
+    rules: "Declare your tier before starting. Hold the position for the whole distance — standing up or dropping the knees stops the clock until you are back in position. Fastest time at your tier wins; a higher tier always outranks a lower one.",
     videoPlaceholder: true,
     emoji: '🦆',
   },
@@ -1232,11 +1276,13 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: true,
     difficultyTiers: [
       { level: 1, name: '1 Lap' },
-      { level: 2, name: '3 Laps' },
-      { level: 3, name: '5 Laps' },
+      { level: 2, name: '2 Laps' },
+      { level: 3, name: '3 Laps' },
+      { level: 4, name: '4 Laps' },
+      { level: 5, name: '5 Laps' },
     ],
     howToPerform: "Choose your lap tier. One lap is the rugby bronco shuttle: run 20m and back, 40m and back, then 60m and back, touching each line. Complete your tier's laps as fast as you can.",
-    rules: "Declare your tier (1, 3, or 5 laps) before starting. Touch every line with your foot on each shuttle — a missed line means returning to it. Timed from the start signal to the final line. Fastest time at your tier wins; a higher tier always outranks a lower one.",
+    rules: "Declare your tier before starting. Touch every line with your foot on each shuttle — a missed line means returning to it. Timed from the start signal to the final line. Fastest time at your tier wins; a higher tier always outranks a lower one.",
     videoPlaceholder: true,
     emoji: '🏃',
   },
@@ -1249,11 +1295,9 @@ export const EVENTS: EventData[] = [
     inputMode: 'difficulty+time',
     hasDifficultyTiers: true,
     difficultyTiers: [
-      { level: 1, name: '10m' },
-      { level: 2, name: '25m' },
-      { level: 3, name: '50m' },
-      { level: 4, name: '100m' },
-      { level: 5, name: '200m' },
+      { level: 1, name: '250m' },
+      { level: 2, name: '500m' },
+      { level: 3, name: '1000m' },
     ],
     howToPerform: "Declare your distance tier, then scoot that distance seated on the ground, driving with your legs and arms, as fast as you can. Faster time wins within a tier, and a longer distance always outranks a shorter one.",
     rules: "Stay seated on the ground for the whole distance; standing or crawling on hands and knees voids the attempt. Declare your tier before starting. Fastest time at the highest distance tier wins.",
@@ -1274,6 +1318,7 @@ export const EVENTS: EventData[] = [
       { level: 4, name: '50kg — 200m' },
       { level: 5, name: '80kg — 200m' },
       { level: 6, name: '100kg — 200m' },
+      { level: 7, name: '200kg — 200m' },
     ],
     howToPerform: "Load the wheelbarrow to your weight tier, take both handles, and push it 200 metres as fast as you can. You may set it down to regrip; the clock keeps running.",
     rules: "Declare your weight tier before starting; the distance is always 200m. Both handles stay in your hands while moving and the load stays in the barrow — spilling it means reloading before you carry on. Timed from the start signal to crossing the line with the full load. Fastest time at your tier wins; a higher tier always outranks a lower one.",
@@ -1294,6 +1339,7 @@ export const EVENTS: EventData[] = [
       { level: 4, name: '50kg — 200m' },
       { level: 5, name: '80kg — 200m' },
       { level: 6, name: '100kg — 200m' },
+      { level: 7, name: '200kg — 200m' },
     ],
     howToPerform: "Load the wheelbarrow to your weight tier, take both handles behind you, and walk backwards pulling it 200 metres as fast as you can. You may set it down to regrip; the clock keeps running.",
     rules: "Declare your weight tier before starting; the distance is always 200m. You face away from the barrow and pull for the whole distance — turning to push voids the attempt. The load stays in the barrow; spilling it means reloading before you carry on. Fastest time at your tier wins; a higher tier always outranks a lower one.",
@@ -1306,8 +1352,13 @@ export const EVENTS: EventData[] = [
     name: '100m Sprint',
     domain: 'Speed',
     domainNumber: 4,
-    inputMode: 'sprint',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+time',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Walking' },
+      { level: 2, name: 'Timed' },
+      { level: 3, name: 'Game', scoring: 'sport' },
+    ],
     howToPerform: 'Sprint 100 metres from a standing start on a measured straight course. React to the judge\'s signal to start. Sprint at full speed to the finish line. Timer is recorded in seconds and centiseconds.',
     rules: 'Distance must be exactly 100 metres on a measured course. Standing start — no blocks required. Timer starts on the judge\'s signal, stops when you cross the finish line. Must stay in your lane. Time recorded as seconds + centiseconds (e.g. 12.34).',
     videoPlaceholder: true,
@@ -1331,8 +1382,13 @@ export const EVENTS: EventData[] = [
     name: 'T-Race',
     domain: 'Speed',
     domainNumber: 4,
-    inputMode: 'sport',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+time',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Walking' },
+      { level: 2, name: 'Timed' },
+      { level: 3, name: 'Game', scoring: 'sport' },
+    ],
     howToPerform: "Two identical T-shaped cone courses are set side by side. On the signal, sprint forward to the top of the T, shuffle side to side across it, and backpedal home. First player back wins the race.",
     rules: "Run head-to-head on matching courses. Touch each cone as set by the kaiwhakawā; a missed cone means going back to it. No crossing into the other lane. Log your result as a win or loss with your opponent's name. Extra races vs new opponents earn effort points.",
 
@@ -1357,8 +1413,13 @@ export const EVENTS: EventData[] = [
     name: '200m Sprint',
     domain: 'Speed',
     domainNumber: 4,
-    inputMode: 'sprint',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+time',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Walking' },
+      { level: 2, name: 'Timed' },
+      { level: 3, name: 'Game', scoring: 'sport' },
+    ],
     howToPerform: "Sprint 200 metres on the marked course. Attack the first half, then hold your form and keep your turnover high all the way through the line.",
     rules: "Standing start, no blocks. Timed from the start signal to the chest crossing the line, in seconds and centiseconds. Stay in your lane where lanes are marked. Fastest time wins.",
 
@@ -1370,8 +1431,15 @@ export const EVENTS: EventData[] = [
     name: 'Touch Rugby',
     domain: 'Speed',
     domainNumber: 4,
-    inputMode: 'sport',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+reps',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Ball Passes' },
+      { level: 2, name: 'Partner Pass (2m)' },
+      { level: 3, name: 'Partner Pass (5m)' },
+      { level: 4, name: 'Moving Pass (5m)', detail: 'Both players moving' },
+      { level: 5, name: 'Game', scoring: 'sport' },
+    ],
     howToPerform: "Play a short-format game of touch rugby. Move the ball with passes, run into space, and make touches on defence — a touch counts as a tackle and play restarts with a rollball.",
     rules: "Format (team size, touches per set, game length) is set by the kaiwhakawā and kept the same for all matches. Standard touch rules: six touches, no kicking, forward passes are turnovers. Log your result as a win, draw, or loss. Extra matches vs new opponents earn effort points.",
 
@@ -1389,7 +1457,9 @@ export const EVENTS: EventData[] = [
       { level: 1, name: 'Ankle height' },
       { level: 2, name: 'Knee height' },
       { level: 3, name: 'Hip height' },
-      { level: 4, name: 'Shoulder height' },
+      { level: 4, name: 'Belly Button Height' },
+      { level: 5, name: 'Rib Height' },
+      { level: 6, name: 'Shoulder height' },
     ],
     howToPerform: "Choose your bar height tier — ankle, knee, hip, or shoulder height. On the signal, complete the set number of two-foot jumps over the bar, rebounding side to side, as fast as you can.",
     rules: "Declare your tier before starting. The rep count is set by the kaiwhakawā and is the same for everyone. Two-foot take-off and landing; clipping the bar means resetting it before you continue, with the clock running. Fastest time to finish all reps at your tier wins; a higher tier always outranks a lower one.",
@@ -1427,8 +1497,15 @@ export const EVENTS: EventData[] = [
     name: 'American Football',
     domain: 'Speed',
     domainNumber: 4,
-    inputMode: 'sport',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+reps',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Ball Passes' },
+      { level: 2, name: 'Partner Pass (2m)' },
+      { level: 3, name: 'Partner Pass (5m)' },
+      { level: 4, name: 'Moving Pass (5m)', detail: 'Both players moving' },
+      { level: 5, name: 'Game', scoring: 'sport' },
+    ],
     howToPerform: "Play a game of American football against your opponent or opposing team under the format set for the session. Advance the ball by running and passing and score in the end zone.",
     rules: "Format, field size and down rules are set by the kaiwhakawa and matched for all players. Log your result as a win, draw or loss with your opponent's name. Must be witnessed by a judge. Extra games vs new opponents earn effort points.",
     videoPlaceholder: true,
@@ -1487,6 +1564,7 @@ export const EVENTS: EventData[] = [
       { level: 5, name: 'Baby Freeze' },
       { level: 6, name: 'Pilot Freeze' },
       { level: 7, name: 'Windmill' },
+      { level: 8, name: 'Game', scoring: 'sport' },
     ],
     howToPerform: "Choose your tier — footwork steps at the lower tiers, freezes and the windmill at the top. Perform your tier's move continuously (steps and windmills) or hold it (freezes) for as long as you can, staying clean and in control.",
     rules: "Declare your tier before starting. Timer runs while the move is performed or held to a recognisable standard — a stumble, extra support, or loss of the pattern stops the clock. Longest time at your tier wins; a higher tier always outranks a lower one.",
@@ -1508,6 +1586,7 @@ export const EVENTS: EventData[] = [
       { level: 4, name: 'Forward Flip' },
       { level: 5, name: 'Back Flip' },
       { level: 6, name: 'Front Flip 180' },
+      { level: 7, name: 'Game', scoring: 'sport' },
     ],
     howToPerform: "Choose your tier, from basic bounces to spins and flips. Perform your tier's skill on the trampoline for consecutive clean reps — land balanced in the centre and go straight into the next rep.",
     rules: "Declare your tier before starting. A rep counts when the skill is completed and landed under control on the feet. The set ends when you stop, land off-balance, or break the sequence. Flips only with kaiwhakawā approval and supervision. Most consecutive reps at your tier wins; a higher tier always outranks a lower one.",
@@ -1527,7 +1606,9 @@ export const EVENTS: EventData[] = [
       { level: 2, name: 'Alternating Feet', detail: 'Alternating single-foot jumps' },
       { level: 3, name: 'Criss-Cross' },
       { level: 4, name: 'Double Under' },
-      { level: 5, name: 'Crossover Doubles', detail: 'Crossover double unders' },
+      { level: 5, name: 'Single Dutch' },
+      { level: 6, name: 'Double Dutch' },
+      { level: 7, name: 'Game', scoring: 'sport' },
     ],
     howToPerform: "Choose your tier — from basic two-foot jumps up to crossover double unders. Skip continuously, counting every successful rep of your tier's skill, until you trip or stop.",
     rules: "Declare your tier before starting. Only clean reps of the tier skill count. The set ends when the rope stops or catches. Most consecutive reps at your tier wins; a higher tier always outranks a lower one.",
@@ -1563,7 +1644,7 @@ export const EVENTS: EventData[] = [
       { level: 5, name: 'Handspring', detail: 'Front or back handspring' },
       { level: 6, name: 'One-Hand Cartwheel' },
       { level: 7, name: 'Front Handspring' },
-      { level: 8, name: 'Back Handspring' },
+      { level: 8, name: 'Game', scoring: 'sport' },
     ],
     howToPerform: "Choose your tier, from forward rolls up to back handsprings. Perform your tier's skill for clean, consecutive reps on the mats — finish each rep in control before starting the next.",
     rules: "Declare your tier before starting. A rep counts when the skill is completed to a clean standard and finished under control. Mats required; handsprings only with kaiwhakawā approval. Most reps at your tier wins; a higher tier always outranks a lower one.",
@@ -1584,6 +1665,7 @@ export const EVENTS: EventData[] = [
       { level: 3, name: 'Kneeling · No Hands', detail: 'Kneeling on the ball with no hands touching it' },
       { level: 4, name: '1 Leg · No Hands', detail: 'Standing on one leg, no hands' },
       { level: 5, name: 'Standing' },
+      { level: 6, name: 'Game', scoring: 'sport' },
     ],
     howToPerform: "Choose your tier and mount the balance ball — seated, kneeling, or standing as your tier requires. Find your balance point and hold it as long as you can, using your hands only where the tier allows.",
     rules: "Declare your tier before starting. Timer starts when you are balanced in the declared position with no outside support and stops when any body part touches the floor or you leave the position. Spot the ball on soft ground or mats. Longest hold at your tier wins; a higher tier always outranks a lower one.",
@@ -1604,6 +1686,7 @@ export const EVENTS: EventData[] = [
       { level: 3, name: 'Ollie' },
       { level: 4, name: 'Pop Shove It' },
       { level: 5, name: 'Kickflip' },
+      { level: 6, name: 'Game', scoring: 'sport' },
     ],
     howToPerform: "Choose your trick tier — from pivots up to kickflips. Attempt the trick and land it rolling away clean. Every clean landing counts one rep.",
     rules: "Declare your tier before starting. A rep counts only when the trick is landed with both feet on the board, rolling away in control. Attempts are unlimited within the time the kaiwhakawā sets. Most landed reps at your tier wins; a higher tier always outranks a lower one. Helmet required.",
@@ -1635,7 +1718,7 @@ export const EVENTS: EventData[] = [
       { level: 1, name: '2 Ball (both hands)' },
       { level: 2, name: '2 Ball (one hand)' },
       { level: 3, name: '3 Ball' },
-      { level: 4, name: '4 Ball' },
+      { level: 4, name: 'Game', scoring: 'sport' },
     ],
     howToPerform: "Choose your tier — two balls in both hands, two in one hand, three, or four. Start the pattern and keep it running as long as you can. The attempt ends when a ball drops or the pattern breaks.",
     rules: "Declare your tier before starting. Timer starts with the first throw and stops when a ball is dropped or caught against the body, or the pattern stops. Any props (balls, beanbags, clubs). Longest continuous juggle at your tier wins; a higher tier always outranks a lower one.",
@@ -1651,11 +1734,13 @@ export const EVENTS: EventData[] = [
     inputMode: 'difficulty+reps',
     hasDifficultyTiers: true,
     difficultyTiers: [
-      { level: 1, name: '1 Bounce' },
-      { level: 2, name: 'No Bounce' },
+      { level: 1, name: '2 Bounce' },
+      { level: 2, name: '1 Bounce' },
+      { level: 3, name: '0 Bounce' },
+      { level: 4, name: 'Game', scoring: 'sport' },
     ],
-    howToPerform: 'Keep a football (soccer ball) in the air using only your feet, knees, and legs. D1: the ball may bounce once between each touch. D2: no bounces allowed — pure keepy-uppies only. Count how many consecutive touches you complete before the ball hits the ground (or for D1, before you fail to control a bounce).',
-    rules: 'Use a standard soccer ball. Touches must be below the waist — no hands or arms. D1: one ground bounce is allowed between each touch. D2: no bounces allowed. Count consecutive touches. Submit your best total from one continuous attempt. Must be witnessed by a judge or filmed.',
+    howToPerform: 'Keep a football (soccer ball) in the air using only your feet, knees, and legs. Each tier allows fewer bounces between touches, from two down to none. Count how many consecutive touches you complete before the ball hits the ground.',
+    rules: 'Use a standard soccer ball. Touches must be below the waist — no hands or arms. Your tier sets how many ground bounces are allowed between touches. Count consecutive touches. Submit your best total from one continuous attempt. Must be witnessed by a judge or filmed.',
     videoPlaceholder: true,
     emoji: '⚽',
   },
@@ -1665,10 +1750,18 @@ export const EVENTS: EventData[] = [
     name: 'Slackline',
     domain: 'Body Awareness',
     domainNumber: 8,
-    inputMode: 'hold',
-    hasDifficultyTiers: false,
-    howToPerform: "Step up onto the slackline and find your balance, then stay on the line for as long as you can. Use your arms and gaze to stay centred over the webbing.",
-    rules: "The clock starts once you are standing on the line unassisted and stops the moment a foot touches the ground or a support. Any bounce or aid ends the attempt. Longest time on the line wins.",
+    inputMode: 'difficulty+time',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Single Leg Balance' },
+      { level: 2, name: 'Plank Walk' },
+      { level: 3, name: 'Beam Walk' },
+      { level: 4, name: 'Slackline Walk' },
+      { level: 5, name: 'Slackline Bounce' },
+      { level: 6, name: 'Game', scoring: 'sport' },
+    ],
+    howToPerform: "Choose your tier, then hold the balance for as long as you can. Use your arms and gaze to stay centred.",
+    rules: "Declare your tier before starting. The clock starts once you are balanced unassisted and stops the moment a foot touches the ground or a support. Longest time at your tier wins; a higher tier always outranks a lower one.",
     videoPlaceholder: true,
     emoji: '🎪',
   },
@@ -1678,8 +1771,15 @@ export const EVENTS: EventData[] = [
     name: 'Volleyball',
     domain: 'Coordination',
     domainNumber: 9,
-    inputMode: 'sport',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+reps',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Sets' },
+      { level: 2, name: 'Digs' },
+      { level: 3, name: 'Partner Digs (2m)' },
+      { level: 4, name: 'Partner Digs (5m)' },
+      { level: 5, name: 'Game', scoring: 'sport' },
+    ],
     howToPerform: 'Play a standard game of volleyball against your opponent. First to 21 points (win by 2) takes the match. Use standard volleyball rules. A judge or agreed witness must observe the match.',
     rules: 'Standard volleyball rules apply. First to 21 points wins (must win by 2). If no court is available, a modified court may be used with judge approval. Record win, draw (if agreed), or loss and the final score.',
     videoPlaceholder: true,
@@ -1690,8 +1790,15 @@ export const EVENTS: EventData[] = [
     name: 'Baseball',
     domain: 'Coordination',
     domainNumber: 9,
-    inputMode: 'sport',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+reps',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Pitch Ball' },
+      { level: 2, name: 'Bat Ball' },
+      { level: 3, name: 'Pitch & Bat (2m)' },
+      { level: 4, name: 'Pitch & Bat (5m)' },
+      { level: 5, name: 'Game', scoring: 'sport' },
+    ],
     howToPerform: "Play a short-format baseball contest — batting, pitching, and fielding, scaled to numbers and space. The kaiwhakawā sets the format on the day (hitting duels, over-the-line, or a quick innings game).",
     rules: "Format and scoring set by the kaiwhakawā before play and kept the same for all matches. Log your result as a win, draw, or loss with your opponent's name. Extra matches vs new opponents earn effort points.",
 
@@ -1703,8 +1810,14 @@ export const EVENTS: EventData[] = [
     name: 'Teqball',
     domain: 'Coordination',
     domainNumber: 9,
-    inputMode: 'sport',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+reps',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Juggles · 2 Bounce', detail: 'Foot juggles, two bounces allowed between touches' },
+      { level: 2, name: 'Partner Pass', detail: 'Passes to a partner, one bounce allowed' },
+      { level: 3, name: 'Partner Pass (2m)', detail: 'Passes to a partner from 2m, one bounce allowed' },
+      { level: 4, name: 'Game', scoring: 'sport' },
+    ],
     howToPerform: "Play teqball over the curved table (or a bench substitute) — football tennis, no hands. Return the ball over the table using any part of your body except arms and hands, within the touch limit.",
     rules: "First to the target points, set by the kaiwhakawā. No hands or arms; maximum three touches per side and no consecutive touches with the same body part. Log your result as a win or loss with your opponent's name. Extra matches vs new opponents earn effort points.",
 
@@ -1716,8 +1829,15 @@ export const EVENTS: EventData[] = [
     name: 'Tennis',
     domain: 'Coordination',
     domainNumber: 9,
-    inputMode: 'sport',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+reps',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Vertical Juggles' },
+      { level: 2, name: 'Partner Hits (2m)' },
+      { level: 3, name: 'Partner Hits (5m)' },
+      { level: 4, name: 'Partner Hits (10m)' },
+      { level: 5, name: 'Game', scoring: 'sport' },
+    ],
     howToPerform: "Play a short-format tennis match — full court or short court to suit space. Serve diagonally, rally, and take your chances at the net.",
     rules: "Format (games or first-to points, serve rules) set by the kaiwhakawā and kept the same for all matches. Log your result as a win, draw, or loss with your opponent's name. Extra matches vs new opponents earn effort points.",
 
@@ -1729,8 +1849,15 @@ export const EVENTS: EventData[] = [
     name: 'Cricket',
     domain: 'Coordination',
     domainNumber: 9,
-    inputMode: 'sport',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+reps',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Bowl Ball' },
+      { level: 2, name: 'Bat Ball' },
+      { level: 3, name: 'Bowl & Bat (2m)' },
+      { level: 4, name: 'Bowl & Bat (5m)' },
+      { level: 5, name: 'Game', scoring: 'sport' },
+    ],
     howToPerform: "Play a quick-format cricket contest — batting, bowling, and fielding in a compressed game (pairs cricket or a set number of overs each).",
     rules: "Format set by the kaiwhakawā: overs per side, runs and dismissal rules, kept the same for all matches. Log your result as a win, draw, or loss. Extra matches vs new opponents earn effort points.",
 
@@ -1742,8 +1869,15 @@ export const EVENTS: EventData[] = [
     name: 'Badminton',
     domain: 'Coordination',
     domainNumber: 9,
-    inputMode: 'sport',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+reps',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Vertical Juggles' },
+      { level: 2, name: 'Partner Hits (2m)' },
+      { level: 3, name: 'Partner Hits (5m)' },
+      { level: 4, name: 'Partner Hits (10m)' },
+      { level: 5, name: 'Game', scoring: 'sport' },
+    ],
     howToPerform: "Play a short badminton match. Serve underarm and diagonal, then rally — use clears, drops, and smashes to move your opponent around the court.",
     rules: "First to the target points (rally scoring), set by the kaiwhakawā. Standard badminton faults apply: shuttle must cross the net and land in, no double hits. Log your result as a win or loss with your opponent's name. Extra matches vs new opponents earn effort points.",
 
@@ -1755,8 +1889,15 @@ export const EVENTS: EventData[] = [
     name: 'Basketball',
     domain: 'Coordination',
     domainNumber: 9,
-    inputMode: 'sport',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+reps',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Bounce Ball' },
+      { level: 2, name: '2 Ball Bounce' },
+      { level: 3, name: '2 Ball Side to Side' },
+      { level: 4, name: '2 Ball Back & Forth' },
+      { level: 5, name: 'Game', scoring: 'sport' },
+    ],
     howToPerform: "Play a short-format basketball game — 1v1 or small-sided halfcourt, first to the target score. Check the ball at the top, and clear it behind the arc on each change of possession in halfcourt play.",
     rules: "Format (target score, 1s-and-2s scoring, game length) set by the kaiwhakawā and kept the same for all matches. Standard violations apply — travels, double dribble, and fouls called honestly. Log your result as a win or loss. Extra matches vs new opponents earn effort points.",
 
@@ -1768,8 +1909,15 @@ export const EVENTS: EventData[] = [
     name: 'Football',
     domain: 'Coordination',
     domainNumber: 9,
-    inputMode: 'sport',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+reps',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Partner Pass' },
+      { level: 2, name: 'Partner Pass (2m)' },
+      { level: 3, name: 'Partner Pass (5m)' },
+      { level: 4, name: 'Partner Pass (10m)' },
+      { level: 5, name: 'Game', scoring: 'sport' },
+    ],
     howToPerform: "Play a small-sided football game — small goals, tight space, first to the target score or best score within the time. Keep the ball moving and press hard when you lose it.",
     rules: "Format (team size, goal size, game length) set by the kaiwhakawā and kept the same for all matches. No slide tackles. Log your result as a win, draw, or loss. Extra matches vs new opponents earn effort points.",
 
@@ -1781,8 +1929,15 @@ export const EVENTS: EventData[] = [
     name: 'Hockey',
     domain: 'Coordination',
     domainNumber: 9,
-    inputMode: 'sport',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+reps',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Partner Pass' },
+      { level: 2, name: 'Partner Pass (2m)' },
+      { level: 3, name: 'Partner Pass (5m)' },
+      { level: 4, name: 'Partner Pass (10m)' },
+      { level: 5, name: 'Game', scoring: 'sport' },
+    ],
     howToPerform: "Play a small-sided hockey game with sticks and a ball — small goals, no keepers unless numbers allow. Keep the ball on the flat side of the stick and pass early.",
     rules: "Format set by the kaiwhakawā and kept the same for all matches. Sticks below shoulder height at all times; no lifting the ball dangerously. Log your result as a win, draw, or loss. Extra matches vs new opponents earn effort points.",
 
@@ -1794,8 +1949,15 @@ export const EVENTS: EventData[] = [
     name: 'Squash',
     domain: 'Coordination',
     domainNumber: 9,
-    inputMode: 'sport',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+reps',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Partner Pass' },
+      { level: 2, name: 'Partner Pass (2m)' },
+      { level: 3, name: 'Partner Pass (5m)' },
+      { level: 4, name: 'Partner Pass (10m)' },
+      { level: 5, name: 'Game', scoring: 'sport' },
+    ],
     howToPerform: "Play a short squash match. Serve from the service box, then rally off the front wall — take the T, and move your opponent into the corners.",
     rules: "First to the target points, set by the kaiwhakawā. Standard squash rules: ball above the tin and below the out line, one bounce. Play lets and strokes honestly. Log your result as a win or loss with your opponent's name. Extra matches vs new opponents earn effort points.",
 
@@ -1808,8 +1970,15 @@ export const EVENTS: EventData[] = [
     name: 'Lacrosse',
     domain: 'Coordination',
     domainNumber: 9,
-    inputMode: 'sport',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+reps',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Partner Pass' },
+      { level: 2, name: 'Partner Pass (2m)' },
+      { level: 3, name: 'Partner Pass (5m)' },
+      { level: 4, name: 'Partner Pass (10m)' },
+      { level: 5, name: 'Game', scoring: 'sport' },
+    ],
     howToPerform: "Play a game of lacrosse against your opponent or opposing team. Carry and pass the ball with your stick and score by shooting into the goal, under the format set for the session.",
     rules: "Format, field size and rules are set by the kaiwhakawa and matched for all players. Log your result as a win, draw or loss with your opponent's name. Must be witnessed by a judge. Extra games vs new opponents earn effort points.",
     videoPlaceholder: true,
@@ -1820,8 +1989,15 @@ export const EVENTS: EventData[] = [
     name: 'Ultimate Frisbee',
     domain: 'Coordination',
     domainNumber: 9,
-    inputMode: 'sport',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+reps',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Partner Pass' },
+      { level: 2, name: 'Partner Pass (2m)' },
+      { level: 3, name: 'Partner Pass (5m)' },
+      { level: 4, name: 'Partner Pass (10m)' },
+      { level: 5, name: 'Game', scoring: 'sport' },
+    ],
     howToPerform: 'Play a game of Ultimate Frisbee against your opponent or opposing team. Move the disc down the field by passing — no running with the disc. Score by catching the disc in the opposing end zone. Standard Ultimate Frisbee rules apply.',
     rules: 'Standard Ultimate Frisbee rules apply. No running with the disc — pivot and pass only. Disc changes possession on incomplete passes, interceptions, or out-of-bounds. Score by catching in the end zone. Match format (score target or time limit) agreed before play. Record as a win, draw, or loss. Must be witnessed by a judge.',
     videoPlaceholder: true,
@@ -1833,8 +2009,15 @@ export const EVENTS: EventData[] = [
     name: 'Netball',
     domain: 'Aim & Precision',
     domainNumber: 10,
-    inputMode: 'sport',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+reps',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Chest Pass' },
+      { level: 2, name: 'Shot Under Hoop', detail: 'Standing directly under the hoop' },
+      { level: 3, name: 'Shot (2m)' },
+      { level: 4, name: 'Shot (5m)' },
+      { level: 5, name: 'Game', scoring: 'sport' },
+    ],
     howToPerform: "Play a short-format netball contest — a shooting duel or small-sided game, as set on the day. In game play, pass quickly and hold your space; no stepping with the ball.",
     rules: "Format set by the kaiwhakawā (shooting rounds or a timed small-sided game) and kept the same for all matches. Standard netball rules where playing a game: no stepping, no contact, obstruction at arm's length. Log your result as a win, draw, or loss. Extra matches vs new opponents earn effort points.",
 
@@ -1846,8 +2029,15 @@ export const EVENTS: EventData[] = [
     name: 'Bocce',
     domain: 'Aim & Precision',
     domainNumber: 10,
-    inputMode: 'sport',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+reps',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Bowl Ball' },
+      { level: 2, name: 'Within 5m of Jack' },
+      { level: 3, name: 'Within 1m of Jack' },
+      { level: 4, name: 'Hit the Jack', detail: 'Strike the jack itself from the throwing line' },
+      { level: 5, name: 'Game', scoring: 'sport' },
+    ],
     howToPerform: "Take turns throwing your bocce balls toward the jack. Get closer than your opponent — knock their balls away or reposition the jack with a well-weighted throw.",
     rules: "Points per end go to the balls closer to the jack than the opponent's best ball; first to the target score set by the kaiwhakawā. Throw from behind the line. Log your result as a win or loss with your opponent's name. Extra matches vs new opponents earn effort points.",
     videoPlaceholder: true,
@@ -1858,8 +2048,15 @@ export const EVENTS: EventData[] = [
     name: 'Dodgeball',
     domain: 'Aim & Precision',
     domainNumber: 10,
-    inputMode: 'sport',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+reps',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Throw Ball' },
+      { level: 2, name: 'Throw & Catch (1m)', detail: 'With a partner' },
+      { level: 3, name: 'Throw & Catch (5m)' },
+      { level: 4, name: 'Throw & Catch (10m)' },
+      { level: 5, name: 'Game', scoring: 'sport' },
+    ],
     howToPerform: "Play a dodgeball match. Throw to hit opponents below the shoulders, dodge what comes back, and catch a live ball to bring a teammate back in — last team (or player) standing wins the set.",
     rules: "Format (team size, sets, court size) set by the kaiwhakawā. Hits above the shoulders don't count and headhunting is a foul. A caught ball puts the thrower out. Honesty rule: call yourself out. Log your result as a win, draw, or loss. Extra matches vs new opponents earn effort points.",
 
@@ -1871,8 +2068,13 @@ export const EVENTS: EventData[] = [
     name: 'Carrom',
     domain: 'Aim & Precision',
     domainNumber: 10,
-    inputMode: 'sport',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+reps',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Strike a Piece', detail: 'Flick the striker from the baseline and make contact' },
+      { level: 2, name: 'Pocket a Piece' },
+      { level: 3, name: 'Game', scoring: 'sport' },
+    ],
     howToPerform: "Play a game of carrom. Flick the striker from your baseline to pocket your colour's pieces into the corner pockets, finishing with the red queen covered by one of your own.",
     rules: "Standard carrom rules: strike from your own baseline, pocket your pieces, and the queen must be covered to count. Fouls return a pocketed piece to the board. First to clear their pieces (with the queen resolved) wins. Log your result as a win or loss. Extra matches vs new opponents earn effort points.",
 
@@ -1884,8 +2086,15 @@ export const EVENTS: EventData[] = [
     name: 'Archery',
     domain: 'Aim & Precision',
     domainNumber: 10,
-    inputMode: 'sport',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+reps',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Hit the Target (5m)' },
+      { level: 2, name: 'Hit the Target (10m)' },
+      { level: 3, name: 'Hit the Gold (10m)', detail: 'Inner gold rings of the target face' },
+      { level: 4, name: 'Hit the Gold (20m)' },
+      { level: 5, name: 'Game', scoring: 'sport' },
+    ],
     howToPerform: "Shoot a set number of arrows per end at the target from the marked distance. Draw smoothly, anchor consistently, and score where each arrow lands.",
     rules: "Distance, arrows per end, and total ends are set by the kaiwhakawā and matched for both players. All safety commands are absolute — arrows are only nocked on the shooting line and collected together. Highest total wins the match. Log your result as a win, draw, or loss. Extra matches vs new opponents earn effort points.",
 
@@ -1897,8 +2106,15 @@ export const EVENTS: EventData[] = [
     name: 'Bowling',
     domain: 'Aim & Precision',
     domainNumber: 10,
-    inputMode: 'sport',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+reps',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Partner Bowl' },
+      { level: 2, name: 'Partner Bowl (5m)' },
+      { level: 3, name: 'Partner Bowl (10m)' },
+      { level: 4, name: 'Partner Bowl (20m)' },
+      { level: 5, name: 'Game', scoring: 'sport' },
+    ],
     howToPerform: "Bowl head-to-head against an opponent over a set number of frames. Roll at the pins from behind the line — most pins across your frames takes the match.",
     rules: "Frame count and lane setup are set by the kaiwhakawā on the day and matched for all players. Release the ball behind the line; foot faults score zero for that roll. Most total pins wins the match; equal pins is a draw. Log your result as a win, draw or loss with your opponent's name. Extra matches vs new opponents earn effort points.",
     videoPlaceholder: true,
@@ -1909,8 +2125,15 @@ export const EVENTS: EventData[] = [
     name: 'Darts',
     domain: 'Aim & Precision',
     domainNumber: 10,
-    inputMode: 'sport',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+reps',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Hit the Board', detail: 'Land all three darts of a visit on the board' },
+      { level: 2, name: 'Named Number', detail: 'Hit a number called before you throw' },
+      { level: 3, name: 'Named Double', detail: 'Hit the double ring of a number called before you throw' },
+      { level: 4, name: 'Bullseye' },
+      { level: 5, name: 'Game', scoring: 'sport' },
+    ],
     howToPerform: "Play a darts match from the oche — 301 or 501, as set on the day. Score with each three-dart visit and work your way down to a finish.",
     rules: "Game format (301/501, straight or double finish) set by the kaiwhakawā and matched for all players. Both feet behind the oche when throwing. Log your result as a win or loss with your opponent's name. Extra matches vs new opponents earn effort points.",
 
@@ -1922,8 +2145,14 @@ export const EVENTS: EventData[] = [
     name: 'Disc Golf',
     domain: 'Aim & Precision',
     domainNumber: 10,
-    inputMode: 'score',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+reps',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Putt (2m)' },
+      { level: 2, name: 'Putt (5m)' },
+      { level: 3, name: 'Approach (20m)', detail: 'Land inside a set radius of the basket' },
+      { level: 4, name: 'Game (4 Holes)', scoring: 'sport', records: 'strokes' },
+    ],
     howToPerform: "Play 4 holes of disc golf. Tee off from the marked tee, throw from where the disc lands, and finish each hole by hitting the basket or target. Count every throw.",
     rules: "Play the 4 holes set out by the kaiwhakawā, from the tees and to the targets marked. Every throw counts one stroke; play the disc where it lies, with course penalty rules as set on the day. Lowest total strokes wins. Each additional 4-hole round earns effort points.",
     videoPlaceholder: true,
@@ -1934,8 +2163,14 @@ export const EVENTS: EventData[] = [
     name: 'Golf',
     domain: 'Aim & Precision',
     domainNumber: 10,
-    inputMode: 'score',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+reps',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Putt (2m)' },
+      { level: 2, name: 'Putt (5m)' },
+      { level: 3, name: 'Chip (10m)' },
+      { level: 4, name: 'Game (4 Holes)', scoring: 'sport', records: 'strokes' },
+    ],
     howToPerform: "Play 4 holes of golf on the course set out for the session. Tee off, play the ball as it lies, and hole out on each green. Count every stroke.",
     rules: "Play the 4 holes set out by the kaiwhakawā from the marked tees. Every stroke counts, penalties as set on the day, and the ball is holed when it is in the cup (or hits the marked target). Lowest total strokes wins. Each additional 4-hole round earns effort points.",
     videoPlaceholder: true,
@@ -1946,8 +2181,14 @@ export const EVENTS: EventData[] = [
     name: 'Handball',
     domain: 'Aim & Precision',
     domainNumber: 10,
-    inputMode: 'sport',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+reps',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Partner Pass (2m)' },
+      { level: 2, name: 'Partner Pass (5m)' },
+      { level: 3, name: 'Past a Keeper', detail: 'Score with a keeper in goal' },
+      { level: 4, name: 'Game', scoring: 'sport' },
+    ],
     howToPerform: "Play a game of handball against your opponent or opposing team. Pass and dribble by hand and throw to score past the goalkeeper, under the format set for the session.",
     rules: "Format and court are set by the kaiwhakawa and matched for all players. No travelling with the ball beyond the allowed steps. Log your result as a win, draw or loss with your opponent's name. Extra matches vs new opponents earn effort points.",
     videoPlaceholder: true,
@@ -1958,8 +2199,14 @@ export const EVENTS: EventData[] = [
     name: 'Table Tennis',
     domain: 'Aim & Precision',
     domainNumber: 10,
-    inputMode: 'sport',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+reps',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Vertical Juggles', detail: 'Bounce the ball on the bat, standing' },
+      { level: 2, name: 'Wall Juggles' },
+      { level: 3, name: 'Partner Hits' },
+      { level: 4, name: 'Game', scoring: 'sport' },
+    ],
     howToPerform: "Play a table tennis match against your opponent, best of the number of games set on the day. Serve, rally and score to the target points per game.",
     rules: "Game and match format (points per game, best-of) set by the kaiwhakawa and matched for all players. Standard service and let rules apply. Log your result as a win or loss with your opponent's name. Extra matches vs new opponents earn effort points.",
     videoPlaceholder: true,
@@ -1970,8 +2217,15 @@ export const EVENTS: EventData[] = [
     name: 'Kubb',
     domain: 'Aim & Precision',
     domainNumber: 10,
-    inputMode: 'sport',
-    hasDifficultyTiers: false,
+    inputMode: 'difficulty+reps',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Throw Baton' },
+      { level: 2, name: 'Hit Kubb (2m)' },
+      { level: 3, name: 'Hit Kubb (5m)' },
+      { level: 4, name: 'Hit Kubb (10m)' },
+      { level: 5, name: 'Game', scoring: 'sport' },
+    ],
     howToPerform: "From your baseline, throw batons underarm to knock over your opponent's field kubbs, then their baseline kubbs — and finally the king. Knock the king over early and you lose instantly.",
     rules: "Underarm, end-over-end baton throws only — no helicopter throws. Standard kubb sequence: field kubbs must fall before baseline kubbs, king last. Toppling the king before clearing everything else is an instant loss. Log your result as a win or loss. Extra matches vs new opponents earn effort points.",
     videoPlaceholder: true,
@@ -2002,14 +2256,25 @@ export const DT_CAP = 10000
 // Duck Walk joined July 2026 when its tiers became all-walk (holds removed).
 export const TIMED_EFFORT_SLUGS = new Set<string>([
   'running', 'cycling', 'ski-erg', 'row-erg', 'weighted-carry',
-  'bronco', 'walking', 'burpee-broad-jump', 'climbing', 'repeat-high-jump',
-  'duck-walk', 'backwards-walk', 'scooting',
+  'bronco', 'walking', 'burpee-broad-jump', 'rope-climb', 'repeat-high-jump',
+  'duck-walk', 'animal-crawl', 'backwards-walk', 'scooting',
   'wheelbarrow-push', 'wheelbarrow-pull',
+  // Joined Sept 2026 when their ladders landed: the drill rungs are raced.
+  '100m-sprint', '200m-sprint', 't-race',
 ])
-// NOTE: 'walking' and 'backwards-walk' are retired events (removed from EVENTS in
-// the Aug 2026 roster update) but stay in this set on purpose — their historical
-// raw_scores are inverted-encoded, so decodeDiffTime must keep reading them as
-// timed efforts wherever old sessions are rendered.
+// NOTE: 'walking', 'backwards-walk' and 'duck-walk' are retired events (removed
+// from EVENTS by the Aug 2026 and Sept 2026 roster updates) but stay in this set
+// on purpose — their historical raw_scores are inverted-encoded, so
+// decodeDiffTime must keep reading them as timed efforts wherever old sessions
+// are rendered.
+//
+// 'climbing' was a BUG, fixed Sept 2026: the event's slug is 'rope-climb', so the
+// entry matched nothing. isTimedEffort gates BOTH encode and decode, so Climbing's
+// rows were written un-inverted and read back un-inverted — self-consistent, but
+// ranked longest-wins on an event that is raced. Adding 'rope-climb' flips the
+// decode, which is exactly why 20260908221459 re-encodes Climbing from
+// time_seconds rather than leaving the old rows alone.
+// Every entry here is asserted against the roster by a test in eventData.test.ts.
 
 export function isTimedEffort(slug?: string | null): boolean {
   return !!slug && TIMED_EFFORT_SLUGS.has(slug)
@@ -2146,17 +2411,58 @@ export function getBonusTargets(
     }
   }
 
+  // difficulty+distance: same implement, 80% of the PR throw
+  if (mode === 'difficulty+distance' && event.hasDifficultyTiers) {
+    const tiers = event.difficultyTiers ?? []
+    const pr = typeof seasonPR === 'string' ? parseFloat(seasonPR) : seasonPR
+    if (pr === null || !Number.isFinite(pr) || pr <= 0) return []
+    const tierIdx = Math.floor(pr / 10000)
+    const metres = (pr % 10000) / 10
+    const target = Math.round(metres * 0.8 * 10) / 10
+    if (target <= 0) return []
+    const tierName = tiers[tierIdx]?.name ?? `D${tierIdx + 1}`
+    return [{ tier: 1 as const, label: `Throw ${target}m or further with the ${tierName}`, detail: `80% of your PR throw at the same tier`, points: 5 as const, inputMode: 'difficulty+distance' }]
+  }
+
   // difficulty+reps: one set at 80% PR reps, same tier
   if (mode === 'difficulty+reps' && event.hasDifficultyTiers) {
     if (rawScore <= 0) return []
     const tierIdx = Math.floor(rawScore / 10000)
-    const prReps = rawScore % 10000
-    if (prReps <= 0) return []
     const tierLevel = tierIdx + 1
     const tiers = event.difficultyTiers ?? []
-    const tierName = tiers.find(t => t.level === tierLevel)?.name ?? `D${tierLevel}`
+    const rung = tiers[tierIdx]
+    const tierName = rung?.name ?? `D${tierLevel}`
+
+    // The within-tier term is only a rep count on an ordinary rung. On a weight
+    // rung it is centi-kilograms and on a Game rung it is a win/draw/loss code,
+    // so reading it as reps produced "1600 reps at Weighted RTO Dip".
+    if (rung?.scoring === 'sport') {
+      return [{ tier: 1 as const, label: `Play ${tierName} against a new opponent`, detail: `Any result counts`, points: 5 as const, inputMode: 'sport' }]
+    }
+    if (rung?.scoring === 'weight') {
+      const prKg = (rawScore % 10000) / 100
+      if (prKg <= 0) return []
+      const targetKg = Math.round(prKg * 0.8 * 10) / 10
+      return [{ tier: 1 as const, label: `${targetKg}kg at ${tierName}`, detail: `80% of your PR load on the same rung`, points: 5 as const, inputMode: 'difficulty+reps' }]
+    }
+
+    const prReps = rawScore % 10000
+    if (prReps <= 0) return []
     const targetReps = Math.max(1, Math.round(prReps * 0.8))
     return [{ tier: 1 as const, label: `${targetReps} reps at ${tierName}`, detail: `A qualifying set of ${targetReps} reps at D${tierLevel} (80% of PR)`, points: 5 as const, inputMode: 'difficulty+reps' }]
+  }
+
+  // weight+time: 80% of the PR load, held for 80% of the PR time.
+  if (mode === 'weight+time') {
+    const pr = typeof seasonPR === 'string' ? parseFloat(seasonPR) : seasonPR
+    if (pr === null || !Number.isFinite(pr) || pr <= 0) return []
+    const kg = Math.floor(pr / 10000) / 100
+    const secs = pr % 10000
+    if (secs <= 0) return []
+    const targetKg = Math.round(kg * 0.8 * 10) / 10
+    const targetSecs = Math.round(secs * 0.8)
+    const load = targetKg > 0 ? `${targetKg}kg` : 'Bodyweight'
+    return [{ tier: 1 as const, label: `Hold ${load} for ${fmtSecs(targetSecs)}`, detail: `80% of your PR load and time`, points: 5 as const, inputMode: 'weight+time' }]
   }
 
   return []
