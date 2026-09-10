@@ -2,7 +2,7 @@
 // (EventCard + QuickEntrySheet in app/scoring/[sessionId]/page.tsx).
 // Everything here is side-effect free so it can be unit tested directly.
 
-import { isTimedEffort, encodeDiffTime, decodeDiffTime, type EventData } from '@/lib/eventData'
+import { isTimedEffort, encodeDiffTime, decodeDiffTime, DT_CAP, type EventData } from '@/lib/eventData'
 
 export function fmtTime(totalSecs: number): string {
   const abs = Math.abs(totalSecs)
@@ -12,27 +12,44 @@ export function fmtTime(totalSecs: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
-// Tiers whose input switches from reps to added weight.
-// These match on the event NAME because that is what session_events stores, so
-// both the current name and any earlier one must be accepted — otherwise a
-// rename silently drops the weight input for that tier, on new sessions AND on
-// every historical session still carrying the old string.
-// 'Pause Chin Up' → 'Pause Chinup' (Aug 2026 roster update).
-const PAUSE_CHINUP_NAMES = ['Pause Chinup', 'Pause Chin Up']
-
-export function isWeightScoredTierByIdx(eventName: string, tierIdx: number): boolean {
-  return (
-    (eventName === 'GHD Situp' && tierIdx === 3) ||
-    (eventName === 'Pause Dips' && tierIdx === 4) ||
-    (PAUSE_CHINUP_NAMES.includes(eventName) && tierIdx === 4)
-  )
+// How a single rung is scored, read off the tier itself. Returns null for the
+// ordinary case, where the rung is scored the same way as the rest of its ladder.
+export function tierScoring(
+  eventData: EventData | undefined,
+  tier: { name: string } | number | undefined,
+): 'weight' | 'sport' | null {
+  const tiers = eventData?.difficultyTiers
+  if (!tiers || tier === undefined) return null
+  const t = typeof tier === 'number' ? tiers[tier] : tiers.find(x => x.name === tier.name)
+  return t?.scoring ?? null
 }
-export function isWeightScoredTierByName(eventName: string, tierName: string): boolean {
-  return (
-    (eventName === 'GHD Situp' && tierName === 'GHD Situp') ||
-    (eventName === 'Pause Dips' && tierName === 'Weighted RTO Dip') ||
-    (PAUSE_CHINUP_NAMES.includes(eventName) && tierName === 'Weighted Chinup')
-  )
+
+// The pre-Sept-2026 weight rungs, kept ONLY as a fallback for rows whose event
+// can no longer be resolved — `session_events.event_name` may hold a name that
+// `getEventByName` no longer knows, and then there is no tier to read a flag off.
+// New behaviour belongs on the tier (`scoring: 'weight'`), never in this list.
+// 'Pause Chin Up' → 'Pause Chinup' (Aug 2026 roster update).
+// Name -> [rung name, 0-based index] as the ladders stood BEFORE the Sept 2026
+// review. These indexes are deliberately frozen at their old values: the whole
+// point is to answer for a historical row whose event can no longer be resolved.
+const LEGACY_WEIGHT_RUNGS: Record<string, [string, number]> = {
+  'GHD Situp': ['GHD Situp', 3],
+  'Pause Dips': ['Weighted RTO Dip', 4],
+  'Pause Chinup': ['Weighted Chinup', 4],
+  'Pause Chin Up': ['Weighted Chinup', 4],
+}
+
+export function isWeightScoredTierByIdx(
+  eventName: string, tierIdx: number, eventData?: EventData,
+): boolean {
+  if (eventData?.difficultyTiers) return tierScoring(eventData, tierIdx) === 'weight'
+  return LEGACY_WEIGHT_RUNGS[eventName]?.[1] === tierIdx
+}
+export function isWeightScoredTierByName(
+  eventName: string, tierName: string, eventData?: EventData,
+): boolean {
+  if (eventData?.difficultyTiers) return tierScoring(eventData, { name: tierName }) === 'weight'
+  return LEGACY_WEIGHT_RUNGS[eventName]?.[0] === tierName
 }
 
 export type EntryVals = {
@@ -71,7 +88,26 @@ export type ResultLike = {
 
 // Within-tier band width for difficulty encodings — a within-tier term at or
 // past this would silently leak into the next tier's band, so it's rejected.
-const TIER_BAND = 10000
+const TIER_BAND = DT_CAP
+// Heaviest load the centi-kg encoding can hold inside one band.
+export const MAX_ENCODABLE_KG = 99.99
+
+// A `Game` rung records a win, draw or loss. The term stays 0/1/2 whichever way
+// the rest of the ladder runs — on a timed effort the seconds term is inverted
+// (`DT_CAP - secs`) and inverting a result would make a loss beat a win.
+function sportTerm(result: EntryVals['sportResult']): number | null {
+  if (!result) return null
+  return result === 'win' ? 2 : result === 'draw' ? 1 : 0
+}
+const sportWord = (r: string) => r.charAt(0).toUpperCase() + r.slice(1)
+
+// Heaviest wins, to 0.01kg, and ties on weight are shared — the same rule the
+// `strength` mode already applies everywhere else on the roster. Reps are
+// recorded in their own column and shown in the label, they do not rank.
+function weightTerm(weightKg: number): number | null {
+  if (weightKg < 0 || weightKg > MAX_ENCODABLE_KG) return null
+  return Math.round(weightKg * 100)
+}
 
 export function computeScoreVals(
   mode: string, eventData: EventData | undefined, v: EntryVals
@@ -124,9 +160,17 @@ export function computeScoreVals(
     return { raw_score: totalSecs, score_label: `${varLabel}${fmtTime(totalSecs)}` }
   }
   if (mode === 'difficulty+time') {
-    if (!v.difficultyTier || totalSecs <= 0 || totalSecs >= TIER_BAND) return null
+    if (!v.difficultyTier) return null
     const tierIdx = eventData?.difficultyTiers?.findIndex(t => t.name === v.difficultyTier) ?? -1
     if (tierIdx < 0) return null
+    if (tierScoring(eventData, tierIdx) === 'sport') {
+      const term = sportTerm(v.sportResult)
+      if (term === null) return null
+      let l = `D${tierIdx + 1} ${v.difficultyTier} · ${sportWord(v.sportResult)}`
+      if (v.opponentName) l += ` vs ${v.opponentName}`
+      return { raw_score: tierIdx * TIER_BAND + term, score_label: l }
+    }
+    if (totalSecs <= 0 || totalSecs >= TIER_BAND) return null
     const rawScore = encodeDiffTime(tierIdx, totalSecs, isTimedEffort(eventData?.slug))
     return { raw_score: rawScore, score_label: `D${tierIdx + 1} ${v.difficultyTier} · ${fmtTime(totalSecs)}` }
   }
@@ -134,15 +178,57 @@ export function computeScoreVals(
     if (!v.difficultyTier) return null
     const tierIdx = eventData?.difficultyTiers?.findIndex(t => t.name === v.difficultyTier) ?? -1
     if (tierIdx < 0) return null
-    if (isWeightScoredTierByIdx(eventData?.name ?? '', tierIdx)) {
+    const label = `D${tierIdx + 1} ${v.difficultyTier}`
+    const special = tierScoring(eventData, tierIdx)
+
+    if (special === 'sport') {
+      const term = sportTerm(v.sportResult)
+      if (term === null) return null
+      let l = `${label} · ${sportWord(v.sportResult)}`
+      if (v.opponentName) l += ` vs ${v.opponentName}`
+      // Golf and Disc Golf record the round's strokes alongside the result.
+      if (v.scoreInput) l += ` (${v.scoreInput} strokes)`
+      else if (v.sportScore) l += ` (${v.sportScore})`
+      return { raw_score: tierIdx * TIER_BAND + term, score_label: l }
+    }
+    if (special === 'weight') {
       const w = parseFloat(v.weightKg) || 0
       if (w <= 0) return null
-      return { raw_score: w, score_label: `D${tierIdx + 1} ${v.difficultyTier} · ${w}kg` }
+      const term = weightTerm(w)
+      if (term === null) return null
+      const r = parseInt(v.repCount) || 0
+      const reps = r > 0 ? ` × ${r}` : ''
+      return { raw_score: tierIdx * TIER_BAND + term, score_label: `${label} · ${w}kg${reps}` }
     }
     const r = parseInt(v.repCount) || 0
     if (r <= 0 || r >= TIER_BAND) return null
-    const rawScore = tierIdx * TIER_BAND + r
-    return { raw_score: rawScore, score_label: `D${tierIdx + 1} ${v.difficultyTier} · ${r} reps` }
+    return { raw_score: tierIdx * TIER_BAND + r, score_label: `${label} · ${r} reps` }
+  }
+  if (mode === 'difficulty+distance') {
+    if (!v.difficultyTier) return null
+    const tierIdx = eventData?.difficultyTiers?.findIndex(t => t.name === v.difficultyTier) ?? -1
+    if (tierIdx < 0) return null
+    const val = parseFloat(v.distanceVal) || 0
+    // 0.1m resolution to 999.9m, which clears the longest throw by a wide
+    // margin. Anything past it is rejected, never clamped: a clamp would let two
+    // different throws tie, and a value one step further would spill into the
+    // next rung entirely.
+    if (val <= 0 || Math.round(val * 10) > TIER_BAND - 1) return null
+    const term = Math.round(val * 10)
+    return {
+      raw_score: tierIdx * TIER_BAND + term,
+      score_label: `D${tierIdx + 1} ${v.difficultyTier} · ${val}m`,
+    }
+  }
+  if (mode === 'weight+time') {
+    const w = parseFloat(v.weightKg) || 0
+    const term = weightTerm(w)
+    if (term === null || totalSecs <= 0) return null
+    // Heavier always outranks lighter; within a load, longer wins. Bodyweight
+    // (0kg) collapses to the seconds, which keeps it below every loaded hold.
+    const raw_score = term * TIER_BAND + Math.min(Math.round(totalSecs), TIER_BAND - 1)
+    const label = w > 0 ? `${w}kg · ${fmtTime(totalSecs)}` : `Bodyweight · ${fmtTime(totalSecs)}`
+    return { raw_score, score_label: label }
   }
   if (mode === 'distance') {
     const val = parseFloat(v.distanceVal) || 0
@@ -187,6 +273,16 @@ export function valsFromResult(mode: string, r: ResultLike): Partial<EntryVals> 
   } else if (mode === 'difficulty+reps') {
     if (r.weight_kg) p.weightKg = String(r.weight_kg)
     else p.repCount = String(r.reps ?? '')
+  } else if (mode === 'weight+time') {
+    p.weightKg = String(r.weight_kg ?? '')
+    const secs = r.time_seconds ?? 0
+    p.timeMins = String(Math.floor(secs / 60))
+    p.timeSecs = String(Math.round(secs % 60))
+  } else if (mode === 'difficulty+distance') {
+    // Decoded from raw_score rather than read off a column, the same way
+    // `distance` and `sprint` prefill — ResultLike carries no distance field.
+    p.distanceVal = String((r.raw_score % 10000) / 10)
+    p.distanceUnit = 'm'
   } else if (mode === 'time' || mode === 'hold' || mode === 'difficulty+time') {
     const secs = r.time_seconds ?? 0
     p.timeMins = String(Math.floor(secs / 60))
@@ -235,6 +331,16 @@ export function valsFromRaw(mode: string, eventData: EventData | undefined, raw:
     const tierName = eventData?.difficultyTiers?.[tierIdx]?.name
     if (tierName) p.difficultyTier = tierName
     p.repCount = String(raw % 10000)
+  } else if (mode === 'difficulty+distance') {
+    const tierIdx = Math.floor(raw / TIER_BAND)
+    const tierName = eventData?.difficultyTiers?.[tierIdx]?.name
+    if (tierName) p.difficultyTier = tierName
+    p.distanceVal = String((raw % TIER_BAND) / 10)
+    p.distanceUnit = 'm'
+  } else if (mode === 'weight+time') {
+    const secs = raw % TIER_BAND
+    p.weightKg = String(Math.floor(raw / TIER_BAND) / 100)
+    p.timeMins = String(Math.floor(secs / 60)); p.timeSecs = String(Math.round(secs % 60))
   } else if (mode === 'score') {
     p.scoreInput = String(Math.abs(raw))
   }
