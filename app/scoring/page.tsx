@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase-browser'
 import { EVENTS, DOMAIN_ORDER, getEventByName } from '@/lib/eventData'
 import { DOMAIN_COLORS } from '@/lib/domainColours'
+import { sessionStart } from '@/lib/dates'
 
 const DOMAINS = DOMAIN_ORDER.map((domainName, idx) => ({
   number: idx + 1,
@@ -48,11 +49,10 @@ export default function ScoringSetup() {
         return
       }
 
-      const today = new Date().toISOString().split('T')[0]
-      // Build started_at from the selected start time today
-      const [h, m] = startTime.split(':').map(Number)
-      const started = new Date()
-      started.setHours(h, m, 0, 0)
+      // started_at and session_date come from ONE derivation so they cannot
+      // disagree — deriving the date separately from toISOString() is what
+      // stamped every NZ morning game with the previous day. See sessionStart.
+      const { startedAt: started, sessionDate: today } = sessionStart(startTime)
 
       const sessionCode = Math.random().toString(36).substring(2, 8).toUpperCase()
 

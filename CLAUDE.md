@@ -205,7 +205,7 @@ Roster reconciled against Tāne's programming spreadsheet. **122 events total** 
 - **Timed-effort events now rank by FASTEST time** — `difficulty+time` carries two semantics: HOLDS (longer time wins) and TIMED EFFORTS (faster time wins). Previously every `difficulty+time` event ranked longer time as better, so e.g. Running 4:20 beat 4:19. The 10 timed-effort events (Running, Cycling, Ski Erg, Row Erg, Weighted Carry, Bronco, Walking, Burpee Broad Jump, Climbing, Repeat High Jump) now rank faster as better. Rule: a higher difficulty tier always outranks a lower one; within a tier, faster wins. See "difficulty+time encoding" below. **Duck Walk is intentionally excluded** (mixed hold + walk tiers) — pending tier redesign (see What's Next).
 - **Overall placement fix** — the points trigger now ranks each scored player across EVERY session event; a missed event = last place in the division (= number of players in that division who played the session). Previously only scored events were summed, so playing fewer events gave an unfairly low (better) total.
 - **Points doubling fix** — production was running a stale award function that summed `points_earned` (duplicated across every event row); season total is now placement + effort, added once. Fixed in migration `20260629000000_fix_placement_and_timed_events.sql`.
-- **Date off-by-one fix** — DATE columns ('YYYY-MM-DD') were parsed as UTC midnight, rendering the previous day in behind-UTC contexts. New `lib/dates.ts` (`parseLocalDate` / `formatNZDate`) parses dates in local time. Applied to all session-date renders.
+- **Date off-by-one fix** — DATE columns ('YYYY-MM-DD') were parsed as UTC midnight, rendering the previous day in behind-UTC contexts. New `lib/dates.ts` (`parseLocalDate` / `formatNZDate`) parses dates in local time. Applied to all session-date renders. **This fixed the READ side only — the WRITE side kept producing bad rows until v0.6.5.2 (September 2026). See "session_date was written a day early" below.**
 - **Game review page** — new `/games/[sessionId]` full all-player report (every division, event, score + placement, standings), linked from dashboard session history; any logged-in player. Placements computed live from `raw_score` (so the encoding + missing-event fixes reflect for past games too).
 
 #### difficulty+time encoding
@@ -240,7 +240,7 @@ All in `app/scoring/[sessionId]/page.tsx`, player flow only (judge EventCard unt
 - **Bowling added** (105 events total) — Aim & Precision, `sport` mode W/D/L head-to-head over set frames; slug `bowling`; emoji fallback 🎳 (icon PNG exported in session 25). Pre-May-2026 "Bowling" history (renamed to Kubb back then) re-attaches to this event's PR history by name — harmless.
 - **Breath Hold → `hold` mode** (longer wins) + effort task = 80% of PR; **Duck Walk → all-walk tiers** D1–D5 (10m/25m/50m/100m/200m), joined `TIMED_EFFORT_SLUGS`. Historic raw_scores re-encoded by `20260713000001_breath_hold_duck_walk.sql`. `time` input mode now has zero events (kept in the type).
 - **Tier names shortened** (73 renamed) — tier chips no longer repeat the event name or carry judge criteria; new optional `detail` field on `DifficultyTier` holds the criteria, rendered in the quick-entry sheet HOW TO tier list and on /events/[slug]. NOTE: `results.difficulty_tier` stores the NAME string, so pre-rename rows display their old stored labels (fine) but won't match `findIndex` tier lookups (same accepted trade-off as the Handbalance rename).
-- **Selwyn Winter Jam recap** — /schedule block converted from advert to results recap with division champions (derived from the 2026-07-03 session `e032cb24-…`, the Jam stored a day early by the old UTC date bug): Men's kiwigyver, Women's Meredith & Clairebear (shared 1st), Masters Men Blair, Masters Women Jing.
+- **Selwyn Winter Jam recap** — /schedule block converted from advert to results recap with division champions (derived from session `e032cb24-…`, which was stored as 2026-07-03 by the write-side UTC date bug and corrected to its true date, Saturday 2026-07-04, by migration `20260902020602`): Men's kiwigyver, Women's Meredith & Clairebear (shared 1st), Masters Men Blair, Masters Women Jing.
 - ~~**Skill rating system (`lib/rating.ts`)** — multiplayer Elo~~ **REMOVED August 2026.** Session 24 replaced the player-facing skill score with best-score percentiles (`lib/percentile.ts`) and kept the Elo "for `sessionWins`" — but `sessionWins` is a plain `placement = 1` count that never touched a rating, so `computeRatings`/`eloTo100`/`domainRatings`/`topEvent`/`topDomain` had **zero call sites** and were deleted. `lib/rating.ts` now holds only `divisionPool` + `sessionWins` + the `Rating*` row types (names kept — they describe row shapes, not ratings). `lib/fetchAll.ts` deleted in the same pass. Percentiles are now the single ranking metric: do not reintroduce a second one without deciding which is authoritative — the old pair exported `topDomain` from BOTH modules, which is why the leaderboard still imports the survivor as `pctTopDomain`. See PERF_AGGREGATION_PLAN.md.
 - **My 100 → player stat card** — header stat row (Wins · Avg Place · Events), domain coverage dots + per-domain 0–100 skill score, top-event line; tap opens a full-screen **My Stats modal** (headline stats, top event/domain cards, per-domain skill bars + coverage, explainer, link to /prs). Wins = sessions finished 1st in division (`results.placement = 1`, distinct sessions; placement has meant overall division rank since 20260514, older rows are NULL so wins can only undercount).
 - **/leaderboard columns** — Avg Place column replaced by **Wins**, **Top Domain**, **Top Event** (Elo-derived, lifetime; wins are current-season). Also fixed a latent bug: rankings query now filters `season_year = current year` (previously all seasons' rows were listed together). Explainer copy updated.
@@ -324,51 +324,75 @@ Effort submissions stored in a separate `effort_scores` table (not `results`). S
 
 ## Difficulty Tiers
 
-Events with multiple difficulty variations use a tier system (D1 = easiest). Tiers are purely informational — they do not affect scoring. Players declare which tier they attempted.
+**Rebuilt Sept 2026 (v0.7.0.0) from a full review of all 120 events.** The per-event
+tier table that used to live here is deleted rather than updated: it drifted from
+`lib/eventData.ts` every time a ladder changed, and the file is the source of truth.
+`EVENT_DIFFICULTY_REVIEW.md` is the reviewed worksheet the ladders were compiled from.
 
-Stored in `results.difficulty_tier` (TEXT).
+**86 events carry a ladder, 34 deliberately carry none, 34 changed input mode.**
+D1 is always the easiest, and a higher tier ALWAYS outranks a lower one regardless
+of the score inside it. `results.difficulty_tier` stores the tier NAME as text.
 
-Full tier data defined in `lib/eventData.ts`. Summary:
+### How a rung is scored is declared ON THE TIER, never matched by event name
 
-| Event | Tiers |
-|---|---|
-| Windshield Wipers | D1–D4 |
-| Reverse Hyper | D1–D4 |
-| Forward Fold | D1–D5 |
-| Planche | D1–D7 |
-| Front Lever | D1–D6 |
-| Back Lever | D1–D7 |
-| Iron Cross | D1–D6 |
-| Flag | D1–D7 |
-| L Sit Hold | D1–D5 |
-| Headstand | D1–D5 |
-| Finger Pushup | D1–D7 |
-| Climbing | D1–D5 |
-| Bridge | D1–D6 |
-| Needle Pose | D1–D6 |
-| Standing Split | D1–D6 (+ hold time in seconds) |
-| Foot Behind Head | D1–D6 |
-| Weighted Carry | D1–D6 (5kg/10kg/25kg/50kg/80kg/100kg, all 200m) |
-| Sandbag to Shoulder | D1–D6 (5kg/10kg/25kg/50kg/80kg/100kg) |
-| Lunges | D1–D4 (Assisted Elevated / Elevated / Floor / Jumping) |
-| Leg Ext Hold | D1–D7 (Bodyweight/2kg/4kg/8kg/12kg/16kg/24kg) — hold, longer wins |
-| Wheelbarrow Push / Pull | D1–D6 (5kg/10kg/25kg/50kg/80kg/100kg, always 200m) — timed effort, faster wins |
-| Jump Rope | D1–D5 |
-| Gymnastics | D1–D8 |
-| Juggling | D1–D4 |
-| Foot Juggling | D1–D2 (D1: 1 Bounce, D2: No Bounce) |
-| Ab Rollout | D1–D5 |
-| Chin Hang | D1–D6 |
-| Breakdancing | D1–D6 |
-| 1 Leg Squat | D1–D6 |
+```ts
+scoring?: 'weight' | 'sport'      // overrides the event's mode for this rung
+records?: 'reps' | 'strokes'      // a second number captured but not ranked
+```
 
-Events without tiers (objective measure): all lifts, sprints, throws, jumps, rows, runs, cycles, sport/racket events, aim events, Toe Lift, Turkish Get Up, Shoulder Dislocate, F Split, M Split.
+- **`scoring: 'sport'` — a `Game` rung.** 37 events top their drill ladder with the
+  real contest, so the rung records a win, draw or loss:
+  `raw = tierIdx * 10000 + (win 2 / draw 1 / loss 0)`. **The term is NOT inverted on
+  a timed-effort ladder** — inverting it would make a loss beat a win. Playing the
+  game outranks every drill below it whatever the result, which is the point: a
+  beginner or an injured player now has a way to score.
+- **`scoring: 'weight'` — the loaded top rung** of Pause Dips, Pause Chinup and
+  GHD Situp: `raw = tierIdx * 10000 + round(kg * 100)`, rejected above 99.99kg.
+  Heaviest wins; reps are recorded in their own column and never rank.
 
-F Split and M Split use distance input mode (block height from ground in cm).
+**Do NOT reintroduce name matching for this.** `lib/scoring.ts` used to identify
+weight rungs by comparing event-name literals, which is exactly what silently
+dropped the weight input across the `Pause Chin Up` → `Pause Chinup` rename. The
+old list survives ONLY as a fallback for a historical row whose event can no
+longer be resolved, with its indexes frozen at their pre-review values.
 
-**Shoulder Dislocate** — repurposed `strength` mode: grip width stored in `weight_kg` (cm), reps in `reps`, raw_score = −grip_width_cm (narrower = higher score = better rank). UI label reads "Grip width (cm)" not "Weight (kg)". PR display shows Xcm. Effort task: ≤80% of PR grip width (cm) for 5 reps. No difficulty tiers.
+### Two new input modes
 
----
+- **`difficulty+distance`** (Javelin, Shotput) — the ladder is the implement, the
+  score is still the throw: `raw = tierIdx * 10000 + round(metres * 10)`. Rejected
+  at or above 10000, never clamped, or two different throws would tie and one step
+  further would spill into the next rung.
+- **`weight+time`** (Leg Ext Hold only) — the load IS the difficulty, so it is
+  entered rather than picked off a ladder: `raw = round(kg * 100) * 10000 + secs`.
+  Heavier wins, the hold breaks the tie, bodyweight collapses below every loaded hold.
+
+### Animal Crawl replaces Duck Walk, and it is NOT a rename
+
+A bear crawl is not a duck walk, so there is deliberately no
+`session_events.event_name` sweep. Duck Walk survives as two rungs of the new
+ladder, not as an event. Same rule that kept OHP off Clean & Press and Toe Squat
+off Lunges. `duck-walk` stays in `TIMED_EFFORT_SLUGS` alongside `walking` and
+`backwards-walk` so archived rows still decode.
+
+### `TIMED_EFFORT_SLUGS` contained a slug that matched nothing, for three months
+
+It held `'climbing'` while the event's slug is `rope-climb`. The set is keyed on
+slug and **an entry matching no event does nothing at all** — no error, no warning
+— so `isTimedEffort` returned false, and since it gates both encode and decode,
+Climbing's rows were written un-inverted and read back un-inverted: self-consistent,
+but ranked longest-wins on an event that is raced, from June 2026. Fixed to
+`rope-climb`, which is why the history repair has to re-encode Climbing from
+`time_seconds` rather than leave it alone. **A test now asserts every entry in the
+set against the roster**; that is the check that would have caught it.
+
+### A mode change orphans history that no tier query can see
+
+When an event changes INTO a tiered mode its existing rows keep `difficulty_tier`
+NULL and a `raw_score` on the OLD scale, so **anything filtered on
+`difficulty_tier IS NOT NULL` cannot see them.** Converting 34 events left **477**
+such rows, more than the 454 that carried a tier, and 44 of them had a negative
+`raw_score` which decodes to tier −1 and sorts below every practice rep. Count BOTH
+sets before writing a tier migration: rows losing a ladder AND rows gaining one.
 
 ## Divisions
 
@@ -687,6 +711,56 @@ and must never produce half a creature. Whānau is drawn (11/11, verified by
 `node scripts/check-taniwha-art.mjs whanau`); the other eleven are not.
 
 ---
+
+## session_date was written a day early (September 2026) — v0.6.5.2
+
+**Present in every session ever created**, from the April 2026 rebuild until
+`20260902020602` fixed it. `app/scoring/page.tsx` derived `session_date` from
+`new Date().toISOString().split('T')[0]`, which is the **UTC** day. Any session
+starting before noon NZ is therefore stamped with the previous date: 9:00am
+NZST Saturday is 21:00 UTC Friday.
+
+**25 of 62 sessions were wrong** — every Saturday morning game, and roughly as
+many weekday mornings. Afternoon sessions (Tue/Thu 4:30pm) were never affected,
+which is why it hid for four months.
+
+**The June 2026 `lib/dates.ts` work fixed the READ side and was widely believed
+to have fixed the whole thing.** It did not touch session creation. The 29
+August 2026 session was still stored as the 28th.
+
+**This corrupts any weekday analysis of the schedule.** Reading
+`session_date` directly said Saturday 9am had run ONCE in 61 sessions and that
+15 sessions fell on a Friday — a slot the club has never advertised. Derived
+from `started_at` in real NZ time, the true figures are **Saturday 15, Friday
+0**, and 87% of sessions fall on an advertised day. Two opposite conclusions
+about whether the club keeps its own timetable. **Derive the local day from
+`started_at`, never from `session_date`, for any data older than v0.6.5.2.**
+
+**The invariant is now enforced in the database**, not in the caller:
+`set_session_date_from_started_at()` is a BEFORE INSERT/UPDATE trigger deriving
+`session_date` from `started_at` at `Pacific/Auckland` (named zone, never a
+fixed +12 — NZDT is +13 from late September). A future advance-scheduling UI
+cannot reintroduce it. Client-side, `sessionStart()` in `lib/dates.ts` returns
+`startedAt` and `sessionDate` from ONE derivation, because the bug existed
+precisely because two callers answered the same question differently.
+
+**The backfill deliberately never touches `is_active`.** `sessions` carries
+three AFTER UPDATE triggers (`auto_award_points`, `trg_event_placements`,
+`trg_taniwha_sync`), all gated on the `is_active` true→false transition.
+Widening that UPDATE would re-run the entire points, placement and taniwha
+pipeline across the whole history.
+
+**Known remaining limit, logged at P3:** `sessionStart()` still builds the
+instant with `setHours()`, which resolves in the DEVICE's zone. A phone set to
+something other than NZ produces a wrong `started_at`, and `session_date` then
+faithfully reports the NZ day of that wrong instant. The pair stays
+self-consistent; neither is rescued from a mis-set clock.
+
+**Correcting these dates reorders history.** 15 of 62 sessions change
+chronological position. `limbCrossings()` in `lib/taniwha.ts` replays sessions
+in `session_date` order to reconstruct when each taniwha piece landed, so some
+historical piece dates and the colours timeline shift by a day. That is the
+correction landing, not a regression.
 
 ## compute_event_placements ranked ROWS, not players (August 2026)
 
@@ -1308,7 +1382,7 @@ RLS: own + parent (family) + judge.
 - raw_score for time events is stored negative (faster = higher) so rankings sort correctly
 - Players who joined a session (have any result row) but have no score for a specific event are ranked last for that event
 - Missing score players display as "No score" in expanded event lists
-- Input modes: `strength` (weight+reps), `reps`, `time` (mm:ss), `hold` (mm:ss), `distance` (m/cm), `sport` (win/draw/loss + opponent), `sprint` (ss.cs), `difficulty+time` (tier selector + seconds), `difficulty+reps` (tier selector + reps), `score` (stroke count for 4 holes, stored as negative integer)
+- Input modes: `strength` (weight+reps), `reps`, `time` (mm:ss), `hold` (mm:ss), `distance` (m/cm), `sport` (win/draw/loss + opponent), `sprint` (ss.cs), `difficulty+time` (tier + seconds), `difficulty+reps` (tier + reps), `difficulty+distance` (tier + metres), `weight+time` (load + hold), `score` (strokes over 4 holes, negative). **As of v0.7.0.0 no roster event uses `sprint` or `score`** — both branches survive because historical rows written under them still render.
 - `difficulty+time` has two semantics: HOLDS (longer time wins) and TIMED EFFORTS (faster time wins, `TIMED_EFFORT_SLUGS` in eventData.ts). Encoding inverts the within-tier term for timed efforts so `raw_score` DESC always means "better" — see difficulty+time encoding note above. Duck Walk excluded (mixed tiers, pending redesign)
 - Sprint mode: seconds + centiseconds (0–99), raw_score = -(secs*100 + cs). Used for 100m/50m/200m Sprint (T-Race now uses sport mode)
 - Score mode: stroke count for 4 holes, raw_score = -strokes (negative; fewer strokes = higher raw_score = better rank). Used for Golf and Disc Golf.
@@ -1336,7 +1410,8 @@ RLS: own + parent (family) + judge.
     supabase-server.ts              # Server client
     supabase-cookies.ts             # AUTH_COOKIE_OPTIONS — MUST be passed to every Supabase client (secure/sameSite/path). See HTTP security below
     securityHeaders.ts              # buildCsp / buildSecurityHeaders — the CSP + 8 headers, unit tested in __tests__/securityHeaders.test.ts
-    eventData.ts                    # Single source of truth for all events (120) + difficulty+time encode/decode helpers (encodeDiffTime/decodeDiffTime/isTimedEffort, TIMED_EFFORT_SLUGS); DifficultyTier has optional `detail` (judge criteria)
+    eventData.ts                    # Single source of truth for all events (120) + difficulty+time encode/decode helpers (encodeDiffTime/decodeDiffTime/isTimedEffort, TIMED_EFFORT_SLUGS).
+                                    #   DifficultyTier carries `detail` (judge criteria) plus `scoring`/`records` — how a single rung is scored, declared on the tier so nothing matches on event name. COMPILED from EVENT_DIFFICULTY_REVIEW.md by scripts/apply-difficulty-sheet.mjs; do not hand-edit a ladder without updating the sheet.
     dates.ts                        # parseLocalDate / formatNZDate — parse DATE columns in local time (avoids off-by-one)
     activePlayer.ts                 # Pure half of the family switcher — resolveActiveId/playerLabel. No React, no Supabase, so it is testable
     useActivePlayer.ts              # The hook over allsport_active_player_id. Cross-component + cross-tab sync
@@ -1840,7 +1915,17 @@ real host is `evil.com`. `safeNext()` now rejects that plus the `//` and `/\` va
 
 ---
 
-*Last updated: August 2026 (session 34 — **a design review of everything v0.6.0.0–v0.6.2.0 shipped, then the fixes.** The taniwha system was judged against its own goal, a stronger narrative than a points ladder, and the verdict was that the structure is a better story but the delivery gave half of it away. The headline: **every taniwha surface priced progress in points and nothing said what a session was worth**, so the ladder had no denominator — `sessionsToGo` now converts it to games, using the BOTTOM of the real range so the estimate can only be pessimistic. Also shipped: the first-run dashboard the FirstRun canvas specified back in session 32 and never delivered; `/leaderboard` rebuilt for phones, where it had been hiding **Season Pts, the column it sorts by**, behind an unsignalled 860px-in-342px scroll; the Taniwha column switched from crowns to **pieces**, because crowns read `0` on all 27 rows and will for months; the **field-of-three win rule** finally stated after being enforced-but-unexplained since launch; one word ("pieces") for a unit that had three; and the last Colours-era copy off the public pages. Two findings were left undone on purpose and both are in TODOS.md — the eleven undrawn taniwha (now with a DRAWING ORDER, because everyone building Whānau is the only reason the filler geometry is currently invisible) and folding lifetime points into `leaderboard_page()`, which needs a migration from `main`. Shipped as v0.6.4.0; 387 tests, build clean. `shortTaniwhaName` moved into `lib/taniwha.ts` on the way out, because that file already warned the leaderboard stripped its prefix by literal match "so the two must not drift apart again" — and with the function living in the page, nothing failed when they did. See the "Design review of the taniwha work" block above.)*
+*Last updated: September 2026 (session 37 — **the difficulty ladders of all 120 events reviewed and rebuilt**, shipped as v0.7.0.0. Tāne reviewed a generated worksheet (`EVENT_DIFFICULTY_REVIEW.md`) that put each rung's real production usage beside it, and the sheet is COMPILED into `lib/eventData.ts` rather than transcribed — re-running the parser reports zero drift, which is how the two are known to agree. 86 events carry a ladder, 34 deliberately carry none, 34 changed input mode, and 37 now top a drill ladder with the real contest so a beginner or an injured player has a way to score at all. Two new modes: `difficulty+distance` and `weight+time`.
+
+**The structural decision worth keeping: how a rung scores is declared ON THE TIER, not matched by event name.** `lib/scoring.ts` used to identify weight rungs by comparing event-name literals, which is precisely what silently dropped the weight input across the `Pause Chin Up` → `Pause Chinup` rename; with 37 Game rungs on the roster that failure mode would have been everywhere.
+
+**Three bugs found that nothing was going to surface on its own.** The hardest rung on a weighted event ranked BELOW the second easiest, because it stored a bare `raw_score` (20 for 20kg) against a banded 10,005 for five reps at D2 — loading the bar made your score worse. `TIMED_EFFORT_SLUGS` held `'climbing'` while the slug is `rope-climb`, so Climbing was ranked longest-wins on an event that is raced, from June 2026; there is now a test asserting every entry against the roster. And judge prose still named levels the review had moved, telling a kaiwhakawā that GHD Situp D4 is the weighted rung when it is now D5 — also now a test.
+
+**Two review cycles found 17 real defects and every one was verified against production before acting on it.** The largest was invisible to every query anyone had run: converting an event INTO a tiered mode leaves its old rows with `difficulty_tier` NULL and a `raw_score` on the abandoned scale, so **477 rows** — more than the 454 that carried a tier — were about to be silently misread, 44 of them decoding to tier −1. Cycle two then caught that flattening Golf's historical rounds to one value would make the placement replay rank them all 1st and **mint a win for every player who ever played Golf**, feeding the Aim & Precision crown. Both are fixed in the history-repair migration, which is split into its own PR precisely because two cycles finding 8 then 9 findings is not a converging review.
+
+**The roster mirror ships with the code; the history repair does not.** `20260908221459_event_domains_animal_crawl.sql` re-seeds `event_domains` (Animal Crawl in, Duck Walk out) and is safe either deploy order, since the mirror only feeds domain crowns and nobody has crown room. `20260909000000_difficulty_history_repair.sql` repoints 31 renamed rungs, repairs the 477, archives and deletes what genuinely no longer lines up, re-encodes the survivors and replays `compute_event_placements()`. It carries a pre-image table because the re-encode is otherwise irreversible. 460 tests, build clean.)*
+
+*Previous: August 2026 (session 34 — **a design review of everything v0.6.0.0–v0.6.2.0 shipped, then the fixes.** The taniwha system was judged against its own goal, a stronger narrative than a points ladder, and the verdict was that the structure is a better story but the delivery gave half of it away. The headline: **every taniwha surface priced progress in points and nothing said what a session was worth**, so the ladder had no denominator — `sessionsToGo` now converts it to games, using the BOTTOM of the real range so the estimate can only be pessimistic. Also shipped: the first-run dashboard the FirstRun canvas specified back in session 32 and never delivered; `/leaderboard` rebuilt for phones, where it had been hiding **Season Pts, the column it sorts by**, behind an unsignalled 860px-in-342px scroll; the Taniwha column switched from crowns to **pieces**, because crowns read `0` on all 27 rows and will for months; the **field-of-three win rule** finally stated after being enforced-but-unexplained since launch; one word ("pieces") for a unit that had three; and the last Colours-era copy off the public pages. Two findings were left undone on purpose and both are in TODOS.md — the eleven undrawn taniwha (now with a DRAWING ORDER, because everyone building Whānau is the only reason the filler geometry is currently invisible) and folding lifetime points into `leaderboard_page()`, which needs a migration from `main`. Shipped as v0.6.4.0; 387 tests, build clean. `shortTaniwhaName` moved into `lib/taniwha.ts` on the way out, because that file already warned the leaderboard stripped its prefix by literal match "so the two must not drift apart again" — and with the function living in the page, nothing failed when they did. See the "Design review of the taniwha work" block above.)*
 
 *Previous: August 2026 (session 33 — **second mobile performance pass**, shipped as v0.6.3.0. Measured against a production build and the real prod Supabase, not estimated. Four fixes: the live session's FIVE SERIAL round trips became one wave (nothing depended on anything else — the screen a player opens in the gym cost five sequential requests before rendering); Supabase and its realtime stack came off the global shell, which required making all FOUR module-scope `createClient()` calls dynamic behind the new `lib/authCookie.ts` gate, because any one static import keeps the 223 KB chunk in every page's bundle; the homepage became a server component so `lib/eventData.ts` (112 KB of how-to prose for 120 events) stops shipping to render ~120 names; and the mask assets shrank 556 KB → 214 KB. Homepage JS 220.8 → 137.8 KB gzipped, 1015 → 634 KB total.
 

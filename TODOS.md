@@ -2,6 +2,13 @@
 
 ## ✅ Done
 
+- **Difficulty levels reviewed and rebuilt across all 120 events** (v0.7.0.0). Tāne reviewed every event in `EVENT_DIFFICULTY_REVIEW.md`, a generated worksheet with the production usage of each rung beside it; the sheet is compiled into `lib/eventData.ts` by `scripts/parse-difficulty-sheet.mjs` + `scripts/apply-difficulty-sheet.mjs` rather than hand-transcribed, and re-running the parser reports zero drift, which is how the file and the sheet are known to agree. 86 events carry a ladder, 34 deliberately carry none, 34 changed input mode.
+  - **Per-rung scoring is declared on the tier** (`scoring: 'weight' | 'sport'`, `records: 'reps' | 'strokes'`), not matched by event name. Name matching is what silently dropped the weight input across the `Pause Chin Up` → `Pause Chinup` rename; with 37 Game rungs on the roster that failure mode would have been everywhere.
+  - **Fixed: the hardest rung ranked below the second easiest.** A weight rung stored a bare `raw_score` (20 for 20kg) against a banded 10,005 for five reps at D2. It is now banded like every other rung, and records reps alongside the load.
+  - **Fixed: `TIMED_EFFORT_SLUGS` contained `'climbing'` while the event's slug is `rope-climb`.** The set is keyed on slug and an entry matching nothing does nothing at all, so Climbing was ranked longest-wins on an event that is raced, from June 2026. There is now a test asserting every entry against the roster, which is the check that would have caught it.
+  - New input modes `difficulty+distance` (Javelin, Shotput) and `weight+time` (Leg Ext Hold). Duck Walk replaced by Animal Crawl, deliberately not a rename.
+  - **Two review cycles found 17 real defects**, including 477 historical rows on events *gaining* a ladder that carried no level and a `raw_score` on the abandoned scale. Any analysis filtered on `difficulty_tier IS NOT NULL` cannot see them. **Completed:** v0.7.0.0 (2026-09-10)
+
 - Applied `20260828192753` (Lunges replaces Toe Squat in the event_domains roster mirror) and `20260828192844` (choose_taniwha(NULL) = whanau) to production on 2026-08-29, from main after PR #98. Verified by querying the objects, not the ledger: 120 event_domains rows with 12 in every domain, Lunges present and Toe Squat gone, and pg_proc confirming the new function body and that anon is still not in its ACL. Zero budget breaches, zero wins orphaned by the swap.
 
 - Fixed `compute_event_placements` ranking ROWS rather than players (`20260828204652`). It counted a player once per submission, so `event_field_size` measured submissions instead of people, placements were skewed, and `player_event_wins` counted one win once per row — 328 winning rows against 151 true. Deduped to the best row per player per event before ranking, recomputed the whole history, and asserted the invariant at the end of the migration. Domain win counts dropped; no crown was revoked because none had been earned.
@@ -324,6 +331,21 @@ from `main` and this is a review branch.
 ---
 
 ## P3 — Later
+
+### A session created on a non-NZ device still gets the wrong time
+**What:** `sessionStart()` in `lib/dates.ts` builds the start instant with `setHours()`, which resolves in the DEVICE's timezone. A kaiwhakawā whose phone is set to something other than NZ produces a `started_at` wrong by the offset — and `session_date` then faithfully reports the NZ day of that wrong instant. The pair stays self-consistent (the DB trigger enforces the same rule), so the data is never internally contradictory, but neither half is rescued from a mis-set clock. The 100-minute expiry would also be off, so `close_expired_sessions()` could close the game early or late.
+**Why it is not already done:** fixing it means interpreting the setup form's "09:00" as NZ wall-clock rather than device wall-clock, which changes what `started_at` MEANS and needs its own decision. Every session so far has been created in the room, on a NZ phone, so this is latent rather than live.
+**Where:** `sessionStart()` in `lib/dates.ts`. Verified by running the helper under `TZ=UTC`.
+**Noticed:** /ship v0.6.5.2 pre-landing review, 2026-09-06
+**Effort:** S
+
+### Database-level tests for migrations (pgTAP or a seeded test DB)
+**What:** The `20260902020602` migration's trigger, backfill and closing assertion have no automated coverage, because vitest cannot execute Postgres. The same is true of `award_session_points`, `compute_event_placements`, `close_expired_sessions` and every RLS guard — none has ever had a test, and all of them mutate production data.
+**Why it is not already done:** already tracked as deferred item 12 in CLAUDE.md's "What's Next". Standing up the harness needs Docker running for a local Supabase, which is often not the case on this machine.
+**Where:** new `supabase/tests/`. Would unblock testing for every future migration.
+**Noticed:** /ship v0.6.5.2 coverage gate — 5 SQL paths marked intentionally uncovered, 2026-09-06
+**Effort:** M
+
 
 ### Leaderboard icons
 **What:** Add player icon emoji next to name on /leaderboard and /scoring/[sessionId].

@@ -7,7 +7,7 @@ import { parseLocalDate } from '@/lib/dates'
 import EventIcon, { domainColor } from '@/components/EventIcon'
 import {
   fmtTime, computeScoreVals, valsFromResult, valsFromRaw,
-  isWeightScoredTierByName, EMPTY_VALS, type EntryVals,
+  tierScoring, EMPTY_VALS, type EntryVals,
 } from '@/lib/scoring'
 import {
   buildJudgeRoster, resolveJudgeTarget, resultsForTarget, scoredEventIds,
@@ -73,7 +73,7 @@ function fmtCountdown(secs: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
-function formatPR(rawScore: number, inputMode: string, slug?: string): string {
+function formatPR(rawScore: number, inputMode: string, slug?: string, eventData?: EventData): string {
   switch (inputMode) {
     case 'strength':   return slug === 'shoulder-dislocate' ? `${Math.abs(rawScore)}cm` : `${rawScore} kg`
     case 'reps':       return `${rawScore} reps`
@@ -89,8 +89,21 @@ function formatPR(rawScore: number, inputMode: string, slug?: string): string {
     }
     case 'difficulty+reps': {
       const tierIdx = Math.floor(rawScore / 10000)
-      const reps = rawScore % 10000
-      return `D${tierIdx + 1} · ${reps} reps`
+      const term = rawScore % 10000
+      // The within-tier term is only reps on an ordinary rung.
+      const scoring = tierScoring(eventData, tierIdx)
+      if (scoring === 'weight') return `D${tierIdx + 1} · ${term / 100}kg`
+      if (scoring === 'sport') return `D${tierIdx + 1} · ${term === 2 ? 'Win' : term === 1 ? 'Draw' : 'Loss'}`
+      return `D${tierIdx + 1} · ${term} reps`
+    }
+    case 'difficulty+distance': {
+      const tierIdx = Math.floor(rawScore / 10000)
+      return `D${tierIdx + 1} · ${(rawScore % 10000) / 10}m`
+    }
+    case 'weight+time': {
+      const kg = Math.floor(rawScore / 10000) / 100
+      const secs = rawScore % 10000
+      return `${kg > 0 ? `${kg}kg` : 'Bodyweight'} · ${fmtTime(secs)}`
     }
     default: return String(rawScore)
   }
@@ -348,13 +361,30 @@ async function submitEntry(args: {
       if (isWeightVariation) payload.weight_kg = parseFloat(v.weightKg) || 0
       payload.reps = parseInt(v.repCount) || 0
     }
-    if (['time', 'hold', 'difficulty+time'].includes(mode) && totalSecs > 0) payload.time_seconds = totalSecs
-    if (mode === 'difficulty+reps') {
-      if (isWeightScoredTierByName(eventData?.name ?? '', v.difficultyTier)) {
+    if (['time', 'hold', 'difficulty+time', 'weight+time'].includes(mode) && totalSecs > 0) payload.time_seconds = totalSecs
+    if (mode === 'weight+time') payload.weight_kg = parseFloat(v.weightKg) || 0
+    if (mode === 'difficulty+reps' || mode === 'difficulty+distance') {
+      const special = tierScoring(eventData, { name: v.difficultyTier })
+      if (special === 'weight') {
         payload.weight_kg = parseFloat(v.weightKg) || 0
+        // Reps do not rank on a weight rung, but they are still the record of
+        // what was done — this is the gap Tāne flagged in the difficulty review.
+        if (v.repCount) payload.reps = parseInt(v.repCount)
+      } else if (special === 'sport') {
+        if (v.opponentName) payload.opponent_name = v.opponentName
+        payload.result_type = v.sportResult
+        // Golf and Disc Golf carry the round's strokes alongside the result.
+        if (v.scoreInput) payload.match_score = v.scoreInput
+        else if (v.sportScore) payload.match_score = v.sportScore
+      } else if (mode === 'difficulty+distance') {
+        payload.distance_m = parseFloat(v.distanceVal) || 0
       } else {
         payload.reps = parseInt(v.repCount) || 0
       }
+    }
+    if (mode === 'difficulty+time' && tierScoring(eventData, { name: v.difficultyTier }) === 'sport') {
+      if (v.opponentName) payload.opponent_name = v.opponentName
+      payload.result_type = v.sportResult
     }
     if (mode === 'sprint') {
       const s = parseFloat(v.timeSecs) || 0; const cs = parseInt(v.sprintCs) || 0
@@ -522,7 +552,7 @@ function QuickEntrySheet({
   if (mode !== 'sport') {
     if (myBestResult) quickPicks.push({ label: `Today · ${myBestResult.score_label}`, patch: valsFromResult(mode, myBestResult) })
     if (seasonPRNum !== null) {
-      quickPicks.push({ label: `PR · ${formatPR(seasonPRNum, mode, eventData?.slug)}`, patch: valsFromRaw(mode, eventData, seasonPRNum) })
+      quickPicks.push({ label: `PR · ${formatPR(seasonPRNum, mode, eventData?.slug, eventData)}`, patch: valsFromRaw(mode, eventData, seasonPRNum) })
       if (mode === 'strength' && !isDislocate) {
         quickPicks.push({ label: `PR +2.5kg`, patch: { weightKg: String(seasonPRNum + 2.5) } })
       }
@@ -530,16 +560,34 @@ function QuickEntrySheet({
   }
 
   // Opponent quick picks for sport mode: everyone else with a result this session
-  const opponentPicks = mode === 'sport'
+  const tiers = eventData?.difficultyTiers ?? []
+  // How the SELECTED rung is scored. A `Game` rung tops a drill ladder with the
+  // real contest, so it swaps the reps/time input for win/draw/loss; a `weight`
+  // rung swaps reps for load. Both are read off the tier, never matched by name.
+  const rung = tiers.find(t => t.name === v.difficultyTier)
+  const gameRung = rung?.scoring === 'sport'
+  const weightRung = rung?.scoring === 'weight'
+
+  const showSport = mode === 'sport' || gameRung
+  const opponentPicks = showSport
     ? [...new Set(allResults.map(r => r.player_name).filter(n => n && n !== playerName))].slice(0, 6)
     : []
 
-  const tiers = eventData?.difficultyTiers ?? []
-  const showTierChips = (mode === 'difficulty+time' || mode === 'difficulty+reps' || (mode === 'hold' && tiers.length > 0)) && tiers.length > 0
-  const weightScored = mode === 'difficulty+reps' && isWeightScoredTierByName(eventData?.name ?? '', v.difficultyTier)
-  const showWeight = mode === 'strength' || weightScored
-  const showReps = mode === 'strength' || mode === 'reps' || (mode === 'difficulty+reps' && !weightScored)
-  const showTime = mode === 'time' || mode === 'hold' || mode === 'difficulty+time'
+  const showTierChips = tiers.length > 0 && (
+    mode === 'difficulty+time' || mode === 'difficulty+reps' ||
+    mode === 'difficulty+distance' || mode === 'hold')
+  const showWeight = mode === 'strength' || mode === 'weight+time' || weightRung
+  // A weight rung records reps as well as load — the load ranks, the reps are
+  // the record of what was actually done.
+  // `records` is load-bearing, not decoration: a weight rung shows the rep field
+  // only because it declares `records: 'reps'`.
+  const showReps = mode === 'strength' || mode === 'reps' ||
+    (mode === 'difficulty+reps' && !gameRung && (!weightRung || rung?.records === 'reps'))
+  const showTime = mode === 'time' || mode === 'hold' || mode === 'weight+time' ||
+    (mode === 'difficulty+time' && !gameRung)
+  const showDistance = mode === 'distance' || (mode === 'difficulty+distance' && !gameRung)
+  // Golf and Disc Golf keep their stroke count on the Game rung.
+  const showStrokes = mode === 'score' || (gameRung && rung?.records === 'strokes')
   const domainC = domainColor(se.domain_number)
   const contentMissing = !eventData || eventData.howToPerform === 'Content coming soon.'
   const myResultsSorted = [...myResults].sort((a, b) => b.raw_score - a.raw_score)
@@ -622,7 +670,7 @@ function QuickEntrySheet({
                 <div style={{ flex: 1, background: '#101010', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '9px 12px' }}>
                   <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '10.5px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.12em' }}>Season PR</div>
                   <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '19px', color: seasonPRNum !== null ? '#F9B051' : '#444', marginTop: '2px' }}>
-                    {seasonPRNum !== null ? formatPR(seasonPRNum, mode, eventData?.slug) : '—'}
+                    {seasonPRNum !== null ? formatPR(seasonPRNum, mode, eventData?.slug, eventData) : '—'}
                   </div>
                 </div>
               </div>
@@ -725,12 +773,12 @@ function QuickEntrySheet({
                   )}
 
                   {/* Distance */}
-                  {mode === 'distance' && (
+                  {showDistance && (
                     <>
                       <div style={QES_LBL}>Distance</div>
                       <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                         <input type="number" inputMode="decimal" value={v.distanceVal} onChange={e => set({ distanceVal: e.target.value })} placeholder="0" style={QES_INP} />
-                        <div style={{ display: 'flex', borderRadius: '12px', overflow: 'hidden', flexShrink: 0 }}>
+                        <div style={{ display: 'flex', borderRadius: '12px', overflow: 'hidden', flexShrink: 0 }} hidden={mode !== 'distance'}>
                           {(['m', 'cm'] as const).map(u => (
                             <button key={u} onClick={() => set({ distanceUnit: u })} style={{
                               padding: '14px 18px', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '15px',
@@ -743,8 +791,8 @@ function QuickEntrySheet({
                     </>
                   )}
 
-                  {/* Sport: W/D/L + opponent quick picks */}
-                  {mode === 'sport' && (
+                  {/* Sport, and the `Game` rung that tops a drill ladder */}
+                  {showSport && (
                     <>
                       <div style={QES_LBL}>Result</div>
                       <div style={{ display: 'flex', gap: '10px' }}>
@@ -779,7 +827,7 @@ function QuickEntrySheet({
                   )}
 
                   {/* Golf/Disc Golf strokes */}
-                  {mode === 'score' && (
+                  {showStrokes && (
                     <>
                       <div style={QES_LBL}>Stroke count (4 holes)</div>
                       <div style={{ display: 'flex', gap: '10px' }}>

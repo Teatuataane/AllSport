@@ -7,7 +7,7 @@
 // previously rendered on demand for every request despite the content being
 // fixed. Unknown slugs still fall through to the "Event not found" branch below.
 import Link from 'next/link'
-import { EVENTS, getEventBySlug } from '@/lib/eventData'
+import { EVENTS, getEventBySlug, type InputMode } from '@/lib/eventData'
 import PersonalBestCard from './PersonalBestCard'
 
 export function generateStaticParams() {
@@ -19,7 +19,9 @@ const DOMAIN_COLOURS: Record<number, string> = {
   6: '#4DB26E', 7: '#EA4742', 8: '#F9B051', 9: '#B87DB5', 10: '#2371BB',
 }
 
-const INPUT_MODE_LABEL: Record<string, string> = {
+// Typed against InputMode so a new mode is a COMPILE error here rather than a
+// raw string like "weight+time" shown to a player on the public event guide.
+const INPUT_MODE_LABEL: Record<InputMode, string> = {
   strength: 'Weight lifted (kg)',
   reps: 'Total repetitions',
   time: 'Time — lower is better',
@@ -29,6 +31,9 @@ const INPUT_MODE_LABEL: Record<string, string> = {
   sprint: 'Time in seconds + centiseconds',
   'difficulty+time': 'Difficulty tier + hold time',
   'difficulty+reps': 'Difficulty tier + repetitions',
+  'difficulty+distance': 'Difficulty tier + distance thrown',
+  'weight+time': 'Weight held + hold time',
+  score: 'Stroke count over 4 holes',
 }
 
 export default async function EventPage({ params }: { params: Promise<{ slug: string }> }) {
