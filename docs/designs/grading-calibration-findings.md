@@ -5,6 +5,13 @@
 1,388 production `results` rows, 640 `session_events`, 27 players.
 **Standards under test:** `docs/designs/grading-standards-draft.md`.
 
+> **SUPERSEDED IN PART, 10 September 2026.** The event-difficulty overhaul
+> (v0.7.0.0) rebuilt every ladder and changed the input mode of 34 events, so
+> the roster counts in §3 and §6 below no longer describe the live roster and
+> the blocker in §3 is resolved. Sections 1, 2, 5, 7 and 8 still hold. The
+> current picture is in `grading-system-spec.md`; run
+> `node scripts/grading-readiness.mjs` for live numbers.
+
 This is the run the handoff called the highest-value first task. It changed the
 priority order: the blocker the handoff predicted is real but is **not** the
 binding constraint, and two problems it did not anticipate are larger.

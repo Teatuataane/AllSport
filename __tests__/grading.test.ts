@@ -156,6 +156,60 @@ describe('rule 2 — coach-confirmed exemptions', () => {
   })
 })
 
+describe('rule 2 — events nobody can be graded in', () => {
+  // The September 2026 difficulty overhaul rebuilt every ladder so a drill rung
+  // sits under the contest, taking pure `sport` events from 38 down to 11. Six
+  // of the survivors are in Speed.
+  const SPEED_SPORT = new Set(['e7', 'e8', 'e9', 'e10', 'e11', 'e12'])
+
+  it('leaves the denominator, so half means half of what CAN be graded', () => {
+    const r = domainGrade({
+      domainNumber: 4,
+      eventSlugs: TWELVE,
+      rungByEvent: ladder({ e1: 5, e2: 5, e3: 5, e4: 0, e5: 0, e6: 0 }),
+      ungradeable: SPEED_SPORT,
+    })
+    expect(r.availableCount).toBe(6)
+    expect(r.required).toBe(3) // NOT 6 — that would be 100% of the gradeable six
+    expect(r.rung).toBe(5)
+  })
+
+  it('would otherwise demand every gradeable event in Speed', () => {
+    // The same player, counting the six contests in the denominator: three of
+    // twelve falls short of six and the domain reads Ma.
+    const counted = domainGrade({
+      domainNumber: 4,
+      eventSlugs: TWELVE,
+      rungByEvent: ladder({ e1: 5, e2: 5, e3: 5, e4: 0, e5: 0, e6: 0 }),
+    })
+    expect(counted.required).toBe(6)
+    expect(counted.rung).toBe(0)
+  })
+
+  it('stacks with a player exemption without double-counting', () => {
+    const r = domainGrade({
+      domainNumber: 4,
+      eventSlugs: TWELVE,
+      rungByEvent: ladder({ e1: 8, e2: 8 }),
+      ungradeable: SPEED_SPORT,
+      unavailable: new Set(['e6', 'e12']), // e12 is already ungradeable
+    })
+    expect(r.availableCount).toBe(5) // 12 - 6 ungradeable - 1 further exemption
+    expect(r.required).toBe(3)
+  })
+
+  it('cannot grade a domain where nothing carries a standard', () => {
+    const r = domainGrade({
+      domainNumber: 4,
+      eventSlugs: TWELVE,
+      rungByEvent: new Map(),
+      ungradeable: new Set(TWELVE),
+    })
+    expect(r.availableCount).toBe(0)
+    expect(r.rung).toBe(0)
+  })
+})
+
 describe('rule 3 — the overall grade is the lowest domain', () => {
   const domains = (rungs: number[]): DomainGradeResult[] =>
     rungs.map((rung, i) => ({

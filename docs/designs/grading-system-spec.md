@@ -2,8 +2,9 @@
 
 **Date:** 6 September 2026
 **Status:** Rules and ladder SETTLED and implemented in `lib/grading.ts`.
-Standards NOT written. **Cannot ship until the event-difficulty overhaul lands
-— see "The launch gate".**
+Standards NOT written — that is now the only remaining work.
+**The launch gate CLEARED on 10 September 2026** when the event-difficulty
+overhaul (v0.7.0.0, PR #101) shipped. Every domain can now be graded.
 **Evidence:** `docs/designs/grading-calibration-findings.md`
 **Supersedes:** the taniwha parts ladder, and the abandoned evolution-chain
 detour in `TANIWHA_EVOLUTION_PLAN.md`.
@@ -70,7 +71,7 @@ training — a self-correcting coaching system.
 
 ---
 
-## The eleven decisions, and why
+## The twelve decisions, and why
 
 **1 · Standards are calibrated against the GENERAL population, not the AllSport
 player population.** A club-relative percentile moves when other people join, so
@@ -135,39 +136,87 @@ Grandmaster's 100m standard comes out faster than Open. Junior flexibility
 factors are above 1.0 on purpose — children are more mobile, so the standard is
 harder.
 
+**12 · Events that can never carry a standard leave the DENOMINATOR.** The
+eleven remaining pure contests are removed from a domain before the half is
+taken, exactly as a player's own exemptions are. Speed holds six of them, so
+counting them would ask a Speed player to meet the standard in all six of the
+events that CAN be graded — a 100% requirement where every other domain asks
+50%. Half of what can be graded is the rule; half of the roster is an accident
+of which events happen to be contests. `ungradeable` on `DomainGradeInput`,
+pinned by four tests.
+
 ---
 
-## The launch gate
+## The launch gate — CLEARED
 
-**Grading cannot ship until the event-difficulty overhaul lands.** Run
-`node scripts/grading-readiness.mjs` to see the current state; as of 6 September
-2026, **eight of ten domains cannot offer six gradeable events**:
+**Grading was blocked on the event-difficulty overhaul. That shipped on
+10 September 2026 as v0.7.0.0 and the gate is now clear.** Run
+`node scripts/grading-readiness.mjs` for the current state.
 
-| Domain | Gradeable now | Blocker |
-|---|---|---|
-| Calisthenics | 0 / 12 | all twelve are tiered |
-| Coordination | 0 / 12 | all twelve are head-to-head |
-| Aerobic Endurance | 1 / 12 | eleven tiered |
-| Flexibility | 1 / 12 | eleven tiered |
-| Body Awareness | 1 / 12 | eight tiered, three sport |
-| Speed | 2 / 12 | nine sport |
-| Aim & Precision | 2 / 12 | ten sport |
-| Anaerobic Endurance | 3 / 12 | nine tiered |
-| Maximal Strength | 10 / 12 | ready |
-| Power | 9 / 12 | ready |
+The overhaul rebuilt every ladder so that **drill rungs sit beneath the
+contest**: Basketball is now `Bounce Ball → 2 Ball Bounce → 2 Ball Side to Side
+→ 2 Ball Back & Forth → Game`, and Archery is `Hit the Target (5m) → … → Game`.
+Pure `sport` events fell from **38 to 11**, and 39 Game rungs now sit on top of
+ladders that can be graded underneath.
 
-A `sport` event can never carry a standard; a tiered event cannot have one
-written until its tiers stop moving. Because the overall grade is the lowest
-domain, **one blocked domain caps every player** — so this is a hard
-prerequisite, not a parallel workstream.
+| Domain | Gradeable, before → after |
+|---|---|
+| Coordination | 0/12 → **12/12** |
+| Aim & Precision | 2/12 → **12/12** |
+| Calisthenics | 0/12 → **12/12** |
+| Aerobic Endurance | 1/12 → **12/12** |
+| Flexibility | 1/12 → **12/12** |
+| Anaerobic Endurance | 3/12 → **12/12** |
+| Body Awareness | 1/12 → **9/12** |
+| Speed | 2/12 → **6/12** |
+| Power | 9/12 → 10/12 |
+| Maximal Strength | 10/12 → 12/12 |
 
-Cheap adjacent win: **Archery and Darts are `sport` mode despite having natural
-scoring** (points on a target, points off nine darts). Re-moding those two takes
-Aim & Precision from 2/12 to 4/12 without inventing anything.
+**The key structural move was putting `scoring: 'sport'` on the TIER rather than
+the event.** Before, `inputMode` was single-valued, so an event was either a
+contest or a measurement and adding drills to Basketball would have removed the
+opponent. Declaring it per rung lets one event be a graded ladder AND a real
+contest at the top. That is a better answer than the separate grading occasion
+this spec originally recommended, and it is why decision 2 stands unchanged.
 
-Player readiness is not a design problem: three of 23 players already have six
-distinct events in all ten domains, and since a session draws one event per
-domain the rest accrues over roughly ten to twelve sessions.
+Eleven pure contests remain and can never be graded — Arm Wrestling, Tug of War
+(Power); Tag, Beach Flags, Rats & Rabbits, Speed Chess, Capture the Flag,
+Kabaddi (Speed); Tae Kwon Do, Wrestling, Fencing (Body Awareness). See decision
+12 for how the rule handles them.
+
+Player readiness is not a design problem: three of 23 players already clear the
+threshold in all ten domains, and since a session draws one event per domain the
+rest accrues over roughly ten to twelve sessions.
+
+---
+
+## What standards must now look like
+
+**84 of 120 events are tiered ladders** (44 `difficulty+reps`, 40
+`difficulty+time`), up from 54. This changes the shape of the remaining work in
+the club's favour.
+
+A tiered ladder is *already* a calibrated difficulty progression — that is what
+the overhaul spent its effort on. So a standard for a tiered event is most
+naturally **"reach rung N"**, not a hand-authored percentile in that event's
+units. That collapses most of the authoring job and sidesteps the unit mismatch
+this design's calibration run found, where the draft graded Pushup Contest in
+flat reps against an event that stores a tier plus reps.
+
+Two things it does not settle, and both need Tāne:
+
+- **Ladders are 3–7 rungs; the ladder of grades is 12.** The mapping from rung
+  to grade has to be decided, and it cannot be one-to-one.
+- **Rungs are ordered, not percentile-calibrated.** Nobody has said what share
+  of the population reaches "2 Ball Back & Forth". The ordering is trustworthy;
+  the population target attached to each rung is not, and that is exactly the
+  claim decision 1 says a grade makes.
+
+`rungForPerformance()` in `lib/grading.ts` grades a flat scalar against a
+reference ladder. A tier-aware sibling is needed before standards can be
+written, and is deliberately absent until the mapping above is chosen.
+
+---
 
 ---
 
@@ -241,16 +290,45 @@ does not inherit it and anything in `public` is reachable through PostgREST.
 
 ## Known problems this must not inherit
 
+**The difficulty overhaul multiplied the incompatible-encoding problem by
+thirteen, and the repair migration has not shipped.**
+
+`lib/percentile.ts:51` takes `max(raw_score)` across all sessions as a lifetime
+best, and asserts in a comment that the event "is the same event across
+sessions". Before September 2026 that was false for two events (Shotput,
+Shoulder Dislocate). The overhaul changed the input mode of **34 events, 27 of
+which have history**, so it is now false for 27.
+
+Measured against production on 10 September 2026, of 911 result rows on events
+that now carry a ladder:
+
+| | Rows |
+|---|---|
+| carrying **no level at all** — scored on the abandoned scale | **477** |
+| carrying a label matching **no current rung** | **91** |
+| **total unresolvable to a rung** | **568** |
+
+The 477 figure matches the overhaul's own TODOS entry exactly, so this was
+found, not missed. But that entry is marked **Completed: v0.7.0.0**, and the
+completion covers the code, not the data — `20260908221459` re-seeds
+`event_domains` and states in its own header that "nothing here touches
+`results`", forward-referencing "the data-repair migration that follows this
+one". **No such migration exists in the repo.** `scripts/gen-difficulty-migration.mjs`
+emits a migration body to stdout and nothing has committed the result.
+
+Why it matters beyond grading: a historical Carrom win is `raw_score = 2` while
+a new drill rung encodes as `30010`, so **any single drill result outranks every
+contest a player has ever won** in Top % and in PR display. Placements are
+computed per session and every session is internally consistent, so those are
+unaffected — this is a cross-session comparison fault, exactly the class the
+Shotput note describes, at thirteen times the size.
+
+**Grading must not inherit it.** A lifetime best has to be taken per encoding
+era, or the repair migration has to land first. The latter is better, because
+`lib/percentile.ts` has the same bug today and would be fixed by the same work.
+
 **A corrupt sprint row grades as the top rung.** One 100m best is stored as
 `0.16 s` (`raw_score = -16`) — physically impossible, and under the draft
 standards it graded as the top grade. **Standards need outlier rejection**, and
-sprint entry needs a lower bound.
-
-**Two events changed input mode, so lifetime bests span incompatible
-encodings.** Shotput has rows stored as weight (May) and as distance
-(September); Shoulder Dislocate has tier+time and grip-width rows. Within a
-session the encoding is consistent, so placements are correct — but
-`lib/percentile.ts:51` takes `max(raw_score)` across all sessions and asserts in
-a comment that the event "is the same event across sessions". **Top % is wrong
-for those two events today**, and grading on a lifetime best inherits it unless
-the best is taken per encoding era.
+sprint entry needs a lower bound. Note 100m Sprint moved from `sprint` to
+`difficulty+time` in the overhaul, so that row is now also one of the 477.

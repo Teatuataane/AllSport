@@ -118,6 +118,19 @@ export type DomainGradeInput = {
   /** Every event slug in the domain, from the canonical roster. */
   eventSlugs: string[]
   /**
+   * Events in this domain that can never carry a standard, for everybody.
+   * After the September 2026 difficulty overhaul that is the eleven remaining
+   * pure `sport` events — a win, draw or loss says nothing about a population,
+   * so no percentile can be attached to one.
+   *
+   * They must leave the DENOMINATOR, not merely fail to count. Speed holds six
+   * of the eleven, so counting them would ask a Speed player to meet the
+   * standard in all six of the events that can be graded — a 100% requirement
+   * where every other domain asks 50%. Half of what can be graded is the rule;
+   * half of the roster is an accident of which events happen to be contests.
+   */
+  ungradeable?: ReadonlySet<string>
+  /**
    * eventSlug → highest rung whose standard the player has met in that event
    * (lifetime best). Absent means never played; 0 means played but below the
    * bottom rung. Both count as "not met" for every rung.
@@ -135,7 +148,10 @@ export type DomainGradeResult = {
   domainNumber: number
   /** 0 = Mā. */
   rung: number
-  /** Events counted — the domain's roster minus this player's exemptions. */
+  /**
+   * Events counted — the domain's roster minus the events nobody can be graded
+   * in, minus this player's own exemptions.
+   */
   availableCount: number
   /** How many of those must meet a rung for it to be held. */
   required: number
@@ -154,12 +170,13 @@ export function requiredForDomain(availableCount: number): number {
 
 export function domainGrade(input: DomainGradeInput): DomainGradeResult {
   const unavailable = input.unavailable ?? new Set<string>()
-  const available = input.eventSlugs.filter((s) => !unavailable.has(s))
+  const ungradeable = input.ungradeable ?? new Set<string>()
+  const available = input.eventSlugs.filter((s) => !unavailable.has(s) && !ungradeable.has(s))
   const required = requiredForDomain(available.length)
 
-  // A domain with nothing available cannot be graded. Without this guard
-  // `required` is 0 and every rung is trivially "met", which would hand out
-  // Taniwha for an empty domain.
+  // A domain with nothing gradeable and available cannot be graded. Without
+  // this guard `required` is 0 and every rung is trivially "met", which would
+  // hand out Taniwha for an empty domain.
   if (available.length === 0) {
     return {
       domainNumber: input.domainNumber,
