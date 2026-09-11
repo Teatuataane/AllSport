@@ -874,7 +874,7 @@ WITH upd AS (
     raw_score = ROUND(COALESCE(r.weight_kg, l.kg) * 100) * 10000
                 + GREATEST(LEAST(ROUND(r.time_seconds), 9999), 1),
     score_label = CASE WHEN COALESCE(r.weight_kg, l.kg) > 0
-                       THEN COALESCE(r.weight_kg, l.kg)::text || 'kg' ELSE 'Bodyweight' END
+                       THEN trim_scale(COALESCE(r.weight_kg, l.kg))::text || 'kg' ELSE 'Bodyweight' END
                   || ' · ' || floor(ROUND(r.time_seconds) / 60)::text || ':' ||
                   lpad((ROUND(r.time_seconds)::int % 60)::text, 2, '0')
   FROM session_events se, leg_ext_loads l
@@ -962,10 +962,10 @@ DELETE FROM results WHERE id IN (SELECT id FROM doomed);
 UPDATE results r
 SET score_label = 'D' || (m.new_idx + 1) || ' ' || m.tier_name || ' · ' || CASE
       WHEN m.scoring = 'weight'
-        THEN COALESCE(r.weight_kg, 0)::text || 'kg'
+        THEN trim_scale(COALESCE(r.weight_kg, 0))::text || 'kg'
              || CASE WHEN COALESCE(r.reps, 0) > 0 THEN ' × ' || r.reps ELSE '' END
       WHEN m.mode = 'difficulty+distance'
-        THEN COALESCE(r.distance_m, 0)::text || 'm'
+        THEN trim_scale(COALESCE(r.distance_m, 0))::text || 'm'
       WHEN m.mode = 'difficulty+time'
         THEN floor(ROUND(r.time_seconds) / 60)::text || ':' ||
              lpad((ROUND(r.time_seconds)::int % 60)::text, 2, '0')
