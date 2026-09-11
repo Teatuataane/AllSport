@@ -916,17 +916,30 @@ FROM results r
 JOIN session_events se ON se.id = r.event_id
 LEFT JOIN tier_map m
   ON m.event_name = se.event_name AND m.tier_name = r.difficulty_tier
-WHERE r.difficulty_tier IS NOT NULL
-  AND r.id NOT IN (SELECT id FROM gained_ids)
+WHERE r.id NOT IN (SELECT id FROM gained_ids)
   AND (
-    m.tier_name IS NULL
-    OR NOT (
-      (m.scoring = 'weight'           AND COALESCE(r.weight_kg, 0) > 0) OR
-      (m.scoring = 'sport'            AND r.raw_score IS NOT NULL) OR
-      (m.scoring IS NULL AND m.mode = 'difficulty+time'     AND ROUND(COALESCE(r.time_seconds, 0)) > 0) OR
-      (m.scoring IS NULL AND m.mode = 'difficulty+reps'     AND COALESCE(r.reps, 0) > 0) OR
-      (m.scoring IS NULL AND m.mode = 'difficulty+distance' AND COALESCE(r.distance_m, 0) > 0)
-    )
+    -- (a) Carries a level that is gone from the ladder, or has no source column
+    --     left to rebuild its score from.
+    (r.difficulty_tier IS NOT NULL AND (
+      m.tier_name IS NULL
+      OR NOT (
+        (m.scoring = 'weight'           AND COALESCE(r.weight_kg, 0) > 0) OR
+        (m.scoring = 'sport'            AND r.raw_score IS NOT NULL) OR
+        (m.scoring IS NULL AND m.mode = 'difficulty+time'     AND ROUND(COALESCE(r.time_seconds, 0)) > 0) OR
+        (m.scoring IS NULL AND m.mode = 'difficulty+reps'     AND COALESCE(r.reps, 0) > 0) OR
+        (m.scoring IS NULL AND m.mode = 'difficulty+distance' AND COALESCE(r.distance_m, 0) > 0)
+      )
+    ))
+    -- (b) Carries NO level on an event that HAS a ladder. These predate tiers on
+    --     an event that ALREADY had them before this review, so their inputMode
+    --     never changed and no repair pass covers them: Pause Chinup 4, Planche
+    --     3, Back Lever 2, Middle Split 1. Their raw_score is on the pre-tier
+    --     scale (bare reps or seconds) and the rung attempted was never recorded,
+    --     so there is nothing to map them onto. The first apply aborted on the
+    --     closing assertion because of exactly these ten rows, which is the
+    --     assertion doing its job.
+    OR (r.difficulty_tier IS NULL AND r.raw_score IS NOT NULL
+        AND EXISTS (SELECT 1 FROM tier_map t WHERE t.event_name = se.event_name))
   );
 
 -- CREATE TABLE … AS SELECT does NOT inherit RLS, and anything in public is

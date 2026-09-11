@@ -2,6 +2,11 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.7.1.1] - 2026-09-11
+
+### Fixed
+- **The history repair aborted on its own safety check, and this is what it caught.** Ten scores sit on events that already had difficulty levels before the review, but were recorded before those levels existed, so no level was ever stored against them and nothing in the repair covered them. They are archived and removed with the rest of the scores that no longer line up. Nothing else changed: the repair runs as one transaction, so the failed attempt left the database exactly as it was.
+
 ## [0.7.1.0] - 2026-09-11
 
 ### Fixed
