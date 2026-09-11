@@ -146,7 +146,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
         )}
 
         {/* Personal best — the one per-viewer block on this page */}
-        <PersonalBestCard eventName={event.name} isSport={event.inputMode === 'sport'} />
+        <PersonalBestCard eventName={event.name} eventData={event} />
 
       </div>
     </div>

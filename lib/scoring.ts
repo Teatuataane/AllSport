@@ -52,6 +52,57 @@ export function isWeightScoredTierByName(
   return LEGACY_WEIGHT_RUNGS[eventName]?.[0] === tierName
 }
 
+// ── Where a win/draw/loss actually lives ─────────────────────────────────────
+// Before Sept 2026 a W/D/L row meant `inputMode === 'sport'` and `raw_score` was
+// literally 0, 1 or 2. Now most of them sit on a `Game` rung of a tiered ladder,
+// where the result is the WITHIN-TIER term of a banded score. Every consumer
+// must ask here rather than testing the mode or comparing raw_score to 2 — 26
+// events moved off `sport` in one release and every such test silently stopped
+// being true.
+
+/** Does this event record a win/draw/loss at all, on any rung? */
+export function eventRecordsSport(eventData: EventData | undefined): boolean {
+  if (!eventData) return false
+  return eventData.inputMode === 'sport' ||
+    (eventData.difficultyTiers?.some(t => t.scoring === 'sport') ?? false)
+}
+
+/** The win/draw/loss term of one row, or null if that row is not a result. */
+export function sportTermOf(
+  eventData: EventData | undefined,
+  row: { raw_score: number; difficulty_tier?: string | null },
+): 0 | 1 | 2 | null {
+  if (!eventData) return null
+  if (eventData.inputMode === 'sport') {
+    const v = row.raw_score
+    return v === 2 || v === 1 || v === 0 ? v : null
+  }
+  const tiers = eventData.difficultyTiers
+  if (!tiers) return null
+  const idx = row.difficulty_tier ? tiers.findIndex(t => t.name === row.difficulty_tier) : -1
+  if (idx < 0 || tiers[idx].scoring !== 'sport') return null
+  const term = row.raw_score % TIER_BAND
+  return term === 2 || term === 1 || term === 0 ? term : null
+}
+
+/** "3W 1D 2L" across a set of rows, or null when the event records no results. */
+export function sportRecord(
+  eventData: EventData | undefined,
+  rows: Array<{ raw_score: number; difficulty_tier?: string | null }>,
+): string | null {
+  if (!eventRecordsSport(eventData)) return null
+  let w = 0, d = 0, l = 0
+  for (const r of rows) {
+    const t = sportTermOf(eventData, r)
+    if (t === 2) w++; else if (t === 1) d++; else if (t === 0) l++
+  }
+  const parts: string[] = []
+  if (w > 0) parts.push(`${w}W`)
+  if (d > 0) parts.push(`${d}D`)
+  if (l > 0) parts.push(`${l}L`)
+  return parts.join(' ') || null
+}
+
 export type EntryVals = {
   weightKg: string
   repCount: string
@@ -322,6 +373,15 @@ export function valsFromRaw(mode: string, eventData: EventData | undefined, raw:
     if (raw >= 100) { p.distanceVal = (raw / 100).toFixed(2); p.distanceUnit = 'm' }
     else { p.distanceVal = String(raw); p.distanceUnit = 'cm' }
   } else if (mode === 'difficulty+time') {
+    const tierIdxRaw = Math.floor(raw / TIER_BAND)
+    if (tierScoring(eventData, tierIdxRaw) === 'sport') {
+      // A Game rung on a timed-effort ladder: the term is a result, not seconds.
+      const t = eventData?.difficultyTiers?.[tierIdxRaw]?.name
+      if (t) p.difficultyTier = t
+      const term = raw % TIER_BAND
+      p.sportResult = term === 2 ? 'win' : term === 1 ? 'draw' : 'loss'
+      return p
+    }
     const { tierIdx, secs } = decodeDiffTime(raw, isTimedEffort(eventData?.slug))
     const tierName = eventData?.difficultyTiers?.[tierIdx]?.name
     if (tierName) p.difficultyTier = tierName

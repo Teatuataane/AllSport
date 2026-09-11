@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClient, getSessionUser } from '@/lib/supabase-browser'
+import { eventRecordsSport, sportTermOf } from '@/lib/scoring'
+import { type EventData } from '@/lib/eventData'
 import { formatNZDate } from '@/lib/dates'
 
 const supabase = createClient()
@@ -14,6 +16,9 @@ type ResultRow = {
   score_label: string | null
   placement: number | null
   raw_score: number | null
+  // Needed to read a `Game` rung's result: on a tiered ladder the win/draw/loss
+  // is the within-tier term, so the rung has to be known to decode it.
+  difficulty_tier: string | null
   sessions: { session_date: string | null } | null
 }
 
@@ -28,10 +33,10 @@ type ResultRow = {
  */
 export default function PersonalBestCard({
   eventName,
-  isSport,
+  eventData,
 }: {
   eventName: string
-  isSport: boolean
+  eventData: EventData | undefined
 }) {
   const [player, setPlayer] = useState<{ id: string } | null>(null)
   const [personalBest, setPersonalBest] = useState<ResultRow | null>(null)
@@ -54,20 +59,21 @@ export default function PersonalBestCard({
       const eventIds = (seData ?? []).map(e => e.id)
 
       if (eventIds.length > 0) {
-        if (isSport) {
+        if (eventRecordsSport(eventData)) {
           // Sport events show a W/D/L record, so every result is needed
           const { data } = await supabase
             .from('results')
-            .select('score_label, placement, raw_score, sessions(session_date)')
+            .select('score_label, placement, raw_score, difficulty_tier, sessions(session_date)')
             .eq('player_id', user.id)
             .in('event_id', eventIds)
           const rows = (data ?? []) as unknown as ResultRow[]
           if (!cancelled && rows.length > 0) {
             setPersonalBest(rows[0])
+            const term = (r: ResultRow) => sportTermOf(eventData, { raw_score: r.raw_score ?? 0, difficulty_tier: r.difficulty_tier })
             setSportRecord({
-              w: rows.filter(r => r.raw_score === 2).length,
-              d: rows.filter(r => r.raw_score === 1).length,
-              l: rows.filter(r => r.raw_score === 0).length,
+              w: rows.filter(r => term(r) === 2).length,
+              d: rows.filter(r => term(r) === 1).length,
+              l: rows.filter(r => term(r) === 0).length,
             })
           }
         } else {
@@ -86,7 +92,7 @@ export default function PersonalBestCard({
     }
     load()
     return () => { cancelled = true }
-  }, [eventName, isSport])
+  }, [eventName, eventData])
 
   return (
     <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '20px' }}>
