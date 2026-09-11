@@ -527,7 +527,7 @@ the homepage.
 Replaces the Colours ladder with a collection of **twelve taniwha**. Design settled in a
 `/grill-me` session; the full record with 28 locked decisions is in `TANIWHA_SYSTEM_PLAN.md`.
 
-**APPLIED AND VERIFIED IN PRODUCTION, 2026-08-25.** Checked by querying the objects with the
+**APPLIED AND VERIFIED IN PRODUCTION, 2026-08-25.** *(But see the Sept 2026 block below: the placement-dedupe FOLLOW-UP `20260828204652` was NOT applied until 2026-09-11, despite this file saying otherwise.)* Checked by querying the objects with the
 public anon key, not by trusting `db push`: `event_domains` 120 rows, `player_taniwha` seeded
 for all 27 players, **197 wins backfilled**, `results.event_placement` present. The budget
 invariant (`SUM(body_parts) <= taniwha_body_budget(lifetime_points)`) returns **zero breaches**,
@@ -808,6 +808,77 @@ counts DID drop: Tāne went from three domains at or past nine wins to one.
 **A migration that rewrites derived data must assert its invariant at the end.**
 This one raises if any `(session, event, player)` still holds more than one
 placed row, so a dedupe that silently fails to take cannot report success.
+
+## Four migrations were pending, and CLAUDE.md said two of them were applied (Sept 2026)
+
+**APPLIED AND VERIFIED IN PRODUCTION, 2026-09-11**, from `main`, by querying the
+objects rather than the ledger.
+
+**The correction first, because this file was wrong.** The sections above on
+`compute_event_placements` and on `session_date` both stated their migrations
+were applied and verified, and quoted measurements as though taken afterwards.
+**Neither had ever been applied.** Checked on 2026-09-11:
+`compute_event_placements` carried no `DISTINCT ON`, and
+`set_session_date_from_started_at` did not exist at all. What production actually
+held at that moment:
+
+| | claimed | actual |
+|---|---|---|
+| winning rows | 151 true | **642**, against 537 real player-wins |
+| double-placed player-events | 0 | **259** |
+| sessions with a wrong `session_date` | 0 | **26 of 64** |
+
+So the row-vs-player inflation and the UTC date bug were both live for the whole
+period this file described them as fixed. **An "applied and verified" claim in
+this file is not evidence.** Run `supabase migration list --linked`, then check
+`pg_proc` / `pg_trigger` for the objects, before planning anything that depends
+on a migration having landed.
+
+**Applied 2026-09-11, in this order, staged deliberately** so a failing assertion
+would name its own migration rather than leaving four candidates:
+
+1. `20260828204652` — placement dedupe. 917 rows recomputed across 42 sessions.
+   Winning rows **642 → 537**, now exactly equal to the distinct player-wins, and
+   double-placed **259 → 0**. 105 phantom wins gone.
+2. `20260902020602` — `session_date`. **26 sessions corrected**, trigger created.
+   Sessions disagreeing with the NZ day of `started_at`: **26 → 0**.
+3. `20260908221459` — roster mirror. 120 rows, 12 per domain, Animal Crawl in,
+   Duck Walk out.
+4. `20260910025855` — the history repair. See below.
+
+### The repair aborted on its first attempt, and that was the assertion working
+
+```
+ERROR: difficulty rebuild: 10 rows on tiered events still carry no level
+```
+
+The whole file runs in one transaction, so production rolled back untouched —
+confirmed afterwards: 1388 results, 454 with a level, no archive tables, no
+ledger row. The ten were **Pause Chinup 4, Planche 3, Back Lever 2, Middle Split
+1**: events that were ALREADY tiered before the review, so their `inputMode`
+never changed and no repair pass keyed on them, while `doomed` only considered
+rows that carry a level and so could not see them either. They fell between the
+two. Fixed in `20260910025855` by widening `doomed`; because the archive is keyed
+on `doomed` rather than its own predicate, that one change covered both.
+
+### Final state, verified by querying the objects
+
+- `results` **1388 → 1336**; **52 rows archived**, and `archived` equals the
+  delete exactly because both read the same `doomed` set.
+- Rows carrying a level **454 → 879**: the 477 repaired rows gained one.
+- **Rows on a tiered event with no level: 0.** That is the class this whole
+  exercise existed to close, and the assertion that enforces it.
+- Winning rows **512**, equal to the distinct player-wins. Taniwha budget
+  breaches **0**. `lifetime_points` unchanged at 22,675, so no player lost points.
+- `results_difficulty_archive_20260910025855` and
+  `..._preimage_20260910025855` both return **HTTP 401 / `42501`** through
+  PostgREST, so their RLS is doing its job. The pre-image holds 931 rows and is
+  the only way back for the re-encode; keep it until the ladders are settled.
+
+**Only 52 rows were archived, against the 111 the first draft would have
+deleted.** The difference is the rename map: built from a DIFF of the pre-review
+ladders against the new ones rather than from a snapshot of production. A
+snapshot only sees labels someone happened to have scored on.
 
 ## Roster, taniwha and coherency pass (August 2026 session 35)
 
