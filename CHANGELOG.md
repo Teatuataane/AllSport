@@ -2,6 +2,28 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.7.1.1] - 2026-09-11
+
+### Fixed
+- **The history repair aborted on its own safety check, and this is what it caught.** Ten scores sit on events that already had difficulty levels before the review, but were recorded before those levels existed, so no level was ever stored against them and nothing in the repair covered them. They are archived and removed with the rest of the scores that no longer line up. Nothing else changed: the repair runs as one transaction, so the failed attempt left the database exactly as it was.
+
+## [0.7.1.0] - 2026-09-11
+
+### Fixed
+- **Historical scores now line up with the levels they were set on.** The level review changed, renamed or removed rungs across the roster, and a score records the name of the level it was set on. Where a level was simply renamed, the score follows it, so your personal bests survive. Where a level genuinely left the ladder, the score is archived and removed, because it no longer describes anything you can do. Scores on the events that only just gained levels, like Carrom, Badminton and Basketball, are placed on the level they belong to with the real result kept: a win stays a win, a golf round keeps its strokes and is ranked against the others played that day, and a sprint keeps its time.
+- **Climbing scores set before this release are corrected.** Climbing had been ranked longest-time-wins on an event that is a race. The scores themselves were recorded correctly and are re-read the right way round now, so the Climbing order changes and the new order is the true one.
+- **Placements and win counts are recomputed** for every affected game, so nothing is left ranked against a score that no longer exists.
+
+## [0.7.0.1] - 2026-09-10
+
+### Fixed
+- **Your win/loss record came back on 26 events.** Volleyball, Tennis, Basketball, Netball, Archery and twenty-one more gained difficulty levels in the last release, and Personal Bests was still looking for wins in the old place, so those events showed a score label instead of your record. It reads the result off the level now, so a win counts as a win whichever way the event is scored.
+- **A win on the Game level of a sprint or T-Race showed as a time.** Those three events are races, so the app reads the number as seconds, and a win came out as two hours and forty-six minutes. It now shows Win, Draw or Loss.
+- **Javelin, Shotput and Leg Ext Hold can earn effort points again.** They changed how they are scored last release and the effort tasks were not updated with them, so there was nothing to earn.
+
+### Changed
+- Personal Bests and the event pages now ask one shared rule whether an event records a win, draw or loss, instead of each deciding for itself. A test now checks every event on the roster can actually be scored, which is what these three fixes have in common.
+
 ## [0.7.0.0] - 2026-09-10
 
 ### Added

@@ -7,11 +7,14 @@ import {
   isWeightScoredTierByIdx,
   isWeightScoredTierByName,
   tierScoring,
+  eventRecordsSport,
+  sportTermOf,
+  sportRecord,
   valsFromRaw as _vfr,
   EMPTY_VALS,
   type EntryVals,
 } from '@/lib/scoring'
-import { getEventBySlug, encodeDiffTime, isTimedEffort } from '@/lib/eventData'
+import { EVENTS, getEventBySlug, encodeDiffTime, isTimedEffort, type EventData } from '@/lib/eventData'
 
 function vals(patch: Partial<EntryVals>): EntryVals {
   return { ...EMPTY_VALS, ...patch }
@@ -485,5 +488,112 @@ describe('isWeightScoredTier* : tier flag beats the legacy table', () => {
   it('an unknown rung or out-of-range index is false', () => {
     expect(isWeightScoredTierByIdx('Pause Dips', 99, dips)).toBe(false)
     expect(isWeightScoredTierByName('Pause Dips', 'Nope', dips)).toBe(false)
+  })
+})
+
+// ─── Where a win/draw/loss lives, after 26 events left `sport` mode ───────────
+
+describe('sport records survive the move onto tiered ladders', () => {
+  const volleyball = getEventBySlug('volleyball')!
+  const tag = getEventBySlug('tag')!
+  const deadlift = getEventBySlug('deadlift')!
+  const gameIdx = (e: EventData) => e.difficultyTiers!.findIndex(t => t.scoring === 'sport')
+
+  it('recognises both shapes and nothing else', () => {
+    expect(eventRecordsSport(tag)).toBe(true)        // still plain `sport`
+    expect(eventRecordsSport(volleyball)).toBe(true) // a Game rung on a ladder
+    expect(eventRecordsSport(deadlift)).toBe(false)
+    expect(eventRecordsSport(undefined)).toBe(false)
+  })
+
+  it('reads the result out of a banded score, not by comparing raw_score to 2', () => {
+    const idx = gameIdx(volleyball)
+    const rung = volleyball.difficultyTiers![idx].name
+    // The bug this replaces: `raw_score === 2` on a win now stored as 40002.
+    expect(volleyball.inputMode).not.toBe('sport')
+    expect(sportTermOf(volleyball, { raw_score: idx * 10000 + 2, difficulty_tier: rung })).toBe(2)
+    expect(sportTermOf(volleyball, { raw_score: idx * 10000 + 0, difficulty_tier: rung })).toBe(0)
+    expect(sportTermOf(tag, { raw_score: 2 })).toBe(2)
+  })
+
+  it('ignores a row on a drill rung, which is a rep count and not a result', () => {
+    const drill = volleyball.difficultyTiers![0].name
+    expect(sportTermOf(volleyball, { raw_score: 15, difficulty_tier: drill })).toBeNull()
+  })
+
+  it('counts a record across both shapes', () => {
+    const idx = gameIdx(volleyball)
+    const rung = volleyball.difficultyTiers![idx].name
+    const rows = [2, 2, 1, 0].map(t => ({ raw_score: idx * 10000 + t, difficulty_tier: rung }))
+    expect(sportRecord(volleyball, rows)).toBe('2W 1D 1L')
+    expect(sportRecord(deadlift, [{ raw_score: 100 }])).toBeNull()
+  })
+})
+
+describe('a Game rung on a TIMED-EFFORT ladder is not a time', () => {
+  // 100m Sprint, 200m Sprint and T-Race each top a timed ladder with a Game
+  // rung. decodeDiffTime would turn a win (term 2) into 10000 - 2 = 9998 seconds.
+  it.each(['100m-sprint', '200m-sprint', 't-race'])('%s prefills a result, not 9998s', (slug) => {
+    const ev = getEventBySlug(slug)!
+    expect(isTimedEffort(ev.slug)).toBe(true)
+    const idx = ev.difficultyTiers!.findIndex(t => t.scoring === 'sport')
+    expect(idx).toBeGreaterThan(-1)
+    const raw = idx * 10000 + 2 // a win
+    const p = _vfr('difficulty+time', ev, raw)
+    expect(p.sportResult).toBe('win')
+    expect(p.timeSecs).toBeUndefined()
+    expect(computeScoreVals('difficulty+time', ev, vals(p))!.raw_score).toBe(raw)
+  })
+})
+
+// ─── The class guard ─────────────────────────────────────────────────────────
+// Three separate consumers silently stopped handling a mode when 34 events
+// changed one, and tsc caught none of them because every switch has a default
+// arm. This asserts the roster's modes are all reachable rather than any one
+// call site.
+
+describe('every input mode on the roster is actually handled', () => {
+  const plausible = (e: EventData) => {
+    const rung = e.difficultyTiers?.[0]
+    const tier = rung?.name ?? ''
+    const base: Partial<EntryVals> = { difficultyTier: tier }
+    if (rung?.scoring === 'sport') return { ...base, sportResult: 'win' as const }
+    if (rung?.scoring === 'weight') return { ...base, weightKg: '20', repCount: '5' }
+    switch (e.inputMode) {
+      case 'strength': return { weightKg: '100', repCount: '3' }
+      case 'reps': return { repCount: '10' }
+      case 'time': case 'hold': return { timeMins: '1', timeSecs: '0' }
+      case 'sprint': return { timeSecs: '12', sprintCs: '34' }
+      case 'distance': return { distanceVal: '5', distanceUnit: 'm' as const }
+      case 'sport': return { sportResult: 'win' as const }
+      case 'score': return { scoreInput: '18' }
+      case 'difficulty+time': return { ...base, timeMins: '1', timeSecs: '0' }
+      case 'difficulty+reps': return { ...base, repCount: '10' }
+      case 'difficulty+distance': return { ...base, distanceVal: '30' }
+      case 'weight+time': return { weightKg: '8', timeMins: '1', timeSecs: '0' }
+    }
+  }
+
+  it('computeScoreVals scores every event on the roster', () => {
+    const dead: string[] = []
+    for (const e of EVENTS) {
+      const r = computeScoreVals(e.inputMode, e, vals(plausible(e)!))
+      if (!r) dead.push(`${e.name} [${e.inputMode}]`)
+    }
+    expect(dead, `these events cannot be scored at all:\n${dead.join('\n')}`).toEqual([])
+  })
+
+  it('valsFromRaw round-trips every tiered event, so no mode prefills blank', () => {
+    const dead: string[] = []
+    for (const e of EVENTS) {
+      if (!e.difficultyTiers?.length) continue
+      const first = computeScoreVals(e.inputMode, e, vals(plausible(e)!))
+      if (!first) continue
+      const back = _vfr(e.inputMode, e, first.raw_score)
+      if (Object.keys(back).length === 0) { dead.push(`${e.name} [${e.inputMode}]`); continue }
+      const again = computeScoreVals(e.inputMode, e, vals(back))
+      if (!again || again.raw_score !== first.raw_score) dead.push(`${e.name} [${e.inputMode}] did not round-trip`)
+    }
+    expect(dead, dead.join('\n')).toEqual([])
   })
 })

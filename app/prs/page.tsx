@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase-browser'
+import { eventRecordsSport, sportRecord } from '@/lib/scoring'
 import { useActivePlayer } from '@/lib/useActivePlayer'
 import PlayerTabs, { ViewingAsBanner } from '@/components/PlayerTabs'
 import {
@@ -12,7 +13,7 @@ import {
 import type {
   RatingResultRow, RatingEventRow, RatingPlayerRow,
 } from '@/lib/rating'
-import { EVENTS, DOMAIN_ORDER, getEventsByDomain } from '@/lib/eventData'
+import { EVENTS, DOMAIN_ORDER, getEventsByDomain, type EventData } from '@/lib/eventData'
 import { WIN_MIN_FIELD } from '@/lib/taniwha'
 import { formatNZDate } from '@/lib/dates'
 import DomainIcon from '@/components/DomainIcon'
@@ -57,15 +58,12 @@ function effectiveScore(r: PRResult): number {
   return r.raw_score
 }
 
-function sportWDL(results: PRResult[]): string {
-  const w = results.filter(r => r.raw_score === 2).length
-  const d = results.filter(r => r.raw_score === 1).length
-  const l = results.filter(r => r.raw_score === 0).length
-  const parts: string[] = []
-  if (w > 0) parts.push(`${w}W`)
-  if (d > 0) parts.push(`${d}D`)
-  if (l > 0) parts.push(`${l}L`)
-  return parts.join(' ') || 'No results'
+// A W/D/L record used to mean inputMode 'sport' with raw_score literally 0/1/2.
+// Since Sept 2026 most of them sit on a `Game` rung of a tiered ladder, where the
+// result is the within-tier term of a banded score. lib/scoring.ts owns the rule
+// so this file cannot drift from the live session again.
+function sportWDL(eventData: EventData | undefined, results: PRResult[]): string {
+  return sportRecord(eventData, results) ?? 'No results'
 }
 
 function sessionYear(session_date: string): number {
@@ -488,9 +486,9 @@ export default function PRsPage() {
                               {pb ? (
                                 <>
                                   <div style={{ fontSize: '15px', fontWeight: 700, color: '#4DB26E', fontFamily: 'var(--font-body)' }}>
-                                    {event.inputMode === 'sport' ? sportWDL(eventResults) : pb.score_label}
+                                    {eventRecordsSport(event) ? sportWDL(event, eventResults) : pb.score_label}
                                   </div>
-                                  {pb.difficulty_tier && event.inputMode !== 'sport' && (
+                                  {pb.difficulty_tier && !eventRecordsSport(event) && (
                                     <div style={{ fontSize: '11px', color: '#B87DB5', fontFamily: 'var(--font-label)', fontWeight: 700 }}>
                                       {pb.difficulty_tier}
                                     </div>
@@ -519,11 +517,11 @@ export default function PRsPage() {
                           <div style={{ borderTop: '1px solid #1e1e1e', padding: '8px 14px 12px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                               <div style={{ fontFamily: 'var(--font-label)', fontSize: '11px', color: '#555', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-                                {event.inputMode === 'sport' ? `${eventResults.length} match${eventResults.length !== 1 ? 'es' : ''}` : `All results — ${eventResults.length} session${eventResults.length !== 1 ? 's' : ''}`}
+                                {eventRecordsSport(event) ? `${eventResults.length} match${eventResults.length !== 1 ? 'es' : ''}` : `All results — ${eventResults.length} session${eventResults.length !== 1 ? 's' : ''}`}
                               </div>
-                              {event.inputMode === 'sport' && (
+                              {eventRecordsSport(event) && (
                                 <div style={{ fontFamily: 'var(--font-display)', fontSize: '16px', color: '#4DB26E', letterSpacing: '0.05em' }}>
-                                  {sportWDL(eventResults)}
+                                  {sportWDL(event, eventResults)}
                                 </div>
                               )}
                             </div>
