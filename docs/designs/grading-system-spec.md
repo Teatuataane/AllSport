@@ -290,42 +290,43 @@ does not inherit it and anything in `public` is reachable through PostgREST.
 
 ## Known problems this must not inherit
 
-**The difficulty overhaul multiplied the incompatible-encoding problem by
-thirteen, and the repair migration has not shipped.**
+**The incompatible-encoding problem is FIXED, verified in production
+11 September 2026.** `20260910025855_difficulty_history_repair.sql` is applied.
 
-`lib/percentile.ts:51` takes `max(raw_score)` across all sessions as a lifetime
-best, and asserts in a comment that the event "is the same event across
-sessions". Before September 2026 that was false for two events (Shotput,
-Shoulder Dislocate). The overhaul changed the input mode of **34 events, 27 of
-which have history**, so it is now false for 27.
+The difficulty overhaul changed the input mode of 34 events, 27 with history,
+which left 568 of 911 rows on tiered events unresolvable to a rung (477 with no
+level at all, 91 with a label matching no current rung). **All three counts are
+now zero**, checked by querying production rather than the migration ledger.
 
-Measured against production on 10 September 2026, of 911 result rows on events
-that now carry a ladder:
+What the repair did, and why it holds up:
 
-| | Rows |
-|---|---|
-| carrying **no level at all** — scored on the abandoned scale | **477** |
-| carrying a label matching **no current rung** | **91** |
-| **total unresolvable to a rung** | **568** |
+- Scores are rebuilt from the **source columns** (`time_seconds`, `reps`,
+  `weight_kg`, `distance_m`), never from the old `raw_score` remainder. That
+  also repairs the June 2026 re-encode, which used numeric division where it
+  needed `floor`, so `(raw/10000)*10000` evaluated back to `raw` and pushed
+  every row it touched one level up with its seconds zeroed.
+- 52 rows that could not survive (retired events, and ten pre-tier rows on
+  events that already had ladders) are **archived then deleted**, with the
+  archive and the delete sharing ONE definition so they cannot disagree. The
+  archive has RLS enabled and no policies — verified: both it and the preimage
+  table return `42501` to the anon key.
+- `affected_players` is tracked so points and placements are recomputed rather
+  than left stale.
+- The first apply **aborted on its own closing assertion** over ten rows, which
+  is the assertion doing its job.
 
-The 477 figure matches the overhaul's own TODOS entry exactly, so this was
-found, not missed. But that entry is marked **Completed: v0.7.0.0**, and the
-completion covers the code, not the data — `20260908221459` re-seeds
-`event_domains` and states in its own header that "nothing here touches
-`results`", forward-referencing "the data-repair migration that follows this
-one". **No such migration exists in the repo.** `scripts/gen-difficulty-migration.mjs`
-emits a migration body to stdout and nothing has committed the result.
+Placement invariants re-checked at the same time: **no player-event holds more
+than one placed row** (the `20260828204652` dedupe), and of 455 rows with no
+placement, 403 are duplicate submissions whose best row IS placed — which is
+that dedupe working, not a gap.
 
-Why it matters beyond grading: a historical Carrom win is `raw_score = 2` while
-a new drill rung encodes as `30010`, so **any single drill result outranks every
-contest a player has ever won** in Top % and in PR display. Placements are
-computed per session and every session is internally consistent, so those are
-unaffected — this is a cross-session comparison fault, exactly the class the
-Shotput note describes, at thirteen times the size.
+**So grading can take a lifetime best safely.** `lib/percentile.ts:51`'s
+assumption that an event "is the same event across sessions" is now true again.
 
-**Grading must not inherit it.** A lifetime best has to be taken per encoding
-era, or the repair migration has to land first. The latter is better, because
-`lib/percentile.ts` has the same bug today and would be fixed by the same work.
+**Residue, pre-existing and not from the repair: 52 rows carry a score but no
+placement**, all in closed April–June 2026 sessions that predate the
+`event_placement` column. The August backfill left 63; it is now 52. Small, and
+worth a sweep, but it blocks nothing.
 
 **A corrupt sprint row grades as the top rung.** One 100m best is stored as
 `0.16 s` (`raw_score = -16`) — physically impossible, and under the draft
