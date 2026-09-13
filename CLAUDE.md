@@ -1106,6 +1106,53 @@ switch), and folding lifetime points into `leaderboard_page()`.
 
 ---
 
+## Grading rebuild — twelve colours (September 2026) — IN PROGRESS, NOT SHIPPED
+
+**Production still runs taniwha.** The rebuild replaces it with a twelve-colour
+grade ladder earned against published standards rather than points, because all
+three previous systems were gated on lifetime points — attendance — and a grade
+you cannot fail carries no pride. Nothing is migrated, nothing is in the UI.
+
+**Branch:** `claude/allsport-grading-rebuild-aea665` (unpushed at time of writing).
+**Design record:** `docs/designs/` in that worktree — **gitignored, local only**,
+because the design docs name players and their results and this repo is public.
+
+- **The ladder:** Mā (start, not an award), then Kiwikiwi, Whero, Karaka, Kōwhai,
+  Kākāriki, Kahurangi, Poroporo, Parahi, Hiriwa, Kōura, Uenuku, Taniwha —
+  targeting anyone, then the 90th down to the 1st percentile. Grades own colour;
+  domains keep name and icon only. **Never label grades `D1`–`D12`**, which
+  already means difficulty tier.
+- **The rules:** a colour in each of the ten domains; a domain colour is the
+  highest grade met in at least HALF the domain's events; the overall grade is the
+  LOWEST domain, and `null` (not Mā) until all ten domains hold one.
+- **`lib/grading.ts` is pure and tested** (`__tests__/grading.test.ts`).
+  Standards are deliberately NOT in `lib/` until the numbers stop moving.
+- **The denominator is what can be graded.** Pure `sport` events and a player's
+  coach-confirmed exemptions both leave it. Speed holds six contests; counting
+  them would demand 100% of Speed's six gradeable events.
+- **The Game rung never carries a standard.** It tops 39 ladders; if it counted,
+  one match won would award the top colour.
+- **The launch gate is CLEAR.** The v0.7.0.0 difficulty overhaul put drill rungs
+  beneath the contest, taking pure `sport` events from 38 to 11, so every domain
+  can be graded. `node scripts/grading-readiness.mjs` reports the live state.
+- **A lifetime best is safe again.** `20260910025855` rebuilt every tiered score
+  from its source columns, so `lib/percentile.ts`'s cross-session
+  `max(raw_score)` holds. Standards still need an outlier floor: one stored
+  sprint best is physically impossible.
+
+**Open, and blocking standards:** Tāne chose to handle age by shifting the
+LADDER per band rather than scaling the value — **`lib/grading.ts` still scales
+the value** and needs replacing. "The top grade should be achievable by anyone"
+reopens absolute load, because an absolute strength standard is body-size-gated.
+A head-to-head skill rating for game events is under discussion; the
+recommendation is to track a pooled rating before grading on one, and it would
+be a second ranking metric, which this file says must be decided on purpose.
+
+**The opponent is the weak point for any future rating.** `results.opponent_name`
+is free text and optional — a quarter of game results name one, and a team
+cannot be represented. Record matches with player ids on both sides before
+building anything that rates who beat whom.
+
 ## Security posture (August 2026) — read before touching RLS or players_public
 
 An OWASP pass (SQL injection / XSS / auth / access control) found three
