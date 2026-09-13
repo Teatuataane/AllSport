@@ -2,6 +2,14 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.7.1.2] - 2026-09-11
+
+### Fixed
+- **Golf rounds said "4 holes" twice.** A repaired round read "Game (4 Holes) · 18 strokes (4 holes)" on Personal Bests. Tidied on 23 scores.
+
+### Changed
+- The working tables kept during the difficulty rebuild have been removed now that the rebuild is done and checked. They held deleted scores and the state of every score before it was rewritten, and were exported and verified before being dropped.
+
 ## [0.7.1.1] - 2026-09-11
 
 ### Fixed
