@@ -1144,9 +1144,12 @@ because the design docs name players and their results and this repo is public.
 LADDER per band rather than scaling the value — **`lib/grading.ts` still scales
 the value** and needs replacing. "The top grade should be achievable by anyone"
 reopens absolute load, because an absolute strength standard is body-size-gated.
-A head-to-head skill rating for game events is under discussion; the
-recommendation is to track a pooled rating before grading on one, and it would
-be a second ranking metric, which this file says must be decided on purpose.
+Tāne wants the higher colours on game events gated by head-to-head skill, so
+that playing reveals which sports a player is good at. Simulated at club scale, a
+per-sport rating is reliable after about ten games in that sport, so per-sport
+grading is feasible — the limits are recording who played whom, and cadence (each
+game sport is scheduled about once a month). It would be a second ranking metric,
+which this file says must be decided on purpose.
 
 **The opponent is the weak point for any future rating.** `results.opponent_name`
 is free text and optional — a quarter of game results name one, and a team
