@@ -1,4 +1,5 @@
 'use client'
+import { isGameEntry, opponentPicks as pickOpponents, resolveOpponentId } from '@/lib/matches'
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient, getSessionUser } from '@/lib/supabase-browser'
@@ -408,8 +409,11 @@ async function submitEntry(args: {
   seasonPRNum: number | null
   effectivePR: number | null
   editingResultId: string | null
+  // Opponent player ids to record as a match, or null to leave matches alone.
+  // Decided by the sheet, which knows whether an edit touched the opponent.
+  matchOpponents: string[] | null
 }): Promise<SubmitOutcome> {
-  const { sessionId, eventId, playerId, playerName, mode, eventData, v, myResults, seasonPRNum, effectivePR, editingResultId } = args
+  const { sessionId, eventId, playerId, playerName, mode, eventData, v, myResults, seasonPRNum, effectivePR, editingResultId, matchOpponents } = args
   const scored = computeScoreVals(mode, eventData, v)
   if (!scored) return { error: 'Enter a valid score first', isPR: false, effortCredit: 0 }
   try {
@@ -480,18 +484,40 @@ async function submitEntry(args: {
     payload.is_pr = newIsPR
     payload.effort_task_completions = effortTaskCount
 
+    let resultId: string
     if (editingResultId) {
       const { data, error: dbErr } = await supabase.from('results').update(payload).eq('id', editingResultId).select('id')
       if (dbErr) throw dbErr
       if (!data || data.length === 0) throw new Error('This score was deleted by a kaiwhakawā — close and submit it as a new score')
+      resultId = editingResultId
     } else {
-      const { error: dbErr } = await supabase.from('results').insert(payload)
+      // The new row's id anchors its match, so ask for it back.
+      const { data: inserted, error: dbErr } = await supabase.from('results').insert(payload).select('id').single()
       if (dbErr) throw dbErr
+      if (!inserted) throw new Error('The score did not save — try again')
+      resultId = inserted.id
     }
+    // The score is the record; the match hangs off it. It is written only once
+    // the score has saved, and a failure here must never turn a saved score into
+    // an error toast. Guests have no stable identity, so they are never matched.
+    if (playerId && matchOpponents !== null) await recordMatch(resultId, matchOpponents)
     return { error: null, isPR: newIsPR, effortCredit: effortTaskCount * 5 }
   } catch (e: unknown) {
     return { error: e instanceof Error ? e.message : 'Submission failed', isPR: false, effortCredit: 0 }
   }
+}
+
+// Records the head-to-head match behind one game result (migration
+// 20260914020739). The server reads session, event, player and outcome off the
+// result row itself, so all this sends is who the opponents were — the match
+// cannot claim an outcome the score does not.
+//
+// Best-effort by design. PGRST202 means the function does not exist yet: the
+// code shipped before the migration was applied, so recording simply has not
+// started, and that is not an error worth showing a player mid-game.
+async function recordMatch(resultId: string, opponentIds: string[]): Promise<void> {
+  const { error } = await supabase.rpc('record_match', { p_result_id: resultId, p_opponent_ids: opponentIds })
+  if (error && error.code !== 'PGRST202') console.warn('record_match:', error.message)
 }
 
 // ─── Quick-entry sheet (player scoring redesign) ──────────────────────────────
@@ -561,6 +587,9 @@ function QuickEntrySheet({
     if (myBestResult) init = { ...init, ...valsFromResult(mode, myBestResult) }
     else if (seasonPRNum !== null) init = { ...init, ...valsFromRaw(mode, eventData, seasonPRNum) }
     if (mode === 'sport') init = { ...init, sportResult: '', opponentName: '', sportScore: '' }
+    // A Game rung pre-fills the last opponent's NAME from the best result. Resolve
+    // the id too, so what the sheet shows as picked is what gets recorded.
+    init = { ...init, opponentId: resolveOpponentId(init.opponentName, allResults, playerId) ?? '' }
     return init
   })
   const [showHow, setShowHow] = useState(false)
@@ -568,6 +597,11 @@ function QuickEntrySheet({
   const [error, setError] = useState('')
   const [editingResult, setEditingResult] = useState<Result | null>(null)
   const inFlight = useRef(false)
+  // True while editing a result whose stored opponent name could not be
+  // resolved to exactly one player. Until the opponent is changed on purpose,
+  // its match is left alone — sending "no opponent" would silently delete a
+  // match the player never meant to touch.
+  const keepExistingMatch = useRef(false)
 
   const set = (patch: Partial<EntryVals>) => setV(prev => ({ ...prev, ...patch }))
 
@@ -596,10 +630,23 @@ function QuickEntrySheet({
     if (inFlight.current) return // ref guard — React state alone lets a double-tap insert twice
     inFlight.current = true
     setSubmitting(true); setError('')
+    // What to record as a match. null leaves matches untouched.
+    //   · Not a game (a drill rung, a measured event): on an edit, clear any match
+    //     this row carried — it may have been a Game result before the edit.
+    //   · A game with a picked player: record it.
+    //   · An edit whose unresolvable opponent was never touched: leave it be.
+    //   · Otherwise there is no registered opponent: clear on edit, skip on new.
+    const isGame = isGameEntry(mode, eventData, v.difficultyTier)
+    const matchOpponents: string[] | null =
+      !isGame ? (editingResult ? [] : null)
+      : v.opponentId ? [v.opponentId]
+      : editingResult && keepExistingMatch.current ? null
+      : editingResult ? [] : null
     const outcome = await submitEntry({
       sessionId, eventId: se.id, playerId, playerName,
       mode, eventData, v, myResults, seasonPRNum, effectivePR,
       editingResultId: editingResult?.id ?? null,
+      matchOpponents,
     })
     inFlight.current = false
     setSubmitting(false)
@@ -637,9 +684,11 @@ function QuickEntrySheet({
   const weightRung = rung?.scoring === 'weight'
 
   const showSport = mode === 'sport' || gameRung
-  const opponentPicks = showSport
-    ? [...new Set(allResults.map(r => r.player_name).filter(n => n && n !== playerName))].slice(0, 6)
-    : []
+  // Keyed by player id, so two players sharing a display name stay two people
+  // and a picked chip records a real match. Guests keep a name-only chip.
+  const opponentPicks = showSport ? pickOpponents(allResults, { id: playerId, name: playerName }) : []
+  const opponentPickActive = (p: { id: string | null; name: string }) =>
+    p.id ? v.opponentId === p.id : !v.opponentId && v.opponentName === p.name
 
   const showTierChips = tiers.length > 0 && (
     mode === 'difficulty+time' || mode === 'difficulty+reps' ||
@@ -752,7 +801,7 @@ function QuickEntrySheet({
                   {editingResult && (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#0d1a2d', border: '1px solid #2371BB55', borderRadius: '10px', padding: '8px 12px', marginTop: '14px' }}>
                       <span style={{ fontSize: '12.5px', color: '#2371BB', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Editing: {editingResult.score_label}</span>
-                      <button onClick={() => { setEditingResult(null); setV({ ...EMPTY_VALS }) }} style={{ fontSize: '12px', color: '#888', background: 'none', border: '1px solid #333', borderRadius: '6px', padding: '3px 10px', cursor: 'pointer' }}>Cancel</button>
+                      <button onClick={() => { keepExistingMatch.current = false; setEditingResult(null); setV({ ...EMPTY_VALS }) }} style={{ fontSize: '12px', color: '#888', background: 'none', border: '1px solid #333', borderRadius: '6px', padding: '3px 10px', cursor: 'pointer' }}>Cancel</button>
                     </div>
                   )}
 
@@ -880,16 +929,23 @@ function QuickEntrySheet({
                       <div style={QES_LBL}>Opponent</div>
                       {opponentPicks.length > 0 && (
                         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
-                          {opponentPicks.map(n => (
-                            <button key={n} onClick={() => set({ opponentName: n })} style={{
+                          {opponentPicks.map(p => (
+                            <button key={p.id ?? `guest:${p.name}`} onClick={() => { keepExistingMatch.current = false; set({ opponentName: p.name, opponentId: p.id ?? '' }) }} style={{
                               ...QES_CHIP,
-                              borderColor: v.opponentName === n ? '#2371BB' : '#2a2a2a',
-                              background: v.opponentName === n ? '#2371BB' : '#161616',
-                            }}>{n}</button>
+                              borderColor: opponentPickActive(p) ? '#2371BB' : '#2a2a2a',
+                              background: opponentPickActive(p) ? '#2371BB' : '#161616',
+                            }}>{p.name}</button>
                           ))}
                         </div>
                       )}
-                      <input value={v.opponentName} onChange={e => set({ opponentName: e.target.value })} placeholder="Opponent name (optional)" style={{ ...INP, fontSize: '15px' }} />
+                      <input value={v.opponentName} onChange={e => { keepExistingMatch.current = false; set({ opponentName: e.target.value, opponentId: '' }) }} placeholder="Opponent name (optional)" style={{ ...INP, fontSize: '15px' }} />
+                      {/* A typed name cannot be rated — only a picked player records the match. */}
+                      {v.opponentName.trim() && !v.opponentId && opponentPicks.some(p => p.id) &&
+                        !opponentPicks.some(p => p.id === null && p.name === v.opponentName.trim()) && (
+                        <div style={{ fontSize: '12px', color: '#888', marginTop: '6px', lineHeight: 1.4 }}>
+                          Typed names aren&apos;t recorded as a match. Pick your opponent above so this game counts.
+                        </div>
+                      )}
                       <input value={v.sportScore} onChange={e => set({ sportScore: e.target.value })} placeholder="Score e.g. 21–18 (optional)" style={{ ...INP, fontSize: '15px', marginTop: '8px' }} />
                     </>
                   )}
@@ -956,7 +1012,12 @@ function QuickEntrySheet({
                         )}
                         {!sessionEnded && (
                           <>
-                            <button onClick={() => { setEditingResult(r); setV({ ...EMPTY_VALS, ...valsFromResult(mode, r) }) }}
+                            <button onClick={() => {
+                              const opp = resolveOpponentId(r.opponent_name, allResults, playerId)
+                              keepExistingMatch.current = !!r.opponent_name && !opp
+                              setEditingResult(r)
+                              setV({ ...EMPTY_VALS, ...valsFromResult(mode, r), opponentId: opp ?? '' })
+                            }}
                               style={{ background: 'none', border: '1px solid #2371BB44', borderRadius: '4px', color: '#2371BB', cursor: 'pointer', fontSize: '11px', padding: '2px 8px', flexShrink: 0, fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700 }}>Edit</button>
                             <button onClick={() => handleSheetDelete(r.id)}
                               style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: '14px', padding: '2px 6px', flexShrink: 0 }}>✕</button>
