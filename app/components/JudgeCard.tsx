@@ -1,4 +1,5 @@
 'use client'
+import GradeReleasePanel from '@/components/GradeReleasePanel'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase-browser'
@@ -94,7 +95,7 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
   const [now, setNow] = useState(Date.now())
 
   // Tab + Players state
-  const [judgeTab, setJudgeTab] = useState<'sessions' | 'votes' | 'players'>('sessions')
+  const [judgeTab, setJudgeTab] = useState<'sessions' | 'votes' | 'players' | 'grades'>('sessions')
   const [playersList, setPlayersList] = useState<{ id: string; name: string; division: string; totalPoints: number; sessions: number; icon: string | null }[]>([])
   const [playersLoading, setPlayersLoading] = useState(false)
   // Standing colour watchlist — who is close to their next colour, so a
@@ -570,8 +571,8 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
 
       {/* ─── TAB BAR ───────────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', gap: '4px', marginBottom: '12px' }}>
-        {(['sessions', 'votes', 'players'] as const).map(tab => {
-          const labels: Record<string, string> = { sessions: 'Sessions', votes: 'Votes', players: 'Players' }
+        {(['sessions', 'votes', 'players', 'grades'] as const).map(tab => {
+          const labels: Record<string, string> = { sessions: 'Sessions', votes: 'Votes', players: 'Players', grades: 'Colours' }
           const active = judgeTab === tab
           return (
             <button
@@ -1200,6 +1201,9 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
           </div>
         )}
       </div>}
+
+      {/* ─── COLOURS PANEL — confirming grades, and exemptions ──────────────── */}
+      {judgeTab === 'grades' && <GradeReleasePanel />}
 
       {/* ─── PLAYERS PANEL ─────────────────────────────────────────────────── */}
       {judgeTab === 'players' && (
