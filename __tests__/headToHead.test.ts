@@ -65,6 +65,13 @@ describe('rating the games match recording collects', () => {
     expect(gamesBySport(disputed, 'A').has('Squash')).toBe(false)
   })
 
+  it('rates a settled game on the record the kaiwhakawā marked right', () => {
+    // Both claimed the win; B's record is confirmed, so B won.
+    const r = rateGames([match('A', 'B', 'a'), match('B', 'A', 'a', { confirmed_at: '2026-09-15T00:00:00Z' })]).get('Squash')!
+    expect(r.get('B')!.rating).toBe(1020)
+    expect(r.get('A')!.rating).toBe(980)
+  })
+
   it('keeps a separate rating in every sport', () => {
     const r = rateGames([match('A', 'B', 'a'), match('B', 'A', 'a', { event_name: 'Tennis' })])
     expect(r.get('Squash')!.get('A')!.rating).toBe(1020)

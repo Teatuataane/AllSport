@@ -119,6 +119,7 @@ export default function GradesPage() {
 
               {events.map(e => {
                 const eg = state.grades.events.get(e.slug)!
+                const waiting = state.disputed.get(e.name) ?? 0
                 const eventColour = gradeForRung(eg.rung)
                 const why = state.exemptions.has(e.slug)
                   ? 'Exempt, confirmed by a kaiwhakawā'
@@ -138,6 +139,13 @@ export default function GradesPage() {
                   }}>
                     <span style={{ flexGrow: 1, minWidth: 0, fontSize: 14, color: why ? 'var(--text-muted)' : 'var(--white)' }}>
                       {e.name}
+                      {waiting > 0 && (
+                        // A disputed game counts for nothing until settled, so a
+                        // player stuck short of ten games can see why.
+                        <span style={{ display: 'block', fontSize: 11.5, color: 'var(--amber)', marginTop: 2 }}>
+                          {waiting} disputed game{waiting > 1 ? 's' : ''} waiting for a kaiwhakawā
+                        </span>
+                      )}
                     </span>
                     {why ? (
                       <span style={{ fontSize: 12, color: '#555', textAlign: 'right' }}>{why}</span>

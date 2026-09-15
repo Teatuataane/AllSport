@@ -1252,14 +1252,22 @@ player id, and `lib/headToHead.ts` rates the games it collects.
   `gamesBySport` counts real games toward the minimum — otherwise one game
   played counts twice. A disputed game counts for nothing, toward the minimum
   or the rating, until a kaiwhakawā settles it. **Agreement is derived, never stored**; stored agreement
-  goes stale the moment either side edits. `confirmed_by` / `confirmed_at` are
-  reserved for a kaiwhakawā confirmation flow that is not built.
+  goes stale the moment either side edits.
+- **Settling a dispute** (`20260915213626`, decided with Tāne 2026-09-16, NOT YET
+  APPLIED). On the /judge Colours tab a kaiwhakawā marks the record that is RIGHT;
+  `settle_dispute(a, b, true)` stamps `confirmed_by`/`confirmed_at` on it and clears
+  the other, and `reconcileGames` calls the pair `settled` and rates it on the
+  confirmed record. Nobody's score changes (placements are not recomputed after
+  close, so correcting a result would half fix it). There is no third outcome: pick
+  one record or leave it disputed. `p_true` null reopens. An edit by either player
+  wipes the stamp, because `record_match` replaces the row. Players see "N disputed
+  games waiting for a kaiwhakawā" on /grades.
 - **The rating** (`lib/headToHead.ts`): Elo per player per sport, start 1,000,
   K 40 for a player's first ten games then 20, games replayed in the order they
   were recorded. A team side is rated at the mean of its players, and each
   player moves by their own K. Pure, and computed in the browser from every
   match (lib/loadGrades.ts); it is not stored.
-- **Not built:** the confirmation flow, a team picker (the
+- **Not built:** a team picker (the
   schema takes teammates; the sheet sends one opponent), and any backfill —
   resolving history's free-text names to ids would be guessing.
 - **`20260914020739` APPLIED AND VERIFIED IN PRODUCTION on 2026-09-16**, by

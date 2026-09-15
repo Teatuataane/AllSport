@@ -8,8 +8,9 @@
 //     its level fast, then 20;
 //   · 100 points is one colour, so the colour above you wins about two games in
 //     three;
-//   · a disputed game does not count until a kaiwhakawā settles it; a game only
-//     one side logged counts; a game both sides logged counts once.
+//   · a disputed game does not count until a kaiwhakawā settles it, and is then
+//     rated on the record they marked as right; a game only one side logged
+//     counts; a game both sides logged counts once.
 //
 // Deliberately NOT lib/rating.ts. That file once held a multiplayer Elo from
 // session placements, deleted in August 2026 because nothing used it, and its
