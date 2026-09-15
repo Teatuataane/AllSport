@@ -1131,7 +1131,7 @@ Implementation order: privacy notice → ladder changes → rules text → stand
 for all 120 events → engine → match recording and the rating → data fixes →
 database, UI, conferral and retiring taniwha. Done on the branch so far: the
 privacy notice, the ladders, the rules text, the engine, the standards sheet
-(`GRADING_STANDARDS_REVIEW.md`, drafted and awaiting Tāne's review, compiled
+(`GRADING_STANDARDS_REVIEW.md`, approved by Tāne on 2026-09-16 as a trial, to be reviewed after it; compiled
 into `lib/standards.ts` by `scripts/apply-standards-sheet.mjs`), match
 recording, the head-to-head rating (`lib/headToHead.ts`), a player's colours
 (`lib/playerGrades.ts` computes, `lib/loadGrades.ts` loads, the dashboard
@@ -1140,12 +1140,13 @@ kaiwhakawā release panel (the Colours tab on `/judge`), and **taniwha retired**
 its pages, components, libraries and tests are deleted, play history moved to
 `/history`, and the leaderboard shows each player's conferred overall colour.
 
-**Four migrations are written and NONE is applied** (Docker was not running):
+**Five migrations are written and NONE is applied** (Docker was not running):
 `20260915040534` (pure-contest history), `20260915051927` (grading schema:
 band, exemptions, awards, `confer_grade`), `20260915054550` (retire taniwha:
 archive and drop `player_taniwha`, its trigger and six functions, and
-`leaderboard_page` returns `grades` instead of `taniwha`), plus match recording's
-`20260914020739`. **Deploy the code first**, then push them from `main` in
+`leaderboard_page` returns `grades` instead of `taniwha`), `20260915210543` (archives and
+deletes the one impossible 0.16-second 100m result, Tāne 2026-09-16), plus match
+recording's `20260914020739`. **Deploy the code first**, then push them from `main` in
 timestamp order, then verify the objects. The retirement is the one that is NOT
 safe in the other order: old code reads `player_taniwha`.
 
@@ -1201,8 +1202,8 @@ recording who played whom, and cadence (each game sport is scheduled about once
 a month). It gates colours only; `lib/percentile.ts` stays the one leaderboard
 metric.
 
-**Still open:** a junior who answered "Other" at registration has no sex on
-record and no division pick, so nothing yet chooses their standards.
+**Decided 2026-09-16:** a junior who answered "Other" at registration takes the
+boys' standards (`ladderFor` in `lib/playerGrades.ts`).
 
 **The rating reads matches, never `results.opponent_name`.** That column is
 free text and optional — a quarter of game results name one, and a team cannot

@@ -52,8 +52,8 @@ export type PlayerGrades = {
  * Which of an event's two ladders applies. Adults take it from their division.
  * Juniors all play in one division, so their registration answer decides.
  *
- * OPEN, for Tāne: a junior who answered "Other" has neither, and is graded on
- * the men's ladder until that is decided.
+ * A junior who answered "Other" has neither, and takes the boys' standards
+ * (Tāne, 16 September 2026).
  */
 export function ladderFor(p: Pick<GradePlayer, 'division' | 'gender'>): 'M' | 'F' {
   const d = p.division ?? ''

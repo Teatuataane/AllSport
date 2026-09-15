@@ -1,5 +1,7 @@
 # Grading Standards — Review
 
+**Approved by Tāne on 16 September 2026 as a trial. These numbers run as they stand and are reviewed after the trial.** Edit this sheet and re-run `node scripts/apply-standards-sheet.mjs` to change any of them.
+
 Every standard for all 120 events: one line per colour. Go through them the way you went through the difficulty sheet.
 
 ## How to fill this in

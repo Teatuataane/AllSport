@@ -28,7 +28,7 @@ describe('which ladder applies', () => {
     expect(ladderFor({ division: 'Juniors', gender: 'female' })).toBe('F')
     expect(ladderFor({ division: 'Juniors', gender: 'Male' })).toBe('M')
   })
-  it('puts a junior who answered Other on the men\'s ladder until Tāne decides', () => {
+  it('gives a junior who answered Other the boys\' standards, as Tāne decided', () => {
     expect(ladderFor({ division: 'Juniors', gender: 'Other' })).toBe('M')
   })
 })
