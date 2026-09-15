@@ -21,8 +21,10 @@ function calculateAge(dob: string): number {
   return age
 }
 
-// `gender` is collected for exactly one purpose: choosing a competition
-// division. It used to be labelled "Gender" and "Other" silently produced a
+// `gender` is collected for two purposes, both stated in /privacy: choosing a
+// competition division, and choosing which grade standards apply where an event
+// has separate men's and women's standards. Juniors share one division, so for
+// them only the second applies. It used to be labelled "Gender" and "Other" silently produced a
 // men's division, which asks a personal question and then quietly answers it
 // on the player's behalf. Anyone who does not pick Male or Female now chooses
 // their own starting division, and a kaiwhakawā can move anyone at any time.

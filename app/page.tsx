@@ -8,10 +8,7 @@ import Link from 'next/link'
 import { EVENTS, DOMAIN_ORDER } from '@/lib/eventData'
 import DomainList, { type LandingDomain } from './DomainList'
 import { DOMAIN_COLORS } from '@/lib/domainColours'
-import {
-  TANIWHA, PARTS, PEAK_POINTS, MAX_CROWNS, WIN_TARGET, EVENTS_PER_DOMAIN,
-  BODY_PARTS_PER_TANIWHA, PART_POINTS, taniwhaOnDark,
-} from '@/lib/taniwha'
+import { GRADES } from '@/lib/grading'
 
 const RAINBOW = 'var(--rainbow)'
 
@@ -33,12 +30,6 @@ const domains: LandingDomain[] = DOMAIN_META.map(d => ({
   ...d,
   events: EVENTS.filter(e => e.domain === d.name).map(e => e.name),
 }))
-
-// Cycle 1 only — the second cycle (Taniwha Kiwikiwi … Ngā Taniwha) is summarised
-// in a single line below the list rather than doubling the length of it.
-// The twelve taniwha, in display order. Static — no database, so this section
-// is correct whether or not the progression migrations have been applied.
-const ranks = TANIWHA
 
 const ethos = [
   { word: 'Mahi', mean: 'Effort', color: '#EA4742', desc: "Effort is the only measure that counts here. Show up and give what you've got — that's the whole game." },
@@ -201,68 +192,54 @@ export default function Home() {
         </div>
       </section>
 
-      {/* COLLECT THE TANIWHA */}
+      {/* EARN YOUR COLOURS */}
       <section id="colours" style={{ padding: '100px 0', background: '#0a0a0a', borderTop: '3px solid #2371BB' }}>
         <div className="container">
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '64px', alignItems: 'start' }}>
             <div>
-              <div className="lp-tag">The Taniwha</div>
+              <div className="lp-tag">The Colours</div>
               <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(44px, 6vw, 72px)', lineHeight: 0.9, letterSpacing: '0.03em', margin: '18px 0 10px', color: '#fff' }}>
-                COLLECT THE<br /><span style={rainbowText}>TANIWHA</span>
+                EARN YOUR<br /><span style={rainbowText}>COLOURS</span>
               </h2>
               <div className="lp-rainbow-line" style={{ width: '60px', marginBottom: '28px' }} />
               <p style={{ color: '#cccccc', fontSize: '16px', lineHeight: 1.8, marginBottom: '16px' }}>
-                There are twelve taniwha, and each one is built from eleven pieces — a head, a
-                body, a tail, four limbs, wings, a tongue, the tool of its own discipline, and
-                finally a crown.
+                Every event has a standard for every colour, from Kiwikiwi to Taniwha. Meet a colour in half
+                of a domain&apos;s events and you hold that domain at that colour.
               </p>
               <p style={{ color: '#888', fontSize: '15px', lineHeight: 1.8, marginBottom: '16px' }}>
-                The first {BODY_PARTS_PER_TANIWHA} pieces are earned by turning up. Every{' '}
-                {PART_POINTS.toLocaleString()} points you have ever scored adds another one, and
-                those points never reset. The tenth is the implement — a barbell, a bow, an oar —
-                the tool of that taniwha&apos;s discipline. The crown is different again: it has
-                to be <em>done</em>.
+                Your overall colour is the lowest of your ten domains, so it is only as strong as the part of
+                the sport you train least. That is the whole idea of AllSport: one sport, every sport.
               </p>
               <p style={{ color: '#888', fontSize: '15px', lineHeight: 1.8, marginBottom: '16px' }}>
-                Ten of the taniwha belong to the ten disciplines, and you crown one by winning{' '}
-                {WIN_TARGET} of its {EVENTS_PER_DOMAIN} events. The first taniwha is the
-                whānau, and you crown it by bringing someone else into the sport — the only
-                crown you cannot earn on your own.
+                In the game events the top colours are won, not measured: they come from a head-to-head rating,
+                after ten recorded games. Juniors, Masters and Grandmasters meet every standard with an
+                allowance for age.
               </p>
               <p style={{ color: '#555', fontSize: '14px', lineHeight: 1.8, fontStyle: 'italic' }}>
-                Hold all eleven and they gather into Te Kāhui, the whole crest, at{' '}
-                {PEAK_POINTS.toLocaleString()} points. Few will ever get there.
+                A kaiwhakawā confirms each colour, and once it is yours it is never taken back. Uenuku is
+                within reach of anyone who trains for years. Taniwha is one in a hundred.
               </p>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              {ranks.map((r) => (
-                <div key={r.slug} className="lp-rank">
+              {GRADES.map(g => (
+                <div key={g.rung} className="lp-rank">
                   <span style={{
                     width: '12px', height: '12px', borderRadius: '50%', flexShrink: 0,
-                    background: r.accent.startsWith('linear-gradient') ? undefined : r.accent,
-                    backgroundImage: r.accent.startsWith('linear-gradient') ? r.accent : undefined,
-                    border: r.inverted ? '1px solid #555' : 'none',
+                    background: g.rainbow ? RAINBOW : g.hex,
+                    border: g.inverted ? '1px solid #555' : 'none',
                   }} />
-                  <span className="lp-rank-name" style={{ fontFamily: 'var(--font-display)', fontSize: '19px', letterSpacing: '0.04em', color: taniwhaOnDark(r) }}>
-                    {r.name}
+                  <span className="lp-rank-name" style={{ fontFamily: 'var(--font-display)', fontSize: '19px', letterSpacing: '0.04em', color: '#fff' }}>
+                    {g.name}
                   </span>
                   <span style={{ fontFamily: 'var(--font-label)', fontSize: '12px', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#555' }}>
-                    {r.colourName}
+                    {g.colour}
                   </span>
                   <span style={{ marginLeft: 'auto', fontFamily: 'var(--font-label)', fontSize: '12px', color: '#444', letterSpacing: '0.06em' }}>
-                    {r.kind === 'domain'
-                      ? DOMAIN_META[(r.domainNumber as number) - 1].name
-                      : r.kind === 'whanau' ? 'One referral' : `All ${MAX_CROWNS}`}
+                    {g.populationTarget == null ? 'Anyone' : g.inverted ? 'One in a hundred' : g.rainbow ? 'Years of training' : `Top ${g.populationTarget}%`}
                   </span>
                 </div>
               ))}
-              <div className="lp-rank" style={{ marginTop: '10px', borderTop: '1px solid #1e1e1e', paddingTop: '14px' }}>
-                <span style={{ fontFamily: 'var(--font-label)', fontSize: '13px', letterSpacing: '0.06em', color: '#666', lineHeight: 1.6 }}>
-                  The parts, in the order they come:{' '}
-                  <span style={{ color: '#888' }}>{PARTS.map(p => p.name).join(' · ')}</span>
-                </span>
-              </div>
             </div>
           </div>
         </div>
@@ -328,7 +305,7 @@ export default function Home() {
           </h2>
           <div className="lp-rainbow-line" style={{ width: '88px', margin: '0 auto 30px' }} />
           <p style={{ color: '#888', fontSize: '18px', maxWidth: '480px', margin: '0 auto 38px', lineHeight: 1.7 }}>
-            Koha only. No fees, no barriers. Bring what you&apos;ve got and start your first taniwha.
+            Koha only. No fees, no barriers. Bring what you&apos;ve got and earn your first colour.
           </p>
           <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
             <Link href="/register" className="lp-btn lp-primary" style={{ fontSize: '22px' }}>Register Now</Link>

@@ -524,6 +524,12 @@ the homepage.
 
 ## Taniwha grading system (August 2026 session 31) — LIVE, applied and verified 2026-08-25
 
+> **RETIRED on `claude/grading-implementation` (September 2026)**, replaced by the
+> twelve-colour grades above. Everything below describes production as it still
+> stands until that branch ships and `20260915054550` is applied; after that it is
+> history. The art in `public/taniwha/` and `scripts/check-taniwha-art.mjs` are
+> kept; the code is not.
+
 Replaces the Colours ladder with a collection of **twelve taniwha**. Design settled in a
 `/grill-me` session; the full record with 28 locked decisions is in `TANIWHA_SYSTEM_PLAN.md`.
 
@@ -1105,6 +1111,159 @@ today's filler geometry is nearly invisible, and that ends at the first picker
 switch), and folding lifetime points into `leaderboard_page()`.
 
 ---
+
+## Grading rebuild — twelve colours (September 2026) — IN PROGRESS, NOT SHIPPED
+
+**Production still runs taniwha.** The rebuild replaces it with a twelve-colour
+grade ladder earned against published standards rather than points, because all
+three previous systems were gated on lifetime points — attendance — and a grade
+you cannot fail carries no pride. Nothing is migrated, nothing is in the UI.
+
+**Branches:** `claude/allsport-grading-rebuild-aea665` (the design and first
+engine), then `claude/grading-implementation` built on it, into which
+`claude/match-recording` is merged (all unpushed at time of writing).
+**Design record:** `docs/designs/` in that worktree — **gitignored, local only**,
+because the design docs name players and their results and this repo is public.
+`grading-system-spec.md` there carries every decision settled in review.
+
+**Standards were settled over four review rounds and approved 2026-09-15.**
+Implementation order: privacy notice → ladder changes → rules text → standards
+for all 120 events → engine → match recording and the rating → data fixes →
+database, UI, conferral and retiring taniwha. Done on the branch so far: the
+privacy notice, the ladders, the rules text, the engine, the standards sheet
+(`GRADING_STANDARDS_REVIEW.md`, approved by Tāne on 2026-09-16 as a trial, to be reviewed after it; compiled
+into `lib/standards.ts` by `scripts/apply-standards-sheet.mjs`), match
+recording, the head-to-head rating (`lib/headToHead.ts`), a player's colours
+(`lib/playerGrades.ts` computes, `lib/loadGrades.ts` loads, the dashboard
+GradesCard and `/grades` show them), the bodyweight band on `/profile`, the
+kaiwhakawā release panel (the Colours tab on `/judge`), and **taniwha retired**:
+its pages, components, libraries and tests are deleted, play history moved to
+`/history`, and the leaderboard shows each player's conferred overall colour.
+
+**Five migrations are written and NONE is applied** (Docker was not running):
+`20260915040534` (pure-contest history), `20260915051927` (grading schema:
+band, exemptions, awards, `confer_grade`), `20260915054550` (retire taniwha:
+archive and drop `player_taniwha`, its trigger and six functions, and
+`leaderboard_page` returns `grades` instead of `taniwha`), `20260915210543` (archives and
+deletes the one impossible 0.16-second 100m result, Tāne 2026-09-16), plus match
+recording's `20260914020739`. **Deploy the code first**, then push them from `main` in
+timestamp order, then verify the objects. The retirement is the one that is NOT
+safe in the other order: old code reads `player_taniwha`.
+
+**One deliberate departure from the spec:** the server does not recompute a
+grade before `confer_grade` stores it. Decision 9 makes the kaiwhakawā the
+authority and only a kaiwhakawā can call it, so no player can award themselves;
+recomputing server-side means porting the engine and the rating to plpgsql and
+testing them against a real database, which is a follow-up.
+
+- **The ladder:** Mā (start, not an award), then Kiwikiwi, Whero, Karaka, Kōwhai,
+  Kākāriki, Kahurangi, Poroporo, Parahi, Hiriwa, Kōura, Uenuku, Taniwha —
+  targeting anyone, then the 90th down to the 1st percentile. Grades own colour;
+  domains keep name and icon only. **Never label grades `D1`–`D12`**, which
+  already means difficulty tier.
+- **The rules:** a colour in each of the ten domains; a domain colour is the
+  highest grade met in at least HALF the domain's events; the overall grade is the
+  LOWEST domain, and `null` (not Mā) until all ten domains hold one.
+- **`lib/grading.ts` is pure and tested** (`__tests__/grading.test.ts`). It
+  holds the rules, never the numbers: standards are compiled from a reviewed
+  sheet, the way the difficulty ladders are.
+- **A standard is a threshold where higher is always better.** For a tiered
+  event that is `raw_score` itself, so reps, holds and timed efforts are one
+  `>=` check. Do not reintroduce a direction flag: the value-scaling design it
+  replaced had to divide some standards and multiply others, and backwards made
+  a standard harder with age.
+- **Age shifts the LADDER, not the value.** Under 14 and Grandmasters two
+  colours, 14 to 16 and Masters one (`AGE_SHIFT`). Below the Open floor the
+  ladder extends by its own first step.
+- **Game-rung events: drills give Kiwikiwi to Kahurangi, a rating the rest.**
+  49 ladders top out in a Game rung. The drill colour is capped at Kahurangi
+  AFTER the age shift; the rating gives Poroporo at 1,100 and one colour per 100
+  to Taniwha at 1,600, after ten recorded games, and is not age-shifted. The
+  colour shown is the higher of the two. The Game rung itself never carries a
+  threshold, or one match won would award the top colour.
+- **Strength is a ratio of bodyweight**, taken at the middle of an optional
+  10kg band the player picks. No band means ungradeable, not failed. Juniors are
+  never asked and are graded as a 50kg lifter, then shifted.
+- **The denominator is what can be graded.** Pure `sport` events and a player's
+  coach-confirmed exemptions both leave it. Since the grading ladders landed,
+  Wrestling is the only pure `sport` event left.
+- **The launch gate is CLEAR.** Every domain can be graded.
+  `node scripts/grading-readiness.mjs` reports the live state.
+- **A lifetime best is safe again.** `20260910025855` rebuilt every tiered score
+  from its source columns, so `lib/percentile.ts`'s cross-session
+  `max(raw_score)` holds. Standards still need an outlier floor: one stored
+  sprint best is physically impossible.
+
+**The rating is a second ranking metric, decided on purpose.** Tāne wants the
+higher colours on game events gated by head-to-head skill, so that playing
+reveals which sports a player is good at. Simulated at club scale, a per-sport
+rating is reliable after about ten games in that sport; the limits are
+recording who played whom, and cadence (each game sport is scheduled about once
+a month). It gates colours only; `lib/percentile.ts` stays the one leaderboard
+metric.
+
+**Decided 2026-09-16:** a junior who answered "Other" at registration takes the
+boys' standards (`ladderFor` in `lib/playerGrades.ts`).
+
+**The rating reads matches, never `results.opponent_name`.** That column is
+free text and optional — a quarter of game results name one, and a team cannot
+be represented — so history from before match recording is not rated. See the
+Match recording block below.
+## Match recording — head-to-head games by player id (September 2026) — BUILT, MIGRATION NOT APPLIED
+
+A game used to be recorded as HALF a match: each player wrote their own result,
+and the opponent was `results.opponent_name`, free text and optional. A quarter
+of game results named anyone, aliases broke the rest, a team could not be
+written down, and only 11 matches in history were recorded by both players.
+Tāne wants the upper colours on game events gated by head-to-head skill, with
+**at least 10 recorded games in a sport before a colour** (`MIN_RATED_GAMES`,
+defined once in `lib/grading.ts` and re-exported by `lib/matches.ts`). No
+rating is trustworthy on free-text halves, so the match is now recorded by
+player id, and `lib/headToHead.ts` rates the games it collects.
+
+- **Shape.** `matches` holds one row per recorder's result (`result_id` UNIQUE,
+  `ON DELETE CASCADE`), so deleting a score deletes its match and the two can
+  never drift. `match_players` holds the sides as player ids, so a 1v1 and a
+  5v5 are the same shape. The outcome is derived server-side from
+  `results.result_type` (`win`/`loss`/`draw`), never sent by the client.
+- **One write path: `record_match(p_result_id, p_opponent_ids, p_teammate_ids)`**,
+  `SECURITY DEFINER` with a pinned `search_path`. Same authority as writing the
+  result (own, child, or kaiwhakawā) and the same open-session window as
+  `guard_results_write`. No client write policy exists and table grants are
+  revoked. Public read, like `results`, which already exposes the same facts.
+- **Client.** Opponent chips are keyed by player id (`opponentPicks`), so two
+  players sharing a display name stay two people. A typed name or a guest is not
+  matched, and the sheet says so. Recording runs after the score saves and is
+  best-effort: a failure never turns a saved score into an error, and
+  `PGRST202` (function not deployed yet) is silent.
+- **Edits.** An edit whose stored opponent name cannot be resolved to exactly one
+  player LEAVES its match alone until the opponent is changed on purpose —
+  otherwise every such edit would silently delete a match. Switching a result
+  from a Game rung to a drill clears its match.
+- **Both players recording the same game produces two rows.** `reconcileGames`
+  collapses them into one game marked `agreed`, `disputed` or `unconfirmed`, and
+  `gamesBySport` counts real games toward the minimum — otherwise one game
+  played counts twice. A disputed game counts for nothing, toward the minimum
+  or the rating, until a kaiwhakawā settles it. **Agreement is derived, never stored**; stored agreement
+  goes stale the moment either side edits. `confirmed_by` / `confirmed_at` are
+  reserved for a kaiwhakawā confirmation flow that is not built.
+- **The rating** (`lib/headToHead.ts`): Elo per player per sport, start 1,000,
+  K 40 for a player's first ten games then 20, games replayed in the order they
+  were recorded. A team side is rated at the mean of its players, and each
+  player moves by their own K. Pure, and not yet stored or shown anywhere.
+- **Not built:** the confirmation flow, a team picker (the
+  schema takes teammates; the sheet sends one opponent), and any backfill —
+  resolving history's free-text names to ids would be guessing.
+- **Deploy order: either is safe.** **The migration was never applied to a
+  database** — Docker was not running. Apply `20260914020739` from `main`, then
+  verify the objects: both tables have `relrowsecurity`, `record_match` has
+  `prosecdef` and `search_path=public` in `proconfig`, and `anon` cannot execute
+  it. `__tests__/matchRecording.test.ts` pins those properties in the file, and
+  that the SQL's outcome mapping matches `outcomeFromResult`.
+- **Noticed, not changed:** editing a Game result into a drill rung leaves the
+  old `result_type` and `opponent_name` on the `results` row, because the update
+  payload only sets the columns it carries. Match recording deliberately does not
+  rely on either.
 
 ## Security posture (August 2026) — read before touching RLS or players_public
 

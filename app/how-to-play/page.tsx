@@ -117,8 +117,8 @@ const steps = [
   },
   {
     number: '06',
-    title: 'Build Your Taniwha',
-    desc: 'There are twelve taniwha, each built from eleven pieces. Every 1,000 points you have ever scored adds a piece — those points never reset. The crown has to be earned: win 9 of a discipline’s 12 events, or bring someone new into the sport.',
+    title: 'Earn Your Colours',
+    desc: 'Every event has a standard for each of twelve colours, from Kiwikiwi to Taniwha. Meet a colour in half of a domain’s events and you hold that domain at that colour; your overall colour is the lowest of your ten. A kaiwhakawā confirms each one, and it is yours for good.',
   },
 ]
 

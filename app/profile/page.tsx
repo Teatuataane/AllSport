@@ -1,10 +1,10 @@
 'use client'
+import { BODYWEIGHT_BANDS } from '@/lib/grading'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient, getSessionUser } from '@/lib/supabase-browser'
 import { ACTIVE_PLAYER_KEY, useActivePlayer } from '@/lib/useActivePlayer'
 import Link from 'next/link'
-import { MAX_CROWNS, taniwhaBySlug, taniwhaOnDark } from '@/lib/taniwha'
 
 const supabase = createClient()
 
@@ -20,10 +20,6 @@ export default function ProfilePage() {
 
   const [userId, setUserId] = useState<string | null>(null)
   const [player, setPlayer] = useState<any>(null)
-  // Taniwha progression for the badge. NULL means the schema is not there yet
-  // (20260824222612), and the colour badge renders unchanged.
-  const [taniwha, setTaniwha] =
-    useState<{ taniwha_slug: string; crowned_at: string | null; is_building: boolean }[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
@@ -58,6 +54,7 @@ export default function ProfilePage() {
     show_username: true,
     show_division: true,
     show_location: false,
+    bodyweight_band: '',
   })
 
   // Rankings for the seasonal division rank shown on the profile card.
@@ -89,6 +86,7 @@ export default function ProfilePage() {
           show_username: p.show_username !== false,
           show_division: p.show_division !== false,
           show_location: p.show_location || false,
+          bodyweight_band: p.bodyweight_band || '',
         })
       }
 
@@ -96,17 +94,15 @@ export default function ProfilePage() {
       const stored = typeof window !== 'undefined' ? localStorage.getItem(ACTIVE_PLAYER_KEY) : null
       setActivePlayerId(stored || user.id)
 
-      // Taniwha progression for the badge.
-      const pt = await supabase
-        .from('player_taniwha')
-        .select('taniwha_slug, crowned_at, is_building')
-        .eq('player_id', user.id)
-      setTaniwha(pt.error ? null : (pt.data ?? []))
 
       setLoading(false)
     }
     load()
   }, [router])
+
+  // Juniors are never asked for a bodyweight band (see /privacy): their
+  // strength grades use a fixed 50kg standard instead.
+  const isJunior = /Junior|Youth/.test(player?.division ?? '')
 
   const handleSave = async () => {
     if (!player) return
@@ -123,6 +119,16 @@ export default function ProfilePage() {
       show_location: form.show_location,
     }).eq('id', player.id)
 
+    // The band is its own write, never folded into the one above: until the
+    // grading migration lands the column does not exist, and PostgREST rejects
+    // a whole update over one unknown column, so every profile save would fail
+    // rather than just the band.
+    let bandError = ''
+    if (!error && !isJunior && form.bodyweight_band !== (player.bodyweight_band ?? '')) {
+      const b = await supabase.from('players').update({ bodyweight_band: form.bodyweight_band || null }).eq('id', player.id)
+      if (b.error) bandError = 'Profile saved, but your bodyweight band could not be stored yet.'
+    }
+
     if (error) {
       setSaveError(error.message)
     } else {
@@ -131,9 +137,14 @@ export default function ProfilePage() {
         username: form.username.trim(),
         display_name: form.display_name.trim() || form.username.trim(),
         icon: form.icon || null,
+        ...(bandError ? {} : { bodyweight_band: form.bodyweight_band || null }),
       }))
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
+      if (bandError) {
+        setSaveError(bandError)
+      } else {
+        setSaved(true)
+        setTimeout(() => setSaved(false), 2000)
+      }
     }
     setSaving(false)
   }
@@ -156,16 +167,17 @@ export default function ProfilePage() {
     if (!userId) return
     setExporting(true); setExportError('')
     try {
-      const [profile, children, results, summaries, colours, playerTaniwha, wellbeing, totals, donations] = await Promise.all([
+      const [profile, children, results, summaries, colours, wellbeing, totals, donations, grades, exemptions] = await Promise.all([
         supabase.from('players').select('*').eq('id', userId).single(),
         supabase.from('players').select('*').eq('parent_id', userId),
         supabase.from('results').select('*').eq('player_id', userId),
         supabase.from('session_player_summary').select('*').eq('player_id', userId),
         supabase.from('colour_awards').select('*').eq('player_id', userId),
-        supabase.from('player_taniwha').select('*').eq('player_id', userId),
         supabase.from('wellbeing_surveys').select('*').eq('player_id', userId),
         supabase.from('player_totals').select('*').eq('player_id', userId),
         supabase.from('koha_donations').select('*').eq('player_id', userId),
+        supabase.from('grade_awards').select('*').eq('player_id', userId),
+        supabase.from('grade_exemptions').select('*').eq('player_id', userId),
       ])
 
       const payload = {
@@ -178,12 +190,12 @@ export default function ProfilePage() {
         results: results.data ?? [],
         session_summaries: summaries.data ?? [],
         colours_earned: colours.data ?? [],
-        // Empty rather than absent if the progression migrations have not been
-        // applied — an export must never fail because a table is missing.
-        taniwha_progression: playerTaniwha.data ?? [],
         lifetime_totals: totals.data ?? [],
         wellbeing_checkins: wellbeing.data ?? [],
         koha: donations.data ?? [],
+        // Empty rather than absent before the grading migration lands.
+        grades_conferred: grades.data ?? [],
+        grade_exemptions: exemptions.data ?? [],
       }
 
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
@@ -270,13 +282,8 @@ export default function ProfilePage() {
     </div>
   )
 
-  // The badge is the crowned count, the way a belt is. Tinted by the taniwha
-  // under construction, or neutral before the player has chosen one.
-  const crowned = taniwha?.filter(r => r.crowned_at).length ?? 0
-  const building = taniwha?.find(r => r.is_building)
-  const buildingT = building ? taniwhaBySlug(building.taniwha_slug) : null
-  const gradeBorder = buildingT ? taniwhaOnDark(buildingT) : '#888888'
-  const badgeLine = `${crowned}/${MAX_CROWNS} taniwha`
+  // Neutral since taniwha retired: a player's colours live on /grades.
+  const gradeBorder = '#888888'
   const displayName = form.display_name || form.username || player.full_name || '?'
 
   return (
@@ -330,7 +337,7 @@ export default function ProfilePage() {
                 fontSize: '11px', color: '#555',
                 fontFamily: 'var(--font-label)', letterSpacing: '0.08em',
               }}>
-                {badgeLine} · {player.division}
+                {player.division}
               </div>
               {form.icon && (
                 <button onClick={() => setForm(f => ({ ...f, icon: '' }))} style={{
@@ -407,6 +414,33 @@ export default function ProfilePage() {
                 }}
               />
             </div>
+
+            {!isJunior && (
+              <div>
+                <label htmlFor="bodyweight-band" style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '5px', fontFamily: 'var(--font-label)', letterSpacing: '0.08em' }}>
+                  BODYWEIGHT BAND (optional)
+                </label>
+                <select
+                  id="bodyweight-band"
+                  value={form.bodyweight_band}
+                  onChange={e => setForm(f => ({ ...f, bodyweight_band: e.target.value }))}
+                  style={{
+                    width: '100%', boxSizing: 'border-box', background: '#0a0a0a',
+                    border: '1px solid #2a2a2a', borderRadius: '10px',
+                    padding: '11px 14px', color: '#fff', fontSize: '15px',
+                    fontFamily: 'var(--font-body)',
+                  }}
+                >
+                  <option value="">Not set: lifts and loaded carries are not graded</option>
+                  {BODYWEIGHT_BANDS.map(b => <option key={b.label} value={b.label}>{b.label}</option>)}
+                </select>
+                <div style={{ fontSize: '11px', color: '#555', fontFamily: 'var(--font-body)', marginTop: '6px', lineHeight: 1.5 }}>
+                  Strength and carry colours are measured against the middle of your band, so a lighter
+                  player is never graded on a heavier player&apos;s numbers. A band, never your weight, and
+                  never shown to other players.
+                </div>
+              </div>
+            )}
 
             {/* Display prefs */}
             <div>

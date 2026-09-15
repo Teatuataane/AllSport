@@ -8,7 +8,7 @@ export const metadata = {
 }
 
 // Last substantive review of this page. Update whenever the content changes.
-const LAST_UPDATED = '21 August 2026'
+const LAST_UPDATED = '15 September 2026'
 
 // Role address, not a personal one: this is published on a public page, it is
 // the Privacy Act contact of record, and it has to outlive whoever is currently
@@ -35,13 +35,18 @@ const accountData: Row[] = [
   },
   {
     what: 'Date of birth',
-    why: 'To place you in the right division and age group, and to know when a player is under 17.',
+    why: 'To place you in the right division and age group, to know when a player is under 17, and to apply the age allowance on grade standards: juniors, Masters and Grandmasters meet each colour at an easier standard.',
     who: 'Your age group is used in leaderboards. Kaiwhakawā can see the date itself.',
   },
   {
     what: 'Which division you compete in',
-    why: 'To place you in a division. That is the only thing it is used for. If neither Men\'s nor Women\'s fits, you choose your own starting division, and a kaiwhakawā can move you at any time.',
-    who: 'Kaiwhakawā. Your division is structural, so it is visible — the label next to your name is what "show division" controls.',
+    why: 'To place you in a division, and to choose which grade standards apply to you, since some events have separate standards for men and women. For players under 17, who all compete in one Juniors division, the answer you gave at registration is used for that second purpose only. If neither Men\'s nor Women\'s fits, you choose your own starting division, and a kaiwhakawā can move you at any time.',
+    who: 'Kaiwhakawā. Your division is structural, so it is visible — the label next to your name is what "show division" controls. A junior\'s answer is never shown to anyone.',
+  },
+  {
+    what: 'Bodyweight band',
+    why: 'Optional. Strength and loaded-carry grades are measured against your bodyweight, so a lighter player is not graded against a heavier player\'s numbers. You pick a 10kg band, such as 70 to 80kg. We never ask for or store an exact weight. Leave it blank and those events are simply not graded for you. Players under 17 are never asked.',
+    who: 'Only you and kaiwhakawā. Never shown to other players or anywhere on the site.',
   },
   {
     what: 'Phone number',
@@ -72,8 +77,18 @@ const competitionData: Row[] = [
     who: 'Public, next to your display name.',
   },
   {
-    what: 'Placements, points, taniwha and the colours earned before them',
-    why: 'To run leaderboards and the taniwha collection, and to report participation to funders in aggregate. Colours were the grading system until August 2026; the awards already earned are kept so your history stays intact.',
+    what: 'Placements, points, and the colours and taniwha earned before grading',
+    why: 'To run leaderboards and to report participation to funders in aggregate. Colours were the grading system until August 2026 and taniwha until September 2026; what was already earned under each is kept so your history stays intact.',
+    who: 'Public.',
+  },
+  {
+    what: 'Your grades',
+    why: 'A colour in each of the ten domains, earned by meeting a standard in your events. Worked out from your scores, your age group and, where it applies, your bodyweight band. A kaiwhakawā releases each new colour.',
+    who: 'Your colours are public. The band and age allowance behind them are not.',
+  },
+  {
+    what: 'Head-to-head ratings',
+    why: 'For game events, a rating per sport, worked out from the games you win, draw and lose against other players. Your higher colours in a game sport come from it.',
     who: 'Public.',
   },
   {
@@ -82,8 +97,8 @@ const competitionData: Row[] = [
     who: 'Public that you played; kaiwhakawā for the detail.',
   },
   {
-    what: 'Opponent names in head-to-head events',
-    why: 'To record who played whom in match events such as Tennis or Arm Wrestling.',
+    what: 'Who you played in head-to-head games',
+    why: 'To record who played whom in match events such as Tennis or Arm Wrestling, so each game can count toward both players\' ratings. Opponents are picked from the players at the session, and a guest\'s name is not linked to anyone.',
     who: 'Public, as part of the result.',
   },
 ]
@@ -193,7 +208,7 @@ const rights = [
   },
   {
     title: 'Skip the wellbeing check-in',
-    body: 'The wellbeing check-in is entirely voluntary. Close it and nothing is recorded. It will not affect your scores, your taniwha or anything else.',
+    body: 'The wellbeing check-in is entirely voluntary. Close it and nothing is recorded. It will not affect your scores, your colours or anything else.',
   },
   {
     title: 'Choose what is public',
@@ -274,7 +289,7 @@ export default function PrivacyPolicy() {
           <div className="privacy-grid-2" style={{ marginTop: '32px' }}>
             {[
               ['Your scores are public', 'AllSport is a competition. Your display name, scores, placements and colour are visible to anyone — that is how a leaderboard works.'],
-              ['Your contact details are not', 'Your email, phone number and date of birth are never shown anywhere on the site. They are for kaiwhakawā to run sessions and keep you safe.'],
+              ['Your contact details are not', 'Your email, phone number, date of birth and bodyweight band are never shown anywhere on the site. They are for kaiwhakawā to run sessions, keep you safe and grade you fairly.'],
               ['The wellbeing check-in is yours', 'Nobody at AllSport can read your individual answers. Kaiwhakawā only ever see group averages, and only when at least three people have answered.'],
               ['We do not sell or advertise', 'No advertising, no tracking pixels, no analytics, no data broker. We have never sold personal information and we will not.'],
               ['You can leave', 'One button on your profile erases your details for good. Another downloads everything we hold about you. Neither needs to go through us.'],
@@ -393,6 +408,12 @@ export default function PrivacyPolicy() {
               wellbeing check-in answers.
             </p>
             <p className="privacy-p">
+              Juniors are never asked for a bodyweight band. Their strength grades use a fixed junior standard
+              instead, with the age allowance on top. Because every junior plays in one Juniors division, the
+              answer given at registration is used privately to choose between the boys&apos; and girls&apos;
+              standards. It is never shown to anyone.
+            </p>
+            <p className="privacy-p">
               A junior&apos;s display name, age group, scores and placements appear on public leaderboards in the
               same way as any other player. If you would rather your child appeared under a username only, that is
               the default — you do not have to show a full name. Ask a kaiwhakawā if you want a junior removed
@@ -498,6 +519,11 @@ export default function PrivacyPolicy() {
               indefinitely. Colours are a lifetime record and a competition history is not much use with holes in
               it. If you delete your account, these stay as part of the session record but are separated from
               your name and contact details.
+            </p>
+            <p className="privacy-p">
+              <strong style={{ color: 'var(--white)' }}>Your bodyweight band</strong> — kept until you change or
+              clear it on your profile, and deleted with your account. Grades already earned stay earned if you
+              clear it.
             </p>
             <p className="privacy-p">
               <strong style={{ color: 'var(--white)' }}>Wellbeing check-in answers</strong> — kept for as long as

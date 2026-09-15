@@ -1,8 +1,9 @@
 'use client'
+import { isGameEntry, opponentPicks as pickOpponents, resolveOpponentId } from '@/lib/matches'
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient, getSessionUser } from '@/lib/supabase-browser'
-import { EVENTS, getEventByName, isTimedEffort, decodeDiffTime, type EventData } from '@/lib/eventData'
+import { getEventByName, isTimedEffort, decodeDiffTime, type EventData } from '@/lib/eventData'
 import { parseLocalDate } from '@/lib/dates'
 import EventIcon, { domainColor } from '@/components/EventIcon'
 import {
@@ -13,16 +14,6 @@ import {
   buildJudgeRoster, resolveJudgeTarget, resultsForTarget, scoredEventIds,
   scoredEventIdsByTarget, NO_SCORES,
 } from '@/lib/judgeRoster'
-import TaniwhaAlertBanner from '@/components/TaniwhaAlertBanner'
-import {
-  taniwhaAlerts, provisionalWins, crownHint, type TaniwhaAlert, type TaniwhaProgress,
-} from '@/lib/taniwhaAlerts'
-import {
-  MAX_CROWNS, bodyPartBudget, nextSlot, progressToNextSlot,
-  partFor, BODY_PARTS_PER_TANIWHA, taniwhaBySlug, taniwhaCardStyle, taniwhaOnDark,
-  sessionsToGoLabel, GOOD_SESSION_POINTS_LOW, GOOD_SESSION_POINTS_HIGH,
-} from '@/lib/taniwha'
-
 const supabase = createClient()
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -408,8 +399,11 @@ async function submitEntry(args: {
   seasonPRNum: number | null
   effectivePR: number | null
   editingResultId: string | null
+  // Opponent player ids to record as a match, or null to leave matches alone.
+  // Decided by the sheet, which knows whether an edit touched the opponent.
+  matchOpponents: string[] | null
 }): Promise<SubmitOutcome> {
-  const { sessionId, eventId, playerId, playerName, mode, eventData, v, myResults, seasonPRNum, effectivePR, editingResultId } = args
+  const { sessionId, eventId, playerId, playerName, mode, eventData, v, myResults, seasonPRNum, effectivePR, editingResultId, matchOpponents } = args
   const scored = computeScoreVals(mode, eventData, v)
   if (!scored) return { error: 'Enter a valid score first', isPR: false, effortCredit: 0 }
   try {
@@ -480,18 +474,40 @@ async function submitEntry(args: {
     payload.is_pr = newIsPR
     payload.effort_task_completions = effortTaskCount
 
+    let resultId: string
     if (editingResultId) {
       const { data, error: dbErr } = await supabase.from('results').update(payload).eq('id', editingResultId).select('id')
       if (dbErr) throw dbErr
       if (!data || data.length === 0) throw new Error('This score was deleted by a kaiwhakawā — close and submit it as a new score')
+      resultId = editingResultId
     } else {
-      const { error: dbErr } = await supabase.from('results').insert(payload)
+      // The new row's id anchors its match, so ask for it back.
+      const { data: inserted, error: dbErr } = await supabase.from('results').insert(payload).select('id').single()
       if (dbErr) throw dbErr
+      if (!inserted) throw new Error('The score did not save — try again')
+      resultId = inserted.id
     }
+    // The score is the record; the match hangs off it. It is written only once
+    // the score has saved, and a failure here must never turn a saved score into
+    // an error toast. Guests have no stable identity, so they are never matched.
+    if (playerId && matchOpponents !== null) await recordMatch(resultId, matchOpponents)
     return { error: null, isPR: newIsPR, effortCredit: effortTaskCount * 5 }
   } catch (e: unknown) {
     return { error: e instanceof Error ? e.message : 'Submission failed', isPR: false, effortCredit: 0 }
   }
+}
+
+// Records the head-to-head match behind one game result (migration
+// 20260914020739). The server reads session, event, player and outcome off the
+// result row itself, so all this sends is who the opponents were — the match
+// cannot claim an outcome the score does not.
+//
+// Best-effort by design. PGRST202 means the function does not exist yet: the
+// code shipped before the migration was applied, so recording simply has not
+// started, and that is not an error worth showing a player mid-game.
+async function recordMatch(resultId: string, opponentIds: string[]): Promise<void> {
+  const { error } = await supabase.rpc('record_match', { p_result_id: resultId, p_opponent_ids: opponentIds })
+  if (error && error.code !== 'PGRST202') console.warn('record_match:', error.message)
 }
 
 // ─── Quick-entry sheet (player scoring redesign) ──────────────────────────────
@@ -561,6 +577,9 @@ function QuickEntrySheet({
     if (myBestResult) init = { ...init, ...valsFromResult(mode, myBestResult) }
     else if (seasonPRNum !== null) init = { ...init, ...valsFromRaw(mode, eventData, seasonPRNum) }
     if (mode === 'sport') init = { ...init, sportResult: '', opponentName: '', sportScore: '' }
+    // A Game rung pre-fills the last opponent's NAME from the best result. Resolve
+    // the id too, so what the sheet shows as picked is what gets recorded.
+    init = { ...init, opponentId: resolveOpponentId(init.opponentName, allResults, playerId) ?? '' }
     return init
   })
   const [showHow, setShowHow] = useState(false)
@@ -568,6 +587,11 @@ function QuickEntrySheet({
   const [error, setError] = useState('')
   const [editingResult, setEditingResult] = useState<Result | null>(null)
   const inFlight = useRef(false)
+  // True while editing a result whose stored opponent name could not be
+  // resolved to exactly one player. Until the opponent is changed on purpose,
+  // its match is left alone — sending "no opponent" would silently delete a
+  // match the player never meant to touch.
+  const keepExistingMatch = useRef(false)
 
   const set = (patch: Partial<EntryVals>) => setV(prev => ({ ...prev, ...patch }))
 
@@ -596,10 +620,23 @@ function QuickEntrySheet({
     if (inFlight.current) return // ref guard — React state alone lets a double-tap insert twice
     inFlight.current = true
     setSubmitting(true); setError('')
+    // What to record as a match. null leaves matches untouched.
+    //   · Not a game (a drill rung, a measured event): on an edit, clear any match
+    //     this row carried — it may have been a Game result before the edit.
+    //   · A game with a picked player: record it.
+    //   · An edit whose unresolvable opponent was never touched: leave it be.
+    //   · Otherwise there is no registered opponent: clear on edit, skip on new.
+    const isGame = isGameEntry(mode, eventData, v.difficultyTier)
+    const matchOpponents: string[] | null =
+      !isGame ? (editingResult ? [] : null)
+      : v.opponentId ? [v.opponentId]
+      : editingResult && keepExistingMatch.current ? null
+      : editingResult ? [] : null
     const outcome = await submitEntry({
       sessionId, eventId: se.id, playerId, playerName,
       mode, eventData, v, myResults, seasonPRNum, effectivePR,
       editingResultId: editingResult?.id ?? null,
+      matchOpponents,
     })
     inFlight.current = false
     setSubmitting(false)
@@ -637,9 +674,11 @@ function QuickEntrySheet({
   const weightRung = rung?.scoring === 'weight'
 
   const showSport = mode === 'sport' || gameRung
-  const opponentPicks = showSport
-    ? [...new Set(allResults.map(r => r.player_name).filter(n => n && n !== playerName))].slice(0, 6)
-    : []
+  // Keyed by player id, so two players sharing a display name stay two people
+  // and a picked chip records a real match. Guests keep a name-only chip.
+  const opponentPicks = showSport ? pickOpponents(allResults, { id: playerId, name: playerName }) : []
+  const opponentPickActive = (p: { id: string | null; name: string }) =>
+    p.id ? v.opponentId === p.id : !v.opponentId && v.opponentName === p.name
 
   const showTierChips = tiers.length > 0 && (
     mode === 'difficulty+time' || mode === 'difficulty+reps' ||
@@ -752,7 +791,7 @@ function QuickEntrySheet({
                   {editingResult && (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#0d1a2d', border: '1px solid #2371BB55', borderRadius: '10px', padding: '8px 12px', marginTop: '14px' }}>
                       <span style={{ fontSize: '12.5px', color: '#2371BB', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Editing: {editingResult.score_label}</span>
-                      <button onClick={() => { setEditingResult(null); setV({ ...EMPTY_VALS }) }} style={{ fontSize: '12px', color: '#888', background: 'none', border: '1px solid #333', borderRadius: '6px', padding: '3px 10px', cursor: 'pointer' }}>Cancel</button>
+                      <button onClick={() => { keepExistingMatch.current = false; setEditingResult(null); setV({ ...EMPTY_VALS }) }} style={{ fontSize: '12px', color: '#888', background: 'none', border: '1px solid #333', borderRadius: '6px', padding: '3px 10px', cursor: 'pointer' }}>Cancel</button>
                     </div>
                   )}
 
@@ -880,16 +919,23 @@ function QuickEntrySheet({
                       <div style={QES_LBL}>Opponent</div>
                       {opponentPicks.length > 0 && (
                         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
-                          {opponentPicks.map(n => (
-                            <button key={n} onClick={() => set({ opponentName: n })} style={{
+                          {opponentPicks.map(p => (
+                            <button key={p.id ?? `guest:${p.name}`} onClick={() => { keepExistingMatch.current = false; set({ opponentName: p.name, opponentId: p.id ?? '' }) }} style={{
                               ...QES_CHIP,
-                              borderColor: v.opponentName === n ? '#2371BB' : '#2a2a2a',
-                              background: v.opponentName === n ? '#2371BB' : '#161616',
-                            }}>{n}</button>
+                              borderColor: opponentPickActive(p) ? '#2371BB' : '#2a2a2a',
+                              background: opponentPickActive(p) ? '#2371BB' : '#161616',
+                            }}>{p.name}</button>
                           ))}
                         </div>
                       )}
-                      <input value={v.opponentName} onChange={e => set({ opponentName: e.target.value })} placeholder="Opponent name (optional)" style={{ ...INP, fontSize: '15px' }} />
+                      <input value={v.opponentName} onChange={e => { keepExistingMatch.current = false; set({ opponentName: e.target.value, opponentId: '' }) }} placeholder="Opponent name (optional)" style={{ ...INP, fontSize: '15px' }} />
+                      {/* A typed name cannot be rated — only a picked player records the match. */}
+                      {v.opponentName.trim() && !v.opponentId && opponentPicks.some(p => p.id) &&
+                        !opponentPicks.some(p => p.id === null && p.name === v.opponentName.trim()) && (
+                        <div style={{ fontSize: '12px', color: '#888', marginTop: '6px', lineHeight: 1.4 }}>
+                          Typed names aren&apos;t recorded as a match. Pick your opponent above so this game counts.
+                        </div>
+                      )}
                       <input value={v.sportScore} onChange={e => set({ sportScore: e.target.value })} placeholder="Score e.g. 21–18 (optional)" style={{ ...INP, fontSize: '15px', marginTop: '8px' }} />
                     </>
                   )}
@@ -956,7 +1002,12 @@ function QuickEntrySheet({
                         )}
                         {!sessionEnded && (
                           <>
-                            <button onClick={() => { setEditingResult(r); setV({ ...EMPTY_VALS, ...valsFromResult(mode, r) }) }}
+                            <button onClick={() => {
+                              const opp = resolveOpponentId(r.opponent_name, allResults, playerId)
+                              keepExistingMatch.current = !!r.opponent_name && !opp
+                              setEditingResult(r)
+                              setV({ ...EMPTY_VALS, ...valsFromResult(mode, r), opponentId: opp ?? '' })
+                            }}
                               style={{ background: 'none', border: '1px solid #2371BB44', borderRadius: '4px', color: '#2371BB', cursor: 'pointer', fontSize: '11px', padding: '2px 8px', flexShrink: 0, fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700 }}>Edit</button>
                             <button onClick={() => handleSheetDelete(r.id)}
                               style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: '14px', padding: '2px 6px', flexShrink: 0 }}>✕</button>
@@ -1037,7 +1088,7 @@ function eventDivisionRank(
 }
 
 function EventListRow({
-  se, eventData, myResults, allResults, playerInfoMap, playerDivision, onOpen, crownHint,
+  se, eventData, myResults, allResults, playerInfoMap, playerDivision, onOpen,
 }: {
   se: SessionEvent
   eventData: EventData | undefined
@@ -1046,8 +1097,6 @@ function EventListRow({
   playerInfoMap: Record<string, PlayerInfo>
   playerDivision: string | null | undefined
   onOpen: () => void
-  /** "A win here takes you to 7 of 9" — only on the domain being built. */
-  crownHint?: string | null
 }) {
   const mode = (eventData?.inputMode || se.input_mode || 'strength') as string
   const myBestResult = myResults.length > 0
@@ -1074,14 +1123,6 @@ function EventListRow({
             <span style={{ fontSize: '10.5px', color: '#B87DB5', border: '1px solid #B87DB566', borderRadius: '999px', padding: '0 7px' }}>EL {effortLevel}</span>
           )}
         </div>
-        {crownHint && (
-          <div style={{
-            fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', marginTop: '4px',
-            letterSpacing: '0.06em', color: '#F9B051',
-          }}>
-            {crownHint}
-          </div>
-        )}
       </div>
       {todo ? (
         <span style={{
@@ -1788,21 +1829,7 @@ function SessionEndTakeover({
 }) {
   const [summary, setSummary] = useState<EndSummary | null>(null)
   const [sessionCount, setSessionCount] = useState<number | null>(null)
-  const [lifetimeTotal, setLifetimeTotal] = useState<number | null>(null)
-  // Colours crossed in THIS session. Rows exist either because the kaiwhakawā
-  // tapped "Celebrated" mid-session or because the close trigger wrote them —
-  // and the takeover only renders after the session has ended, so the
-  // coach-releases-it rule is satisfied by the time anyone sees this.
-  // Crowns landed in THIS session. `null` means the progression migrations are
-  // not applied, in which case the colour card above keeps rendering; an empty
-  // array means the progression exists and nothing was crowned today.
-  const [crowns, setCrowns] = useState<{ taniwha_slug: string; crown_order: number }[] | null>(null)
-  // Every taniwha row for this player, so the progress bar knows which one they
-  // are building. Same query cost as fetching only the crowns.
-  const [taniwhaRows, setTaniwhaRows] =
-    useState<{ taniwha_slug: string; is_building: boolean }[] | null>(null)
   const [loaded, setLoaded] = useState(false)
-  const [barAnimated, setBarAnimated] = useState(false)
 
   // Lock body scroll while the takeover is open (same pattern as the sheet)
   useEffect(() => {
@@ -1813,44 +1840,21 @@ function SessionEndTakeover({
 
   useEffect(() => {
     async function load() {
-      const [sumRes, cntRes, rankRes] = await Promise.all([
+      const [sumRes, cntRes] = await Promise.all([
         supabase.from('session_player_summary')
           .select('overall_placement, total_placement_points, effort_points')
           .eq('session_id', sessionId).eq('player_id', playerId).maybeSingle(),
         supabase.from('session_player_summary')
           .select('*', { count: 'exact', head: true })
           .eq('player_id', playerId),
-        supabase.from('player_totals')
-          .select('lifetime_points')
-          .eq('player_id', playerId).maybeSingle(),
       ])
-
-      // Its own query, so a failure here degrades the taniwha panel rather than
-      // taking the whole end-of-session moment down.
-      const ptRes = await supabase
-        .from('player_taniwha')
-        .select('taniwha_slug, crown_order, crowned_session_id, is_building')
-        .eq('player_id', playerId)
-      const rows = (ptRes.data ?? []) as any[]
-      setTaniwhaRows(ptRes.error ? null : rows)
-      setCrowns(ptRes.error ? null : rows
-        .filter(r => r.crowned_session_id === sessionId)
-        .sort((a, b) => (a.crown_order ?? 0) - (b.crown_order ?? 0)))
 
       setSummary((sumRes.data as EndSummary | null) ?? null)
       setSessionCount(cntRes.count ?? 0)
-      setLifetimeTotal((rankRes.data as { lifetime_points: number } | null)?.lifetime_points ?? null)
       setLoaded(true)
     }
     load()
   }, [sessionId, playerId])
-
-  // Kick off the colour-bar fill animation once the numbers are in
-  useEffect(() => {
-    if (!loaded) return
-    const t = setTimeout(() => setBarAnimated(true), 500)
-    return () => clearTimeout(t)
-  }, [loaded])
 
   // Points earned — trust the trigger's summary row when it exists; otherwise
   // compute client-side the same way the /games report + trigger do.
@@ -1861,23 +1865,6 @@ function SessionEndTakeover({
     ?? (rank !== null && nDiv ? Math.round(Math.max(100 - (100 / nDiv) * (rank - 1), 10)) : 0)
   const effortPts = summary?.effort_points ?? effortLevel * 5
   const earned = placementPts + effortPts
-
-  // player_totals.lifetime_points already includes this session once the
-  // summary row exists (the trigger recomputes it in the same transaction).
-  const post = summary ? (lifetimeTotal ?? earned) : (lifetimeTotal ?? 0) + earned
-  const pre = Math.max(0, post - earned)
-
-  // Progress toward the next PART, not the next colour. Every 1,000 points is
-  // one part, so this bar fills roughly every seven sessions rather than once
-  // every few months — the whole reason the ladder was re-cut this way.
-  const nextPartSlot = nextSlot(post)
-  const buildingRow = taniwhaRows?.find((r) => r.is_building)
-  const buildingTaniwha = buildingRow ? taniwhaBySlug(buildingRow.taniwha_slug) : null
-  const frac = (p: number) => progressToNextSlot(p) / 100
-  const gradeBarStyle: React.CSSProperties = {
-    background: buildingTaniwha && !buildingTaniwha.accent.startsWith('linear-gradient')
-      ? buildingTaniwha.accent : '#F9B051',
-  }
 
   // Session-count milestone — summary row present means the count includes this session
   const sessionNumber = sessionCount === null ? null : (summary ? sessionCount : sessionCount + 1)
@@ -1910,65 +1897,6 @@ function SessionEndTakeover({
 
         {/* Body */}
         <div style={{ overflowY: 'auto', padding: '0 18px 24px', flex: 1 }}>
-
-          {/* ── New colour ────────────────────────────────────────────────
-              Above placement and points on purpose: on the day you cross a
-              threshold, that is the headline, not where you finished.
-              (The ladder's smallest gap is 500 and a session tops out at 200,
-              so this is always one card — the map is defensive.) */}
-          {/* ── Crown earned ──────────────────────────────────────────────
-              The headline on the day it happens, above placement and points.
-              Only ever one: a session tops out at 200 points and a crown slot
-              is 10,000 apart, so two cannot land together. */}
-          {(crowns ?? []).map(cr => {
-            const tw = taniwhaBySlug(cr.taniwha_slug)
-            if (!tw) return null
-            const card = taniwhaCardStyle(tw)
-            return (
-              <div key={cr.taniwha_slug} style={{
-                ...card,
-                position: 'relative', overflow: 'hidden',
-                borderRadius: '16px', padding: '20px 22px', marginTop: '18px',
-                animation: 'toastPop 0.6s cubic-bezier(0.16,1,0.3,1)',
-              }}>
-                <div style={{
-                  fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11.5px',
-                  textTransform: 'uppercase', letterSpacing: '0.18em',
-                  color: card.color as string, opacity: 0.7,
-                }}>
-                  Taniwha crowned
-                </div>
-                <div style={{
-                  fontFamily: 'Bebas Neue, cursive', fontSize: '40px', lineHeight: 1.02,
-                  letterSpacing: '0.03em', color: card.color as string, marginTop: '4px',
-                }}>
-                  {tw.name}
-                </div>
-                <div style={{ fontSize: '13px', color: card.color as string, opacity: 0.75, marginTop: '4px' }}>
-                  Crown #{cr.crown_order} of {MAX_CROWNS} · yours for good
-                </div>
-              </div>
-            )
-          })}
-
-          {/* Parts are the every-session heartbeat: quieter than a crown, but
-              nobody should finish a game without knowing they earned one. */}
-          {crowns !== null && lifetimeTotal !== null && summary && (() => {
-            const today = (summary.total_placement_points ?? 0) + (summary.effort_points ?? 0)
-            const gained = bodyPartBudget(lifetimeTotal) - bodyPartBudget(Math.max(lifetimeTotal - today, 0))
-            if (gained <= 0) return null
-            return (
-              <div style={{
-                background: '#111', border: '1px solid #1e1e1e', borderRadius: '16px',
-                padding: '14px 18px', marginTop: '18px',
-                fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px',
-                letterSpacing: '0.06em', textTransform: 'uppercase', color: '#F9B051',
-              }}>
-                +{gained} taniwha piece{gained === 1 ? '' : 's'} today
-              </div>
-            )
-          })()}
-
 
           {/* Final placement */}
           <div style={{ textAlign: 'center', padding: '18px 0 22px' }}>
@@ -2013,36 +1941,17 @@ function SessionEndTakeover({
             </>
           )}
 
-          {/* Taniwha progress */}
-          <div style={{ ...QES_LBL }}>Taniwha — +{loaded ? earned : '…'} pts this session</div>
-          <div style={{ background: '#161616', border: '1px solid #1e1e1e', borderRadius: '14px', padding: '14px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '8px' }}>
-              <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '22px', color: buildingTaniwha ? taniwhaOnDark(buildingTaniwha) : '#F9B051', letterSpacing: '0.03em' }}>
-                {buildingTaniwha ? buildingTaniwha.name : 'Choose your next taniwha'}
-              </div>
-              <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11.5px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                {nextPartSlot && buildingTaniwha
-                  ? `${partFor(buildingTaniwha, ((nextPartSlot.slot - 1) % BODY_PARTS_PER_TANIWHA) + 1)?.name ?? 'Next part'} — ${nextPartSlot.pointsToGo.toLocaleString()}pts to go`
-                  : nextPartSlot
-                  ? `Next part — ${nextPartSlot.pointsToGo.toLocaleString()}pts to go`
-                  : 'Te Kāhui — the end of the ladder'}
-              </div>
+          {/* Colours. What today did for them is worked out from the standards
+              and shown on /grades; a kaiwhakawā confirms each new colour. */}
+          <a href="/grades" style={{
+            display: 'block', marginTop: '18px', background: '#161616', border: '1px solid #1e1e1e',
+            borderRadius: '14px', padding: '14px 16px', color: '#fff', textDecoration: 'none',
+          }}>
+            <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '20px', letterSpacing: '0.04em' }}>Your colours</div>
+            <div style={{ fontSize: '13px', color: '#888', marginTop: '3px', lineHeight: 1.5 }}>
+              See what today&apos;s scores did for your colour in each domain →
             </div>
-            <div style={{ height: '10px', borderRadius: '99px', background: '#0a0a0a', overflow: 'hidden' }}>
-              <div style={{
-                height: '100%', borderRadius: '99px', ...gradeBarStyle,
-                width: `${frac(barAnimated ? post : pre) * 100}%`,
-                transition: 'width 1.2s cubic-bezier(0.16,1,0.3,1)',
-              }} />
-            </div>
-            {/* The number above is points; this is what it costs in games. */}
-            {nextPartSlot && (
-              <div style={{ marginTop: '9px', fontSize: '11.5px', color: '#777', lineHeight: 1.45 }}>
-                {sessionsToGoLabel(nextPartSlot.pointsToGo)} — a good session is worth{' '}
-                {GOOD_SESSION_POINTS_LOW}–{GOOD_SESSION_POINTS_HIGH} points.
-              </div>
-            )}
-          </div>
+          </a>
 
           {/* Session-count milestone */}
           {milestone !== null && (
@@ -2109,16 +2018,6 @@ export default function SessionPage() {
   const [judgeGuestOpen, setJudgeGuestOpen] = useState(false)
   const [sessionPlayers, setSessionPlayers] = useState<{ id: string; name: string }[]>([])
   const [judgePRs, setJudgePRs] = useState<Record<string, number | string | null>>({})
-  // Lifetime colour totals for everyone in this session — feeds the live
-  // colour alert. Committed points only; this session is added on top.
-  const [playerTotals, setPlayerTotals] = useState<Record<string, { lifetime_points: number; highest_rung: number }>>({})
-  // Taniwha progression for everyone scoring in this session. NULL means the
-  // progression migrations are not applied, and the colour banner shows instead.
-  const [taniwhaProgress, setTaniwhaProgress] =
-    useState<Record<string, TaniwhaProgress> | null>(null)
-  const [claimingCrown, setClaimingCrown] = useState<string | null>(null)
-  const [colourToast, setColourToast] = useState<{ text: string; ok: boolean } | null>(null)
-
   const allPlayers = player ? [player, ...familyMembers] : []
   const activePlayer = allPlayers.find(p => p.id === activePlayerId) ?? player
   const activePlayerDivision = activePlayer ? (activePlayer as Record<string, unknown>).division as string | null : null
@@ -2140,164 +2039,6 @@ export default function SessionPage() {
     () => scoredEventIdsByTarget(results, events.map(ev => ev.id)),
     [results, events],
   )
-
-  // ── Live colour alert (kaiwhakawā only) ────────────────────────────────────
-  // Judges only: this is the coach's view, and players should hear it from the
-  // coach rather than from their phone.
-  const scoredPlayerIds = useMemo(
-    () => [...new Set(results.map(r => r.player_id).filter(Boolean))] as string[],
-    [results],
-  )
-
-  useEffect(() => {
-    if (!isJudge || scoredPlayerIds.length === 0) return
-    // `cancelled` guards against out-of-order responses when players are added
-    // mid-session — the same bug that leaked judgePRs across a target switch.
-    let cancelled = false
-    supabase
-      .from('player_totals')
-      .select('player_id, lifetime_points, highest_rung')
-      .in('player_id', scoredPlayerIds)
-      .then(({ data }) => {
-        if (cancelled) return
-        const map: Record<string, { lifetime_points: number; highest_rung: number }> = {}
-        for (const row of data ?? []) {
-          map[row.player_id as string] = {
-            lifetime_points: row.lifetime_points as number,
-            highest_rung: row.highest_rung as number,
-          }
-        }
-        setPlayerTotals(map)
-      })
-    return () => { cancelled = true }
-  }, [isJudge, scoredPlayerIds])
-
-  // Taniwha progression. Its own queries so a missing table is an error object
-  // rather than something that takes the live session down mid-game.
-  // NOT judge-gated: the player's own event list needs it for the crown hint,
-  // and player_taniwha / player_event_wins are both public reads.
-  useEffect(() => {
-    if (scoredPlayerIds.length === 0) { setTaniwhaProgress(null); return }
-    let cancelled = false
-    ;(async () => {
-      const [pt, wins, refs] = await Promise.all([
-        supabase.from('player_taniwha')
-          .select('player_id, taniwha_slug, domain_number, body_parts, is_building, crowned_at')
-          .in('player_id', scoredPlayerIds),
-        supabase.from('player_event_wins').select('player_id, event_name').in('player_id', scoredPlayerIds),
-        supabase.from('referrals').select('referrer_id').in('referrer_id', scoredPlayerIds)
-          .not('qualified_at', 'is', null),
-      ])
-      if (cancelled) return
-      if (pt.error) { setTaniwhaProgress(null); return }
-
-      // event_name -> domain through the CURRENT roster, never through
-      // session_events.domain_number (renumbered June 2026).
-      const domainOf = new Map(EVENTS.map(e => [e.name, e.domainNumber]))
-      const map: Record<string, TaniwhaProgress> = {}
-      const at = (id: string) => (map[id] ??= {
-        taniwha: [], lifetimePoints: 0, bankedWinsByDomain: {},
-        qualifiedReferrals: 0, bankedEventNames: new Set<string>(),
-      })
-      for (const pid of scoredPlayerIds) at(pid)
-      for (const r of (pt.data ?? []) as any[]) at(r.player_id).taniwha.push(r)
-      for (const w of (wins.data ?? []) as any[]) {
-        const d = domainOf.get(w.event_name)
-        const prog = at(w.player_id)
-        prog.bankedEventNames!.add(w.event_name)
-        if (typeof d === 'number') {
-          prog.bankedWinsByDomain[d] = (prog.bankedWinsByDomain[d] ?? 0) + 1
-        }
-      }
-      for (const r of (refs.data ?? []) as any[]) at(r.referrer_id).qualifiedReferrals += 1
-      setTaniwhaProgress(map)
-    })()
-    return () => { cancelled = true }
-  }, [scoredPlayerIds])
-
-  // "A win here takes you to 7 of 9" — shown on an event that belongs to the
-  // domain this player is building, that they have not already won, and only
-  // while the crown is still outstanding. The whole point of the taniwha
-  // system in one line, at the moment the player can act on it.
-  function crownHintFor(pid: string | null | undefined, se: SessionEvent): string | null {
-    if (!pid || !taniwhaProgress) return null
-    // Domain from the CURRENT roster, never session_events.domain_number.
-    return crownHint(taniwhaProgress[pid], se.event_name, getEventByName(se.event_name)?.domainNumber)
-  }
-
-  const taniwhaAlertList: TaniwhaAlert[] = useMemo(() => {
-    if (!isJudge || sessionEnded || !taniwhaProgress) return []
-    const domainOfEvent = new Map(events.map(ev => [ev.id, getEventByName(ev.event_name)?.domainNumber]))
-    const prov = provisionalWins({
-      results: results.map(r => ({ player_id: r.player_id, event_id: r.event_id, raw_score: r.raw_score })),
-      domainOfEvent: id => domainOfEvent.get(id) ?? null,
-      divisionOf: pid => playerInfoMap[pid]?.division,
-      // The crown counts DISTINCT events, so a player winning an event they
-      // have already banked must not be counted twice. Without this, someone
-      // on 8 banked wins who wins the same Deadlift again would read as 9.
-      alreadyWon: (pid, eventId) => {
-        const name = events.find(ev => ev.id === eventId)?.event_name
-        return !!name && !!taniwhaProgress[pid]?.bankedEventNames?.has(name)
-      },
-    })
-    return taniwhaAlerts({
-      results: results.map(r => ({ player_id: r.player_id, event_id: r.event_id, raw_score: r.raw_score })),
-      eventIds: events.map(ev => ev.id),
-      playerIds: scoredPlayerIds,
-      nameOf: pid => sessionPlayers.find(p => p.id === pid)?.name
-        ?? results.find(r => r.player_id === pid)?.player_name
-        ?? 'Player',
-      divisionOf: pid => playerInfoMap[pid]?.division,
-      effortLevelOf: pid => calcTotalEffortLevel(results.filter(r => r.player_id === pid), events),
-      progressOf: pid => {
-        const base = taniwhaProgress[pid]
-        return base ? { ...base, lifetimePoints: playerTotals[pid]?.lifetime_points ?? 0 } : undefined
-      },
-      provisionalWinsOf: pid => prov.get(pid) ?? {},
-    })
-  }, [isJudge, sessionEnded, results, events, scoredPlayerIds, sessionPlayers, playerInfoMap, playerTotals, taniwhaProgress])
-
-  async function celebrateCrown(alert: TaniwhaAlert) {
-    setClaimingCrown(alert.playerId)
-    const { data, error } = await supabase.rpc('claim_taniwha_crown', {
-      p_player_id: alert.playerId,
-      p_session_id: sessionId,
-    })
-    setClaimingCrown(null)
-
-    // FALSE is not an error — claim_taniwha_crown re-derives the guaranteed
-    // floor and the banked wins server-side and refuses anything that is not
-    // genuinely safe. Announcing a crown the server declined is the exact
-    // failure this feature exists to prevent, so say so and leave the alert up.
-    if (error || data !== true) {
-      setColourToast({
-        text: error
-          ? `Could not record ${alert.taniwha.name} — try again`
-          : `${alert.playerName} has not quite earned ${alert.taniwha.name} yet — scores may have changed`,
-        ok: false,
-      })
-      setTimeout(() => setColourToast(null), 5000)
-      return
-    }
-
-    // Retire the alert locally. lifetime_points stays put on purpose — it only
-    // catches up when the session closes.
-    setTaniwhaProgress(prev => {
-      if (!prev) return prev
-      const p = prev[alert.playerId]
-      if (!p) return prev
-      return {
-        ...prev,
-        [alert.playerId]: {
-          ...p,
-          taniwha: p.taniwha.map(x =>
-            x.is_building ? { ...x, is_building: false, crowned_at: new Date().toISOString() } : x),
-        },
-      }
-    })
-    setColourToast({ text: `${alert.playerName} has earned ${alert.taniwha.name}`, ok: true })
-    setTimeout(() => setColourToast(null), 5000)
-  }
 
   function selectJudgeTarget(sel: { id?: string; guestName?: string } | null) {
     setJudgeTargetId(sel?.id ?? '')
@@ -2827,7 +2568,6 @@ export default function SessionPage() {
                 playerInfoMap={playerInfoMap}
                 playerDivision={pDivision}
                 onOpen={() => setSheetEventId(ev.id)}
-                crownHint={crownHintFor(pid, ev)}
               />
             ))}
 
@@ -2919,26 +2659,6 @@ export default function SessionPage() {
         </div>
       )}
 
-      {/* Colour claimed — kaiwhakawā confirmation */}
-      {colourToast && (
-        <div style={{
-          position: 'fixed', bottom: toast ? '84px' : '20px', left: '50%', transform: 'translateX(-50%)',
-          width: 'min(600px, calc(100vw - 32px))', zIndex: 201, overflow: 'hidden',
-          background: '#161616',
-          border: `1px solid ${colourToast.ok ? '#F9B05155' : '#EA474255'}`,
-          borderLeft: `4px solid ${colourToast.ok ? '#F9B051' : '#EA4742'}`,
-          borderRadius: '12px', padding: '13px 16px', boxShadow: '0 24px 60px rgba(0,0,0,0.6)',
-          animation: colourToast.ok ? 'toastPop 0.45s cubic-bezier(0.16,1,0.3,1)' : undefined,
-        }}>
-          {colourToast.ok && (
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)' }} />
-          )}
-          <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '18px', color: '#fff' }}>
-            {colourToast.text}
-          </div>
-        </div>
-      )}
-
       {/* Effort cap toast — one-time per player per session */}
       {effortMaxToast && (
         <div style={{
@@ -2979,12 +2699,6 @@ export default function SessionPage() {
                 <div style={{ color: '#888', fontSize: '13px', marginTop: '4px' }}>Score submission is locked</div>
               </div>
             )}
-
-            <TaniwhaAlertBanner
-              alerts={taniwhaAlertList}
-              claimingPlayerId={claimingCrown}
-              onCelebrate={celebrateCrown}
-            />
 
             {/* Player chips */}
             <div className="no-scrollbar" style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '2px', marginBottom: '12px' }}>
@@ -3114,7 +2828,6 @@ export default function SessionPage() {
                     playerInfoMap={playerInfoMap}
                     playerDivision={targetDivision}
                     onOpen={() => setSheetEventId(ev.id)}
-                    crownHint={crownHintFor(judgeTargetId, ev)}
                   />
                 ))}
 

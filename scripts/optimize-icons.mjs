@@ -12,7 +12,7 @@
 //     of tile size, so the mask is never wider than ~31 CSS px. Canva exports
 //     land at 1000x1000 (~36 KB each, 4.6 MB across 129 events).
 //
-//   taniwha/<slug>/*.png — TaniwhaFigure draws these at width 150 (dashboard
+//   taniwha/<slug>/*.png — the retired TaniwhaFigure drew these at width 150 (dashboard
 //     card), 96 (/taniwha) and 74 (history). Authored at 1000x1000 per
 //     public/taniwha/README.md, which is right for the artist and ~6.7x more
 //     than the screen can use. All eleven pieces of a taniwha load on the

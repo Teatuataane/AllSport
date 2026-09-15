@@ -1,0 +1,281 @@
+'use client'
+
+// ─── Play history ────────────────────────────────────────────────────────────
+// Every session a player has played, and the colours era. This lived on the
+// taniwha history page until the taniwha retired with the grading rebuild; the
+// two halves that were never taniwha moved here unchanged.
+//
+//   1  play history — the session timeline, newest first
+//   2  the colours era — colours really awarded, on the dates they were earned
+//
+// Honours the family switcher like every other stats page.
+
+import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase-browser'
+import { formatNZDate } from '@/lib/dates'
+// The retired ladder, still the source of truth for what a past award LOOKED
+// like. This page is its only consumer, by design.
+import { colourByRung } from '@/lib/colours'
+import { useActivePlayer } from '@/lib/useActivePlayer'
+import PlayerTabs, { ViewingAsBanner } from '@/components/PlayerTabs'
+
+const supabase = createClient()
+
+type Summary = {
+  session_id: string
+  player_id: string
+  overall_placement: number | null
+  total_placement_points: number | null
+  effort_points: number | null
+  effort_level: number | null
+  session_date: string
+  location: string | null
+}
+
+type Award = {
+  player_id: string
+  rung: number
+  colour_name: string
+  points_at_award: number
+  awarded_at: string
+  session_date: string | null
+  location: string | null
+}
+
+type Bundle = {
+  summaries: Summary[]
+  awards: Award[]
+}
+
+const PAGE = 20
+
+export default function HistoryPage() {
+  const router = useRouter()
+  const { loading, userId, familyMembers, activePlayerId, activePlayer } = useActivePlayer()
+  const [bundle, setBundle] = useState<Bundle | null>(null)
+  // Keyed by player, so switching players starts from the first page without
+  // resetting state inside an effect.
+  const [paging, setPaging] = useState<{ id: string | null; shown: number }>({ id: null, shown: PAGE })
+  const shown = paging.id === activePlayerId ? paging.shown : PAGE
+
+  useEffect(() => {
+    if (!loading && !userId) router.push('/play')
+  }, [loading, userId, router])
+
+  const householdIds = useMemo(
+    () => (userId ? [userId, ...familyMembers.map(m => m.id)] : []),
+    [userId, familyMembers],
+  )
+
+  useEffect(() => {
+    if (householdIds.length === 0) return
+    let cancelled = false
+    supabase.rpc('player_dashboard', { p_player_ids: householdIds }).then(({ data, error }) => {
+      if (cancelled || error || !data) return
+      setBundle(data as Bundle)
+    })
+    return () => { cancelled = true }
+    // Keyed on the ids themselves, not the array identity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [householdIds.join(',')])
+
+  const mySummaries = useMemo(
+    () => (bundle?.summaries ?? [])
+      .filter(s => s.player_id === activePlayerId)
+      .sort((a, b) => b.session_date.localeCompare(a.session_date)),
+    [bundle, activePlayerId],
+  )
+
+  const myAwards = useMemo(
+    () => (bundle?.awards ?? []).filter(a => a.player_id === activePlayerId),
+    [bundle, activePlayerId],
+  )
+
+  if (loading) return <Centered>Loading…</Centered>
+  if (!activePlayer) return <Centered>No player profile found.</Centered>
+
+  return (
+    <>
+      <PlayerTabs />
+      <div style={{ maxWidth: 520, margin: '0 auto', padding: '14px 16px 40px', color: 'var(--white)' }}>
+        <BackLink href="/dashboard">Play history</BackLink>
+        <ViewingAsBanner />
+
+        <Section>Every game</Section>
+        <Panel>
+          {!bundle ? (
+            <Empty>Loading…</Empty>
+          ) : mySummaries.length === 0 ? (
+            <Empty>No games yet.</Empty>
+          ) : (
+            mySummaries.slice(0, shown).map(s => {
+              const total = (s.total_placement_points ?? 0) + (s.effort_points ?? 0)
+              return (
+                <Row key={s.session_id}>
+                  <div style={{
+                    width: 38, height: 38, borderRadius: 11, flexShrink: 0,
+                    background: s.overall_placement === 1 ? 'rgba(249,176,81,0.13)' : '#1a1a1a',
+                    border: `1px solid ${s.overall_placement === 1 ? 'rgba(249,176,81,0.33)' : 'var(--border-strong)'}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontFamily: 'var(--font-display)', fontSize: 17,
+                    color: s.overall_placement === 1 ? 'var(--amber)' : '#999',
+                  }}>
+                    {s.overall_placement ? ordinalShort(s.overall_placement) : '—'}
+                  </div>
+                  <Link href={`/games/${s.session_id}`} style={{ flexGrow: 1, minWidth: 0, color: 'inherit' }}>
+                    <div style={{ fontSize: 14, fontWeight: 600 }}>{formatNZDate(s.session_date)}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                      {s.location ?? 'AllSport HQ'}
+                    </div>
+                  </Link>
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 19 }}>{total}</div>
+                    <div style={{
+                      fontFamily: 'var(--font-label)', fontSize: 9, color: '#555',
+                      textTransform: 'uppercase', letterSpacing: '0.08em',
+                    }}>
+                      {s.total_placement_points ?? 0} + {s.effort_points ?? 0} effort
+                    </div>
+                  </div>
+                </Row>
+              )
+            })
+          )}
+          {mySummaries.length > shown && (
+            <button onClick={() => setPaging({ id: activePlayerId, shown: shown + PAGE })} style={{
+              width: '100%', background: 'transparent', border: 'none', cursor: 'pointer',
+              padding: '13px 0', color: 'var(--blue)',
+              fontFamily: 'var(--font-label)', textTransform: 'uppercase',
+              letterSpacing: '0.1em', fontWeight: 600, fontSize: 12,
+            }}>
+              Show all {mySummaries.length} games
+            </button>
+          )}
+        </Panel>
+
+        {myAwards.length > 0 && (
+          <>
+            <Section>The colours era</Section>
+            <Panel>
+              {myAwards.map(a => {
+                // lib/colours.ts survives precisely so this row can be the
+                // colour it commemorates.
+                const c = colourByRung(a.rung)
+                return (
+                  <Row key={a.rung}>
+                    <div style={{
+                      width: 11, height: 11, borderRadius: 999, flexShrink: 0,
+                      background: c ? (c.accent.startsWith('linear-gradient') ? undefined : c.accent) : 'var(--grey)',
+                      backgroundImage: c?.accent.startsWith('linear-gradient') ? c.accent : undefined,
+                      border: c?.english.toLowerCase() === 'white' ? '1px solid #333' : undefined,
+                    }} />
+                    <div style={{ flexGrow: 1, minWidth: 0 }}>
+                      <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, letterSpacing: '0.04em' }}>
+                        {a.colour_name.toUpperCase()}
+                      </div>
+                      <div style={{ fontSize: 11, color: '#555', marginTop: 2 }}>
+                        {a.session_date ? formatNZDate(a.session_date) : formatNZDate(a.awarded_at.slice(0, 10))}
+                        {a.location ? ` · ${a.location}` : ''}
+                      </div>
+                    </div>
+                    <Muted>{a.points_at_award.toLocaleString()}</Muted>
+                  </Row>
+                )
+              })}
+              <div style={{
+                fontSize: 11, color: '#444', lineHeight: 1.5,
+                padding: '12px 14px', borderTop: '1px solid var(--border)',
+              }}>
+                Colours you really earned by points, on the dates you earned them. Kept as history,
+                never rewritten as grades.
+              </div>
+            </Panel>
+          </>
+        )}
+
+        <div style={{ textAlign: 'center', marginTop: 22 }}>
+          <Link href="/grades" style={{
+            fontFamily: 'var(--font-label)', textTransform: 'uppercase',
+            letterSpacing: '0.1em', fontWeight: 600, fontSize: 12, color: 'var(--blue)',
+          }}>
+            Your colours now →
+          </Link>
+        </div>
+      </div>
+    </>
+  )
+}
+
+function ordinalShort(n: number): string {
+  const s = ['th', 'st', 'nd', 'rd']
+  const v = n % 100
+  return (n + (s[(v - 20) % 10] || s[v] || s[0])).toUpperCase()
+}
+
+function Centered({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555' }}>
+      {children}
+    </div>
+  )
+}
+
+function BackLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <Link href={href} style={{
+      display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14,
+      color: 'var(--white)', textDecoration: 'none',
+    }}>
+      <span style={{ color: 'var(--grey)', fontSize: 19, lineHeight: 1 }}>‹</span>
+      <span style={{ fontFamily: 'var(--font-display)', fontSize: 22, letterSpacing: '0.05em' }}>
+        {String(children).toUpperCase()}
+      </span>
+    </Link>
+  )
+}
+
+function Section({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{
+      fontFamily: 'var(--font-label)', textTransform: 'uppercase',
+      letterSpacing: '0.14em', fontWeight: 600, fontSize: 11,
+      color: 'var(--text-muted)', margin: '18px 0 10px',
+    }}>
+      {children}
+    </div>
+  )
+}
+
+function Panel({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden' }}>
+      {children}
+    </div>
+  )
+}
+
+function Row({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '12px 14px', borderBottom: '1px solid #1a1a1a' }}>
+      {children}
+    </div>
+  )
+}
+
+function Muted({ children }: { children: React.ReactNode }) {
+  return (
+    <span style={{ fontFamily: 'var(--font-label)', fontSize: 11, color: '#555', flexShrink: 0 }}>
+      {children}
+    </span>
+  )
+}
+
+function Empty({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ padding: '20px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+      {children}
+    </div>
+  )
+}

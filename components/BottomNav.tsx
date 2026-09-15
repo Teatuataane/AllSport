@@ -284,9 +284,15 @@ function MoreSheet({ isJudge, onClose, onSignOut }: {
           </SheetRow>
         )}
 
-        <SheetRow href="/taniwha" label="My taniwha">
+        <SheetRow href="/grades" label="My colours">
           <svg {...stroke()} strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 17l3-9 6 5 6-5 3 9z" />
+            <circle cx="12" cy="12" r="8" /><path d="M12 4v16" /><path d="M4 12h16" />
+          </svg>
+        </SheetRow>
+
+        <SheetRow href="/history" label="Play history">
+          <svg {...stroke()} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 12a9 9 0 1 0 3-6.7" /><path d="M3 4v4h4" /><path d="M12 8v4l3 2" />
           </svg>
         </SheetRow>
 

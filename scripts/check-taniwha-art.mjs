@@ -21,7 +21,7 @@ import { join } from 'node:path'
 const ROOT = 'public/taniwha'
 const OUT = 'public/taniwha/_preview.html'
 
-// Must match PARTS in lib/taniwha.ts. Part ten is the implement and is named
+// Frozen at the PARTS list lib/taniwha.ts held when the taniwha retired (Sept 2026); the art is kept, the code is not. Part ten is the implement and is named
 // for the tool, so it is resolved per taniwha below.
 const BODY = ['pane', 'tinana', 'hiku', 'ringa-maui', 'ringa-matau',
               'waewae-maui', 'waewae-matau', 'parirau', 'arero']

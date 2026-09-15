@@ -218,16 +218,17 @@ describe('getEventByName', () => {
     expect(isTimedEffort(e.slug)).toBe(false)
   })
 
-  it('wheelbarrow events extend Weighted Carry and rank fastest-first', () => {
+  it('wheelbarrow events share Weighted Carry\'s bodyweight ladder and rank fastest-first', () => {
+    // The Sept 2026 grading rebuild moved all three from fixed kilos to fractions
+    // of bodyweight, topping out at a bodyweight load, so they now share the
+    // whole ladder (the 200kg wheelbarrow rung went with the fixed weights).
     const carry = getEventByName('Weighted Carry')!
+    const carryNames = carry.difficultyTiers!.map(t => t.name)
+    expect(carryNames).toEqual(['¼ BW — 200m', '½ BW — 200m', '¾ BW — 200m', 'Bodyweight — 200m'])
+    expect(isTimedEffort(carry.slug)).toBe(true)
     for (const name of ['Wheelbarrow Push', 'Wheelbarrow Pull']) {
       const e = getEventByName(name)!
-      // The Sept 2026 review added a 200kg rung to both wheelbarrows and not to
-      // Weighted Carry, so they share a prefix rather than the whole ladder.
-      const names = e.difficultyTiers!.map(t => t.name)
-      expect(names.slice(0, carry.difficultyTiers!.length))
-        .toEqual(carry.difficultyTiers!.map(t => t.name))
-      expect(names.at(-1)).toBe('200kg — 200m')
+      expect(e.difficultyTiers!.map(t => t.name)).toEqual(carryNames)
       expect(isTimedEffort(e.slug)).toBe(true)
     }
   })
@@ -342,10 +343,13 @@ describe('getBonusTargets', () => {
 
   it('sport events → 1 target regardless of PR', () => {
     // Tennis became difficulty+reps in the Sept 2026 review (drill ladder topped
-    // by a Game rung). Tag is one of the events that kept plain win/draw/loss.
-    const tag = EVENTS.find(e => e.slug === 'tag')!
-    expect(tag.inputMode).toBe('sport')
-    const targets = getBonusTargets(tag, null)
+    // by a Game rung), and the grading rebuild gave the other pure contests a
+    // drill too. Wrestling is the one left on plain win/draw/loss: no fair solo
+    // drill exists, so every colour in it comes from the rating.
+    const wrestling = EVENTS.find(e => e.slug === 'wrestling')!
+    expect(wrestling.inputMode).toBe('sport')
+    expect(EVENTS.filter(e => e.inputMode === 'sport').map(e => e.slug)).toEqual(['wrestling'])
+    const targets = getBonusTargets(wrestling, null)
     expect(targets).toHaveLength(1)
     expect(targets[0].inputMode).toBe('sport')
     expect(targets[0].points).toBe(5)
