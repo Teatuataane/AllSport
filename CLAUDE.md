@@ -1253,8 +1253,12 @@ player id, and `lib/headToHead.ts` rates the games it collects.
   played counts twice. A disputed game counts for nothing, toward the minimum
   or the rating, until a kaiwhakawā settles it. **Agreement is derived, never stored**; stored agreement
   goes stale the moment either side edits.
-- **Settling a dispute** (`20260915213626`, decided with Tāne 2026-09-16, NOT YET
-  APPLIED). On the /judge Colours tab a kaiwhakawā marks the record that is RIGHT;
+- **Settling a dispute** (`20260915213626`, decided with Tāne 2026-09-16, APPLIED AND
+  VERIFIED IN PRODUCTION 2026-09-16 by querying the objects: `settle_dispute` has
+  `prosecdef`, `search_path=public`, execute for `authenticated` and not `anon`, and
+  `authenticated` still has no UPDATE on `matches`; an anon call returns 401 /
+  `42501`. `matches` held 0 rows at apply time, so no dispute has been settled for
+  real yet). On the /judge Colours tab a kaiwhakawā marks the record that is RIGHT;
   `settle_dispute(a, b, true)` stamps `confirmed_by`/`confirmed_at` on it and clears
   the other, and `reconcileGames` calls the pair `settled` and rates it on the
   confirmed record. Nobody's score changes (placements are not recomputed after
