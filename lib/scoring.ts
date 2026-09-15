@@ -316,6 +316,84 @@ export function computeScoreVals(
   return null
 }
 
+/** Every column one scored entry writes. */
+export type ScoreColumns = {
+  raw_score: number
+  score_label: string
+  difficulty_tier?: string
+  exercise_variation?: string
+  weight_kg?: number
+  reps?: number
+  time_seconds?: number
+  distance_m?: number
+  opponent_name?: string
+  result_type?: string
+  match_score?: string
+}
+
+/**
+ * The columns an entry writes: raw_score and its label, plus the source
+ * columns behind them. ONE path for a game result (the live session) and a
+ * logged best effort (workout logging), so a solo score is encoded exactly as a
+ * game score and the grading engine never needs to tell them apart.
+ */
+export function scoreColumns(mode: string, eventData: EventData | undefined, v: EntryVals): ScoreColumns | null {
+  const scored = computeScoreVals(mode, eventData, v)
+  if (!scored) return null
+  const c: ScoreColumns = { raw_score: scored.raw_score, score_label: scored.score_label }
+  const totalSecs = (parseFloat(v.timeMins) || 0) * 60 + (parseFloat(v.timeSecs) || 0)
+  const isWeightVariation = !!v.exerciseVariation && (eventData?.weightVariations?.includes(v.exerciseVariation) ?? false)
+  if (v.difficultyTier) c.difficulty_tier = v.difficultyTier
+  if (v.exerciseVariation) c.exercise_variation = v.exerciseVariation
+  if (mode === 'strength') {
+    c.weight_kg = parseFloat(v.weightKg) || 0
+    if (v.repCount) c.reps = parseInt(v.repCount)
+  }
+  if (mode === 'reps') {
+    if (isWeightVariation) c.weight_kg = parseFloat(v.weightKg) || 0
+    c.reps = parseInt(v.repCount) || 0
+  }
+  if (['time', 'hold', 'difficulty+time', 'weight+time'].includes(mode) && totalSecs > 0) c.time_seconds = totalSecs
+  if (mode === 'weight+time') c.weight_kg = parseFloat(v.weightKg) || 0
+  if (mode === 'difficulty+reps' || mode === 'difficulty+distance') {
+    const special = tierScoring(eventData, { name: v.difficultyTier })
+    if (special === 'weight') {
+      c.weight_kg = parseFloat(v.weightKg) || 0
+      // Reps do not rank on a weight rung, but they are still the record of
+      // what was done — this is the gap Tāne flagged in the difficulty review.
+      if (v.repCount) c.reps = parseInt(v.repCount)
+    } else if (special === 'sport') {
+      if (v.opponentName) c.opponent_name = v.opponentName
+      c.result_type = v.sportResult
+      // Golf and Disc Golf carry the round's strokes alongside the result.
+      if (v.scoreInput) c.match_score = v.scoreInput
+      else if (v.sportScore) c.match_score = v.sportScore
+    } else if (mode === 'difficulty+distance') {
+      c.distance_m = parseFloat(v.distanceVal) || 0
+    } else {
+      c.reps = parseInt(v.repCount) || 0
+    }
+  }
+  if (mode === 'difficulty+time' && tierScoring(eventData, { name: v.difficultyTier }) === 'sport') {
+    if (v.opponentName) c.opponent_name = v.opponentName
+    c.result_type = v.sportResult
+  }
+  if (mode === 'sprint') {
+    const s = parseFloat(v.timeSecs) || 0; const cs = parseInt(v.sprintCs) || 0
+    c.time_seconds = s + cs / 100
+  }
+  if (mode === 'distance') {
+    const val = parseFloat(v.distanceVal) || 0
+    c.distance_m = v.distanceUnit === 'm' ? val : val / 100
+  }
+  if (mode === 'sport') {
+    c.result_type = v.sportResult
+    if (v.opponentName) c.opponent_name = v.opponentName
+    if (v.sportScore) c.match_score = v.sportScore
+  }
+  return c
+}
+
 // Prefill entry values from an existing result row
 export function valsFromResult(mode: string, r: ResultLike): Partial<EntryVals> {
   const p: Partial<EntryVals> = {}
