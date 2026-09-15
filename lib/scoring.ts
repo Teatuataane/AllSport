@@ -114,6 +114,10 @@ export type EntryVals = {
   sportResult: 'win' | 'draw' | 'loss' | ''
   sportScore: string
   opponentName: string
+  // The picked opponent's player id — '' when the name was typed or is a
+  // guest. Only an id records a head-to-head match (lib/matches.ts); the name
+  // still drives the score label and the new-opponent effort rule.
+  opponentId: string
   exerciseVariation: string
   difficultyTier: string
   scoreInput: string
@@ -122,7 +126,7 @@ export type EntryVals = {
 export const EMPTY_VALS: EntryVals = {
   weightKg: '', repCount: '', timeMins: '', timeSecs: '', sprintCs: '',
   distanceVal: '', distanceUnit: 'm', sportResult: '', sportScore: '',
-  opponentName: '', exerciseVariation: '', difficultyTier: '', scoreInput: '',
+  opponentName: '', opponentId: '', exerciseVariation: '', difficultyTier: '', scoreInput: '',
 }
 
 // Minimal structural view of a results row — page.tsx's Result satisfies this

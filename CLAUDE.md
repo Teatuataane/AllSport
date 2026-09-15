@@ -1114,8 +1114,8 @@ three previous systems were gated on lifetime points — attendance — and a gr
 you cannot fail carries no pride. Nothing is migrated, nothing is in the UI.
 
 **Branches:** `claude/allsport-grading-rebuild-aea665` (the design and first
-engine), then `claude/grading-implementation` built on it (unpushed at time of
-writing). Match recording is its own branch, `claude/match-recording`.
+engine), then `claude/grading-implementation` built on it, into which
+`claude/match-recording` is merged (all unpushed at time of writing).
 **Design record:** `docs/designs/` in that worktree — **gitignored, local only**,
 because the design docs name players and their results and this repo is public.
 `grading-system-spec.md` there carries every decision settled in review.
@@ -1124,7 +1124,10 @@ because the design docs name players and their results and this repo is public.
 Implementation order: privacy notice → ladder changes → rules text → standards
 for all 120 events → engine → match recording and the rating → data fixes →
 database, UI, conferral and retiring taniwha. Done on the branch so far: the
-privacy notice, the ladders, the rules text, the engine, and the history
+privacy notice, the ladders, the rules text, the engine, the standards sheet
+(`GRADING_STANDARDS_REVIEW.md`, drafted and awaiting Tāne's review, compiled
+into `lib/standards.ts` by `scripts/apply-standards-sheet.mjs`), match
+recording, the head-to-head rating (`lib/headToHead.ts`), and the history
 migration `20260915040534` (written, NOT applied — code first, then push it
 from `main`).
 
@@ -1177,10 +1180,65 @@ metric.
 **Still open:** a junior who answered "Other" at registration has no sex on
 record and no division pick, so nothing yet chooses their standards.
 
-**The opponent is the weak point for any future rating.** `results.opponent_name`
-is free text and optional — a quarter of game results name one, and a team
-cannot be represented. Record matches with player ids on both sides before
-building anything that rates who beat whom.
+**The rating reads matches, never `results.opponent_name`.** That column is
+free text and optional — a quarter of game results name one, and a team cannot
+be represented — so history from before match recording is not rated. See the
+Match recording block below.
+## Match recording — head-to-head games by player id (September 2026) — BUILT, MIGRATION NOT APPLIED
+
+A game used to be recorded as HALF a match: each player wrote their own result,
+and the opponent was `results.opponent_name`, free text and optional. A quarter
+of game results named anyone, aliases broke the rest, a team could not be
+written down, and only 11 matches in history were recorded by both players.
+Tāne wants the upper colours on game events gated by head-to-head skill, with
+**at least 10 recorded games in a sport before a colour** (`MIN_RATED_GAMES`,
+defined once in `lib/grading.ts` and re-exported by `lib/matches.ts`). No
+rating is trustworthy on free-text halves, so the match is now recorded by
+player id, and `lib/headToHead.ts` rates the games it collects.
+
+- **Shape.** `matches` holds one row per recorder's result (`result_id` UNIQUE,
+  `ON DELETE CASCADE`), so deleting a score deletes its match and the two can
+  never drift. `match_players` holds the sides as player ids, so a 1v1 and a
+  5v5 are the same shape. The outcome is derived server-side from
+  `results.result_type` (`win`/`loss`/`draw`), never sent by the client.
+- **One write path: `record_match(p_result_id, p_opponent_ids, p_teammate_ids)`**,
+  `SECURITY DEFINER` with a pinned `search_path`. Same authority as writing the
+  result (own, child, or kaiwhakawā) and the same open-session window as
+  `guard_results_write`. No client write policy exists and table grants are
+  revoked. Public read, like `results`, which already exposes the same facts.
+- **Client.** Opponent chips are keyed by player id (`opponentPicks`), so two
+  players sharing a display name stay two people. A typed name or a guest is not
+  matched, and the sheet says so. Recording runs after the score saves and is
+  best-effort: a failure never turns a saved score into an error, and
+  `PGRST202` (function not deployed yet) is silent.
+- **Edits.** An edit whose stored opponent name cannot be resolved to exactly one
+  player LEAVES its match alone until the opponent is changed on purpose —
+  otherwise every such edit would silently delete a match. Switching a result
+  from a Game rung to a drill clears its match.
+- **Both players recording the same game produces two rows.** `reconcileGames`
+  collapses them into one game marked `agreed`, `disputed` or `unconfirmed`, and
+  `gamesBySport` counts real games toward the minimum — otherwise one game
+  played counts twice. A disputed game counts for nothing, toward the minimum
+  or the rating, until a kaiwhakawā settles it. **Agreement is derived, never stored**; stored agreement
+  goes stale the moment either side edits. `confirmed_by` / `confirmed_at` are
+  reserved for a kaiwhakawā confirmation flow that is not built.
+- **The rating** (`lib/headToHead.ts`): Elo per player per sport, start 1,000,
+  K 40 for a player's first ten games then 20, games replayed in the order they
+  were recorded. A team side is rated at the mean of its players, and each
+  player moves by their own K. Pure, and not yet stored or shown anywhere.
+- **Not built:** the confirmation flow, a team picker (the
+  schema takes teammates; the sheet sends one opponent), and any backfill —
+  resolving history's free-text names to ids would be guessing.
+- **Deploy order: either is safe.** **The migration was never applied to a
+  database** — Docker was not running. Apply `20260914020739` from `main`, then
+  verify the objects: both tables have `relrowsecurity`, `record_match` has
+  `prosecdef` and `search_path=public` in `proconfig`, and `anon` cannot execute
+  it. `__tests__/matchRecording.test.ts` pins those properties in the file, and
+  that the SQL's outcome mapping matches `outcomeFromResult`.
+- **Noticed, not changed:** editing a Game result into a drill rung leaves the
+  old `result_type` and `opponent_name` on the `results` row, because the update
+  payload only sets the columns it carries. Match recording deliberately does not
+  rely on either.
 
 ## Security posture (August 2026) — read before touching RLS or players_public
 
