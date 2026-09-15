@@ -19,7 +19,7 @@ import {
   computePlayerGrades, heldRungs, voidedSessionIds, type PlayerGrades, type GradeResultRow,
 } from './playerGrades'
 import { rateGames, type SportRating } from './headToHead'
-import type { MatchRow } from './matches'
+import { disputedBySport, type MatchRow } from './matches'
 
 const supabase = createClient()
 
@@ -36,6 +36,8 @@ export type GradeState = {
   hasBand: boolean
   /** False until the grading migration is applied: nothing can be conferred yet. */
   schemaReady: boolean
+  /** Disputed games per sport (event name), waiting for a kaiwhakawā to settle. */
+  disputed: Map<string, number>
 }
 
 type ResultRow = {
@@ -53,22 +55,29 @@ type MatchQueryRow = {
   session_id: string
   outcome: MatchRow['outcome']
   created_at: string
+  confirmed_at: string | null
   session_events: { event_name: string } | null
   match_players: { player_id: string; side: 'a' | 'b' }[]
 }
 
-/** Every recorded match, shaped for lib/matches.ts. Empty before match recording lands. */
+/**
+ * Every recorded match, shaped for lib/matches.ts. Empty before match recording lands.
+ *
+ * `confirmed_at` rides in this query rather than its own because it was created
+ * in the same CREATE TABLE as `matches` itself (20260914020739): a database that
+ * has the table cannot lack the column, so it cannot raise 42703 here.
+ */
 export async function loadMatches(): Promise<MatchRow[]> {
   const { data, error } = await supabase
     .from('matches')
-    .select('id, session_id, outcome, created_at, session_events(event_name), match_players(player_id, side)')
+    .select('id, session_id, outcome, created_at, confirmed_at, session_events(event_name), match_players(player_id, side)')
     .order('created_at', { ascending: true })
   if (error || !data) return []
   return (data as unknown as MatchQueryRow[])
     .filter(m => m.session_events?.event_name)
     .map(m => ({
       id: m.id, session_id: m.session_id, outcome: m.outcome, created_at: m.created_at,
-      event_name: m.session_events!.event_name, players: m.match_players ?? [],
+      confirmed_at: m.confirmed_at, event_name: m.session_events!.event_name, players: m.match_players ?? [],
     }))
 }
 
@@ -142,5 +151,6 @@ export async function loadGradeState(playerId: string, matches?: readonly MatchR
   return {
     grades, awards: awardRows, held: heldRungs(awardRows), exemptions: exempt,
     hasBand: bandLabel != null, schemaReady: !awards.error,
+    disputed: disputedBySport(allMatches, playerId),
   }
 }

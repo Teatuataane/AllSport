@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   MIN_RATED_GAMES, outcomeFromResult, isGameEntry, opponentPicks, resolveOpponentId,
-  reconcileGames, gamesBySport, meetsGameMinimum, type MatchRow,
+  reconcileGames, gamesBySport, disputedBySport, meetsGameMinimum, agrees, type MatchRow,
 } from '@/lib/matches'
 import { getEventByName } from '@/lib/eventData'
 
@@ -171,6 +171,35 @@ describe('reconciling the two records of one game', () => {
     ])
     expect(games).toHaveLength(1)
     expect(games[0].status).toBe('agreed')
+  })
+})
+
+describe('settling a disputed game', () => {
+  it('settles on the record the kaiwhakawā confirmed, even when it was the later one', () => {
+    // A says A won, B says B won; the kaiwhakawā says B is right.
+    const games = reconcileGames([match('A', 'B', 'a'), match('B', 'A', 'a', { confirmed_at: '2026-09-15T00:00:00Z' })])
+    expect(games).toHaveLength(1)
+    expect(games[0]).toMatchObject({ status: 'settled', sides: { a: ['B'], b: ['A'] }, outcome: 'a' })
+  })
+  it('stays disputed if both records somehow carry a confirmation', () => {
+    const at = { confirmed_at: '2026-09-15T00:00:00Z' }
+    expect(reconcileGames([match('A', 'B', 'a', at), match('B', 'A', 'a', at)])[0].status).toBe('disputed')
+  })
+  it('ignores a confirmation on a pair that already agrees', () => {
+    const games = reconcileGames([match('A', 'B', 'a', { confirmed_at: '2026-09-15T00:00:00Z' }), match('B', 'A', 'b')])
+    expect(games[0].status).toBe('agreed')
+  })
+  it('counts a settled game toward the minimum, and a disputed one as waiting', () => {
+    const disputed = [match('A', 'B', 'a'), match('B', 'A', 'a')]
+    const settled = [match('A', 'B', 'a', { session_id: 's2', confirmed_at: '2026-09-15T00:00:00Z' }), match('B', 'A', 'a', { session_id: 's2' })]
+    expect(gamesBySport([...disputed, ...settled], 'A').get('Squash')).toEqual({ games: 1, agreed: 1 })
+    expect(disputedBySport([...disputed, ...settled], 'A').get('Squash')).toBe(1)
+    expect(disputedBySport([...disputed, ...settled], 'Z').size).toBe(0)
+  })
+  it('agrees exactly on a win against a loss, or a draw against a draw', () => {
+    const outcomes = ['a', 'b', 'draw'] as const
+    const agreeing = outcomes.flatMap(x => outcomes.filter(y => agrees({ outcome: x }, { outcome: y })).map(y => `${x}/${y}`))
+    expect(agreeing.sort()).toEqual(['a/b', 'b/a', 'draw/draw'])
   })
 })
 
