@@ -58,6 +58,16 @@ const MODE_OVERRIDES = {
   'T-Race': 'difficulty+time',
   // New event replacing Duck Walk. Levels are crawl distances, score is time.
   'Animal Crawl': 'difficulty+time',
+  // Pure contests that gained a drill under their Game rung (Sept 2026 grading
+  // rebuild). Their old mode is `sport`, which would default to reps, but these
+  // drills are raced, and Arm Wrestling's is a hold. Kabaddi, Speed Chess,
+  // Fencing and Tae Kwon Do count, so they take the default.
+  'Tag': 'difficulty+time',
+  'Rats & Rabbits': 'difficulty+time',
+  'Capture the Flag': 'difficulty+time',
+  'Beach Flags': 'difficulty+time',
+  'Tug of War': 'difficulty+time',
+  'Arm Wrestling': 'difficulty+time',
 }
 
 // Events whose ladder is the implement thrown, while the score stays the distance.

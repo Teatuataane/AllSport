@@ -508,15 +508,23 @@ _No levels yet._
 
 ### 35. Arm Wrestling
 
-*Scored by: win, draw or loss against another player*
+*Scored by: difficulty level, then longest hold*
 
-**NONE**
+- D1: 5kg Hold   (Forearm held at 45 degrees from the table against the load, the last moment before a pin. Timed)
+- D2: 10kg Hold
+- D3: 15kg Hold
+- D4: 20kg Hold
+- D5: Game
 
 ### 36. Tug of War
 
-*Scored by: win, draw or loss against another player*
+*Scored by: difficulty level, then fastest time*
 
-**NONE**
+- D1: 25kg Sled   (Hand over hand on a rope, pull the loaded sled 10m. Timed)
+- D2: 50kg Sled
+- D3: 100kg Sled
+- D4: 150kg Sled
+- D5: Game
 
 ---
 
@@ -534,9 +542,10 @@ _No levels yet._
 
 ### 38. Tag
 
-*Scored by: win, draw or loss against another player*
+*Scored by: difficulty level, then fastest time*
 
-**NONE**
+- D1: Grid Dodge   (In a 10m grid, touch the cones the kaiwhakawā calls at random. Six calls, timed)
+- D2: Game
 
 ### 39. T-Race
 > Timed requires a time, game is a race against opponents
@@ -548,9 +557,11 @@ _No levels yet._
 
 ### 40. Beach Flags
 
-*Scored by: win, draw or loss against another player*
+*Scored by: difficulty level, then fastest time*
 > Timed requires a time, game is a race against opponents
-**NONE**
+
+- D1: Get-Up Sprint   (From face down, feet toward the flag, get up and sprint 15m to it. Timed)
+- D2: Game
 
 ### 41. 200m Sprint
 
@@ -583,15 +594,20 @@ _No levels yet._
 
 ### 44. Rats & Rabbits
 
-*Scored by: win, draw or loss against another player*
+*Scored by: difficulty level, then fastest time*
 > Timed requires a time, game is a race against opponents
-**NONE**
+
+- D1: Reaction Chase   (React to the call, turn the right way and sprint 10m to the line. Timed from the call; turning the wrong way is a miss)
+- D2: Game
 
 ### 45. Speed Chess
 
-*Scored by: win, draw or loss against another player*
+*Scored by: difficulty level, then most reps*
 
-**NONE**
+- D1: Mate in 1   (Puzzles solved in three minutes at this difficulty)
+- D2: Mate in 2
+- D3: Mate in 3
+- D4: Game
 
 ### 46. American Football
 
@@ -605,15 +621,17 @@ _No levels yet._
 
 ### 47. Capture the Flag
 
-*Scored by: win, draw or loss against another player*
+*Scored by: difficulty level, then fastest time*
 
-**NONE**
+- D1: Flag Run   (Sprint 20m to the flag, pick it up and carry it back over halfway. Timed)
+- D2: Game
 
 ### 48. Kabaddi
 
-*Scored by: win, draw or loss against another player*
+*Scored by: difficulty level, then most reps*
 
-**NONE**
+- D1: One-Breath Raid   (On one breath while chanting, cross the line, touch as many of five cones as you can and get back. Cones touched)
+- D2: Game
 
 ---
 
@@ -807,21 +825,19 @@ _No levels yet._
 
 *Scored by: difficulty level, then fastest time*
 
-- D1: 5kg — 200m
-- D2: 10kg — 200m
-- D3: 25kg — 200m   (used 6 times)
-- D4: 50kg — 200m   (used 9 times)
-- D5: 80kg — 200m
-- D6: 100kg — 200m
+- D1: ¼ BW — 200m   (A quarter of your bodyweight, taken from the middle of your band. Carry the heaviest load we own at or under it)
+- D2: ½ BW — 200m
+- D3: ¾ BW — 200m
+- D4: Bodyweight — 200m
 
 ### 68. Animal Crawl
 
 *Scored by: difficulty level, then fastest time*
 
-- D1: 25m Crawl
-- D2: 25m Bear Crawl
-- D3: 25m Lizard Crawl
-- D4: 25m Duck Walk
+- D1: 25m Crawl   (Hands and knees, knees off the ground)
+- D2: 25m Bear Crawl   (Hands and feet, hips high, opposite hand and foot together)
+- D3: 25m Lizard Crawl   (Chest low, elbows bent, hips down)
+- D4: 25m Duck Walk   (Deep squat, hips below knees, stepping without standing up)
 - D5: 100m Duck Walk
 
 ### 69. Bronco
@@ -846,25 +862,19 @@ _No levels yet._
 
 *Scored by: difficulty level, then fastest time*
 
-- D1: 5kg — 200m
-- D2: 10kg — 200m
-- D3: 25kg — 200m
-- D4: 50kg — 200m
-- D5: 80kg — 200m
-- D6: 100kg — 200m
-- D7: 200kg — 200m
+- D1: ¼ BW — 200m   (A quarter of your bodyweight in the barrow, taken from the middle of your band. Load the heaviest weight we own at or under it)
+- D2: ½ BW — 200m
+- D3: ¾ BW — 200m
+- D4: Bodyweight — 200m
 
 ### 72. Wheelbarrow Pull
 
 *Scored by: difficulty level, then fastest time*
 
-- D1: 5kg — 200m
-- D2: 10kg — 200m
-- D3: 25kg — 200m
-- D4: 50kg — 200m
-- D5: 80kg — 200m
-- D6: 100kg — 200m
-- D7: 200kg — 200m
+- D1: ¼ BW — 200m   (A quarter of your bodyweight in the barrow, taken from the middle of your band. Load the heaviest weight we own at or under it)
+- D2: ½ BW — 200m
+- D3: ¾ BW — 200m
+- D4: Bodyweight — 200m
 
 ---
 
@@ -1015,12 +1025,14 @@ _No levels yet._
 
 ### 85. Tae Kwon Do
 
-*Scored by: win, draw or loss against another player*
+*Scored by: difficulty level, then most reps*
 
-> Your earlier note here said "scored by reps until the game", which asked for a ladder.
-> `NONE` is the later answer so I've taken it, but the two contradict each other.
+> Settled in the Sept 2026 grading review: reps until the game, as your first note asked.
 
-**NONE**
+- D1: Waist Kick   (Kicks landed on a held pad at this height, out of ten)
+- D2: Chest Kick
+- D3: Head Kick
+- D4: Game
 
 ### 86. Breakdancing
 
@@ -1102,9 +1114,12 @@ _No levels yet._
 
 ### 93. Fencing
 
-*Scored by: win, draw or loss against another player*
+*Scored by: difficulty level, then most reps*
 
-**NONE**
+- D1: 2m Lunge   (Hits on a target out of ten, lunging from this distance)
+- D2: 3m Lunge
+- D3: 4m Lunge
+- D4: Game
 
 ### 94. Juggling
 

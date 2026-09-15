@@ -495,12 +495,14 @@ describe('isWeightScoredTier* : tier flag beats the legacy table', () => {
 
 describe('sport records survive the move onto tiered ladders', () => {
   const volleyball = getEventBySlug('volleyball')!
-  const tag = getEventBySlug('tag')!
+  // The one event left on plain `sport`: the grading rebuild gave every other
+  // pure contest a drill under a Game rung.
+  const wrestling = getEventBySlug('wrestling')!
   const deadlift = getEventBySlug('deadlift')!
   const gameIdx = (e: EventData) => e.difficultyTiers!.findIndex(t => t.scoring === 'sport')
 
   it('recognises both shapes and nothing else', () => {
-    expect(eventRecordsSport(tag)).toBe(true)        // still plain `sport`
+    expect(eventRecordsSport(wrestling)).toBe(true)  // still plain `sport`
     expect(eventRecordsSport(volleyball)).toBe(true) // a Game rung on a ladder
     expect(eventRecordsSport(deadlift)).toBe(false)
     expect(eventRecordsSport(undefined)).toBe(false)
@@ -513,7 +515,7 @@ describe('sport records survive the move onto tiered ladders', () => {
     expect(volleyball.inputMode).not.toBe('sport')
     expect(sportTermOf(volleyball, { raw_score: idx * 10000 + 2, difficulty_tier: rung })).toBe(2)
     expect(sportTermOf(volleyball, { raw_score: idx * 10000 + 0, difficulty_tier: rung })).toBe(0)
-    expect(sportTermOf(tag, { raw_score: 2 })).toBe(2)
+    expect(sportTermOf(wrestling, { raw_score: 2 })).toBe(2)
   })
 
   it('ignores a row on a drill rung, which is a rep count and not a result', () => {
