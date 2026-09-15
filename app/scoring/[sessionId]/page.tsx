@@ -1989,6 +1989,9 @@ function SessionEndTakeover({
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
+// One stable empty map, so a not-yet-loaded PR set keeps the same identity across renders.
+const NO_PRS: Record<string, number | string | null> = {}
+
 export default function SessionPage() {
   const { sessionId } = useParams<{ sessionId: string }>()
 
@@ -1998,14 +2001,20 @@ export default function SessionPage() {
   const [player, setPlayer] = useState<Record<string, unknown> | null>(null)
   const [familyMembers, setFamilyMembers] = useState<Record<string, unknown>[]>([])
   const [activePlayerId, setActivePlayerId] = useState<string | null>(null)
-  const [seasonPRs, setSeasonPRs] = useState<Record<string, number | string | null>>({})
+  // Keyed by the player and events they were loaded for (see prsKey below), so a
+  // family-tab switch never shows the previous player's PRs, without resetting
+  // state inside the loading effect.
+  const [seasonPRsLoaded, setSeasonPRsLoaded] = useState<{ key: string; prs: Record<string, number | string | null> } | null>(null)
   const [activeTab, setActiveTab] = useState<string>('leaderboard')
   const [sheetEventId, setSheetEventId] = useState<string | null>(null)
   const [toast, setToast] = useState<{ eventName: string; label: string; isPR: boolean; isNewEvent: boolean; effortCredit: number; playerName?: string } | null>(null)
-  const [playedEventNames, setPlayedEventNames] = useState<Set<string> | null>(null) // all-time, for "new event unlocked"
+  // All-time played event names, for "new event unlocked". Keyed by player, so a
+  // switch reads as "not loaded yet" (null) until that player's set arrives.
+  const [playedLoaded, setPlayedLoaded] = useState<{ id: string; names: Set<string> } | null>(null)
   const [effortMaxToast, setEffortMaxToast] = useState(false)
   const [fullHousePulseId, setFullHousePulseId] = useState<string | null>(null)
-  const [endTakeoverDismissed, setEndTakeoverDismissed] = useState(true) // assume dismissed until localStorage is checked
+  // The takeover key this page dismissed; localStorage covers earlier visits.
+  const [takeoverDismissedKey, setTakeoverDismissedKey] = useState<string | null>(null)
   const [timeLeft, setTimeLeft] = useState<number | null>(null)
   const [preSessionSecsLeft, setPreSessionSecsLeft] = useState<number | null>(null)
   const [sessionEnded, setSessionEnded] = useState(false)
@@ -2017,7 +2026,17 @@ export default function SessionPage() {
   const [judgeGuestDraft, setJudgeGuestDraft] = useState('') // "+ Guest" name field; '' = field hidden
   const [judgeGuestOpen, setJudgeGuestOpen] = useState(false)
   const [sessionPlayers, setSessionPlayers] = useState<{ id: string; name: string }[]>([])
-  const [judgePRs, setJudgePRs] = useState<Record<string, number | string | null>>({})
+  // Keyed like seasonPRsLoaded: switching target is one chip tap, so the previous
+  // player's PRs must never linger as the new player's "Season PR" / effort-task baseline.
+  const [judgePRsLoaded, setJudgePRsLoaded] = useState<{ key: string; prs: Record<string, number | string | null> } | null>(null)
+
+  const eventsKey = events.map(e => e.id).join(',')
+  const seasonPRsKey = activePlayerId && events.length > 0 ? `${activePlayerId}|${eventsKey}` : null
+  const seasonPRs = seasonPRsKey && seasonPRsLoaded?.key === seasonPRsKey ? seasonPRsLoaded.prs : NO_PRS
+  const judgePRsKey = isJudge && judgeTargetId && events.length > 0 ? `${judgeTargetId}|${eventsKey}` : null
+  const judgePRs = judgePRsKey && judgePRsLoaded?.key === judgePRsKey ? judgePRsLoaded.prs : NO_PRS
+  const playedEventNames = activePlayerId && playedLoaded?.id === activePlayerId ? playedLoaded.names : null
+
   const allPlayers = player ? [player, ...familyMembers] : []
   const activePlayer = allPlayers.find(p => p.id === activePlayerId) ?? player
   const activePlayerDivision = activePlayer ? (activePlayer as Record<string, unknown>).division as string | null : null
@@ -2090,21 +2109,22 @@ export default function SessionPage() {
 
   // ── DR-10: flash the banner ordinal when a new result improves division rank ─
   // No flash on first paint, on player switch, or on rank drops.
-  const prevRankRef = useRef<{ pid: string | null; rank: number | null }>({ pid: null, rank: null })
+  // The previous rank is tracked in state and compared during render (React's
+  // "storing information from previous renders" pattern), not in an effect.
+  const currentRank = myDivisionPlacement?.rank ?? null
+  const [rankSeen, setRankSeen] = useState<{ pid: string | null; rank: number | null }>({ pid: activePlayerId, rank: currentRank })
   const [rankFlash, setRankFlash] = useState<{ from: number; to: number } | null>(null)
+  if (rankSeen.pid !== activePlayerId || rankSeen.rank !== currentRank) {
+    setRankSeen({ pid: activePlayerId, rank: currentRank })
+    const improved = rankSeen.pid === activePlayerId && rankSeen.rank !== null && currentRank !== null && currentRank < rankSeen.rank
+    // A switch, a drop or a sideways change clears any flash still up.
+    setRankFlash(improved ? { from: rankSeen.rank!, to: currentRank! } : null)
+  }
   useEffect(() => {
-    const rank = myDivisionPlacement?.rank ?? null
-    const prev = prevRankRef.current
-    prevRankRef.current = { pid: activePlayerId, rank }
-    if (prev.pid !== activePlayerId) { setRankFlash(null); return }
-    if (prev.rank !== null && rank !== null && rank < prev.rank) {
-      setRankFlash({ from: prev.rank, to: rank })
-      const t = setTimeout(() => setRankFlash(null), 2600)
-      return () => clearTimeout(t)
-    }
-    // Rank changed without improving (or dropped) — never leave a stale flash up
-    setRankFlash(null)
-  }, [myDivisionPlacement?.rank, activePlayerId])
+    if (!rankFlash) return
+    const t = setTimeout(() => setRankFlash(null), 2600)
+    return () => clearTimeout(t)
+  }, [rankFlash])
 
   // ── Load initial data ──────────────────────────────────────────────────────
   const loadResults = useCallback(async () => {
@@ -2220,8 +2240,9 @@ export default function SessionPage() {
 
   // ── Load season PRs for active player ─────────────────────────────────────
   useEffect(() => {
-    if (!activePlayerId || events.length === 0) return
-    setSeasonPRs({}) // clear immediately so a family-tab switch never shows the previous player's PRs
+    if (!activePlayerId || !seasonPRsKey) return
+    const key = seasonPRsKey
+    let cancelled = false // a fast A→B→A switch can resolve out of order
     const year = new Date().getFullYear()
     async function loadPRs() {
       const { data } = await supabase
@@ -2241,18 +2262,20 @@ export default function SessionPage() {
       }
       const prs: Record<string, number | string | null> = {}
       events.forEach(ev => { prs[ev.id] = byName[ev.event_name] ?? null })
-      setSeasonPRs(prs)
+      if (!cancelled) setSeasonPRsLoaded({ key, prs })
     }
     loadPRs()
-  }, [activePlayerId, events])
+    return () => { cancelled = true }
+    // seasonPRsKey already carries activePlayerId and the event ids.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seasonPRsKey])
 
   // ── Load PRs for judge's selected player ──────────────────────────────────
   useEffect(() => {
-    if (!isJudge) return
-    // Clear first: switching target is one chip tap, so the previous player's PRs
-    // must never linger as the new player's "Season PR" / effort-task baseline.
-    setJudgePRs({})
-    if (!judgeTargetId || events.length === 0) return
+    // judgePRs is derived from judgePRsKey, so a switch already shows nothing
+    // until this target's PRs arrive.
+    if (!judgePRsKey) return
+    const key = judgePRsKey
     let cancelled = false // a fast A→B→A switch can resolve out of order
     const year = new Date().getFullYear()
     async function loadJudgePRs() {
@@ -2272,11 +2295,13 @@ export default function SessionPage() {
       }
       const prs: Record<string, number | string | null> = {}
       events.forEach(ev => { prs[ev.id] = byName[ev.event_name] ?? null })
-      if (!cancelled) setJudgePRs(prs)
+      if (!cancelled) setJudgePRsLoaded({ key, prs })
     }
     loadJudgePRs()
     return () => { cancelled = true }
-  }, [isJudge, judgeTargetId, events])
+    // judgePRsKey already carries isJudge, judgeTargetId and the event ids.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [judgePRsKey])
 
   // ── Realtime subscriptions ─────────────────────────────────────────────────
   useEffect(() => {
@@ -2300,8 +2325,9 @@ export default function SessionPage() {
   // Loaded once per player; includes this session's earlier submissions, so only
   // a genuinely first-ever score for an event counts as "new".
   useEffect(() => {
-    if (!activePlayerId) { setPlayedEventNames(null); return }
-    setPlayedEventNames(null)
+    if (!activePlayerId) return
+    const id = activePlayerId
+    let cancelled = false
     supabase
       .from('results')
       .select('session_events!inner(event_name)')
@@ -2312,15 +2338,18 @@ export default function SessionPage() {
           const n = r.session_events?.event_name
           if (n) names.add(n)
         }
-        setPlayedEventNames(names)
+        if (!cancelled) setPlayedLoaded({ id, names })
       })
+    return () => { cancelled = true }
   }, [activePlayerId])
 
   // ── Session-end takeover: dismissed per player per session via localStorage ─
-  useEffect(() => {
-    if (!sessionEnded || !activePlayerId) return
-    setEndTakeoverDismissed(!!localStorage.getItem(`allsport_postgame_${sessionId}_${activePlayerId}`))
-  }, [sessionEnded, activePlayerId, sessionId])
+  const takeoverKey = sessionEnded && activePlayerId ? `allsport_postgame_${sessionId}_${activePlayerId}` : null
+  const endTakeoverDismissed = useMemo(() => {
+    if (!takeoverKey) return true
+    if (takeoverDismissedKey === takeoverKey) return true
+    try { return !!localStorage.getItem(takeoverKey) } catch { return true }
+  }, [takeoverKey, takeoverDismissedKey])
 
   // ── One-time celebration moments (effort cap 20/20, all events scored) ────
   // Each fires once per player per session, guarded via localStorage.
@@ -2334,7 +2363,11 @@ export default function SessionPage() {
       const key = `allsport_fullhouse_${sessionId}_${activePlayerId}`
       if (!localStorage.getItem(key)) {
         localStorage.setItem(key, '1')
-        setFullHousePulseId(activePlayerId)
+        // Shown from a timer rather than synchronously in the effect. The key is
+        // already written, so neither timer is cancelled on a re-run: cancelling
+        // would lose a moment that can never fire again.
+        const pid = activePlayerId
+        setTimeout(() => setFullHousePulseId(pid), 0)
         setTimeout(() => setFullHousePulseId(null), 3200)
       }
     }
@@ -2342,7 +2375,7 @@ export default function SessionPage() {
       const key = `allsport_effortmax_${sessionId}_${activePlayerId}`
       if (!localStorage.getItem(key)) {
         localStorage.setItem(key, '1')
-        setEffortMaxToast(true)
+        setTimeout(() => setEffortMaxToast(true), 0)
         setTimeout(() => setEffortMaxToast(false), 5000)
       }
     }
@@ -2603,7 +2636,9 @@ export default function SessionPage() {
                 onSubmitted={async (label, meta) => {
                   setSheetEventId(null)
                   const isNewEvent = playedEventNames !== null && !playedEventNames.has(sheetEvent.event_name)
-                  if (isNewEvent) setPlayedEventNames(prev => new Set(prev).add(sheetEvent.event_name))
+                  if (isNewEvent) setPlayedLoaded(prev => prev && prev.id === pid
+                    ? { id: prev.id, names: new Set(prev.names).add(sheetEvent.event_name) }
+                    : prev)
                   setToast({ eventName: sheetEvent.event_name, label, isPR: meta.isPR, isNewEvent, effortCredit: meta.effortCredit })
                   setTimeout(() => setToast(null), meta.isPR || isNewEvent ? 4000 : 3000)
                   await loadResults()
@@ -2626,7 +2661,7 @@ export default function SessionPage() {
           divisionPlacement={myDivisionPlacement}
           onDismiss={() => {
             localStorage.setItem(`allsport_postgame_${sessionId}_${activePlayerId}`, '1')
-            setEndTakeoverDismissed(true)
+            setTakeoverDismissedKey(`allsport_postgame_${sessionId}_${activePlayerId}`)
           }}
         />
       )}
