@@ -522,13 +522,13 @@ the homepage.
 
 ---
 
-## Taniwha grading system (August 2026 session 31) — LIVE, applied and verified 2026-08-25
+## Taniwha grading system (August 2026 session 31) — RETIRED 2026-09-16 (live from 2026-08-25)
 
-> **RETIRED on `claude/grading-implementation` (September 2026)**, replaced by the
-> twelve-colour grades above. Everything below describes production as it still
-> stands until that branch ships and `20260915054550` is applied; after that it is
-> history. The art in `public/taniwha/` and `scripts/check-taniwha-art.mjs` are
-> kept; the code is not.
+> **RETIRED IN PRODUCTION on 2026-09-16** (PR #108, migration `20260915054550`),
+> replaced by the twelve-colour grades. Everything below is history:
+> `player_taniwha` is dropped with its trigger and six functions, and its 29 rows
+> are archived in `player_taniwha_archive_20260915054550`. The art in
+> `public/taniwha/` and `scripts/check-taniwha-art.mjs` are kept; the code is not.
 
 Replaces the Colours ladder with a collection of **twelve taniwha**. Design settled in a
 `/grill-me` session; the full record with 28 locked decisions is in `TANIWHA_SYSTEM_PLAN.md`.
@@ -1112,16 +1112,15 @@ switch), and folding lifetime points into `leaderboard_page()`.
 
 ---
 
-## Grading rebuild — twelve colours (September 2026) — IN PROGRESS, NOT SHIPPED
+## Grading rebuild — twelve colours (September 2026) — SHIPPED, applied and verified 2026-09-16
 
-**Production still runs taniwha.** The rebuild replaces it with a twelve-colour
+**Live in production since 2026-09-16.** It replaced taniwha with a twelve-colour
 grade ladder earned against published standards rather than points, because all
 three previous systems were gated on lifetime points — attendance — and a grade
-you cannot fail carries no pride. Nothing is migrated, nothing is in the UI.
+you cannot fail carries no pride.
 
-**Branches:** `claude/allsport-grading-rebuild-aea665` (the design and first
-engine), then `claude/grading-implementation` built on it, into which
-`claude/match-recording` is merged (all unpushed at time of writing).
+**Shipped in PR #108** from `claude/grading-implementation`, which was built on
+`claude/allsport-grading-rebuild-aea665` and merged `claude/match-recording`.
 **Design record:** `docs/designs/` in that worktree — **gitignored, local only**,
 because the design docs name players and their results and this repo is public.
 `grading-system-spec.md` there carries every decision settled in review.
@@ -1129,7 +1128,7 @@ because the design docs name players and their results and this repo is public.
 **Standards were settled over four review rounds and approved 2026-09-15.**
 Implementation order: privacy notice → ladder changes → rules text → standards
 for all 120 events → engine → match recording and the rating → data fixes →
-database, UI, conferral and retiring taniwha. Done on the branch so far: the
+database, UI, conferral and retiring taniwha. All of it shipped: the
 privacy notice, the ladders, the rules text, the engine, the standards sheet
 (`GRADING_STANDARDS_REVIEW.md`, approved by Tāne on 2026-09-16 as a trial, to be reviewed after it; compiled
 into `lib/standards.ts` by `scripts/apply-standards-sheet.mjs`), match
@@ -1140,15 +1139,20 @@ kaiwhakawā release panel (the Colours tab on `/judge`), and **taniwha retired**
 its pages, components, libraries and tests are deleted, play history moved to
 `/history`, and the leaderboard shows each player's conferred overall colour.
 
-**Five migrations are written and NONE is applied** (Docker was not running):
-`20260915040534` (pure-contest history), `20260915051927` (grading schema:
-band, exemptions, awards, `confer_grade`), `20260915054550` (retire taniwha:
-archive and drop `player_taniwha`, its trigger and six functions, and
-`leaderboard_page` returns `grades` instead of `taniwha`), `20260915210543` (archives and
-deletes the one impossible 0.16-second 100m result, Tāne 2026-09-16), plus match
-recording's `20260914020739`. **Deploy the code first**, then push them from `main` in
-timestamp order, then verify the objects. The retirement is the one that is NOT
-safe in the other order: old code reads `player_taniwha`.
+**All five migrations APPLIED AND VERIFIED IN PRODUCTION on 2026-09-16**, after the
+code deployed, from a detached `main` worktree, and checked by querying the
+objects rather than the ledger: `20260914020739` (match recording),
+`20260915040534` (100 pure-contest results moved onto their Game rung, 15
+fixed-weight carries archived), `20260915051927` (grading schema: band,
+exemptions, awards, `confer_grade`), `20260915054550` (taniwha retired;
+`leaderboard_page` returns `grades`) and `20260915210543` (the impossible
+0.16-second 100m removed; the women's 100m win at the Winter Jam passed to
+Meredith). Results 1,369 → 1,353, no player-event placed twice, RLS on every new
+table and archive. As `anon`: `leaderboard_page` answers with 20 rankings and
+27 players; `grade_awards` and `matches` read; `grade_exemptions`, the archives
+and `confer_grade` return 42501. Archives kept for rollback:
+`results_grading_archive_20260915040534` (+ `_preimage_`),
+`player_taniwha_archive_20260915054550`, `results_impossible_archive_20260915210543`.
 
 **One deliberate departure from the spec:** the server does not recompute a
 grade before `confer_grade` stores it. Decision 9 makes the kaiwhakawā the
@@ -1163,7 +1167,10 @@ testing them against a real database, which is a follow-up.
   already means difficulty tier.
 - **The rules:** a colour in each of the ten domains; a domain colour is the
   highest grade met in at least HALF the domain's events; the overall grade is the
-  LOWEST domain, and `null` (not Mā) until all ten domains hold one.
+  LOWEST domain, and `null` (not Mā) until all ten domains hold one. Precisely:
+  half of the events AVAILABLE to that player, rounded up (12 available needs 6,
+  5 needs 3), where exemptions and events they cannot be graded in leave the
+  count; and an event at a HIGHER colour counts toward every colour below it.
 - **`lib/grading.ts` is pure and tested** (`__tests__/grading.test.ts`). It
   holds the rules, never the numbers: standards are compiled from a reviewed
   sheet, the way the difficulty ladders are.
@@ -1209,7 +1216,7 @@ boys' standards (`ladderFor` in `lib/playerGrades.ts`).
 free text and optional — a quarter of game results name one, and a team cannot
 be represented — so history from before match recording is not rated. See the
 Match recording block below.
-## Match recording — head-to-head games by player id (September 2026) — BUILT, MIGRATION NOT APPLIED
+## Match recording — head-to-head games by player id (September 2026) — SHIPPED, applied and verified 2026-09-16
 
 A game used to be recorded as HALF a match: each player wrote their own result,
 and the opponent was `results.opponent_name`, free text and optional. A quarter
@@ -1250,15 +1257,15 @@ player id, and `lib/headToHead.ts` rates the games it collects.
 - **The rating** (`lib/headToHead.ts`): Elo per player per sport, start 1,000,
   K 40 for a player's first ten games then 20, games replayed in the order they
   were recorded. A team side is rated at the mean of its players, and each
-  player moves by their own K. Pure, and not yet stored or shown anywhere.
+  player moves by their own K. Pure, and computed in the browser from every
+  match (lib/loadGrades.ts); it is not stored.
 - **Not built:** the confirmation flow, a team picker (the
   schema takes teammates; the sheet sends one opponent), and any backfill —
   resolving history's free-text names to ids would be guessing.
-- **Deploy order: either is safe.** **The migration was never applied to a
-  database** — Docker was not running. Apply `20260914020739` from `main`, then
-  verify the objects: both tables have `relrowsecurity`, `record_match` has
-  `prosecdef` and `search_path=public` in `proconfig`, and `anon` cannot execute
-  it. `__tests__/matchRecording.test.ts` pins those properties in the file, and
+- **`20260914020739` APPLIED AND VERIFIED IN PRODUCTION on 2026-09-16**, by
+  querying the objects: both tables have `relrowsecurity`, `record_match` has
+  `prosecdef` and `search_path=public` in `proconfig`, and `matches` is publicly
+  readable. Recording starts from that deploy; history is not backfilled. `__tests__/matchRecording.test.ts` pins those properties in the file, and
   that the SQL's outcome mapping matches `outcomeFromResult`.
 - **Noticed, not changed:** editing a Game result into a drill rung leaves the
   old `result_type` and `opponent_name` on the `results` row, because the update
