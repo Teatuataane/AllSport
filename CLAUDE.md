@@ -1158,7 +1158,11 @@ and `confer_grade` return 42501. Archives kept for rollback:
 grade before `confer_grade` stores it. Decision 9 makes the kaiwhakawā the
 authority and only a kaiwhakawā can call it, so no player can award themselves;
 recomputing server-side means porting the engine and the rating to plpgsql and
-testing them against a real database, which is a follow-up.
+testing them against a real database. **Tāne decided on 2026-09-16 to keep the
+kaiwhakawā as the authority: this is not a follow-up and is not planned.** A
+second copy of the rules in plpgsql would be one more place for the grade to
+silently disagree with the app. Revisit only if a colour is conferred that
+should not have been.
 
 - **The ladder:** Mā (start, not an award), then Kiwikiwi, Whero, Karaka, Kōwhai,
   Kākāriki, Kahurangi, Poroporo, Parahi, Hiriwa, Kōura, Uenuku, Taniwha —
@@ -1252,14 +1256,26 @@ player id, and `lib/headToHead.ts` rates the games it collects.
   `gamesBySport` counts real games toward the minimum — otherwise one game
   played counts twice. A disputed game counts for nothing, toward the minimum
   or the rating, until a kaiwhakawā settles it. **Agreement is derived, never stored**; stored agreement
-  goes stale the moment either side edits. `confirmed_by` / `confirmed_at` are
-  reserved for a kaiwhakawā confirmation flow that is not built.
+  goes stale the moment either side edits.
+- **Settling a dispute** (`20260915213626`, decided with Tāne 2026-09-16, APPLIED AND
+  VERIFIED IN PRODUCTION 2026-09-16 by querying the objects: `settle_dispute` has
+  `prosecdef`, `search_path=public`, execute for `authenticated` and not `anon`, and
+  `authenticated` still has no UPDATE on `matches`; an anon call returns 401 /
+  `42501`. `matches` held 0 rows at apply time, so no dispute has been settled for
+  real yet). On the /judge Colours tab a kaiwhakawā marks the record that is RIGHT;
+  `settle_dispute(a, b, true)` stamps `confirmed_by`/`confirmed_at` on it and clears
+  the other, and `reconcileGames` calls the pair `settled` and rates it on the
+  confirmed record. Nobody's score changes (placements are not recomputed after
+  close, so correcting a result would half fix it). There is no third outcome: pick
+  one record or leave it disputed. `p_true` null reopens. An edit by either player
+  wipes the stamp, because `record_match` replaces the row. Players see "N disputed
+  games waiting for a kaiwhakawā" on /grades.
 - **The rating** (`lib/headToHead.ts`): Elo per player per sport, start 1,000,
   K 40 for a player's first ten games then 20, games replayed in the order they
   were recorded. A team side is rated at the mean of its players, and each
   player moves by their own K. Pure, and computed in the browser from every
   match (lib/loadGrades.ts); it is not stored.
-- **Not built:** the confirmation flow, a team picker (the
+- **Not built:** a team picker (the
   schema takes teammates; the sheet sends one opponent), and any backfill —
   resolving history's free-text names to ids would be guessing.
 - **`20260914020739` APPLIED AND VERIFIED IN PRODUCTION on 2026-09-16**, by

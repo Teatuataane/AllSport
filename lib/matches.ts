@@ -112,20 +112,28 @@ export type MatchRow = {
   outcome: MatchOutcome
   created_at: string
   players: { player_id: string; side: 'a' | 'b' }[]
+  /**
+   * Set by a kaiwhakawā through settle_dispute() on the record of a disputed
+   * game that is right. record_match() replaces the row on every edit, so an
+   * edit by either player wipes it and the game is judged afresh.
+   */
+  confirmed_at?: string | null
 }
 
 /**
  * `agreed`      — both sides recorded it and their outcomes match.
  * `disputed`    — both sides recorded it and their outcomes contradict.
+ * `settled`     — disputed, and a kaiwhakawā has marked one record as right.
  * `unconfirmed` — only one side recorded it.
  */
-export type GameStatus = 'agreed' | 'disputed' | 'unconfirmed'
+export type GameStatus = 'agreed' | 'disputed' | 'settled' | 'unconfirmed'
 
 /**
  * One real game, made of one or two recorded matches. `sides` and `outcome` are
- * taken from the EARLIER record, so `outcome` is relative to its side 'a'. For a
- * disputed game that record is only one side's claim: nothing rates a disputed
- * game until a kaiwhakawā settles it.
+ * taken from the EARLIER record, so `outcome` is relative to its side 'a' — or,
+ * for a settled game, from the record the kaiwhakawā marked as right. For a
+ * disputed game the earlier record is only one side's claim: nothing rates a
+ * disputed game until a kaiwhakawā settles it.
  */
 export type Game = {
   matchIds: string[]
@@ -147,8 +155,12 @@ function isReciprocal(m1: MatchRow, m2: MatchRow): boolean {
   return overlaps(b1, a2) && overlaps(a1, b2)
 }
 
-/** Seen from the other side, 'a' and 'b' swap and a draw is a draw. */
-function agrees(m1: MatchRow, m2: MatchRow): boolean {
+/**
+ * Seen from the other side, 'a' and 'b' swap and a draw is a draw. Mirrored by
+ * the agreement check in settle_dispute(), which refuses to settle a pair that
+ * already agrees.
+ */
+export function agrees(m1: Pick<MatchRow, 'outcome'>, m2: Pick<MatchRow, 'outcome'>): boolean {
   if (m1.outcome === 'draw') return m2.outcome === 'draw'
   return m2.outcome === (m1.outcome === 'a' ? 'b' : 'a')
 }
@@ -185,24 +197,45 @@ export function reconcileGames(matches: readonly MatchRow[]): Game[] {
     const p = paired.get(m.id)
     const rows = p ? [m, ordered.find(c => c.id === p.partner)!] : [m]
     rows.forEach(r => done.add(r.id))
+    // A disputed game is settled when exactly one of its records is confirmed.
+    // Both confirmed cannot come from settle_dispute(), which clears the other
+    // record; if it happens anyway, nobody's word wins and it stays disputed.
+    const confirmed = rows.filter(r => r.confirmed_at)
+    const truth = p?.status === 'disputed' && confirmed.length === 1 ? confirmed[0] : null
+    const from = truth ?? m
     games.push({
       matchIds: rows.map(r => r.id),
       event_name: m.event_name,
       session_id: m.session_id,
-      status: p ? p.status : 'unconfirmed',
+      status: truth ? 'settled' : p ? p.status : 'unconfirmed',
       players: [...new Set(rows.flatMap(r => r.players.map(x => x.player_id)))],
-      sides: { a: [...sideOf(m, 'a')], b: [...sideOf(m, 'b')] },
-      outcome: m.outcome,
+      sides: { a: [...sideOf(from, 'a')], b: [...sideOf(from, 'b')] },
+      outcome: from.outcome,
     })
   }
   return games
 }
 
 /**
+ * Disputed games per sport for one player: the games a kaiwhakawā still has to
+ * settle before they count. Shown to the player, so someone stuck on nine of
+ * ten games can see why.
+ */
+export function disputedBySport(matches: readonly MatchRow[], playerId: string): Map<string, number> {
+  const out = new Map<string, number>()
+  for (const g of reconcileGames(matches)) {
+    if (g.status !== 'disputed' || !g.players.includes(playerId)) continue
+    out.set(g.event_name, (out.get(g.event_name) ?? 0) + 1)
+  }
+  return out
+}
+
+/**
  * Real games per sport for one player — the count MIN_RATED_GAMES is measured
  * against. A DISPUTED game is left out, as approved in review: it does not count
- * until a kaiwhakawā settles it. A game only one side logged counts, the same
- * way every other score in AllSport does.
+ * until a kaiwhakawā settles it, and then it does. A game only one side logged
+ * counts, the same way every other score in AllSport does. `agreed` counts games
+ * resting on more than one side's word: agreed by both, or settled.
  */
 export function gamesBySport(matches: readonly MatchRow[], playerId: string): Map<string, { games: number; agreed: number }> {
   const out = new Map<string, { games: number; agreed: number }>()
@@ -210,7 +243,7 @@ export function gamesBySport(matches: readonly MatchRow[], playerId: string): Ma
     if (g.status === 'disputed' || !g.players.includes(playerId)) continue
     const cur = out.get(g.event_name) ?? { games: 0, agreed: 0 }
     cur.games++
-    if (g.status === 'agreed') cur.agreed++
+    if (g.status === 'agreed' || g.status === 'settled') cur.agreed++
     out.set(g.event_name, cur)
   }
   return out

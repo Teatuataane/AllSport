@@ -25,7 +25,7 @@ import type { ColourGate } from './grading'
 import { unitsForResultRow } from './units'
 import { workoutEvidence, type WorkoutEntryRow } from './workouts'
 import { rateGames, type SportRating } from './headToHead'
-import type { MatchRow } from './matches'
+import { disputedBySport, type MatchRow } from './matches'
 
 const supabase = createClient()
 
@@ -50,6 +50,8 @@ export type GradeState = {
   gates: ColourGate[]
   /** False until the workout migration is applied. */
   workoutsReady: boolean
+  /** Disputed games per sport (event name), waiting for a kaiwhakawā to settle. */
+  disputed: Map<string, number>
 }
 
 type ResultRow = {
@@ -68,22 +70,29 @@ type MatchQueryRow = {
   session_id: string
   outcome: MatchRow['outcome']
   created_at: string
+  confirmed_at: string | null
   session_events: { event_name: string } | null
   match_players: { player_id: string; side: 'a' | 'b' }[]
 }
 
-/** Every recorded match, shaped for lib/matches.ts. Empty before match recording lands. */
+/**
+ * Every recorded match, shaped for lib/matches.ts. Empty before match recording lands.
+ *
+ * `confirmed_at` rides in this query rather than its own because it was created
+ * in the same CREATE TABLE as `matches` itself (20260914020739): a database that
+ * has the table cannot lack the column, so it cannot raise 42703 here.
+ */
 export async function loadMatches(): Promise<MatchRow[]> {
   const { data, error } = await supabase
     .from('matches')
-    .select('id, session_id, outcome, created_at, session_events(event_name), match_players(player_id, side)')
+    .select('id, session_id, outcome, created_at, confirmed_at, session_events(event_name), match_players(player_id, side)')
     .order('created_at', { ascending: true })
   if (error || !data) return []
   return (data as unknown as MatchQueryRow[])
     .filter(m => m.session_events?.event_name)
     .map(m => ({
       id: m.id, session_id: m.session_id, outcome: m.outcome, created_at: m.created_at,
-      event_name: m.session_events!.event_name, players: m.match_players ?? [],
+      confirmed_at: m.confirmed_at, event_name: m.session_events!.event_name, players: m.match_players ?? [],
     }))
 }
 
@@ -175,5 +184,6 @@ export async function loadGradeState(playerId: string, matches?: readonly MatchR
     games, unitsByDomain,
     gates: colourGates(grades.domains, held, games, unitsByDomain),
     workoutsReady: !workouts.error,
+    disputed: disputedBySport(allMatches, playerId),
   }
 }
