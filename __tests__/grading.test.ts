@@ -2,7 +2,9 @@ import { describe, it, expect } from 'vitest'
 import {
   GRADES, MA, TOP_RUNG, DOMAIN_COUNT, gradeForRung,
   requiredForDomain, domainGrade, overallGrade,
-  scaleStandard, meetsStandard, rungForPerformance, ageBand,
+  AGE_SHIFT, thresholdFor, rungForScore, ageBand,
+  DRILL_CAP, MIN_RATED_GAMES, ratingRung, gameEventRung,
+  BODYWEIGHT_BANDS, JUNIOR_BODYWEIGHT_KG, ratioThresholdsKg, strengthBodyweight,
   type DomainGradeResult,
 } from '@/lib/grading'
 
@@ -244,49 +246,130 @@ describe('rule 3 — the overall grade is the lowest domain', () => {
   })
 })
 
-describe('standards scaling', () => {
-  it('multiplies for higher-is-better and DIVIDES for lower-is-better', () => {
-    // The trap: a Grandmaster's 100m standard must be SLOWER, not faster.
-    expect(scaleStandard(50, 'U12', 'power', 'higher')).toBeCloseTo(22.5)
-    expect(scaleStandard(13.8, 'Grandmaster', 'speed', 'lower')).toBeCloseTo(18.4, 1)
-    expect(scaleStandard(13.8, 'Grandmaster', 'speed', 'lower')).toBeGreaterThan(13.8)
+describe('standards and the age shift', () => {
+  const vjump = [10, 20, 28, 35, 42, 50, 60] // an Open reference, cm
+  const twelve = Array.from({ length: 12 }, (_, i) => (i + 1) * 10)
+
+  it('shifts two colours under 14 and for Grandmasters, one for 14 to 16 and Masters', () => {
+    expect(AGE_SHIFT).toEqual({ U12: 2, U14: 2, U16: 1, Open: 0, Masters: 1, Grandmaster: 2 })
   })
 
-  it('makes flexibility standards HARDER for juniors, who are more mobile', () => {
-    expect(scaleStandard(60, 'U12', 'flexibility', 'higher')).toBeGreaterThan(60)
+  it('grades the Open band against the ladder as written', () => {
+    expect(rungForScore(52, vjump, 'Open')).toBe(6)
+    expect(rungForScore(9, vjump, 'Open')).toBe(0)
+    expect(rungForScore(60, vjump, 'Open')).toBe(7)
+    // Exactly on the standard counts as met.
+    expect(rungForScore(42, vjump, 'Open')).toBe(5)
   })
 
-  it('leaves the Open reference group untouched', () => {
-    for (const cat of ['strength', 'power', 'speed', 'endurance', 'flexibility', 'skill'] as const) {
-      expect(scaleStandard(100, 'Open', cat, 'higher')).toBe(100)
-      expect(scaleStandard(100, 'Open', cat, 'lower')).toBe(100)
-    }
+  it("moves the ladder rather than scaling the value: a Masters Taniwha is an Open Uenuku", () => {
+    expect(rungForScore(110, twelve, 'Open')).toBe(11)
+    expect(rungForScore(110, twelve, 'Masters')).toBe(12)
+    expect(rungForScore(100, twelve, 'Grandmaster')).toBe(12)
+    expect(rungForScore(52, vjump, 'Masters')).toBe(7)
   })
 
-  it('honours direction when checking a performance', () => {
-    expect(meetsStandard(50, 42, 'higher')).toBe(true)
-    expect(meetsStandard(50, 42, 'lower')).toBe(false)
-    expect(meetsStandard(13.5, 13.8, 'lower')).toBe(true)
-    // Exactly on the standard counts as met, both ways.
-    expect(meetsStandard(42, 42, 'higher')).toBe(true)
-    expect(meetsStandard(42, 42, 'lower')).toBe(true)
+  it('never goes past Taniwha, however far the shift', () => {
+    expect(rungForScore(1000, twelve, 'U12')).toBe(12)
   })
 
-  it('finds the highest rung a performance reaches', () => {
-    const vjump = [10, 20, 28, 35, 42, 50, 60] // Open male reference, cm
-    expect(rungForPerformance(52, vjump, 'Open', 'power', 'higher')).toBe(6)
-    expect(rungForPerformance(9, vjump, 'Open', 'power', 'higher')).toBe(0)
-    expect(rungForPerformance(60, vjump, 'Open', 'power', 'higher')).toBe(7)
+  it('extrapolates below the Open floor by the ladder\'s first step', () => {
+    // D1 · 1 rep, then D1 · 10: one step is 9 raw points.
+    const rope = [1, 10, 10010, 20010, 30010, 40010]
+    expect(thresholdFor(rope, 1)).toBe(1)
+    expect(thresholdFor(rope, 0)).toBe(-8)
+    expect(thresholdFor(rope, -1)).toBe(-17)
+    // Eight basic jumps: Open Kiwikiwi, and two colours up for an under-14.
+    expect(rungForScore(8, rope, 'Open')).toBe(1)
+    expect(rungForScore(8, rope, 'U14')).toBe(3)
+    // A one-rung ladder has no step to extrapolate by, so its floor holds.
+    expect(thresholdFor([5], 0)).toBe(5)
   })
 
-  it('grades a faster time as a higher rung', () => {
-    const sprint = [22, 18.5, 17, 15.8, 14.8, 13.8, 12.8]
-    expect(rungForPerformance(11.59, sprint, 'Open', 'speed', 'lower')).toBe(7)
-    expect(rungForPerformance(35.1, sprint, 'Open', 'speed', 'lower')).toBe(0)
+  it('reads a timed effort off raw_score, where a faster time is already a bigger number', () => {
+    // Bodyweight carry is rung index 3: raw = 3 * 10000 + (10000 - seconds).
+    const raw = (secs: number) => 3 * 10000 + (10000 - secs)
+    const carry = [...Array.from({ length: 10 }, (_, i) => i + 1), raw(240), raw(120)]
+    expect(rungForScore(raw(180), carry, 'Open')).toBe(11) // under 4:00 is Uenuku
+    expect(rungForScore(raw(119), carry, 'Open')).toBe(12) // under 2:00 is Taniwha
+    expect(rungForScore(raw(241), carry, 'Open')).toBe(10)
   })
 
   it('accepts a partial ladder, so an event can grade before all twelve exist', () => {
-    expect(rungForPerformance(100, [10, 20], 'Open', 'power', 'higher')).toBe(2)
+    expect(rungForScore(100, [10, 20], 'Open')).toBe(2)
+    expect(rungForScore(100, [10, 20], 'Masters')).toBe(3)
+    expect(rungForScore(100, [], 'Open')).toBe(0)
+  })
+
+  it('caps a drill at Kahurangi AFTER the shift, so age never lifts a drill into a won colour', () => {
+    const drills = [10, 20, 30, 40, 50, 60]
+    expect(rungForScore(60, drills, 'Open', { cap: DRILL_CAP })).toBe(6)
+    expect(rungForScore(60, drills, 'U12', { cap: DRILL_CAP })).toBe(6)
+    expect(rungForScore(40, drills, 'U12', { cap: DRILL_CAP })).toBe(6)
+    expect(rungForScore(30, drills, 'U12', { cap: DRILL_CAP })).toBe(5)
+  })
+})
+
+describe('Game-rung events', () => {
+  it('gives no rating colour below Poroporo or before ten games', () => {
+    expect(MIN_RATED_GAMES).toBe(10)
+    expect(ratingRung(1099, 30)).toBe(0)
+    expect(ratingRung(1500, 9)).toBe(0)
+  })
+
+  it('gives Poroporo at 1,100 and a colour per 100 points up to Taniwha at 1,600', () => {
+    expect(ratingRung(1100, 10)).toBe(7)
+    expect(ratingRung(1199, 10)).toBe(7)
+    expect(ratingRung(1200, 10)).toBe(8)
+    expect(ratingRung(1600, 10)).toBe(12)
+    expect(ratingRung(2100, 10)).toBe(12)
+  })
+
+  it('shows the higher of the capped drill colour and the rating colour', () => {
+    expect(gameEventRung(5, 0)).toBe(5)
+    expect(gameEventRung(6, 8)).toBe(8)
+    expect(gameEventRung(9, 0)).toBe(DRILL_CAP)
+  })
+})
+
+describe('strength is a ratio of bodyweight', () => {
+  it('bands are 10kg, contiguous, and taken at their middle', () => {
+    BODYWEIGHT_BANDS.forEach((b, i) => {
+      if (i > 0) expect(b.min).toBe(BODYWEIGHT_BANDS[i - 1].max)
+      if (b.max != null) {
+        expect(b.max - b.min).toBe(b.min === 0 ? 50 : 10)
+        if (b.min > 0) expect(b.mid).toBe((b.min + b.max) / 2)
+      }
+    })
+    expect(BODYWEIGHT_BANDS.at(-1)!.max).toBeNull()
+  })
+
+  const benchMen = [null, 0.35, 0.45, 0.55, 0.65, 0.75, 0.85, 0.93, 1, 1.1, 1.25, 1.5]
+
+  it('rounds each standard to the nearest 2.5kg plate', () => {
+    // Kōura 1.1x, Uenuku 1.25x, Taniwha 1.5x for a 70 to 80kg man.
+    expect(ratioThresholdsKg(benchMen, 75).slice(9)).toEqual([82.5, 95, 112.5])
+  })
+
+  it('grades juniors as a 50kg lifter, the ladder shown in review', () => {
+    expect(JUNIOR_BODYWEIGHT_KG).toBe(50)
+    expect(ratioThresholdsKg(benchMen, 50))
+      .toEqual([0, 17.5, 22.5, 27.5, 32.5, 37.5, 42.5, 47.5, 50, 55, 62.5, 75])
+  })
+
+  it('makes the empty bar Kiwikiwi, then shifts a junior by age', () => {
+    const junior = ratioThresholdsKg(benchMen, 50)
+    // 15kg is under the second rung: the empty bar, then two colours for an under-14.
+    expect(rungForScore(15, junior, 'Open')).toBe(1)
+    expect(rungForScore(15, junior, 'U14')).toBe(3)
+  })
+
+  it('takes a junior at 50kg, an adult at their band, and grades no adult without one', () => {
+    expect(strengthBodyweight('U12', null)).toBe(50)
+    expect(strengthBodyweight('U16', '90 to 100kg')).toBe(50)
+    expect(strengthBodyweight('Open', '70 to 80kg')).toBe(75)
+    expect(strengthBodyweight('Masters', null)).toBeNull()
+    expect(strengthBodyweight('Open', 'not a band')).toBeNull()
   })
 })
 

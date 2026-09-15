@@ -34,12 +34,10 @@
 // never a domain.
 //
 // ── What this module deliberately does NOT contain ──────────────────────────
-// The standards themselves. Eight of the ten domains cannot reach six gradeable
-// events until the event-difficulty overhaul lands (Calisthenics is 12/12
-// tiered, Coordination 12/12 head-to-head), and that overhaul will change the
-// tiers any standard would have to reference. The ladder and the rules are
-// settled and overhaul-proof; the numbers are not, so they live in
-// docs/designs/ until the tiers stop moving.
+// The standards themselves. They are numbers per event, sex and rung, compiled
+// from a reviewed sheet the same way the difficulty ladders are, so a change to
+// one event's standard never touches the rules here. This module knows how a
+// threshold is met, shifted for age and capped; never what any threshold is.
 
 // ─── The ladder ──────────────────────────────────────────────────────────────
 // Grades own colour. Domains are identified by name and icon only — colour
@@ -247,73 +245,145 @@ export function overallGrade(domains: readonly DomainGradeResult[]): OverallGrad
   }
 }
 
-// ─── Standards scaling ───────────────────────────────────────────────────────
-// Standards are written once for a reference group (Open, 17–39) and every
-// other age band is a FACTOR on that reference. Athletics age-grading works
-// this way: it is revisable in one place, and hand-setting a number for every
-// band and sex across 120 events guarantees inconsistency.
+// ─── Standards and the age shift ─────────────────────────────────────────────
+// A standard is a THRESHOLD on a scale where a higher number is always better.
+// For a tiered event that scale is results.raw_score itself — tierIdx * 10000
+// plus the within-rung term, with timed efforts already inverted — so "D4 · 5
+// reps" and "a bodyweight carry in 2:00" are each one number and every check is
+// `>=`. Strength standards are kilograms. One direction is deliberate: the
+// value-scaling design this replaces multiplied some standards and divided
+// others, and getting that backwards made a standard HARDER with age.
+//
+// Age SHIFTS THE LADDER; it does not scale the value (settled in review). A band
+// that shifts one colour earns colour c at the Open standard for colour c - 1,
+// so a Masters player's Taniwha is an Open player's Uenuku. Below the Open floor
+// the ladder is extrapolated by its own first step, so the youngest players can
+// earn the bottom colours for a performance under the Open Kiwikiwi.
 
 export type AgeBand = 'U12' | 'U14' | 'U16' | 'Open' | 'Masters' | 'Grandmaster'
-export type StandardCategory = 'strength' | 'power' | 'speed' | 'endurance' | 'flexibility' | 'skill'
-/** Whether a bigger number is better (weight, reps, distance, hold) or smaller (times, strokes). */
-export type StandardDirection = 'higher' | 'lower'
 
-export const AGE_FACTORS: Record<AgeBand, Record<StandardCategory, number>> = {
-  U12:         { strength: 0.45, power: 0.45, speed: 0.70, endurance: 0.70, flexibility: 1.10, skill: 0.55 },
-  U14:         { strength: 0.60, power: 0.60, speed: 0.80, endurance: 0.80, flexibility: 1.10, skill: 0.70 },
-  U16:         { strength: 0.80, power: 0.80, speed: 0.90, endurance: 0.90, flexibility: 1.05, skill: 0.85 },
-  Open:        { strength: 1.00, power: 1.00, speed: 1.00, endurance: 1.00, flexibility: 1.00, skill: 1.00 },
-  Masters:     { strength: 0.88, power: 0.88, speed: 0.88, endurance: 0.90, flexibility: 0.90, skill: 1.00 },
-  Grandmaster: { strength: 0.72, power: 0.72, speed: 0.75, endurance: 0.78, flexibility: 0.80, skill: 0.95 },
+/**
+ * Colours each band moves up the ladder. Under 14 and Grandmasters two; 14 to
+ * 16 and Masters one. U14 was raised to two in review so that no child gets
+ * less help than an older one.
+ */
+export const AGE_SHIFT: Record<AgeBand, number> = {
+  U12: 2, U14: 2, U16: 1, Open: 0, Masters: 1, Grandmaster: 2,
 }
 
 /**
- * Apply an age factor to a reference standard.
- *
- * DIRECTION MATTERS AND IS EASY TO GET BACKWARDS. Multiply for higher-is-better
- * standards; DIVIDE for lower-is-better ones. A Grandmaster's 100m standard is
- * slower than Open, so 13.8s ÷ 0.75 = 18.4s. Multiplying would demand 10.35s and
- * make the standard harder with age.
- *
- * Flexibility factors above 1.0 for juniors are deliberate: children are more
- * mobile than adults, so their standard is harder, not easier.
+ * The Open threshold for rung `r`. Rungs at or below 0 lie under the Open floor
+ * and are extrapolated by the ladder's first step (rung 1 to rung 2). A one-rung
+ * ladder has no step, so its floor holds.
  */
-export function scaleStandard(
-  reference: number,
-  band: AgeBand,
-  category: StandardCategory,
-  direction: StandardDirection
-): number {
-  const factor = AGE_FACTORS[band][category]
-  return direction === 'higher' ? reference * factor : reference / factor
-}
-
-/** Whether a performance meets a standard, honouring the standard's direction. */
-export function meetsStandard(value: number, standard: number, direction: StandardDirection): boolean {
-  return direction === 'higher' ? value >= standard : value <= standard
+export function thresholdFor(thresholds: readonly number[], r: number): number {
+  if (r >= 1) return thresholds[r - 1]
+  if (thresholds.length < 2) return thresholds[0]
+  return thresholds[0] - (1 - r) * (thresholds[1] - thresholds[0])
 }
 
 /**
- * The highest rung a single performance reaches, given that event's reference
- * standards (index 0 = rung 1 … index 11 = rung 12). Returns 0 for a
- * performance below the bottom rung.
+ * The highest rung a score earns for a band. `thresholds[i]` is the Open
+ * standard for rung i + 1, strictly increasing; a partial ladder grades up to
+ * its own top plus the band's shift, so an event can grade before all twelve
+ * standards exist.
  *
- * Accepts a partial ladder so an event can be graded before all twelve
- * standards are written.
+ * `cap` stops a drill at Kahurangi on a Game-rung event. It applies AFTER the
+ * shift, so no age allowance lifts a drill into a colour earned by winning.
  */
-export function rungForPerformance(
-  value: number,
-  referenceLadder: readonly number[],
+export function rungForScore(
+  score: number,
+  thresholds: readonly number[],
   band: AgeBand,
-  category: StandardCategory,
-  direction: StandardDirection
+  { cap = TOP_RUNG }: { cap?: number } = {}
 ): number {
+  if (thresholds.length === 0) return 0
+  const shift = AGE_SHIFT[band]
+  const top = Math.min(TOP_RUNG, thresholds.length + shift)
   let rung = 0
-  referenceLadder.forEach((reference, i) => {
-    const standard = scaleStandard(reference, band, category, direction)
-    if (meetsStandard(value, standard, direction)) rung = i + 1
-  })
-  return rung
+  for (let c = 1; c <= top; c++) {
+    if (score >= thresholdFor(thresholds, c - shift)) rung = c
+  }
+  return Math.min(rung, cap)
+}
+
+// ─── Game-rung events: drills below, the rating above ────────────────────────
+// On an event topped by a Game rung, the drills grade Kiwikiwi to Kahurangi and
+// a head-to-head rating grades Poroporo to Taniwha: 1,100 to 1,600, one colour
+// per 100 points, so the colour above you wins about two games in three. A
+// rating colour needs ten recorded games in that sport. The colour shown is the
+// higher of the two, and like every colour it is never taken back when the
+// rating later falls.
+//
+// The rating is NOT age-shifted. It already measures you against the people you
+// actually play, of every age; shifting it would turn a Masters player's 1,500
+// into a Taniwha.
+
+/** Kahurangi: the highest colour a drill can give on a Game-rung event. */
+export const DRILL_CAP = 6
+export const RATING_START = 1000
+/** Poroporo, the first colour a rating gives. */
+export const RATING_FLOOR = 1100
+export const RATING_STEP = 100
+/**
+ * Games needed in a sport before its rating gives a colour. Must equal
+ * MIN_RATED_GAMES in lib/matches.ts; the two collapse into one when match
+ * recording merges.
+ */
+export const MIN_RATED_GAMES = 10
+
+/** The colour a rating gives, or 0 below Poroporo or before ten games. */
+export function ratingRung(rating: number, games: number): number {
+  if (games < MIN_RATED_GAMES || rating < RATING_FLOOR) return 0
+  return Math.min(TOP_RUNG, DRILL_CAP + 1 + Math.floor((rating - RATING_FLOOR) / RATING_STEP))
+}
+
+/** A Game-rung event's colour: the higher of the capped drill colour and the rating colour. */
+export function gameEventRung(drillRung: number, ratingColour: number): number {
+  return Math.max(Math.min(drillRung, DRILL_CAP), ratingColour)
+}
+
+// ─── Strength: a ratio of bodyweight ─────────────────────────────────────────
+// The player picks an optional 10kg band, never a number, and the ratio is
+// taken against the band's MIDDLE: the bottom edge would flatter everyone in
+// the band and the top edge would punish them, and the middle halves the worst
+// case. No band means no strength grade: the event is ungradeable for that
+// player, not failed. Juniors are never asked; they are graded as a 50kg
+// lifter, then shifted by age like any other standard.
+
+export type BodyweightBand = { label: string; min: number; max: number | null; mid: number }
+
+export const BODYWEIGHT_BANDS: readonly BodyweightBand[] = [
+  { label: 'Under 50kg', min: 0, max: 50, mid: 45 },
+  { label: '50 to 60kg', min: 50, max: 60, mid: 55 },
+  { label: '60 to 70kg', min: 60, max: 70, mid: 65 },
+  { label: '70 to 80kg', min: 70, max: 80, mid: 75 },
+  { label: '80 to 90kg', min: 80, max: 90, mid: 85 },
+  { label: '90 to 100kg', min: 90, max: 100, mid: 95 },
+  { label: '100 to 110kg', min: 100, max: 110, mid: 105 },
+  { label: '110kg and over', min: 110, max: null, mid: 115 },
+]
+
+export const JUNIOR_BODYWEIGHT_KG = 50
+export const PLATE_KG = 2.5
+
+/**
+ * Kilogram thresholds for a ratio ladder at a bodyweight, rounded to the nearest
+ * 2.5kg plate. A null ratio is the empty bar, Kiwikiwi on every strength event,
+ * which any recorded lift meets: pass only lifts that actually happened.
+ */
+export function ratioThresholdsKg(ratios: readonly (number | null)[], bodyweightKg: number): number[] {
+  return ratios.map((r) => (r == null ? 0 : Math.round((r * bodyweightKg) / PLATE_KG) * PLATE_KG))
+}
+
+/**
+ * The bodyweight a strength standard is taken against: the fixed junior weight,
+ * or the middle of the player's band. Null means the player has no band, so
+ * their strength events are ungradeable rather than failed.
+ */
+export function strengthBodyweight(band: AgeBand, bandLabel: string | null): number | null {
+  if (band === 'U12' || band === 'U14' || band === 'U16') return JUNIOR_BODYWEIGHT_KG
+  return BODYWEIGHT_BANDS.find((b) => b.label === bandLabel)?.mid ?? null
 }
 
 /** Age band from a player's division and age. Mirrors the division rules. */
