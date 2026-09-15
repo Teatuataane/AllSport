@@ -290,6 +290,9 @@ export const UNIT_MULTIPLIER = 1.5
 export const UNITS_REQUIRED: readonly number[] = GAMES_REQUIRED.map((g, r) =>
   r <= 1 ? 0 : Math.round(UNIT_MULTIPLIER * (g - GAMES_REQUIRED[r - 1])))
 
+/** Absorbs floating-point noise in a unit sum, and nothing more. */
+export const UNIT_EPSILON = 1e-6
+
 export type ColourGate = {
   domainNumber: number
   /** The colour held (conferred), 0 = Mā. */
@@ -322,8 +325,9 @@ export function colourGate(input: {
   const unitsNeeded = next == null ? 0 : UNITS_REQUIRED[next]
   const standardsMet = next != null && input.standardsRung >= next
   const gamesMet = next != null && input.games >= gamesNeeded
-  // Rounded to a tenth before comparing, so 2.9999… of floating-point quarters is 3.
-  const trainingMet = next != null && Math.round(input.unitsSinceHeld * 10) / 10 >= unitsNeeded
+  // A tolerance, not rounding: floating-point quarters summing to 2.9999…
+  // are 3, but a real 2.95 is still short.
+  const trainingMet = next != null && input.unitsSinceHeld + UNIT_EPSILON >= unitsNeeded
   return {
     domainNumber: input.domainNumber, held: input.held, next,
     standardsMet, gamesMet, trainingMet,

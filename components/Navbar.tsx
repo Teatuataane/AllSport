@@ -148,7 +148,8 @@ export default function Navbar() {
     </Link>
   )
 
-  // Mirrors the bottom bar, one for one. Only rendered ≥769px.
+  // The bottom bar's four tabs, plus Colours and Log, which phones reach from
+  // the MORE sheet. Only rendered ≥769px.
   const desktopTabs = [
     { href: playHref, label: playLabel.toUpperCase(), colour: playColour, match: '/scoring' },
     { href: '/dashboard', label: 'STATS', match: '/dashboard' },

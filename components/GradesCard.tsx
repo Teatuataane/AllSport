@@ -38,6 +38,11 @@ const label = {
   letterSpacing: '0.1em', fontWeight: 600,
 }
 
+const footerLink = {
+  flex: 1, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
+  padding: '12px 6px 0', ...label, fontSize: 12,
+}
+
 export default function GradesCard({ state }: { state: GradeState }) {
   const { grades, held, schemaReady, gates } = state
   const rows = grades.domains.map(d => {
@@ -94,6 +99,8 @@ export default function GradesCard({ state }: { state: GradeState }) {
                   : !gate.standardsMet
                     ? `${d.metAtNextRung} of ${d.required} events at ${next.name}`
                     : `${next.name} needs ${blocker}`
+          const unitsText = schemaReady && next && gate.unitsNeeded > 0 && !ready
+            ? ` · ${Math.min(Math.floor(gate.units + 1e-6), gate.unitsNeeded)}/${gate.unitsNeeded} units` : ''
           const showBar = schemaReady && !!next && gate.unitsNeeded > 0
           return (
             <div key={d.domainNumber} style={{
@@ -105,9 +112,9 @@ export default function GradesCard({ state }: { state: GradeState }) {
                 <div style={{ fontSize: 14, color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {DOMAIN_NAMES[d.domainNumber - 1]}
                 </div>
-                <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 1 }}>{status}</div>
+                <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 1 }}>{status}{unitsText}</div>
                 {showBar && (
-                  <div title={`${Math.floor(gate.units)} of ${gate.unitsNeeded} training units toward ${next!.name}`}
+                  <div aria-hidden
                     style={{ height: 3, borderRadius: 99, background: '#1c1c1c', marginTop: 5, overflow: 'hidden' }}>
                     <div style={{
                       height: '100%', borderRadius: 99, width: `${Math.min(100, (gate.units / gate.unitsNeeded) * 100)}%`,
@@ -125,11 +132,11 @@ export default function GradesCard({ state }: { state: GradeState }) {
       </div>
 
       <div style={{ display: 'flex', borderTop: '1px solid var(--border)', marginTop: 6 }}>
-        <Link href="/log" style={{ flex: 1, textAlign: 'center', paddingTop: 13, ...label, fontSize: 12, color: 'var(--purple)' }}>
+        <Link href="/log" style={{ ...footerLink, color: 'var(--purple)', borderRight: '1px solid var(--border)' }}>
           Log a workout
         </Link>
-        <Link href="/grades" style={{ flex: 1, textAlign: 'center', paddingTop: 13, ...label, fontSize: 12, color: 'var(--blue)' }}>
-          What each colour asks →
+        <Link href="/grades" style={{ ...footerLink, color: 'var(--blue)' }}>
+          Colour guide →
         </Link>
       </div>
     </div>

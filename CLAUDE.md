@@ -287,6 +287,11 @@ Renames the **"My 100"** feature (dashboard card + its modal) to **"My Events"**
 
 ### Effort Points
 
+> **RETIRED on the live screen in v0.8.0.0 (Sept 2026).** Effort tasks no longer exist and
+> `effort_task_completions` is no longer written; effort now counts as TRAINING UNITS toward
+> colours (see "Workout logging" below). `award_session_points` still pays (events played +
+> PR events) × 5 until points are retired server-side. Everything below is history.
+
 Players earn effort points by completing additional volume work **during the session**, on top of their competition score. Effort points are added to the player's **Colour System total** (same bucket as placement points and bonuses).
 
 **Session cap:** 100 effort points maximum per session (= effort level 20 × 5 pts). Cap is effort level 20 (= 100 pts at 5 pts each). Hitting the cap triggers a congratulatory notification in the UI.

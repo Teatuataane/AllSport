@@ -17,7 +17,7 @@
 // Pure: no React, no Supabase. Used by the grading engine, the logging page and
 // the live session screen, so all three count the same way.
 
-import { EVENTS, getEventBySlug, getEventByName, isTimedEffort, type EventData } from './eventData'
+import { getEventBySlug, getEventByName, isTimedEffort, type EventData } from './eventData'
 import { UNIT_SHEET, type UnitRule } from './unitSheet'
 
 export type { UnitRule }
@@ -122,13 +122,25 @@ export function unitsForEntryRow(row: { event_slug: string | null; count: number
   return { domain: ev.domainNumber, units: unitsForVolume(ev, { count: row.count, distanceM: row.volume_distance_m }) }
 }
 
-/** Rounded for display: whole units, or one decimal under ten. */
-export function fmtUnits(u: number): string {
-  if (u >= 10 || Number.isInteger(u)) return String(Math.floor(u))
-  return (Math.floor(u * 10) / 10).toFixed(1)
+/** Units a set of game results earned on one event. */
+export function unitsIn(ev: EventData | undefined, rows: readonly { difficulty_tier: string | null }[]): number {
+  return ev ? rows.reduce((sum, r) => sum + unitsForResult(ev, r.difficulty_tier), 0) : 0
 }
 
-/** Every event's rule, in roster order. What the review sheet lists. */
-export function unitTable(): { ev: EventData; rule: UnitRule; per: number }[] {
-  return EVENTS.map(ev => ({ ev, ...unitRule(ev) }))
+/**
+ * Rounded DOWN for display, so a player is never shown a unit they have not
+ * finished: whole units, or one decimal under ten. The tolerance matches the
+ * training gate's (lib/grading.ts UNIT_EPSILON), so a gate that is met never
+ * reads as "2.9 of 3".
+ */
+export function fmtUnits(u: number): string {
+  if (u >= 10) return String(Math.floor(u + 1e-6))
+  const t = Math.floor(u * 10 + 1e-6) / 10
+  return Number.isInteger(t) ? String(t) : t.toFixed(1)
+}
+
+/** "3 units", "1 unit", "2.5 units": plural from what is SHOWN, not the raw float. */
+export function fmtUnitsLabel(u: number): string {
+  const n = fmtUnits(u)
+  return `${n} unit${n === '1' ? '' : 's'}`
 }

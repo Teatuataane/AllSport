@@ -18,11 +18,10 @@
 
 import { createClient } from './supabase-browser'
 import {
-  computePlayerGrades, heldRungs, voidedSessionIds, colourGates, unitsSinceConferral,
-  type PlayerGrades, type GradeResultRow, type UnitEvent,
+  computePlayerGrades, heldRungs, voidedSessionIds, colourGates, unitsSinceConferral, gameEvidence,
+  type PlayerGrades,
 } from './playerGrades'
 import type { ColourGate } from './grading'
-import { unitsForResultRow } from './units'
 import { workoutEvidence, type WorkoutEntryRow } from './workouts'
 import { rateGames, type SportRating } from './headToHead'
 import { disputedBySport, type MatchRow } from './matches'
@@ -42,7 +41,7 @@ export type GradeState = {
   hasBand: boolean
   /** False until the grading migration is applied: nothing can be conferred yet. */
   schemaReady: boolean
-  /** Official games played: sessions that were not voided, with any result. */
+  /** Official games played: sessions that finished and were not voided, with any result. */
   games: number
   /** Effort units per domain since the last colour there. */
   unitsByDomain: Map<number, number>
@@ -151,15 +150,13 @@ export async function loadGradeState(playerId: string, matches?: readonly MatchR
   const exempt = new Set(exemptions.error ? [] : (exemptions.data ?? []).map((e: { event_slug: string }) => e.event_slug))
 
   const counted = countedRows((results.data ?? []) as unknown as ResultRow[])
-  const gameRows: GradeResultRow[] = counted.map(r => ({
+  const game = gameEvidence(counted.map(r => ({
+    session_id: r.session_id,
     event_name: r.session_events!.event_name,
-    raw_score: r.raw_score, weight_kg: r.weight_kg, difficulty_tier: r.difficulty_tier, source: 'game',
-  }))
-  const gameUnits: UnitEvent[] = []
-  for (const r of counted) {
-    const u = unitsForResultRow({ event_name: r.session_events!.event_name, difficulty_tier: r.difficulty_tier })
-    if (u) gameUnits.push({ domain: u.domain, units: u.units, at: r.sessions?.started_at ?? r.created_at })
-  }
+    raw_score: r.raw_score, weight_kg: r.weight_kg, difficulty_tier: r.difficulty_tier,
+    at: r.sessions?.started_at ?? r.created_at,
+    closed: r.sessions ? !r.sessions.is_active : true,
+  })))
   const logged = workoutEvidence(workouts.error ? [] : (workouts.data ?? []) as unknown as WorkoutEntryRow[])
 
   const grades = computePlayerGrades({
@@ -169,14 +166,14 @@ export async function loadGradeState(playerId: string, matches?: readonly MatchR
       gender: (gender.data as { gender: string | null } | null)?.gender ?? null,
       bodyweightBand: bandLabel,
     },
-    results: [...gameRows, ...logged.rows],
+    results: [...game.rows, ...logged.rows],
     ratings: ratingsFor(playerId, allMatches),
     exemptions: exempt,
   })
 
   const held = heldRungs(awardRows)
-  const games = new Set(counted.map(r => r.session_id)).size
-  const unitsByDomain = unitsSinceConferral([...gameUnits, ...logged.units], awardRows)
+  const games = game.games
+  const unitsByDomain = unitsSinceConferral([...game.units, ...logged.units], awardRows)
 
   return {
     grades, awards: awardRows, held, exemptions: exempt,

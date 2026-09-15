@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient, getSessionUser } from '@/lib/supabase-browser'
 import { getEventByName, isTimedEffort, decodeDiffTime, type EventData } from '@/lib/eventData'
-import { unitsForResult, unitRule, fmtUnits, RULE_WORDS } from '@/lib/units'
+import { unitsForResult, unitsForResultRow, unitsIn, unitRule, fmtUnitsLabel, RULE_WORDS } from '@/lib/units'
 import { parseLocalDate } from '@/lib/dates'
 import EventIcon, { domainColor } from '@/components/EventIcon'
 import {
@@ -46,7 +46,6 @@ type Result = {
   reps: number | null
   time_seconds: number | null
   is_pr: boolean
-  effort_task_completions: number
 }
 
 // Age arrives pre-derived from the players_public view rather than as a raw
@@ -132,8 +131,7 @@ function ordinal(n: number): string {
 
 function rowUnits(r: Result, events: SessionEvent[]): number {
   const se = events.find(e => e.id === r.event_id)
-  const ev = se ? getEventByName(se.event_name) : undefined
-  return ev ? unitsForResult(ev, r.difficulty_tier) : 0
+  return se ? unitsForResultRow({ event_name: se.event_name, difficulty_tier: r.difficulty_tier })?.units ?? 0 : 0
 }
 
 function unitsFor(rows: Result[], events: SessionEvent[]): number {
@@ -167,13 +165,13 @@ async function submitEntry(args: {
   matchOpponents: string[] | null
 }): Promise<SubmitOutcome> {
   const { sessionId, eventId, playerId, playerName, mode, eventData, v, myResults, seasonPRNum, editingResultId, matchOpponents } = args
-  const scored = computeScoreVals(mode, eventData, v)
+  // One encoder for a game score and a logged best effort (lib/scoring.ts).
+  const scored = scoreColumns(mode, eventData, v)
   if (!scored) return { error: 'Enter a valid score first', isPR: false, units: 0 }
   try {
-    // One encoder for a game score and a logged best effort (lib/scoring.ts).
     const payload: Record<string, unknown> = {
       session_id: sessionId, event_id: eventId, player_id: playerId || null,
-      player_name: playerName, ...scoreColumns(mode, eventData, v)!,
+      player_name: playerName, ...scored,
     }
 
     // When editing, judge the PR against the OTHER rows — including the row
@@ -181,8 +179,9 @@ async function submitEntry(args: {
     const priorResults = editingResultId ? myResults.filter(r => r.id !== editingResultId) : myResults
     const newIsPR = seasonPRNum !== null && scored.raw_score > seasonPRNum && !priorResults.some(r => r.is_pr)
     payload.is_pr = newIsPR
-    // Effort tasks are retired: nothing is credited here any more.
-    payload.effort_task_completions = 0
+    // Effort tasks are retired, so effort_task_completions is no longer
+    // written: a new row takes the column default (0), and an edit leaves a
+    // row's earlier credit alone rather than wiping it mid-season.
 
     let resultId: string
     if (editingResultId) {
@@ -201,7 +200,8 @@ async function submitEntry(args: {
     // the score has saved, and a failure here must never turn a saved score into
     // an error toast. Guests have no stable identity, so they are never matched.
     if (playerId && matchOpponents !== null) await recordMatch(resultId, matchOpponents)
-    return { error: null, isPR: newIsPR, units: eventData ? unitsForResult(eventData, v.difficultyTier || null) : 0 }
+    // An edit replaces a completion, it does not add one.
+    return { error: null, isPR: newIsPR, units: editingResultId || !eventData ? 0 : unitsForResult(eventData, v.difficultyTier || null) }
   } catch (e: unknown) {
     return { error: e instanceof Error ? e.message : 'Submission failed', isPR: false, units: 0 }
   }
@@ -275,7 +275,7 @@ function QuickEntrySheet({
   const myBestResult = myResults.length > 0
     ? myResults.reduce((best, r) => r.raw_score > best.raw_score ? r : best, myResults[0])
     : undefined
-  const unitsHere = eventData ? myResults.reduce((sum, r) => sum + unitsForResult(eventData, r.difficulty_tier), 0) : 0
+  const unitsHere = unitsIn(eventData, myResults)
   const unitWords = eventData ? RULE_WORDS[unitRule(eventData).rule] : RULE_WORDS.set
 
   const [v, setV] = useState<EntryVals>(() => {
@@ -423,7 +423,7 @@ function QuickEntrySheet({
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '26px', lineHeight: 1, color: '#fff', letterSpacing: '0.03em' }}>{se.event_name}</div>
             <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.12em', marginTop: '3px' }}>
-              {se.domain_name}{unitsHere > 0 ? ` · ${fmtUnits(unitsHere)} unit${unitsHere === 1 ? '' : 's'}` : ''}
+              {se.domain_name}{unitsHere > 0 ? ` · ${fmtUnitsLabel(unitsHere)}` : ''}
             </div>
           </div>
           <button onClick={() => setShowHow(h => !h)} style={{
@@ -725,7 +725,7 @@ function QuickEntrySheet({
               {/* Training units — what replaced effort tasks */}
               <div style={{ ...QES_LBL, display: 'flex', justifyContent: 'space-between' }}>
                 <span>Training units</span>
-                <span style={{ color: '#B87DB5' }}>{fmtUnits(unitsHere)} this game</span>
+                <span style={{ color: '#B87DB5' }}>{fmtUnitsLabel(unitsHere)} this game</span>
               </div>
               <div style={{ fontSize: '13px', color: '#777', lineHeight: 1.5 }}>
                 Every {unitWords.one} counts toward your next colour in {se.domain_name}, at any effort. Submit each one.
@@ -774,7 +774,7 @@ function EventListRow({
   const myBestResult = myResults.length > 0
     ? myResults.reduce((best, r) => r.raw_score > best.raw_score ? r : best, myResults[0])
     : undefined
-  const unitsHere = eventData ? myResults.reduce((sum, r) => sum + unitsForResult(eventData, r.difficulty_tier), 0) : 0
+  const unitsHere = unitsIn(eventData, myResults)
   const rank = eventDivisionRank(se.id, allResults, playerInfoMap, playerDivision, myBestResult?.raw_score ?? null)
   const todo = !myBestResult
 
@@ -792,7 +792,7 @@ function EventListRow({
         <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '3px', display: 'flex', alignItems: 'center', gap: '8px' }}>
           {se.domain_name}
           {unitsHere > 0 && (
-            <span style={{ fontSize: '10.5px', color: '#B87DB5', border: '1px solid #B87DB566', borderRadius: '999px', padding: '0 7px' }}>{fmtUnits(unitsHere)} U</span>
+            <span style={{ fontSize: '10.5px', color: '#B87DB5', border: '1px solid #B87DB566', borderRadius: '999px', padding: '0 7px' }}>{fmtUnitsLabel(unitsHere)}</span>
           )}
         </div>
       </div>
@@ -1535,7 +1535,12 @@ function SessionEndTakeover({
   const nDiv = divisionPlacement?.playerCount ?? null
   const placementPts = summary?.total_placement_points
     ?? (rank !== null && nDiv ? Math.round(Math.max(100 - (100 / nDiv) * (rank - 1), 10)) : 0)
-  const effortPts = summary?.effort_points ?? 0
+  // Effort tasks are retired on this screen, but award_session_points still
+  // pays (events played + PR events) x 5, capped at 100, until points are
+  // retired server-side. The fallback must match it, or the provisional total
+  // reads low until the summary row lands.
+  const effortPts = summary?.effort_points
+    ?? Math.min(new Set(myResults.map(r => r.event_id)).size + new Set(myResults.filter(r => r.is_pr).map(r => r.event_id)).size, 20) * 5
   const earned = placementPts + effortPts
 
   // Session-count milestone — summary row present means the count includes this session
@@ -1584,8 +1589,8 @@ function SessionEndTakeover({
           <div style={{ display: 'flex', gap: '10px' }}>
             {[
               { label: 'Placement pts', value: placementPts, colour: '#4DB26E' },
-              { label: 'Training units', value: fmtUnits(unitsEarned), colour: '#B87DB5' },
-              { label: 'Total pts', value: earned, colour: '#F9B051' },
+              { label: 'Effort pts', value: effortPts, colour: '#B87DB5' },
+              { label: 'Total earned', value: earned, colour: '#F9B051' },
             ].map(s => (
               <div key={s.label} style={{ flex: 1, background: '#161616', border: '1px solid #1e1e1e', borderRadius: '14px', padding: '12px 10px', textAlign: 'center' }}>
                 <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '28px', color: s.colour, lineHeight: 1 }}>{loaded ? s.value : '…'}</div>
@@ -1593,6 +1598,11 @@ function SessionEndTakeover({
               </div>
             ))}
           </div>
+          {unitsEarned > 0 && (
+            <div style={{ fontSize: '13px', color: '#B87DB5', marginTop: '10px', textAlign: 'center', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.06em' }}>
+              + {fmtUnitsLabel(unitsEarned)} of training toward your colours
+            </div>
+          )}
           {loaded && !summary && (
             <div style={{ fontSize: '11.5px', color: '#555', marginTop: '6px', textAlign: 'center' }}>
               Provisional — final points are confirmed when the game is closed off
@@ -1698,7 +1708,7 @@ export default function SessionPage() {
   const [judgeGuestOpen, setJudgeGuestOpen] = useState(false)
   const [sessionPlayers, setSessionPlayers] = useState<{ id: string; name: string }[]>([])
   // Keyed like seasonPRsLoaded: switching target is one chip tap, so the previous
-  // player's PRs must never linger as the new player's "Season PR" / effort-task baseline.
+  // player's PRs must never linger as the new player's "Season PR".
   const [judgePRsLoaded, setJudgePRsLoaded] = useState<{ key: string; prs: Record<string, number | string | null> } | null>(null)
 
   const eventsKey = events.map(e => e.id).join(',')
@@ -2235,7 +2245,7 @@ export default function SessionPage() {
                   )}
                 </div>
                 <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11.5px', color: '#B87DB5', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 600 }}>
-                  {fmtUnits(totalUnits)} training unit{totalUnits === 1 ? '' : 's'}
+                  {fmtUnitsLabel(totalUnits)} toward colours
                 </div>
               </div>
               <div style={{ position: 'relative' }}>
@@ -2351,7 +2361,7 @@ export default function SessionPage() {
                 ? <><span style={{ color: '#7ab4ff' }}>New event unlocked</span> — {toast.eventName}! <span style={{ color: '#aaa' }}>{toast.label}</span></>
                 : <>Score in — {toast.eventName} — {toast.label}</>}
             {toast.units > 0 && (
-              <span style={{ color: '#B87DB5', marginLeft: '10px', fontSize: '15px' }}>+{fmtUnits(toast.units)} unit{toast.units === 1 ? '' : 's'}</span>
+              <span style={{ color: '#B87DB5', marginLeft: '10px', fontSize: '15px' }}>+{fmtUnitsLabel(toast.units)}</span>
             )}
           </div>
         </div>
@@ -2494,7 +2504,7 @@ export default function SessionPage() {
                       )}
                     </div>
                     <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11.5px', color: '#B87DB5', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 600 }}>
-                      {fmtUnits(totalUnits)} training unit{totalUnits === 1 ? '' : 's'}
+                      {fmtUnitsLabel(totalUnits)} toward colours
                     </div>
                   </div>
                   <ProgressSegments events={events} scoredIds={scoredIds} />

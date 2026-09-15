@@ -164,7 +164,7 @@ const storageRows = [
     life: 'Deleted as soon as you join.',
   },
   {
-    name: 'allsport_postgame_…, allsport_effortmax_…, allsport_fullhouse_…',
+    name: 'allsport_postgame_…, allsport_fullhouse_… (and allsport_effortmax_…, no longer written)',
     kind: 'Local storage',
     purpose: 'Remembers that you have already seen an end-of-session or celebration message, so it does not repeat.',
     life: 'Until you clear your browser data.',

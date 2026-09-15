@@ -5,6 +5,7 @@
 // (Same split as lib/activePlayer.ts and lib/useActivePlayer.ts.)
 
 import { EVENTS, getEventBySlug, type EventData } from './eventData'
+import { toNZDateString } from './dates'
 import { unitsForEntryRow } from './units'
 import type { GradeResultRow, UnitEvent } from './playerGrades'
 
@@ -19,7 +20,7 @@ export type WorkoutEntryRow = {
   workouts: { player_id: string; performed_on: string; witnessed: boolean; created_at: string } | null
 }
 
-/** How the database normalises an alias: lower case, trimmed, single spaces. */
+/** Lower case, trimmed, single spaces: the SAME rule as the database's public.normalise_activity(). */
 export function normaliseActivity(s: string): string {
   return s.trim().toLowerCase().replace(/\s+/g, ' ')
 }
@@ -68,8 +69,11 @@ export const BACKDATE_DAYS = 7
 
 /** The NZ calendar day of an instant, YYYY-MM-DD. */
 export function nzDay(at: Date | string = new Date()): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Auckland' }).format(new Date(at))
+  return toNZDateString(new Date(at))
 }
+
+/** The window the log page's week view covers, today included. */
+export const RECENT_DAYS = 7
 
 /** A YYYY-MM-DD day moved by whole days. Calendar arithmetic, no time zones. */
 export function addDays(day: string, n: number): string {

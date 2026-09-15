@@ -8,6 +8,8 @@
 
 import { EVENTS, getEventByName, type EventData } from './eventData'
 import { STANDARDS } from './standards'
+import { isGameTier, unitsForResultRow } from './units'
+import { toNZDateString } from './dates'
 import {
   ageBand, rungForScore, ratioThresholdsKg, strengthBodyweight, ratingRung, gameEventRung,
   domainGrade, overallGrade, colourGate, DRILL_CAP, DOMAIN_COUNT,
@@ -74,11 +76,7 @@ export function ladderFor(p: Pick<GradePlayer, 'division' | 'gender'>): 'M' | 'F
 }
 
 /** Is this row a Game-rung result (a win, draw or loss) rather than a drill? */
-function isGameRow(ev: EventData, row: GradeResultRow): boolean {
-  if (ev.inputMode === 'sport') return true
-  return !!row.difficulty_tier &&
-    (ev.difficultyTiers ?? []).some(t => t.name === row.difficulty_tier && t.scoring === 'sport')
-}
+const isGameRow = (ev: EventData, row: GradeResultRow) => isGameTier(ev, row.difficulty_tier)
 
 /** The colour one player's rows earn in one event. */
 export function eventGrade(
@@ -94,8 +92,9 @@ export function eventGrade(
   const played = rows.length > 0 || !!rating
 
   if (!s) return { slug: ev.slug, rung: 0, gradeable: false, played }
-  // Wrestling: no fair solo drill, so its only colours are rating colours.
-  if (s.kind === 'rating') return { slug: ev.slug, rung: rated, gradeable: true, played }
+  // Wrestling: no fair solo drill, so its only colours are rating colours,
+  // and a rating only comes from matches recorded in official sessions.
+  if (s.kind === 'rating') return { slug: ev.slug, rung: rated, gradeable: true, played, ...(rated ? { source: 'game' as const } : {}) }
 
   const ladder = s.all ?? s[ladderFor(p)] ?? []
   let drill = 0
@@ -226,8 +225,41 @@ export type UnitEvent = {
   day?: string
 }
 
-const nzDay = (iso: string) =>
-  new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Auckland' }).format(new Date(iso))
+const nzDay = (iso: string) => toNZDateString(new Date(iso))
+
+/** A player's own result row from an official session, as the grades loader reads it. */
+export type GameResultRow = {
+  session_id: string
+  event_name: string
+  raw_score: number | null
+  weight_kg: number | null
+  difficulty_tier: string | null
+  /** When it counts for the training gate: the session's start. */
+  at: string
+  /** The session has finished. A game still in progress is not yet a game. */
+  closed: boolean
+}
+
+/**
+ * What a player's game results give the grades: rows for the standards, and
+ * the games and units for the two gates. The gates count only CLOSED
+ * sessions: a colour released on a game still in progress could rest on a
+ * session a kaiwhakawā later voids. Voided sessions are already filtered out
+ * by the caller (voidedSessionIds).
+ */
+export function gameEvidence(rows: readonly GameResultRow[]): { rows: GradeResultRow[]; units: UnitEvent[]; games: number } {
+  const out: GradeResultRow[] = []
+  const units: UnitEvent[] = []
+  const games = new Set<string>()
+  for (const r of rows) {
+    out.push({ event_name: r.event_name, raw_score: r.raw_score, weight_kg: r.weight_kg, difficulty_tier: r.difficulty_tier, source: 'game' })
+    if (!r.closed) continue
+    games.add(r.session_id)
+    const u = unitsForResultRow({ event_name: r.event_name, difficulty_tier: r.difficulty_tier })
+    if (u) units.push({ domain: u.domain, units: u.units, at: r.at })
+  }
+  return { rows: out, units, games: games.size }
+}
 
 /**
  * Units per domain since the last colour conferred there — the training gate's

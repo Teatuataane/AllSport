@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { GAMES_REQUIRED, UNITS_REQUIRED, UNIT_MULTIPLIER, TOP_RUNG, colourGate } from '@/lib/grading'
-import { unitsSinceConferral, colourGates, releasable, gateBlocker, eventGrade, type GradePlayer } from '@/lib/playerGrades'
+import { unitsSinceConferral, colourGates, releasable, gateBlocker, eventGrade, gameEvidence, type GradePlayer } from '@/lib/playerGrades'
+import { fmtUnits, fmtUnitsLabel } from '@/lib/units'
+import { normaliseActivity } from '@/lib/workouts'
 import { workoutEvidence, fitActivity, suggestEvents, allowedDays, addDays, recentUnitsByDomain, type WorkoutEntryRow } from '@/lib/workouts'
 import { getEventByName } from '@/lib/eventData'
 
@@ -148,5 +150,57 @@ describe('the days a workout may carry', () => {
 
   it('does calendar arithmetic across a month end', () => {
     expect(addDays('2026-10-01', -1)).toBe('2026-09-30')
+  })
+})
+
+describe('game results as evidence', () => {
+  const row = (session_id: string, closed: boolean, event_name = 'Cycling', difficulty_tier: string | null = '1000m') =>
+    ({ session_id, event_name, raw_score: 29900, weight_kg: null, difficulty_tier, at: '2026-09-10T04:30:00Z', closed })
+
+  it('counts games and units only from sessions that have finished', () => {
+    const g = gameEvidence([row('a', true), row('a', true), row('b', true), row('live', false)])
+    expect(g.games).toBe(2)
+    expect(g.units.map(u => u.units)).toEqual([1, 1, 1])
+  })
+
+  it('still grades the standards from a game in progress', () => {
+    const g = gameEvidence([row('live', false)])
+    expect(g.rows).toHaveLength(1)
+    expect(g.rows[0].source).toBe('game')
+    expect(g.games).toBe(0)
+  })
+
+  it('earns nothing for a retired event', () => {
+    expect(gameEvidence([row('a', true, 'Walking', null)]).units).toEqual([])
+  })
+})
+
+describe('showing units', () => {
+  it('rounds down, so a player is never shown a unit they have not finished', () => {
+    expect(fmtUnits(2.95)).toBe('2.9')
+    expect(fmtUnits(3 - 1e-12)).toBe('3')
+    expect(fmtUnits(0.1 + 0.2 + 2.7)).toBe('3')
+  })
+
+  it('pluralises from the number shown, not the raw sum', () => {
+    expect(fmtUnitsLabel(1)).toBe('1 unit')
+    expect(fmtUnitsLabel(1.05)).toBe('1 unit')
+    expect(fmtUnitsLabel(2.5)).toBe('2.5 units')
+    expect(fmtUnitsLabel(0)).toBe('0 units')
+  })
+})
+
+describe('matching activities', () => {
+  it('collapses runs of whitespace, as the database does', () => {
+    expect(normaliseActivity('  Road \t  Ride ')).toBe('road ride')
+  })
+})
+
+describe('a colour earned only by rating', () => {
+  it('names the game as its source', () => {
+    const player: GradePlayer = { division: "Men's", ageYears: 30, gender: 'Male', bodyweightBand: null }
+    const w = getEventByName('Wrestling')!
+    expect(eventGrade(w, [], player, { rating: 1310, games: 10 }).source).toBe('game')
+    expect(eventGrade(w, [], player).source).toBeUndefined()
   })
 })

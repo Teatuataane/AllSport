@@ -24,9 +24,15 @@ describe('the units sheet', () => {
     expect(Object.keys(UNIT_SHEET).sort()).toEqual(EVENTS.map(e => e.slug).sort())
   })
 
-  it('refuses a sheet with a missing event or a bad number, naming every problem', () => {
-    const broken = sheet.replace(/^\| `cycling` .*$/m, '').replace(/(\| `deadlift` \|[^|]*\|[^|]*\| set \| )1/, '$10')
-    expect(() => compile(broken, eventSrc)).toThrow(/cycling: missing[\s\S]*|deadlift: per/)
+  it('refuses a sheet with a missing event or a bad number, naming every problem at once', () => {
+    const noCycling = sheet.replace(/^\| `cycling` .*$/m, '')
+    const broken = noCycling.replace(/(\| `deadlift` \|[^|]*\|[^|]*\| set \| )1/, '$10')
+    expect(noCycling).not.toBe(sheet)
+    expect(broken).not.toBe(noCycling)
+    let message = ''
+    try { compile(broken, eventSrc) } catch (e) { message = (e as Error).message }
+    expect(message).toContain('cycling: missing')
+    expect(message).toContain('deadlift: per')
   })
 })
 

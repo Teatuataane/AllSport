@@ -5,7 +5,8 @@
 // here and passed down already flattened.
 import Link from 'next/link'
 import { RainbowText, SectionLabel } from '@/components/ui'
-import { EVENTS } from '@/lib/eventData'
+import { EVENTS, getEventBySlug } from '@/lib/eventData'
+import { unitRule } from '@/lib/units'
 import DomainAccordion from './DomainAccordion'
 
 const DOMAIN_META = [
@@ -122,11 +123,16 @@ const steps = [
   },
 ]
 
+// Read from the compiled unit sheet, never typed: if Tāne's review changes a
+// unit, this page follows it.
+const perUnit = (slug: string) => { const e = getEventBySlug(slug); return e ? unitRule(e).per : 1 }
+const RIDE_KM = perUnit('cycling') / 1000
+const THROWS = perUnit('javelin-throw')
 const unitRules = [
   { label: 'Lifts and reps', rule: 'Every working set is 1 unit' },
   { label: 'Holds', rule: 'Every hold is 1 unit' },
-  { label: 'Rides, runs, rows', rule: '1km is 1 unit, so a 25km ride is 25' },
-  { label: 'Throws and jumps', rule: 'Every 3 attempts is 1 unit' },
+  { label: 'Rides, runs, rows', rule: `${RIDE_KM}km is 1 unit, so a 25km ride is ${25 / RIDE_KM}` },
+  { label: 'Throws and jumps', rule: `Every ${THROWS} attempts is 1 unit` },
   { label: 'Games', rule: 'Every game is 1 unit' },
 ]
 

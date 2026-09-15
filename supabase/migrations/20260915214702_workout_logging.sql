@@ -23,7 +23,9 @@
 -- What the database pins is WHO logged a workout and whether it was
 -- witnessed, because the release panel shows that to the kaiwhakawā. Those are
 -- pinned by a trigger, never by grants (see CLAUDE.md: a table-level grant
--- overrides column REVOKEs).
+-- overrides column REVOKEs). A witnessed workout is then CLOSED to everyone but
+-- kaiwhakawā, entries included: pinning the flag on the workout alone would let
+-- a player add solo scores under it and have them read as witnessed.
 --
 -- Units are NOT stored. What one unit is lives in lib/unitSheet.ts, compiled
 -- from a reviewed sheet, so the raw volume is stored and units are worked out
@@ -53,6 +55,19 @@ AS $$
 $$;
 REVOKE ALL ON FUNCTION public.can_log_for(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.can_log_for(uuid) TO authenticated;
+
+-- How an activity is compared, everywhere: lower case, trimmed, runs of
+-- whitespace collapsed to one space. lib/workouts.ts normaliseActivity() is the
+-- same rule; if the two ever differ, an entry typed "road  ride" can never be
+-- fitted by an alias.
+CREATE OR REPLACE FUNCTION public.normalise_activity(p_text text)
+RETURNS text
+LANGUAGE sql
+IMMUTABLE
+SET search_path = public
+AS $$
+  SELECT lower(regexp_replace(btrim(p_text), '\s+', ' ', 'g'))
+$$;
 
 -- ── 1. Workouts ─────────────────────────────────────────────────────────────
 CREATE TABLE public.workouts (
@@ -86,9 +101,13 @@ BEGIN
     -- service_role has no auth.uid() and must say who logged it.
     NEW.logged_by  := COALESCE(auth.uid(), NEW.logged_by);
     -- Witnessed means a kaiwhakawā watched someone ELSE do it. A kaiwhakawā's
-    -- own solo session is as self-reported as anyone's.
-    NEW.witnessed  := auth.uid() IS NOT NULL AND public.is_judge() AND NEW.player_id <> auth.uid();
+    -- own session, or their own child's, is as self-reported as anyone's.
+    NEW.witnessed  := auth.uid() IS NOT NULL AND public.is_judge() AND NEW.player_id <> auth.uid()
+      AND NOT EXISTS (SELECT 1 FROM players WHERE id = NEW.player_id AND parent_id = auth.uid());
   ELSE
+    IF OLD.witnessed AND auth.uid() IS NOT NULL AND NOT public.is_judge() THEN
+      RAISE EXCEPTION 'workout: a witnessed workout can only be changed by a kaiwhakawā' USING ERRCODE = '42501';
+    END IF;
     NEW.id         := OLD.id;
     NEW.player_id  := OLD.player_id;
     NEW.logged_by  := OLD.logged_by;
@@ -139,7 +158,7 @@ CREATE TABLE public.workout_entries (
   CONSTRAINT workout_entries_score_needs_event CHECK (raw_score IS NULL OR event_slug IS NOT NULL)
 );
 CREATE INDEX workout_entries_workout_idx ON public.workout_entries (workout_id);
-CREATE INDEX workout_entries_unfitted_idx ON public.workout_entries (lower(btrim(activity))) WHERE event_slug IS NULL;
+CREATE INDEX workout_entries_unfitted_idx ON public.workout_entries (public.normalise_activity(activity)) WHERE event_slug IS NULL;
 
 CREATE OR REPLACE FUNCTION public.guard_workout_entries_write()
 RETURNS trigger
@@ -147,11 +166,38 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+  v_witnessed    boolean;
+  v_performed_on date;
+  v_fitting_only boolean := false;
 BEGIN
   IF TG_OP = 'UPDATE' THEN
     NEW.id         := OLD.id;
     NEW.workout_id := OLD.workout_id;
     NEW.created_at := OLD.created_at;
+    -- Choosing the event for an entry that was not fitted yet, and nothing
+    -- else. Always allowed: the not-fitted list exists so old logs can count
+    -- once they are fitted (decision 14).
+    v_fitting_only := OLD.event_slug IS NULL AND NEW.event_slug IS NOT NULL
+      AND NEW.activity IS NOT DISTINCT FROM OLD.activity
+      AND NEW.count IS NOT DISTINCT FROM OLD.count
+      AND NEW.volume_distance_m IS NOT DISTINCT FROM OLD.volume_distance_m
+      AND NEW.duration_seconds IS NOT DISTINCT FROM OLD.duration_seconds
+      AND NEW.raw_score IS NOT DISTINCT FROM OLD.raw_score;
+  END IF;
+
+  SELECT witnessed, performed_on INTO v_witnessed, v_performed_on FROM workouts WHERE id = NEW.workout_id;
+  IF auth.uid() IS NOT NULL AND NOT public.is_judge() AND NOT v_fitting_only THEN
+    -- A witnessed workout is the kaiwhakawā's record: a player adding or
+    -- changing an entry under it would inherit the witnessed label.
+    IF v_witnessed THEN
+      RAISE EXCEPTION 'workout entry: a witnessed workout can only be changed by a kaiwhakawā' USING ERRCODE = '42501';
+    END IF;
+    -- Decision 17 applies to every write, not only to creating the workout:
+    -- otherwise a new best effort could be slipped into a months-old log.
+    IF v_performed_on < (now() AT TIME ZONE 'Pacific/Auckland')::date - 7 THEN
+      RAISE EXCEPTION 'workout entry: that workout is more than 7 days old' USING ERRCODE = '22023';
+    END IF;
   END IF;
   IF NEW.event_slug IS NOT NULL AND NOT EXISTS (SELECT 1 FROM event_domains WHERE slug = NEW.event_slug) THEN
     RAISE EXCEPTION 'workout entry: % is not an event on the roster', NEW.event_slug USING ERRCODE = '22023';
@@ -174,7 +220,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.workout_entries TO authenticated;
 
 -- ── 3. Aliases ──────────────────────────────────────────────────────────────
 CREATE TABLE public.activity_aliases (
-  alias      text PRIMARY KEY CHECK (alias = lower(btrim(alias)) AND length(alias) BETWEEN 1 AND 80),
+  alias      text PRIMARY KEY CHECK (alias = public.normalise_activity(alias) AND length(alias) BETWEEN 1 AND 80),
   event_slug text NOT NULL,
   created_by uuid REFERENCES public.players(id),
   created_at timestamptz NOT NULL DEFAULT now()
@@ -216,7 +262,7 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_alias text := lower(btrim(COALESCE(p_activity, '')));
+  v_alias text := public.normalise_activity(COALESCE(p_activity, ''));
   v_n     int;
 BEGIN
   IF auth.uid() IS NULL OR NOT public.is_judge() THEN
@@ -235,7 +281,7 @@ BEGIN
     SET event_slug = EXCLUDED.event_slug, created_by = EXCLUDED.created_by, created_at = now();
 
   UPDATE workout_entries SET event_slug = p_event_slug
-  WHERE event_slug IS NULL AND lower(btrim(activity)) = v_alias;
+  WHERE event_slug IS NULL AND public.normalise_activity(activity) = v_alias;
   GET DIAGNOSTICS v_n = ROW_COUNT;
   RETURN v_n;
 END;
@@ -243,6 +289,26 @@ $$;
 
 REVOKE ALL ON FUNCTION public.fit_activity(text, text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.fit_activity(text, text) TO authenticated;
+
+-- Every unfitted activity the caller can see, grouped the way fit_activity
+-- matches. INVOKER rights: a kaiwhakawā sees the whole club through RLS, a
+-- player only their own. Grouped here, on the partial index, rather than by
+-- pulling every entry to the browser.
+CREATE OR REPLACE FUNCTION public.unfitted_activities()
+RETURNS TABLE (activity text, entries bigint)
+LANGUAGE sql
+STABLE
+SET search_path = public
+AS $$
+  SELECT public.normalise_activity(activity), count(*)
+  FROM workout_entries
+  WHERE event_slug IS NULL
+  GROUP BY 1
+  ORDER BY 2 DESC, 1
+$$;
+
+REVOKE ALL ON FUNCTION public.unfitted_activities() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.unfitted_activities() TO authenticated;
 
 -- ── 5. Erasure also deletes workouts ────────────────────────────────────────
 -- Redefined whole, from 20260915051927_grading_schema.sql, with one addition

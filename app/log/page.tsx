@@ -23,16 +23,17 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase-browser'
-import { EVENTS, DOMAIN_ORDER, getEventBySlug, type EventData } from '@/lib/eventData'
+import { DOMAIN_ORDER, getEventBySlug, type EventData } from '@/lib/eventData'
 import { computeScoreVals, scoreColumns, tierScoring, EMPTY_VALS, type EntryVals } from '@/lib/scoring'
-import { unitRule, unitsForVolume, fmtUnits, RULE_WORDS } from '@/lib/units'
+import { unitRule, unitsForVolume, fmtUnits, fmtUnitsLabel, RULE_WORDS } from '@/lib/units'
 import {
-  fitActivity, suggestEvents, allowedDays, nzDay, workoutEvidence, recentUnitsByDomain, type WorkoutEntryRow,
+  fitActivity, suggestEvents, allowedDays, workoutEvidence, recentUnitsByDomain, RECENT_DAYS, type WorkoutEntryRow,
 } from '@/lib/workouts'
 import { useActivePlayer, playerLabel } from '@/lib/useActivePlayer'
 import PlayerTabs, { ViewingAsBanner } from '@/components/PlayerTabs'
 import EventIcon from '@/components/EventIcon'
 import DomainIcon from '@/components/DomainIcon'
+import EventOptions from '@/components/EventOptions'
 
 const supabase = createClient()
 
@@ -112,10 +113,11 @@ const label: CSSProperties = {
 }
 const field: CSSProperties = {
   background: '#0d0d0d', color: 'var(--white)', border: '1px solid var(--border)', borderRadius: 10,
-  padding: '10px 11px', fontSize: 15, fontFamily: 'var(--font-body)', width: '100%', minWidth: 0,
+  // 16px or iOS zooms the page on focus.
+  padding: '11px 12px', fontSize: 16, fontFamily: 'var(--font-body)', width: '100%', minWidth: 0, minHeight: 44,
 }
 const chip = (on: boolean, colour = 'var(--blue)'): CSSProperties => ({
-  padding: '8px 12px', minHeight: 36, borderRadius: 999, cursor: 'pointer', fontSize: 13,
+  padding: '10px 14px', minHeight: 44, borderRadius: 999, cursor: 'pointer', fontSize: 13,
   fontFamily: 'var(--font-label)', letterSpacing: '0.04em',
   background: on ? colour : '#151515', color: on ? '#fff' : 'var(--grey-light)',
   border: `1px solid ${on ? colour : 'var(--border)'}`,
@@ -124,14 +126,23 @@ const card: CSSProperties = {
   background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 14, marginBottom: 12,
 }
 
+/** A number field with its name above it, so two filled fields side by side stay readable. */
 function Num({ value, onChange, placeholder, step = 'any', width }: {
   value: string; onChange: (v: string) => void; placeholder: string; step?: string; width?: number
 }) {
   return (
-    <input inputMode="decimal" type="number" min="0" step={step} value={value} placeholder={placeholder}
-      onChange={e => onChange(e.target.value)} aria-label={placeholder}
-      style={{ ...field, width: width ?? '100%' }} />
+    <label style={{ display: 'flex', flexDirection: 'column', gap: 4, width: width ?? '100%' }}>
+      <span style={{ ...label, fontSize: 10.5, color: 'var(--text-muted)' }}>{placeholder}</span>
+      <input inputMode="decimal" type="number" min="0" step={step} value={value}
+        onChange={e => onChange(e.target.value)} style={field} />
+    </label>
   )
+}
+
+/** A text-only button with a full-size touch target. */
+const quiet: CSSProperties = {
+  background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 14,
+  minHeight: 44, padding: '0 10px', margin: '-10px -10px -10px 0',
 }
 
 // ─── Best effort fields ──────────────────────────────────────────────────────
@@ -160,9 +171,9 @@ function BestFields({ ev, v, set }: { ev: EventData; v: EntryVals; set: (p: Part
           ))}
         </div>
       )}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
         {weight && <Num value={v.weightKg} onChange={x => set({ weightKg: x })} placeholder={ev.slug === 'shoulder-dislocate' ? 'Grip width (cm)' : 'Weight (kg)'} width={140} />}
-        {reps && <Num value={v.repCount} onChange={x => set({ repCount: x })} placeholder={special === 'weight' || mode === 'strength' ? 'Reps' : 'Reps'} step="1" width={110} />}
+        {reps && <Num value={v.repCount} onChange={x => set({ repCount: x })} placeholder="Reps" step="1" width={110} />}
         {time && <>
           <Num value={v.timeMins} onChange={x => set({ timeMins: x })} placeholder="Min" step="1" width={90} />
           <Num value={v.timeSecs} onChange={x => set({ timeSecs: x })} placeholder="Sec" width={90} />
@@ -203,7 +214,12 @@ export default function LogPage() {
   const [live, setLive] = useState(true)
   const [players, setPlayers] = useState<{ id: string; display_name: string }[]>([])
   const [forPlayer, setForPlayer] = useState<string | null>(null)
-  const [day, setDay] = useState(() => nzDay())
+  // The allowed days are worked out on every render, so a page left open past
+  // midnight never offers a day the database will refuse.
+  const days = allowedDays()
+  const today = days[0]
+  const [chosenDay, setDay] = useState<string | null>(null)
+  const day = chosenDay && days.includes(chosenDay) ? chosenDay : today
   const [notes, setNotes] = useState('')
   const [drafts, setDrafts] = useState<Draft[]>(() => [newDraft()])
   const [busy, setBusy] = useState(false)
@@ -214,8 +230,6 @@ export default function LogPage() {
 
   const targetId = (isJudge && forPlayer) || activePlayerId
   const workouts = loaded && loaded.id === targetId ? loaded.workouts : null
-  const days = useMemo(() => allowedDays(), [])
-  const today = days[0]
 
   useEffect(() => {
     if (!loading && !userId) router.push('/play')
@@ -266,7 +280,7 @@ export default function LogPage() {
       raw_score: e.raw_score, weight_kg: e.weight_kg, difficulty_tier: e.difficulty_tier,
       workouts: { player_id: w.player_id, performed_on: w.performed_on, witnessed: w.witnessed, created_at: w.created_at },
     })))
-    return recentUnitsByDomain(workoutEvidence(rows).units, 7)
+    return recentUnitsByDomain(workoutEvidence(rows).units, RECENT_DAYS)
   }, [workouts])
   const recentMax = Math.max(1, ...recent.values())
 
@@ -318,7 +332,9 @@ export default function LogPage() {
       .select('id').single()
     if (e1 || !w) {
       setBusy(false)
-      setError(e1?.code === 'PGRST205' ? 'Workout logging is not live yet.' : e1?.message ?? 'The workout did not save. Try again.')
+      setError(e1?.code === 'PGRST205' ? 'Workout logging is not live yet.'
+        : e1?.code === '23514' ? 'That day is outside the last week. Pick another day.'
+        : e1?.message ?? 'The workout did not save. Try again.')
       return
     }
     const { error: e2 } = await supabase.from('workout_entries').insert(rows.map(r => ({ ...r, workout_id: (w as { id: string }).id })))
@@ -334,7 +350,7 @@ export default function LogPage() {
     setBusy(false)
     setDrafts([newDraft()])
     setNotes('')
-    setNotice(`Logged${units > 0 ? ` · ${fmtUnits(units)} unit${units === 1 ? '' : 's'}` : ''}${waiting ? ` · ${waiting} not fitted yet` : ''}`)
+    setNotice(`Logged${units > 0 ? ` · ${fmtUnitsLabel(units)}` : ''}${waiting ? ` · ${waiting} not fitted yet` : ''}`)
     setReloadKey(k => k + 1)
   }
 
@@ -414,8 +430,7 @@ export default function LogPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                 <span style={{ ...label, fontSize: 11, color: 'var(--text-muted)' }}>What you did{drafts.length > 1 ? ` · ${i + 1}` : ''}</span>
                 {drafts.length > 1 && (
-                  <button type="button" onClick={() => setDrafts(ds => ds.filter(x => x.key !== d.key))}
-                    style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', fontSize: 13 }}>Remove</button>
+                  <button type="button" onClick={() => setDrafts(ds => ds.filter(x => x.key !== d.key))} style={quiet}>Remove</button>
                 )}
               </div>
               <input value={d.activity} onChange={e => typeActivity(d, e.target.value)} placeholder="Road ride, deadlifts, 5k run…"
@@ -429,7 +444,7 @@ export default function LogPage() {
                     <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{ev.domain}</div>
                   </div>
                   <button type="button" onClick={() => update(d.key, { slug: null, chosen: false, bestOn: false })}
-                    style={{ ...chip(false), minHeight: 32, padding: '6px 10px' }}>Change</button>
+                    style={chip(false)}>Change</button>
                 </div>
               ) : (
                 <div style={{ marginTop: 10 }}>
@@ -442,11 +457,7 @@ export default function LogPage() {
                   )}
                   <select value="" onChange={e => e.target.value && update(d.key, { slug: e.target.value, chosen: true })} style={field} aria-label="Choose an event">
                     <option value="">Choose the closest event…</option>
-                    {DOMAIN_ORDER.map((dn, di) => (
-                      <optgroup key={dn} label={dn}>
-                        {EVENTS.filter(e => e.domainNumber === di + 1).map(e => <option key={e.slug} value={e.slug}>{e.name}</option>)}
-                      </optgroup>
-                    ))}
+                    <EventOptions />
                   </select>
                   {d.activity.trim().length > 1 && (
                     <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 8, lineHeight: 1.5 }}>
@@ -473,8 +484,8 @@ export default function LogPage() {
                   </>
                 )}
                 {ev && (
-                  <span style={{ ...label, fontSize: 12, color: units > 0 ? 'var(--purple)' : '#555' }}>
-                    = {fmtUnits(units)} unit{units === 1 ? '' : 's'}
+                  <span style={{ ...label, fontSize: 12, color: units > 0 ? 'var(--purple)' : 'var(--text-muted)', paddingBottom: 14 }}>
+                    = {fmtUnitsLabel(units)}
                   </span>
                 )}
               </div>
@@ -488,7 +499,7 @@ export default function LogPage() {
               {ev && canLogBest(ev) && (
                 <div style={{ marginTop: 12, borderTop: '1px solid #181818', paddingTop: 10 }}>
                   <button type="button" onClick={() => update(d.key, { bestOn: !d.bestOn })}
-                    style={{ ...chip(d.bestOn, 'var(--green)'), minHeight: 34 }}>
+                    style={chip(d.bestOn, 'var(--green)')}>
                     {d.bestOn ? '✓ ' : '+ '}{rule?.rule === 'distance' ? 'Best split' : 'Best effort'}: counts toward your colours
                   </button>
                   {d.bestOn && <BestFields ev={ev} v={d.best} set={p => update(d.key, { best: { ...d.best, ...p } })} />}
@@ -519,7 +530,7 @@ export default function LogPage() {
         </button>
 
         {/* ── The last seven days ─────────────────────────────────────── */}
-        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 26, letterSpacing: '0.03em', margin: '28px 0 4px' }}>LAST 7 DAYS</h2>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 26, letterSpacing: '0.03em', margin: '28px 0 4px' }}>LAST {RECENT_DAYS} DAYS</h2>
         <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 10 }}>Units logged by domain. Game scores count too, on your colours page.</div>
         <div style={card}>
           {DOMAIN_ORDER.map((dn, i) => {
@@ -527,11 +538,11 @@ export default function LogPage() {
             return (
               <div key={dn} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 0' }}>
                 <DomainIcon domainName={dn} domainNumber={i + 1} size={24} />
-                <span style={{ width: 150, flexShrink: 0, fontSize: 13, color: u ? 'var(--white)' : '#555', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{dn}</span>
+                <span style={{ width: 150, flexShrink: 0, fontSize: 13, color: u ? 'var(--white)' : 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{dn}</span>
                 <div style={{ flexGrow: 1, height: 6, borderRadius: 99, background: '#1a1a1a', overflow: 'hidden' }}>
                   <div style={{ width: `${(u / recentMax) * 100}%`, height: '100%', background: 'var(--purple)', borderRadius: 99 }} />
                 </div>
-                <span style={{ width: 30, textAlign: 'right', fontSize: 12.5, color: u ? 'var(--white)' : '#555' }}>{fmtUnits(u)}</span>
+                <span style={{ width: 30, textAlign: 'right', fontSize: 12.5, color: u ? 'var(--white)' : 'var(--text-muted)' }}>{fmtUnits(u)}</span>
               </div>
             )
           })}
@@ -551,11 +562,7 @@ export default function LogPage() {
                 </div>
                 <select value="" onChange={x => x.target.value && fitEntry(e.id, x.target.value)} style={field} aria-label={`Fit ${e.activity}`}>
                   <option value="">Fit to an event…</option>
-                  {DOMAIN_ORDER.map((dn, di) => (
-                    <optgroup key={dn} label={dn}>
-                      {EVENTS.filter(x => x.domainNumber === di + 1).map(x => <option key={x.slug} value={x.slug}>{x.name}</option>)}
-                    </optgroup>
-                  ))}
+                  <EventOptions />
                 </select>
               </div>
             ))}
@@ -565,9 +572,9 @@ export default function LogPage() {
         {/* ── Recent workouts ─────────────────────────────────────────── */}
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 26, letterSpacing: '0.03em', margin: '24px 0 10px' }}>RECENT</h2>
         {!workouts ? (
-          <div style={{ color: '#555', textAlign: 'center', padding: '20px 0' }}>Loading…</div>
+          <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0' }}>Loading…</div>
         ) : workouts.length === 0 ? (
-          <div style={{ color: '#555', textAlign: 'center', padding: '20px 0' }}>Nothing logged yet.</div>
+          <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0' }}>Nothing logged yet.</div>
         ) : workouts.map(w => (
           <div key={w.id} style={card}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
@@ -575,8 +582,7 @@ export default function LogPage() {
                 {dayLabel(w.performed_on, today)}
                 {w.witnessed && <span style={{ color: 'var(--green)', marginLeft: 8 }}>Witnessed</span>}
               </span>
-              <button type="button" onClick={() => deleteWorkout(w.id)}
-                style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', fontSize: 13 }}>Delete</button>
+              <button type="button" onClick={() => deleteWorkout(w.id)} style={{ ...quiet, color: 'var(--red)' }}>Delete</button>
             </div>
             {w.workout_entries.map(e => {
               const ev = e.event_slug ? getEventBySlug(e.event_slug) : undefined
@@ -586,7 +592,7 @@ export default function LogPage() {
                   <span style={{ color: 'var(--white)' }}>{ev?.name ?? e.activity}</span>
                   {ev && e.activity.toLowerCase() !== ev.name.toLowerCase() && <span style={{ color: '#666' }}> ({e.activity})</span>}
                   {!ev && <span style={{ color: 'var(--amber)' }}> · not fitted</span>}
-                  {u > 0 && <span style={{ color: 'var(--purple)' }}> · {fmtUnits(u)} unit{u === 1 ? '' : 's'}</span>}
+                  {u > 0 && <span style={{ color: 'var(--purple)' }}> · {fmtUnitsLabel(u)}</span>}
                   {e.score_label && <span style={{ color: 'var(--green)' }}> · best {e.score_label}</span>}
                 </div>
               )

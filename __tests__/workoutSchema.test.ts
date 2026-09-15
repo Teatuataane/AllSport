@@ -42,6 +42,10 @@ describe('the workout logging schema', () => {
     const g = fnBody(sql, 'guard_workouts_write')
     expect(g).toContain('NEW.logged_by  := COALESCE(auth.uid(), NEW.logged_by)')
     expect(g).toContain('NEW.witnessed  := auth.uid() IS NOT NULL AND public.is_judge() AND NEW.player_id <> auth.uid()')
+    // A kaiwhakawā's own child is family, not a witnessed session.
+    expect(g).toContain('NOT EXISTS (SELECT 1 FROM players WHERE id = NEW.player_id AND parent_id = auth.uid())')
+    // Once witnessed, the workout is the kaiwhakawā's record.
+    expect(g).toMatch(/OLD\.witnessed AND auth\.uid\(\) IS NOT NULL AND NOT public\.is_judge\(\)/)
     for (const col of ['player_id', 'logged_by', 'witnessed', 'created_at']) expect(g).toContain(`NEW.${col}`)
     expect(g).toContain('NEW.created_at := now()')
   })
@@ -69,5 +73,24 @@ describe('the workout logging schema', () => {
     expect(next).toContain('DELETE FROM workouts WHERE player_id = v_target;')
     const squash = (s: string) => s.replace(/\s+/g, ' ').trim()
     expect(squash(next.replace('DELETE FROM workouts WHERE player_id = v_target;', ''))).toBe(squash(prev))
+  })
+
+  it('closes the entries under a witnessed workout, and old workouts, to everyone but kaiwhakawā', () => {
+    const g = fnBody(sql, 'guard_workout_entries_write')
+    // Without this a player could add solo scores under a witnessed workout
+    // and the release panel would read them as witnessed.
+    expect(g).toMatch(/IF v_witnessed THEN\s+RAISE EXCEPTION/)
+    expect(g).toContain(`(now() AT TIME ZONE 'Pacific/Auckland')::date - ${BACKDATE_DAYS}`)
+    expect(g).toContain('NOT public.is_judge() AND NOT v_fitting_only')
+    // Fitting an unfitted entry is always allowed: that is how old logs come to count.
+    expect(g).toContain('v_fitting_only := OLD.event_slug IS NULL AND NEW.event_slug IS NOT NULL')
+  })
+
+  it('compares activities with one normaliser, the same rule as lib/workouts.ts', () => {
+    expect(fnBody(sql, 'normalise_activity')).toContain("lower(regexp_replace(btrim(p_text), '\\s+', ' ', 'g'))")
+    expect(fnBody(sql, 'fit_activity')).toContain('public.normalise_activity(activity) = v_alias')
+    expect(fnBody(sql, 'unfitted_activities')).toContain('public.normalise_activity(activity)')
+    expect(sql).toContain('CHECK (alias = public.normalise_activity(alias)')
+    expect(sql).toContain('(public.normalise_activity(activity)) WHERE event_slug IS NULL')
   })
 })
