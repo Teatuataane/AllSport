@@ -1272,6 +1272,63 @@ player id, and `lib/headToHead.ts` rates the games it collects.
   payload only sets the columns it carries. Match recording deliberately does not
   rely on either.
 
+## Workout logging (September 2026 session 38) — v0.8.0.0, migration NOT YET APPLIED
+
+Any workout can be logged at **`/log`** and fitted to one of the 120 events, then graded
+through the same framework as a game. Designed in a `/grill-me` session; the full record
+(17 decisions) is `docs/designs/workout-logging-spec.md` in worktree
+`frontend-keys-server-proxy-bd20f8`, gitignored like the other grading docs.
+
+**Every domain colour now has THREE gates** (`colourGate` in `lib/grading.ts`):
+1. **Standards** — unchanged: met in half the domain's available events.
+2. **Games** — cumulative OFFICIAL games, `GAMES_REQUIRED` = 1/3/5/8/12/16/20/30/40/55/75/100
+   (Tāne, 16 Sept 2026). One count per player, not per domain. A PT session run by a
+   kaiwhakawā is witnessed EVIDENCE but not a game.
+3. **Training** — effort units in THAT domain since the last colour conferred there.
+   **The count restarts at each conferral**, so colours move up ONE at a time: the release
+   panel offers `gate.releasable` (held + 1), never the standards rung directly.
+
+**These gates apply to EVERY player, not just people who log.** Consequence at launch:
+nobody holds a colour yet, so everyone climbs from Kiwikiwi one colour per release, each
+needing its own units. A veteran whose standards read Hiriwa does not get Hiriwa on day one.
+
+**The units ladder is calibrated, not guessed.** `UNITS_REQUIRED` = games steps ×
+`UNIT_MULTIPLIER` (1.5) = 0/3/3/5/6/6/6/15/15/23/30/38. Measured 16 Sept 2026 by replaying
+every player's history through the real engine: a game earns ~0.83 units per domain. The
+first proposal (10…150 per colour) would have taken ~580 games of pure game play to reach
+Taniwha against a 100-game quota and held back 69% of colours already earned on standards.
+×1.0 holds back 24% and barely binds; ×2.0 holds back 43%; ×1.5 holds back 35%. **The games
+quota never bound in history** because the half-the-domain rule already needs ~6 games; it
+only bites once solo logging fills domains faster, which is its job.
+
+**What one unit is lives in `WORKOUT_UNITS_REVIEW.md`**, compiled into `lib/unitSheet.ts` by
+`node scripts/apply-units-sheet.mjs` (the standards pattern; `__tests__/units.test.ts` fails
+on drift). Defaults by mode: one set / one hold / the top rung's distance (Cycling 1000m, so
+a 25km ride is 25 units) / three attempts / one game. **Any completion counts — no intensity
+floor**: the standards gate tests intensity. Awaiting Tāne's review of the sheet.
+
+**Trust and evidence.** Every logged best effort counts toward the standards on trust; the
+kaiwhakawā moderates in person. `EventGrade.source` carries `game` / `witnessed` / `solo`, and
+the release panel names solo evidence. Public surfaces (leaderboard, `lib/percentile.ts`, /prs)
+still read `results` ONLY — a solo score never ranks anyone in public.
+
+**Schema** (`20260915214702_workout_logging.sql`): `workouts`, `workout_entries`,
+`activity_aliases`, `can_log_for()`, `fit_activity()`. Private: own, parent, kaiwhakawā.
+`logged_by`/`witnessed`/`created_at`/`player_id` pinned by trigger (never grants).
+`witnessed` = a kaiwhakawā logging for someone ELSE. Backdating ≤ 7 days is a CHECK against
+the pinned `created_at`. **Units are not stored** — raw volume is, and units are worked out on
+read, so a sheet change needs no migration. `delete_my_account` redefined whole (+ workouts),
+pinned against the previous definition by `__tests__/workoutSchema.test.ts`. Deploy order:
+either is safe; every read is its own query and treats PGRST205 as "not live".
+
+**Effort tasks are retired from the live screen.** `submitEntry` writes
+`effort_task_completions = 0`, and the screen shows units instead. **`award_session_points`
+still awards effort points for events played and PRs**, and `/leaderboard` still ranks on
+season points — retiring points properly is a separate piece of work, not done here.
+
+**Scripts can now import the app's TypeScript**: `node --import ./scripts/ts-loader.mjs x.ts`
+(Node 24 type stripping + a resolve hook for extensionless and `@/` imports).
+
 ## Security posture (August 2026) — read before touching RLS or players_public
 
 An OWASP pass (SQL injection / XSS / auth / access control) found three
@@ -1467,6 +1524,7 @@ update players set role = 'judge' where id = '[uuid]';
 | My Events | /prs | Complete | Retitled from Personal Bests (v0.6.2.0). Ten domains ranked strongest to weakest by Top % above the list; collapsible domain sections below, each event row showing **PR, average placement and wins side by side** (no lens toggle). Honours the active player. Per-event history still expands |
 | Vote | /vote/[voteId] | Complete | Step-by-step voting flow, one domain per screen, partial save, review screen, locked on submit |
 | Vote Results | /vote/[voteId]/results | Complete | Spoiler-free until voted, bar chart per domain, counts only while open / percentages on close, judge full breakdown |
+| Log a Workout | /log | Complete (v0.8.0.0, needs its migration) | Log anything, fitted to an event: volume → training units, best effort → standards. Player, parent or kaiwhakawā (witnessed). Last 7 days by domain, not-fitted list, recent workouts |
 | Game Review | /games/[sessionId] | Complete | Full all-player game report — every division, every event with score + placement, division standings. Linked from dashboard session history. Any logged-in player. Placements computed live from raw_score |
 | Auth Callback | /auth/callback | Complete | Google OAuth handler |
 | Invite Landing | /join/[code] | Planned | Public page — introduces AllSport, shows inviter name, Register CTA with referral code pre-filled. **The referral system itself is BUILT** (`20260515000002`: `referrals`, `players.referral_code`, the qualifying trigger; `/my-koha` reads it) — an earlier version of this doc listed the whole feature as Planned. Only this landing page is missing. |
