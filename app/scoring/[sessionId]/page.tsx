@@ -4,11 +4,12 @@ import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient, getSessionUser } from '@/lib/supabase-browser'
 import { getEventByName, isTimedEffort, decodeDiffTime, type EventData } from '@/lib/eventData'
+import { unitsForResult, unitRule, fmtUnits, RULE_WORDS } from '@/lib/units'
 import { parseLocalDate } from '@/lib/dates'
 import EventIcon, { domainColor } from '@/components/EventIcon'
 import {
   fmtTime, computeScoreVals, valsFromResult, valsFromRaw,
-  tierScoring, EMPTY_VALS, type EntryVals,
+  tierScoring, EMPTY_VALS, type EntryVals, scoreColumns,
 } from '@/lib/scoring'
 import {
   buildJudgeRoster, resolveJudgeTarget, resultsForTarget, scoredEventIds,
@@ -122,259 +123,22 @@ function ordinal(n: number): string {
   return n + (s[(v - 20) % 10] ?? s[v] ?? s[0])
 }
 
-// ─── Effort helpers ───────────────────────────────────────────────────────────
+// ─── Effort units ─────────────────────────────────────────────────────────────
+// Effort tasks and effort points were retired in September 2026. Effort now
+// counts as UNITS toward colours (lib/units.ts): every submission is one or
+// more completions, and each domain colour needs units in that domain. Units
+// are worked out from the row, never stored, so this screen and the grades
+// engine count the same way.
 
-function calcEffortLevel(myEventResults: Result[]): number {
-  if (myEventResults.length === 0) return 0
-  const participation = 1
-  const isPR = myEventResults.some(r => r.is_pr) ? 1 : 0
-  const taskCompletions = myEventResults.reduce((sum, r) => sum + (r.effort_task_completions || 0), 0)
-  return participation + isPR + taskCompletions
+function rowUnits(r: Result, events: SessionEvent[]): number {
+  const se = events.find(e => e.id === r.event_id)
+  const ev = se ? getEventByName(se.event_name) : undefined
+  return ev ? unitsForResult(ev, r.difficulty_tier) : 0
 }
 
-function calcTotalEffortLevel(allMyResults: Result[], events: SessionEvent[]): number {
-  const total = events.reduce((sum, ev) => {
-    return sum + calcEffortLevel(allMyResults.filter(r => r.event_id === ev.id))
-  }, 0)
-  return Math.min(total, 20)
+function unitsFor(rows: Result[], events: SessionEvent[]): number {
+  return rows.reduce((sum, r) => sum + rowUnits(r, events), 0)
 }
-
-type EffortTask = { label: string; count: number; isRepeatable: boolean }
-
-function computeEffortTasks(
-  myEventResults: Result[],
-  eventData: EventData | undefined,
-  effectivePR: number | null,
-  mode: string
-): EffortTask[] {
-  if (!eventData) return []
-
-  if (mode === 'sport') {
-    const extras = myEventResults.slice(1).length
-    return [{ label: 'Play a game vs a new opponent', count: extras, isRepeatable: true }]
-  }
-  if (mode === 'score') {
-    const extras = myEventResults.slice(1).length
-    return [{ label: 'Complete an additional 4-hole round', count: extras, isRepeatable: true }]
-  }
-  if (mode === 'hold') {
-    if (effectivePR === null) return []
-    const target = Math.max(1, Math.round(effectivePR * 0.8))
-    const count = myEventResults.filter(r => r.raw_score >= target).length
-    return [{ label: `Hold for ${fmtTime(target)} or longer`, count, isRepeatable: true }]
-  }
-  if (effectivePR === null) return []
-
-  if (mode === 'strength') {
-    if (eventData.slug === 'shoulder-dislocate') {
-      const targetCm = Math.round(Math.abs(effectivePR) * 0.8)
-      const count = myEventResults.filter(r => (r.weight_kg ?? Infinity) <= targetCm && (r.reps ?? 0) >= 5).length
-      return [{ label: `Achieve ≤${targetCm}cm grip width for 5 reps`, count, isRepeatable: true }]
-    }
-    const kg = Math.round(effectivePR * 0.8)
-    const count = myEventResults.filter(r => (r.weight_kg ?? 0) >= kg && (r.reps ?? 0) >= 5).length
-    return [{ label: `Lift ${kg}kg for 5 reps`, count, isRepeatable: true }]
-  }
-  if (mode === 'sprint') {
-    const threshold = Math.round(effectivePR / 0.8)
-    const count = myEventResults.filter(r => r.raw_score >= threshold).length
-    const thresholdSecs = Math.abs(threshold) / 100
-    const s = Math.floor(thresholdSecs)
-    const cs = Math.round((thresholdSecs - s) * 100)
-    return [{ label: `Complete in ${s}.${cs.toString().padStart(2, '0')}s or faster`, count, isRepeatable: true }]
-  }
-  if (mode === 'time') {
-    const threshold = Math.round(effectivePR * 0.8)
-    const count = myEventResults.filter(r => r.raw_score >= threshold).length
-    return [{ label: `Complete in ${fmtTime(Math.abs(threshold))} or faster`, count, isRepeatable: true }]
-  }
-  if (mode === 'distance') {
-    const target = Math.round(effectivePR * 0.8)
-    const targetStr = target >= 100 ? `${(target / 100).toFixed(2)}m` : `${target}cm`
-    const qualifyingCount = myEventResults.filter(r => r.raw_score >= target).length
-    if (eventData.domainNumber === 3) {
-      return [{ label: `Complete 3 attempts ≥ ${targetStr}`, count: Math.floor(qualifyingCount / 3), isRepeatable: true }]
-    }
-    return [{ label: `Achieve at least ${targetStr}`, count: qualifyingCount, isRepeatable: true }]
-  }
-  if (mode === 'difficulty+time') {
-    if (!eventData.difficultyTiers) return []
-    const fasterWins = isTimedEffort(eventData.slug)
-    const { tierIdx: prTierIdx, secs: prTimeSecs } = decodeDiffTime(effectivePR, fasterWins)
-    const tiers = eventData.difficultyTiers
-    if (fasterWins) {
-      if (prTierIdx === 0) {
-        const tierName = tiers[0]?.name ?? 'D1'
-        const targetSecs = Math.round(prTimeSecs * 1.2)
-        const count = myEventResults.filter(r => {
-          const rTierIdx = tiers.findIndex(t => t.name === r.difficulty_tier)
-          return rTierIdx === 0 && (r.time_seconds ?? Infinity) <= targetSecs
-        }).length
-        return [{ label: `Complete ${tierName} in ${fmtTime(targetSecs)} or faster`, count, isRepeatable: true }]
-      } else {
-        const belowName = tiers[prTierIdx - 1]?.name ?? `D${prTierIdx}`
-        const targetSecs = Math.round(prTimeSecs * 0.6)
-        const count = myEventResults.filter(r => {
-          const rTierIdx = tiers.findIndex(t => t.name === r.difficulty_tier)
-          return rTierIdx === prTierIdx - 1 && (r.time_seconds ?? Infinity) <= targetSecs
-        }).length
-        return [{ label: `Complete ${belowName} in ${fmtTime(targetSecs)} or faster`, count, isRepeatable: true }]
-      }
-    }
-    const targetTierIdx = Math.max(0, prTierIdx - 1)
-    const targetTierName = tiers[targetTierIdx]?.name ?? `D${targetTierIdx + 1}`
-    const count = myEventResults.filter(r => {
-      const rTierIdx = tiers.findIndex(t => t.name === r.difficulty_tier)
-      return rTierIdx === targetTierIdx && (r.time_seconds ?? 0) >= 120
-    }).length
-    return [{ label: `Hold ${targetTierName} for at least 2 minutes`, count, isRepeatable: true }]
-  }
-  if (mode === 'difficulty+reps') {
-    if (!eventData.difficultyTiers) return []
-    const prTierIdx = Math.floor(effectivePR / 10000)
-    const tiers = eventData.difficultyTiers
-    const tierName = tiers[prTierIdx]?.name ?? `D${prTierIdx + 1}`
-    const scoring = tiers[prTierIdx]?.scoring
-
-    // The within-tier term is only a rep count on an ordinary rung.
-    if (scoring === 'sport') {
-      const extras = myEventResults.slice(1).length
-      return [{ label: `Play ${tierName} vs a new opponent`, count: extras, isRepeatable: true }]
-    }
-    if (scoring === 'weight') {
-      const prKg = (effectivePR % 10000) / 100
-      if (prKg <= 0) return []
-      const targetKg = Math.round(prKg * 0.8 * 10) / 10
-      const count = myEventResults.filter(r => {
-        const rTierIdx = tiers.findIndex(t => t.name === r.difficulty_tier)
-        return rTierIdx === prTierIdx && (r.weight_kg ?? 0) >= targetKg
-      }).length
-      return [{ label: `Lift ${targetKg}kg at ${tierName}`, count, isRepeatable: true }]
-    }
-
-    const prReps = effectivePR % 10000
-    const targetReps = Math.max(1, Math.round(prReps * 0.8))
-    const count = myEventResults.filter(r => {
-      const rTierIdx = tiers.findIndex(t => t.name === r.difficulty_tier)
-      return rTierIdx === prTierIdx && (r.reps ?? 0) >= targetReps
-    }).length
-    return [{ label: `Complete ${targetReps}+ reps at ${tierName}`, count, isRepeatable: true }]
-  }
-  if (mode === 'difficulty+distance') {
-    if (!eventData.difficultyTiers) return []
-    const tiers = eventData.difficultyTiers
-    const prTierIdx = Math.floor(effectivePR / 10000)
-    const prMetres = (effectivePR % 10000) / 10
-    if (prMetres <= 0) return []
-    const tierName = tiers[prTierIdx]?.name ?? `D${prTierIdx + 1}`
-    const target = Math.round(prMetres * 0.8 * 10) / 10
-    const count = myEventResults.filter(r => {
-      const rTierIdx = tiers.findIndex(t => t.name === r.difficulty_tier)
-      // Decoded from raw_score rather than a column: the live-session Result
-      // select does not carry distance_m, and the band already holds it.
-      return rTierIdx === prTierIdx && (r.raw_score % 10000) / 10 >= target
-    }).length
-    return [{ label: `Throw ${target}m+ with the ${tierName}`, count, isRepeatable: true }]
-  }
-  if (mode === 'weight+time') {
-    const prKg = Math.floor(effectivePR / 10000) / 100
-    const prSecs = effectivePR % 10000
-    if (prSecs <= 0) return []
-    const targetKg = Math.round(prKg * 0.8 * 10) / 10
-    const targetSecs = Math.round(prSecs * 0.8)
-    const load = targetKg > 0 ? `${targetKg}kg` : 'bodyweight'
-    const count = myEventResults.filter(r =>
-      (r.weight_kg ?? 0) >= targetKg && (r.time_seconds ?? 0) >= targetSecs).length
-    return [{ label: `Hold ${load} for ${fmtTime(targetSecs)}`, count, isRepeatable: true }]
-  }
-  return []
-}
-
-function calcSubmissionEffortTasks(
-  newRawScore: number,
-  reps: number | null,
-  weightKg: number | null,
-  difficultyTierName: string | null,
-  opponentName: string | null,
-  timeSecs: number | null,
-  existingEventResults: Result[],
-  eventData: EventData | undefined,
-  effectivePR: number | null,
-  mode: string
-): number {
-  if (!eventData) return 0
-  if (mode === 'sport') return existingEventResults.length > 0 ? 1 : 0
-  if (mode === 'score') return existingEventResults.length > 0 ? 1 : 0
-  if (mode === 'hold') {
-    if (effectivePR === null) return 0
-    return (timeSecs ?? 0) >= Math.max(1, Math.round(effectivePR * 0.8)) ? 1 : 0
-  }
-  if (effectivePR === null) return 0
-  if (mode === 'strength') {
-    const w = weightKg ?? 0
-    const r = reps ?? 0
-    if (eventData.slug === 'shoulder-dislocate') {
-      const targetCm = Math.round(Math.abs(effectivePR) * 0.8)
-      return (w > 0 && w <= targetCm && r >= 5) ? 1 : 0
-    }
-    return (w >= effectivePR * 0.8 && r >= 5) ? 1 : 0
-  }
-  if (mode === 'sprint') return newRawScore >= Math.round(effectivePR / 0.8) ? 1 : 0
-  if (mode === 'time') return newRawScore >= Math.round(effectivePR * 0.8) ? 1 : 0
-  if (mode === 'distance') {
-    const target = Math.round(effectivePR * 0.8)
-    if (eventData.domainNumber !== 3) return newRawScore >= target ? 1 : 0
-    const qualifyingBefore = existingEventResults.filter(r => r.raw_score >= target).length
-    const qualifyingAfter = qualifyingBefore + (newRawScore >= target ? 1 : 0)
-    return Math.floor(qualifyingAfter / 3) - Math.floor(qualifyingBefore / 3)
-  }
-  if (mode === 'difficulty+time') {
-    if (!eventData.difficultyTiers || !difficultyTierName) return 0
-    const fasterWins = isTimedEffort(eventData.slug)
-    const { tierIdx: prTierIdx, secs: prTimeSecs } = decodeDiffTime(effectivePR, fasterWins)
-    const tiers = eventData.difficultyTiers
-    const rTierIdx = tiers.findIndex(t => t.name === difficultyTierName)
-    const secs = timeSecs ?? 0
-    if (fasterWins) {
-      if (prTierIdx === 0) return rTierIdx === 0 && secs > 0 && secs <= Math.round(prTimeSecs * 1.2) ? 1 : 0
-      else return rTierIdx === prTierIdx - 1 && secs > 0 && secs <= Math.round(prTimeSecs * 0.6) ? 1 : 0
-    } else {
-      const targetTierIdx = Math.max(0, prTierIdx - 1)
-      return rTierIdx === targetTierIdx && secs >= 120 ? 1 : 0
-    }
-  }
-  if (mode === 'difficulty+reps') {
-    if (!eventData.difficultyTiers || !difficultyTierName) return 0
-    const prTierIdx = Math.floor(effectivePR / 10000)
-    const tiers = eventData.difficultyTiers
-    const rTierIdx = tiers.findIndex(t => t.name === difficultyTierName)
-    const scoring = tiers[prTierIdx]?.scoring
-    if (scoring === 'sport') return opponentName ? 1 : 0
-    if (scoring === 'weight') {
-      const targetKg = Math.round(((effectivePR % 10000) / 100) * 0.8 * 10) / 10
-      return rTierIdx === prTierIdx && (weightKg ?? 0) >= targetKg ? 1 : 0
-    }
-    const targetReps = Math.max(1, Math.round((effectivePR % 10000) * 0.8))
-    return rTierIdx === prTierIdx && (reps ?? 0) >= targetReps ? 1 : 0
-  }
-  if (mode === 'difficulty+distance') {
-    if (!eventData.difficultyTiers || !difficultyTierName) return 0
-    const tiers = eventData.difficultyTiers
-    const prTierIdx = Math.floor(effectivePR / 10000)
-    const rTierIdx = tiers.findIndex(t => t.name === difficultyTierName)
-    const target = Math.round(((effectivePR % 10000) / 10) * 0.8 * 10) / 10
-    const metres = (newRawScore % 10000) / 10
-    return rTierIdx === prTierIdx && metres >= target ? 1 : 0
-  }
-  if (mode === 'weight+time') {
-    const targetKg = Math.round((Math.floor(effectivePR / 10000) / 100) * 0.8 * 10) / 10
-    const targetSecs = Math.round((effectivePR % 10000) * 0.8)
-    return (weightKg ?? 0) >= targetKg && (timeSecs ?? 0) >= targetSecs ? 1 : 0
-  }
-  return 0
-}
-
-// ─── Input component helpers ──────────────────────────────────────────────────
 
 const INP: React.CSSProperties = {
   background: '#0d0d0d', border: '1px solid #2a2a2a', borderRadius: '8px',
@@ -383,9 +147,9 @@ const INP: React.CSSProperties = {
 }
 
 // Builds the results payload and inserts (or updates) it, including PR flag and
-// effort-task credit. Returns { error } on failure; on success error is null and
-// isPR / effortCredit describe the submission so the caller can pick the right toast.
-type SubmitOutcome = { error: string | null; isPR: boolean; effortCredit: number }
+// the units it earns. Returns { error } on failure; on success error is null and
+// isPR / units describe the submission so the caller can pick the right toast.
+type SubmitOutcome = { error: string | null; isPR: boolean; units: number }
 
 async function submitEntry(args: {
   sessionId: string
@@ -397,82 +161,28 @@ async function submitEntry(args: {
   v: EntryVals
   myResults: Result[]
   seasonPRNum: number | null
-  effectivePR: number | null
   editingResultId: string | null
   // Opponent player ids to record as a match, or null to leave matches alone.
   // Decided by the sheet, which knows whether an edit touched the opponent.
   matchOpponents: string[] | null
 }): Promise<SubmitOutcome> {
-  const { sessionId, eventId, playerId, playerName, mode, eventData, v, myResults, seasonPRNum, effectivePR, editingResultId, matchOpponents } = args
+  const { sessionId, eventId, playerId, playerName, mode, eventData, v, myResults, seasonPRNum, editingResultId, matchOpponents } = args
   const scored = computeScoreVals(mode, eventData, v)
-  if (!scored) return { error: 'Enter a valid score first', isPR: false, effortCredit: 0 }
+  if (!scored) return { error: 'Enter a valid score first', isPR: false, units: 0 }
   try {
-    const totalSecs = (parseFloat(v.timeMins) || 0) * 60 + (parseFloat(v.timeSecs) || 0)
+    // One encoder for a game score and a logged best effort (lib/scoring.ts).
     const payload: Record<string, unknown> = {
       session_id: sessionId, event_id: eventId, player_id: playerId || null,
-      player_name: playerName, raw_score: scored.raw_score, score_label: scored.score_label,
-    }
-    const isWeightVariation = !!v.exerciseVariation && (eventData?.weightVariations?.includes(v.exerciseVariation) ?? false)
-    if (v.difficultyTier) payload.difficulty_tier = v.difficultyTier
-    if (v.exerciseVariation) payload.exercise_variation = v.exerciseVariation
-    if (mode === 'strength') {
-      payload.weight_kg = parseFloat(v.weightKg) || 0
-      if (v.repCount) payload.reps = parseInt(v.repCount)
-    }
-    if (mode === 'reps') {
-      if (isWeightVariation) payload.weight_kg = parseFloat(v.weightKg) || 0
-      payload.reps = parseInt(v.repCount) || 0
-    }
-    if (['time', 'hold', 'difficulty+time', 'weight+time'].includes(mode) && totalSecs > 0) payload.time_seconds = totalSecs
-    if (mode === 'weight+time') payload.weight_kg = parseFloat(v.weightKg) || 0
-    if (mode === 'difficulty+reps' || mode === 'difficulty+distance') {
-      const special = tierScoring(eventData, { name: v.difficultyTier })
-      if (special === 'weight') {
-        payload.weight_kg = parseFloat(v.weightKg) || 0
-        // Reps do not rank on a weight rung, but they are still the record of
-        // what was done — this is the gap Tāne flagged in the difficulty review.
-        if (v.repCount) payload.reps = parseInt(v.repCount)
-      } else if (special === 'sport') {
-        if (v.opponentName) payload.opponent_name = v.opponentName
-        payload.result_type = v.sportResult
-        // Golf and Disc Golf carry the round's strokes alongside the result.
-        if (v.scoreInput) payload.match_score = v.scoreInput
-        else if (v.sportScore) payload.match_score = v.sportScore
-      } else if (mode === 'difficulty+distance') {
-        payload.distance_m = parseFloat(v.distanceVal) || 0
-      } else {
-        payload.reps = parseInt(v.repCount) || 0
-      }
-    }
-    if (mode === 'difficulty+time' && tierScoring(eventData, { name: v.difficultyTier }) === 'sport') {
-      if (v.opponentName) payload.opponent_name = v.opponentName
-      payload.result_type = v.sportResult
-    }
-    if (mode === 'sprint') {
-      const s = parseFloat(v.timeSecs) || 0; const cs = parseInt(v.sprintCs) || 0
-      payload.time_seconds = s + cs / 100
-    }
-    if (mode === 'distance') {
-      const val = parseFloat(v.distanceVal) || 0
-      payload.distance_m = v.distanceUnit === 'm' ? val : val / 100
-    }
-    if (mode === 'sport') {
-      payload.result_type = v.sportResult
-      if (v.opponentName) payload.opponent_name = v.opponentName
-      if (v.sportScore) payload.match_score = v.sportScore
+      player_name: playerName, ...scoreColumns(mode, eventData, v)!,
     }
 
-    // When editing, judge PR/effort against the OTHER rows — including the row
-    // being edited would wipe its own PR flag and double-count effort credit.
+    // When editing, judge the PR against the OTHER rows — including the row
+    // being edited would wipe its own PR flag.
     const priorResults = editingResultId ? myResults.filter(r => r.id !== editingResultId) : myResults
     const newIsPR = seasonPRNum !== null && scored.raw_score > seasonPRNum && !priorResults.some(r => r.is_pr)
-    const effortTaskCount = calcSubmissionEffortTasks(
-      scored.raw_score, parseInt(v.repCount) || null, parseFloat(v.weightKg) || null,
-      v.difficultyTier || null, v.opponentName || null, totalSecs || null,
-      priorResults, eventData, effectivePR, mode
-    )
     payload.is_pr = newIsPR
-    payload.effort_task_completions = effortTaskCount
+    // Effort tasks are retired: nothing is credited here any more.
+    payload.effort_task_completions = 0
 
     let resultId: string
     if (editingResultId) {
@@ -491,9 +201,9 @@ async function submitEntry(args: {
     // the score has saved, and a failure here must never turn a saved score into
     // an error toast. Guests have no stable identity, so they are never matched.
     if (playerId && matchOpponents !== null) await recordMatch(resultId, matchOpponents)
-    return { error: null, isPR: newIsPR, effortCredit: effortTaskCount * 5 }
+    return { error: null, isPR: newIsPR, units: eventData ? unitsForResult(eventData, v.difficultyTier || null) : 0 }
   } catch (e: unknown) {
-    return { error: e instanceof Error ? e.message : 'Submission failed', isPR: false, effortCredit: 0 }
+    return { error: e instanceof Error ? e.message : 'Submission failed', isPR: false, units: 0 }
   }
 }
 
@@ -550,7 +260,7 @@ type QuickEntrySheetProps = {
   sessionId: string
   sessionEnded: boolean
   onClose: () => void
-  onSubmitted: (label: string, meta: { isPR: boolean; effortCredit: number }) => void
+  onSubmitted: (label: string, meta: { isPR: boolean; units: number }) => void
   onDeleted: () => void
 }
 
@@ -565,12 +275,8 @@ function QuickEntrySheet({
   const myBestResult = myResults.length > 0
     ? myResults.reduce((best, r) => r.raw_score > best.raw_score ? r : best, myResults[0])
     : undefined
-  const sessionBestRaw = myResults.length > 0 ? Math.max(...myResults.map(r => r.raw_score)) : null
-  const effectivePR = sessionBestRaw !== null
-    ? (seasonPRNum !== null ? Math.max(sessionBestRaw, seasonPRNum) : sessionBestRaw)
-    : seasonPRNum
-  const effortLevel = calcEffortLevel(myResults)
-  const effortTasks = computeEffortTasks(myResults, eventData, effectivePR, mode)
+  const unitsHere = eventData ? myResults.reduce((sum, r) => sum + unitsForResult(eventData, r.difficulty_tier), 0) : 0
+  const unitWords = eventData ? RULE_WORDS[unitRule(eventData).rule] : RULE_WORDS.set
 
   const [v, setV] = useState<EntryVals>(() => {
     let init: EntryVals = { ...EMPTY_VALS }
@@ -634,7 +340,7 @@ function QuickEntrySheet({
       : editingResult ? [] : null
     const outcome = await submitEntry({
       sessionId, eventId: se.id, playerId, playerName,
-      mode, eventData, v, myResults, seasonPRNum, effectivePR,
+      mode, eventData, v, myResults, seasonPRNum,
       editingResultId: editingResult?.id ?? null,
       matchOpponents,
     })
@@ -642,7 +348,7 @@ function QuickEntrySheet({
     setSubmitting(false)
     if (outcome.error) { setError(outcome.error); return }
     setEditingResult(null)
-    onSubmitted(scored.score_label, { isPR: outcome.isPR, effortCredit: outcome.effortCredit })
+    onSubmitted(scored.score_label, { isPR: outcome.isPR, units: outcome.units })
   }
 
   async function handleSheetDelete(resultId: string) {
@@ -717,7 +423,7 @@ function QuickEntrySheet({
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '26px', lineHeight: 1, color: '#fff', letterSpacing: '0.03em' }}>{se.event_name}</div>
             <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.12em', marginTop: '3px' }}>
-              {se.domain_name}{effortLevel > 0 ? ` · Effort level ${effortLevel}` : ''}
+              {se.domain_name}{unitsHere > 0 ? ` · ${fmtUnits(unitsHere)} unit${unitsHere === 1 ? '' : 's'}` : ''}
             </div>
           </div>
           <button onClick={() => setShowHow(h => !h)} style={{
@@ -997,9 +703,6 @@ function QuickEntrySheet({
                         {r.is_pr && (
                           <div style={{ fontSize: '10px', fontWeight: 700, color: '#F9B051', background: '#F9B05122', borderRadius: '4px', padding: '2px 6px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.05em' }}>PR</div>
                         )}
-                        {r.effort_task_completions > 0 && (
-                          <div style={{ fontSize: '12px', color: '#B87DB5', fontWeight: 700, fontFamily: 'Barlow Condensed, sans-serif' }}>+{r.effort_task_completions}</div>
-                        )}
                         {!sessionEnded && (
                           <>
                             <button onClick={() => {
@@ -1019,45 +722,14 @@ function QuickEntrySheet({
                 </>
               )}
 
-              {/* Effort tasks */}
+              {/* Training units — what replaced effort tasks */}
               <div style={{ ...QES_LBL, display: 'flex', justifyContent: 'space-between' }}>
-                <span>Effort tasks — +5 pts each</span>
-                <span style={{ color: '#B87DB5' }}>Level {effortLevel}</span>
+                <span>Training units</span>
+                <span style={{ color: '#B87DB5' }}>{fmtUnits(unitsHere)} this game</span>
               </div>
-              {myResults.length === 0 ? (
-                effortTasks.length > 0 ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <div style={{ fontSize: '12px', color: '#666', fontStyle: 'italic' }}>Submit a score first, then aim for:</div>
-                    {effortTasks.map((task, i) => (
-                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#101010', borderRadius: '10px', padding: '10px 14px', opacity: 0.5 }}>
-                        <div style={{ width: '18px', height: '18px', borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', background: '#1e1e1e', color: '#555' }}>○</div>
-                        <div style={{ flex: 1, fontSize: '13px', color: '#888', fontFamily: 'Barlow Condensed, sans-serif' }}>{task.label}</div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div style={{ fontSize: '13px', color: '#555', fontStyle: 'italic' }}>Submit a score to unlock effort tasks</div>
-                )
-              ) : effortTasks.length === 0 ? (
-                <div style={{ fontSize: '13px', color: '#555', fontStyle: 'italic' }}>No effort tasks for this event</div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  {effortTasks.map((task, i) => {
-                    const done = task.count > 0
-                    return (
-                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#101010', borderRadius: '10px', padding: '10px 14px' }}>
-                        <div style={{ width: '18px', height: '18px', borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', background: done ? '#B87DB5' : '#1e1e1e', color: done ? '#fff' : '#555' }}>
-                          {done ? '✓' : '○'}
-                        </div>
-                        <div style={{ flex: 1, fontSize: '13px', color: done ? '#B87DB5' : '#888', fontFamily: 'Barlow Condensed, sans-serif' }}>{task.label}</div>
-                        {task.isRepeatable && task.count > 1 && (
-                          <div style={{ fontSize: '12px', color: '#B87DB5', fontWeight: 700, fontFamily: 'Barlow Condensed, sans-serif' }}>×{task.count}</div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
+              <div style={{ fontSize: '13px', color: '#777', lineHeight: 1.5 }}>
+                Every {unitWords.one} counts toward your next colour in {se.domain_name}, at any effort. Submit each one.
+              </div>
             </div>
           )}
         </div>
@@ -1102,7 +774,7 @@ function EventListRow({
   const myBestResult = myResults.length > 0
     ? myResults.reduce((best, r) => r.raw_score > best.raw_score ? r : best, myResults[0])
     : undefined
-  const effortLevel = calcEffortLevel(myResults)
+  const unitsHere = eventData ? myResults.reduce((sum, r) => sum + unitsForResult(eventData, r.difficulty_tier), 0) : 0
   const rank = eventDivisionRank(se.id, allResults, playerInfoMap, playerDivision, myBestResult?.raw_score ?? null)
   const todo = !myBestResult
 
@@ -1119,8 +791,8 @@ function EventListRow({
         <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '19px', letterSpacing: '0.03em', lineHeight: 1 }}>{se.event_name}</div>
         <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '3px', display: 'flex', alignItems: 'center', gap: '8px' }}>
           {se.domain_name}
-          {effortLevel > 0 && (
-            <span style={{ fontSize: '10.5px', color: '#B87DB5', border: '1px solid #B87DB566', borderRadius: '999px', padding: '0 7px' }}>EL {effortLevel}</span>
+          {unitsHere > 0 && (
+            <span style={{ fontSize: '10.5px', color: '#B87DB5', border: '1px solid #B87DB566', borderRadius: '999px', padding: '0 7px' }}>{fmtUnits(unitsHere)} U</span>
           )}
         </div>
       </div>
@@ -1858,12 +1530,12 @@ function SessionEndTakeover({
 
   // Points earned — trust the trigger's summary row when it exists; otherwise
   // compute client-side the same way the /games report + trigger do.
-  const effortLevel = calcTotalEffortLevel(myResults, events)
+  const unitsEarned = unitsFor(myResults, events)
   const rank = summary?.overall_placement ?? divisionPlacement?.rank ?? null
   const nDiv = divisionPlacement?.playerCount ?? null
   const placementPts = summary?.total_placement_points
     ?? (rank !== null && nDiv ? Math.round(Math.max(100 - (100 / nDiv) * (rank - 1), 10)) : 0)
-  const effortPts = summary?.effort_points ?? effortLevel * 5
+  const effortPts = summary?.effort_points ?? 0
   const earned = placementPts + effortPts
 
   // Session-count milestone — summary row present means the count includes this session
@@ -1912,8 +1584,8 @@ function SessionEndTakeover({
           <div style={{ display: 'flex', gap: '10px' }}>
             {[
               { label: 'Placement pts', value: placementPts, colour: '#4DB26E' },
-              { label: 'Effort pts', value: effortPts, colour: '#B87DB5' },
-              { label: 'Total earned', value: earned, colour: '#F9B051' },
+              { label: 'Training units', value: fmtUnits(unitsEarned), colour: '#B87DB5' },
+              { label: 'Total pts', value: earned, colour: '#F9B051' },
             ].map(s => (
               <div key={s.label} style={{ flex: 1, background: '#161616', border: '1px solid #1e1e1e', borderRadius: '14px', padding: '12px 10px', textAlign: 'center' }}>
                 <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '28px', color: s.colour, lineHeight: 1 }}>{loaded ? s.value : '…'}</div>
@@ -2001,9 +1673,8 @@ export default function SessionPage() {
   const [seasonPRs, setSeasonPRs] = useState<Record<string, number | string | null>>({})
   const [activeTab, setActiveTab] = useState<string>('leaderboard')
   const [sheetEventId, setSheetEventId] = useState<string | null>(null)
-  const [toast, setToast] = useState<{ eventName: string; label: string; isPR: boolean; isNewEvent: boolean; effortCredit: number; playerName?: string } | null>(null)
+  const [toast, setToast] = useState<{ eventName: string; label: string; isPR: boolean; isNewEvent: boolean; units: number; playerName?: string } | null>(null)
   const [playedEventNames, setPlayedEventNames] = useState<Set<string> | null>(null) // all-time, for "new event unlocked"
-  const [effortMaxToast, setEffortMaxToast] = useState(false)
   const [fullHousePulseId, setFullHousePulseId] = useState<string | null>(null)
   const [endTakeoverDismissed, setEndTakeoverDismissed] = useState(true) // assume dismissed until localStorage is checked
   const [timeLeft, setTimeLeft] = useState<number | null>(null)
@@ -2322,7 +1993,7 @@ export default function SessionPage() {
     setEndTakeoverDismissed(!!localStorage.getItem(`allsport_postgame_${sessionId}_${activePlayerId}`))
   }, [sessionEnded, activePlayerId, sessionId])
 
-  // ── One-time celebration moments (effort cap 20/20, all events scored) ────
+  // ── One-time celebration moment (all events scored) ────────────────────────
   // Each fires once per player per session, guarded via localStorage.
   useEffect(() => {
     if (!activePlayerId || events.length === 0 || sessionEnded) return
@@ -2336,14 +2007,6 @@ export default function SessionPage() {
         localStorage.setItem(key, '1')
         setFullHousePulseId(activePlayerId)
         setTimeout(() => setFullHousePulseId(null), 3200)
-      }
-    }
-    if (calcTotalEffortLevel(mine, events) >= 20) {
-      const key = `allsport_effortmax_${sessionId}_${activePlayerId}`
-      if (!localStorage.getItem(key)) {
-        localStorage.setItem(key, '1')
-        setEffortMaxToast(true)
-        setTimeout(() => setEffortMaxToast(false), 5000)
       }
     }
   }, [results, events, activePlayerId, sessionId, sessionEnded])
@@ -2514,7 +2177,7 @@ export default function SessionPage() {
         const pName = (p.display_name || p.username || p.full_name) as string
         const pDivision = (p.division as string | null) ?? null
         const myResults = results.filter(r => r.player_id === pid)
-        const totalEffort = calcTotalEffortLevel(myResults, events)
+        const totalUnits = unitsFor(myResults, events)
         const scoredIds = new Set(events.filter(ev => myResults.some(r => r.event_id === ev.id)).map(ev => ev.id))
         const todoEvents = events.filter(ev => !scoredIds.has(ev.id))
         const doneEvents = events.filter(ev => scoredIds.has(ev.id))
@@ -2539,7 +2202,7 @@ export default function SessionPage() {
                   )}
                 </div>
                 <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11.5px', color: '#B87DB5', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 600 }}>
-                  Effort level {totalEffort} / 20
+                  {fmtUnits(totalUnits)} training unit{totalUnits === 1 ? '' : 's'}
                 </div>
               </div>
               <div style={{ position: 'relative' }}>
@@ -2604,7 +2267,7 @@ export default function SessionPage() {
                   setSheetEventId(null)
                   const isNewEvent = playedEventNames !== null && !playedEventNames.has(sheetEvent.event_name)
                   if (isNewEvent) setPlayedEventNames(prev => new Set(prev).add(sheetEvent.event_name))
-                  setToast({ eventName: sheetEvent.event_name, label, isPR: meta.isPR, isNewEvent, effortCredit: meta.effortCredit })
+                  setToast({ eventName: sheetEvent.event_name, label, isPR: meta.isPR, isNewEvent, units: meta.units })
                   setTimeout(() => setToast(null), meta.isPR || isNewEvent ? 4000 : 3000)
                   await loadResults()
                 }}
@@ -2652,24 +2315,10 @@ export default function SessionPage() {
               : toast.isNewEvent
                 ? <><span style={{ color: '#7ab4ff' }}>New event unlocked</span> — {toast.eventName}! <span style={{ color: '#aaa' }}>{toast.label}</span></>
                 : <>Score in — {toast.eventName} — {toast.label}</>}
-            {toast.effortCredit > 0 && (
-              <span style={{ color: '#B87DB5', marginLeft: '10px', fontSize: '15px' }}>+{toast.effortCredit} effort</span>
+            {toast.units > 0 && (
+              <span style={{ color: '#B87DB5', marginLeft: '10px', fontSize: '15px' }}>+{fmtUnits(toast.units)} unit{toast.units === 1 ? '' : 's'}</span>
             )}
           </div>
-        </div>
-      )}
-
-      {/* Effort cap toast — one-time per player per session */}
-      {effortMaxToast && (
-        <div style={{
-          position: 'fixed', bottom: toast ? '84px' : '20px', left: '50%', transform: 'translateX(-50%)',
-          width: 'min(600px, calc(100vw - 32px))', zIndex: 201,
-          background: '#161616', border: '1px solid #B87DB555', borderLeft: '4px solid #B87DB5',
-          borderRadius: '12px', padding: '13px 16px', boxShadow: '0 24px 60px rgba(0,0,0,0.6)',
-          animation: 'toastPop 0.45s cubic-bezier(0.16,1,0.3,1)',
-        }}>
-          <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '18px', color: '#B87DB5' }}>Effort maxed — 20/20</div>
-          <div style={{ fontSize: '13px', color: '#888', marginTop: '2px' }}>Full 100 effort points banked this session</div>
         </div>
       )}
 
@@ -2678,7 +2327,7 @@ export default function SessionPage() {
         const target = judgeTarget
         const targetResults = target ? resultsForTarget(results, target) : []
         const targetDivision = target?.id ? (playerInfoMap[target.id]?.division ?? null) : null
-        const totalEffort = calcTotalEffortLevel(targetResults, events)
+        const totalUnits = unitsFor(targetResults, events)
         const scoredIds = scoredEventIds(targetResults, events.map(ev => ev.id))
         const todoEvents = events.filter(ev => !scoredIds.has(ev.id))
         const doneEvents = events.filter(ev => scoredIds.has(ev.id))
@@ -2810,7 +2459,7 @@ export default function SessionPage() {
                       )}
                     </div>
                     <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11.5px', color: '#B87DB5', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 600 }}>
-                      Effort level {totalEffort} / 20
+                      {fmtUnits(totalUnits)} training unit{totalUnits === 1 ? '' : 's'}
                     </div>
                   </div>
                   <ProgressSegments events={events} scoredIds={scoredIds} />
@@ -2862,7 +2511,7 @@ export default function SessionPage() {
                     onClose={() => setSheetEventId(null)}
                     onSubmitted={async (label, meta) => {
                       setSheetEventId(null)
-                      setToast({ eventName: sheetEvent.event_name, label, isPR: meta.isPR, isNewEvent: false, effortCredit: meta.effortCredit, playerName: target.name })
+                      setToast({ eventName: sheetEvent.event_name, label, isPR: meta.isPR, isNewEvent: false, units: meta.units, playerName: target.name })
                       setTimeout(() => setToast(null), meta.isPR ? 4000 : 3000)
                       await loadResults()
                     }}
