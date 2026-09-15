@@ -10,8 +10,9 @@
 //
 //   1. ROSTER READINESS — can each domain offer enough gradeable events?
 //      Since the September 2026 difficulty overhaul this is nearly free: every
-//      ladder now has drill rungs beneath the contest, so only eleven pure
-//      `sport` events remain, and no domain is blocked.
+//      ladder has drill rungs beneath the contest, and since the grading
+//      ladders gave the pure contests drills too, Wrestling is the only pure
+//      `sport` event left. No domain is blocked.
 //   2. PLAYER READINESS — has each player played enough distinct GRADEABLE
 //      events per domain? One session gives one event per domain, drawn from
 //      twelve, so this accrues over roughly ten to twelve sessions.

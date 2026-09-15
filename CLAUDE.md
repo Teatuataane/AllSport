@@ -1113,9 +1113,20 @@ grade ladder earned against published standards rather than points, because all
 three previous systems were gated on lifetime points — attendance — and a grade
 you cannot fail carries no pride. Nothing is migrated, nothing is in the UI.
 
-**Branch:** `claude/allsport-grading-rebuild-aea665` (unpushed at time of writing).
+**Branches:** `claude/allsport-grading-rebuild-aea665` (the design and first
+engine), then `claude/grading-implementation` built on it (unpushed at time of
+writing). Match recording is its own branch, `claude/match-recording`.
 **Design record:** `docs/designs/` in that worktree — **gitignored, local only**,
 because the design docs name players and their results and this repo is public.
+`grading-system-spec.md` there carries every decision settled in review.
+
+**Standards were settled over four review rounds and approved 2026-09-15.**
+Implementation order: privacy notice → ladder changes → rules text → standards
+for all 120 events → engine → match recording and the rating → data fixes →
+database, UI, conferral and retiring taniwha. Done on the branch so far: the
+privacy notice, the ladders, the rules text, the engine, and the history
+migration `20260915040534` (written, NOT applied — code first, then push it
+from `main`).
 
 - **The ladder:** Mā (start, not an award), then Kiwikiwi, Whero, Karaka, Kōwhai,
   Kākāriki, Kahurangi, Poroporo, Parahi, Hiriwa, Kōura, Uenuku, Taniwha —
@@ -1125,31 +1136,46 @@ because the design docs name players and their results and this repo is public.
 - **The rules:** a colour in each of the ten domains; a domain colour is the
   highest grade met in at least HALF the domain's events; the overall grade is the
   LOWEST domain, and `null` (not Mā) until all ten domains hold one.
-- **`lib/grading.ts` is pure and tested** (`__tests__/grading.test.ts`).
-  Standards are deliberately NOT in `lib/` until the numbers stop moving.
+- **`lib/grading.ts` is pure and tested** (`__tests__/grading.test.ts`). It
+  holds the rules, never the numbers: standards are compiled from a reviewed
+  sheet, the way the difficulty ladders are.
+- **A standard is a threshold where higher is always better.** For a tiered
+  event that is `raw_score` itself, so reps, holds and timed efforts are one
+  `>=` check. Do not reintroduce a direction flag: the value-scaling design it
+  replaced had to divide some standards and multiply others, and backwards made
+  a standard harder with age.
+- **Age shifts the LADDER, not the value.** Under 14 and Grandmasters two
+  colours, 14 to 16 and Masters one (`AGE_SHIFT`). Below the Open floor the
+  ladder extends by its own first step.
+- **Game-rung events: drills give Kiwikiwi to Kahurangi, a rating the rest.**
+  49 ladders top out in a Game rung. The drill colour is capped at Kahurangi
+  AFTER the age shift; the rating gives Poroporo at 1,100 and one colour per 100
+  to Taniwha at 1,600, after ten recorded games, and is not age-shifted. The
+  colour shown is the higher of the two. The Game rung itself never carries a
+  threshold, or one match won would award the top colour.
+- **Strength is a ratio of bodyweight**, taken at the middle of an optional
+  10kg band the player picks. No band means ungradeable, not failed. Juniors are
+  never asked and are graded as a 50kg lifter, then shifted.
 - **The denominator is what can be graded.** Pure `sport` events and a player's
-  coach-confirmed exemptions both leave it. Speed holds six contests; counting
-  them would demand 100% of Speed's six gradeable events.
-- **The Game rung never carries a standard.** It tops 39 ladders; if it counted,
-  one match won would award the top colour.
-- **The launch gate is CLEAR.** The v0.7.0.0 difficulty overhaul put drill rungs
-  beneath the contest, taking pure `sport` events from 38 to 11, so every domain
-  can be graded. `node scripts/grading-readiness.mjs` reports the live state.
+  coach-confirmed exemptions both leave it. Since the grading ladders landed,
+  Wrestling is the only pure `sport` event left.
+- **The launch gate is CLEAR.** Every domain can be graded.
+  `node scripts/grading-readiness.mjs` reports the live state.
 - **A lifetime best is safe again.** `20260910025855` rebuilt every tiered score
   from its source columns, so `lib/percentile.ts`'s cross-session
   `max(raw_score)` holds. Standards still need an outlier floor: one stored
   sprint best is physically impossible.
 
-**Open, and blocking standards:** Tāne chose to handle age by shifting the
-LADDER per band rather than scaling the value — **`lib/grading.ts` still scales
-the value** and needs replacing. "The top grade should be achievable by anyone"
-reopens absolute load, because an absolute strength standard is body-size-gated.
-Tāne wants the higher colours on game events gated by head-to-head skill, so
-that playing reveals which sports a player is good at. Simulated at club scale, a
-per-sport rating is reliable after about ten games in that sport, so per-sport
-grading is feasible — the limits are recording who played whom, and cadence (each
-game sport is scheduled about once a month). It would be a second ranking metric,
-which this file says must be decided on purpose.
+**The rating is a second ranking metric, decided on purpose.** Tāne wants the
+higher colours on game events gated by head-to-head skill, so that playing
+reveals which sports a player is good at. Simulated at club scale, a per-sport
+rating is reliable after about ten games in that sport; the limits are
+recording who played whom, and cadence (each game sport is scheduled about once
+a month). It gates colours only; `lib/percentile.ts` stays the one leaderboard
+metric.
+
+**Still open:** a junior who answered "Other" at registration has no sex on
+record and no division pick, so nothing yet chooses their standards.
 
 **The opponent is the weak point for any future rating.** `results.opponent_name`
 is free text and optional — a quarter of game results name one, and a team
