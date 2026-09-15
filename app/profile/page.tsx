@@ -167,7 +167,7 @@ export default function ProfilePage() {
     if (!userId) return
     setExporting(true); setExportError('')
     try {
-      const [profile, children, results, summaries, colours, wellbeing, totals, donations, grades, exemptions] = await Promise.all([
+      const [profile, children, results, summaries, colours, wellbeing, totals, donations, grades, exemptions, workouts] = await Promise.all([
         supabase.from('players').select('*').eq('id', userId).single(),
         supabase.from('players').select('*').eq('parent_id', userId),
         supabase.from('results').select('*').eq('player_id', userId),
@@ -178,6 +178,7 @@ export default function ProfilePage() {
         supabase.from('koha_donations').select('*').eq('player_id', userId),
         supabase.from('grade_awards').select('*').eq('player_id', userId),
         supabase.from('grade_exemptions').select('*').eq('player_id', userId),
+        supabase.from('workouts').select('*, workout_entries(*)').eq('player_id', userId),
       ])
 
       const payload = {
@@ -196,6 +197,8 @@ export default function ProfilePage() {
         // Empty rather than absent before the grading migration lands.
         grades_conferred: grades.data ?? [],
         grade_exemptions: exemptions.data ?? [],
+        // Empty rather than absent before the workout logging migration lands.
+        training_log: workouts.data ?? [],
       }
 
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })

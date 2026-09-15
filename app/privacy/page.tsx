@@ -87,6 +87,11 @@ const competitionData: Row[] = [
     who: 'Your colours are public. The band and age allowance behind them are not.',
   },
   {
+    what: 'Your training log',
+    why: 'Workouts you, your parent or a kaiwhakawā log between games: the day, what you did and how much. Your best efforts count toward your colours, and the amount you train counts toward the training each colour needs.',
+    who: 'Private: you, your parent and kaiwhakawā. Never public, and never on a leaderboard.',
+  },
+  {
     what: 'Head-to-head ratings',
     why: 'For game events, a rating per sport, worked out from the games you win, draw and lose against other players. Your higher colours in a game sport come from it.',
     who: 'Public.',

@@ -155,6 +155,7 @@ export default function Navbar() {
     { href: '/leaderboard', label: 'BOARD', match: '/leaderboard' },
     { href: '/prs', label: 'EVENTS', match: '/prs' },
     { href: '/grades', label: 'COLOURS', match: '/grades' },
+    { href: '/log', label: 'LOG', match: '/log' },
   ]
 
   return (
