@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  ladderFor, eventGrade, computePlayerGrades, voidedSessionIds, heldRungs, releasable, shownRung,
+  ladderFor, eventGrade, computePlayerGrades, voidedSessionIds, heldRungs, releasable, shownRung, colourGates,
   type GradePlayer, type GradeResultRow,
 } from '@/lib/playerGrades'
 import { getEventByName, EVENTS } from '@/lib/eventData'
@@ -127,11 +127,13 @@ describe('voided sessions', () => {
 })
 
 describe('releasing colours', () => {
-  it('offers only domains where the standards give more than has been conferred', () => {
+  it('offers only domains where the standards give more than has been conferred, one colour at a time', () => {
     const held = heldRungs([{ domain_number: 1, rung: 3 }, { domain_number: 1, rung: 5 }, { domain_number: 2, rung: 2 }])
     expect(held.get(1)).toBe(5)
     const domains = [1, 2, 3].map(d => ({ domainNumber: d, rung: 4, availableCount: 12, required: 6, metAtRung: 6, nextRung: 5, metAtNextRung: 0 }))
-    expect(releasable(domains, held).map(d => d.domainNumber)).toEqual([2, 3])
+    // Plenty of games and units: only the standards decide here.
+    const units = new Map([[1, 99], [2, 99], [3, 99]])
+    expect(releasable(colourGates(domains, held, 100, units)).map(g => [g.domainNumber, g.releasable])).toEqual([[2, 3], [3, 1]])
   })
 
   it('never shows a conferred colour going down', () => {

@@ -14,7 +14,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { EVENTS } from '@/lib/eventData'
 import { STANDARDS } from '@/lib/standards'
-import { gradeForRung, AGE_SHIFT } from '@/lib/grading'
+import { gradeForRung, AGE_SHIFT, type ColourGate } from '@/lib/grading'
 import { useActivePlayer, playerLabel } from '@/lib/useActivePlayer'
 import { loadGradeState, type GradeState } from '@/lib/loadGrades'
 import PlayerTabs, { ViewingAsBanner } from '@/components/PlayerTabs'
@@ -72,6 +72,11 @@ export default function GradesPage() {
           the domain you train least.
           {shift > 0 && <> As {BAND_WORDS[state!.grades.band]}, every standard is shifted {shift} colour{shift > 1 ? 's' : ''} in your favour.</>}
         </p>
+        <p style={{ color: 'var(--text-muted)', fontSize: 14.5, lineHeight: 1.6, margin: '0 0 16px' }}>
+          Each new colour also needs <span style={{ color: 'var(--white)' }}>games</span>, played in the room, and{' '}
+          <span style={{ color: 'var(--white)' }}>training</span> in that domain since your last colour there. Game scores
+          count toward both; so does anything you <Link href="/log" style={{ color: 'var(--purple)' }}>log between games</Link>.
+        </p>
 
         {state && !state.hasBand && !/Junior|Youth/.test(activePlayer.division ?? '') && (
           <Link href="/profile" style={{
@@ -111,11 +116,7 @@ export default function GradesPage() {
                   <GradeDot grade={g} size={14} /> {g.name}
                 </span>
               </div>
-              {state.schemaReady && d.rung > held && (
-                <div style={{ fontSize: 12.5, color: 'var(--green)', margin: '2px 0 6px' }}>
-                  Your events now meet {gradeForRung(d.rung).name}. A kaiwhakawā confirms it.
-                </div>
-              )}
+              {state.schemaReady && <GateRow gate={state.gates.find(g => g.domainNumber === d.domainNumber)!} />}
 
               {events.map(e => {
                 const eg = state.grades.events.get(e.slug)!
@@ -154,5 +155,26 @@ export default function GradesPage() {
         })}
       </div>
     </>
+  )
+}
+
+/** The three gates on a domain's next colour, each ticked or counted. */
+function GateRow({ gate }: { gate: ColourGate }) {
+  if (!gate.next) return null
+  const next = gradeForRung(gate.next)
+  const item = (ok: boolean, text: string) => (
+    <span style={{ color: ok ? 'var(--green)' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>{ok ? '✓' : '○'} {text}</span>
+  )
+  return (
+    <div style={{ fontSize: 12.5, margin: '2px 0 8px', lineHeight: 1.6 }}>
+      <div style={{ color: gate.releasable ? 'var(--green)' : 'var(--white)', marginBottom: 2 }}>
+        {gate.releasable ? `${next.name} is ready: a kaiwhakawā confirms it.` : `Toward ${next.name}`}
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px' }}>
+        {item(gate.standardsMet, 'Standards')}
+        {item(gate.gamesMet, `${Math.min(gate.games, gate.gamesNeeded)} of ${gate.gamesNeeded} games`)}
+        {item(gate.trainingMet, `${Math.min(Math.floor(gate.units), gate.unitsNeeded)} of ${gate.unitsNeeded} units`)}
+      </div>
+    </div>
   )
 }

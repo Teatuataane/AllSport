@@ -252,6 +252,86 @@ export function overallGrade(domains: readonly DomainGradeResult[]): OverallGrad
   }
 }
 
+// ─── The two gates beside the standards ──────────────────────────────────────
+// Workout logging (September 2026) made every logged workout count toward the
+// standards, on trust. Two gates came with it, so a colour still needs the room
+// and still needs the work:
+//
+//   GAMES — cumulative OFFICIAL games. A kaiwhakawā moderates in person at
+//     games, so earning colours includes playing them. A personal-training
+//     session run by a kaiwhakawā is witnessed evidence but NOT a game: the
+//     quota exists to bring people into the room. One count for the player,
+//     not per domain, because every game draws an event from every domain.
+//
+//   TRAINING — effort units in THAT domain since the last colour there
+//     (lib/units.ts says what a unit is). The count starts again at each
+//     colour: a set amount of volume at every colour, the way a belt asks for
+//     time at grade. Official game results earn units too, so a player who only
+//     comes to games is never blocked, only slower.
+//
+// Colours move ONE at a time: the training count restarts at each conferral,
+// so the colour above needs its own units before it can follow.
+//
+// The units ladder is the games ladder's steps × UNIT_MULTIPLIER. Calibrated
+// on 16 September 2026 against every game on record: a game earns about 0.83
+// units per domain (one event per domain, 1.5 submissions each), so at 1.5 a
+// player who only plays games needs somewhat more than the quota's games to
+// clear the training gate, and any logged training closes the gap. At 1.0 the
+// gate barely binds; at 2.0 it held back 43% of the colours players had earned
+// on the standards. At 1.5 it holds back 35%.
+
+/** Cumulative official games needed to hold each colour. Index = rung. Tāne, 16 September 2026. */
+export const GAMES_REQUIRED: readonly number[] = [0, 1, 3, 5, 8, 12, 16, 20, 30, 40, 55, 75, 100]
+
+/** Training units per games-quota step. See above; one number to change. */
+export const UNIT_MULTIPLIER = 1.5
+
+/** Units needed in a domain, since its last colour, to hold each colour. Index = rung. Kiwikiwi needs none. */
+export const UNITS_REQUIRED: readonly number[] = GAMES_REQUIRED.map((g, r) =>
+  r <= 1 ? 0 : Math.round(UNIT_MULTIPLIER * (g - GAMES_REQUIRED[r - 1])))
+
+export type ColourGate = {
+  domainNumber: number
+  /** The colour held (conferred), 0 = Mā. */
+  held: number
+  /** The colour above, or null at the top. */
+  next: number | null
+  standardsMet: boolean
+  gamesMet: boolean
+  trainingMet: boolean
+  games: number
+  gamesNeeded: number
+  units: number
+  unitsNeeded: number
+  /** `next` when all three gates pass, otherwise 0. */
+  releasable: number
+}
+
+/** The three gates on a domain's next colour. */
+export function colourGate(input: {
+  domainNumber: number
+  /** The colour the standards give today (domainGrade's rung). */
+  standardsRung: number
+  held: number
+  games: number
+  /** Units in this domain since `held` was conferred. */
+  unitsSinceHeld: number
+}): ColourGate {
+  const next = input.held >= TOP_RUNG ? null : input.held + 1
+  const gamesNeeded = next == null ? 0 : GAMES_REQUIRED[next]
+  const unitsNeeded = next == null ? 0 : UNITS_REQUIRED[next]
+  const standardsMet = next != null && input.standardsRung >= next
+  const gamesMet = next != null && input.games >= gamesNeeded
+  // Rounded to a tenth before comparing, so 2.9999… of floating-point quarters is 3.
+  const trainingMet = next != null && Math.round(input.unitsSinceHeld * 10) / 10 >= unitsNeeded
+  return {
+    domainNumber: input.domainNumber, held: input.held, next,
+    standardsMet, gamesMet, trainingMet,
+    games: input.games, gamesNeeded, units: input.unitsSinceHeld, unitsNeeded,
+    releasable: standardsMet && gamesMet && trainingMet ? next! : 0,
+  }
+}
+
 // ─── Standards and the age shift ─────────────────────────────────────────────
 // A standard is a THRESHOLD on a scale where a higher number is always better.
 // For a tiered event that scale is results.raw_score itself — tierIdx * 10000

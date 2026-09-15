@@ -5,18 +5,19 @@
 // ten domains, and the overall colour once all ten hold one (decision 10 — the
 // ten lead; the overall appears only when it means something).
 //
-// What a player sees is what a kaiwhakawā has CONFERRED (decision 9). Where the
-// standards now give more, the domain says it is ready to confirm: the colour
-// itself still arrives with the kaiwhakawā. Before the grading migration lands
-// nothing can be conferred, so the card shows the computed colours and says
-// they are provisional.
+// What a player sees is what a kaiwhakawā has CONFERRED (decision 9). Each
+// domain's next colour needs three things (workout logging, September 2026):
+// the standards, the games quota and training units in that domain. The row
+// says which is missing, and a thin bar shows the training toward it. Before
+// the grading migration lands nothing can be conferred, so the card shows the
+// computed colours and says they are provisional.
 
 import Link from 'next/link'
 import DomainIcon from '@/components/DomainIcon'
 import { EVENTS } from '@/lib/eventData'
 import { RAINBOW } from '@/lib/domainColours'
 import { gradeForRung, type GradeRung } from '@/lib/grading'
-import { shownRung } from '@/lib/playerGrades'
+import { shownRung, gateBlocker } from '@/lib/playerGrades'
 import type { GradeState } from '@/lib/loadGrades'
 
 const DOMAIN_NAMES = Array.from({ length: 10 }, (_, i) => EVENTS.find(e => e.domainNumber === i + 1)?.domain ?? '')
@@ -38,10 +39,11 @@ const label = {
 }
 
 export default function GradesCard({ state }: { state: GradeState }) {
-  const { grades, held, schemaReady } = state
+  const { grades, held, schemaReady, gates } = state
   const rows = grades.domains.map(d => {
+    const gate = gates.find(g => g.domainNumber === d.domainNumber)!
     const shown = schemaReady ? (held.get(d.domainNumber) ?? 0) : d.rung
-    return { d, shown, ready: schemaReady && d.rung > shown }
+    return { d, gate, shown, ready: schemaReady && gate.releasable > 0 }
   })
   const heldAll = rows.every(r => r.shown > 0)
   const overall = heldAll ? gradeForRung(Math.min(...rows.map(r => r.shown))) : null
@@ -60,7 +62,7 @@ export default function GradesCard({ state }: { state: GradeState }) {
           </span>
         ) : (
           <span style={{ ...label, fontSize: 11, color: 'var(--text-muted)' }}>
-            {graded} of 10 domains graded
+            {graded} of 10 domains graded · {state.games} game{state.games === 1 ? '' : 's'}
           </span>
         )}
       </div>
@@ -76,9 +78,23 @@ export default function GradesCard({ state }: { state: GradeState }) {
       )}
 
       <div style={{ display: 'flex', flexDirection: 'column' }}>
-        {rows.map(({ d, shown, ready }) => {
+        {rows.map(({ d, gate, shown, ready }) => {
           const g = gradeForRung(shownRung(shown, 0))
-          const next = d.nextRung ? gradeForRung(d.nextRung) : null
+          const next = gate.next ? gradeForRung(gate.next) : null
+          const standardsNext = d.nextRung ? gradeForRung(d.nextRung) : null
+          const blocker = gateBlocker(gate)
+          const status = ready
+            ? <span style={{ color: 'var(--green)' }}>{next!.name} is ready for a kaiwhakawā to confirm</span>
+            : d.availableCount === 0
+              ? 'Nothing here can be graded for you yet'
+              : !schemaReady
+                ? standardsNext ? `${d.metAtNextRung} of ${d.required} events at ${standardsNext.name}` : 'The top of the ladder'
+                : !next
+                  ? 'The top of the ladder'
+                  : !gate.standardsMet
+                    ? `${d.metAtNextRung} of ${d.required} events at ${next.name}`
+                    : `${next.name} needs ${blocker}`
+          const showBar = schemaReady && !!next && gate.unitsNeeded > 0
           return (
             <div key={d.domainNumber} style={{
               display: 'flex', alignItems: 'center', gap: 11, padding: '9px 0',
@@ -89,15 +105,16 @@ export default function GradesCard({ state }: { state: GradeState }) {
                 <div style={{ fontSize: 14, color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {DOMAIN_NAMES[d.domainNumber - 1]}
                 </div>
-                <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 1 }}>
-                  {ready
-                    ? <span style={{ color: 'var(--green)' }}>Ready for a kaiwhakawā to confirm</span>
-                    : d.availableCount === 0
-                      ? 'Nothing here can be graded for you yet'
-                      : next
-                        ? `${d.metAtNextRung} of ${d.required} events at ${next.name}`
-                        : 'The top of the ladder'}
-                </div>
+                <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 1 }}>{status}</div>
+                {showBar && (
+                  <div title={`${Math.floor(gate.units)} of ${gate.unitsNeeded} training units toward ${next!.name}`}
+                    style={{ height: 3, borderRadius: 99, background: '#1c1c1c', marginTop: 5, overflow: 'hidden' }}>
+                    <div style={{
+                      height: '100%', borderRadius: 99, width: `${Math.min(100, (gate.units / gate.unitsNeeded) * 100)}%`,
+                      background: next!.rainbow ? RAINBOW : next!.inverted ? '#555' : next!.hex,
+                    }} />
+                  </div>
+                )}
               </div>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, flexShrink: 0, ...label, fontSize: 12, color: shown ? 'var(--white)' : '#555' }}>
                 <GradeDot grade={g} /> {g.name}
@@ -107,12 +124,14 @@ export default function GradesCard({ state }: { state: GradeState }) {
         })}
       </div>
 
-      <Link href="/grades" style={{
-        display: 'block', textAlign: 'center', paddingTop: 13, marginTop: 6,
-        borderTop: '1px solid var(--border)', ...label, fontSize: 12, color: 'var(--blue)',
-      }}>
-        Every event, and what the next colour asks →
-      </Link>
+      <div style={{ display: 'flex', borderTop: '1px solid var(--border)', marginTop: 6 }}>
+        <Link href="/log" style={{ flex: 1, textAlign: 'center', paddingTop: 13, ...label, fontSize: 12, color: 'var(--purple)' }}>
+          Log a workout
+        </Link>
+        <Link href="/grades" style={{ flex: 1, textAlign: 'center', paddingTop: 13, ...label, fontSize: 12, color: 'var(--blue)' }}>
+          What each colour asks →
+        </Link>
+      </div>
     </div>
   )
 }

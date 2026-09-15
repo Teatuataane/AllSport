@@ -10,8 +10,8 @@ import { EVENTS, getEventByName, type EventData } from './eventData'
 import { STANDARDS } from './standards'
 import {
   ageBand, rungForScore, ratioThresholdsKg, strengthBodyweight, ratingRung, gameEventRung,
-  domainGrade, overallGrade, DRILL_CAP, DOMAIN_COUNT,
-  type AgeBand, type DomainGradeResult, type OverallGradeResult,
+  domainGrade, overallGrade, colourGate, DRILL_CAP, DOMAIN_COUNT,
+  type AgeBand, type DomainGradeResult, type OverallGradeResult, type ColourGate,
 } from './grading'
 import type { SportRating } from './headToHead'
 
@@ -24,11 +24,20 @@ export type GradePlayer = {
   bodyweightBand: string | null
 }
 
+/**
+ * Where a result came from. A game result was played in an official session; a
+ * logged workout is WITNESSED when a kaiwhakawā logged it for the player, and
+ * SOLO otherwise. Every source counts toward the standards (workout logging,
+ * decision 1); the release panel shows which, so the kaiwhakawā can moderate.
+ */
+export type EvidenceSource = 'game' | 'witnessed' | 'solo'
+
 export type GradeResultRow = {
   event_name: string
   raw_score: number | null
   weight_kg: number | null
   difficulty_tier: string | null
+  source?: EvidenceSource
 }
 
 export type EventGrade = {
@@ -38,6 +47,8 @@ export type EventGrade = {
   /** False when this player cannot be graded in it — a lift with no band. */
   gradeable: boolean
   played: boolean
+  /** Where the result behind `rung` came from. Absent when nothing earns a colour, or the rows carry no source. */
+  source?: EvidenceSource
 }
 
 export type PlayerGrades = {
@@ -88,18 +99,30 @@ export function eventGrade(
 
   const ladder = s.all ?? s[ladderFor(p)] ?? []
   let drill = 0
+  let bestRow: GradeResultRow | undefined
   if (s.kind === 'ratio') {
     const bw = strengthBodyweight(band, p.bodyweightBand)
     if (bw == null) return { slug: ev.slug, rung: 0, gradeable: false, played }
-    const best = Math.max(0, ...drillRows.map(r => r.weight_kg ?? 0))
+    bestRow = maxBy(drillRows, r => r.weight_kg ?? 0)
+    const best = bestRow?.weight_kg ?? 0
     // The empty bar is Kiwikiwi, and it means a lift that happened: never a 0.
     if (best > 0) drill = rungForScore(best, ratioThresholdsKg(ladder.map(r => r || null), bw), band)
   } else if (drillRows.length) {
-    const best = Math.max(...drillRows.map(r => r.raw_score!))
-    drill = rungForScore(best, ladder, band, s.game ? { cap: DRILL_CAP } : {})
+    bestRow = maxBy(drillRows, r => r.raw_score!)
+    drill = rungForScore(bestRow!.raw_score!, ladder, band, s.game ? { cap: DRILL_CAP } : {})
   }
 
-  return { slug: ev.slug, rung: s.game ? gameEventRung(drill, rated) : drill, gradeable: true, played }
+  const rung = s.game ? gameEventRung(drill, rated) : drill
+  // The rating comes from recorded matches, which only official sessions hold.
+  const source = rung === 0 ? undefined : s.game && rated >= rung && rated > Math.min(drill, DRILL_CAP) ? 'game' : bestRow?.source
+  return { slug: ev.slug, rung, gradeable: true, played, ...(source ? { source } : {}) }
+}
+
+/** The row with the highest key; the earliest on a tie. */
+function maxBy<T>(rows: readonly T[], key: (r: T) => number): T | undefined {
+  let best: T | undefined
+  for (const r of rows) if (best === undefined || key(r) > key(best)) best = r
+  return best
 }
 
 /**
@@ -182,12 +205,82 @@ export function heldRungs(awards: readonly { domain_number: number; rung: number
 }
 
 /**
- * Domains where the standards now give a higher colour than the kaiwhakawā has
- * conferred — what the release panel offers. A colour once conferred is never
- * taken back, so a computed colour BELOW the held one is simply not shown.
+ * Domains whose next colour passes all three gates — standards, games and
+ * training — which is what the release panel offers. ONE colour per domain at
+ * a time: the training count restarts at each conferral, so the colour above
+ * needs its own units first.
  */
-export function releasable(domains: readonly DomainGradeResult[], held: ReadonlyMap<number, number>): DomainGradeResult[] {
-  return domains.filter(d => d.rung > (held.get(d.domainNumber) ?? 0))
+export function releasable(gates: readonly ColourGate[]): ColourGate[] {
+  return gates.filter(g => g.releasable > 0)
+}
+
+// ─── The games and training gates ────────────────────────────────────────────
+
+/** One thing that earned effort units: a game result, or a logged workout entry. */
+export type UnitEvent = {
+  domain: number
+  units: number
+  /** When it counted: the session's start for a game result, the log time for a workout. */
+  at: string
+  /** For a workout, the NZ day it was trained (YYYY-MM-DD). */
+  day?: string
+}
+
+const nzDay = (iso: string) =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Auckland' }).format(new Date(iso))
+
+/**
+ * Units per domain since the last colour conferred there — the training gate's
+ * count. A colour's units start again from its conferral: something counts
+ * only if it happened after it. A workout must also be TRAINED on or after the
+ * conferral day, so a week of logs saved up and entered after a conferral
+ * cannot rush the next colour through (decision 17).
+ */
+export function unitsSinceConferral(
+  events: readonly UnitEvent[],
+  awards: readonly { domain_number: number; conferred_at: string }[],
+): Map<number, number> {
+  const last = new Map<number, string>()
+  for (const a of awards) {
+    const cur = last.get(a.domain_number)
+    if (!cur || a.conferred_at > cur) last.set(a.domain_number, a.conferred_at)
+  }
+  const out = new Map<number, number>()
+  for (const e of events) {
+    const since = last.get(e.domain)
+    if (since) {
+      if (new Date(e.at).getTime() <= new Date(since).getTime()) continue
+      if (e.day && e.day < nzDay(since)) continue
+    }
+    out.set(e.domain, (out.get(e.domain) ?? 0) + e.units)
+  }
+  return out
+}
+
+/** The three gates on every domain's next colour. */
+export function colourGates(
+  domains: readonly DomainGradeResult[],
+  held: ReadonlyMap<number, number>,
+  games: number,
+  unitsByDomain: ReadonlyMap<number, number>,
+): ColourGate[] {
+  return domains.map(d => colourGate({
+    domainNumber: d.domainNumber,
+    standardsRung: d.rung,
+    held: held.get(d.domainNumber) ?? 0,
+    games,
+    unitsSinceHeld: unitsByDomain.get(d.domainNumber) ?? 0,
+  }))
+}
+
+/** What is holding a domain's next colour back, in a few words. Null when it is ready, or at the top. */
+export function gateBlocker(g: ColourGate): string | null {
+  if (g.next == null || g.releasable) return null
+  const parts: string[] = []
+  if (!g.standardsMet) parts.push('the standards')
+  if (!g.gamesMet) { const n = g.gamesNeeded - g.games; parts.push(`${n} more game${n === 1 ? '' : 's'}`) }
+  if (!g.trainingMet) { const n = Math.ceil(g.unitsNeeded - g.units); parts.push(`${n} more unit${n === 1 ? '' : 's'}`) }
+  return parts.join(' · ')
 }
 
 /** The colour to show for a domain: conferred colours never drop. */
