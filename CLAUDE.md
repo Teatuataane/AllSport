@@ -1158,7 +1158,11 @@ and `confer_grade` return 42501. Archives kept for rollback:
 grade before `confer_grade` stores it. Decision 9 makes the kaiwhakawā the
 authority and only a kaiwhakawā can call it, so no player can award themselves;
 recomputing server-side means porting the engine and the rating to plpgsql and
-testing them against a real database, which is a follow-up.
+testing them against a real database. **Tāne decided on 2026-09-16 to keep the
+kaiwhakawā as the authority: this is not a follow-up and is not planned.** A
+second copy of the rules in plpgsql would be one more place for the grade to
+silently disagree with the app. Revisit only if a colour is conferred that
+should not have been.
 
 - **The ladder:** Mā (start, not an award), then Kiwikiwi, Whero, Karaka, Kōwhai,
   Kākāriki, Kahurangi, Poroporo, Parahi, Hiriwa, Kōura, Uenuku, Taniwha —
