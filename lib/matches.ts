@@ -15,21 +15,19 @@
 //   · RECONCILING the two records one real game produces when both players log
 //     it — without this, every game both sides record counts twice toward the
 //     ten-game minimum.
+//
+// The rating those games feed lives in lib/headToHead.ts.
 
 import type { EventData } from './eventData'
 import { tierScoring } from './scoring'
+import { MIN_RATED_GAMES } from './grading'
 
 /**
  * Recorded games a player needs in a sport before a colour can be awarded on
- * head-to-head skill. Tāne, 14 September 2026.
- *
- * Why ten: simulated at AllSport's real volumes, a sport rating tracks true
- * skill at about 0.55 correlation after one to four games and about 0.83 after
- * ten to nineteen. At ten, roughly seven in ten top colours land on the right
- * person (scripts/sim-skill-rating.mjs). The games only make a player ELIGIBLE —
- * the colour still depends on winning them — so the grade stays failable.
+ * head-to-head skill. Defined once, in lib/grading.ts beside the colours it
+ * gates, and re-exported here where the games are counted.
  */
-export const MIN_RATED_GAMES = 10
+export { MIN_RATED_GAMES }
 
 /** Relative to side 'a', which always holds the recording player. */
 export type MatchOutcome = 'a' | 'b' | 'draw'
@@ -123,8 +121,21 @@ export type MatchRow = {
  */
 export type GameStatus = 'agreed' | 'disputed' | 'unconfirmed'
 
-/** One real game, made of one or two recorded matches. */
-export type Game = { matchIds: string[]; event_name: string; session_id: string; status: GameStatus; players: string[] }
+/**
+ * One real game, made of one or two recorded matches. `sides` and `outcome` are
+ * taken from the EARLIER record, so `outcome` is relative to its side 'a'. For a
+ * disputed game that record is only one side's claim: nothing rates a disputed
+ * game until a kaiwhakawā settles it.
+ */
+export type Game = {
+  matchIds: string[]
+  event_name: string
+  session_id: string
+  status: GameStatus
+  players: string[]
+  sides: { a: string[]; b: string[] }
+  outcome: MatchOutcome
+}
 
 const sideOf = (m: MatchRow, s: 'a' | 'b') => new Set(m.players.filter(p => p.side === s).map(p => p.player_id))
 
@@ -143,9 +154,10 @@ function agrees(m1: MatchRow, m2: MatchRow): boolean {
 }
 
 /**
- * Collapses recorded matches into real games. When both players log a game there
- * are two rows; counting them separately would credit both players with two
- * games toward MIN_RATED_GAMES for one game played.
+ * Collapses recorded matches into real games, in the order they were recorded.
+ * When both players log a game there are two rows; counting them separately
+ * would credit both players with two games toward MIN_RATED_GAMES for one game
+ * played.
  *
  * Pairing is one-to-one and within a session and sport. AGREEING pairs are made
  * first, so two players who met twice — once agreed, once disputed — pair each
@@ -179,16 +191,23 @@ export function reconcileGames(matches: readonly MatchRow[]): Game[] {
       session_id: m.session_id,
       status: p ? p.status : 'unconfirmed',
       players: [...new Set(rows.flatMap(r => r.players.map(x => x.player_id)))],
+      sides: { a: [...sideOf(m, 'a')], b: [...sideOf(m, 'b')] },
+      outcome: m.outcome,
     })
   }
   return games
 }
 
-/** Real games per sport for one player — the count MIN_RATED_GAMES is measured against. */
+/**
+ * Real games per sport for one player — the count MIN_RATED_GAMES is measured
+ * against. A DISPUTED game is left out, as approved in review: it does not count
+ * until a kaiwhakawā settles it. A game only one side logged counts, the same
+ * way every other score in AllSport does.
+ */
 export function gamesBySport(matches: readonly MatchRow[], playerId: string): Map<string, { games: number; agreed: number }> {
   const out = new Map<string, { games: number; agreed: number }>()
   for (const g of reconcileGames(matches)) {
-    if (!g.players.includes(playerId)) continue
+    if (g.status === 'disputed' || !g.players.includes(playerId)) continue
     const cur = out.get(g.event_name) ?? { games: 0, agreed: 0 }
     cur.games++
     if (g.status === 'agreed') cur.agreed++

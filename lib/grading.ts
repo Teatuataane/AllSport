@@ -326,9 +326,12 @@ export const RATING_START = 1000
 export const RATING_FLOOR = 1100
 export const RATING_STEP = 100
 /**
- * Games needed in a sport before its rating gives a colour. Must equal
- * MIN_RATED_GAMES in lib/matches.ts; the two collapse into one when match
- * recording merges.
+ * Recorded games a player needs in a sport before its rating gives a colour.
+ * Tāne, 14 September 2026. Simulated at AllSport's real volumes, a sport rating
+ * tracks true skill at about 0.55 correlation after one to four games and about
+ * 0.83 after ten to nineteen (scripts/sim-skill-rating.mjs). The games only make
+ * a player ELIGIBLE; the colour still depends on winning them, so the grade
+ * stays failable. Defined once, here, and re-exported by lib/matches.ts.
  */
 export const MIN_RATED_GAMES = 10
 

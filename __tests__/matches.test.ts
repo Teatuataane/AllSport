@@ -31,7 +31,8 @@ describe('outcome from the score', () => {
 
 describe('which entries are games', () => {
   it('treats a pure contest as a game', () => {
-    expect(isGameEntry('sport', getEventByName('Tag'), null)).toBe(true)
+    // Wrestling is the one pure contest left: every other gained a drill ladder.
+    expect(isGameEntry('sport', getEventByName('Wrestling'), null)).toBe(true)
   })
   it('treats the Game rung of a ladder as a game, and a drill rung as not', () => {
     const bb = getEventByName('Basketball')
