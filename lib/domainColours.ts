@@ -1,8 +1,7 @@
 // ─── AllSport domain colours ─────────────────────────────────────────────────
 //
-// Also the home of RAINBOW. It used to live in lib/colours.ts, but both that
-// module and lib/taniwha.ts need it and neither can import the other without a
-// cycle, so it sits in the palette module that depends on nothing.
+// Also the home of RAINBOW, which lib/colours.ts and the grading components
+// both need: it sits in the palette module because that depends on nothing.
 // THE single source of truth for the ten domain accent colours.
 //
 // This lives in lib/ rather than in components/EventIcon.tsx because

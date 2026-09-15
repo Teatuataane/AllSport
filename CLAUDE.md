@@ -524,6 +524,12 @@ the homepage.
 
 ## Taniwha grading system (August 2026 session 31) — LIVE, applied and verified 2026-08-25
 
+> **RETIRED on `claude/grading-implementation` (September 2026)**, replaced by the
+> twelve-colour grades above. Everything below describes production as it still
+> stands until that branch ships and `20260915054550` is applied; after that it is
+> history. The art in `public/taniwha/` and `scripts/check-taniwha-art.mjs` are
+> kept; the code is not.
+
 Replaces the Colours ladder with a collection of **twelve taniwha**. Design settled in a
 `/grill-me` session; the full record with 28 locked decisions is in `TANIWHA_SYSTEM_PLAN.md`.
 
@@ -1127,9 +1133,27 @@ database, UI, conferral and retiring taniwha. Done on the branch so far: the
 privacy notice, the ladders, the rules text, the engine, the standards sheet
 (`GRADING_STANDARDS_REVIEW.md`, drafted and awaiting Tāne's review, compiled
 into `lib/standards.ts` by `scripts/apply-standards-sheet.mjs`), match
-recording, the head-to-head rating (`lib/headToHead.ts`), and the history
-migration `20260915040534` (written, NOT applied — code first, then push it
-from `main`).
+recording, the head-to-head rating (`lib/headToHead.ts`), a player's colours
+(`lib/playerGrades.ts` computes, `lib/loadGrades.ts` loads, the dashboard
+GradesCard and `/grades` show them), the bodyweight band on `/profile`, the
+kaiwhakawā release panel (the Colours tab on `/judge`), and **taniwha retired**:
+its pages, components, libraries and tests are deleted, play history moved to
+`/history`, and the leaderboard shows each player's conferred overall colour.
+
+**Four migrations are written and NONE is applied** (Docker was not running):
+`20260915040534` (pure-contest history), `20260915051927` (grading schema:
+band, exemptions, awards, `confer_grade`), `20260915054550` (retire taniwha:
+archive and drop `player_taniwha`, its trigger and six functions, and
+`leaderboard_page` returns `grades` instead of `taniwha`), plus match recording's
+`20260914020739`. **Deploy the code first**, then push them from `main` in
+timestamp order, then verify the objects. The retirement is the one that is NOT
+safe in the other order: old code reads `player_taniwha`.
+
+**One deliberate departure from the spec:** the server does not recompute a
+grade before `confer_grade` stores it. Decision 9 makes the kaiwhakawā the
+authority and only a kaiwhakawā can call it, so no player can award themselves;
+recomputing server-side means porting the engine and the rating to plpgsql and
+testing them against a real database, which is a follow-up.
 
 - **The ladder:** Mā (start, not an award), then Kiwikiwi, Whero, Karaka, Kōwhai,
   Kākāriki, Kahurangi, Poroporo, Parahi, Hiriwa, Kōura, Uenuku, Taniwha —

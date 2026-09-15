@@ -7,18 +7,14 @@
 // accounts — a solo player should not pay 45px of chrome for a feature they
 // cannot use.
 //
-// The active chip's underline is the accent of the taniwha that player is
-// BUILDING, so a parent and child are never the same colour. That read needs
-// `player_taniwha`, which does not exist until 20260824222612 is applied, so it
-// degrades in two steps: taniwha accent → colour rung → brand red. A missing
-// TABLE comes back as PGRST205 in `error` (not a throw); a missing COLUMN would
-// come back as 42703 and take the whole query down, which is why this selects
-// only columns the table is certain to have.
+// The active chip's underline is the player's colours-era accent (their
+// highest rung in player_totals), so a parent and child are rarely the same
+// colour, and anyone without one gets the brand red. It used to be the taniwha
+// they were building; that system retired with the grading rebuild.
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase-browser'
-import { taniwhaBySlug, taniwhaOnDark } from '@/lib/taniwha'
 import { colourByRung, colourOnDark } from '@/lib/colours'
 import {
   useActivePlayer, playerLabel, type ActivePlayerRow,
@@ -35,30 +31,14 @@ async function loadAccents(ids: string[]): Promise<Map<string, string>> {
   const missing = ids.filter(id => !accentCache.has(id))
   if (missing.length === 0) return new Map(accentCache)
 
-  const taniwha = await supabase
-    .from('player_taniwha')
-    .select('player_id, taniwha_slug, is_building')
+  const totals = await supabase
+    .from('player_totals')
+    .select('player_id, highest_rung')
     .in('player_id', missing)
-
-  if (!taniwha.error) {
-    for (const row of (taniwha.data ?? []) as
-      { player_id: string; taniwha_slug: string; is_building: boolean }[]) {
-      if (!row.is_building) continue
-      const t = taniwhaBySlug(row.taniwha_slug)
-      if (t) accentCache.set(row.player_id, taniwhaOnDark(t))
-    }
-  } else {
-    // Pre-migration. Fall back to the colour rung, which is what the rest of the
-    // app still renders until those two migrations land.
-    const totals = await supabase
-      .from('player_totals')
-      .select('player_id, highest_rung')
-      .in('player_id', missing)
-    for (const row of (totals.data ?? []) as
-      { player_id: string; highest_rung: number }[]) {
-      const c = colourByRung(row.highest_rung)
-      if (c) accentCache.set(row.player_id, colourOnDark(c))
-    }
+  for (const row of (totals.data ?? []) as
+    { player_id: string; highest_rung: number }[]) {
+    const c = colourByRung(row.highest_rung)
+    if (c) accentCache.set(row.player_id, colourOnDark(c))
   }
 
   // Anyone still unresolved gets the brand red, and is cached so we do not

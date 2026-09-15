@@ -7,9 +7,6 @@ import { QRCodeSVG } from 'qrcode.react'
 import Link from 'next/link'
 import { EVENTS } from '@/lib/eventData'
 import { formatNZDate } from '@/lib/dates'
-import { buildRecentPointsMap } from '@/lib/taniwhaAlerts'
-import TaniwhaWatchlist from '@/components/TaniwhaWatchlist'
-import { taniwhaWatchlist, type TaniwhaWatchEntry, type TaniwhaProgress } from '@/lib/taniwhaAlerts'
 
 type Session = {
   id: string
@@ -100,7 +97,6 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
   const [playersLoading, setPlayersLoading] = useState(false)
   // Standing colour watchlist — who is close to their next colour, so a
   // kaiwhakawā can plan the moment rather than discover it after the fact.
-  const [taniwhaWatch, setTaniwhaWatch] = useState<TaniwhaWatchEntry[] | null>(null)
   const [expandedPlayerId, setExpandedPlayerId] = useState<string | null>(null)
   const [playerHistory, setPlayerHistory] = useState<Record<string, any[]>>({})
   const [playerHistoryLoading, setPlayerHistoryLoading] = useState<Record<string, boolean>>({})
@@ -460,22 +456,6 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
     const sessMap: Record<string, number> = {}
     rankingsRes.data?.forEach(r => { rankMap[r.player_id] = r.total_points; sessMap[r.player_id] = r.total_sessions })
 
-    // ── Colour watchlist ──────────────────────────────────────────────────
-    // Lifetime totals + recent per-session points, newest first.
-    const [totalsRes, formRes] = await Promise.all([
-      supabase.from('player_totals').select('player_id, lifetime_points, highest_rung'),
-      supabase.from('session_player_summary')
-        .select('player_id, total_placement_points, effort_points, sessions(session_date)')
-        .order('created_at', { ascending: false }),
-    ])
-    const totalsMap: Record<string, { lifetime_points: number; highest_rung: number }> = {}
-    totalsRes.data?.forEach(t => {
-      totalsMap[t.player_id as string] = {
-        lifetime_points: t.lifetime_points as number,
-        highest_rung: t.highest_rung as number,
-      }
-    })
-    const formMap = buildRecentPointsMap((formRes.data ?? []) as Parameters<typeof buildRecentPointsMap>[0])
     const entries = (playersRes.data || []).map(p => ({
       id: p.id,
       name: (p.display_name || p.username || p.full_name || 'Unknown') as string,
@@ -486,40 +466,6 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
     }))
     entries.sort((a, b) => b.totalPoints - a.totalPoints)
     setPlayersList(entries)
-    // ── Taniwha crown watchlist ───────────────────────────────────────────
-    const [ptRes, winsRes, refRes] = await Promise.all([
-      supabase.from('player_taniwha')
-        .select('player_id, taniwha_slug, domain_number, body_parts, is_building, crowned_at'),
-      supabase.from('player_event_wins').select('player_id, event_name'),
-      supabase.from('referrals').select('referrer_id').not('qualified_at', 'is', null),
-    ])
-
-    if (ptRes.error) {
-      setTaniwhaWatch(null)
-    } else {
-      // event_name -> domain, through the CURRENT roster. Never through
-      // session_events.domain_number, which records the numbering of the day
-      // and was renumbered in June 2026.
-      const domainOf = new Map(EVENTS.map(e => [e.name, e.domainNumber]))
-      const progress: Record<string, TaniwhaProgress> = {}
-      const at = (id: string) => (progress[id] ??= {
-        taniwha: [], lifetimePoints: totalsMap[id]?.lifetime_points ?? 0,
-        bankedWinsByDomain: {}, qualifiedReferrals: 0,
-      })
-      for (const r of (ptRes.data ?? []) as any[]) at(r.player_id).taniwha.push(r)
-      for (const w of (winsRes.data ?? []) as any[]) {
-        const d = domainOf.get(w.event_name)
-        if (d) { const g = at(w.player_id).bankedWinsByDomain; g[d] = (g[d] ?? 0) + 1 }
-      }
-      for (const r of (refRes.data ?? []) as any[]) at(r.referrer_id).qualifiedReferrals += 1
-
-      setTaniwhaWatch(taniwhaWatchlist({
-        players: entries.map(e => ({ id: e.id, name: e.name })),
-        progressOf: id => progress[id],
-        recentPointsOf: id => formMap[id] ?? [],
-      }))
-    }
-
     setPlayersLoading(false)
   }
 
@@ -1233,7 +1179,6 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
             </button>
           </div>
 
-          {!playersLoading && taniwhaWatch && <TaniwhaWatchlist entries={taniwhaWatch} />}
 
           {playersLoading ? (
             <div style={{ color: '#555', fontSize: '13px', fontFamily: 'Barlow, sans-serif', textAlign: 'center', padding: '20px 0' }}>

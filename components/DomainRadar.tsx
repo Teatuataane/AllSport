@@ -44,7 +44,7 @@ function ring(r: number): string {
 export type DomainRadarProps = {
   /** One entry per domain the player has anything rated in. Order does not matter. */
   domains: DomainPercentile[]
-  /** Outline and fill colour — the accent of the taniwha being built. */
+  /** Outline and fill colour. */
   accent: string
   width?: number
 }

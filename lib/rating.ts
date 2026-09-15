@@ -25,6 +25,15 @@ export type RatingEventRow = { id: string; session_id: string; event_name: strin
 export type RatingSessionRow = { id: string; session_date: string }
 export type RatingPlayerRow = { id: string; division: string | null }
 
+/**
+ * Minimum number of same-pool players who must have scored an event for a 1st
+ * to count as a win. Mirrors the `player_event_wins` view and
+ * compute_event_placements(), which are the definition of record: a field of
+ * one is a free win. /prs quotes it. Moved here from lib/taniwha.ts when the
+ * taniwha retired, because a win outlives any grading system built on it.
+ */
+export const WIN_MIN_FIELD = 3
+
 // Unified pools, matching the live session leaderboard
 export function divisionPool(division: string | null | undefined): 'men' | 'women' | 'juniors' | null {
   switch (division) {

@@ -1,29 +1,26 @@
 // ─── AllSport Colours — RETIRED, kept for history ────────────────────────────
 //
 // The colour ladder was the grading system until v0.6.0.0, when it was replaced
-// by the twelve taniwha (lib/taniwha.ts). This module is no longer a ladder: it
-// is a lookup table so the dashboard's points-history modal can still render the
-// colours players genuinely earned, on the dates they earned them.
+// by the twelve taniwha, which were in turn replaced by the twelve grades of the
+// grading rebuild (lib/grading.ts). This module is no longer a ladder: it is a
+// lookup table so /history can still render the colours players genuinely
+// earned, on the dates they earned them.
 //
 // WHY THIS STILL EXISTS AT ALL
 // `colour_awards` holds ~19 rows recording colours really awarded and really
-// celebrated. Rewriting them as taniwha parts would fabricate history, and the
-// numbers do not even line up: Kahurangi was rung 7 at 5,000 points, and 5,000
-// points is 5 taniwha parts. So the table stays and the timeline keeps showing
-// it as the colours era.
+// celebrated. Rewriting them as grades would fabricate history: they were
+// earned by points, and a grade is earned against a standard. So the table
+// stays and /history keeps showing it as the colours era.
 //
 // WHAT WAS DELETED WITH THE LADDER
 // Everything that computed a player's CURRENT standing: colourForPoints,
 // nextColour, nextColourFrom, progressToNext, crossedRungs, the live-session
 // predicates, colourCardStyle and emblemSrc. Nothing derives a colour from a
-// points total any more — taniwha.ts does that job now. The points-economy
-// constants (MIN_PLACEMENT_POINTS and friends) moved to lib/taniwha.ts because
-// they describe the session-to-points contract, which outlives any grading
-// system built on it.
+// points total any more.
 //
 // DO NOT ADD TO THIS FILE. A new rung, a new threshold or a new predicate here
-// means two grading systems are live at once, which is exactly the confusion
-// the taniwha rework existed to end.
+// means two grading systems are live at once. The one that is live is
+// lib/grading.ts.
 
 import type { CSSProperties } from 'react'
 import { RAINBOW } from './domainColours'

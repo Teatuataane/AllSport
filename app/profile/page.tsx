@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { createClient, getSessionUser } from '@/lib/supabase-browser'
 import { ACTIVE_PLAYER_KEY, useActivePlayer } from '@/lib/useActivePlayer'
 import Link from 'next/link'
-import { MAX_CROWNS, taniwhaBySlug, taniwhaOnDark } from '@/lib/taniwha'
 
 const supabase = createClient()
 
@@ -21,10 +20,6 @@ export default function ProfilePage() {
 
   const [userId, setUserId] = useState<string | null>(null)
   const [player, setPlayer] = useState<any>(null)
-  // Taniwha progression for the badge. NULL means the schema is not there yet
-  // (20260824222612), and the colour badge renders unchanged.
-  const [taniwha, setTaniwha] =
-    useState<{ taniwha_slug: string; crowned_at: string | null; is_building: boolean }[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
@@ -99,12 +94,6 @@ export default function ProfilePage() {
       const stored = typeof window !== 'undefined' ? localStorage.getItem(ACTIVE_PLAYER_KEY) : null
       setActivePlayerId(stored || user.id)
 
-      // Taniwha progression for the badge.
-      const pt = await supabase
-        .from('player_taniwha')
-        .select('taniwha_slug, crowned_at, is_building')
-        .eq('player_id', user.id)
-      setTaniwha(pt.error ? null : (pt.data ?? []))
 
       setLoading(false)
     }
@@ -178,13 +167,12 @@ export default function ProfilePage() {
     if (!userId) return
     setExporting(true); setExportError('')
     try {
-      const [profile, children, results, summaries, colours, playerTaniwha, wellbeing, totals, donations, grades, exemptions] = await Promise.all([
+      const [profile, children, results, summaries, colours, wellbeing, totals, donations, grades, exemptions] = await Promise.all([
         supabase.from('players').select('*').eq('id', userId).single(),
         supabase.from('players').select('*').eq('parent_id', userId),
         supabase.from('results').select('*').eq('player_id', userId),
         supabase.from('session_player_summary').select('*').eq('player_id', userId),
         supabase.from('colour_awards').select('*').eq('player_id', userId),
-        supabase.from('player_taniwha').select('*').eq('player_id', userId),
         supabase.from('wellbeing_surveys').select('*').eq('player_id', userId),
         supabase.from('player_totals').select('*').eq('player_id', userId),
         supabase.from('koha_donations').select('*').eq('player_id', userId),
@@ -202,9 +190,6 @@ export default function ProfilePage() {
         results: results.data ?? [],
         session_summaries: summaries.data ?? [],
         colours_earned: colours.data ?? [],
-        // Empty rather than absent if the progression migrations have not been
-        // applied — an export must never fail because a table is missing.
-        taniwha_progression: playerTaniwha.data ?? [],
         lifetime_totals: totals.data ?? [],
         wellbeing_checkins: wellbeing.data ?? [],
         koha: donations.data ?? [],
@@ -297,13 +282,8 @@ export default function ProfilePage() {
     </div>
   )
 
-  // The badge is the crowned count, the way a belt is. Tinted by the taniwha
-  // under construction, or neutral before the player has chosen one.
-  const crowned = taniwha?.filter(r => r.crowned_at).length ?? 0
-  const building = taniwha?.find(r => r.is_building)
-  const buildingT = building ? taniwhaBySlug(building.taniwha_slug) : null
-  const gradeBorder = buildingT ? taniwhaOnDark(buildingT) : '#888888'
-  const badgeLine = `${crowned}/${MAX_CROWNS} taniwha`
+  // Neutral since taniwha retired: a player's colours live on /grades.
+  const gradeBorder = '#888888'
   const displayName = form.display_name || form.username || player.full_name || '?'
 
   return (
@@ -357,7 +337,7 @@ export default function ProfilePage() {
                 fontSize: '11px', color: '#555',
                 fontFamily: 'var(--font-label)', letterSpacing: '0.08em',
               }}>
-                {badgeLine} · {player.division}
+                {player.division}
               </div>
               {form.icon && (
                 <button onClick={() => setForm(f => ({ ...f, icon: '' }))} style={{

@@ -154,7 +154,7 @@ export default function Navbar() {
     { href: '/dashboard', label: 'STATS', match: '/dashboard' },
     { href: '/leaderboard', label: 'BOARD', match: '/leaderboard' },
     { href: '/prs', label: 'EVENTS', match: '/prs' },
-    { href: '/taniwha', label: 'TANIWHA', match: '/taniwha' },
+    { href: '/grades', label: 'COLOURS', match: '/grades' },
   ]
 
   return (

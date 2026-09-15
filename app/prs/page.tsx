@@ -14,7 +14,7 @@ import type {
   RatingResultRow, RatingEventRow, RatingPlayerRow,
 } from '@/lib/rating'
 import { EVENTS, DOMAIN_ORDER, getEventsByDomain, type EventData } from '@/lib/eventData'
-import { WIN_MIN_FIELD } from '@/lib/taniwha'
+import { WIN_MIN_FIELD } from '@/lib/rating'
 import { formatNZDate } from '@/lib/dates'
 import DomainIcon from '@/components/DomainIcon'
 import EventIcon from '@/components/EventIcon'
@@ -292,7 +292,7 @@ export default function PRsPage() {
   }
 
   // Lifetime and tab-independent: the season tabs filter PBs, but a win is a
-  // permanent fact and is what the taniwha crowns will count.
+  // permanent fact.
   const totalWins = Object.keys(wins).length
   const totalPBs = Object.keys(resultsByEvent).length
   const totalEvents = EVENTS.length

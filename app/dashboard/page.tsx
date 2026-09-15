@@ -9,11 +9,11 @@
 //   4  the skill radar across the ten domains
 //
 // Everything the old bento grid carried is now either a nav destination (judge,
-// koha, profile, personal bests) or lives behind the taniwha card (play history,
-// the picker, the colours era). The dashboard used to be an action hub with stats
-// bolted on; it is a stats page with one action on it.
+// koha, profile, personal bests) or lives on /history (play history and the
+// colours era). The dashboard used to be an action hub with stats bolted on; it
+// is a stats page with one action on it.
 //
-// TWO CLOCKS, ON PURPOSE. Taniwha points are lifetime and never reset. `rankings`
+// TWO CLOCKS, ON PURPOSE. Colours are lifetime and never taken back. `rankings`
 // is still seasonal, so the division rank line is explicitly labelled with the
 // year — that is the only seasonal number on the page.
 
@@ -320,6 +320,13 @@ function DashboardInner() {
 
         {/* ── 2. Colours ──────────────────────────────────────────────────── */}
         {grades && <GradesCard state={grades} />}
+        <Link href="/history" style={{
+          display: 'block', textAlign: 'right', margin: '-6px 2px 16px',
+          fontFamily: 'var(--font-label)', textTransform: 'uppercase',
+          letterSpacing: '0.1em', fontWeight: 600, fontSize: 11, color: 'var(--text-muted)',
+        }}>
+          Play history →
+        </Link>
 
         {/* ── 3 + 4. Stats, or an honest empty state ──────────────────────
             A player with no games has nothing to put in four stat tiles or a
