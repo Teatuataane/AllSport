@@ -2306,7 +2306,9 @@ export const TIMED_EFFORT_SLUGS = new Set<string>([
   // Joined Sept 2026 when their ladders landed: the drill rungs are raced.
   '100m-sprint', '200m-sprint', 't-race',
   // Joined Sept 2026 with the grading rebuild: the pure contests gained a raced
-  // drill under their Game rung. Arm Wrestling's drill is a HOLD, so it is not here.
+  // drill under their Game rung. The Arm Wrestling drill is a HOLD, so it is not
+  // here. NO APOSTROPHES in comments inside this set: several scripts read it by
+  // pulling out quoted names, and a stray one misreads every slug after it.
   'tag', 'rats-and-rabbits', 'capture-the-flag', 'beach-flags', 'tug-of-war',
 ])
 // NOTE: 'walking', 'backwards-walk' and 'duck-walk' are retired events (removed
