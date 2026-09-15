@@ -4,7 +4,7 @@
 // Four blocks and one conditional strip. That is the whole page:
 //
 //   1  identity + seasonal division rank
-//   2  the taniwha card — what you are currently earning
+//   2  the grades card — a colour in each of the ten domains
 //   3  four numbers — games, events won, games won, PRs
 //   4  the skill radar across the ten domains
 //
@@ -26,11 +26,11 @@ import { nextScheduledSession } from '@/lib/schedule'
 import { useActivePlayer, playerLabel } from '@/lib/useActivePlayer'
 import PlayerTabs, { ViewingAsBanner } from '@/components/PlayerTabs'
 import DomainRadar from '@/components/DomainRadar'
-import TaniwhaCard, { loadTaniwhaState, type TaniwhaState } from '@/components/TaniwhaCard'
+import GradesCard from '@/components/GradesCard'
+import { loadGradeState, type GradeState } from '@/lib/loadGrades'
 import VoteCard from '@/app/components/VoteCard'
 import WellbeingSurvey from '@/app/components/WellbeingSurvey'
 import { DOMAIN_COLORS } from '@/lib/domainColours'
-import { taniwhaBySlug, taniwhaOnDark } from '@/lib/taniwha'
 import {
   sessionWins,
   type RatingResultRow, type RatingEventRow, type RatingSessionRow, type RatingPlayerRow,
@@ -73,7 +73,8 @@ function DashboardInner() {
 
   const [household, setHousehold] = useState<HouseholdBundle | null>(null)
   const [stats, setStats] = useState<StatsBundle | null>(null)
-  const [taniwha, setTaniwha] = useState<TaniwhaState | null>(null)
+  const [grades, setGrades] = useState<GradeState | null>(null)
+  const [eventsWon, setEventsWon] = useState<number | null>(null)
   const [activeSession, setActiveSession] = useState<any>(null)
   const [joinCode, setJoinCode] = useState('')
   const [joinError, setJoinError] = useState('')
@@ -118,18 +119,31 @@ function DashboardInner() {
     return () => { cancelled = true }
   }, [])
 
-  // ── Taniwha. Its OWN query, never folded into the bundle above. ─────────────
-  // A missing table returns PGRST205 and this returns null; a missing column
-  // would return 42703 and take the whole request down. Keeping it separate is
-  // what lets the rest of the page survive the pre-migration window.
+  // ── Grades. Their OWN queries, never folded into the bundle above. ──────────
+  // lib/loadGrades.ts reads every source separately, so a missing grading table
+  // returns PGRST205 there and the rest of this page is untouched.
   useEffect(() => {
     if (!activePlayerId) return
     let cancelled = false
-    setTaniwha(null)
-    const points = household?.totals.find(t => t.player_id === activePlayerId)?.lifetime_points ?? 0
-    loadTaniwhaState(activePlayerId, points).then(s => { if (!cancelled) setTaniwha(s) })
+    setGrades(null)
+    loadGradeState(activePlayerId).then(s => { if (!cancelled) setGrades(s) })
     return () => { cancelled = true }
-  }, [activePlayerId, household])
+  }, [activePlayerId])
+
+  // ── Events won: the player_event_wins view, which /prs reads too. ──────────
+  // The >= 3 field rule lives in the view. It used to arrive through the taniwha
+  // loader, but a win is not a taniwha thing and outlives it.
+  useEffect(() => {
+    if (!activePlayerId) return
+    let cancelled = false
+    setEventsWon(null)
+    supabase.from('player_event_wins').select('event_name, wins').eq('player_id', activePlayerId)
+      .then(({ data, error }) => {
+        if (cancelled || error) return
+        setEventsWon((data ?? []).filter((w: { wins: number }) => Number(w.wins) > 0).length)
+      })
+    return () => { cancelled = true }
+  }, [activePlayerId])
 
   // ── Is a game running right now? ────────────────────────────────────────────
   useEffect(() => {
@@ -167,7 +181,6 @@ function DashboardInner() {
   }
 
   // ── Derived ─────────────────────────────────────────────────────────────────
-  const points = household?.totals.find(t => t.player_id === activePlayerId)?.lifetime_points ?? 0
   const ranking = household?.rankings.find(r => r.player_id === activePlayerId) ?? null
   const counts = household?.counts.find(c => c.player_id === activePlayerId) ?? null
 
@@ -185,17 +198,10 @@ function DashboardInner() {
     }
   }, [stats, activePlayerId])
 
-  const eventsWon = useMemo(() => {
-    if (!taniwha) return null
-    return Object.values(taniwha.winsByEvent).filter(n => n > 0).length
-  }, [taniwha])
-
-  const buildingTaniwha = useMemo(() => {
-    const row = taniwha?.rows.find(r => r.is_building && !r.crowned_at)
-    return row ? taniwhaBySlug(row.taniwha_slug) : null
-  }, [taniwha])
-
-  const accent = buildingTaniwha ? taniwhaOnDark(buildingTaniwha) : 'var(--blue)'
+  // A hex, not a CSS variable: it is suffixed with an alpha below, and
+  // 'var(--blue)1e' is not a colour. The old taniwha fallback had exactly that
+  // bug, so the tile rendered with no tint at all.
+  const accent = '#2371BB'
 
   // Strongest / weakest DOMAIN, for the two boxes under the radar.
   const domainExtremes = useMemo(() => {
@@ -312,14 +318,8 @@ function DashboardInner() {
           )}
         </div>
 
-        {/* ── 2. Taniwha ──────────────────────────────────────────────────── */}
-        {taniwha && (
-          <TaniwhaCard
-            state={taniwha}
-            points={points}
-            onOpenHistory={() => router.push('/taniwha/history')}
-          />
-        )}
+        {/* ── 2. Colours ──────────────────────────────────────────────────── */}
+        {grades && <GradesCard state={grades} />}
 
         {/* ── 3 + 4. Stats, or an honest empty state ──────────────────────
             A player with no games has nothing to put in four stat tiles or a

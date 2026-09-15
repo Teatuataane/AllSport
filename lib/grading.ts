@@ -55,6 +55,8 @@ export type GradeRung = {
   name: string
   /** English colour, for the legend only. */
   colour: string
+  /** The display colour. */
+  hex: string
   /**
    * Percentile of the GENERAL population this rung targets: "better than X%
    * of people". Null for Kiwikiwi, which anyone can reach.
@@ -76,22 +78,27 @@ export const MA: GradeRung = {
   rung: 0,
   name: 'Mā',
   colour: 'white',
+  hex: '#ffffff',
   populationTarget: null,
 }
 
+// `hex` is the display colour: the brand palette where a grade shares a colour
+// with it (the globals.css --grade-* tokens), and bronze, silver and gold from
+// the standards review for the three rungs the old ladder never had. Uenuku is
+// drawn as the rainbow and Taniwha as a black card, so their hex is the fallback.
 export const GRADES: GradeRung[] = [
-  { rung: 1, name: 'Kiwikiwi', colour: 'grey', populationTarget: null },
-  { rung: 2, name: 'Whero', colour: 'red', populationTarget: 90 },
-  { rung: 3, name: 'Karaka', colour: 'orange', populationTarget: 80 },
-  { rung: 4, name: 'Kōwhai', colour: 'yellow', populationTarget: 70 },
-  { rung: 5, name: 'Kākāriki', colour: 'green', populationTarget: 60 },
-  { rung: 6, name: 'Kahurangi', colour: 'blue', populationTarget: 50 },
-  { rung: 7, name: 'Poroporo', colour: 'purple', populationTarget: 40 },
-  { rung: 8, name: 'Parahi', colour: 'bronze', populationTarget: 30 },
-  { rung: 9, name: 'Hiriwa', colour: 'silver', populationTarget: 20 },
-  { rung: 10, name: 'Kōura', colour: 'gold', populationTarget: 10 },
-  { rung: 11, name: 'Uenuku', colour: 'rainbow', populationTarget: 5, rainbow: true },
-  { rung: 12, name: 'Taniwha', colour: 'black', populationTarget: 1, inverted: true },
+  { rung: 1, name: 'Kiwikiwi', colour: 'grey', hex: '#888888', populationTarget: null },
+  { rung: 2, name: 'Whero', colour: 'red', hex: '#EA4742', populationTarget: 90 },
+  { rung: 3, name: 'Karaka', colour: 'orange', hex: '#F9B051', populationTarget: 80 },
+  { rung: 4, name: 'Kōwhai', colour: 'yellow', hex: '#F9E051', populationTarget: 70 },
+  { rung: 5, name: 'Kākāriki', colour: 'green', hex: '#4DB26E', populationTarget: 60 },
+  { rung: 6, name: 'Kahurangi', colour: 'blue', hex: '#2371BB', populationTarget: 50 },
+  { rung: 7, name: 'Poroporo', colour: 'purple', hex: '#B87DB5', populationTarget: 40 },
+  { rung: 8, name: 'Parahi', colour: 'bronze', hex: '#CD7F32', populationTarget: 30 },
+  { rung: 9, name: 'Hiriwa', colour: 'silver', hex: '#B8C0CC', populationTarget: 20 },
+  { rung: 10, name: 'Kōura', colour: 'gold', hex: '#D4AF37', populationTarget: 10 },
+  { rung: 11, name: 'Uenuku', colour: 'rainbow', hex: '#B87DB5', populationTarget: 5, rainbow: true },
+  { rung: 12, name: 'Taniwha', colour: 'black', hex: '#000000', populationTarget: 1, inverted: true },
 ]
 
 export const TOP_RUNG = 12

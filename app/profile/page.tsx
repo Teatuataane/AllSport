@@ -1,4 +1,5 @@
 'use client'
+import { BODYWEIGHT_BANDS } from '@/lib/grading'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient, getSessionUser } from '@/lib/supabase-browser'
@@ -58,6 +59,7 @@ export default function ProfilePage() {
     show_username: true,
     show_division: true,
     show_location: false,
+    bodyweight_band: '',
   })
 
   // Rankings for the seasonal division rank shown on the profile card.
@@ -89,6 +91,7 @@ export default function ProfilePage() {
           show_username: p.show_username !== false,
           show_division: p.show_division !== false,
           show_location: p.show_location || false,
+          bodyweight_band: p.bodyweight_band || '',
         })
       }
 
@@ -108,6 +111,10 @@ export default function ProfilePage() {
     load()
   }, [router])
 
+  // Juniors are never asked for a bodyweight band (see /privacy): their
+  // strength grades use a fixed 50kg standard instead.
+  const isJunior = /Junior|Youth/.test(player?.division ?? '')
+
   const handleSave = async () => {
     if (!player) return
     if (!form.username.trim()) { setSaveError('Username is required'); return }
@@ -123,6 +130,16 @@ export default function ProfilePage() {
       show_location: form.show_location,
     }).eq('id', player.id)
 
+    // The band is its own write, never folded into the one above: until the
+    // grading migration lands the column does not exist, and PostgREST rejects
+    // a whole update over one unknown column, so every profile save would fail
+    // rather than just the band.
+    let bandError = ''
+    if (!error && !isJunior && form.bodyweight_band !== (player.bodyweight_band ?? '')) {
+      const b = await supabase.from('players').update({ bodyweight_band: form.bodyweight_band || null }).eq('id', player.id)
+      if (b.error) bandError = 'Profile saved, but your bodyweight band could not be stored yet.'
+    }
+
     if (error) {
       setSaveError(error.message)
     } else {
@@ -131,9 +148,14 @@ export default function ProfilePage() {
         username: form.username.trim(),
         display_name: form.display_name.trim() || form.username.trim(),
         icon: form.icon || null,
+        ...(bandError ? {} : { bodyweight_band: form.bodyweight_band || null }),
       }))
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
+      if (bandError) {
+        setSaveError(bandError)
+      } else {
+        setSaved(true)
+        setTimeout(() => setSaved(false), 2000)
+      }
     }
     setSaving(false)
   }
@@ -156,7 +178,7 @@ export default function ProfilePage() {
     if (!userId) return
     setExporting(true); setExportError('')
     try {
-      const [profile, children, results, summaries, colours, playerTaniwha, wellbeing, totals, donations] = await Promise.all([
+      const [profile, children, results, summaries, colours, playerTaniwha, wellbeing, totals, donations, grades, exemptions] = await Promise.all([
         supabase.from('players').select('*').eq('id', userId).single(),
         supabase.from('players').select('*').eq('parent_id', userId),
         supabase.from('results').select('*').eq('player_id', userId),
@@ -166,6 +188,8 @@ export default function ProfilePage() {
         supabase.from('wellbeing_surveys').select('*').eq('player_id', userId),
         supabase.from('player_totals').select('*').eq('player_id', userId),
         supabase.from('koha_donations').select('*').eq('player_id', userId),
+        supabase.from('grade_awards').select('*').eq('player_id', userId),
+        supabase.from('grade_exemptions').select('*').eq('player_id', userId),
       ])
 
       const payload = {
@@ -184,6 +208,9 @@ export default function ProfilePage() {
         lifetime_totals: totals.data ?? [],
         wellbeing_checkins: wellbeing.data ?? [],
         koha: donations.data ?? [],
+        // Empty rather than absent before the grading migration lands.
+        grades_conferred: grades.data ?? [],
+        grade_exemptions: exemptions.data ?? [],
       }
 
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
@@ -407,6 +434,33 @@ export default function ProfilePage() {
                 }}
               />
             </div>
+
+            {!isJunior && (
+              <div>
+                <label htmlFor="bodyweight-band" style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '5px', fontFamily: 'var(--font-label)', letterSpacing: '0.08em' }}>
+                  BODYWEIGHT BAND (optional)
+                </label>
+                <select
+                  id="bodyweight-band"
+                  value={form.bodyweight_band}
+                  onChange={e => setForm(f => ({ ...f, bodyweight_band: e.target.value }))}
+                  style={{
+                    width: '100%', boxSizing: 'border-box', background: '#0a0a0a',
+                    border: '1px solid #2a2a2a', borderRadius: '10px',
+                    padding: '11px 14px', color: '#fff', fontSize: '15px',
+                    fontFamily: 'var(--font-body)',
+                  }}
+                >
+                  <option value="">Not set: lifts and loaded carries are not graded</option>
+                  {BODYWEIGHT_BANDS.map(b => <option key={b.label} value={b.label}>{b.label}</option>)}
+                </select>
+                <div style={{ fontSize: '11px', color: '#555', fontFamily: 'var(--font-body)', marginTop: '6px', lineHeight: 1.5 }}>
+                  Strength and carry colours are measured against the middle of your band, so a lighter
+                  player is never graded on a heavier player&apos;s numbers. A band, never your weight, and
+                  never shown to other players.
+                </div>
+              </div>
+            )}
 
             {/* Display prefs */}
             <div>
