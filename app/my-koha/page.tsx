@@ -11,7 +11,7 @@ const TIERS = [
   { tier: 2, reward: 'Digital Certificate', icon: '📜', color: '#4DB26E', donationMin: 50, referralsNeeded: 3, referralPath: true },
   { tier: 3, reward: 'Sticker Pack', icon: '🎁', color: '#2371BB', donationMin: 200, referralsNeeded: 6, referralPath: true },
   { tier: 4, reward: 'Colours T-Shirt', icon: '👕', color: '#B87DB5', donationMin: 500, referralsNeeded: 12, referralPath: true },
-  { tier: 5, reward: 'Grading Hoodie', icon: '🧥', color: '#EA4742', donationMin: 1000, referralsNeeded: 18, referralPath: true },
+  { tier: 5, reward: 'Colours Hoodie', icon: '🧥', color: '#EA4742', donationMin: 1000, referralsNeeded: 18, referralPath: true },
   { tier: 6, reward: 'Clothing Stack', icon: '🎽', color: '#F9B051', donationMin: 2000, referralsNeeded: 25, referralPath: true },
   { tier: 7, reward: 'Personal Coaching — 20hrs', icon: '🏆', color: '#F9B051', donationMin: 2500, referralsNeeded: null, referralPath: false },
   { tier: 8, reward: 'Personal Coaching — 50hrs', icon: '🏆', color: '#F9B051', donationMin: 5000, referralsNeeded: null, referralPath: false },

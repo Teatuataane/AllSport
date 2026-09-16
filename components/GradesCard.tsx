@@ -43,7 +43,7 @@ const footerLink = {
   padding: '12px 6px 0', ...label, fontSize: 12,
 }
 
-export default function GradesCard({ state }: { state: GradeState }) {
+export default function GradesCard({ state, askBand = false }: { state: GradeState; askBand?: boolean }) {
   const { grades, held, schemaReady, gates } = state
   const rows = grades.domains.map(d => {
     const gate = gates.find(g => g.domainNumber === d.domainNumber)!
@@ -71,6 +71,20 @@ export default function GradesCard({ state }: { state: GradeState }) {
           </span>
         )}
       </div>
+
+      {/* Strength is graded against a bodyweight band nothing else asks for, so
+          a new player's first game left a whole domain ungraded with the only
+          prompt on /grades. The dashboard is where they actually are. */}
+      {askBand && !state.hasBand && (
+        <Link href="/profile" style={{
+          display: 'block', fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.5,
+          background: '#0d0d0d', border: '1px solid var(--border)', borderRadius: 10,
+          padding: '9px 11px', marginBottom: 12,
+        }}>
+          <span style={{ color: 'var(--white)' }}>Lifts and loaded carries need your bodyweight band.</span>{' '}
+          Pick a 10kg range and they start counting. <span style={{ color: 'var(--blue)' }}>Set it →</span>
+        </Link>
+      )}
 
       {!schemaReady && (
         <div style={{

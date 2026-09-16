@@ -1,8 +1,13 @@
 'use client'
 
 // ─── Bottom tab bar ──────────────────────────────────────────────────────────
-// Five destinations, thumb-reachable, on every logged-in page. Replaces the
-// hamburger, which held every link in the app behind one tap nobody made.
+// Five destinations, thumb-reachable, on every logged-in page:
+//
+//   PLAY · HOME · COLOURS · BOARD · MORE
+//
+// Colours is a tab because it is the sport: since September 2026 a colour is
+// the thing every player is working toward, and it sat two taps deep in a
+// sheet of twelve while a reference list of personal bests held a tab.
 //
 // PLAY is the only context-aware tab:
 //
@@ -11,8 +16,10 @@
 //   player + live session     → /scoring/{id}        green, pulse dot
 //   player, nothing live      → /dashboard#join      grey
 //
-// Phones only. Above 768px `.bottom-nav` is display:none and the same five
-// destinations render as text links in the top bar — see globals.css.
+// Phones only. Above 768px `.bottom-nav` is display:none and the top bar
+// renders the same tabs AND the same MORE menu (`MoreMenu`, exported below).
+// It used to render only the tabs, which left a signed-in player on a laptop
+// with no way to sign out or reach their profile.
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -27,7 +34,7 @@ const supabaseModule = () => import('@/lib/supabase-browser')
 
 const BAR_HEIGHT = 64
 
-type TabKey = 'play' | 'stats' | 'board' | 'events' | 'more'
+type TabKey = 'play' | 'home' | 'colours' | 'board' | 'more'
 
 const RESTING = '#5c5c5c'
 const ACTIVE = '#ffffff'
@@ -44,10 +51,16 @@ function Icon({ tab, colour }: { tab: TabKey; colour: string }) {
           <circle cx="12" cy="12" r="9" /><path d="M10 8.5l6 3.5-6 3.5z" />
         </svg>
       )
-    case 'stats':
+    case 'home':
       return (
         <svg {...common} strokeLinecap="round">
           <path d="M5 19V11" /><path d="M12 19V5" /><path d="M19 19v-5" />
+        </svg>
+      )
+    case 'colours':
+      return (
+        <svg {...common} strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="4.5" /><circle cx="12" cy="12" r="0.8" />
         </svg>
       )
     case 'board':
@@ -55,13 +68,6 @@ function Icon({ tab, colour }: { tab: TabKey; colour: string }) {
         <svg {...common} strokeLinecap="round" strokeLinejoin="round">
           <path d="M7 4h10v6a5 5 0 01-10 0z" /><path d="M7 6H4v1a3 3 0 003 3" />
           <path d="M17 6h3v1a3 3 0 01-3 3" /><path d="M9 20h6" /><path d="M12 15v5" />
-        </svg>
-      )
-    case 'events':
-      return (
-        <svg {...common} strokeLinejoin="round">
-          <rect x="4" y="4" width="7" height="7" rx="2" /><rect x="13" y="4" width="7" height="7" rx="2" />
-          <rect x="4" y="13" width="7" height="7" rx="2" /><rect x="13" y="13" width="7" height="7" rx="2" />
         </svg>
       )
     case 'more':
@@ -120,7 +126,6 @@ function Tab({ tab, label, colour, active, live, onClick, href }: {
 
 export default function BottomNav() {
   const pathname = usePathname()
-  const router = useRouter()
   const { userId, isJudge, liveSessionId, playHref, playLabel, playColour } = useNavState()
   const [moreOpen, setMoreOpen] = useState(false)
 
@@ -156,51 +161,33 @@ export default function BottomNav() {
         <Tab tab="play" label={playLabel} colour={playColour}
              active={on('/scoring') || (isJudge && on('/judge'))}
              live={!!liveSessionId} href={playHref} />
-        <Tab tab="stats" label="Stats" colour={on('/dashboard') ? ACTIVE : RESTING}
+        <Tab tab="home" label="Home" colour={on('/dashboard') ? ACTIVE : RESTING}
              active={on('/dashboard')} href="/dashboard" />
+        <Tab tab="colours" label="Colours" colour={on('/grades') ? ACTIVE : RESTING}
+             active={on('/grades')} href="/grades" />
         <Tab tab="board" label="Board" colour={on('/leaderboard') ? ACTIVE : RESTING}
              active={on('/leaderboard')} href="/leaderboard" />
-        <Tab tab="events" label="Events" colour={on('/prs') ? ACTIVE : RESTING}
-             active={on('/prs')} href="/prs" />
         <Tab tab="more" label="More" colour={moreOpen ? ACTIVE : RESTING}
              active={moreOpen} onClick={() => setMoreOpen(o => !o)} />
       </nav>
 
-      {moreOpen && (
-        <MoreSheet
-          isJudge={isJudge}
-          onClose={() => setMoreOpen(false)}
-          onSignOut={async () => {
-            // Close the sheet only AFTER the sign-out lands. Closing first read
-            // as success even when the dynamic import failed, so a tap on flaky
-            // mobile dismissed the sheet and left the player signed in with no
-            // feedback. Leaving it open makes a failed tap visible and retryable.
-            try {
-              const { createClient } = await supabaseModule()
-              await createClient().auth.signOut()
-              setMoreOpen(false)
-              router.push('/')
-            } catch {
-              // Sheet stays open; the player can tap again.
-            }
-          }}
-        />
-      )}
+      {moreOpen && <MoreMenu isJudge={isJudge} placement="bottom" onClose={() => setMoreOpen(false)} />}
     </>
   )
 }
 
-// ── The MORE sheet ───────────────────────────────────────────────────────────
-// Absorbs the whole logged-in hamburger. Personal Bests is deliberately absent:
-// it is the EVENTS tab now, and listing it twice teaches people the tab is
-// something else.
+// ── The MORE menu ────────────────────────────────────────────────────────────
+// The player's own things, and nothing else. It held twelve rows until
+// September 2026; five were public website pages (Schedule, Give koha, Event
+// guide, How to play, Supporters) that already live in the footer on every
+// page, logged in or not, and they crowded out the app.
 //
-// "Event guide" is NOT that duplicate. The EVENTS tab is /prs — YOUR events,
-// your bests and placements. /events is the catalogue: how to perform all 120,
-// the judge standards and the difficulty tiers. Sending the tab to /prs left
-// the catalogue with no entry point anywhere in the logged-in nav, which is
-// the surface a player wants mid-session when they have drawn an event they
-// have never done. The two names have to stay distinguishable.
+// The event catalogue (/events) is reached from any event row — /grades,
+// /prs, the HOW TO button mid-session — which is where a player actually wants
+// it, and from the footer.
+//
+// One component for both widths: a sheet above the bottom bar on phones, a
+// dropdown under the top bar on desktop.
 
 function SheetRow({ href, label, accent, children, onClick }: {
   href?: string
@@ -240,11 +227,32 @@ function SheetRow({ href, label, accent, children, onClick }: {
   return <button onClick={onClick} style={{ ...style, borderBottom: 'none' }}>{body}</button>
 }
 
-function MoreSheet({ isJudge, onClose, onSignOut }: {
+export function MoreMenu({ isJudge, placement, onClose }: {
   isJudge: boolean
+  placement: 'bottom' | 'top'
   onClose: () => void
-  onSignOut: () => void
 }) {
+  const router = useRouter()
+  const [signOutFailed, setSignOutFailed] = useState(false)
+  // Close only AFTER the sign-out lands. Closing first read as success even
+  // when the dynamic import failed, so a tap on flaky mobile dismissed the
+  // sheet and left the player signed in with no feedback.
+  const onSignOut = async () => {
+    try {
+      const { createClient } = await supabaseModule()
+      await createClient().auth.signOut()
+      onClose()
+      router.push('/')
+    } catch {
+      setSignOutFailed(true)
+    }
+  }
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
   const stroke = (colour = '#888888') => ({
     width: 19, height: 19, viewBox: '0 0 24 24', fill: 'none',
     stroke: colour, strokeWidth: 1.8, 'aria-hidden': true,
@@ -262,7 +270,7 @@ function MoreSheet({ isJudge, onClose, onSignOut }: {
       <div
         role="dialog"
         aria-label="More"
-        style={{
+        style={placement === 'bottom' ? {
           position: 'fixed', left: 0, right: 0, zIndex: 970,
           bottom: `calc(${BAR_HEIGHT}px + env(safe-area-inset-bottom, 0px))`,
           background: 'var(--surface)',
@@ -270,11 +278,20 @@ function MoreSheet({ isJudge, onClose, onSignOut }: {
           borderRadius: '18px 18px 0 0',
           overflow: 'hidden',
           boxShadow: '0 -24px 60px rgba(0,0,0,0.6)',
+        } : {
+          position: 'fixed', right: 16, top: 60, zIndex: 1010, width: 300,
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 14,
+          overflow: 'hidden',
+          boxShadow: '0 24px 60px rgba(0,0,0,0.6)',
         }}
       >
-        <div style={{ padding: '12px 0 8px', display: 'flex', justifyContent: 'center' }}>
-          <div style={{ width: 38, height: 4, borderRadius: 999, background: 'var(--border-strong)' }} />
-        </div>
+        {placement === 'bottom' && (
+          <div style={{ padding: '12px 0 8px', display: 'flex', justifyContent: 'center' }}>
+            <div style={{ width: 38, height: 4, borderRadius: 999, background: 'var(--border-strong)' }} />
+          </div>
+        )}
 
         {isJudge && (
           <SheetRow href="/judge" label="Kaiwhakawā panel" accent="var(--red)">
@@ -284,15 +301,16 @@ function MoreSheet({ isJudge, onClose, onSignOut }: {
           </SheetRow>
         )}
 
-        <SheetRow href="/grades" label="My colours">
-          <svg {...stroke()} strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="8" /><path d="M12 4v16" /><path d="M4 12h16" />
-          </svg>
-        </SheetRow>
-
         <SheetRow href="/log" label="Log a workout">
           <svg {...stroke()} strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 5v14" /><path d="M5 12h14" /><rect x="3" y="3" width="18" height="18" rx="4" />
+          </svg>
+        </SheetRow>
+
+        <SheetRow href="/prs" label="My events">
+          <svg {...stroke()} strokeLinejoin="round">
+            <rect x="4" y="4" width="7" height="7" rx="2" /><rect x="13" y="4" width="7" height="7" rx="2" />
+            <rect x="4" y="13" width="7" height="7" rx="2" /><rect x="13" y="13" width="7" height="7" rx="2" />
           </svg>
         </SheetRow>
 
@@ -308,17 +326,6 @@ function MoreSheet({ isJudge, onClose, onSignOut }: {
           </svg>
         </SheetRow>
 
-        <SheetRow href="/schedule" label="Schedule">
-          <svg {...stroke()} strokeLinecap="round" strokeLinejoin="round">
-            <rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18" />
-            <path d="M8 3v4" /><path d="M16 3v4" />
-          </svg>
-        </SheetRow>
-
-        {/* /my-koha's only entry point used to be the dashboard's My Koha bento
-            card. The stats-page rewrite deleted that card, which orphaned the
-            page — it still worked, nothing linked to it. It lives here now,
-            above the public Koha page it is the personal half of. */}
         <SheetRow href="/my-koha" label="My koha">
           <svg {...stroke()} strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 21s-7-4.6-7-10a4 4 0 017-2.6A4 4 0 0119 11c0 5.4-7 10-7 10z" />
@@ -326,38 +333,7 @@ function MoreSheet({ isJudge, onClose, onSignOut }: {
           </svg>
         </SheetRow>
 
-        {/* "Koha" sat directly under "My koha" with a near-identical heart, so
-            the pair read as one thing listed twice. The public page is the
-            giving one — naming it by the action separates them. */}
-        <SheetRow href="/koha" label="Give koha">
-          <svg {...stroke()} strokeLinecap="round" strokeLinejoin="round">
-            <path d="M20 12v7a2 2 0 01-2 2H6a2 2 0 01-2-2v-7" /><path d="M3 8h18v4H3z" />
-            <path d="M12 21V8" /><path d="M12 8S9.5 3.5 7.5 5.5 12 8 12 8z" />
-            <path d="M12 8s2.5-4.5 4.5-2.5S12 8 12 8z" />
-          </svg>
-        </SheetRow>
-
-        <SheetRow href="/events" label="Event guide">
-          <svg {...stroke()} strokeLinecap="round" strokeLinejoin="round">
-            <path d="M4 5a2 2 0 012-2h12a2 2 0 012 2v16l-4-2-4 2-4-2-4 2z" />
-            <path d="M8 8h8" /><path d="M8 12h5" />
-          </svg>
-        </SheetRow>
-
-        <SheetRow href="/how-to-play" label="How to play">
-          <svg {...stroke()} strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="9" />
-            <path d="M9.5 9.5a2.5 2.5 0 115 .5c0 1.5-2.5 2-2.5 3.5" /><path d="M12 17h.01" />
-          </svg>
-        </SheetRow>
-
-        <SheetRow href="/supporters" label="Supporters">
-          <svg {...stroke()} strokeLinecap="round" strokeLinejoin="round">
-            <path d="M4 20V6a2 2 0 012-2h12a2 2 0 012 2v14" /><path d="M8 8h8" /><path d="M8 12h8" />
-          </svg>
-        </SheetRow>
-
-        <SheetRow label="Sign out" onClick={onSignOut}>
+        <SheetRow label={signOutFailed ? 'Sign out did not work, tap again' : 'Sign out'} onClick={onSignOut}>
           <svg {...stroke('#666666')} strokeLinecap="round" strokeLinejoin="round">
             <path d="M15 17l5-5-5-5" /><path d="M20 12H9" />
             <path d="M9 4H6a2 2 0 00-2 2v12a2 2 0 002 2h3" />

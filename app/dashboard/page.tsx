@@ -58,12 +58,6 @@ type HouseholdBundle = {
   counts: { player_id: string; games: number; prs: number }[]
 }
 
-function ordinal(n: number): string {
-  const s = ['th', 'st', 'nd', 'rd']
-  const v = n % 100
-  return n + (s[(v - 20) % 10] || s[v] || s[0])
-}
-
 function DashboardInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -181,7 +175,6 @@ function DashboardInner() {
   }
 
   // ── Derived ─────────────────────────────────────────────────────────────────
-  const ranking = household?.rankings.find(r => r.player_id === activePlayerId) ?? null
   const counts = household?.counts.find(c => c.player_id === activePlayerId) ?? null
 
   const derived = useMemo(() => {
@@ -299,27 +292,10 @@ function DashboardInner() {
               {activePlayer.division ?? 'No division'}{isJudge && activePlayerId === userId ? ' · Kaiwhakawā' : ''}
             </div>
           </div>
-          {ranking?.current_rank != null && (
-            <div style={{ textAlign: 'right', flexShrink: 0 }}>
-              <div style={{
-                fontFamily: 'var(--font-display)', fontSize: 24,
-                color: 'var(--blue)', lineHeight: 1,
-              }}>
-                {ordinal(ranking.current_rank).toUpperCase()}
-              </div>
-              <div style={{
-                fontFamily: 'var(--font-label)', textTransform: 'uppercase',
-                letterSpacing: '0.1em', fontWeight: 600, fontSize: 10,
-                color: '#555', marginTop: 2,
-              }}>
-                {new Date().getFullYear()} board
-              </div>
-            </div>
-          )}
         </div>
 
         {/* ── 2. Colours ──────────────────────────────────────────────────── */}
-        {grades && <GradesCard state={grades} />}
+        {grades && <GradesCard state={grades} askBand={!/Junior|Youth/.test(activePlayer.division ?? '')} />}
         <Link href="/history" style={{
           display: 'block', textAlign: 'right', margin: '-6px 2px 16px',
           fontFamily: 'var(--font-label)', textTransform: 'uppercase',
@@ -412,7 +388,7 @@ function DashboardInner() {
             fontFamily: 'var(--font-label)', textTransform: 'uppercase',
             letterSpacing: '0.1em', fontWeight: 600, fontSize: 12, color: 'var(--blue)',
           }}>
-            All {EVENTS.length} events →
+            My events →
           </Link>
         </div>
         </>

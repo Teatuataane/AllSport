@@ -1433,6 +1433,47 @@ season points — retiring points properly is a separate piece of work, not done
 **Scripts can now import the app's TypeScript**: `node --import ./scripts/ts-loader.mjs x.ts`
 (Node 24 type stripping + a resolve hook for extensionless and `@/` imports).
 
+## Points retired from the app, and the menu simplified (September 2026)
+
+**Points are retired as a player-facing mechanic.** Colours are the only progression
+system. No page shows a points total any more:
+
+- **`/leaderboard` ranks on colours** via `lib/colourBoard.ts` (`rankByColours`, pure,
+  tested): overall colour, then the sum of domain colours held, then domains held, then
+  games played. Ties on all four share a rank. The games tie-break matters today: nobody
+  holds a conferred colour yet, so without it every player would tie at 1st. The board is
+  lifetime now, so it never resets. Its roster comes from `players_public` in a parallel
+  query, NOT from `rankings` rows, which are seasonal and would have emptied the board
+  every January. Wins are lifetime too.
+- **The kaiwhakawā Players tab** uses the same ordering and shows each player's colour.
+- **The session-end screen** shows events played, training units and PRs instead of
+  placement/effort/total points. **Play history** links to each game report instead of
+  a points total. **How To Play**'s Points Formula card is now a colours card (the three
+  gates, overall = lowest of ten).
+- `totalPlacement` on the live leaderboard and game report was labelled "pts" but is the
+  sum of ordinal placements; it now reads "N total".
+
+**NOT done, server-side:** `award_session_points` still writes `placement_points`,
+`points_earned`, `session_player_summary` point columns and `rankings`, and
+`leaderboard_page()` still returns a `rankings` key. Nothing in the UI reads them. Retiring
+them in the database is a separate migration; the historical values stay as history
+(`/privacy` and `/profile` say so).
+
+**The menu.** Tabs are **PLAY · HOME · COLOURS · BOARD · MORE** on both widths. MORE holds
+only the player's own things: (Kaiwhakawā) · Log a workout · My events · Play history ·
+Profile & family · My koha · Sign out. Schedule, Give koha, Event guide, How to play and
+Supporters moved to the footer, which renders on every page. **The desktop top bar opens
+the same `MoreMenu`** (exported from `components/BottomNav.tsx`); before this it had the
+tabs but no overflow, so a signed-in player on a laptop could not sign out or reach their
+profile. Pinned by `__tests__/navMenu.test.tsx`.
+
+**Also:** a global `:focus-visible` rule in `globals.css` covers every inline-styled
+control in the app; live-session chips and the Roster button are 44px; every hard-coded
+`'Bebas Neue, cursive'` / `'Barlow Condensed, sans-serif'` / `'Barlow, sans-serif'` is now
+a `var(--font-*)` token; `/judge`'s header typo "Kaiwāwao" is Kaiwhakawā; "What is a unit?"
+is explained on `/grades` from `unitRulesSummary()` in `lib/units.ts` (shared with How To
+Play); the dashboard colours card asks for a bodyweight band when one is missing.
+
 ## Security posture (August 2026) — read before touching RLS or players_public
 
 An OWASP pass (SQL injection / XSS / auth / access control) found three

@@ -56,13 +56,13 @@ function claim(m: MatchRow, name: (id: string) => string): string {
 }
 
 const label = {
-  fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', color: '#555', letterSpacing: '0.08em',
+  fontFamily: 'var(--font-label)', fontSize: '11px', color: '#555', letterSpacing: '0.08em',
 }
 const btn = (enabled: boolean) => ({
   padding: '7px 12px', borderRadius: '8px', border: 'none', flexShrink: 0,
   background: enabled ? '#2371BB' : '#1a1a1a', color: enabled ? '#fff' : '#555',
   cursor: enabled ? 'pointer' : 'not-allowed',
-  fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', letterSpacing: '0.05em',
+  fontFamily: 'var(--font-label)', fontSize: '12px', letterSpacing: '0.05em',
 })
 
 export default function GradeReleasePanel() {
@@ -199,7 +199,7 @@ export default function GradeReleasePanel() {
     <div style={{ background: '#111', border: '1px solid #1e3a5f', borderRadius: '12px', padding: '20px', marginBottom: '20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
         <div>
-          <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '22px', color: '#4DB26E', letterSpacing: '0.05em', lineHeight: 1 }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', color: '#4DB26E', letterSpacing: '0.05em', lineHeight: 1 }}>
             Colours to confirm
           </div>
           <div style={{ ...label, marginTop: '2px' }}>STANDARDS · GAMES · TRAINING · YOU RELEASE THEM</div>
@@ -208,13 +208,13 @@ export default function GradeReleasePanel() {
       </div>
 
       {rows && !live && (
-        <div style={{ fontSize: '13px', color: '#888', fontFamily: 'Barlow, sans-serif', lineHeight: 1.5, marginBottom: '12px' }}>
+        <div style={{ fontSize: '13px', color: '#888', fontFamily: 'var(--font-body)', lineHeight: 1.5, marginBottom: '12px' }}>
           Grading is not live yet: nothing can be confirmed until the grading migration is applied. The list below
           shows what the standards give today.
         </div>
       )}
       {error && (
-        <div style={{ color: '#EA4742', fontSize: '13px', fontFamily: 'Barlow, sans-serif', marginBottom: '12px' }}>{error}</div>
+        <div style={{ color: '#EA4742', fontSize: '13px', fontFamily: 'var(--font-body)', marginBottom: '12px' }}>{error}</div>
       )}
 
       {(disputes.open.length > 0 || disputes.settled.length > 0) && (
@@ -225,14 +225,14 @@ export default function GradeReleasePanel() {
               const key = `dispute:${g.matchIds.join(':')}`
               return (
                 <div key={key} style={{ background: '#0a0a0a', border: '1px solid #3a2a12', borderRadius: '10px', padding: '10px 12px' }}>
-                  <div style={{ fontSize: '14px', color: '#fff', fontFamily: 'Barlow, sans-serif', marginBottom: '4px' }}>{heading(g)}</div>
+                  <div style={{ fontSize: '14px', color: '#fff', fontFamily: 'var(--font-body)', marginBottom: '4px' }}>{heading(g)}</div>
                   {g.matchIds.map(id => {
                     const m = byId.get(id)
                     if (!m) return null
                     const recorder = m.players.filter(p => p.side === 'a').map(p => nameOf(p.player_id)).join(' & ')
                     return (
                       <div key={id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 0', borderTop: '1px solid #161616' }}>
-                        <div style={{ flexGrow: 1, minWidth: 0, fontSize: '13px', color: '#aaa', fontFamily: 'Barlow, sans-serif' }}>
+                        <div style={{ flexGrow: 1, minWidth: 0, fontSize: '13px', color: '#aaa', fontFamily: 'var(--font-body)' }}>
                           {recorder} recorded: <span style={{ color: '#fff' }}>{claim(m, nameOf)}</span>
                         </div>
                         <button disabled={busy === key} onClick={() => settle(g, id)} style={btn(busy !== key)}>
@@ -249,7 +249,7 @@ export default function GradeReleasePanel() {
               const truth = g.matchIds.map(id => byId.get(id)).find(m => m?.confirmed_at)
               return (
                 <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#0a0a0a', border: '1px solid #1e1e1e', borderRadius: '10px', padding: '8px 12px' }}>
-                  <div style={{ flexGrow: 1, minWidth: 0, fontSize: '13px', color: '#888', fontFamily: 'Barlow, sans-serif' }}>
+                  <div style={{ flexGrow: 1, minWidth: 0, fontSize: '13px', color: '#888', fontFamily: 'var(--font-body)' }}>
                     {heading(g)} · settled: <span style={{ color: '#ccc' }}>{truth ? claim(truth, nameOf) : ''}</span>
                   </div>
                   <button disabled={busy === key} onClick={() => settle(g, null)} style={btn(busy !== key)}>
@@ -263,18 +263,18 @@ export default function GradeReleasePanel() {
       )}
 
       {!rows ? (
-        <div style={{ color: '#555', fontSize: '13px', fontFamily: 'Barlow, sans-serif', textAlign: 'center', padding: '20px 0' }}>
+        <div style={{ color: '#555', fontSize: '13px', fontFamily: 'var(--font-body)', textAlign: 'center', padding: '20px 0' }}>
           Working out everyone&apos;s colours…
         </div>
       ) : ready.length === 0 ? (
-        <div style={{ color: '#555', fontSize: '13px', fontFamily: 'Barlow, sans-serif', textAlign: 'center', padding: '12px 0 18px' }}>
+        <div style={{ color: '#555', fontSize: '13px', fontFamily: 'var(--font-body)', textAlign: 'center', padding: '12px 0 18px' }}>
           Nobody has a colour waiting.
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '18px' }}>
           {ready.map(r => (
             <div key={r.player.id} style={{ background: '#0a0a0a', border: '1px solid #1e1e1e', borderRadius: '10px', padding: '10px 12px' }}>
-              <div style={{ fontSize: '14px', color: '#fff', fontFamily: 'Barlow, sans-serif', marginBottom: '6px' }}>
+              <div style={{ fontSize: '14px', color: '#fff', fontFamily: 'var(--font-body)', marginBottom: '6px' }}>
                 {r.player.display_name} <span style={{ color: '#555', fontSize: '12px' }}>{r.player.division}</span>
               </div>
               {pending(r).map(d => {
@@ -291,7 +291,7 @@ export default function GradeReleasePanel() {
                 const witnessed = behind.filter(g => g!.source === 'witnessed').length
                 return (
                   <div key={d.domainNumber} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 0', borderTop: '1px solid #161616' }}>
-                    <div style={{ flexGrow: 1, minWidth: 0, fontSize: '13px', color: '#ccc', fontFamily: 'Barlow, sans-serif' }}>
+                    <div style={{ flexGrow: 1, minWidth: 0, fontSize: '13px', color: '#ccc', fontFamily: 'var(--font-body)' }}>
                       {DOMAIN_NAMES[d.domainNumber - 1]}
                       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px', marginTop: '3px', fontSize: '12px', color: '#888' }}>
                         <GradeDot grade={from} size={9} /> {from.name} → <GradeDot grade={to} size={9} /> <span style={{ color: '#fff' }}>{to.name}</span>
@@ -325,7 +325,7 @@ export default function GradeReleasePanel() {
                 <div key={r.player.id} style={{ background: '#0a0a0a', border: '1px solid #1e1e1e', borderRadius: '10px', overflow: 'hidden' }}>
                   <button
                     onClick={() => { setExpanded(open ? null : r.player.id); setExemptSlug(''); setExemptReason('') }}
-                    style={{ width: '100%', padding: '10px 12px', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', color: '#ccc', fontFamily: 'Barlow, sans-serif', fontSize: '13px' }}
+                    style={{ width: '100%', padding: '10px 12px', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', color: '#ccc', fontFamily: 'var(--font-body)', fontSize: '13px' }}
                   >
                     <span>{r.player.display_name}</span>
                     <span style={{ color: '#555' }}>{exempt.length ? `${exempt.length} exempt` : ''} {open ? '▴' : '▾'}</span>
@@ -333,21 +333,21 @@ export default function GradeReleasePanel() {
                   {open && (
                     <div style={{ padding: '0 12px 12px' }}>
                       {exempt.map(slug => (
-                        <div key={slug} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0', fontSize: '13px', color: '#aaa', fontFamily: 'Barlow, sans-serif' }}>
+                        <div key={slug} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0', fontSize: '13px', color: '#aaa', fontFamily: 'var(--font-body)' }}>
                           {EVENTS.find(e => e.slug === slug)?.name ?? slug}
                           <button onClick={() => removeExemption(r, slug)} style={btn(live)} disabled={!live}>Remove</button>
                         </div>
                       ))}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px' }}>
                         <select value={exemptSlug} onChange={e => setExemptSlug(e.target.value)} aria-label="Event to exempt"
-                          style={{ background: '#111', color: '#fff', border: '1px solid #2a2a2a', borderRadius: '8px', padding: '8px', fontFamily: 'Barlow, sans-serif', fontSize: '13px' }}>
+                          style={{ background: '#111', color: '#fff', border: '1px solid #2a2a2a', borderRadius: '8px', padding: '8px', fontFamily: 'var(--font-body)', fontSize: '13px' }}>
                           <option value="">Choose an event…</option>
                           {EVENTS.filter(e => !r.state.exemptions.has(e.slug)).map(e => (
                             <option key={e.slug} value={e.slug}>{DOMAIN_NAMES[e.domainNumber - 1]} · {e.name}</option>
                           ))}
                         </select>
                         <input value={exemptReason} onChange={e => setExemptReason(e.target.value)} placeholder="Reason (private: the player, their parent and kaiwhakawā only)"
-                          style={{ background: '#111', color: '#fff', border: '1px solid #2a2a2a', borderRadius: '8px', padding: '8px', fontFamily: 'Barlow, sans-serif', fontSize: '13px' }} />
+                          style={{ background: '#111', color: '#fff', border: '1px solid #2a2a2a', borderRadius: '8px', padding: '8px', fontFamily: 'var(--font-body)', fontSize: '13px' }} />
                         <button onClick={() => addExemption(r)} disabled={!live || !exemptSlug} style={btn(live && !!exemptSlug)}>Add exemption</button>
                       </div>
                     </div>
