@@ -6,18 +6,20 @@
 // LOGGED OUT — unchanged: brand, the five public links on desktop, PLAY NOW, and
 // a hamburger on phones.
 //
-// LOGGED IN — slimmed from 60px to 48px and stripped to the logo. The DASHBOARD
-// pill, SIGN OUT and the entire hamburger are gone: every link they held is now
-// either a bottom-bar tab or a row in the MORE sheet. On desktop (≥769px) the
-// bottom bar is hidden by CSS, so the same five destinations render here as text
-// links instead — `useNavState` is shared with BottomNav so PLAY cannot point
-// two different ways on two different widths.
+// LOGGED IN — slimmed from 60px to 48px and stripped to the logo. On phones the
+// bottom bar carries every destination. On desktop (≥769px) the bottom bar is
+// hidden by CSS, so the same tabs render here as text links AND the same MORE
+// menu opens from here (`MoreMenu` from BottomNav). Until September 2026 the
+// desktop bar had the tabs but no MORE, so a signed-in player on a laptop could
+// not sign out or reach their profile. `useNavState` is shared with BottomNav
+// so PLAY cannot point two different ways on two different widths.
 
 import { useState, useEffect, useRef, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { hasAuthCookie } from '@/lib/authCookie'
 import { useNavState } from '@/lib/useNavState'
+import { MoreMenu } from '@/components/BottomNav'
 
 // Dynamic, not module scope: the navbar is in the root layout, so a static
 // import shipped the Supabase client and its realtime stack on every route —
@@ -37,6 +39,7 @@ export default function Navbar() {
   const [user, setUser] = useState<any>(null)
   const [authResolved, setAuthResolved] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
   const pathname = usePathname()
   const { isJudge, playHref, playLabel, playColour } = useNavState()
 
@@ -113,7 +116,7 @@ export default function Navbar() {
   // Unmount only — the subscription above must survive navigation.
   useEffect(() => () => { auth.current.unsub?.() }, [])
 
-  useEffect(() => { setMenuOpen(false) }, [pathname])
+  useEffect(() => { setMenuOpen(false); setMoreOpen(false) }, [pathname])
 
   const publicLinks = [
     { href: '/', label: 'HOME' },
@@ -148,15 +151,12 @@ export default function Navbar() {
     </Link>
   )
 
-  // The bottom bar's four tabs, plus Colours and Log, which phones reach from
-  // the MORE sheet. Only rendered ≥769px.
+  // The bottom bar's tabs, in the same order. Only rendered ≥769px.
   const desktopTabs = [
     { href: playHref, label: playLabel.toUpperCase(), colour: playColour, match: '/scoring' },
-    { href: '/dashboard', label: 'STATS', match: '/dashboard' },
-    { href: '/leaderboard', label: 'BOARD', match: '/leaderboard' },
-    { href: '/prs', label: 'EVENTS', match: '/prs' },
+    { href: '/dashboard', label: 'HOME', match: '/dashboard' },
     { href: '/grades', label: 'COLOURS', match: '/grades' },
-    { href: '/log', label: 'LOG', match: '/log' },
+    { href: '/leaderboard', label: 'BOARD', match: '/leaderboard' },
   ]
 
   return (
@@ -206,6 +206,20 @@ export default function Navbar() {
                 KAIWHAKAWĀ
               </Link>
             )}
+            <button
+              onClick={() => setMoreOpen(o => !o)}
+              aria-expanded={moreOpen}
+              aria-haspopup="dialog"
+              style={{
+                fontFamily: 'var(--font-label)', fontSize: 13,
+                letterSpacing: '0.1em', fontWeight: 600, lineHeight: 1,
+                color: moreOpen ? 'var(--white)' : 'var(--grey)',
+                background: 'transparent', border: '1px solid var(--border-strong)',
+                borderRadius: 999, padding: '7px 14px', cursor: 'pointer',
+              }}
+            >
+              MORE
+            </button>
           </div>
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
@@ -276,6 +290,12 @@ export default function Navbar() {
               {link.label}
             </Link>
           ))}
+        </div>
+      )}
+
+      {isLoggedIn && moreOpen && (
+        <div className="desktop-nav">
+          <MoreMenu isJudge={isJudge} placement="top" onClose={() => setMoreOpen(false)} />
         </div>
       )}
 
