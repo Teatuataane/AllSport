@@ -2,6 +2,14 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.8.1.0] - 2026-09-17
+
+### Added
+- **My Events now shows your best efforts from logged workouts.** A best you set on your own sits alongside your game results, marked "logged" (or "logged · witnessed" when a kaiwhakawā logged it for you). It is only on your own page: the leaderboard and Top % still count official games alone, and so do your average placement and wins.
+
+### Fixed
+- **Events you had only done the drills for showed "No results" beside your best.** On events that end in a real game, My Events shows your win, draw and loss record; with no games to count it now shows your best score instead.
+
 ## [0.8.0.0] - 2026-09-16
 
 ### Added

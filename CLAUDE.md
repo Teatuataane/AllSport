@@ -1367,8 +1367,24 @@ while historical `score` rows exist to render.
 
 **Trust and evidence.** Every logged best effort counts toward the standards on trust; the
 kaiwhakawā moderates in person. `EventGrade.source` carries `game` / `witnessed` / `solo`, and
-the release panel names solo evidence. Public surfaces (leaderboard, `lib/percentile.ts`, /prs)
-still read `results` ONLY — a solo score never ranks anyone in public.
+the release panel names solo evidence. The leaderboard and `lib/percentile.ts` still read
+`results` ONLY — a solo score never ranks anyone in public. **`/prs` is the player's OWN page and
+shows logged bests too** (v0.8.1.0), marked `LOGGED` or `LOGGED · WITNESSED`, merged into the same
+`raw_score` sort with game rows first so a logged effort that only TIES a game result never
+displaces it; average placement and wins stay game-only. `loggedBestRows()` in `lib/workouts.ts`
+is the pure mapper. On a Game-rung event the PB cell falls back to the best score when there is
+no win/draw/loss record, because logging makes drill-only events common.
+
+**Product calls settled by Tāne on 2026-09-17 (after the /ship review raised them):**
+- **No cap on units per event per game.** Every set counts, as designed; a player padding rows
+  does it during a game, in front of a kaiwhakawā who can delete them.
+- **`witnessed` stays automatic** for any log a kaiwhakawā makes for someone else (not their own
+  child). A texted-in result is therefore labelled witnessed too; an opt-in checkbox was offered
+  and declined.
+- **Logged bests show on `/prs`**, marked — built in v0.8.1.0.
+- **Retiring points server-side gets its own `/grill-me`.** `award_session_points` still pays
+  (events played + PR events) × 5 and `/leaderboard` still ranks on season points; changing that
+  changes what the leaderboard ranks on, so it is a design question, not a patch.
 
 **Schema** (`20260915214702_workout_logging.sql`): `workouts`, `workout_entries`,
 `activity_aliases`, `can_log_for()`, `fit_activity()`. Private: own, parent, kaiwhakawā.
