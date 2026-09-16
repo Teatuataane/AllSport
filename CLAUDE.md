@@ -1346,7 +1346,24 @@ only bites once solo logging fills domains faster, which is its job.
 `node scripts/apply-units-sheet.mjs` (the standards pattern; `__tests__/units.test.ts` fails
 on drift). Defaults by mode: one set / one hold / the top rung's distance (Cycling 1000m, so
 a 25km ride is 25 units) / three attempts / one game. **Any completion counts — no intensity
-floor**: the standards gate tests intensity. Awaiting Tāne's review of the sheet.
+floor**: the standards gate tests intensity.
+
+**The sheet was reviewed by Tāne on 2026-09-17 and ACCEPTED AS GENERATED — knowingly.** The
+review measured real paces from production and found the distance events are not equal per
+hour of work, because "one unit = the top rung" prices a km of cycling the same as a km of
+running: Cycling 18.6 km/h and Ski Erg 18.0 km/h against Running 13.8 and Row Erg 13.3 (race
+efforts over short rungs), which on the road means a 25km ride earns 25 units where an hour's
+run earns about 10. Animal Crawl at 100m a unit is the most generous row, Burpee Broad Jump
+(measured 1.6 km/h, 7.8 units an hour) the stingiest. Equalising them (Cycling 2500m, Ski Erg
+and Row Erg 1200m, Scooting 1500m, Animal Crawl 250m, Burpee Broad Jump 150m) was offered and
+declined in favour of a rule simple enough to explain. **Don't "fix" this without asking.**
+Note that `per` also prices GAME rows on those events, so any future change there moves the
+domain-6 units a game earns (the offered set would have cost game-only players 0.70 -> 0.52
+units per game in Aerobic Endurance) and should be checked against the ×1.5 calibration.
+
+**The `round` rule matches no event.** Golf and Disc Golf moved onto Game rungs in v0.7.0.0,
+so no roster event uses `score` mode any more. The branch is dead but harmless: keep it only
+while historical `score` rows exist to render.
 
 **Trust and evidence.** Every logged best effort counts toward the standards on trust; the
 kaiwhakawā moderates in person. `EventGrade.source` carries `game` / `witnessed` / `solo`, and
