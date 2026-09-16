@@ -1304,7 +1304,10 @@ through the same framework as a game. Designed in a `/grill-me` session; the ful
 1. **Standards** — unchanged: met in half the domain's available events.
 2. **Games** — cumulative OFFICIAL games, `GAMES_REQUIRED` = 1/3/5/8/12/16/20/30/40/55/75/100
    (Tāne, 16 Sept 2026). One count per player, not per domain. A PT session run by a
-   kaiwhakawā is witnessed EVIDENCE but not a game.
+   kaiwhakawā is witnessed EVIDENCE but not a game. **Both gates count only FINISHED
+   sessions** (`gameEvidence` in `lib/playerGrades.ts`): a colour released mid-game could
+   otherwise rest on a session a kaiwhakawā then voids. The standards still read every
+   result, so a score counts the moment it is entered.
 3. **Training** — effort units in THAT domain since the last colour conferred there.
    **The count restarts at each conferral**, so colours move up ONE at a time: the release
    panel offers `gate.releasable` (held + 1), never the standards rung directly.
@@ -1336,14 +1339,28 @@ still read `results` ONLY — a solo score never ranks anyone in public.
 **Schema** (`20260915214702_workout_logging.sql`): `workouts`, `workout_entries`,
 `activity_aliases`, `can_log_for()`, `fit_activity()`. Private: own, parent, kaiwhakawā.
 `logged_by`/`witnessed`/`created_at`/`player_id` pinned by trigger (never grants).
-`witnessed` = a kaiwhakawā logging for someone ELSE. Backdating ≤ 7 days is a CHECK against
-the pinned `created_at`. **Units are not stored** — raw volume is, and units are worked out on
+`witnessed` = a kaiwhakawā logging for someone ELSE, and NOT their own child (a family
+session is as self-reported as anyone's). **A witnessed workout is closed to everyone but a
+kaiwhakawā, its ENTRIES included** — pinning the flag on the workout row alone let a player
+add solo scores under it and have the release panel read them as witnessed, which four
+reviewers caught independently. Backdating ≤ 7 days is a CHECK against the pinned
+`created_at`, and the entries trigger applies the same window to every later write, so a new
+best effort cannot be slipped into a months-old log. The ONE exception is fitting an entry
+that was never fitted (`v_fitting_only`): that is how old logs come to count at all.
+**One normaliser, `public.normalise_activity()`, is used by the alias CHECK, the partial
+index, `fit_activity()` and `unfitted_activities()`**, and matches `normaliseActivity` in
+`lib/workouts.ts` — while the two differed on runs of whitespace, an activity typed
+"road  ride" could never be fitted and the panel reported success anyway. **Units are not stored** — raw volume is, and units are worked out on
 read, so a sheet change needs no migration. `delete_my_account` redefined whole (+ workouts),
 pinned against the previous definition by `__tests__/workoutSchema.test.ts`. Deploy order:
 either is safe; every read is its own query and treats PGRST205 as "not live".
 
-**Effort tasks are retired from the live screen.** `submitEntry` writes
-`effort_task_completions = 0`, and the screen shows units instead. **`award_session_points`
+**Effort tasks are retired from the live screen.** `submitEntry` no longer writes
+`effort_task_completions` at all: a new row takes the column default (0) and an EDIT leaves a
+row's earlier credit alone, rather than wiping it mid-season. The screen shows units instead,
+and the session-end fallback for effort points still mirrors `award_session_points`
+exactly ((events played + PR events) × 5, capped at 20 levels) so the provisional total is
+not short. **`award_session_points`
 still awards effort points for events played and PRs**, and `/leaderboard` still ranks on
 season points — retiring points properly is a separate piece of work, not done here.
 
