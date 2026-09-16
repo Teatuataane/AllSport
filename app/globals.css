@@ -227,3 +227,21 @@ button { font-family: inherit; }
   .bottom-nav { display: none !important; }
   .bottom-nav-spacer { display: none !important; }
 }
+
+/* Keyboard focus, everywhere. Most controls in the app are inline-styled
+   <button>s and links, and an inline style cannot express :focus-visible, so
+   for months nothing showed where keyboard focus was (TODOS.md P2). One rule
+   here covers every one of them. `!important` because several inputs set
+   `outline: none` inline to hide the mouse-click ring; :focus-visible only
+   matches keyboard focus, so that ring stays hidden for taps and clicks. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--blue) !important;
+  outline-offset: 2px;
+}

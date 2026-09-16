@@ -41,7 +41,7 @@ const tiers = [
   {
     amount: '>$1,000',
     referrals: '18 referrals',
-    reward: 'Grading Hoodie',
+    reward: 'Colours Hoodie',
     desc: 'A hoodie in the colour of your highest Colour achieved. The next level of representing your mana.',
     color: 'var(--red)',
     referralPath: true,

@@ -17,6 +17,7 @@ import { STANDARDS } from '@/lib/standards'
 import { gradeForRung, AGE_SHIFT, type ColourGate } from '@/lib/grading'
 import { useActivePlayer, playerLabel } from '@/lib/useActivePlayer'
 import { loadGradeState, type GradeState } from '@/lib/loadGrades'
+import { unitRulesSummary } from '@/lib/units'
 import PlayerTabs, { ViewingAsBanner } from '@/components/PlayerTabs'
 import DomainIcon from '@/components/DomainIcon'
 import { GradeDot } from '@/components/GradesCard'
@@ -63,9 +64,20 @@ export default function GradesPage() {
       <div style={{ maxWidth: 560, margin: '0 auto', padding: '14px 16px 48px', color: 'var(--white)' }}>
         <ViewingAsBanner />
 
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 40, lineHeight: 1, margin: '8px 0 6px', letterSpacing: '0.03em' }}>
-          COLOURS
-        </h1>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, margin: '8px 0 6px' }}>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 40, lineHeight: 1, margin: 0, letterSpacing: '0.03em' }}>
+            COLOURS
+          </h1>
+          {/* Logging is how a player moves a domain between games, so it lives
+              on the page that shows what each domain still needs. */}
+          <Link href="/log" style={{
+            flexShrink: 0, display: 'inline-flex', alignItems: 'center', minHeight: 44, padding: '0 16px',
+            borderRadius: 999, background: 'var(--purple)', color: '#0a0a0a',
+            ...label, fontSize: 13,
+          }}>
+            + Log a workout
+          </Link>
+        </div>
         <p style={{ color: 'var(--text-muted)', fontSize: 14.5, lineHeight: 1.6, margin: '0 0 16px' }}>
           {playerLabel(activePlayer)} holds a colour in each domain: the highest colour met in at least half of
           that domain&apos;s events. The overall colour is the lowest of the ten, so it is only as strong as
@@ -77,6 +89,25 @@ export default function GradesPage() {
           <span style={{ color: 'var(--white)' }}>training</span> in that domain since your last colour there. Game scores
           count toward both; so does anything you <Link href="/log" style={{ color: 'var(--purple)' }}>log between games</Link>.
         </p>
+
+        {/* "3 of 5 units" is counted on every domain below, so the word is
+            defined here rather than only on How To Play, which a signed-in
+            player never goes back to. */}
+        <details style={{
+          background: '#0d0d0d', border: '1px solid var(--border)', borderRadius: 12,
+          padding: '10px 13px', marginBottom: 16, fontSize: 13.5, color: 'var(--text-muted)',
+        }}>
+          <summary style={{ cursor: 'pointer', color: 'var(--white)', ...label, fontSize: 12 }}>What is a unit?</summary>
+          <p style={{ margin: '8px 0 6px', lineHeight: 1.55 }}>
+            A unit is one piece of training in an event. Any effort counts; there is no intensity floor.
+          </p>
+          {unitRulesSummary().map(r => (
+            <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '6px 0', borderTop: '1px solid #181818' }}>
+              <span style={{ color: 'var(--grey-light)' }}>{r.label}</span>
+              <span style={{ textAlign: 'right' }}>{r.rule}</span>
+            </div>
+          ))}
+        </details>
 
         {state && !state.hasBand && !/Junior|Youth/.test(activePlayer.division ?? '') && (
           <Link href="/profile" style={{
