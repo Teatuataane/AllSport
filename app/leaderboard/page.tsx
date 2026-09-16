@@ -12,6 +12,7 @@ import {
   computePercentiles, strongestEvent, topDomain as pctTopDomain, eventPctLabel,
 } from '@/lib/percentile'
 import { gradeForRung, DOMAIN_COUNT, GRADES } from '@/lib/grading'
+import { rankByColours } from '@/lib/colourBoard'
 import { GradeDot } from '@/components/GradesCard'
 
 /**
@@ -34,7 +35,7 @@ function ColourCell({ player, size = 'wide' }: { player: EnrichedPlayer; size?: 
         color: g ? '#ffffff' : player.domainsHeld > 0 ? '#999999' : '#444444',
         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
       }}>
-        {g ? g.name : player.domainsHeld > 0 ? `${player.domainsHeld} of ${DOMAIN_COUNT} domains` : '—'}
+        {g ? g.name : player.domainsHeld > 0 ? `${player.domainsHeld} of ${DOMAIN_COUNT} domains` : 'No colour yet'}
       </span>
     </div>
   )
@@ -55,7 +56,6 @@ type SessionResult = {
   player_id: string | null
   player_name: string | null
   placement: number | null
-  points_earned: number | null
 }
 
 type SessionLeader = {
@@ -64,14 +64,13 @@ type SessionLeader = {
   totalPlacement: number
 }
 
-type RankingRow = {
+/** The roster. Read from players_public, the only public path to a name. */
+type RosterPlayer = {
   id: string
-  player_id: string
-  total_points: number
-  total_sessions: number
-  average_placement: number | null
-  division: string
-  players: { display_name: string | null; username: string | null }[] | { display_name: string | null; username: string | null } | null
+  display_name: string | null
+  username: string | null
+  division: string | null
+  is_guest: boolean | null
 }
 
 type StatsBundle = {
@@ -82,11 +81,9 @@ type StatsBundle = {
 }
 
 // Shape returned by the `leaderboard_page(p_season)` RPC
-// (supabase/migrations/20260821000000_leaderboard_rpc.sql). `rankings.players`
-// arrives as a nested object, matching what PostgREST's embedded-resource syntax
-// used to return, so RankingRow is unchanged.
+// (supabase/migrations/20260915054550_retire_taniwha.sql). It still carries a
+// seasonal `rankings` key from the points era; the board no longer reads it.
 type LeaderboardPayload = {
-  rankings: RankingRow[]
   /** Conferred colours, from grade_awards. Absent against a database before the retirement migration. */
   grades?: { player_id: string; domain_number: number; rung: number }[]
   active_session: ActiveSession | null
@@ -103,7 +100,6 @@ type EnrichedPlayer = {
   topDomainPct: string
   topEvent: string
   topEventPct: string
-  totalPoints: number
   /** The overall conferred colour (the lowest domain), or null until all ten are held. */
   overall: number | null
   /** Domains holding a conferred colour. */
@@ -131,13 +127,6 @@ const tabs = [
   { key: 'grandmaster-men', label: 'Grandmaster Men', color: '#888888' },
   { key: 'grandmaster-women', label: 'Grandmaster Women', color: '#F397C0' },
 ]
-
-/** The overall conferred colour, and how many domains hold one. */
-function overallOf(held: Map<number, number> | undefined): { overall: number | null; domainsHeld: number } {
-  const domainsHeld = held ? [...held.values()].filter(r => r > 0).length : 0
-  if (!held || domainsHeld < DOMAIN_COUNT) return { overall: null, domainsHeld }
-  return { overall: Math.min(...held.values()), domainsHeld }
-}
 
 /** Podium sub-line: the overall colour, or how many domains hold one. */
 function podiumColourLabel(p: EnrichedPlayer | undefined): string {
@@ -178,7 +167,7 @@ function LeaderboardTable({ data, accentColor, loading }: { data: EnrichedPlayer
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '44px', color: '#c0c0c0', lineHeight: 1 }}>2</div>
             <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '14px', color: '#ffffff', marginTop: '6px' }}>{data[1]?.username ?? '—'}</div>
             <div style={{ color: '#F9B051', fontFamily: 'var(--font-label)', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '3px' }}>{podiumColourLabel(data[1])}</div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', color: '#666666', marginTop: '8px' }}>{data[1]?.totalPoints} pts</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', color: '#666666', marginTop: '8px' }}>{data[1]?.sessions ?? 0} <span style={{ fontSize: '0.55em', color: '#555' }}>games</span></div>
           </div>
           {/* 1st */}
           <div style={{ background: 'linear-gradient(180deg, #0d0505 0%, #111111 100%)', border: `1px solid ${accentColor}44`, padding: '32px 16px 24px', textAlign: 'center', position: 'relative' }}>
@@ -186,7 +175,7 @@ function LeaderboardTable({ data, accentColor, loading }: { data: EnrichedPlayer
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '56px', color: accentColor, lineHeight: 1 }}>1</div>
             <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '16px', color: '#ffffff', marginTop: '6px' }}>{data[0]?.username ?? '—'}</div>
             <div style={{ color: '#F9B051', fontFamily: 'var(--font-label)', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '3px' }}>{podiumColourLabel(data[0])}</div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: '28px', color: accentColor, marginTop: '8px' }}>{data[0]?.totalPoints} pts</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '28px', color: accentColor, marginTop: '8px' }}>{data[0]?.sessions ?? 0} <span style={{ fontSize: '0.55em', color: '#555' }}>games</span></div>
           </div>
           {/* 3rd */}
           <div style={{ background: '#111111', border: '1px solid #cd7f3222', padding: '24px 16px', textAlign: 'center', marginTop: '28px', position: 'relative' }}>
@@ -194,7 +183,7 @@ function LeaderboardTable({ data, accentColor, loading }: { data: EnrichedPlayer
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '44px', color: '#cd7f32', lineHeight: 1 }}>3</div>
             <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '14px', color: '#ffffff', marginTop: '6px' }}>{data[2]?.username ?? '—'}</div>
             <div style={{ color: '#F9B051', fontFamily: 'var(--font-label)', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '3px' }}>{podiumColourLabel(data[2])}</div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', color: '#666666', marginTop: '8px' }}>{data[2]?.totalPoints} pts</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', color: '#666666', marginTop: '8px' }}>{data[2]?.sessions ?? 0} <span style={{ fontSize: '0.55em', color: '#555' }}>games</span></div>
           </div>
         </div>
       )}
@@ -202,13 +191,13 @@ function LeaderboardTable({ data, accentColor, loading }: { data: EnrichedPlayer
       {/* ── Narrow: one card per player ───────────────────────────────────────
           The wide table needs 860px inside a 342px column on a phone, so four
           of its eight columns were off-screen behind a scroll with no
-          scrollbar, no fade and no affordance — including Season Pts, the
-          number the board is SORTED BY, and the Colour column. A phone gets
-          cards instead: rank, name and points on one line, then the meta the
+          scrollbar, no fade and no affordance — including the Colour column
+          the board is sorted by. A phone gets
+          cards instead: rank, name and colour on one line, then the meta the
           table spends four columns on. */}
       <div className="lb-narrow" style={{ flexDirection: 'column', gap: '8px' }}>
         {data.map(player => (
-          <div key={player.rank} style={{
+          <div key={player.username + player.rank} style={{
             border: '1px solid', borderColor: player.rank === 1 ? `${accentColor}33` : '#1a1a1a',
             background: '#0d0d0d', borderRadius: '10px', padding: '13px 14px',
           }}>
@@ -227,17 +216,8 @@ function LeaderboardTable({ data, accentColor, loading }: { data: EnrichedPlayer
               }}>
                 {player.username}
               </span>
-              <span style={{
-                fontFamily: 'var(--font-display)', fontSize: '22px', color: '#ffffff',
-                lineHeight: 1, flexShrink: 0, fontVariantNumeric: 'tabular-nums',
-              }}>
-                {player.totalPoints}
-                <span style={{
-                  fontFamily: 'var(--font-label)', fontSize: '10px', color: '#555',
-                  letterSpacing: '0.1em', marginLeft: '4px',
-                }}>
-                  PTS
-                </span>
+              <span style={{ flexShrink: 0 }}>
+                <ColourCell player={player} size="narrow" />
               </span>
             </div>
 
@@ -245,8 +225,6 @@ function LeaderboardTable({ data, accentColor, loading }: { data: EnrichedPlayer
               display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap',
               marginTop: '9px', paddingLeft: '37px',
             }}>
-              <ColourCell player={player} size="narrow" />
-              <span style={{ color: '#2a2a2a' }}>·</span>
               <span style={{ fontFamily: 'var(--font-label)', fontSize: '12px', color: '#666' }}>
                 {player.sessions} game{player.sessions === 1 ? '' : 's'}
               </span>
@@ -286,7 +264,7 @@ function LeaderboardTable({ data, accentColor, loading }: { data: EnrichedPlayer
         <div style={{ minWidth: '860px' }}>
           {/* Table header */}
           <div style={{ display: 'grid', gridTemplateColumns: '56px 1fr 90px 70px 150px 150px 110px 150px', gap: '16px', padding: '10px 24px' }}>
-            {['#', 'Player', 'Sessions', 'Wins', 'Top Domain', 'Top Event', 'Season Pts', 'Colour'].map(h => (
+            {['#', 'Player', 'Games', 'Wins', 'Top Domain', 'Top Event', 'Domains', 'Colour'].map(h => (
               <div key={h} style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#444444' }}>{h}</div>
             ))}
           </div>
@@ -294,7 +272,7 @@ function LeaderboardTable({ data, accentColor, loading }: { data: EnrichedPlayer
           {/* Rows */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
             {data.map(player => (
-              <div key={player.rank} style={{ display: 'grid', gridTemplateColumns: '56px 1fr 90px 70px 150px 150px 110px 150px', gap: '16px', padding: '14px 24px', alignItems: 'center', border: '1px solid', borderColor: player.rank === 1 ? `${accentColor}22` : '#1a1a1a', background: '#0d0d0d', borderRadius: '8px' }}>
+              <div key={player.username + player.rank} style={{ display: 'grid', gridTemplateColumns: '56px 1fr 90px 70px 150px 150px 110px 150px', gap: '16px', padding: '14px 24px', alignItems: 'center', border: '1px solid', borderColor: player.rank === 1 ? `${accentColor}22` : '#1a1a1a', background: '#0d0d0d', borderRadius: '8px' }}>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', color: player.rank <= 3 ? '#F9B051' : '#333333' }}>{player.rank}</div>
                 <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '16px', color: '#ffffff' }}>{player.username}</div>
                 <div style={{ color: '#555555', fontSize: '15px', fontFamily: 'var(--font-label)' }}>{player.sessions}</div>
@@ -307,7 +285,7 @@ function LeaderboardTable({ data, accentColor, loading }: { data: EnrichedPlayer
                   {player.topEvent}
                   {player.topEventPct && <span style={{ color: player.topEventPct === '1st' ? '#F9B051' : '#777777', fontWeight: player.topEventPct === '1st' ? 700 : 400 }}> · {player.topEventPct}</span>}
                 </div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', color: '#ffffff' }}>{player.totalPoints}</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', color: player.domainsHeld > 0 ? '#ffffff' : '#333333' }}>{player.domainsHeld}<span style={{ fontSize: '14px', color: '#444' }}> / {DOMAIN_COUNT}</span></div>
                 <ColourCell player={player} />
               </div>
             ))}
@@ -341,28 +319,35 @@ function computeLeader(results: SessionResult[]): SessionLeader | null {
 
 export default function Leaderboard() {
   const [activeTab, setActiveTab] = useState('all-divisions')
-  const [rankings, setRankings] = useState<RankingRow[]>([])
-  // Conferred colours per player: domain -> highest colour held. Lifetime, and
-  // separate from `rankings`, which is seasonal and drives the RANK.
+  const [roster, setRoster] = useState<RosterPlayer[]>([])
+  // Conferred colours per player: domain -> highest colour held. This is what
+  // the board ranks on (lib/colourBoard.ts).
   const [gradesByPlayer, setGradesByPlayer] = useState<Map<string, Map<number, number>>>(new Map())
   const [loading, setLoading] = useState(true)
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null)
   const [sessionLeader, setSessionLeader] = useState<SessionLeader | null>(null)
   const [statsData, setStatsData] = useState<StatsBundle | null>(null)
 
-  // Per-player wins (current season) + percentile-derived top domain/event (lifetime)
+  // Per-player games and wins + percentile-derived top domain/event. All
+  // lifetime: colours never reset, so neither does the board.
   const playerStats = useMemo(() => {
     if (!statsData) return null
-    const year = String(new Date().getFullYear())
-    const seasonSessions = new Set(statsData.sessions.filter(s => s.session_date?.startsWith(year)).map(s => s.id))
-    const wins = sessionWins(statsData.results.filter(r => seasonSessions.has(r.session_id)))
+    const wins = sessionWins(statsData.results)
+    const games = new Map<string, Set<string>>()
+    for (const r of statsData.results) {
+      if (!r.player_id) continue
+      const g = games.get(r.player_id) ?? new Set<string>()
+      g.add(r.session_id)
+      games.set(r.player_id, g)
+    }
     const pct = computePercentiles(statsData.results, statsData.events, statsData.players)
-    const out = new Map<string, { wins: number; topDomain: string; topDomainPct: string; topEvent: string; topEventPct: string }>()
+    const out = new Map<string, { games: number; wins: number; topDomain: string; topDomainPct: string; topEvent: string; topEventPct: string }>()
     for (const p of statsData.players) {
       const mine = pct.get(p.id)
       const td = pctTopDomain(mine, EVENT_DOMAIN, DOMAIN_NAMES)
       const te = strongestEvent(mine, EVENT_DOMAIN)
       out.set(p.id, {
+        games: games.get(p.id)?.size ?? 0,
         wins: wins.get(p.id) ?? 0,
         topDomain: td?.domainName ?? '—',
         topDomainPct: td ? `Top ${td.topPct}%` : '',
@@ -376,9 +361,7 @@ export default function Leaderboard() {
   // ONE request for the whole page. This used to be four separate effects firing
   // seven concurrent PostgREST queries, which is what made the page slow: against
   // this project a request costs ~2.7s as one of seven in flight and ~134ms alone.
-  // The board is seasonal on purpose (it resets each January so a newcomer can
-  // climb it); colours are lifetime and ride along in the same payload.
-  // See PERF_AGGREGATION_PLAN.md.
+  // Conferred colours ride along in the same payload. See PERF_AGGREGATION_PLAN.md.
   //
   // Player NAMES come back inside this payload, joined server-side against
   // players_public. Do NOT reintroduce a PostgREST embed here — the
@@ -407,7 +390,7 @@ export default function Leaderboard() {
       // 20260827211610).
       //
       // The heal matters: until it existed, a game nobody closed stayed
-      // "active" forever and awarded nobody any points, because
+      // "active" forever and recorded no placements, because
       // award_session_points only fires on the is_active true -> false
       // transition. It derives expiry from started_at server-side, so it can
       // never end a game that is still running.
@@ -424,7 +407,14 @@ export default function Leaderboard() {
       // returns the right payload; it just stops healing here, and pg_cron
       // picks the session up within five minutes.
       //
-      const { data, error } = await supabase.rpc('leaderboard_page', { p_season: new Date().getFullYear() })
+      // The roster runs alongside, not after: players_public is anon-readable
+      // and the only public source of names. It used to arrive through the
+      // seasonal `rankings` rows, which would have emptied the board every
+      // January now that nothing about the board is seasonal.
+      const [{ data, error }, rosterRes] = await Promise.all([
+        supabase.rpc('leaderboard_page', { p_season: new Date().getFullYear() }),
+        supabase.from('players_public').select('id, display_name, username, division, is_guest'),
+      ])
       if (cancelled) return
 
       if (error || !data) {
@@ -434,7 +424,7 @@ export default function Leaderboard() {
       }
 
       const d = data as LeaderboardPayload
-      setRankings(d.rankings ?? [])
+      setRoster(((rosterRes.data ?? []) as RosterPlayer[]).filter(p => !p.is_guest))
 
       // Conferred colours ride in the same payload (the retirement migration),
       // so the board stays one round trip. Absent against an older database.
@@ -467,7 +457,7 @@ export default function Leaderboard() {
     const refresh = async () => {
       const { data } = await supabase
         .from('results')
-        .select('player_id, player_name, placement, points_earned')
+        .select('player_id, player_name, placement')
         .eq('session_id', sessionId)
       setSessionLeader(computeLeader((data ?? []) as SessionResult[]))
     }
@@ -487,24 +477,30 @@ export default function Leaderboard() {
 
   const getTabData = (tabKey: string): EnrichedPlayer[] => {
     const division = DIVISION_MAP[tabKey]
-    const filtered = tabKey === 'all-divisions'
-      ? [...rankings].sort((a, b) => b.total_points - a.total_points)
-      : rankings.filter(r => r.division === division)
-    return filtered.map((r, i) => {
-      const p = Array.isArray(r.players) ? r.players[0] : r.players
-      const username = p?.display_name || p?.username || 'Anonymous'
-      const stats = playerStats?.get(r.player_id)
+    const inTab = (d: string | null) => tabKey === 'all-divisions'
+      || d === division || (tabKey === 'juniors' && d === 'Youth')
+    // Only players who have played: a colour needs games in the room.
+    const players = roster
+      .filter(p => inTab(p.division) && (playerStats?.get(p.id)?.games ?? 0) > 0)
+      .map(p => ({
+        playerId: p.id,
+        name: p.display_name || p.username || 'Anonymous',
+        held: gradesByPlayer.get(p.id),
+        games: playerStats?.get(p.id)?.games ?? 0,
+      }))
+    return rankByColours(players).map(r => {
+      const stats = playerStats?.get(r.playerId)
       return {
-        rank: i + 1,
-        username,
-        sessions: r.total_sessions,
+        rank: r.rank,
+        username: r.name,
+        sessions: r.games,
         wins: stats?.wins ?? 0,
         topDomain: stats?.topDomain ?? '—',
         topDomainPct: stats?.topDomainPct ?? '',
         topEvent: stats?.topEvent ?? '—',
         topEventPct: stats?.topEventPct ?? '',
-        totalPoints: r.total_points,
-        ...overallOf(gradesByPlayer.get(r.player_id)),
+        overall: r.overall,
+        domainsHeld: r.domainsHeld,
       }
     })
   }
@@ -534,14 +530,14 @@ export default function Leaderboard() {
       <section style={{ paddingTop: '152px', paddingBottom: '80px', background: '#000000', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(#141414 1px, transparent 1px), linear-gradient(90deg, #141414 1px, transparent 1px)', backgroundSize: '80px 80px', opacity: 0.5 }} />
         <div className="container" style={{ position: 'relative', zIndex: 1 }}>
-          <div className="tag">2026 Season</div>
+          <div className="tag">All-time standings</div>
           <h1 style={{ fontSize: 'clamp(56px, 8vw, 112px)', lineHeight: 0.95, marginBottom: '8px' }}>
             LEADER<br />
             <span className="rainbow-text">BOARD</span>
           </h1>
           <div className="rainbow-line" style={{ width: '80px', marginBottom: '28px' }} />
           <p style={{ color: '#cccccc', fontSize: '20px', maxWidth: '560px', lineHeight: 1.7 }}>
-            Current season standings across all divisions. The board resets each January so there is always a fresh race. Your colours do not: each one is earned against a standard, confirmed by a kaiwhakawā, and yours for good.
+            Ranked by colours. Every colour is earned against a published standard, confirmed by a kaiwhakawā, and yours for good, so this board never resets. The only way up is to get better at the part of the sport you train least.
           </p>
         </div>
       </section>
@@ -618,18 +614,18 @@ export default function Leaderboard() {
             <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--grey-light)', marginBottom: '8px', paddingLeft: '12px' }}>How to read this board</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px 24px', paddingLeft: '12px' }}>
               <p style={{ color: 'var(--grey)', fontSize: '13px', lineHeight: 1.6, margin: 0 }}>
-                <strong style={{ color: 'var(--white)' }}>Season points</strong> — every session earns points per event: 1st place = 100, dropping by a gap based on session size (minimum 10). Each event played and each PR set adds 5 more, up to 100 per session.
+                <strong style={{ color: 'var(--white)' }}>The order</strong> — overall colour first, then the colours held across your ten domains, then games played. Players who tie on all of them share a place.
               </p>
               <p style={{ color: 'var(--grey)', fontSize: '13px', lineHeight: 1.6, margin: 0 }}>
-                <strong style={{ color: 'var(--white)' }}>Wins</strong> — sessions finished 1st in your division this season. In-session, the lowest total placement across all 10 events wins.
+                <strong style={{ color: 'var(--white)' }}>Wins</strong> — games finished 1st in your division. Within a game, the lowest total placement across all 10 events wins.
               </p>
               <p style={{ color: 'var(--grey)', fontSize: '13px', lineHeight: 1.6, margin: 0 }}>
-                <strong style={{ color: 'var(--white)' }}>Top domain &amp; top event</strong> — where you rank highest against your division. <strong style={{ color: 'var(--white)' }}>Top X%</strong> means only that few players who’ve played it beat your best; <strong style={{ color: 'var(--white)' }}>1st</strong> means no one has. Tap My Events on your dashboard for the full breakdown.
+                <strong style={{ color: 'var(--white)' }}>Top domain &amp; top event</strong> — where you rank highest against your division. <strong style={{ color: 'var(--white)' }}>Top X%</strong> means only that few players who’ve played it beat your best; <strong style={{ color: 'var(--white)' }}>1st</strong> means no one has. Open My events, under More, for the full breakdown.
               </p>
               <p style={{ color: 'var(--grey)', fontSize: '13px', lineHeight: 1.6, margin: 0 }}>
                 {(
                   <>
-                    <strong style={{ color: 'var(--white)' }}>Colour</strong> — your overall colour: the lowest of your ten domain colours, shown once a kaiwhakawā has confirmed a colour in all ten. Until then it counts the domains that hold one. Colours are earned against standards, not points, and never lost. See the key below.
+                    <strong style={{ color: 'var(--white)' }}>Domains &amp; colour</strong> — how many of your ten domains hold a colour, and your overall colour: the lowest of the ten, shown once a kaiwhakawā has confirmed all ten. Never lost. See the key below.
                   </>
                 )}
               </p>
