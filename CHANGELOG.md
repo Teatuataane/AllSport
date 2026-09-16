@@ -2,6 +2,22 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.9.0.0] - 2026-09-17
+
+### Changed
+- **Points are gone. Colours are how you progress.** No page shows a points total any more: not the leaderboard, the end of a game, your play history, or How To Play.
+- **The leaderboard ranks by colour.** Overall colour first, then the colours you hold across your ten domains, then games played. Players level on all of them share a place. It is an all-time board now, so it never resets.
+- **The end of a game shows events played, training units and PRs** instead of points.
+- **A simpler menu.** Five tabs on phone and laptop alike: Play, Home, Colours, Board and More. More holds your own things: log a workout, my events, play history, profile and family, my koha, sign out. Schedule, the event guide, How To Play, giving koha and supporters are in the footer on every page.
+- **The kaiwhakawā Players list is ordered by colour** and shows each player's colour.
+
+### Fixed
+- **On a laptop you could not sign out or reach your profile.** The top bar now opens the same More menu as the phone.
+- **The kaiwhakawā panel misspelled its own title.** It now reads Kaiwhakawā.
+- **"Units" was counted before it was explained.** Your colours page now says what a unit is.
+- **Nothing asked for your bodyweight band** until your strength events had already gone ungraded. Your dashboard now asks.
+- **Keyboard users could not see where they were.** Every button and link now shows a focus ring, and the filter chips on the live game screen are big enough to tap.
+
 ## [0.8.1.0] - 2026-09-17
 
 ### Added
