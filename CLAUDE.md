@@ -1375,6 +1375,21 @@ displaces it; average placement and wins stay game-only. `loggedBestRows()` in `
 is the pure mapper. On a Game-rung event the PB cell falls back to the best score when there is
 no win/draw/loss record, because logging makes drill-only events common.
 
+**A ladder migration must now re-encode `workout_entries` as well as `results`.** Logged best
+efforts store `raw_score` and `difficulty_tier` on the same scale as game results and are sorted
+against them on `/prs` and in the grading engine. The history repair `20260910025855` only
+touched `results`; the next ladder re-order or rung rename that forgets `workout_entries` leaves
+logged bests on the old scale, silently outranking or losing to game rows, and tier-name lookups
+stop matching.
+
+**The database does not validate a logged score.** `workout_entries.raw_score` is plain
+`numeric`, which accepts `'Infinity'` and `'NaN'`, and nothing checks the score or tier against
+the event's ladder, so a row written straight to the API can carry a Game-rung "win".
+`loggedBestRows()` (the `/prs` list) drops both, and `workoutEvidence()` (the grading engine)
+drops non-finite scores; a logged Game-rung row never grades because `eventGrade` excludes
+Game-rung rows from drills. The server still ACCEPTS them, so a CHECK (finite) plus a trigger
+rejecting Game rungs is a follow-up migration.
+
 **Product calls settled by Tāne on 2026-09-17 (after the /ship review raised them):**
 - **No cap on units per event per game.** Every set counts, as designed; a player padding rows
   does it during a game, in front of a kaiwhakawā who can delete them.
