@@ -178,6 +178,28 @@ export default function HowToPlay() {
         </div>
       </section>
 
+      {/* The whole sport in three lines. The page below is thirteen screens on a
+          phone, and what a colour is used to sit at step 06 of 06, seven screens
+          down. A newcomer gets the shape of it before any of the detail. */}
+      <section style={{ background: '#0d0d0d', borderTop: '1px solid var(--border)', padding: '40px 0' }}>
+        <div className="container">
+          <SectionLabel style={{ marginBottom: 18 }}>AllSport in 30 seconds</SectionLabel>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
+            {[
+              { title: 'Play a game', color: 'var(--red)', desc: 'Ten events, one from each domain, in 100 minutes. Lowest total placement wins the day.' },
+              { title: 'Earn your colours', color: 'var(--amber)', desc: 'Meet published standards, play games and train. Twelve colours in each domain; your overall colour is your lowest.' },
+              { title: 'Train between games', color: 'var(--green)', desc: 'Log any workout and fit it to an event. It counts toward your next colour.' },
+            ].map(c => (
+              <div key={c.title} className="info-card" style={{ padding: '20px 22px' }}>
+                <div style={{ width: 24, height: 3, borderRadius: 2, background: c.color, marginBottom: 12 }} />
+                <h3 style={{ fontSize: '26px', color: 'var(--white)', marginBottom: '6px' }}>{c.title}</h3>
+                <p style={{ color: 'var(--grey)', fontSize: '15px', lineHeight: 1.6, margin: 0 }}>{c.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* What to expect */}
       <section className="section" style={{ background: '#0d0d0d', borderTop: '3px solid var(--amber)' }}>
         <div className="container">
