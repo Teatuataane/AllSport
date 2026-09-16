@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase-browser'
 import { eventRecordsSport, sportRecord } from '@/lib/scoring'
-import { loggedBestRows, type LoggedBestEntry } from '@/lib/workouts'
+import { loggedBestRows, nzDay, type LoggedBestEntry } from '@/lib/workouts'
 import { useActivePlayer } from '@/lib/useActivePlayer'
 import PlayerTabs, { ViewingAsBanner } from '@/components/PlayerTabs'
 import {
@@ -24,7 +24,10 @@ import { domainColor } from '@/lib/domainColours'
 const supabase = createClient()
 
 
-const CURRENT_YEAR = new Date().getFullYear()
+// The NZ year at render time: every date on this page is an NZ day, and a
+// device clock in another zone (or a page left open over New Year) would file
+// a result under the wrong tab.
+const currentYear = () => parseInt(nzDay().slice(0, 4), 10)
 
 // Gold, so a win reads as an honour rather than as another domain accent. It
 // is a filled pill rather than bare text specifically so it still separates
@@ -60,9 +63,11 @@ type PRResult = {
 
 // Marks a logged best wherever it appears, so a PR set alone is never mistaken
 // for one set in front of a kaiwhakawā at a game.
+// Neutral grey, NOT the purple of the tier chip it sits beside, or the two read
+// as the same kind of label.
 const LOGGED_CHIP: React.CSSProperties = {
   fontFamily: 'var(--font-label)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.05em',
-  color: '#B87DB5', background: '#B87DB518', border: '1px solid #B87DB555',
+  color: '#bbb', background: 'transparent', border: '1px solid #666',
   borderRadius: '4px', padding: '2px 6px', whiteSpace: 'nowrap',
 }
 
@@ -171,7 +176,9 @@ export default function PRsPage() {
   const [avgPlace, setAvgPlace] = useState<Record<string, number>>({})
   // Percentiles, for the strongest-to-weakest comparison at the top.
   const [domainPct, setDomainPct] = useState<DomainPercentile[] | null>(null)
-  const [results, setResults] = useState<PRResult[]>([])
+  // Keyed by the player it was loaded for, like `logged`, so a slow response
+  // for the previous player can never mix into this one's page.
+  const [gameLoaded, setGameLoaded] = useState<{ id: string; rows: PRResult[] } | null>(null)
   const [tab, setTab] = useState<'season' | 'all'>('season')
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [expandedDomains, setExpandedDomains] = useState<Set<string>>(new Set())
@@ -194,6 +201,7 @@ export default function PRsPage() {
     if (playerLoading) return
     if (!userId) { router.replace('/play'); return }
     if (!activePlayerId) return
+    let cancelled = false
     const load = async () => {
       const user = { id: activePlayerId }
       setLoading(true)
@@ -219,6 +227,7 @@ export default function PRsPage() {
           .eq('player_id', user.id),
       ])
 
+      if (cancelled) return
       const { data } = resultsRes
       if (data) {
         const mapped: PRResult[] = (data as any[]).map(r => ({
@@ -232,7 +241,7 @@ export default function PRsPage() {
           event_name: r.session_events.event_name,
           domain_number: r.session_events.domain_number,
         }))
-        setResults(mapped)
+        setGameLoaded({ id: user.id, rows: mapped })
       }
 
       const { data: winRows, error: winErr } = winsRes
@@ -250,6 +259,7 @@ export default function PRsPage() {
       setLoading(false)
     }
     load()
+    return () => { cancelled = true }
   }, [playerLoading, userId, activePlayerId, router])
 
   // Logged bests — their own query, like every workout read. A missing table
@@ -262,6 +272,9 @@ export default function PRsPage() {
       .select('id, event_slug, raw_score, score_label, difficulty_tier, workouts!inner(player_id, performed_on, witnessed)')
       .eq('workouts.player_id', activePlayerId)
       .not('raw_score', 'is', null)
+      // Best first: the server caps a response at 1000 rows, so if a player
+      // ever passes that it is the weakest efforts that fall off, not a random set.
+      .order('raw_score', { ascending: false })
       .range(0, 4999)
       .then(({ data, error }) => {
         if (cancelled) return
@@ -327,8 +340,10 @@ export default function PRsPage() {
   const byDomain = getEventsByDomain()
   // Game results first, so a logged effort that only TIES a game result never
   // displaces it as the PB (the sort below is stable).
+  const CURRENT_YEAR = currentYear()
+  const gameRows = gameLoaded && gameLoaded.id === activePlayerId ? gameLoaded.rows : []
   const loggedRows = logged && logged.id === activePlayerId ? logged.rows : []
-  const allResults = [...results, ...loggedRows]
+  const allResults = [...gameRows, ...loggedRows]
   const visibleResults = tab === 'season'
     ? allResults.filter(r => sessionYear(r.session_date) === CURRENT_YEAR)
     : allResults
@@ -542,7 +557,7 @@ export default function PRsPage() {
                                   <div style={{ fontSize: '15px', fontWeight: 700, color: '#4DB26E', fontFamily: 'var(--font-body)' }}>
                                     {pbText(event, eventResults, pb)}
                                   </div>
-                                  {pb.difficulty_tier && !eventRecordsSport(event) && (
+                                  {pb.difficulty_tier && !(eventRecordsSport(event) && sportRecord(event, eventResults)) && (
                                     <div style={{ fontSize: '11px', color: '#B87DB5', fontFamily: 'var(--font-label)', fontWeight: 700 }}>
                                       {pb.difficulty_tier}
                                     </div>
@@ -574,7 +589,7 @@ export default function PRsPage() {
                           <div style={{ borderTop: '1px solid #1e1e1e', padding: '8px 14px 12px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                               <div style={{ fontFamily: 'var(--font-label)', fontSize: '11px', color: '#555', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-                                {eventRecordsSport(event) ? `${eventResults.length} result${eventResults.length !== 1 ? 's' : ''}` : `All results — ${eventResults.length}`}
+                                {`${eventResults.length} result${eventResults.length !== 1 ? 's' : ''}`}
                               </div>
                               {eventRecordsSport(event) && sportRecord(event, eventResults) && (
                                 <div style={{ fontFamily: 'var(--font-display)', fontSize: '16px', color: '#4DB26E', letterSpacing: '0.05em' }}>
@@ -596,7 +611,7 @@ export default function PRsPage() {
                                       border: `1px solid ${isBest ? colour + '33' : '#1a1a1a'}`,
                                     }}
                                   >
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px 8px' }}>
                                       {isBest && (
                                         <div style={{
                                           fontFamily: 'var(--font-label)', fontSize: '10px', fontWeight: 700,

@@ -6,7 +6,7 @@
 
 import { EVENTS, getEventBySlug, type EventData } from './eventData'
 import { toNZDateString } from './dates'
-import { unitsForEntryRow } from './units'
+import { unitsForEntryRow, isGameTier } from './units'
 import type { GradeResultRow, UnitEvent } from './playerGrades'
 
 /** A workout_entries row as the grades loader reads it, with its workout. */
@@ -102,7 +102,9 @@ export function workoutEvidence(entries: readonly WorkoutEntryRow[]): { rows: Gr
   for (const e of entries) {
     if (!e.workouts) continue
     const ev = e.event_slug ? getEventBySlug(e.event_slug) : undefined
-    if (ev && e.raw_score != null) {
+    // Postgres numeric accepts 'Infinity' and 'NaN'; either would grade as the
+    // top rung (or break a comparison), so a non-finite score is never evidence.
+    if (ev && e.raw_score != null && Number.isFinite(Number(e.raw_score))) {
       rows.push({
         event_name: ev.name,
         raw_score: Number(e.raw_score),
@@ -170,10 +172,18 @@ export function loggedBestRows(entries: readonly LoggedBestEntry[]): LoggedBestR
     if (!e.workouts || e.raw_score == null || !e.score_label || !e.event_slug) continue
     const ev = getEventBySlug(e.event_slug)
     if (!ev) continue
+    // Postgres numeric accepts 'Infinity' and 'NaN', and nothing in the
+    // database checks a logged score against its ladder. Either would become a
+    // permanent PB or break the sort, so they are dropped here.
+    const raw = Number(e.raw_score)
+    if (!Number.isFinite(raw)) continue
+    // A logged workout never records a game: /log hides Game rungs, but a row
+    // written straight to the API could carry one and be counted as a win.
+    if (isGameTier(ev, e.difficulty_tier)) continue
     out.push({
       id: `logged:${e.id}`,
       score_label: e.score_label,
-      raw_score: Number(e.raw_score),
+      raw_score: raw,
       difficulty_tier: e.difficulty_tier,
       session_date: e.workouts.performed_on,
       event_name: ev.name,
