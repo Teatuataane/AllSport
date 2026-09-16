@@ -1346,12 +1346,60 @@ only bites once solo logging fills domains faster, which is its job.
 `node scripts/apply-units-sheet.mjs` (the standards pattern; `__tests__/units.test.ts` fails
 on drift). Defaults by mode: one set / one hold / the top rung's distance (Cycling 1000m, so
 a 25km ride is 25 units) / three attempts / one game. **Any completion counts — no intensity
-floor**: the standards gate tests intensity. Awaiting Tāne's review of the sheet.
+floor**: the standards gate tests intensity.
+
+**The sheet was reviewed by Tāne on 2026-09-17 and ACCEPTED AS GENERATED — knowingly.** The
+review measured real paces from production and found the distance events are not equal per
+hour of work, because "one unit = the top rung" prices a km of cycling the same as a km of
+running: Cycling 18.6 km/h and Ski Erg 18.0 km/h against Running 13.8 and Row Erg 13.3 (race
+efforts over short rungs), which on the road means a 25km ride earns 25 units where an hour's
+run earns about 10. Animal Crawl at 100m a unit is the most generous row, Burpee Broad Jump
+(measured 1.6 km/h, 7.8 units an hour) the stingiest. Equalising them (Cycling 2500m, Ski Erg
+and Row Erg 1200m, Scooting 1500m, Animal Crawl 250m, Burpee Broad Jump 150m) was offered and
+declined in favour of a rule simple enough to explain. **Don't "fix" this without asking.**
+Note that `per` also prices GAME rows on those events, so any future change there moves the
+domain-6 units a game earns (the offered set would have cost game-only players 0.70 -> 0.52
+units per game in Aerobic Endurance) and should be checked against the ×1.5 calibration.
+
+**The `round` rule matches no event.** Golf and Disc Golf moved onto Game rungs in v0.7.0.0,
+so no roster event uses `score` mode any more. The branch is dead but harmless: keep it only
+while historical `score` rows exist to render.
 
 **Trust and evidence.** Every logged best effort counts toward the standards on trust; the
 kaiwhakawā moderates in person. `EventGrade.source` carries `game` / `witnessed` / `solo`, and
-the release panel names solo evidence. Public surfaces (leaderboard, `lib/percentile.ts`, /prs)
-still read `results` ONLY — a solo score never ranks anyone in public.
+the release panel names solo evidence. The leaderboard and `lib/percentile.ts` still read
+`results` ONLY — a solo score never ranks anyone in public. **`/prs` is the player's OWN page and
+shows logged bests too** (v0.8.1.0), marked `LOGGED` or `LOGGED · WITNESSED`, merged into the same
+`raw_score` sort with game rows first so a logged effort that only TIES a game result never
+displaces it; average placement and wins stay game-only. `loggedBestRows()` in `lib/workouts.ts`
+is the pure mapper. On a Game-rung event the PB cell falls back to the best score when there is
+no win/draw/loss record, because logging makes drill-only events common.
+
+**A ladder migration must now re-encode `workout_entries` as well as `results`.** Logged best
+efforts store `raw_score` and `difficulty_tier` on the same scale as game results and are sorted
+against them on `/prs` and in the grading engine. The history repair `20260910025855` only
+touched `results`; the next ladder re-order or rung rename that forgets `workout_entries` leaves
+logged bests on the old scale, silently outranking or losing to game rows, and tier-name lookups
+stop matching.
+
+**The database does not validate a logged score.** `workout_entries.raw_score` is plain
+`numeric`, which accepts `'Infinity'` and `'NaN'`, and nothing checks the score or tier against
+the event's ladder, so a row written straight to the API can carry a Game-rung "win".
+`loggedBestRows()` (the `/prs` list) drops both, and `workoutEvidence()` (the grading engine)
+drops non-finite scores; a logged Game-rung row never grades because `eventGrade` excludes
+Game-rung rows from drills. The server still ACCEPTS them, so a CHECK (finite) plus a trigger
+rejecting Game rungs is a follow-up migration.
+
+**Product calls settled by Tāne on 2026-09-17 (after the /ship review raised them):**
+- **No cap on units per event per game.** Every set counts, as designed; a player padding rows
+  does it during a game, in front of a kaiwhakawā who can delete them.
+- **`witnessed` stays automatic** for any log a kaiwhakawā makes for someone else (not their own
+  child). A texted-in result is therefore labelled witnessed too; an opt-in checkbox was offered
+  and declined.
+- **Logged bests show on `/prs`**, marked — built in v0.8.1.0.
+- **Retiring points server-side gets its own `/grill-me`.** `award_session_points` still pays
+  (events played + PR events) × 5 and `/leaderboard` still ranks on season points; changing that
+  changes what the leaderboard ranks on, so it is a design question, not a patch.
 
 **Schema** (`20260915214702_workout_logging.sql`): `workouts`, `workout_entries`,
 `activity_aliases`, `can_log_for()`, `fit_activity()`. Private: own, parent, kaiwhakawā.

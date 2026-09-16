@@ -6,7 +6,7 @@
 
 import { EVENTS, getEventBySlug, type EventData } from './eventData'
 import { toNZDateString } from './dates'
-import { unitsForEntryRow } from './units'
+import { unitsForEntryRow, isGameTier } from './units'
 import type { GradeResultRow, UnitEvent } from './playerGrades'
 
 /** A workout_entries row as the grades loader reads it, with its workout. */
@@ -102,7 +102,9 @@ export function workoutEvidence(entries: readonly WorkoutEntryRow[]): { rows: Gr
   for (const e of entries) {
     if (!e.workouts) continue
     const ev = e.event_slug ? getEventBySlug(e.event_slug) : undefined
-    if (ev && e.raw_score != null) {
+    // Postgres numeric accepts 'Infinity' and 'NaN'; either would grade as the
+    // top rung (or break a comparison), so a non-finite score is never evidence.
+    if (ev && e.raw_score != null && Number.isFinite(Number(e.raw_score))) {
       rows.push({
         event_name: ev.name,
         raw_score: Number(e.raw_score),
@@ -128,6 +130,66 @@ export function recentUnitsByDomain(units: readonly UnitEvent[], days: number, n
   for (const u of units) {
     if ((u.day ?? nzDay(u.at)) < from) continue
     out.set(u.domain, (out.get(u.domain) ?? 0) + u.units)
+  }
+  return out
+}
+
+// ─── Logged bests on My Events ───────────────────────────────────────────────
+
+/** A workout_entries row as /prs reads it, with the day it was trained. */
+export type LoggedBestEntry = {
+  id: string
+  event_slug: string | null
+  raw_score: number | null
+  score_label: string | null
+  difficulty_tier: string | null
+  workouts: { performed_on: string; witnessed: boolean } | null
+}
+
+/** A logged best effort shaped like a game result, so /prs can rank the two together. */
+export type LoggedBestRow = {
+  id: string
+  score_label: string
+  raw_score: number
+  difficulty_tier: string | null
+  /** The NZ day it was trained: /prs files it under that year. */
+  session_date: string
+  event_name: string
+  domain_number: number
+  witnessed: boolean
+}
+
+/**
+ * The logged entries that are a best effort on a CURRENT event (decision 16:
+ * solo bests show in your own PRs, marked, and never in public rankings).
+ * Volume-only entries, unfitted entries and retired events are dropped. Their
+ * raw_score is on the same scale as a game result (lib/scoring.ts
+ * scoreColumns), so the page can sort both in one list.
+ */
+export function loggedBestRows(entries: readonly LoggedBestEntry[]): LoggedBestRow[] {
+  const out: LoggedBestRow[] = []
+  for (const e of entries) {
+    if (!e.workouts || e.raw_score == null || !e.score_label || !e.event_slug) continue
+    const ev = getEventBySlug(e.event_slug)
+    if (!ev) continue
+    // Postgres numeric accepts 'Infinity' and 'NaN', and nothing in the
+    // database checks a logged score against its ladder. Either would become a
+    // permanent PB or break the sort, so they are dropped here.
+    const raw = Number(e.raw_score)
+    if (!Number.isFinite(raw)) continue
+    // A logged workout never records a game: /log hides Game rungs, but a row
+    // written straight to the API could carry one and be counted as a win.
+    if (isGameTier(ev, e.difficulty_tier)) continue
+    out.push({
+      id: `logged:${e.id}`,
+      score_label: e.score_label,
+      raw_score: raw,
+      difficulty_tier: e.difficulty_tier,
+      session_date: e.workouts.performed_on,
+      event_name: ev.name,
+      domain_number: ev.domainNumber,
+      witnessed: e.workouts.witnessed,
+    })
   }
   return out
 }
