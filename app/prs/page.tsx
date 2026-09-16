@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase-browser'
 import { eventRecordsSport, sportRecord } from '@/lib/scoring'
+import { loggedBestRows, type LoggedBestEntry } from '@/lib/workouts'
 import { useActivePlayer } from '@/lib/useActivePlayer'
 import PlayerTabs, { ViewingAsBanner } from '@/components/PlayerTabs'
 import {
@@ -52,6 +53,17 @@ type PRResult = {
   is_championship: boolean
   event_name: string
   domain_number: number
+  /** A best effort from a logged workout rather than an official game. */
+  logged?: boolean
+  witnessed?: boolean
+}
+
+// Marks a logged best wherever it appears, so a PR set alone is never mistaken
+// for one set in front of a kaiwhakawā at a game.
+const LOGGED_CHIP: React.CSSProperties = {
+  fontFamily: 'var(--font-label)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.05em',
+  color: '#B87DB5', background: '#B87DB518', border: '1px solid #B87DB555',
+  borderRadius: '4px', padding: '2px 6px', whiteSpace: 'nowrap',
 }
 
 function effectiveScore(r: PRResult): number {
@@ -64,6 +76,14 @@ function effectiveScore(r: PRResult): number {
 // so this file cannot drift from the live session again.
 function sportWDL(eventData: EventData | undefined, results: PRResult[]): string {
   return sportRecord(eventData, results) ?? 'No results'
+}
+
+// The PB cell on an event topped by a Game rung shows the win/draw/loss record,
+// but a player who has only done its DRILLS has no record to show. Fall back to
+// the best score rather than claiming "No results" beside a real PB. Logging
+// makes drill-only events common: a logged workout never records a game.
+function pbText(eventData: EventData | undefined, results: PRResult[], pb: PRResult): string {
+  return (eventRecordsSport(eventData) ? sportRecord(eventData, results) : null) ?? pb.score_label
 }
 
 function sessionYear(session_date: string): number {
@@ -165,6 +185,10 @@ export default function PRsPage() {
   // does not render, rather than taking the page down with a 42703. Same
   // failure mode CLAUDE.md records for players_public column drift.
   const [winsReady, setWinsReady] = useState(false)
+  // Best efforts from logged workouts (decision 16 of workout logging): shown
+  // here, marked, and never in any public ranking. Keyed by the player they
+  // were loaded for, so a switch never shows the previous player's logs.
+  const [logged, setLogged] = useState<{ id: string; rows: PRResult[] } | null>(null)
 
   useEffect(() => {
     if (playerLoading) return
@@ -228,6 +252,32 @@ export default function PRsPage() {
     load()
   }, [playerLoading, userId, activePlayerId, router])
 
+  // Logged bests — their own query, like every workout read. A missing table
+  // (before the migration) or an RLS refusal simply shows no logged bests.
+  useEffect(() => {
+    if (!activePlayerId) return
+    let cancelled = false
+    supabase
+      .from('workout_entries')
+      .select('id, event_slug, raw_score, score_label, difficulty_tier, workouts!inner(player_id, performed_on, witnessed)')
+      .eq('workouts.player_id', activePlayerId)
+      .not('raw_score', 'is', null)
+      .range(0, 4999)
+      .then(({ data, error }) => {
+        if (cancelled) return
+        if (error) {
+          console.warn('workout_entries unavailable — logged bests hidden', error.message)
+          setLogged({ id: activePlayerId, rows: [] })
+          return
+        }
+        const rows = loggedBestRows((data ?? []) as unknown as LoggedBestEntry[]).map(r => ({
+          ...r, placement: null, is_championship: false, logged: true,
+        }))
+        setLogged({ id: activePlayerId, rows })
+      })
+    return () => { cancelled = true }
+  }, [activePlayerId])
+
   // Average placement per event — separate and guarded, see above.
   useEffect(() => {
     if (!activePlayerId) return
@@ -275,9 +325,13 @@ export default function PRsPage() {
   }, [activePlayerId])
 
   const byDomain = getEventsByDomain()
+  // Game results first, so a logged effort that only TIES a game result never
+  // displaces it as the PB (the sort below is stable).
+  const loggedRows = logged && logged.id === activePlayerId ? logged.rows : []
+  const allResults = [...results, ...loggedRows]
   const visibleResults = tab === 'season'
-    ? results.filter(r => sessionYear(r.session_date) === CURRENT_YEAR)
-    : results
+    ? allResults.filter(r => sessionYear(r.session_date) === CURRENT_YEAR)
+    : allResults
 
   // Group results by event name
   const resultsByEvent: Record<string, PRResult[]> = {}
@@ -486,12 +540,15 @@ export default function PRsPage() {
                               {pb ? (
                                 <>
                                   <div style={{ fontSize: '15px', fontWeight: 700, color: '#4DB26E', fontFamily: 'var(--font-body)' }}>
-                                    {eventRecordsSport(event) ? sportWDL(event, eventResults) : pb.score_label}
+                                    {pbText(event, eventResults, pb)}
                                   </div>
                                   {pb.difficulty_tier && !eventRecordsSport(event) && (
                                     <div style={{ fontSize: '11px', color: '#B87DB5', fontFamily: 'var(--font-label)', fontWeight: 700 }}>
                                       {pb.difficulty_tier}
                                     </div>
+                                  )}
+                                  {pb.logged && (
+                                    <div style={{ marginTop: '3px' }}><span style={LOGGED_CHIP}>LOGGED</span></div>
                                   )}
                                 </>
                               ) : (
@@ -517,9 +574,9 @@ export default function PRsPage() {
                           <div style={{ borderTop: '1px solid #1e1e1e', padding: '8px 14px 12px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                               <div style={{ fontFamily: 'var(--font-label)', fontSize: '11px', color: '#555', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-                                {eventRecordsSport(event) ? `${eventResults.length} match${eventResults.length !== 1 ? 'es' : ''}` : `All results — ${eventResults.length} session${eventResults.length !== 1 ? 's' : ''}`}
+                                {eventRecordsSport(event) ? `${eventResults.length} result${eventResults.length !== 1 ? 's' : ''}` : `All results — ${eventResults.length}`}
                               </div>
-                              {eventRecordsSport(event) && (
+                              {eventRecordsSport(event) && sportRecord(event, eventResults) && (
                                 <div style={{ fontFamily: 'var(--font-display)', fontSize: '16px', color: '#4DB26E', letterSpacing: '0.05em' }}>
                                   {sportWDL(event, eventResults)}
                                 </div>
@@ -548,6 +605,9 @@ export default function PRsPage() {
                                         }}>PB</div>
                                       )}
                                       <div style={{ fontSize: '12px', color: '#555', fontFamily: 'var(--font-body)' }}>{date}</div>
+                                      {r.logged && (
+                                        <span style={LOGGED_CHIP}>{r.witnessed ? 'LOGGED · WITNESSED' : 'LOGGED'}</span>
+                                      )}
                                       {r.is_championship && (
                                         <div style={{ fontFamily: 'var(--font-label)', fontSize: '10px', fontWeight: 700, color: '#F9B051', background: '#F9B05122', border: '1px solid #F9B05144', padding: '2px 6px', borderRadius: '4px', letterSpacing: '0.05em' }}>
                                           CHAMP
