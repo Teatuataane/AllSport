@@ -1293,7 +1293,24 @@ player id, and `lib/headToHead.ts` rates the games it collects.
   payload only sets the columns it carries. Match recording deliberately does not
   rely on either.
 
-## Workout logging (September 2026 session 38) — v0.8.0.0, migration NOT YET APPLIED
+## Workout logging (September 2026 session 38) — v0.8.0.0, APPLIED AND VERIFIED 2026-09-16
+
+**APPLIED AND VERIFIED IN PRODUCTION on 2026-09-16** (PR #114), from a detached `main`
+worktree with the main checkout's `supabase/.temp` copied in, and checked by querying the
+objects rather than the ledger: 3 tables all with `relrowsecurity`, 3 policies, 2 triggers,
+the 4 SECURITY DEFINER functions all with `search_path=public` pinned, `normalise_activity`
+and `unfitted_activities` present, **37 seeded aliases and none pointing at a non-event**,
+`delete_my_account` carrying the workouts delete, and `normalise_activity('  Road   Ride ')`
+returning `road ride`. As `anon` through PostgREST: `workouts`, `workout_entries`,
+`activity_aliases`, `fit_activity` and `unfitted_activities` all return **401 / `42501`**.
+The ledger showed the version pending with an EMPTY remote beforehand, which is what rules
+out the silent-skip failure mode (that needs the version pre-recorded).
+
+**A 42703 proves nothing about access.** The first anon check asked
+`activity_aliases?select=id` and got `400 / 42703` (undefined column — its key is `alias`),
+because PostgREST parses the column list BEFORE the grant check. Re-asked with a real
+column it returned `401 / 42501`. A verification query must name a column the table
+actually has, or a permissive table can look locked.
 
 Any workout can be logged at **`/log`** and fitted to one of the 120 events, then graded
 through the same framework as a game. Designed in a `/grill-me` session; the full record
@@ -1353,7 +1370,8 @@ index, `fit_activity()` and `unfitted_activities()`**, and matches `normaliseAct
 "road  ride" could never be fitted and the panel reported success anyway. **Units are not stored** — raw volume is, and units are worked out on
 read, so a sheet change needs no migration. `delete_my_account` redefined whole (+ workouts),
 pinned against the previous definition by `__tests__/workoutSchema.test.ts`. Deploy order:
-either is safe; every read is its own query and treats PGRST205 as "not live".
+either is safe; every read is its own query and treats PGRST205 as "not live". Applied after
+the code, so the tables answered from the first request.
 
 **Effort tasks are retired from the live screen.** `submitEntry` no longer writes
 `effort_task_completions` at all: a new row takes the column default (0) and an EDIT leaves a
@@ -1562,7 +1580,7 @@ update players set role = 'judge' where id = '[uuid]';
 | My Events | /prs | Complete | Retitled from Personal Bests (v0.6.2.0). Ten domains ranked strongest to weakest by Top % above the list; collapsible domain sections below, each event row showing **PR, average placement and wins side by side** (no lens toggle). Honours the active player. Per-event history still expands |
 | Vote | /vote/[voteId] | Complete | Step-by-step voting flow, one domain per screen, partial save, review screen, locked on submit |
 | Vote Results | /vote/[voteId]/results | Complete | Spoiler-free until voted, bar chart per domain, counts only while open / percentages on close, judge full breakdown |
-| Log a Workout | /log | Complete (v0.8.0.0, needs its migration) | Log anything, fitted to an event: volume → training units, best effort → standards. Player, parent or kaiwhakawā (witnessed). Last 7 days by domain, not-fitted list, recent workouts |
+| Log a Workout | /log | Complete (v0.8.0.0, live 2026-09-16) | Log anything, fitted to an event: volume → training units, best effort → standards. Player, parent or kaiwhakawā (witnessed). Last 7 days by domain, not-fitted list, recent workouts |
 | Game Review | /games/[sessionId] | Complete | Full all-player game report — every division, every event with score + placement, division standings. Linked from dashboard session history. Any logged-in player. Placements computed live from raw_score |
 | Auth Callback | /auth/callback | Complete | Google OAuth handler |
 | Invite Landing | /join/[code] | Planned | Public page — introduces AllSport, shows inviter name, Register CTA with referral code pre-filled. **The referral system itself is BUILT** (`20260515000002`: `referrals`, `players.referral_code`, the qualifying trigger; `/my-koha` reads it) — an earlier version of this doc listed the whole feature as Planned. Only this landing page is missing. |
