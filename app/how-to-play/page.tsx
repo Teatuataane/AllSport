@@ -5,8 +5,9 @@
 // here and passed down already flattened.
 import Link from 'next/link'
 import { RainbowText, SectionLabel } from '@/components/ui'
-import { EVENTS, getEventBySlug } from '@/lib/eventData'
-import { unitRule } from '@/lib/units'
+import { EVENTS } from '@/lib/eventData'
+import { unitRulesSummary } from '@/lib/units'
+import { GRADES, GAMES_REQUIRED } from '@/lib/grading'
 import DomainAccordion from './DomainAccordion'
 
 const DOMAIN_META = [
@@ -114,7 +115,7 @@ const steps = [
   {
     number: '05',
     title: 'Get Placed',
-    desc: 'In each event, players are ranked by their result. Your placement in each event (1st, 2nd, 3rd...) is recorded. Lowest total placement across all 10 events wins. Points are awarded based on placement, and every point you have ever scored counts toward your taniwha.',
+    desc: 'In each event, players are ranked by their result. Your placement in each event (1st, 2nd, 3rd...) is recorded, and the lowest total placement across all 10 events wins the game. Every score you set also counts toward your colours.',
   },
   {
     number: '06',
@@ -123,18 +124,7 @@ const steps = [
   },
 ]
 
-// Read from the compiled unit sheet, never typed: if Tāne's review changes a
-// unit, this page follows it.
-const perUnit = (slug: string) => { const e = getEventBySlug(slug); return e ? unitRule(e).per : 1 }
-const RIDE_KM = perUnit('cycling') / 1000
-const THROWS = perUnit('javelin-throw')
-const unitRules = [
-  { label: 'Lifts and reps', rule: 'Every working set is 1 unit' },
-  { label: 'Holds', rule: 'Every hold is 1 unit' },
-  { label: 'Rides, runs, rows', rule: `${RIDE_KM}km is 1 unit, so a 25km ride is ${25 / RIDE_KM}` },
-  { label: 'Throws and jumps', rule: `Every ${THROWS} attempts is 1 unit` },
-  { label: 'Games', rule: 'Every game is 1 unit' },
-]
+const unitRules = unitRulesSummary()
 
 const divisions = [
   { name: "Men's", age: '17–39' },
@@ -203,7 +193,7 @@ export default function HowToPlay() {
                 AllSport is designed for the long term. It&apos;s meant to be fun, accessible, and sustainable. You don&apos;t need to push to your limit every session — showing up consistently is what creates results.
               </p>
               <p style={{ color: 'var(--grey)', fontSize: '15px', lineHeight: 1.8 }}>
-                Scoring is placement-based — you compete relative to everyone else in the room, not against a fixed standard. Come last in every event today and still earn points. Come back next week and beat yourself.
+                Each game is placement-based: you compete against everyone in the room that day. Your colours are different. They are measured against a published standard, not against other people, so coming last today costs you nothing. Come back next week and beat yourself.
               </p>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -256,32 +246,29 @@ export default function HowToPlay() {
                 This rewards consistency. A player who finishes 3rd in every event will beat one who wins two events but finishes last in the rest.
               </p>
               <p style={{ color: '#555555', fontSize: '14px', lineHeight: 1.8, fontStyle: 'italic' }}>
-                Tied results share the same placement. If two players tie for 2nd, both receive 2nd place and the next player receives 4th.
+                Tied results share the same placement. If two players tie for 2nd, both receive 2nd place and the next player receives 4th. A missed event counts as last place.
               </p>
             </div>
 
-            {/* Points formula */}
+            {/* The colour ladder */}
             <div className="info-card">
-              <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555555', marginBottom: '20px' }}>Points Formula</div>
-              <p style={{ color: 'var(--grey)', fontSize: '14px', lineHeight: 1.7, marginBottom: '16px' }}>
-                1st place always earns <strong style={{ color: 'var(--white)' }}>100 points</strong>. Each subsequent place drops by a gap calculated from session size.
+              <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555555', marginBottom: '8px' }}>The Colours</div>
+              <p style={{ color: 'var(--grey)', fontSize: '13px', lineHeight: 1.65, marginBottom: '16px' }}>
+                Twelve colours, climbed one at a time in each of the ten domains. Each new colour needs three things, and a kaiwhakawā confirms it once all three are met.
               </p>
               {[
-                { size: '5 players', gap: '20 pts', example: '100 / 80 / 60 / 40 / 20' },
-                { size: '10 players', gap: '10 pts', example: '100 / 90 / 80 / ... / 10' },
-                { size: '20+ players', gap: 'min 10 pts', example: '100 / 90 / 80 / ... / 10' },
-              ].map(row => (
-                <div key={row.size} style={{ padding: '10px 0', borderBottom: '1px solid #1a1a1a' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                    <span style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '13px', color: 'var(--grey-light)' }}>{row.size}</span>
-                    <span style={{ fontFamily: 'var(--font-display)', fontSize: '16px', color: 'var(--blue)' }}>{row.gap}</span>
-                  </div>
-                  <div style={{ fontFamily: 'var(--font-label)', fontSize: '12px', color: '#444', letterSpacing: '0.05em' }}>{row.example}</div>
+                { label: 'Standards', rule: 'Meet the colour in half the domain’s events' },
+                { label: 'Games', rule: `Games played in the room: ${GAMES_REQUIRED[1]} for ${GRADES[0].name}, ${GAMES_REQUIRED[12]} for ${GRADES[11].name}` },
+                { label: 'Training', rule: 'Units in that domain since your last colour there' },
+              ].map(r => (
+                <div key={r.label} className="bonus-row">
+                  <span style={{ fontFamily: 'var(--font-label)', fontWeight: 600, fontSize: '13px', color: 'var(--grey-light)' }}>{r.label}</span>
+                  <span style={{ fontFamily: 'var(--font-label)', fontSize: '12px', color: '#555', flexShrink: 0, marginLeft: '12px', textAlign: 'right' as const, maxWidth: '160px' }}>{r.rule}</span>
                 </div>
               ))}
               <div style={{ marginTop: '16px', padding: '12px', background: 'var(--dark)', border: '1px solid var(--border)', borderRadius: '8px' }}>
-                <div style={{ fontFamily: 'var(--font-label)', fontSize: '12px', color: '#555', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '4px' }}>Minimum earn</div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: '32px', color: 'var(--blue)' }}>10 Points</div>
+                <div style={{ fontFamily: 'var(--font-label)', fontSize: '12px', color: '#555', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '4px' }}>Your overall colour</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '26px', color: 'var(--blue)', lineHeight: 1.1 }}>The lowest of your ten</div>
               </div>
             </div>
 
@@ -298,8 +285,8 @@ export default function HowToPlay() {
                 </div>
               ))}
               <div style={{ marginTop: '16px', padding: '12px', background: 'var(--dark)', border: '1px solid var(--border)', borderRadius: '8px' }}>
-                <div style={{ fontFamily: 'var(--font-label)', fontSize: '12px', color: '#555', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '4px' }}>Each colour needs</div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: '28px', color: 'var(--green)' }}>Standards · Games · Training</div>
+                <div style={{ fontFamily: 'var(--font-label)', fontSize: '12px', color: '#555', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '4px' }}>Any effort counts</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '26px', color: 'var(--green)', lineHeight: 1.1 }}>No intensity floor</div>
               </div>
             </div>
 

@@ -105,8 +105,8 @@ export default function ScoringSetup() {
       <div style={{ background: '#000', borderBottom: '1px solid #1a1a1a', padding: '16px 24px', position: 'sticky', top: 0, zIndex: 10 }}>
         <div style={{ maxWidth: '680px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '28px', color: '#2371BB', lineHeight: 1 }}>New Session</div>
-            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', color: '#555', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Select one event per domain</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '28px', color: '#2371BB', lineHeight: 1 }}>New Session</div>
+            <div style={{ fontFamily: 'var(--font-label)', fontSize: '12px', color: '#555', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Select one event per domain</div>
           </div>
           {/* Progress ring */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -115,7 +115,7 @@ export default function ScoringSetup() {
                 <div key={d.number} style={{ width: '6px', height: '24px', borderRadius: '3px', background: selectedEvents[d.number] ? DOMAIN_COLORS[d.number - 1] : '#222', transition: 'background 0.2s' }} />
               ))}
             </div>
-            <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '22px', color: allSelected ? '#4DB26E' : '#555' }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', color: allSelected ? '#4DB26E' : '#555' }}>
               {selected}/10
             </div>
           </div>
@@ -127,20 +127,20 @@ export default function ScoringSetup() {
         <div style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '20px', marginBottom: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '12px' }}>
             <div>
-              <label style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: '11px', color: '#555', letterSpacing: '0.15em', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>Location</label>
+              <label style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '11px', color: '#555', letterSpacing: '0.15em', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>Location</label>
               <input
                 value={location}
                 onChange={e => setLocation(e.target.value)}
-                style={{ width: '100%', background: '#0a0a0a', border: '1px solid #2a2a2a', borderRadius: '8px', padding: '10px 14px', color: '#fff', fontSize: '15px', fontFamily: 'Barlow, sans-serif', boxSizing: 'border-box' as const, outline: 'none' }}
+                style={{ width: '100%', background: '#0a0a0a', border: '1px solid #2a2a2a', borderRadius: '8px', padding: '10px 14px', color: '#fff', fontSize: '15px', fontFamily: 'var(--font-body)', boxSizing: 'border-box' as const, outline: 'none' }}
               />
             </div>
             <div>
-              <label style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: '11px', color: '#555', letterSpacing: '0.15em', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>Start Time</label>
+              <label style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '11px', color: '#555', letterSpacing: '0.15em', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>Start Time</label>
               <input
                 type="time"
                 value={startTime}
                 onChange={e => setStartTime(e.target.value)}
-                style={{ background: '#0a0a0a', border: '1px solid #2a2a2a', borderRadius: '8px', padding: '10px 14px', color: '#fff', fontSize: '15px', fontFamily: 'Barlow, sans-serif', outline: 'none', colorScheme: 'dark' as any }}
+                style={{ background: '#0a0a0a', border: '1px solid #2a2a2a', borderRadius: '8px', padding: '10px 14px', color: '#fff', fontSize: '15px', fontFamily: 'var(--font-body)', outline: 'none', colorScheme: 'dark' as any }}
               />
             </div>
           </div>
@@ -152,8 +152,8 @@ export default function ScoringSetup() {
               style={{ width: '18px', height: '18px', accentColor: '#F9B051' }}
             />
             <div>
-              <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: '14px', color: isChampionship ? '#F9B051' : '#ccc' }}>Championship Session</div>
-              <div style={{ fontFamily: 'Barlow, sans-serif', fontSize: '12px', color: '#555' }}>Awards championship bonus points</div>
+              <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '14px', color: isChampionship ? '#F9B051' : '#ccc' }}>Championship Session</div>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: '12px', color: '#555' }}>Marks this game as the annual Championship</div>
             </div>
           </label>
         </div>
@@ -169,13 +169,13 @@ export default function ScoringSetup() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <div style={{ width: '4px', height: '20px', borderRadius: '2px', background: chosen ? domainColor : '#2a2a2a', flexShrink: 0 }} />
                     <div>
-                      <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: '13px', color: chosen ? '#fff' : '#888', letterSpacing: '0.05em' }}>
+                      <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '13px', color: chosen ? '#fff' : '#888', letterSpacing: '0.05em' }}>
                         {domain.number}. {domain.name.toUpperCase()}
                       </div>
                     </div>
                   </div>
                   {chosen && (
-                    <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', fontWeight: 700, color: domainColor, background: domainColor + '22', padding: '3px 10px', borderRadius: '4px', letterSpacing: '0.05em' }}>
+                    <div style={{ fontFamily: 'var(--font-label)', fontSize: '12px', fontWeight: 700, color: domainColor, background: domainColor + '22', padding: '3px 10px', borderRadius: '4px', letterSpacing: '0.05em' }}>
                       {chosen}
                     </div>
                   )}
@@ -192,7 +192,7 @@ export default function ScoringSetup() {
                           border: isSelected ? `1px solid ${domainColor}` : '1px solid #222',
                           background: isSelected ? domainColor : '#0d0d0d',
                           color: isSelected ? '#fff' : '#777',
-                          fontFamily: 'Barlow Condensed, sans-serif',
+                          fontFamily: 'var(--font-label)',
                           fontWeight: isSelected ? 700 : 400,
                           letterSpacing: '0.03em',
                           transition: 'all 0.15s',
@@ -210,7 +210,7 @@ export default function ScoringSetup() {
         </div>
 
         {error && (
-          <div style={{ background: '#2e0d0d', border: '1px solid #EA4742', borderRadius: '8px', padding: '12px 16px', color: '#EA4742', fontSize: '14px', fontFamily: 'Barlow, sans-serif', marginBottom: '16px' }}>
+          <div style={{ background: '#2e0d0d', border: '1px solid #EA4742', borderRadius: '8px', padding: '12px 16px', color: '#EA4742', fontSize: '14px', fontFamily: 'var(--font-body)', marginBottom: '16px' }}>
             {error}
           </div>
         )}
@@ -223,7 +223,7 @@ export default function ScoringSetup() {
             cursor: allSelected && !loading ? 'pointer' : 'not-allowed',
             background: allSelected ? 'linear-gradient(90deg, #2371BB, #EA4742)' : '#1a1a1a',
             color: allSelected ? '#fff' : '#444',
-            fontFamily: 'Bebas Neue, cursive', fontSize: '22px', letterSpacing: '0.1em',
+            fontFamily: 'var(--font-display)', fontSize: '22px', letterSpacing: '0.1em',
             transition: 'opacity 0.2s',
             opacity: loading ? 0.7 : 1,
           }}

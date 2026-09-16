@@ -37,7 +37,7 @@ export default function JudgePage() {
 
   if (loading) return (
     <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ color: '#555', fontFamily: 'Barlow, sans-serif' }}>Loading...</div>
+      <div style={{ color: '#555', fontFamily: 'var(--font-body)' }}>Loading…</div>
     </div>
   )
 
@@ -50,16 +50,16 @@ export default function JudgePage() {
           <Link href="/dashboard" style={{
             background: '#111', border: '1px solid #2a2a2a', borderRadius: '8px',
             padding: '8px 14px', color: '#888', textDecoration: 'none',
-            fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px',
+            fontFamily: 'var(--font-label)', fontSize: '13px',
             fontWeight: 700, letterSpacing: '0.05em',
           }}>
             ← Dashboard
           </Link>
           <div>
-            <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '28px', letterSpacing: '0.05em', lineHeight: 1 }}>
-              Kaiwāwao
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '28px', letterSpacing: '0.05em', lineHeight: 1 }}>
+              Kaiwhakawā
             </div>
-            <div style={{ fontSize: '11px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.1em' }}>
+            <div style={{ fontSize: '11px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.1em' }}>
               JUDGE PANEL
             </div>
           </div>

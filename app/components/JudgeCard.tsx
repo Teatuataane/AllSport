@@ -8,6 +8,9 @@ import { QRCodeSVG } from 'qrcode.react'
 import Link from 'next/link'
 import { EVENTS } from '@/lib/eventData'
 import { formatNZDate } from '@/lib/dates'
+import { gradeForRung } from '@/lib/grading'
+import { rankByColours } from '@/lib/colourBoard'
+import { GradeDot } from '@/components/GradesCard'
 
 type Session = {
   id: string
@@ -94,7 +97,7 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
 
   // Tab + Players state
   const [judgeTab, setJudgeTab] = useState<'sessions' | 'votes' | 'players' | 'grades'>('sessions')
-  const [playersList, setPlayersList] = useState<{ id: string; name: string; division: string; totalPoints: number; sessions: number; icon: string | null }[]>([])
+  const [playersList, setPlayersList] = useState<{ id: string; name: string; division: string; sessions: number; icon: string | null; overall: number | null; domainsHeld: number }[]>([])
   const [playersLoading, setPlayersLoading] = useState(false)
   // Standing colour watchlist — who is close to their next colour, so a
   // kaiwhakawā can plan the moment rather than discover it after the fact.
@@ -448,25 +451,38 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
 
   const loadPlayersList = async () => {
     setPlayersLoading(true)
-    const currentYear = new Date().getFullYear()
-    const [playersRes, rankingsRes] = await Promise.all([
+    // Ordered by colours, the same rule as /leaderboard (lib/colourBoard.ts).
+    // Points are retired, so nothing here reads rankings.
+    const [playersRes, gradesRes, gamesRes] = await Promise.all([
       supabase.from('players').select('id, display_name, username, full_name, division, icon').eq('is_active', true).order('display_name', { ascending: true }),
-      supabase.from('rankings').select('player_id, total_points, total_sessions').eq('season_year', currentYear),
+      supabase.from('grade_awards').select('player_id, domain_number, rung'),
+      supabase.from('session_player_summary').select('player_id'),
     ])
-    const rankMap: Record<string, number> = {}
-    const sessMap: Record<string, number> = {}
-    rankingsRes.data?.forEach(r => { rankMap[r.player_id] = r.total_points; sessMap[r.player_id] = r.total_sessions })
+    const held = new Map<string, Map<number, number>>()
+    for (const a of (gradesRes.data ?? []) as { player_id: string; domain_number: number; rung: number }[]) {
+      const m = held.get(a.player_id) ?? new Map<number, number>()
+      m.set(a.domain_number, Math.max(m.get(a.domain_number) ?? 0, a.rung))
+      held.set(a.player_id, m)
+    }
+    const games: Record<string, number> = {}
+    for (const r of (gamesRes.data ?? []) as { player_id: string }[]) games[r.player_id] = (games[r.player_id] ?? 0) + 1
 
-    const entries = (playersRes.data || []).map(p => ({
-      id: p.id,
+    const byId = new Map((playersRes.data || []).map(p => [p.id as string, p]))
+    const ranked = rankByColours((playersRes.data || []).map(p => ({
+      playerId: p.id as string,
       name: (p.display_name || p.username || p.full_name || 'Unknown') as string,
-      division: (p.division || '') as string,
-      totalPoints: rankMap[p.id] ?? 0,
-      sessions: sessMap[p.id] ?? 0,
-      icon: p.icon as string | null,
-    }))
-    entries.sort((a, b) => b.totalPoints - a.totalPoints)
-    setPlayersList(entries)
+      held: held.get(p.id as string),
+      games: games[p.id as string] ?? 0,
+    })))
+    setPlayersList(ranked.map(r => ({
+      id: r.playerId,
+      name: r.name,
+      division: (byId.get(r.playerId)?.division || '') as string,
+      sessions: r.games,
+      icon: (byId.get(r.playerId)?.icon ?? null) as string | null,
+      overall: r.overall,
+      domainsHeld: r.domainsHeld,
+    })))
     setPlayersLoading(false)
   }
 
@@ -475,7 +491,7 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
     setPlayerHistoryLoading(prev => ({ ...prev, [playerId]: true }))
     const { data } = await supabase
       .from('session_player_summary')
-      .select('session_id, total_placement_points, effort_points, effort_level, overall_placement, sessions(session_date, location)')
+      .select('session_id, overall_placement, sessions(session_date, location)')
       .eq('player_id', playerId)
       .order('created_at', { ascending: false })
       .limit(20)
@@ -504,12 +520,12 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
           <div style={{ background: '#fff', padding: '32px', borderRadius: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
             <QRCodeSVG value={joinUrl(fullscreenQR.session_code)} size={280} />
             <div style={{
-              fontFamily: 'Bebas Neue, cursive', fontSize: '48px', letterSpacing: '0.3em',
+              fontFamily: 'var(--font-display)', fontSize: '48px', letterSpacing: '0.3em',
               color: '#0a0a0a', lineHeight: 1,
             }}>
               {fullscreenQR.session_code}
             </div>
-            <div style={{ color: '#888', fontSize: '13px', fontFamily: 'Barlow, sans-serif' }}>
+            <div style={{ color: '#888', fontSize: '13px', fontFamily: 'var(--font-body)' }}>
               Tap anywhere to close
             </div>
           </div>
@@ -530,7 +546,7 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
               }}
               style={{
                 flex: 1, padding: '10px 0', borderRadius: '8px', border: 'none',
-                cursor: 'pointer', fontFamily: 'Bebas Neue, cursive', fontSize: '15px',
+                cursor: 'pointer', fontFamily: 'var(--font-display)', fontSize: '15px',
                 letterSpacing: '0.08em', minHeight: '40px',
                 background: active ? '#1e3a5f' : '#111',
                 color: active ? '#fff' : '#555',
@@ -552,10 +568,10 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
         {/* Header: Te Reo label + start CTA */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
           <div>
-            <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '22px', color: '#2371BB', letterSpacing: '0.05em', lineHeight: 1 }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', color: '#2371BB', letterSpacing: '0.05em', lineHeight: 1 }}>
               Kaiwhakawā
             </div>
-            <div style={{ fontSize: '11px', color: '#555', marginTop: '2px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.08em' }}>
+            <div style={{ fontSize: '11px', color: '#555', marginTop: '2px', fontFamily: 'var(--font-label)', letterSpacing: '0.08em' }}>
               KAIWHAKAWĀ PANEL
             </div>
           </div>
@@ -567,7 +583,7 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
                 cursor: 'pointer',
                 background: 'linear-gradient(90deg, #2371BB, #4DB26E)',
                 color: '#fff',
-                fontFamily: 'Bebas Neue, cursive', fontSize: '16px', letterSpacing: '0.08em',
+                fontFamily: 'var(--font-display)', fontSize: '16px', letterSpacing: '0.08em',
                 minHeight: '44px',
               }}
             >
@@ -580,20 +596,20 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
           <div style={{
             background: '#2e0d0d', border: '1px solid #EA4742', borderRadius: '8px',
             padding: '10px 14px', color: '#EA4742', fontSize: '13px',
-            fontFamily: 'Barlow, sans-serif', marginBottom: '12px',
+            fontFamily: 'var(--font-body)', marginBottom: '12px',
           }}>
             {endError}
           </div>
         )}
 
         {loading ? (
-          <div style={{ color: '#555', fontSize: '13px', padding: '8px 0', fontFamily: 'Barlow, sans-serif' }}>Loading sessions...</div>
+          <div style={{ color: '#555', fontSize: '13px', padding: '8px 0', fontFamily: 'var(--font-body)' }}>Loading sessions...</div>
         ) : (
           <>
             {/* Active sessions */}
             {activeSessions.length > 0 && (
               <div style={{ marginBottom: '16px' }}>
-                <div style={{ fontSize: '11px', color: '#555', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '10px', fontFamily: 'Barlow Condensed, sans-serif' }}>
+                <div style={{ fontSize: '11px', color: '#555', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '10px', fontFamily: 'var(--font-label)' }}>
                   Active
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -605,7 +621,7 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                           <span style={{
                             background: '#2371BB22', border: '1px solid #2371BB',
-                            color: '#2371BB', fontFamily: 'Bebas Neue, cursive',
+                            color: '#2371BB', fontFamily: 'var(--font-display)',
                             fontSize: '32px', letterSpacing: '0.25em', padding: '4px 14px',
                             borderRadius: '6px', lineHeight: 1.1,
                           }}>
@@ -615,12 +631,12 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
                             <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#fff' }}>
                               {playerCounts[sess.id] ?? '—'}
                             </div>
-                            <div style={{ fontSize: '11px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.05em' }}>
+                            <div style={{ fontSize: '11px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.05em' }}>
                               joined
                             </div>
                           </div>
                         </div>
-                        <div style={{ fontSize: '12px', color: '#555', marginTop: '6px', fontFamily: 'Barlow, sans-serif' }}>
+                        <div style={{ fontSize: '12px', color: '#555', marginTop: '6px', fontFamily: 'var(--font-body)' }}>
                           {sess.location}
                         </div>
                       </div>
@@ -631,7 +647,7 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
                           style={{
                             padding: '10px 16px', borderRadius: '8px', border: '1px solid #333',
                             background: '#0a0a0a', color: '#ccc', cursor: 'pointer',
-                            fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px',
+                            fontFamily: 'var(--font-label)', fontSize: '13px',
                             fontWeight: 700, letterSpacing: '0.05em', minHeight: '44px',
                             flex: '1 1 auto',
                           }}
@@ -643,7 +659,7 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
                           style={{
                             padding: '10px 16px', borderRadius: '8px', border: '1px solid #2371BB',
                             background: '#2371BB22', color: '#2371BB', cursor: 'pointer',
-                            fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px',
+                            fontFamily: 'var(--font-label)', fontSize: '13px',
                             fontWeight: 700, letterSpacing: '0.05em', minHeight: '44px',
                             flex: '1 1 auto',
                           }}
@@ -658,7 +674,7 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
                             border: voidConfirm === sess.id ? '2px solid #F9B051' : '1px solid #F9B05166',
                             background: voidConfirm === sess.id ? '#F9B05122' : '#1a1200',
                             color: '#F9B051', cursor: voiding === sess.id ? 'not-allowed' : 'pointer',
-                            fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px',
+                            fontFamily: 'var(--font-label)', fontSize: '13px',
                             fontWeight: 700, letterSpacing: '0.05em',
                             opacity: voiding === sess.id ? 0.6 : 1,
                             minHeight: '44px', flex: '1 1 auto',
@@ -675,7 +691,7 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
                             border: endConfirm === sess.id ? '2px solid #EA4742' : '1px solid #EA474266',
                             background: endConfirm === sess.id ? '#EA474222' : '#1a0808',
                             color: '#EA4742', cursor: ending === sess.id ? 'not-allowed' : 'pointer',
-                            fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px',
+                            fontFamily: 'var(--font-label)', fontSize: '13px',
                             fontWeight: 700, letterSpacing: '0.05em',
                             opacity: ending === sess.id ? 0.6 : 1,
                             minHeight: '44px', flex: '1 1 auto',
@@ -697,12 +713,12 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
                         >
                           <QRCodeSVG value={joinUrl(sess.session_code)} size={180} />
                           <div style={{
-                            marginTop: '10px', color: '#0a0a0a', fontFamily: 'Bebas Neue, cursive',
+                            marginTop: '10px', color: '#0a0a0a', fontFamily: 'var(--font-display)',
                             fontSize: '24px', letterSpacing: '0.2em',
                           }}>
                             {sess.session_code}
                           </div>
-                          <div style={{ color: '#888', fontSize: '11px', marginTop: '4px', fontFamily: 'Barlow, sans-serif' }}>
+                          <div style={{ color: '#888', fontSize: '11px', marginTop: '4px', fontFamily: 'var(--font-body)' }}>
                             Tap to fullscreen
                           </div>
                         </div>
@@ -718,7 +734,7 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
                     width: '100%', marginTop: '10px', padding: '12px', borderRadius: '8px',
                     border: 'none', cursor: 'not-allowed',
                     background: '#1a1a1a', color: '#444',
-                    fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px',
+                    fontFamily: 'var(--font-label)', fontSize: '13px',
                     fontWeight: 700, letterSpacing: '0.05em',
                   }}
                 >
@@ -732,10 +748,10 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
                 background: '#0a0a0a', borderRadius: '8px', padding: '20px',
                 textAlign: 'center', marginBottom: '16px',
               }}>
-                <div style={{ color: '#444', fontSize: '13px', fontFamily: 'Barlow, sans-serif' }}>
+                <div style={{ color: '#444', fontSize: '13px', fontFamily: 'var(--font-body)' }}>
                   No active sessions
                 </div>
-                <div style={{ color: '#333', fontSize: '12px', marginTop: '4px', fontFamily: 'Barlow, sans-serif' }}>
+                <div style={{ color: '#333', fontSize: '12px', marginTop: '4px', fontFamily: 'var(--font-body)' }}>
                   Tap "Start New Session" above to begin
                 </div>
               </div>
@@ -743,7 +759,7 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
 
             {recentSessions.length > 0 && (
               <div>
-                <div style={{ fontSize: '11px', color: '#555', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px', fontFamily: 'Barlow Condensed, sans-serif' }}>
+                <div style={{ fontSize: '11px', color: '#555', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px', fontFamily: 'var(--font-label)' }}>
                   Recent
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -753,14 +769,14 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
                       background: '#0a0a0a', borderRadius: '8px', padding: '10px 12px',
                     }}>
                       <div>
-                        <div style={{ fontSize: '13px', color: '#888', fontFamily: 'Barlow, sans-serif' }}>{sess.location}</div>
-                        <div style={{ fontSize: '11px', color: '#444', marginTop: '2px', fontFamily: 'Barlow, sans-serif' }}>
+                        <div style={{ fontSize: '13px', color: '#888', fontFamily: 'var(--font-body)' }}>{sess.location}</div>
+                        <div style={{ fontSize: '11px', color: '#444', marginTop: '2px', fontFamily: 'var(--font-body)' }}>
                           {sess.session_date
                             ? formatNZDate(sess.session_date)
                             : ''}
                         </div>
                       </div>
-                      <div style={{ fontSize: '11px', color: '#444', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.05em' }}>ENDED</div>
+                      <div style={{ fontSize: '11px', color: '#444', fontFamily: 'var(--font-label)', letterSpacing: '0.05em' }}>ENDED</div>
                     </div>
                   ))}
                 </div>
@@ -768,7 +784,7 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
             )}
 
             {recentSessions.length === 0 && activeSessions.length === 0 && (
-              <div style={{ color: '#333', fontSize: '12px', fontFamily: 'Barlow, sans-serif', textAlign: 'center', paddingTop: '4px' }}>
+              <div style={{ color: '#333', fontSize: '12px', fontFamily: 'var(--font-body)', textAlign: 'center', paddingTop: '4px' }}>
                 Your session history will appear here
               </div>
             )}
@@ -784,10 +800,10 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
           <div>
-            <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '22px', color: '#B87DB5', letterSpacing: '0.05em', lineHeight: 1 }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', color: '#B87DB5', letterSpacing: '0.05em', lineHeight: 1 }}>
               Kōwhiringa Tūāhuatanga
             </div>
-            <div style={{ fontSize: '11px', color: '#555', marginTop: '2px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.08em' }}>
+            <div style={{ fontSize: '11px', color: '#555', marginTop: '2px', fontFamily: 'var(--font-label)', letterSpacing: '0.08em' }}>
               EVENT VOTES
             </div>
           </div>
@@ -797,14 +813,14 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
           <div style={{
             background: '#2e0d0d', border: '1px solid #EA4742', borderRadius: '8px',
             padding: '10px 14px', color: '#EA4742', fontSize: '13px',
-            fontFamily: 'Barlow, sans-serif', marginBottom: '12px',
+            fontFamily: 'var(--font-body)', marginBottom: '12px',
           }}>
             {voteError}
           </div>
         )}
 
         {voteLoading ? (
-          <div style={{ color: '#555', fontSize: '13px', fontFamily: 'Barlow, sans-serif' }}>Loading votes...</div>
+          <div style={{ color: '#555', fontSize: '13px', fontFamily: 'var(--font-body)' }}>Loading votes...</div>
         ) : activeVote ? (
           /* Active vote card */
           <div style={{
@@ -816,23 +832,23 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
           }}>
             <div style={{ height: '3px', background: 'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)' }} />
             <div style={{ padding: '14px 16px' }}>
-              <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '18px', color: '#fff', letterSpacing: '0.05em', lineHeight: 1.1, marginBottom: '4px' }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', color: '#fff', letterSpacing: '0.05em', lineHeight: 1.1, marginBottom: '4px' }}>
                 {activeVote.name}
               </div>
-              <div style={{ fontSize: '12px', color: '#888', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '8px' }}>
+              <div style={{ fontSize: '12px', color: '#888', fontFamily: 'var(--font-label)', marginBottom: '8px' }}>
                 Event date: {new Date(activeVote.event_date).toLocaleDateString('en-NZ', { day: 'numeric', month: 'long', year: 'numeric' })}
               </div>
-              <div style={{ fontSize: '12px', color: '#F9B051', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, letterSpacing: '0.05em', marginBottom: '10px' }}>
+              <div style={{ fontSize: '12px', color: '#F9B051', fontFamily: 'var(--font-label)', fontWeight: 700, letterSpacing: '0.05em', marginBottom: '10px' }}>
                 CLOSES IN: {formatCountdown(new Date(activeVote.voting_closes_at).getTime() - now)}
               </div>
-              <div style={{ fontSize: '13px', color: '#888', fontFamily: 'Barlow, sans-serif', marginBottom: '14px' }}>
+              <div style={{ fontSize: '13px', color: '#888', fontFamily: 'var(--font-body)', marginBottom: '14px' }}>
                 {activeVoterCount} player{activeVoterCount !== 1 ? 's' : ''} voted so far
               </div>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 <Link href={`/vote/${activeVote.id}/results`} style={{
                   flex: 1, padding: '10px 14px', borderRadius: '8px', border: '1px solid #B87DB5',
                   background: '#1a0d2e', color: '#B87DB5', textDecoration: 'none',
-                  fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700,
+                  fontSize: '13px', fontFamily: 'var(--font-label)', fontWeight: 700,
                   letterSpacing: '0.05em', textAlign: 'center' as const, display: 'block',
                 }}>
                   View Full Results →
@@ -845,7 +861,7 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
                     border: closeVoteConfirm ? '2px solid #EA4742' : '1px solid #EA474266',
                     background: closeVoteConfirm ? '#EA474222' : '#1a0808',
                     color: '#EA4742', cursor: closingVote ? 'not-allowed' : 'pointer',
-                    fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px',
+                    fontFamily: 'var(--font-label)', fontSize: '13px',
                     fontWeight: 700, letterSpacing: '0.05em',
                     opacity: closingVote ? 0.6 : 1,
                     transition: 'all 0.15s',
@@ -866,7 +882,7 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
                 width: '100%', padding: '12px', borderRadius: '8px',
                 border: '1px solid #B87DB5', background: '#1a0d2e',
                 color: '#B87DB5', cursor: 'pointer',
-                fontFamily: 'Bebas Neue, cursive', fontSize: '16px', letterSpacing: '0.08em',
+                fontFamily: 'var(--font-display)', fontSize: '16px', letterSpacing: '0.08em',
                 minHeight: '44px',
               }}
             >
@@ -886,7 +902,7 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
                 }} />
               ))}
             </div>
-            <div style={{ fontSize: '11px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.1em', marginBottom: '14px' }}>
+            <div style={{ fontSize: '11px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.1em', marginBottom: '14px' }}>
               {createStep === 1 ? 'STEP 1 — VOTE DETAILS' : createStep === 2 ? 'STEP 2 — NOMINATE EVENTS' : 'STEP 3 — REVIEW & PUBLISH'}
             </div>
 
@@ -894,7 +910,7 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
             {createStep === 1 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div>
-                  <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '4px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.08em' }}>VOTE NAME</label>
+                  <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '4px', fontFamily: 'var(--font-label)', letterSpacing: '0.08em' }}>VOTE NAME</label>
                   <input
                     value={voteForm.name}
                     onChange={e => setVoteForm(f => ({ ...f, name: e.target.value }))}
@@ -902,12 +918,12 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
                     style={{
                       width: '100%', boxSizing: 'border-box', background: '#0a0a0a',
                       border: '1px solid #333', borderRadius: '8px', padding: '10px 12px',
-                      color: '#fff', fontSize: '14px', fontFamily: 'Barlow, sans-serif',
+                      color: '#fff', fontSize: '14px', fontFamily: 'var(--font-body)',
                     }}
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '4px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.08em' }}>EVENT DATE</label>
+                  <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '4px', fontFamily: 'var(--font-label)', letterSpacing: '0.08em' }}>EVENT DATE</label>
                   <input
                     type="date"
                     value={voteForm.event_date}
@@ -915,12 +931,12 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
                     style={{
                       width: '100%', boxSizing: 'border-box', background: '#0a0a0a',
                       border: '1px solid #333', borderRadius: '8px', padding: '10px 12px',
-                      color: '#fff', fontSize: '14px', fontFamily: 'Barlow, sans-serif',
+                      color: '#fff', fontSize: '14px', fontFamily: 'var(--font-body)',
                     }}
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '4px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.08em' }}>VOTING CLOSES</label>
+                  <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '4px', fontFamily: 'var(--font-label)', letterSpacing: '0.08em' }}>VOTING CLOSES</label>
                   <input
                     type="datetime-local"
                     value={voteForm.voting_closes_at}
@@ -928,12 +944,12 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
                     style={{
                       width: '100%', boxSizing: 'border-box', background: '#0a0a0a',
                       border: '1px solid #333', borderRadius: '8px', padding: '10px 12px',
-                      color: '#fff', fontSize: '14px', fontFamily: 'Barlow, sans-serif',
+                      color: '#fff', fontSize: '14px', fontFamily: 'var(--font-body)',
                     }}
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '4px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.08em' }}>EVENTS NOMINATED PER DOMAIN (2–10)</label>
+                  <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '4px', fontFamily: 'var(--font-label)', letterSpacing: '0.08em' }}>EVENTS NOMINATED PER DOMAIN (2–10)</label>
                   <input
                     type="number"
                     min={2}
@@ -943,7 +959,7 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
                     style={{
                       width: '100%', boxSizing: 'border-box', background: '#0a0a0a',
                       border: '1px solid #333', borderRadius: '8px', padding: '10px 12px',
-                      color: '#fff', fontSize: '14px', fontFamily: 'Barlow, sans-serif',
+                      color: '#fff', fontSize: '14px', fontFamily: 'var(--font-body)',
                     }}
                   />
                 </div>
@@ -953,7 +969,7 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
                     style={{
                       flex: 1, padding: '11px', borderRadius: '8px', border: '1px solid #333',
                       background: 'transparent', color: '#888', cursor: 'pointer',
-                      fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: 700,
+                      fontFamily: 'var(--font-label)', fontSize: '13px', fontWeight: 700,
                     }}
                   >
                     Cancel
@@ -966,7 +982,7 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
                       background: isStep1Valid ? '#B87DB5' : '#222',
                       color: isStep1Valid ? '#fff' : '#555',
                       cursor: isStep1Valid ? 'pointer' : 'not-allowed',
-                      fontFamily: 'Bebas Neue, cursive', fontSize: '15px', letterSpacing: '0.08em',
+                      fontFamily: 'var(--font-display)', fontSize: '15px', letterSpacing: '0.08em',
                     }}
                   >
                     Next: Choose Events →
@@ -978,7 +994,7 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
             {/* Step 2: Nominations */}
             {createStep === 2 && (
               <div>
-                <div style={{ fontSize: '12px', color: '#888', fontFamily: 'Barlow, sans-serif', marginBottom: '14px' }}>
+                <div style={{ fontSize: '12px', color: '#888', fontFamily: 'var(--font-body)', marginBottom: '14px' }}>
                   Select exactly {voteForm.nominations_per_domain} events per domain.
                 </div>
 
@@ -1010,7 +1026,7 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
                     style={{
                       flex: 1, padding: '11px', borderRadius: '8px', border: '1px solid #333',
                       background: 'transparent', color: '#888', cursor: 'pointer',
-                      fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: 700,
+                      fontFamily: 'var(--font-label)', fontSize: '13px', fontWeight: 700,
                     }}
                   >
                     ← Back
@@ -1023,7 +1039,7 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
                       background: allDomainsNominated ? '#B87DB5' : '#222',
                       color: allDomainsNominated ? '#fff' : '#555',
                       cursor: allDomainsNominated ? 'pointer' : 'not-allowed',
-                      fontFamily: 'Bebas Neue, cursive', fontSize: '15px', letterSpacing: '0.08em',
+                      fontFamily: 'var(--font-display)', fontSize: '15px', letterSpacing: '0.08em',
                     }}
                   >
                     Review →
@@ -1037,24 +1053,24 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
               <div>
                 <div style={{ background: '#0a0a0a', borderRadius: '10px', padding: '14px', marginBottom: '14px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '12px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.05em' }}>VOTE NAME</span>
-                    <span style={{ fontSize: '13px', color: '#fff', fontFamily: 'Barlow, sans-serif' }}>{voteForm.name}</span>
+                    <span style={{ fontSize: '12px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.05em' }}>VOTE NAME</span>
+                    <span style={{ fontSize: '13px', color: '#fff', fontFamily: 'var(--font-body)' }}>{voteForm.name}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '12px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.05em' }}>EVENT DATE</span>
-                    <span style={{ fontSize: '13px', color: '#fff', fontFamily: 'Barlow, sans-serif' }}>
+                    <span style={{ fontSize: '12px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.05em' }}>EVENT DATE</span>
+                    <span style={{ fontSize: '13px', color: '#fff', fontFamily: 'var(--font-body)' }}>
                       {new Date(voteForm.event_date).toLocaleDateString('en-NZ', { day: 'numeric', month: 'long', year: 'numeric' })}
                     </span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '12px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.05em' }}>VOTING CLOSES</span>
-                    <span style={{ fontSize: '13px', color: '#fff', fontFamily: 'Barlow, sans-serif' }}>
+                    <span style={{ fontSize: '12px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.05em' }}>VOTING CLOSES</span>
+                    <span style={{ fontSize: '13px', color: '#fff', fontFamily: 'var(--font-body)' }}>
                       {new Date(voteForm.voting_closes_at).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '12px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.05em' }}>EVENTS PER DOMAIN</span>
-                    <span style={{ fontSize: '13px', color: '#fff', fontFamily: 'Barlow, sans-serif' }}>{voteForm.nominations_per_domain}</span>
+                    <span style={{ fontSize: '12px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.05em' }}>EVENTS PER DOMAIN</span>
+                    <span style={{ fontSize: '13px', color: '#fff', fontFamily: 'var(--font-body)' }}>{voteForm.nominations_per_domain}</span>
                   </div>
                 </div>
 
@@ -1065,7 +1081,7 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
                       <div key={domain.number} style={{
                         background: '#0a0a0a', borderRadius: '8px', padding: '10px 12px',
                       }}>
-                        <div style={{ fontSize: '11px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.08em', marginBottom: '4px' }}>
+                        <div style={{ fontSize: '11px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.08em', marginBottom: '4px' }}>
                           {domain.number}. {domain.name}
                         </div>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
@@ -1074,7 +1090,7 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
                               padding: '3px 10px', borderRadius: '20px',
                               background: '#1a0d2e', border: '1px solid #B87DB5',
                               color: '#B87DB5', fontSize: '12px',
-                              fontFamily: 'Barlow Condensed, sans-serif',
+                              fontFamily: 'var(--font-label)',
                             }}>
                               {eventName}
                             </span>
@@ -1092,7 +1108,7 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
                     style={{
                       flex: 1, padding: '11px', borderRadius: '8px', border: '1px solid #333',
                       background: 'transparent', color: '#888', cursor: 'pointer',
-                      fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: 700,
+                      fontFamily: 'var(--font-label)', fontSize: '13px', fontWeight: 700,
                     }}
                   >
                     ← Back
@@ -1104,7 +1120,7 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
                       flex: 2, padding: '11px', borderRadius: '8px', border: 'none',
                       background: publishing ? '#333' : 'linear-gradient(90deg, #B87DB5, #2371BB)',
                       color: '#fff', cursor: publishing ? 'not-allowed' : 'pointer',
-                      fontFamily: 'Bebas Neue, cursive', fontSize: '15px', letterSpacing: '0.08em',
+                      fontFamily: 'var(--font-display)', fontSize: '15px', letterSpacing: '0.08em',
                       opacity: publishing ? 0.6 : 1,
                     }}
                   >
@@ -1119,7 +1135,7 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
         {/* Vote History */}
         {pastVotes.length > 0 && (
           <div>
-            <div style={{ fontSize: '11px', color: '#555', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px', fontFamily: 'Barlow Condensed, sans-serif' }}>
+            <div style={{ fontSize: '11px', color: '#555', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px', fontFamily: 'var(--font-label)' }}>
               Vote History
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -1129,15 +1145,15 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
                   background: '#0a0a0a', borderRadius: '8px', padding: '10px 12px',
                 }}>
                   <div>
-                    <div style={{ fontSize: '13px', color: '#888', fontFamily: 'Barlow, sans-serif' }}>{v.name}</div>
-                    <div style={{ fontSize: '11px', color: '#444', marginTop: '2px', fontFamily: 'Barlow, sans-serif' }}>
+                    <div style={{ fontSize: '13px', color: '#888', fontFamily: 'var(--font-body)' }}>{v.name}</div>
+                    <div style={{ fontSize: '11px', color: '#444', marginTop: '2px', fontFamily: 'var(--font-body)' }}>
                       {new Date(v.event_date).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })}
                       {' · '}{v.voter_count} voter{v.voter_count !== 1 ? 's' : ''}
                     </div>
                   </div>
                   <Link href={`/vote/${v.id}/results`} style={{
                     fontSize: '12px', color: '#B87DB5', textDecoration: 'none',
-                    fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.05em',
+                    fontFamily: 'var(--font-label)', letterSpacing: '0.05em',
                     fontWeight: 700,
                   }}>
                     View Results →
@@ -1160,11 +1176,11 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
             <div>
-              <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '22px', color: '#4DB26E', letterSpacing: '0.05em', lineHeight: 1 }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', color: '#4DB26E', letterSpacing: '0.05em', lineHeight: 1 }}>
                 Tāngata
               </div>
-              <div style={{ fontSize: '11px', color: '#555', marginTop: '2px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.08em' }}>
-                ALL PLAYERS · {new Date().getFullYear()} POINTS
+              <div style={{ fontSize: '11px', color: '#555', marginTop: '2px', fontFamily: 'var(--font-label)', letterSpacing: '0.08em' }}>
+                ALL PLAYERS · BY COLOUR
               </div>
             </div>
             <button
@@ -1172,7 +1188,7 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
               style={{
                 padding: '8px 14px', borderRadius: '8px', border: '1px solid #333',
                 background: '#1a1a1a', color: '#888', cursor: 'pointer',
-                fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px',
+                fontFamily: 'var(--font-label)', fontSize: '12px',
                 letterSpacing: '0.05em',
               }}
             >
@@ -1182,11 +1198,11 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
 
 
           {playersLoading ? (
-            <div style={{ color: '#555', fontSize: '13px', fontFamily: 'Barlow, sans-serif', textAlign: 'center', padding: '20px 0' }}>
+            <div style={{ color: '#555', fontSize: '13px', fontFamily: 'var(--font-body)', textAlign: 'center', padding: '20px 0' }}>
               Loading players...
             </div>
           ) : playersList.length === 0 ? (
-            <div style={{ color: '#444', fontSize: '13px', fontFamily: 'Barlow, sans-serif', textAlign: 'center', padding: '20px 0' }}>
+            <div style={{ color: '#444', fontSize: '13px', fontFamily: 'var(--font-body)', textAlign: 'center', padding: '20px 0' }}>
               No players found
             </div>
           ) : (
@@ -1218,23 +1234,21 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
                         width: '26px', height: '26px', borderRadius: '50%', flexShrink: 0,
                         background: '#1e1e1e', display: 'flex', alignItems: 'center',
                         justifyContent: 'center', fontSize: p.icon ? '14px' : '11px',
-                        color: '#888', fontWeight: 700, fontFamily: 'Barlow Condensed, sans-serif',
+                        color: '#888', fontWeight: 700, fontFamily: 'var(--font-label)',
                       }}>
                         {p.icon || p.name.charAt(0).toUpperCase()}
                       </div>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '14px', color: '#fff', fontWeight: 600, fontFamily: 'Barlow, sans-serif' }}>
+                        <div style={{ fontSize: '14px', color: '#fff', fontWeight: 600, fontFamily: 'var(--font-body)' }}>
                           {p.name}
                         </div>
-                        <div style={{ fontSize: '11px', color: '#555', marginTop: '1px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.05em' }}>
+                        <div style={{ fontSize: '11px', color: '#555', marginTop: '1px', fontFamily: 'var(--font-label)', letterSpacing: '0.05em' }}>
                           {p.division || 'No division'} · {p.sessions} session{p.sessions !== 1 ? 's' : ''}
                         </div>
                       </div>
-                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                        <div style={{ fontSize: '16px', fontWeight: 700, color: '#4DB26E', fontFamily: 'Barlow, sans-serif' }}>
-                          {p.totalPoints}
-                        </div>
-                        <div style={{ fontSize: '10px', color: '#444', fontFamily: 'Barlow Condensed, sans-serif' }}>pts</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0, fontFamily: 'var(--font-label)', fontSize: '12px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: p.overall != null || p.domainsHeld > 0 ? '#fff' : '#444' }}>
+                        {p.overall != null && <GradeDot grade={gradeForRung(p.overall)} size={10} />}
+                        {p.overall != null ? gradeForRung(p.overall).name : `${p.domainsHeld}/10`}
                       </div>
                       <span style={{ color: isExpanded ? '#4DB26E' : '#333', fontSize: '11px', flexShrink: 0 }}>
                         {isExpanded ? '▲' : '▼'}
@@ -1244,48 +1258,38 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
                     {isExpanded && (
                       <div style={{ borderTop: '1px solid #1e1e1e', padding: '12px 14px' }}>
                         {histLoading ? (
-                          <div style={{ color: '#555', fontSize: '12px', fontFamily: 'Barlow, sans-serif', textAlign: 'center', padding: '8px 0' }}>
+                          <div style={{ color: '#555', fontSize: '12px', fontFamily: 'var(--font-body)', textAlign: 'center', padding: '8px 0' }}>
                             Loading history...
                           </div>
                         ) : !history || history.length === 0 ? (
-                          <div style={{ color: '#444', fontSize: '12px', fontFamily: 'Barlow, sans-serif', textAlign: 'center', padding: '8px 0' }}>
+                          <div style={{ color: '#444', fontSize: '12px', fontFamily: 'var(--font-body)', textAlign: 'center', padding: '8px 0' }}>
                             No sessions yet
                           </div>
                         ) : (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                            <div style={{ fontSize: '10px', color: '#444', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.1em', marginBottom: '4px' }}>
+                            <div style={{ fontSize: '10px', color: '#444', fontFamily: 'var(--font-label)', letterSpacing: '0.1em', marginBottom: '4px' }}>
                               SESSION HISTORY
                             </div>
                             {history.map((s: any) => {
                               const sess = s.sessions
-                              const total = (s.total_placement_points || 0) + (s.effort_points || 0)
                               return (
                                 <div key={s.session_id} style={{
-                                  display: 'grid', gridTemplateColumns: '1fr auto auto',
+                                  display: 'grid', gridTemplateColumns: '1fr auto',
                                   gap: '8px', alignItems: 'center',
                                   padding: '8px 0', borderBottom: '1px solid #1a1a1a',
                                 }}>
                                   <div>
-                                    <div style={{ fontSize: '12px', color: '#ccc', fontFamily: 'Barlow, sans-serif' }}>
+                                    <div style={{ fontSize: '12px', color: '#ccc', fontFamily: 'var(--font-body)' }}>
                                       {sess?.location || 'Session'}
                                     </div>
-                                    <div style={{ fontSize: '11px', color: '#444', marginTop: '1px', fontFamily: 'Barlow Condensed, sans-serif' }}>
+                                    <div style={{ fontSize: '11px', color: '#444', marginTop: '1px', fontFamily: 'var(--font-label)' }}>
                                       {sess?.session_date
                                         ? formatNZDate(sess.session_date)
                                         : ''}
-                                      {s.overall_placement ? ` · ${ordinalJC(s.overall_placement)} place` : ''}
                                     </div>
                                   </div>
-                                  <div style={{ textAlign: 'center' }}>
-                                    <div style={{ fontSize: '11px', color: '#888', fontFamily: 'Barlow Condensed, sans-serif' }}>
-                                      EL {s.effort_level ?? 0}
-                                    </div>
-                                  </div>
-                                  <div style={{ textAlign: 'right' }}>
-                                    <div style={{ fontSize: '14px', fontWeight: 700, color: '#4DB26E', fontFamily: 'Barlow, sans-serif' }}>
-                                      +{total}
-                                    </div>
-                                    <div style={{ fontSize: '10px', color: '#444', fontFamily: 'Barlow Condensed, sans-serif' }}>pts</div>
+                                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', color: s.overall_placement === 1 ? '#F9B051' : '#ccc' }}>
+                                    {s.overall_placement ? ordinalJC(s.overall_placement) : '—'}
                                   </div>
                                 </div>
                               )
@@ -1336,13 +1340,13 @@ function DomainAccordion({ domain, events, selected, limit, isComplete, isOpen, 
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           {isComplete && <span style={{ color: '#4DB26E', fontSize: '14px' }}>✓</span>}
-          <span style={{ fontSize: '13px', color: isComplete ? '#4DB26E' : '#ccc', fontFamily: 'Barlow, sans-serif', fontWeight: isComplete ? 600 : 400 }}>
+          <span style={{ fontSize: '13px', color: isComplete ? '#4DB26E' : '#ccc', fontFamily: 'var(--font-body)', fontWeight: isComplete ? 600 : 400 }}>
             {domain.number}. {domain.name}
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{
-            fontSize: '11px', fontFamily: 'Barlow Condensed, sans-serif',
+            fontSize: '11px', fontFamily: 'var(--font-label)',
             color: isComplete ? '#4DB26E' : '#555',
             background: isComplete ? '#0d2e0d' : '#1a1a1a',
             padding: '2px 8px', borderRadius: '10px',
@@ -1378,7 +1382,7 @@ function DomainAccordion({ domain, events, selected, limit, isComplete, isOpen, 
                   onChange={() => onToggle(eventName)}
                   style={{ accentColor: '#B87DB5', width: '16px', height: '16px', flexShrink: 0 }}
                 />
-                <span style={{ fontSize: '13px', color: isSelected ? '#B87DB5' : '#ccc', fontFamily: 'Barlow, sans-serif' }}>
+                <span style={{ fontSize: '13px', color: isSelected ? '#B87DB5' : '#ccc', fontFamily: 'var(--font-body)' }}>
                   {eventName}
                 </span>
               </label>

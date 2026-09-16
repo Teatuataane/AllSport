@@ -1,12 +1,14 @@
 'use client'
 
 // ─── Play history ────────────────────────────────────────────────────────────
-// Every session a player has played, and the colours era. This lived on the
-// taniwha history page until the taniwha retired with the grading rebuild; the
-// two halves that were never taniwha moved here unchanged.
+// Every session a player has played, and the earlier points-ladder colours.
+// This lived on the taniwha history page until the taniwha retired with the
+// grading rebuild.
 //
 //   1  play history — the session timeline, newest first
-//   2  the colours era — colours really awarded, on the dates they were earned
+//   2  the points ladder — colours really awarded under the retired points
+//      system, on the dates they were earned. Points themselves are retired, so
+//      no point totals are shown anywhere on this page.
 //
 // Honours the family switcher like every other stats page.
 
@@ -27,9 +29,6 @@ type Summary = {
   session_id: string
   player_id: string
   overall_placement: number | null
-  total_placement_points: number | null
-  effort_points: number | null
-  effort_level: number | null
   session_date: string
   location: string | null
 }
@@ -38,7 +37,6 @@ type Award = {
   player_id: string
   rung: number
   colour_name: string
-  points_at_award: number
   awarded_at: string
   session_date: string | null
   location: string | null
@@ -111,7 +109,6 @@ export default function HistoryPage() {
             <Empty>No games yet.</Empty>
           ) : (
             mySummaries.slice(0, shown).map(s => {
-              const total = (s.total_placement_points ?? 0) + (s.effort_points ?? 0)
               return (
                 <Row key={s.session_id}>
                   <div style={{
@@ -130,15 +127,12 @@ export default function HistoryPage() {
                       {s.location ?? 'AllSport HQ'}
                     </div>
                   </Link>
-                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 19 }}>{total}</div>
-                    <div style={{
-                      fontFamily: 'var(--font-label)', fontSize: 9, color: '#555',
-                      textTransform: 'uppercase', letterSpacing: '0.08em',
-                    }}>
-                      {s.total_placement_points ?? 0} + {s.effort_points ?? 0} effort
-                    </div>
-                  </div>
+                  <Link href={`/games/${s.session_id}`} aria-label="Game report" style={{
+                    flexShrink: 0, color: 'var(--text-muted)', fontFamily: 'var(--font-label)',
+                    textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: 11, fontWeight: 600,
+                  }}>
+                    Report ›
+                  </Link>
                 </Row>
               )
             })
@@ -157,7 +151,7 @@ export default function HistoryPage() {
 
         {myAwards.length > 0 && (
           <>
-            <Section>The colours era</Section>
+            <Section>Earlier colours · points ladder</Section>
             <Panel>
               {myAwards.map(a => {
                 // lib/colours.ts survives precisely so this row can be the
@@ -180,7 +174,6 @@ export default function HistoryPage() {
                         {a.location ? ` · ${a.location}` : ''}
                       </div>
                     </div>
-                    <Muted>{a.points_at_award.toLocaleString()}</Muted>
                   </Row>
                 )
               })}
@@ -188,8 +181,8 @@ export default function HistoryPage() {
                 fontSize: 11, color: '#444', lineHeight: 1.5,
                 padding: '12px 14px', borderTop: '1px solid var(--border)',
               }}>
-                Colours you really earned by points, on the dates you earned them. Kept as history,
-                never rewritten as grades.
+                Earned under the points ladder AllSport used until September 2026, on the dates you
+                earned them. Kept as history. Today&apos;s colours are earned against standards.
               </div>
             </Panel>
           </>
@@ -261,14 +254,6 @@ function Row({ children }: { children: React.ReactNode }) {
     <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '12px 14px', borderBottom: '1px solid #1a1a1a' }}>
       {children}
     </div>
-  )
-}
-
-function Muted({ children }: { children: React.ReactNode }) {
-  return (
-    <span style={{ fontFamily: 'var(--font-label)', fontSize: 11, color: '#555', flexShrink: 0 }}>
-      {children}
-    </span>
   )
 }
 

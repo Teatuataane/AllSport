@@ -794,7 +794,7 @@ export default function ProfilePage() {
               </p>
               <p style={{ margin: '0 0 10px' }}>
                 <strong style={{ color: '#fff' }}>Kept, with your name removed:</strong> your scores,
-                placements, points and colours. They stay in each session&apos;s record as
+                placements and colours, along with any points from before September 2026. They stay in each session&apos;s record as
                 &ldquo;Former player&rdquo;. Removing them would change where everybody else finished in
                 games that have already been scored, so we do not.
               </p>

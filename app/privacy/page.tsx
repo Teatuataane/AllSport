@@ -73,12 +73,12 @@ const accountData: Row[] = [
 const competitionData: Row[] = [
   {
     what: 'Your scores',
-    why: 'To rank each event, work out placements and award points. This is the sport.',
+    why: 'To rank each event, work out placements and grade your colours. This is the sport.',
     who: 'Public, next to your display name.',
   },
   {
-    what: 'Placements, points, and the colours and taniwha earned before grading',
-    why: 'To run leaderboards and to report participation to funders in aggregate. Colours were the grading system until August 2026 and taniwha until September 2026; what was already earned under each is kept so your history stays intact.',
+    what: 'Placements, colours, and the points, colours and taniwha earned under earlier systems',
+    why: 'To run leaderboards and to report participation to funders in aggregate. Before today\'s colours, AllSport graded with points: a points-based colour ladder until August 2026 and taniwha until September 2026. What was already earned under each is kept so your history stays intact.',
     who: 'Public.',
   },
   {
@@ -372,7 +372,7 @@ export default function PrivacyPolicy() {
           </p>
           <p className="privacy-p" style={{ marginBottom: '28px' }}>
             <strong style={{ color: 'var(--white)' }}>It is voluntary.</strong> You can close it and nothing is saved.
-            Skipping it has no effect on your scores, points, colour or standing. Kaiwhakawā can never read your
+            Skipping it has no effect on your scores, colours or standing. Kaiwhakawā can never read your
             individual answers — the report they see shows group averages only, and hides any group with fewer
             than three responses so no single person can be identified. We use those averages to show funders
             whether AllSport actually improves wellbeing.
