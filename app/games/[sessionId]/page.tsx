@@ -100,7 +100,7 @@ export default function GameReviewPage() {
         <Link href="/dashboard" style={{ color: '#2371BB', fontFamily: 'var(--font-label)', fontSize: '14px', textDecoration: 'none' }}>
           ← Back to dashboard
         </Link>
-        <h1 style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: '40px', margin: '12px 0 4px', color: '#fff', letterSpacing: '0.02em' }}>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '40px', margin: '12px 0 4px', color: '#fff', letterSpacing: '0.02em' }}>
           Game Review
           {session.is_championship && (
             <span style={{ color: '#F9B051', fontSize: '14px', fontFamily: 'var(--font-label)', letterSpacing: '0.1em', marginLeft: '12px' }}>CHAMPIONSHIP</span>
@@ -124,7 +124,7 @@ export default function GameReviewPage() {
 
       {report.map(div => (
         <div key={div.division} style={{ marginBottom: '32px' }}>
-          <h2 style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: '26px', color: '#fff', margin: '0 0 4px', letterSpacing: '0.03em' }}>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '26px', color: '#fff', margin: '0 0 4px', letterSpacing: '0.03em' }}>
             {div.division}
           </h2>
           <div style={{ color: '#555', fontFamily: 'var(--font-label)', fontSize: '12px', letterSpacing: '0.08em', marginBottom: '12px' }}>
@@ -141,14 +141,14 @@ export default function GameReviewPage() {
                   onClick={() => setExpanded(prev => ({ ...prev, [key]: !prev[key] }))}
                   style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '14px', padding: '14px 16px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
                 >
-                  <div style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: '24px', color: medal, minWidth: '40px' }}>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', color: medal, minWidth: '40px' }}>
                     {ordinal(s.rank)}
                   </div>
                   <div style={{ flex: 1, color: '#fff', fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: '16px' }}>
                     {s.name}
                   </div>
                   <div style={{ color: '#888', fontFamily: 'var(--font-label)', fontSize: '14px', letterSpacing: '0.05em' }}>
-                    {s.totalPlacement} pts
+                    {s.totalPlacement} total
                   </div>
                   <div style={{ color: '#555', fontSize: '12px' }}>{isOpen ? '▲' : '▼'}</div>
                 </button>

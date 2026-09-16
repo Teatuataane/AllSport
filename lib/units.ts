@@ -144,3 +144,21 @@ export function fmtUnitsLabel(u: number): string {
   const n = fmtUnits(u)
   return `${n} unit${n === '1' ? '' : 's'}`
 }
+
+/**
+ * What a unit is, in five plain lines, for readers rather than the engine.
+ * Read from the compiled sheet, never typed: if the sheet changes a unit, every
+ * page that explains units follows it (How To Play and /grades both use this).
+ */
+export function unitRulesSummary(): { label: string; rule: string }[] {
+  const per = (slug: string) => { const e = getEventBySlug(slug); return e ? unitRule(e).per : 1 }
+  const rideKm = per('cycling') / 1000
+  const throws = per('javelin-throw')
+  return [
+    { label: 'Lifts and reps', rule: 'Every working set is 1 unit' },
+    { label: 'Holds', rule: 'Every hold is 1 unit' },
+    { label: 'Rides, runs, rows', rule: `${rideKm}km is 1 unit, so a 25km ride is ${25 / rideKm}` },
+    { label: 'Throws and jumps', rule: `Every ${throws} attempts is 1 unit` },
+    { label: 'Games', rule: 'Every game is 1 unit' },
+  ]
+}

@@ -54,9 +54,11 @@ export default function Footer() {
               {[
                 { href: '/', label: 'Home' },
                 { href: '/how-to-play', label: 'How To Play' },
+                { href: '/events', label: 'Event Guide' },
                 { href: '/schedule', label: 'Schedule' },
                 { href: '/leaderboard', label: 'Leaderboard' },
-                { href: '/koha', label: 'Koha' },
+                { href: '/koha', label: 'Give Koha' },
+                { href: '/supporters', label: 'Supporters' },
                 { href: '/register', label: 'Register' },
               ].map(link => (
                 <Link key={link.href} href={link.href} className="footer-link">

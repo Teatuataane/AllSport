@@ -50,8 +50,8 @@ export default function Home() {
         .landing { background: #0a0a0a; }
         @keyframes lpfloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-16px); } }
         .lp-float { animation: lpfloat 6s ease-in-out infinite; }
-        .lp-tag { display: inline-block; font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; padding: 5px 14px; border: 1px solid #2a2a2a; color: #888; border-radius: 2px; }
-        .lp-btn { display: inline-block; font-family: 'Bebas Neue', cursive; font-size: 20px; letter-spacing: 0.08em; padding: 14px 40px; cursor: pointer; border: none; border-radius: 999px; transition: transform 0.2s cubic-bezier(0.16,1,0.3,1), box-shadow 0.2s, border-color 0.2s; }
+        .lp-tag { display: inline-block; font-family: var(--font-label); font-size: 12px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; padding: 5px 14px; border: 1px solid #2a2a2a; color: #888; border-radius: 2px; }
+        .lp-btn { display: inline-block; font-family: var(--font-display); font-size: 20px; letter-spacing: 0.08em; padding: 14px 40px; cursor: pointer; border: none; border-radius: 999px; transition: transform 0.2s cubic-bezier(0.16,1,0.3,1), box-shadow 0.2s, border-color 0.2s; }
         .lp-btn:active { transform: scale(0.97); }
         .lp-primary { background: #EA4742; color: #fff; }
         .lp-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(234,71,66,0.4); }
@@ -62,7 +62,7 @@ export default function Home() {
         .lp-rainbow:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(35,113,187,0.35); }
         .lp-domain { background: #111; border: 1px solid #1e1e1e; border-radius: 8px; cursor: pointer; transition: border-color 0.2s, background 0.2s; overflow: hidden; }
         .lp-domain:hover { background: #161616; border-color: #333; }
-        .lp-pill { font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; padding: 4px 10px; border-radius: 3px; background: #1a1a1a; color: #888; border: 1px solid #242424; }
+        .lp-pill { font-family: var(--font-label); font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; padding: 4px 10px; border-radius: 3px; background: #1a1a1a; color: #888; border: 1px solid #242424; }
         .lp-rank { display: flex; align-items: center; gap: 18px; padding: 14px 20px; border: 1px solid #1a1a1a; background: #0d0d0d; border-radius: 6px; transition: background 0.2s, transform 0.2s; }
         .lp-rank:hover { background: #141414; transform: translateX(4px); }
         .lp-rank-name { min-width: 210px; }
@@ -211,9 +211,10 @@ export default function Home() {
                 the sport you train least. That is the whole idea of AllSport: one sport, every sport.
               </p>
               <p style={{ color: '#888', fontSize: '15px', lineHeight: 1.8, marginBottom: '16px' }}>
-                In the game events the top colours are won, not measured: they come from a head-to-head rating,
-                after ten recorded games. Juniors, Masters and Grandmasters meet every standard with an
-                allowance for age.
+                Each new colour also asks for games played in the room and training in that domain, and you
+                climb one colour at a time. In the game events the top colours are won, not measured: they come
+                from a head-to-head rating, after ten recorded games. Juniors, Masters and Grandmasters meet every
+                standard with an allowance for age.
               </p>
               <p style={{ color: '#555', fontSize: '14px', lineHeight: 1.8, fontStyle: 'italic' }}>
                 A kaiwhakawā confirms each colour, and once it is yours it is never taken back. Uenuku is

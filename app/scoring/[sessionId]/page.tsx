@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient, getSessionUser } from '@/lib/supabase-browser'
 import { getEventByName, isTimedEffort, decodeDiffTime, type EventData } from '@/lib/eventData'
-import { unitsForResult, unitsForResultRow, unitsIn, unitRule, fmtUnitsLabel, RULE_WORDS } from '@/lib/units'
+import { unitsForResult, unitsForResultRow, unitsIn, unitRule, fmtUnits, fmtUnitsLabel, RULE_WORDS } from '@/lib/units'
 import { parseLocalDate } from '@/lib/dates'
 import EventIcon, { domainColor } from '@/components/EventIcon'
 import {
@@ -224,12 +224,13 @@ async function recordMatch(resultId: string, opponentIds: string[]): Promise<voi
 
 const QES_LBL: React.CSSProperties = {
   fontSize: '11px', color: '#777', letterSpacing: '0.14em', textTransform: 'uppercase',
-  fontFamily: 'Barlow Condensed, sans-serif', margin: '16px 2px 8px',
+  fontFamily: 'var(--font-label)', margin: '16px 2px 8px',
 }
 const QES_CHIP: React.CSSProperties = {
-  fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.08em',
+  fontFamily: 'var(--font-label)', textTransform: 'uppercase', letterSpacing: '0.08em',
   fontSize: '13px', color: '#fff', background: '#161616', border: '1px solid #2a2a2a',
-  borderRadius: '999px', padding: '9px 14px', cursor: 'pointer', flexShrink: 0,
+  borderRadius: '999px', padding: '0 14px', minHeight: '44px', cursor: 'pointer', flexShrink: 0,
+  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
 }
 
 function StepBtn({ children, onClick, disabled }: { children: React.ReactNode; onClick: () => void; disabled?: boolean }) {
@@ -237,7 +238,7 @@ function StepBtn({ children, onClick, disabled }: { children: React.ReactNode; o
     <button onClick={onClick} disabled={disabled} style={{
       width: '56px', minHeight: '56px', flexShrink: 0, borderRadius: '14px',
       background: '#181818', border: '1px solid #2a2a2a', color: disabled ? '#444' : '#fff',
-      fontSize: '26px', fontFamily: 'Bebas Neue, cursive', cursor: disabled ? 'default' : 'pointer',
+      fontSize: '26px', fontFamily: 'var(--font-display)', cursor: disabled ? 'default' : 'pointer',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
     }}>{children}</button>
   )
@@ -245,7 +246,7 @@ function StepBtn({ children, onClick, disabled }: { children: React.ReactNode; o
 
 const QES_INP: React.CSSProperties = {
   flex: 1, minWidth: 0, background: '#0d0d0d', border: '1px solid #2a2a2a', borderRadius: '14px',
-  color: '#fff', fontSize: '30px', fontFamily: 'Bebas Neue, cursive', textAlign: 'center',
+  color: '#fff', fontSize: '30px', fontFamily: 'var(--font-display)', textAlign: 'center',
   padding: '10px 4px', boxSizing: 'border-box',
 }
 
@@ -421,15 +422,15 @@ function QuickEntrySheet({
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '14px 16px 10px', flexShrink: 0 }}>
           <EventIcon slug={se.event_slug || eventData?.slug || ''} emoji={eventData?.emoji} domainNumber={se.domain_number} size={46} />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '26px', lineHeight: 1, color: '#fff', letterSpacing: '0.03em' }}>{se.event_name}</div>
-            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.12em', marginTop: '3px' }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '26px', lineHeight: 1, color: '#fff', letterSpacing: '0.03em' }}>{se.event_name}</div>
+            <div style={{ fontFamily: 'var(--font-label)', fontSize: '11px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.12em', marginTop: '3px' }}>
               {se.domain_name}{unitsHere > 0 ? ` · ${fmtUnitsLabel(unitsHere)}` : ''}
             </div>
           </div>
           <button onClick={() => setShowHow(h => !h)} style={{
             height: '38px', padding: '0 12px', borderRadius: '10px', cursor: 'pointer',
             background: showHow ? '#2371BB26' : '#181818', border: `1px solid ${showHow ? '#2371BB' : '#2a2a2a'}`,
-            color: showHow ? '#fff' : '#999', fontFamily: 'Barlow Condensed, sans-serif',
+            color: showHow ? '#fff' : '#999', fontFamily: 'var(--font-label)',
             fontSize: '13px', letterSpacing: '0.1em', fontWeight: 600,
           }}>HOW TO</button>
           <button onClick={onClose} style={{
@@ -455,7 +456,7 @@ function QuickEntrySheet({
                   <div style={{ ...QES_LBL, color: '#F9B051' }}>Difficulty tiers</div>
                   {tiers.map(t => (
                     <div key={t.level} style={{ display: 'flex', gap: '10px', padding: '8px 0', borderBottom: '1px solid #1e1e1e', fontSize: '13.5px' }}>
-                      <span style={{ fontFamily: 'Barlow Condensed, sans-serif', color: '#4DB26E', width: '30px', flexShrink: 0, fontWeight: 600 }}>D{t.level}</span>
+                      <span style={{ fontFamily: 'var(--font-label)', color: '#4DB26E', width: '30px', flexShrink: 0, fontWeight: 600 }}>D{t.level}</span>
                       <span style={{ color: '#ccc', fontWeight: 300 }}>
                         {t.name}
                         {t.detail && <span style={{ display: 'block', color: '#777', fontSize: '12.5px' }}>{t.detail}</span>}
@@ -467,7 +468,7 @@ function QuickEntrySheet({
               <button onClick={() => setShowHow(false)} style={{
                 width: '100%', marginTop: '18px', height: '50px', borderRadius: '999px',
                 border: '1px solid #2a2a2a', background: '#181818', color: '#fff', cursor: 'pointer',
-                fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '14px',
+                fontFamily: 'var(--font-label)', textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '14px',
               }}>Back to scoring</button>
             </div>
           ) : (
@@ -475,14 +476,14 @@ function QuickEntrySheet({
               {/* Session best + PR hints */}
               <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
                 <div style={{ flex: 1, background: '#101010', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '9px 12px' }}>
-                  <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '10.5px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.12em' }}>Today's best</div>
-                  <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '19px', color: myBestResult ? '#4DB26E' : '#444', marginTop: '2px' }}>
+                  <div style={{ fontFamily: 'var(--font-label)', fontSize: '10.5px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.12em' }}>Today's best</div>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '19px', color: myBestResult ? '#4DB26E' : '#444', marginTop: '2px' }}>
                     {myBestResult ? (mode === 'sport' ? sportWDL(myResults) : myBestResult.score_label) : '—'}
                   </div>
                 </div>
                 <div style={{ flex: 1, background: '#101010', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '9px 12px' }}>
-                  <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '10.5px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.12em' }}>Season PR</div>
-                  <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '19px', color: seasonPRNum !== null ? '#F9B051' : '#444', marginTop: '2px' }}>
+                  <div style={{ fontFamily: 'var(--font-label)', fontSize: '10.5px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.12em' }}>Season PR</div>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '19px', color: seasonPRNum !== null ? '#F9B051' : '#444', marginTop: '2px' }}>
                     {seasonPRNum !== null ? formatPR(seasonPRNum, mode, eventData?.slug, eventData) : '—'}
                   </div>
                 </div>
@@ -496,7 +497,7 @@ function QuickEntrySheet({
                 <>
                   {editingResult && (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#0d1a2d', border: '1px solid #2371BB55', borderRadius: '10px', padding: '8px 12px', marginTop: '14px' }}>
-                      <span style={{ fontSize: '12.5px', color: '#2371BB', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Editing: {editingResult.score_label}</span>
+                      <span style={{ fontSize: '12.5px', color: '#2371BB', fontFamily: 'var(--font-label)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Editing: {editingResult.score_label}</span>
                       <button onClick={() => { keepExistingMatch.current = false; setEditingResult(null); setV({ ...EMPTY_VALS }) }} style={{ fontSize: '12px', color: '#888', background: 'none', border: '1px solid #333', borderRadius: '6px', padding: '3px 10px', cursor: 'pointer' }}>Cancel</button>
                     </div>
                   )}
@@ -526,8 +527,8 @@ function QuickEntrySheet({
                               flexShrink: 0, minWidth: '64px', padding: '8px 11px', borderRadius: '12px', cursor: 'pointer', textAlign: 'center',
                               background: sel ? '#4DB26E1f' : '#161616', border: `1px solid ${sel ? '#4DB26E' : '#2a2a2a'}`,
                             }}>
-                              <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: 600, color: sel ? '#4DB26E' : '#fff' }}>D{t.level}</div>
-                              <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', color: sel ? '#4DB26E' : '#888', textTransform: 'uppercase', letterSpacing: '0.04em', maxWidth: '110px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.name}</div>
+                              <div style={{ fontFamily: 'var(--font-label)', fontSize: '14px', fontWeight: 600, color: sel ? '#4DB26E' : '#fff' }}>D{t.level}</div>
+                              <div style={{ fontFamily: 'var(--font-label)', fontSize: '11px', color: sel ? '#4DB26E' : '#888', textTransform: 'uppercase', letterSpacing: '0.04em', maxWidth: '110px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.name}</div>
                             </button>
                           )
                         })}
@@ -566,7 +567,7 @@ function QuickEntrySheet({
                       <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                         <StepBtn onClick={() => bumpTime(-5)}>−</StepBtn>
                         <input type="number" inputMode="numeric" value={v.timeMins} onChange={e => set({ timeMins: e.target.value })} placeholder="min" style={QES_INP} />
-                        <span style={{ color: '#555', fontSize: '26px', fontFamily: 'Bebas Neue, cursive' }}>:</span>
+                        <span style={{ color: '#555', fontSize: '26px', fontFamily: 'var(--font-display)' }}>:</span>
                         <input type="number" inputMode="numeric" value={v.timeSecs} onChange={e => set({ timeSecs: e.target.value })} placeholder="sec" style={QES_INP} />
                         <StepBtn onClick={() => bumpTime(5)}>+</StepBtn>
                       </div>
@@ -579,7 +580,7 @@ function QuickEntrySheet({
                       <div style={QES_LBL}>Time (seconds . centiseconds)</div>
                       <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                         <input type="number" inputMode="numeric" value={v.timeSecs} onChange={e => set({ timeSecs: e.target.value })} placeholder="sec" style={QES_INP} />
-                        <span style={{ color: '#555', fontSize: '26px', fontFamily: 'Bebas Neue, cursive' }}>.</span>
+                        <span style={{ color: '#555', fontSize: '26px', fontFamily: 'var(--font-display)' }}>.</span>
                         <input type="number" inputMode="numeric" value={v.sprintCs} onChange={e => set({ sprintCs: e.target.value })} placeholder="cs" min={0} max={99} style={QES_INP} />
                       </div>
                     </>
@@ -615,7 +616,7 @@ function QuickEntrySheet({
                           return (
                             <button key={r} onClick={() => set({ sportResult: r })} style={{
                               flex: 1, padding: '18px 0', border: `2px solid ${active ? colors[r] : '#222'}`,
-                              borderRadius: '14px', cursor: 'pointer', fontFamily: 'Bebas Neue, cursive', fontSize: '20px',
+                              borderRadius: '14px', cursor: 'pointer', fontFamily: 'var(--font-display)', fontSize: '20px',
                               letterSpacing: '0.05em', background: active ? colors[r] + '22' : '#111',
                               color: active ? colors[r] : '#555',
                             }}>{r.toUpperCase()}</button>
@@ -677,7 +678,7 @@ function QuickEntrySheet({
                     cursor: canSubmit ? 'pointer' : 'default',
                     background: canSubmit ? 'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)' : '#1a1a1a',
                     color: canSubmit ? '#0a0a0a' : '#555',
-                    fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase',
+                    fontFamily: 'var(--font-label)', textTransform: 'uppercase',
                     letterSpacing: '0.12em', fontSize: '16px', fontWeight: 600,
                   }}>
                     {submitting ? 'Saving...' : scored ? `${editingResult ? 'Save' : 'Submit'} — ${scored.score_label}` : 'Enter your score'}
@@ -701,7 +702,7 @@ function QuickEntrySheet({
                       }}>
                         <div style={{ fontSize: '15px', color: '#fff', flex: 1 }}>{r.score_label}</div>
                         {r.is_pr && (
-                          <div style={{ fontSize: '10px', fontWeight: 700, color: '#F9B051', background: '#F9B05122', borderRadius: '4px', padding: '2px 6px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.05em' }}>PR</div>
+                          <div style={{ fontSize: '10px', fontWeight: 700, color: '#F9B051', background: '#F9B05122', borderRadius: '4px', padding: '2px 6px', fontFamily: 'var(--font-label)', letterSpacing: '0.05em' }}>PR</div>
                         )}
                         {!sessionEnded && (
                           <>
@@ -711,7 +712,7 @@ function QuickEntrySheet({
                               setEditingResult(r)
                               setV({ ...EMPTY_VALS, ...valsFromResult(mode, r), opponentId: opp ?? '' })
                             }}
-                              style={{ background: 'none', border: '1px solid #2371BB44', borderRadius: '4px', color: '#2371BB', cursor: 'pointer', fontSize: '11px', padding: '2px 8px', flexShrink: 0, fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700 }}>Edit</button>
+                              style={{ background: 'none', border: '1px solid #2371BB44', borderRadius: '4px', color: '#2371BB', cursor: 'pointer', fontSize: '11px', padding: '2px 8px', flexShrink: 0, fontFamily: 'var(--font-label)', fontWeight: 700 }}>Edit</button>
                             <button onClick={() => handleSheetDelete(r.id)}
                               style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: '14px', padding: '2px 6px', flexShrink: 0 }}>✕</button>
                           </>
@@ -784,12 +785,12 @@ function EventListRow({
       padding: '12px 14px', marginBottom: '8px', borderRadius: '16px', cursor: 'pointer',
       background: todo ? 'linear-gradient(180deg, rgba(35,113,187,0.10), #111 70%)' : '#111',
       border: `1px solid ${todo ? '#1c3a5e' : '#1e1e1e'}`,
-      color: '#fff', fontFamily: 'Barlow, sans-serif',
+      color: '#fff', fontFamily: 'var(--font-body)',
     }}>
       <EventIcon slug={se.event_slug || eventData?.slug || ''} emoji={eventData?.emoji} domainNumber={se.domain_number} size={46} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '19px', letterSpacing: '0.03em', lineHeight: 1 }}>{se.event_name}</div>
-        <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '3px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: '19px', letterSpacing: '0.03em', lineHeight: 1 }}>{se.event_name}</div>
+        <div style={{ fontFamily: 'var(--font-label)', fontSize: '11px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '3px', display: 'flex', alignItems: 'center', gap: '8px' }}>
           {se.domain_name}
           {unitsHere > 0 && (
             <span style={{ fontSize: '10.5px', color: '#B87DB5', border: '1px solid #B87DB566', borderRadius: '999px', padding: '0 7px' }}>{fmtUnitsLabel(unitsHere)}</span>
@@ -798,15 +799,15 @@ function EventListRow({
       </div>
       {todo ? (
         <span style={{
-          fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.1em',
+          fontFamily: 'var(--font-label)', textTransform: 'uppercase', letterSpacing: '0.1em',
           fontSize: '12px', color: '#fff', background: '#2371BB', borderRadius: '999px', padding: '6px 12px', flexShrink: 0, fontWeight: 500,
         }}>Tap to score</span>
       ) : (
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
-          <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '18px', color: '#4DB26E' }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', color: '#4DB26E' }}>
             {mode === 'sport' ? sportWDL(myResults) : myBestResult!.score_label}
           </div>
-          <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', color: rank.color, textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: '2px' }}>
+          <div style={{ fontFamily: 'var(--font-label)', fontSize: '11px', color: rank.color, textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: '2px' }}>
             {rank.label}
           </div>
         </div>
@@ -819,7 +820,7 @@ function EventListRow({
 
 function sectionLabel(text: string) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '16px 4px 8px', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11.5px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.14em' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '16px 4px 8px', fontFamily: 'var(--font-label)', fontSize: '11.5px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.14em' }}>
       <span style={{ width: '14px', height: '3px', borderRadius: '2px', background: 'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)' }} />
       {text}
     </div>
@@ -853,9 +854,10 @@ function JudgeChip({ label, active, tone = 'player', onClick }: {
   const idleBorder = tone === 'guest' ? '#F9B05144' : tone === 'add' ? '#2a2a2a' : '#333'
   return (
     <button onClick={onClick} style={{
-      fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase', letterSpacing: '0.08em',
+      fontFamily: 'var(--font-label)', textTransform: 'uppercase', letterSpacing: '0.08em',
       fontSize: '13px', fontWeight: 600, flexShrink: 0, cursor: 'pointer',
-      borderRadius: '999px', padding: '9px 15px',
+      borderRadius: '999px', padding: '0 15px', minHeight: '44px',
+      display: 'inline-flex', alignItems: 'center',
       background: active ? accent : '#161616',
       color: active ? (tone === 'guest' ? '#000' : '#fff') : idleColor,
       border: `1px ${tone === 'add' ? 'dashed' : 'solid'} ${active ? accent : idleBorder}`,
@@ -876,14 +878,14 @@ function JudgeRosterRow({ name, isGuest, scoredIds, events, onOpen }: {
     <button onClick={onOpen} style={{
       width: '100%', textAlign: 'left', display: 'block', padding: '12px 14px', marginBottom: '8px',
       borderRadius: '16px', cursor: 'pointer', background: '#111',
-      border: `1px solid ${complete ? '#1e3a28' : '#1e1e1e'}`, color: '#fff', fontFamily: 'Barlow, sans-serif',
+      border: `1px solid ${complete ? '#1e3a28' : '#1e1e1e'}`, color: '#fff', fontFamily: 'var(--font-body)',
     }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '10px', marginBottom: '8px' }}>
-        <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '19px', letterSpacing: '0.03em', lineHeight: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: '19px', letterSpacing: '0.03em', lineHeight: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {name}
-          {isGuest && <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', color: '#F9B051', marginLeft: '8px', letterSpacing: '0.1em' }}>GUEST</span>}
+          {isGuest && <span style={{ fontFamily: 'var(--font-label)', fontSize: '11px', color: '#F9B051', marginLeft: '8px', letterSpacing: '0.1em' }}>GUEST</span>}
         </div>
-        <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', letterSpacing: '0.08em', textTransform: 'uppercase', flexShrink: 0, color: complete ? '#4DB26E' : '#888' }}>
+        <div style={{ fontFamily: 'var(--font-label)', fontSize: '12px', letterSpacing: '0.08em', textTransform: 'uppercase', flexShrink: 0, color: complete ? '#4DB26E' : '#888' }}>
           {done}/{events.length} scored
         </div>
       </div>
@@ -975,11 +977,11 @@ function JudgeSummaryTab({
     const poolResults = getPoolResults(pool)
     return (
       <div style={{ marginBottom: '28px' }}>
-        <div style={{ fontSize: '16px', fontWeight: 700, color: '#fff', fontFamily: 'Bebas Neue, cursive', letterSpacing: '0.08em', marginBottom: '10px', borderBottom: '1px solid #1e1e1e', paddingBottom: '8px' }}>
+        <div style={{ fontSize: '16px', fontWeight: 700, color: '#fff', fontFamily: 'var(--font-display)', letterSpacing: '0.08em', marginBottom: '10px', borderBottom: '1px solid #1e1e1e', paddingBottom: '8px' }}>
           {title}
         </div>
         {rows.length === 0 ? (
-          <div style={{ color: '#555', fontSize: '13px', padding: '8px 0', fontFamily: 'Barlow Condensed, sans-serif' }}>No scores submitted</div>
+          <div style={{ color: '#555', fontSize: '13px', padding: '8px 0', fontFamily: 'var(--font-label)' }}>No scores submitted</div>
         ) : (
           rows.map(entry => {
             const isExpanded = expandedPlayerId === entry.playerId
@@ -1005,11 +1007,11 @@ function JudgeSummaryTab({
                   <div style={{ flex: 1, textAlign: 'left' }}>
                     <div style={{ fontSize: '14px', fontWeight: 700, color: '#fff' }}>{entry.playerName}</div>
                     {['Masters Men', 'Masters Women', 'Grandmaster Men', 'Grandmaster Women'].includes(entry.division) && (
-                      <div style={{ fontSize: '10px', color: '#B87DB5', fontFamily: 'Barlow Condensed, sans-serif' }}>{entry.division}</div>
+                      <div style={{ fontSize: '10px', color: '#B87DB5', fontFamily: 'var(--font-label)' }}>{entry.division}</div>
                     )}
                   </div>
-                  <div style={{ fontSize: '12px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', flexShrink: 0, marginRight: '4px' }}>
-                    {entry.totalPlacement}pts
+                  <div style={{ fontSize: '12px', color: '#555', fontFamily: 'var(--font-label)', flexShrink: 0, marginRight: '4px' }}>
+                    {entry.totalPlacement} total
                   </div>
                   <span style={{ color: isExpanded ? '#2371BB' : '#444', fontSize: '12px' }}>{isExpanded ? '▲' : '▼'}</span>
                 </button>
@@ -1027,11 +1029,11 @@ function JudgeSummaryTab({
                             background: isEditingThis ? '#0d1a2e' : i % 2 === 0 ? '#0a0a0a' : '#0d0d0d',
                           }}>
                             <span style={{ fontSize: '14px', flexShrink: 0 }}>{ed.emoji}</span>
-                            <div style={{ flex: 1, fontSize: '11px', color: '#666', fontFamily: 'Barlow Condensed, sans-serif' }}>{ed.eventName}</div>
+                            <div style={{ flex: 1, fontSize: '11px', color: '#666', fontFamily: 'var(--font-label)' }}>{ed.eventName}</div>
                             <div style={{ fontSize: '12px', color: ed.displayLabel ? '#ccc' : '#333', minWidth: '60px', textAlign: 'right' }}>
                               {ed.displayLabel ?? '—'}
                             </div>
-                            <div style={{ fontSize: '11px', fontWeight: 700, minWidth: '28px', textAlign: 'right', color: ed.hasScore ? '#F9B051' : '#333', fontFamily: 'Barlow Condensed, sans-serif' }}>
+                            <div style={{ fontSize: '11px', fontWeight: 700, minWidth: '28px', textAlign: 'right', color: ed.hasScore ? '#F9B051' : '#333', fontFamily: 'var(--font-label)' }}>
                               {ordinal(ed.placement)}
                             </div>
                             <button
@@ -1041,7 +1043,7 @@ function JudgeSummaryTab({
                                 border: `1px solid ${isEditingThis ? '#EA474244' : '#2371BB33'}`,
                                 borderRadius: '4px', color: isEditingThis ? '#EA4742' : '#2371BB',
                                 cursor: 'pointer', fontSize: '11px', padding: '2px 8px',
-                                fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, flexShrink: 0,
+                                fontFamily: 'var(--font-label)', fontWeight: 700, flexShrink: 0,
                               }}
                             >
                               {isEditingThis ? 'Close' : 'Edit'}
@@ -1051,12 +1053,12 @@ function JudgeSummaryTab({
                             <div style={{ padding: '12px 14px', background: '#0d1020', borderTop: '1px solid #1e1e1e' }}>
                               {eventResults.length > 0 ? (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '10px' }}>
-                                  <div style={{ fontSize: '10px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.08em', marginBottom: '4px' }}>SUBMITTED SCORES</div>
+                                  <div style={{ fontSize: '10px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.08em', marginBottom: '4px' }}>SUBMITTED SCORES</div>
                                   {eventResults.map(r => (
                                     <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#111', borderRadius: '8px', padding: '8px 12px' }}>
                                       <div style={{ flex: 1, fontSize: '14px', color: '#fff' }}>{r.score_label}</div>
                                       {r.difficulty_tier && (
-                                        <div style={{ fontSize: '10px', color: '#B87DB5', fontFamily: 'Barlow Condensed, sans-serif' }}>{r.difficulty_tier}</div>
+                                        <div style={{ fontSize: '10px', color: '#B87DB5', fontFamily: 'var(--font-label)' }}>{r.difficulty_tier}</div>
                                       )}
                                       <button
                                         onClick={() => handleDelete(r.id)}
@@ -1064,7 +1066,7 @@ function JudgeSummaryTab({
                                           background: '#EA474222', border: '1px solid #EA474244',
                                           borderRadius: '4px', color: '#EA4742', cursor: 'pointer',
                                           fontSize: '11px', padding: '3px 10px',
-                                          fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700,
+                                          fontFamily: 'var(--font-label)', fontWeight: 700,
                                         }}
                                       >Delete</button>
                                     </div>
@@ -1073,7 +1075,7 @@ function JudgeSummaryTab({
                               ) : (
                                 <div style={{ fontSize: '13px', color: '#555', marginBottom: '10px' }}>No score submitted yet</div>
                               )}
-                              <div style={{ fontSize: '11px', color: '#444', fontFamily: 'Barlow Condensed, sans-serif' }}>
+                              <div style={{ fontSize: '11px', color: '#444', fontFamily: 'var(--font-label)' }}>
                                 To add or update a score, use the Kaiwhakawā tab and select {entry.playerName}.
                               </div>
                             </div>
@@ -1093,7 +1095,7 @@ function JudgeSummaryTab({
 
   return (
     <div style={{ padding: '12px 16px' }}>
-      <div style={{ fontSize: '11px', color: '#EA4742', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.1em', marginBottom: '16px', fontWeight: 700 }}>
+      <div style={{ fontSize: '11px', color: '#EA4742', fontFamily: 'var(--font-label)', letterSpacing: '0.1em', marginBottom: '16px', fontWeight: 700 }}>
         GAME SUMMARY — ALL PLAYERS
       </div>
       {renderSummarySection('mens', "Men's")}
@@ -1254,10 +1256,11 @@ function LeaderboardTab({
 
   function chipStyle(active: boolean): React.CSSProperties {
     return {
-      padding: '4px 10px', borderRadius: '16px', border: `1px solid ${active ? '#2371BB' : '#222'}`,
-      fontSize: '11px', fontWeight: active ? 700 : 400, cursor: 'pointer',
+      padding: '0 14px', minHeight: '44px', borderRadius: '999px', border: `1px solid ${active ? '#2371BB' : '#222'}`,
+      display: 'inline-flex', alignItems: 'center',
+      fontSize: '12px', fontWeight: active ? 700 : 400, cursor: 'pointer',
       background: active ? '#0d1a2e' : '#111', color: active ? '#7ab4ff' : '#555',
-      fontFamily: 'Barlow Condensed, sans-serif', flexShrink: 0,
+      fontFamily: 'var(--font-label)', flexShrink: 0,
     }
   }
 
@@ -1288,16 +1291,16 @@ function LeaderboardTab({
           <div style={{ flex: 1, textAlign: 'left' }}>
             <div style={{ fontSize: '14px', fontWeight: entry.rank <= 3 ? 700 : 400, color: isMe ? '#7ab4ff' : entry.rank <= 3 ? '#fff' : '#aaa' }}>
               {entry.playerName}
-              {isMe && <span style={{ fontSize: '10px', color: '#555', marginLeft: '6px', fontFamily: 'Barlow Condensed, sans-serif' }}>YOU</span>}
+              {isMe && <span style={{ fontSize: '10px', color: '#555', marginLeft: '6px', fontFamily: 'var(--font-label)' }}>YOU</span>}
             </div>
             {entry.subDivision && entry.subDivisionRank && (
-              <div style={{ fontSize: '10px', color: '#B87DB5', fontFamily: 'Barlow Condensed, sans-serif', marginTop: '1px' }}>
+              <div style={{ fontSize: '10px', color: '#B87DB5', fontFamily: 'var(--font-label)', marginTop: '1px' }}>
                 {ordinal(entry.subDivisionRank)} {entry.subDivision}
               </div>
             )}
           </div>
-          <div style={{ fontSize: '12px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', flexShrink: 0, marginRight: canExpand ? '4px' : '0' }}>
-            {entry.totalPlacement}pts
+          <div style={{ fontSize: '12px', color: '#555', fontFamily: 'var(--font-label)', flexShrink: 0, marginRight: canExpand ? '4px' : '0' }}>
+            {entry.totalPlacement} total
           </div>
           {canExpand && <span style={{ color: isEx ? '#2371BB' : '#444', fontSize: '12px' }}>{isEx ? '▲' : '▼'}</span>}
         </button>
@@ -1314,7 +1317,7 @@ function LeaderboardTab({
                 <div style={{ fontSize: '12px', color: ed.displayLabel ? '#ccc' : '#444' }}>
                   {ed.displayLabel ?? 'No score'}
                 </div>
-                <div style={{ fontSize: '11px', fontWeight: 700, minWidth: '32px', textAlign: 'right', color: ed.scoreLabel ? '#F9B051' : '#444', fontFamily: 'Barlow Condensed, sans-serif' }}>
+                <div style={{ fontSize: '11px', fontWeight: 700, minWidth: '32px', textAlign: 'right', color: ed.scoreLabel ? '#F9B051' : '#444', fontFamily: 'var(--font-label)' }}>
                   {ordinal(ed.placement)}
                 </div>
               </div>
@@ -1350,9 +1353,9 @@ function LeaderboardTab({
               }}>{entry.rank}</div>
               <div style={{ flex: 1, fontSize: '14px', color: entry.playerId === currentPlayerId ? '#7ab4ff' : '#aaa' }}>
                 {entry.playerName}
-                {entry.playerId === currentPlayerId && <span style={{ fontSize: '10px', color: '#555', marginLeft: '6px', fontFamily: 'Barlow Condensed, sans-serif' }}>YOU</span>}
+                {entry.playerId === currentPlayerId && <span style={{ fontSize: '10px', color: '#555', marginLeft: '6px', fontFamily: 'var(--font-label)' }}>YOU</span>}
               </div>
-              <div style={{ fontSize: '14px', fontWeight: 700, color: '#4DB26E', fontFamily: 'Bebas Neue, cursive' }}>
+              <div style={{ fontSize: '14px', fontWeight: 700, color: '#4DB26E', fontFamily: 'var(--font-display)' }}>
                 {entry.label}
               </div>
             </div>
@@ -1379,7 +1382,7 @@ function LeaderboardTab({
               width: '100%', padding: '7px', background: 'none',
               border: '1px solid #1e1e1e', borderRadius: '8px', color: '#555',
               fontSize: '12px', cursor: 'pointer', marginBottom: '6px',
-              fontFamily: 'Barlow Condensed, sans-serif',
+              fontFamily: 'var(--font-label)',
             }}
           >
             {isExpanded ? '▲ Show less' : `▼ Show all (${rest.length} more)`}
@@ -1411,14 +1414,14 @@ function LeaderboardTab({
             border: `1px solid ${eventFilterId ? '#2371BB' : '#222'}`,
             borderRadius: '8px', padding: '10px 14px',
             color: eventFilterId ? '#7ab4ff' : '#666',
-            fontSize: '14px', fontFamily: 'Barlow, sans-serif',
+            fontSize: '14px', fontFamily: 'var(--font-body)',
           }}
         >
           <option value="">Overall ranking</option>
           {events.map(ev => <option key={ev.id} value={ev.id}>{ev.event_name}</option>)}
         </select>
         {selectedEvent && (
-          <div style={{ fontSize: '11px', color: '#555', marginTop: '6px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.06em' }}>
+          <div style={{ fontSize: '11px', color: '#555', marginTop: '6px', fontFamily: 'var(--font-label)', letterSpacing: '0.06em' }}>
             SHOWING SCORES FOR: {selectedEvent.event_name.toUpperCase()}
           </div>
         )}
@@ -1427,7 +1430,7 @@ function LeaderboardTab({
       {/* Men's section — always shown */}
       <div style={{ marginBottom: '24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-          <div style={{ fontSize: '15px', fontWeight: 700, color: '#fff', fontFamily: 'Bebas Neue, cursive', letterSpacing: '0.08em' }}>
+          <div style={{ fontSize: '15px', fontWeight: 700, color: '#fff', fontFamily: 'var(--font-display)', letterSpacing: '0.08em' }}>
             {menFilter === 'Masters Men' ? 'Masters (Men)' : menFilter === 'Grandmaster Men' ? '60+ (Men)' : "Men's"}
           </div>
           <div style={{ display: 'flex', gap: '6px' }}>
@@ -1437,14 +1440,14 @@ function LeaderboardTab({
           </div>
         </div>
         {renderSection('mens', menFilter, null, 'mens') ?? (
-          <div style={{ color: '#555', fontSize: '13px', padding: '12px 0', fontFamily: 'Barlow Condensed, sans-serif' }}>No scores yet</div>
+          <div style={{ color: '#555', fontSize: '13px', padding: '12px 0', fontFamily: 'var(--font-label)' }}>No scores yet</div>
         )}
       </div>
 
       {/* Women's section — always shown */}
       <div style={{ marginBottom: '24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-          <div style={{ fontSize: '15px', fontWeight: 700, color: '#fff', fontFamily: 'Bebas Neue, cursive', letterSpacing: '0.08em' }}>
+          <div style={{ fontSize: '15px', fontWeight: 700, color: '#fff', fontFamily: 'var(--font-display)', letterSpacing: '0.08em' }}>
             {womenFilter === 'Masters Women' ? 'Masters (Women)' : womenFilter === 'Grandmaster Women' ? '60+ (Women)' : "Women's"}
           </div>
           <div style={{ display: 'flex', gap: '6px' }}>
@@ -1454,14 +1457,14 @@ function LeaderboardTab({
           </div>
         </div>
         {renderSection('womens', womenFilter, null, 'womens') ?? (
-          <div style={{ color: '#555', fontSize: '13px', padding: '12px 0', fontFamily: 'Barlow Condensed, sans-serif' }}>No scores yet</div>
+          <div style={{ color: '#555', fontSize: '13px', padding: '12px 0', fontFamily: 'var(--font-label)' }}>No scores yet</div>
         )}
       </div>
 
       {/* Juniors section — always shown */}
       <div style={{ marginBottom: '24px' }}>
         <div style={{ marginBottom: '10px' }}>
-          <div style={{ fontSize: '15px', fontWeight: 700, color: '#fff', fontFamily: 'Bebas Neue, cursive', letterSpacing: '0.08em', marginBottom: '8px' }}>
+          <div style={{ fontSize: '15px', fontWeight: 700, color: '#fff', fontFamily: 'var(--font-display)', letterSpacing: '0.08em', marginBottom: '8px' }}>
             {juniorAge !== null ? `Juniors — Age ${juniorAge}` : 'Juniors'}
           </div>
           {juniorAges.length > 0 && (
@@ -1476,7 +1479,7 @@ function LeaderboardTab({
           )}
         </div>
         {renderSection('juniors', null, juniorAge, 'juniors') ?? (
-          <div style={{ color: '#555', fontSize: '13px', padding: '12px 0', fontFamily: 'Barlow Condensed, sans-serif' }}>No scores yet</div>
+          <div style={{ color: '#555', fontSize: '13px', padding: '12px 0', fontFamily: 'var(--font-label)' }}>No scores yet</div>
         )}
       </div>
     </div>
@@ -1487,7 +1490,7 @@ function LeaderboardTab({
 
 const RAINBOW_G = 'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)'
 
-type EndSummary = { overall_placement: number; total_placement_points: number; effort_points: number }
+type EndSummary = { overall_placement: number }
 
 function SessionEndTakeover({
   sessionId, playerId, events, myResults, divisionPlacement, onDismiss,
@@ -1514,7 +1517,7 @@ function SessionEndTakeover({
     async function load() {
       const [sumRes, cntRes] = await Promise.all([
         supabase.from('session_player_summary')
-          .select('overall_placement, total_placement_points, effort_points')
+          .select('overall_placement')
           .eq('session_id', sessionId).eq('player_id', playerId).maybeSingle(),
         supabase.from('session_player_summary')
           .select('*', { count: 'exact', head: true })
@@ -1528,20 +1531,12 @@ function SessionEndTakeover({
     load()
   }, [sessionId, playerId])
 
-  // Points earned — trust the trigger's summary row when it exists; otherwise
-  // compute client-side the same way the /games report + trigger do.
+  // Points are retired. What a game gives a player now is its placement,
+  // the events they played, and training units toward their colours.
   const unitsEarned = unitsFor(myResults, events)
   const rank = summary?.overall_placement ?? divisionPlacement?.rank ?? null
-  const nDiv = divisionPlacement?.playerCount ?? null
-  const placementPts = summary?.total_placement_points
-    ?? (rank !== null && nDiv ? Math.round(Math.max(100 - (100 / nDiv) * (rank - 1), 10)) : 0)
-  // Effort tasks are retired on this screen, but award_session_points still
-  // pays (events played + PR events) x 5, capped at 100, until points are
-  // retired server-side. The fallback must match it, or the provisional total
-  // reads low until the summary row lands.
-  const effortPts = summary?.effort_points
-    ?? Math.min(new Set(myResults.map(r => r.event_id)).size + new Set(myResults.filter(r => r.is_pr).map(r => r.event_id)).size, 20) * 5
-  const earned = placementPts + effortPts
+  const eventsPlayed = new Set(myResults.map(r => r.event_id)).size
+  const prCount = new Set(myResults.filter(r => r.is_pr).map(r => r.event_id)).size
 
   // Session-count milestone — summary row present means the count includes this session
   const sessionNumber = sessionCount === null ? null : (summary ? sessionCount : sessionCount + 1)
@@ -1563,7 +1558,7 @@ function SessionEndTakeover({
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px 18px 8px', flexShrink: 0 }}>
-          <div style={{ flex: 1, fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.16em' }}>
+          <div style={{ flex: 1, fontFamily: 'var(--font-label)', fontSize: '12px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.16em' }}>
             Session complete
           </div>
           <button onClick={onDismiss} style={{
@@ -1577,35 +1572,35 @@ function SessionEndTakeover({
 
           {/* Final placement */}
           <div style={{ textAlign: 'center', padding: '18px 0 22px' }}>
-            <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '72px', lineHeight: 1, color: '#fff', letterSpacing: '0.02em' }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '72px', lineHeight: 1, color: '#fff', letterSpacing: '0.02em' }}>
               {rank !== null ? ordinal(rank) : '—'}
             </div>
-            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.14em', marginTop: '6px' }}>
+            <div style={{ fontFamily: 'var(--font-label)', fontSize: '13px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.14em', marginTop: '6px' }}>
               {divisionPlacement ? divisionPlacement.divisionName : 'This session'}
             </div>
           </div>
 
-          {/* Points earned */}
+          {/* What the game gave */}
           <div style={{ display: 'flex', gap: '10px' }}>
             {[
-              { label: 'Placement pts', value: placementPts, colour: '#4DB26E' },
-              { label: 'Effort pts', value: effortPts, colour: '#B87DB5' },
-              { label: 'Total earned', value: earned, colour: '#F9B051' },
+              { label: 'Events played', value: `${eventsPlayed}/${events.length || 10}`, colour: '#4DB26E' },
+              { label: 'Training units', value: fmtUnits(unitsEarned), colour: '#B87DB5' },
+              { label: 'PRs set', value: prCount, colour: '#F9B051' },
             ].map(s => (
               <div key={s.label} style={{ flex: 1, background: '#161616', border: '1px solid #1e1e1e', borderRadius: '14px', padding: '12px 10px', textAlign: 'center' }}>
-                <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '28px', color: s.colour, lineHeight: 1 }}>{loaded ? s.value : '…'}</div>
-                <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '10.5px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '4px' }}>{s.label}</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '28px', color: s.colour, lineHeight: 1 }}>{loaded ? s.value : '…'}</div>
+                <div style={{ fontFamily: 'var(--font-label)', fontSize: '10.5px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '4px' }}>{s.label}</div>
               </div>
             ))}
           </div>
           {unitsEarned > 0 && (
-            <div style={{ fontSize: '13px', color: '#B87DB5', marginTop: '10px', textAlign: 'center', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.06em' }}>
-              + {fmtUnitsLabel(unitsEarned)} of training toward your colours
+            <div style={{ fontSize: '13px', color: '#B87DB5', marginTop: '10px', textAlign: 'center', fontFamily: 'var(--font-label)', letterSpacing: '0.06em' }}>
+              Every unit counts toward your next colour in that domain
             </div>
           )}
           {loaded && !summary && (
             <div style={{ fontSize: '11.5px', color: '#555', marginTop: '6px', textAlign: 'center' }}>
-              Provisional — final points are confirmed when the game is closed off
+              Provisional placement — confirmed when the game is closed off
             </div>
           )}
 
@@ -1615,9 +1610,9 @@ function SessionEndTakeover({
               <div style={{ ...QES_LBL, color: '#F9B051' }}>PRs set today</div>
               {prs.map(r => (
                 <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#161616', border: '1px solid #F9B05133', borderRadius: '12px', padding: '10px 14px', marginBottom: '6px' }}>
-                  <span style={{ fontSize: '10px', fontWeight: 700, color: '#F9B051', background: '#F9B05122', borderRadius: '4px', padding: '2px 6px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.05em', flexShrink: 0 }}>PR</span>
+                  <span style={{ fontSize: '10px', fontWeight: 700, color: '#F9B051', background: '#F9B05122', borderRadius: '4px', padding: '2px 6px', fontFamily: 'var(--font-label)', letterSpacing: '0.05em', flexShrink: 0 }}>PR</span>
                   <span style={{ flex: 1, fontSize: '14px', color: '#fff' }}>{eventNameFor(r.event_id)}</span>
-                  <span style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '17px', color: '#F9B051' }}>{r.score_label}</span>
+                  <span style={{ fontFamily: 'var(--font-display)', fontSize: '17px', color: '#F9B051' }}>{r.score_label}</span>
                 </div>
               ))}
             </>
@@ -1629,7 +1624,7 @@ function SessionEndTakeover({
             display: 'block', marginTop: '18px', background: '#161616', border: '1px solid #1e1e1e',
             borderRadius: '14px', padding: '14px 16px', color: '#fff', textDecoration: 'none',
           }}>
-            <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '20px', letterSpacing: '0.04em' }}>Your colours</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '20px', letterSpacing: '0.04em' }}>Your colours</div>
             <div style={{ fontSize: '13px', color: '#888', marginTop: '3px', lineHeight: 1.5 }}>
               See what today&apos;s scores did for your colour in each domain →
             </div>
@@ -1638,7 +1633,7 @@ function SessionEndTakeover({
           {/* Session-count milestone */}
           {milestone !== null && (
             <div style={{ marginTop: '14px', background: '#1f1608', border: '1px solid #F9B051', borderRadius: '14px', padding: '14px 16px' }}>
-              <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '20px', color: '#F9B051', letterSpacing: '0.04em' }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '20px', color: '#F9B051', letterSpacing: '0.04em' }}>
                 Milestone — your {ordinal(milestone)} session
               </div>
               <div style={{ fontSize: '13px', color: '#ccc', marginTop: '4px', lineHeight: 1.5 }}>
@@ -1653,14 +1648,14 @@ function SessionEndTakeover({
           <a href={`/games/${sessionId}`} style={{
             display: 'block', textAlign: 'center', marginTop: '18px', padding: '13px 0',
             borderRadius: '999px', border: '1px solid #2a2a2a', background: '#181818',
-            color: '#fff', textDecoration: 'none', fontFamily: 'Barlow Condensed, sans-serif',
+            color: '#fff', textDecoration: 'none', fontFamily: 'var(--font-label)',
             textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '14px',
           }}>Full game report →</a>
 
           <button onClick={onDismiss} style={{
             width: '100%', marginTop: '10px', height: '54px', border: 'none', borderRadius: '999px',
             cursor: 'pointer', background: RAINBOW_G, color: '#0a0a0a',
-            fontFamily: 'Barlow Condensed, sans-serif', textTransform: 'uppercase',
+            fontFamily: 'var(--font-label)', textTransform: 'uppercase',
             letterSpacing: '0.12em', fontSize: '16px', fontWeight: 600,
           }}>Done</button>
         </div>
@@ -2116,7 +2111,7 @@ export default function SessionPage() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div style={{ minHeight: '100vh', background: '#0a0a0a', color: '#fff', maxWidth: '640px', margin: '0 auto', fontFamily: 'Barlow, sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: '#0a0a0a', color: '#fff', maxWidth: '640px', margin: '0 auto', fontFamily: 'var(--font-body)' }}>
       <style>{`
         @keyframes toastPop { 0% { transform: translateX(-50%) scale(0.92); opacity: 0; } 60% { transform: translateX(-50%) scale(1.04); } 100% { transform: translateX(-50%) scale(1); opacity: 1; } }
         @keyframes barShimmer { from { left: -45%; } to { left: 105%; } }
@@ -2128,10 +2123,10 @@ export default function SessionPage() {
       <div style={{ background: '#2371BB', padding: '12px 16px', position: 'sticky', top: 0, zIndex: 10 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '2px', fontFamily: 'Barlow Condensed, sans-serif' }}>
+            <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '2px', fontFamily: 'var(--font-label)' }}>
               {bannerStatusLabel}
             </div>
-            <div style={{ fontSize: '32px', fontWeight: 700, fontFamily: 'Bebas Neue, cursive', letterSpacing: '0.05em', lineHeight: 1 }}>
+            <div style={{ fontSize: '32px', fontWeight: 700, fontFamily: 'var(--font-display)', letterSpacing: '0.05em', lineHeight: 1 }}>
               {rankFlash ? (
                 <span style={{ display: 'inline-block', animation: 'rankImprove 1.4s cubic-bezier(0.16,1,0.3,1)' }}>
                   <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: '22px' }}>{ordinal(rankFlash.from)}</span>
@@ -2144,10 +2139,10 @@ export default function SessionPage() {
             </div>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '2px', fontFamily: 'Barlow Condensed, sans-serif' }}>
+            <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '2px', fontFamily: 'var(--font-label)' }}>
               Time Left
             </div>
-            <div style={{ fontSize: '32px', fontWeight: 700, color: timerColour, fontVariantNumeric: 'tabular-nums', fontFamily: 'Bebas Neue, cursive', lineHeight: 1 }}>
+            <div style={{ fontSize: '32px', fontWeight: 700, color: timerColour, fontVariantNumeric: 'tabular-nums', fontFamily: 'var(--font-display)', lineHeight: 1 }}>
               {timerDisplay}
             </div>
           </div>
@@ -2230,7 +2225,7 @@ export default function SessionPage() {
           <div key={pid} style={{ padding: '16px' }}>
             {sessionEnded && (
               <div style={{ background: '#2e0d0d', border: '1px solid #EA4742', borderRadius: '8px', padding: '12px 16px', marginBottom: '16px', textAlign: 'center' }}>
-                <div style={{ color: '#EA4742', fontWeight: 700, fontFamily: 'Bebas Neue, cursive', fontSize: '18px' }}>Session Ended</div>
+                <div style={{ color: '#EA4742', fontWeight: 700, fontFamily: 'var(--font-display)', fontSize: '18px' }}>Session Ended</div>
                 <div style={{ color: '#888', fontSize: '13px', marginTop: '4px' }}>Score submission is locked</div>
               </div>
             )}
@@ -2238,13 +2233,13 @@ export default function SessionPage() {
             {/* Session progress */}
             <div style={{ marginBottom: '4px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '6px' }}>
-                <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11.5px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.12em' }}>
+                <div style={{ fontFamily: 'var(--font-label)', fontSize: '11.5px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.12em' }}>
                   <span style={{ color: '#fff', fontWeight: 600 }}>{doneEvents.length}</span> of {events.length} events scored
                   {doneEvents.length === events.length && events.length > 0 && (
                     <span style={{ color: '#4DB26E', fontWeight: 600 }}> — All {events.length} events played</span>
                   )}
                 </div>
-                <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11.5px', color: '#B87DB5', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 600 }}>
+                <div style={{ fontFamily: 'var(--font-label)', fontSize: '11.5px', color: '#B87DB5', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 600 }}>
                   {fmtUnitsLabel(totalUnits)} toward colours
                 </div>
               </div>
@@ -2353,7 +2348,7 @@ export default function SessionPage() {
           {toast.isPR && (
             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)' }} />
           )}
-          <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '18px', color: '#fff' }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', color: '#fff' }}>
             {toast.playerName && <span style={{ color: '#EA4742' }}>{toast.playerName} — </span>}
             {toast.isPR
               ? <><span style={{ color: '#F9B051' }}>NEW PR</span> — {toast.eventName} — {toast.label}</>
@@ -2384,12 +2379,12 @@ export default function SessionPage() {
 
         return (
           <div style={{ padding: '16px' }}>
-            <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '22px', color: '#EA4742', letterSpacing: '0.05em', lineHeight: 1 }}>Kaiwhakawā</div>
-            <div style={{ fontSize: '11px', color: '#555', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.08em', marginBottom: '12px' }}>SCORE FOR ANY PLAYER</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', color: '#EA4742', letterSpacing: '0.05em', lineHeight: 1 }}>Kaiwhakawā</div>
+            <div style={{ fontSize: '11px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.08em', marginBottom: '12px' }}>SCORE FOR ANY PLAYER</div>
 
             {sessionEnded && (
               <div style={{ background: '#2e0d0d', border: '1px solid #EA4742', borderRadius: '12px', padding: '12px 16px', marginBottom: '14px', textAlign: 'center' }}>
-                <div style={{ color: '#EA4742', fontWeight: 700, fontFamily: 'Bebas Neue, cursive', fontSize: '18px' }}>Session Ended</div>
+                <div style={{ color: '#EA4742', fontWeight: 700, fontFamily: 'var(--font-display)', fontSize: '18px' }}>Session Ended</div>
                 <div style={{ color: '#888', fontSize: '13px', marginTop: '4px' }}>Score submission is locked</div>
               </div>
             )}
@@ -2415,7 +2410,7 @@ export default function SessionPage() {
             {/* Full registered-player picker */}
             {judgeShowAll && (
               <div style={{ background: '#0d0d0d', border: '1px solid #1e1e1e', borderRadius: '14px', padding: '12px', marginBottom: '12px' }}>
-                <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: '10px' }}>
+                <div style={{ fontFamily: 'var(--font-label)', fontSize: '11px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: '10px' }}>
                   All registered players
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', maxHeight: '220px', overflowY: 'auto' }}>
@@ -2440,13 +2435,13 @@ export default function SessionPage() {
                   style={{
                     flex: 1, minWidth: 0, background: '#0d0d0d', border: '1px solid #F9B05144',
                     borderRadius: '12px', padding: '12px 14px', color: '#fff',
-                    fontSize: '15px', fontFamily: 'Barlow, sans-serif', boxSizing: 'border-box',
+                    fontSize: '15px', fontFamily: 'var(--font-body)', boxSizing: 'border-box',
                   }}
                 />
                 <button onClick={addGuest} disabled={!guestDraft} style={{
                   flexShrink: 0, borderRadius: '12px', padding: '0 18px', cursor: guestDraft ? 'pointer' : 'default',
                   background: guestDraft ? '#F9B051' : '#1a1a1a', color: guestDraft ? '#000' : '#555',
-                  border: 'none', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px',
+                  border: 'none', fontFamily: 'var(--font-label)', fontSize: '14px',
                   fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
                 }}>Score</button>
               </div>
@@ -2456,7 +2451,7 @@ export default function SessionPage() {
             {!target && (
               judgeRoster.registered.length + judgeRoster.guests.length === 0 ? (
                 <div style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: '16px', padding: '32px 20px', textAlign: 'center' }}>
-                  <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '20px', color: '#fff', letterSpacing: '0.03em' }}>No scores yet</div>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '20px', color: '#fff', letterSpacing: '0.03em' }}>No scores yet</div>
                   <div style={{ fontSize: '13px', color: '#777', marginTop: '6px', lineHeight: 1.5 }}>
                     Tap {canPickMore && <><span style={{ color: '#aaa' }}>+ Player</span> to pick a registered player, or </>}
                     <span style={{ color: '#F9B051' }}>+ Guest</span> to score someone by name.
@@ -2483,27 +2478,27 @@ export default function SessionPage() {
             {target && (
               <div>
                 <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '10px', marginBottom: '10px' }}>
-                  <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '26px', color: '#fff', letterSpacing: '0.03em', lineHeight: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '26px', color: '#fff', letterSpacing: '0.03em', lineHeight: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {target.name}
-                    {target.isGuest && <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', color: '#F9B051', marginLeft: '10px', letterSpacing: '0.1em' }}>GUEST</span>}
+                    {target.isGuest && <span style={{ fontFamily: 'var(--font-label)', fontSize: '12px', color: '#F9B051', marginLeft: '10px', letterSpacing: '0.1em' }}>GUEST</span>}
                   </div>
                   <button onClick={() => selectJudgeTarget(null)} style={{
                     flexShrink: 0, background: 'none', border: '1px solid #333', borderRadius: '999px',
-                    color: '#888', cursor: 'pointer', padding: '6px 13px',
-                    fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', letterSpacing: '0.08em', textTransform: 'uppercase',
+                    color: '#888', cursor: 'pointer', padding: '0 16px', minHeight: '44px',
+                    fontFamily: 'var(--font-label)', fontSize: '12px', letterSpacing: '0.08em', textTransform: 'uppercase',
                   }}>Roster</button>
                 </div>
 
                 {/* Session progress */}
                 <div style={{ marginBottom: '4px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '6px' }}>
-                    <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11.5px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.12em' }}>
+                    <div style={{ fontFamily: 'var(--font-label)', fontSize: '11.5px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.12em' }}>
                       <span style={{ color: '#fff', fontWeight: 600 }}>{doneEvents.length}</span> of {events.length} events scored
                       {doneEvents.length === events.length && events.length > 0 && (
                         <span style={{ color: '#4DB26E', fontWeight: 600 }}> — All {events.length} events played</span>
                       )}
                     </div>
-                    <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11.5px', color: '#B87DB5', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 600 }}>
+                    <div style={{ fontFamily: 'var(--font-label)', fontSize: '11.5px', color: '#B87DB5', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 600 }}>
                       {fmtUnitsLabel(totalUnits)} toward colours
                     </div>
                   </div>
