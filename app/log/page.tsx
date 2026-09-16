@@ -333,7 +333,8 @@ export default function LogPage() {
     if (e1 || !w) {
       setBusy(false)
       setError(e1?.code === 'PGRST205' ? 'Workout logging is not live yet.'
-        : e1?.code === '23514' ? 'That day is outside the last week. Pick another day.'
+        // Matched on the constraint NAME: 23514 is any failed CHECK.
+        : e1?.code === '23514' && e1.message.includes('workouts_within_a_week') ? 'That day is outside the last week. Pick another day.'
         : e1?.message ?? 'The workout did not save. Try again.')
       return
     }
@@ -342,7 +343,9 @@ export default function LogPage() {
       // Never leave an empty workout behind.
       await supabase.from('workouts').delete().eq('id', (w as { id: string }).id)
       setBusy(false)
-      setError(e2.message)
+      // 23514: a score column out of range (20260916211643), e.g. a mistyped
+      // minutes field. Say which kind of number, not the constraint name.
+      setError(e2.code === '23514' ? 'One of the numbers is out of range. Check the weight, time and distance.' : e2.message)
       return
     }
     const units = filled.reduce((s, d) => s + draftUnits(d), 0)
