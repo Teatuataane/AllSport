@@ -290,6 +290,12 @@ function MoreSheet({ isJudge, onClose, onSignOut }: {
           </svg>
         </SheetRow>
 
+        <SheetRow href="/log" label="Log a workout">
+          <svg {...stroke()} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 5v14" /><path d="M5 12h14" /><rect x="3" y="3" width="18" height="18" rx="4" />
+          </svg>
+        </SheetRow>
+
         <SheetRow href="/history" label="Play history">
           <svg {...stroke()} strokeLinecap="round" strokeLinejoin="round">
             <path d="M3 12a9 9 0 1 0 3-6.7" /><path d="M3 4v4h4" /><path d="M12 8v4l3 2" />

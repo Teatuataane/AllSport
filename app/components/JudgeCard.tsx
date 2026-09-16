@@ -1,5 +1,6 @@
 'use client'
 import GradeReleasePanel from '@/components/GradeReleasePanel'
+import ActivityFitPanel from '@/components/ActivityFitPanel'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase-browser'
@@ -1149,7 +1150,7 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
       </div>}
 
       {/* ─── COLOURS PANEL — confirming grades, and exemptions ──────────────── */}
-      {judgeTab === 'grades' && <GradeReleasePanel />}
+      {judgeTab === 'grades' && <><GradeReleasePanel /><ActivityFitPanel /></>}
 
       {/* ─── PLAYERS PANEL ─────────────────────────────────────────────────── */}
       {judgeTab === 'players' && (

@@ -618,7 +618,7 @@ export default function Leaderboard() {
             <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--grey-light)', marginBottom: '8px', paddingLeft: '12px' }}>How to read this board</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px 24px', paddingLeft: '12px' }}>
               <p style={{ color: 'var(--grey)', fontSize: '13px', lineHeight: 1.6, margin: 0 }}>
-                <strong style={{ color: 'var(--white)' }}>Season points</strong> — every session earns points per event: 1st place = 100, dropping by a gap based on session size (minimum 10). Effort work adds up to 100 more per session.
+                <strong style={{ color: 'var(--white)' }}>Season points</strong> — every session earns points per event: 1st place = 100, dropping by a gap based on session size (minimum 10). Each event played and each PR set adds 5 more, up to 100 per session.
               </p>
               <p style={{ color: 'var(--grey)', fontSize: '13px', lineHeight: 1.6, margin: 0 }}>
                 <strong style={{ color: 'var(--white)' }}>Wins</strong> — sessions finished 1st in your division this season. In-session, the lowest total placement across all 10 events wins.

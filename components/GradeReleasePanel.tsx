@@ -42,7 +42,9 @@ async function inBatches<T, R>(items: readonly T[], size: number, fn: (t: T) => 
   return out
 }
 
-const pending = (r: Row) => releasable(r.state.grades.domains, r.state.held)
+// One colour per domain at a time, and only once standards, games and
+// training all pass (lib/grading.ts colourGate).
+const pending = (r: Row) => releasable(r.state.gates)
 
 /** Names and dates for the disputed-games list. Each its own query. */
 type DisputeContext = { names: Map<string, string>; dates: Map<string, string> }
@@ -200,7 +202,7 @@ export default function GradeReleasePanel() {
           <div style={{ fontFamily: 'Bebas Neue, cursive', fontSize: '22px', color: '#4DB26E', letterSpacing: '0.05em', lineHeight: 1 }}>
             Colours to confirm
           </div>
-          <div style={{ ...label, marginTop: '2px' }}>COMPUTED FROM THE STANDARDS · YOU RELEASE THEM</div>
+          <div style={{ ...label, marginTop: '2px' }}>STANDARDS · GAMES · TRAINING · YOU RELEASE THEM</div>
         </div>
         <button onClick={reloadAll} style={btn(true)}>Refresh</button>
       </div>
@@ -276,19 +278,32 @@ export default function GradeReleasePanel() {
                 {r.player.display_name} <span style={{ color: '#555', fontSize: '12px' }}>{r.player.division}</span>
               </div>
               {pending(r).map(d => {
-                const from = gradeForRung(r.state.held.get(d.domainNumber) ?? 0)
-                const to = gradeForRung(d.rung)
+                const from = gradeForRung(d.held)
+                const to = gradeForRung(d.releasable)
                 const key = `${r.player.id}:${d.domainNumber}`
+                // What stands behind it. Every source counts; the kaiwhakawā
+                // moderates in person, so solo evidence is named, not hidden.
+                const behind = EVENTS
+                  .filter(e => e.domainNumber === d.domainNumber)
+                  .map(e => r.state.grades.events.get(e.slug))
+                  .filter(g => g && g.rung >= d.releasable)
+                const solo = behind.filter(g => g!.source === 'solo').length
+                const witnessed = behind.filter(g => g!.source === 'witnessed').length
                 return (
                   <div key={d.domainNumber} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 0', borderTop: '1px solid #161616' }}>
                     <div style={{ flexGrow: 1, minWidth: 0, fontSize: '13px', color: '#ccc', fontFamily: 'Barlow, sans-serif' }}>
                       {DOMAIN_NAMES[d.domainNumber - 1]}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px', fontSize: '12px', color: '#888' }}>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px', marginTop: '3px', fontSize: '12px', color: '#888' }}>
                         <GradeDot grade={from} size={9} /> {from.name} → <GradeDot grade={to} size={9} /> <span style={{ color: '#fff' }}>{to.name}</span>
-                        <span style={{ color: '#555' }}>· {d.metAtRung} of {d.required} events</span>
+                        <span style={{ color: '#555' }}>· {behind.length} events · {d.games} games · {Math.floor(d.units)} units</span>
                       </div>
+                      {(solo > 0 || witnessed > 0) && (
+                        <div style={{ fontSize: '11.5px', marginTop: '2px', color: solo ? '#F9B051' : '#888' }}>
+                          {[solo && `${solo} solo`, witnessed && `${witnessed} witnessed`].filter(Boolean).join(' · ')} from logged workouts
+                        </div>
+                      )}
                     </div>
-                    <button disabled={!live || busy === key} onClick={() => confer(r, d.domainNumber, d.rung)} style={btn(live && busy !== key)}>
+                    <button disabled={!live || busy === key} onClick={() => confer(r, d.domainNumber, d.releasable)} style={btn(live && busy !== key)}>
                       {busy === key ? 'Confirming…' : `Confirm ${to.name}`}
                     </button>
                   </div>

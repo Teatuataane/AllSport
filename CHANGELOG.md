@@ -2,6 +2,21 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.8.0.0] - 2026-09-16
+
+### Added
+- **Log any workout.** A new Log page takes anything you do between games (a road ride, a set of deadlifts, a session with your coach) and fits it to one of the 120 events. How much you did becomes training toward your next colour in that domain, and your best effort (the fastest 1km of a ride, your heaviest set) counts toward the standards just like a game score. Workouts can be dated up to a week back.
+- **Anything that matches no event is kept.** It waits in a "not fitted yet" list and counts as soon as it is fitted: pick the event yourself, or a kaiwhakawā fits that activity for everyone, earlier logs included.
+- **Parents can log for their tamariki, and a kaiwhakawā can log for anyone.** A workout a kaiwhakawā logs for a player is marked witnessed.
+
+### Changed
+- **Each new colour now needs games and training as well as the standards.** Games are official games played in the room, from 1 for Kiwikiwi to 100 for Taniwha. Training is units in that domain since your last colour there, and every game score earns them too. Your colours page shows all three for every domain, and the dashboard says which one is holding each colour back.
+- **Colours now move up one at a time**, because the training for each colour starts again once the one below it is confirmed.
+- **Effort tasks are gone from the live game screen.** Each event now shows the training units you have earned toward your colours instead.
+
+### Privacy
+- Training logs are private to you, your parent and kaiwhakawā, never public and never on a leaderboard. They are included in "Download a copy of my data" and deleted with your account.
+
 ## [0.7.1.2] - 2026-09-11
 
 ### Fixed

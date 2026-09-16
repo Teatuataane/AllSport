@@ -5,7 +5,8 @@
 // here and passed down already flattened.
 import Link from 'next/link'
 import { RainbowText, SectionLabel } from '@/components/ui'
-import { EVENTS } from '@/lib/eventData'
+import { EVENTS, getEventBySlug } from '@/lib/eventData'
+import { unitRule } from '@/lib/units'
 import DomainAccordion from './DomainAccordion'
 
 const DOMAIN_META = [
@@ -118,19 +119,21 @@ const steps = [
   {
     number: '06',
     title: 'Earn Your Colours',
-    desc: 'Every event has a standard for each of twelve colours, from Kiwikiwi to Taniwha. Meet a colour in half of a domain’s events and you hold that domain at that colour; your overall colour is the lowest of your ten. A kaiwhakawā confirms each one, and it is yours for good.',
+    desc: 'Every event has a standard for each of twelve colours, from Kiwikiwi to Taniwha. Meet a colour in half of a domain’s events and you hold that domain at that colour; your overall colour is the lowest of your ten. Each new colour also needs games played in the room and training in that domain. A kaiwhakawā confirms each one, and it is yours for good.',
   },
 ]
 
-const effortRules = [
-  { label: 'Strength events', rule: '5 reps at 80% of your PR weight' },
-  { label: 'Hold events', rule: 'Hold for 80% of your PR time or longer' },
-  { label: 'Tiered holds', rule: 'Hold one tier down for 2 minutes' },
-  { label: 'Timed events', rule: 'Complete it in 80% of your PR pace or faster' },
-  { label: 'Sport / match events', rule: 'Play an extra match vs a new opponent' },
-  { label: 'Sprint events', rule: 'Each sprint within 80% of PR pace' },
-  { label: 'Distance events', rule: 'Each attempt ≥80% of PR distance' },
-  { label: 'Score events (Golf/Disc Golf)', rule: 'Complete an additional 4-hole round' },
+// Read from the compiled unit sheet, never typed: if Tāne's review changes a
+// unit, this page follows it.
+const perUnit = (slug: string) => { const e = getEventBySlug(slug); return e ? unitRule(e).per : 1 }
+const RIDE_KM = perUnit('cycling') / 1000
+const THROWS = perUnit('javelin-throw')
+const unitRules = [
+  { label: 'Lifts and reps', rule: 'Every working set is 1 unit' },
+  { label: 'Holds', rule: 'Every hold is 1 unit' },
+  { label: 'Rides, runs, rows', rule: `${RIDE_KM}km is 1 unit, so a 25km ride is ${25 / RIDE_KM}` },
+  { label: 'Throws and jumps', rule: `Every ${THROWS} attempts is 1 unit` },
+  { label: 'Games', rule: 'Every game is 1 unit' },
 ]
 
 const divisions = [
@@ -282,21 +285,21 @@ export default function HowToPlay() {
               </div>
             </div>
 
-            {/* Effort Points */}
+            {/* Training units */}
             <div className="info-card">
-              <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555555', marginBottom: '8px' }}>Effort Points</div>
+              <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555555', marginBottom: '8px' }}>Training Units</div>
               <p style={{ color: 'var(--grey)', fontSize: '13px', lineHeight: 1.65, marginBottom: '16px' }}>
-                After submitting your competition score, unlock repeatable effort tasks. Each qualifying extra effort earns <strong style={{ color: 'var(--green)' }}>+5 points</strong> (up to 100 per session).
+                Every new colour needs training in that domain since your last colour there. Game scores earn units, and so does anything you <Link href="/log" style={{ color: 'var(--purple)' }}>log between games</Link>. Any effort counts.
               </p>
-              {effortRules.map(r => (
+              {unitRules.map(r => (
                 <div key={r.label} className="bonus-row">
                   <span style={{ fontFamily: 'var(--font-label)', fontWeight: 600, fontSize: '13px', color: 'var(--grey-light)' }}>{r.label}</span>
-                  <span style={{ fontFamily: 'var(--font-label)', fontSize: '12px', color: '#555', flexShrink: 0, marginLeft: '12px', textAlign: 'right' as const, maxWidth: '120px' }}>{r.rule}</span>
+                  <span style={{ fontFamily: 'var(--font-label)', fontSize: '12px', color: '#555', flexShrink: 0, marginLeft: '12px', textAlign: 'right' as const, maxWidth: '140px' }}>{r.rule}</span>
                 </div>
               ))}
               <div style={{ marginTop: '16px', padding: '12px', background: 'var(--dark)', border: '1px solid var(--border)', borderRadius: '8px' }}>
-                <div style={{ fontFamily: 'var(--font-label)', fontSize: '12px', color: '#555', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '4px' }}>Session cap</div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: '32px', color: 'var(--green)' }}>100 Points</div>
+                <div style={{ fontFamily: 'var(--font-label)', fontSize: '12px', color: '#555', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '4px' }}>Each colour needs</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '28px', color: 'var(--green)' }}>Standards · Games · Training</div>
               </div>
             </div>
 
