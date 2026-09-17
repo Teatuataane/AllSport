@@ -2,6 +2,11 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.9.1.0] - 2026-09-17
+
+### Fixed
+- **The database now refuses logged scores no workout can have.** "Infinity" and "not a number" are rejected outright, and so are weights, times and distances outside any real range (a mistyped minutes field now gets a clear message instead of a database error). A logged workout can no longer carry a game result either: games are recorded at official games, against real opponents. The app already ignored all of these; now nothing can store them.
+
 ## [0.9.0.0] - 2026-09-17
 
 ### Changed

@@ -1387,8 +1387,15 @@ stop matching.
 the event's ladder, so a row written straight to the API can carry a Game-rung "win".
 `loggedBestRows()` (the `/prs` list) drops both, and `workoutEvidence()` (the grading engine)
 drops non-finite scores; a logged Game-rung row never grades because `eventGrade` excludes
-Game-rung rows from drills. The server still ACCEPTS them, so a CHECK (finite) plus a trigger
-rejecting Game rungs is a follow-up migration.
+Game-rung rows from drills. **`20260916211643` makes the server refuse them** (v0.9.1.0, NOT
+YET APPLIED): CHECKs requiring `raw_score` finite and `weight_kg` 0–1000, `time_seconds`
+0–86400, `distance_m` 0–100000, and the entries guard redefined whole with one rule added —
+a logged entry may not carry a Game-rung result. Numeric `NaN` sorts ABOVE every value
+including `Infinity`, which is why `< 'Infinity'` excludes both. **Game rungs are recognised
+by NAME** (`difficulty_tier ILIKE 'Game%'`, plus the pure-contest slugs), because the database
+does not hold the ladders; `__tests__/workoutEntriesIntegrity.test.ts` fails if a Game rung is
+ever named otherwise, a drill rung starts with "Game", or the slug list drifts from
+`lib/eventData.ts`. Checked before writing: `workout_entries` held 0 rows in production.
 
 **Product calls settled by Tāne on 2026-09-17 (after the /ship review raised them):**
 - **No cap on units per event per game.** Every set counts, as designed; a player padding rows
