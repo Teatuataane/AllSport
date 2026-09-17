@@ -1460,6 +1460,15 @@ system. No page shows a points total any more:
 - `totalPlacement` on the live leaderboard and game report was labelled "pts" but is the
   sum of ordinal placements; it now reads "N total".
 
+**The old ladder stopped growing (`20260917021257`, NOT YET APPLIED).** `award_session_points`
+still called `award_colour_rungs` and `recompute_player_total` at every close, so the first
+game after the rebuild would have written new points-ladder rows into `colour_awards` (shown
+on /history as earlier colours). Those two calls are removed and nothing else; the body is the
+LIVE prosrc read from pg_proc. Dry-run against production in a rolled-back transaction on
+2026-09-17: checks pass, checksum unchanged afterwards. Its first dry run failed on its own
+assertion because a comment named the removed functions and a bare `LIKE` matched it, so the
+check now matches the `PERFORM` calls.
+
 **NOT done, server-side:** `award_session_points` still writes `placement_points`,
 `points_earned`, `session_player_summary` point columns and `rankings`, and
 `leaderboard_page()` still returns a `rankings` key. Nothing in the UI reads them. Retiring
