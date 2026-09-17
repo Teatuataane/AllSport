@@ -1462,14 +1462,27 @@ system. No page shows a points total any more:
 - `totalPlacement` on the live leaderboard and game report was labelled "pts" but is the
   sum of ordinal placements; it now reads "N total".
 
-**The old ladder stopped growing (`20260917021257`, NOT YET APPLIED).** `award_session_points`
+**The old ladder stopped growing (`20260917021257`, APPLIED AND VERIFIED IN PRODUCTION
+2026-09-18).** `award_session_points`
 still called `award_colour_rungs` and `recompute_player_total` at every close, so the first
 game after the rebuild would have written new points-ladder rows into `colour_awards` (shown
 on /history as earlier colours). Those two calls are removed and nothing else; the body is the
 LIVE prosrc read from pg_proc. Dry-run against production in a rolled-back transaction on
-2026-09-17: checks pass, checksum unchanged afterwards. Its first dry run failed on its own
-assertion because a comment named the removed functions and a bare `LIKE` matched it, so the
-check now matches the `PERFORM` calls.
+2026-09-17 (checks pass, checksum unchanged afterwards), then applied from `main` on
+2026-09-18 and verified by querying `pg_proc`, not the ledger: no `PERFORM award_colour_rungs`
+and no `PERFORM recompute_player_total`, the placement / `points_earned` /
+`session_player_summary` writes all still present, `prosecdef` true, and `auto_award_points`
+still wired to it. `colour_awards` holds its historic 22 rows and gained **none** since the
+grading rebuild, because no game had closed in between — which is the only reason this cost
+nothing to fix.
+
+Its first dry run failed on its own assertion because a comment named the removed functions
+and a bare `LIKE` matched it, so the check now matches the `PERFORM` calls.
+
+**`supabase db push` needs `SUPABASE_DB_PASSWORD`; `supabase db query --linked` does not.**
+That is why every verification in this file can be run from a session but the push itself has
+to be run by a person. The Docker warning `db push` prints (`failed to cache migrations
+catalog`) is the LOCAL catalog cache and has nothing to do with whether the migration applied.
 
 **NOT done, server-side:** `award_session_points` still writes `placement_points`,
 `points_earned`, `session_player_summary` point columns and `rankings`, and
