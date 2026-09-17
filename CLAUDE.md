@@ -1387,8 +1387,10 @@ stop matching.
 the event's ladder, so a row written straight to the API can carry a Game-rung "win".
 `loggedBestRows()` (the `/prs` list) drops both, and `workoutEvidence()` (the grading engine)
 drops non-finite scores; a logged Game-rung row never grades because `eventGrade` excludes
-Game-rung rows from drills. **`20260916211643` makes the server refuse them** (v0.9.1.0, NOT
-YET APPLIED): CHECKs requiring `raw_score` finite and `weight_kg` 0–1000, `time_seconds`
+Game-rung rows from drills. **`20260916211643` makes the server refuse them** (v0.9.1.0, PR #119, APPLIED AND VERIFIED
+IN PRODUCTION 2026-09-17 by querying the objects: all four CHECKs in `pg_constraint`, the guard
+SECURITY DEFINER with `search_path=public`, carrying the new Game-rung rule AND the
+`v_fitting_only` exception, and an anon insert still 401): CHECKs requiring `raw_score` finite and `weight_kg` 0–1000, `time_seconds`
 0–86400, `distance_m` 0–100000, and the entries guard redefined whole with one rule added —
 a logged entry may not carry a Game-rung result. Numeric `NaN` sorts ABOVE every value
 including `Infinity`, which is why `< 'Infinity'` excludes both. **Game rungs are recognised
