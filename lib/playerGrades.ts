@@ -183,10 +183,14 @@ export function computePlayerGrades(input: {
 }
 
 /**
- * Sessions whose results must not grade anyone: VOIDED ones. A void closes the
- * session and stamps points_awarded_at together, and the award trigger then
- * writes nothing, so a voided session is closed, stamped, and has no row
- * carrying points. The same discriminator the placement replays use.
+ * Sessions whose results must not grade anyone: VOIDED ones.
+ *
+ * LEGACY RULE, kept only as the fallback in `voidedSessions` below. A void
+ * closes the session and stamps points_awarded_at together, and the award
+ * trigger then writes nothing, so a voided session is closed, stamped, and has
+ * no row carrying points. Once points stopped being written (September 2026)
+ * EVERY finished game fits that description, so this rule is only correct
+ * against a database from before `sessions.voided_at` existed.
  */
 export function voidedSessionIds(
   sessions: readonly { id: string; is_active: boolean; points_awarded_at: string | null }[],
@@ -194,6 +198,23 @@ export function voidedSessionIds(
 ): Set<string> {
   const paid = new Set(pointRows.filter(r => r.points_earned != null).map(r => r.session_id))
   return new Set(sessions.filter(s => !s.is_active && s.points_awarded_at != null && !paid.has(s.id)).map(s => s.id))
+}
+
+/**
+ * The voided sessions, from the explicit record when the database has one.
+ *
+ * `recorded` is every session with `voided_at` set, or null when that column
+ * does not exist yet (the query fails with 42703). Null falls back to the
+ * legacy inference, which is still right for a database that writes points.
+ * Never mix the two: after the migration a finished game carries no points, and
+ * the legacy rule would call it voided.
+ */
+export function voidedSessions(
+  recorded: ReadonlySet<string> | null,
+  sessions: readonly { id: string; is_active: boolean; points_awarded_at: string | null }[],
+  pointRows: readonly { session_id: string; points_earned: number | null }[],
+): Set<string> {
+  return recorded ? new Set(recorded) : voidedSessionIds(sessions, pointRows)
 }
 
 /** The highest colour already conferred in each domain. */

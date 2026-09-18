@@ -53,8 +53,6 @@ type StatsBundle = {
 }
 
 type HouseholdBundle = {
-  totals: { player_id: string; lifetime_points: number; highest_rung: number }[]
-  rankings: { player_id: string; division: string | null; current_rank: number | null; total_sessions: number | null }[]
   counts: { player_id: string; games: number; prs: number }[]
 }
 

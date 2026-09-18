@@ -7,15 +7,16 @@
 // accounts — a solo player should not pay 45px of chrome for a feature they
 // cannot use.
 //
-// The active chip's underline is the player's colours-era accent (their
-// highest rung in player_totals), so a parent and child are rarely the same
-// colour, and anyone without one gets the brand red. It used to be the taniwha
-// they were building; that system retired with the grading rebuild.
+// The active chip's accent is the player's conferred OVERALL colour (the
+// lowest of their ten domain colours in grade_awards), and anyone without one
+// yet gets the brand red. It was the points-ladder rung from player_totals
+// until points retired in September 2026, which showed a colour the player no
+// longer holds under the current system.
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase-browser'
-import { colourByRung, colourOnDark } from '@/lib/colours'
+import { gradeForRung, DOMAIN_COUNT } from '@/lib/grading'
 import {
   useActivePlayer, playerLabel, type ActivePlayerRow,
 } from '@/lib/useActivePlayer'
@@ -31,14 +32,22 @@ async function loadAccents(ids: string[]): Promise<Map<string, string>> {
   const missing = ids.filter(id => !accentCache.has(id))
   if (missing.length === 0) return new Map(accentCache)
 
-  const totals = await supabase
-    .from('player_totals')
-    .select('player_id, highest_rung')
+  const awards = await supabase
+    .from('grade_awards')
+    .select('player_id, domain_number, rung')
     .in('player_id', missing)
-  for (const row of (totals.data ?? []) as
-    { player_id: string; highest_rung: number }[]) {
-    const c = colourByRung(row.highest_rung)
-    if (c) accentCache.set(row.player_id, colourOnDark(c))
+  const held = new Map<string, Map<number, number>>()
+  for (const a of (awards.data ?? []) as { player_id: string; domain_number: number; rung: number }[]) {
+    const m = held.get(a.player_id) ?? new Map<number, number>()
+    m.set(a.domain_number, Math.max(m.get(a.domain_number) ?? 0, a.rung))
+    held.set(a.player_id, m)
+  }
+  for (const [id, m] of held) {
+    if (m.size < DOMAIN_COUNT) continue
+    const g = gradeForRung(Math.min(...m.values()))
+    // A 6-digit hex, never a var(): it is suffixed with an alpha below. Taniwha
+    // is black, which would vanish on the dark bar, so it takes white.
+    accentCache.set(id, g.inverted ? '#ffffff' : g.hex)
   }
 
   // Anyone still unresolved gets the brand red, and is cached so we do not
