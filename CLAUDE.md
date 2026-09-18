@@ -1471,11 +1471,37 @@ LIVE prosrc read from pg_proc. Dry-run against production in a rolled-back trans
 assertion because a comment named the removed functions and a bare `LIKE` matched it, so the
 check now matches the `PERFORM` calls.
 
-**NOT done, server-side:** `award_session_points` still writes `placement_points`,
-`points_earned`, `session_player_summary` point columns and `rankings`, and
-`leaderboard_page()` still returns a `rankings` key. Nothing in the UI reads them. Retiring
-them in the database is a separate migration; the historical values stay as history
-(`/privacy` and `/profile` say so).
+**Points retired server-side (`20260918021529`, v0.9.2.0, NOT YET APPLIED).** Five decisions
+settled with Tāne in a `/grill-me` on 2026-09-18:
+
+1. **Void is recorded, not inferred.** A voided game used to be recognised by the ABSENCE of
+   points (closed + `points_awarded_at` + no `points_earned`). Stop writing points and every
+   finished game looks like that, so the grading engine would discard them all.
+   `sessions.voided_at` / `voided_by` now record it, set by the BEFORE UPDATE trigger
+   `session_void_recorded` on the one update only Void performs (`is_active` true→false AND
+   `points_awarded_at` NULL→set in the same statement; End leaves the stamp to the award
+   trigger, which sets it in a LATER update, and `close_expired_sessions()` never sets it).
+   The Void button needed no change. 12 historical voids backfilled from the old rule, and the
+   migration asserts the two rules agree on every past session.
+2. **Old points frozen, not deleted.** Future games leave the point columns NULL (the summary
+   columns lost `NOT NULL DEFAULT 0` so "not scored" is never a real 0).
+3. **A closing game writes placements and the summary row only.** No `points_earned`, no
+   `rankings`, no `refresh_rankings_rank()`; `trg_update_average_placement` dropped. The
+   summary row stays because wins, play history, the referral trigger and the milestones read
+   it, and its ON CONFLICT touches only `overall_placement`, so a re-run can never wipe history.
+4. **Dead code:** `rankings`/`totals` keys removed from `leaderboard_page()` and
+   `player_dashboard()`; `claim_colour_award()` revoked from everyone. `award_colour_rungs` and
+   `recompute_player_total` stay, uncalled. Family-switcher chips now take the conferred
+   overall colour (`grade_awards`), not the points-ladder rung.
+5. **Voided games stay hidden; no un-void.**
+
+**Deploy CODE FIRST, then the migration.** `lib/loadGrades.ts` reads `voided_at` in its own
+guarded query: 42703 (column not there yet) falls back to the legacy rule, any OTHER error
+counts every game rather than guess. Reversed, an old client would read a game closed after
+the migration as voided. Dry-run against production 2026-09-18 in rolled-back transactions:
+all checks pass, 12 voids backfilled, `leaderboard_page` as `anon` still returns 27 players
+with no `rankings` key, and a simulated End + Void produced placements and NULL-point summary
+rows for the ended game and nothing for the voided one, with `rankings` untouched.
 
 **The menu.** Tabs are **PLAY · HOME · COLOURS · BOARD · MORE** on both widths. MORE holds
 only the player's own things: (Kaiwhakawā) · Log a workout · My events · Play history ·

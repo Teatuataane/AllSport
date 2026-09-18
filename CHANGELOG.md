@@ -2,6 +2,13 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.9.2.0] - 2026-09-18
+
+### Changed
+- **Points are gone from the database too.** A game that closes now records placements and nothing else: no points, and no seasonal ranking table behind the scenes. Points earned before today are kept as history.
+- **Voiding a game is now recorded rather than guessed.** The app used to work out that a game was voided from the absence of points, which would have stopped working the moment points did. A voided game is still hidden completely, exactly as before.
+- **Family member chips are coloured by their confirmed overall colour**, not the retired points ladder. Players without an overall colour yet keep the red.
+
 ## [0.9.1.0] - 2026-09-17
 
 ### Fixed

@@ -152,11 +152,10 @@
 
 ## P1 — Do Next
 
-### Retire points in the database
-**What:** points are gone from every page (September 2026), but `award_session_points` still computes and writes `placement_points`, `points_earned`, the `session_player_summary` point columns and `rankings`, and `leaderboard_page()` still returns a `rankings` key nobody reads.
-**Why it matters:** dead writes on every session close, and a second definition of "how a player is doing" sitting in the schema for someone to build on again. Placements (`results.placement`, `overall_placement`, `event_placement`) are NOT points and must stay: wins and the game report read them.
-**Care:** migration from `main`, archive before dropping, verify by querying `pg_proc`, and keep the historical values readable (`/privacy` promises they are kept).
-**Effort:** M
+### Apply `20260918021529` (retire points server-side) — AFTER the v0.9.2.0 code deploys
+**What:** built and dry-run against production; see CLAUDE.md "Points retired server-side". Code must be live first: an old client reads a game closed after this migration as voided.
+**Verify after:** `pg_proc` shows no `points_earned` in `award_session_points`, `session_void_recorded` exists, `trg_update_average_placement` is gone, `leaderboard_page` as anon has no `rankings` key, and the first real game after it closes with placements and NULL-point summary rows.
+**Later (the "B" of the grill's Q2):** once a season passes with nobody missing them, archive and drop `rankings`, `player_totals`, `colour_ladder`, the point columns and the two uncalled old-ladder functions.
 
 
 ### Settle which migration file owns prod's `20260821000000` row
