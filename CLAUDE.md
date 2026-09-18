@@ -1484,7 +1484,7 @@ That is why every verification in this file can be run from a session but the pu
 to be run by a person. The Docker warning `db push` prints (`failed to cache migrations
 catalog`) is the LOCAL catalog cache and has nothing to do with whether the migration applied.
 
-**Points retired server-side (`20260918021529`, v0.9.2.0, NOT YET APPLIED).** Five decisions
+**Points retired server-side (`20260918021529`, v0.9.2.0, APPLIED AND VERIFIED IN PRODUCTION 2026-09-18).** Five decisions
 settled with Tāne in a `/grill-me` on 2026-09-18:
 
 1. **Void is recorded, not inferred.** A voided game used to be recognised by the ABSENCE of
@@ -1515,6 +1515,21 @@ the migration as voided. Dry-run against production 2026-09-18 in rolled-back tr
 all checks pass, 12 voids backfilled, `leaderboard_page` as `anon` still returns 27 players
 with no `rankings` key, and a simulated End + Void produced placements and NULL-point summary
 rows for the ended game and nothing for the voided one, with `rankings` untouched.
+
+**Applied 2026-09-18, after confirming the v0.9.2.0 bundle was live** (the deployed JS carried
+the `voided_at` read; Vercel's commit status had been `pending` minutes earlier, which is the
+window that would have mattered) and no session was running. Verified by querying the objects:
+`award_session_points` no longer references `points_earned` or inserts into `rankings`, still
+writes placements and the summary row, still SECURITY DEFINER; `session_void_recorded` exists;
+`trg_update_average_placement` is gone; **12** sessions carry `voided_at`; the summary point
+columns are nullable; `authenticated` can no longer execute `claim_colour_award`;
+`leaderboard_page` is still `v` / not definer. Through PostgREST as `anon`, `leaderboard_page`
+returns `active_session`, `active_session_results`, `grades`, `stats` (no `rankings`) and 27
+players. The `NOTICE ... trigger "session_void_recorded" ... does not exist, skipping` that
+`db push` prints is the `DROP TRIGGER IF EXISTS` before the first create, not a failure.
+
+**Still to confirm:** the first REAL game after this closes with placements and NULL-point
+summary rows, and appears in play history.
 
 **The menu.** Tabs are **PLAY · HOME · COLOURS · BOARD · MORE** on both widths. MORE holds
 only the player's own things: (Kaiwhakawā) · Log a workout · My events · Play history ·
