@@ -49,8 +49,11 @@ describe('the leaderboard function the public page loads', () => {
   const start = leaderboard.search(/create or replace function public\.leaderboard_page/i)
   const fn = leaderboard.slice(start, leaderboard.indexOf('$fn$;', start) + '$fn$;'.length)
 
-  it('is defined last by the retirement migration', () => {
-    expect(leaderboardFile).toMatch(/_retire_taniwha\.sql$/)
+  // Redefined last by the points retirement (20260918021529), which dropped the
+  // seasonal rankings key. Everything below still has to hold in whichever
+  // file defines it last.
+  it('is defined last by the points retirement migration', () => {
+    expect(leaderboardFile).toMatch(/_retire_points_server\.sql$/)
   })
 
   it('carries conferred colours and no taniwha', () => {
