@@ -18,7 +18,7 @@
 
 import { createClient } from './supabase-browser'
 import {
-  computePlayerGrades, heldRungs, voidedSessionIds, colourGates, unitsSinceConferral, gameEvidence,
+  computePlayerGrades, heldRungs, voidedSessions, colourGates, unitsSinceConferral, gameEvidence,
   type PlayerGrades,
 } from './playerGrades'
 import type { ColourGate } from './grading'
@@ -106,15 +106,35 @@ export function ratingsFor(playerId: string, matches: readonly MatchRow[]): Map<
 }
 
 /**
- * The player's rows that may grade them: not from a VOIDED session. The award
- * trigger writes points to every row a player scored in a session that really
- * closed, so this player's own rows are enough to tell (voidedSessionIds).
+ * Every session a kaiwhakawā voided, from `sessions.voided_at`. Its OWN query,
+ * never folded into the results select: before the migration that adds the
+ * column, naming it raises 42703 and would take the whole results read down.
+ * Null means the column is not there yet, and `voidedSessions` falls back to
+ * inferring a void from missing points. Fetched once per page load.
  */
-function countedRows(rows: readonly ResultRow[]): ResultRow[] {
+let recordedVoids: Promise<Set<string> | null> | null = null
+function loadRecordedVoids(): Promise<Set<string> | null> {
+  recordedVoids ??= Promise.resolve(
+    supabase.from('sessions').select('id').not('voided_at', 'is', null),
+  ).then(({ data, error }) => {
+    // 42703 = the column is not there yet: the legacy rule is still correct.
+    if (error?.code === '42703') return null
+    // Any other failure: count every game rather than guess. After the
+    // migration the legacy rule would call EVERY finished game voided, which is
+    // far worse than counting one rare voided game. Not cached, so the next
+    // load asks again.
+    if (error || !data) { recordedVoids = null; return new Set<string>() }
+    return new Set((data as { id: string }[]).map(s => s.id))
+  })
+  return recordedVoids
+}
+
+/** The player's rows that may grade them: not from a VOIDED session. */
+function countedRows(rows: readonly ResultRow[], recorded: ReadonlySet<string> | null): ResultRow[] {
   const sessions = [...new Map(rows.filter(r => r.sessions).map(r => [r.session_id, {
     id: r.session_id, is_active: r.sessions!.is_active, points_awarded_at: r.sessions!.points_awarded_at,
   }])).values()]
-  const voided = voidedSessionIds(sessions, rows)
+  const voided = voidedSessions(recorded, sessions, rows)
   return rows.filter(r => !voided.has(r.session_id) && r.session_events?.event_name)
 }
 
@@ -124,7 +144,7 @@ function countedRows(rows: readonly ResultRow[]): ResultRow[] {
  * if the player cannot be found.
  */
 export async function loadGradeState(playerId: string, matches?: readonly MatchRow[]): Promise<GradeState | null> {
-  const [profile, gender, band, results, exemptions, awards, workouts, allMatches] = await Promise.all([
+  const [profile, gender, band, results, exemptions, awards, workouts, allMatches, voids] = await Promise.all([
     supabase.from('players_public').select('division, age_years').eq('id', playerId).maybeSingle(),
     supabase.from('players').select('gender').eq('id', playerId).maybeSingle(),
     supabase.from('players').select('bodyweight_band').eq('id', playerId).maybeSingle(),
@@ -141,6 +161,7 @@ export async function loadGradeState(playerId: string, matches?: readonly MatchR
       .eq('workouts.player_id', playerId)
       .range(0, 4999),
     matches ? Promise.resolve(matches) : loadMatches(),
+    loadRecordedVoids(),
   ])
 
   if (!profile.data) return null
@@ -149,7 +170,7 @@ export async function loadGradeState(playerId: string, matches?: readonly MatchR
   const bandLabel = band.error ? null : (band.data as { bodyweight_band: string | null } | null)?.bodyweight_band ?? null
   const exempt = new Set(exemptions.error ? [] : (exemptions.data ?? []).map((e: { event_slug: string }) => e.event_slug))
 
-  const counted = countedRows((results.data ?? []) as unknown as ResultRow[])
+  const counted = countedRows((results.data ?? []) as unknown as ResultRow[], voids)
   const game = gameEvidence(counted.map(r => ({
     session_id: r.session_id,
     event_name: r.session_events!.event_name,
