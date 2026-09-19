@@ -152,8 +152,8 @@
 
 ## P1 — Do Next
 
-### Apply `20260918021529` (retire points server-side) — AFTER the v0.9.2.0 code deploys
-**What:** built and dry-run against production; see CLAUDE.md "Points retired server-side". Code must be live first: an old client reads a game closed after this migration as voided.
+### Confirm the first real game after `20260918021529` (applied 2026-09-18)
+**What:** applied and verified; see CLAUDE.md "Points retired server-side". One thing no dry run can prove: a real game closing under it.
 **Verify after:** `pg_proc` shows no `points_earned` in `award_session_points`, `session_void_recorded` exists, `trg_update_average_placement` is gone, `leaderboard_page` as anon has no `rankings` key, and the first real game after it closes with placements and NULL-point summary rows.
 **Later (the "B" of the grill's Q2):** once a season passes with nobody missing them, archive and drop `rankings`, `player_totals`, `colour_ladder`, the point columns and the two uncalled old-ladder functions.
 
