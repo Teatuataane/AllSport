@@ -1546,6 +1546,27 @@ a `var(--font-*)` token; `/judge`'s header typo "Kaiwāwao" is Kaiwhakawā; "Wha
 is explained on `/grades` from `unitRulesSummary()` in `lib/units.ts` (shared with How To
 Play); the dashboard colours card asks for a bodyweight band when one is missing.
 
+## Season medal table (September 2026) — v0.10.0.0
+
+`/leaderboard` has two boards over the same division tabs: **Colours** (lifetime,
+never resets) and **Season {year}** (this calendar year's 1st/2nd/3rd finishes,
+ranked Olympic style, ties share a place). It is what "season points" means now
+that points are retired. `lib/medalTable.ts` is pure and tested.
+
+- **Source is `results.placement`**, the exact-division rank written at close,
+  read from the `leaderboard_page()` payload the page already loads. No
+  migration. `session_player_summary` holds the same number but is private
+  (own + judge), so a public board cannot read it.
+- **Walkovers count, on purpose.** 64 of 103 division-games in 2026 had one
+  player, so 64 of 106 golds were won alone. Shown to Tāne on 2026-09-19 with a
+  "must beat someone" and a combined-pool alternative; he chose every placement
+  counts. Do not add a field-size rule without asking.
+- A player sits under their CURRENT division; each placement was earned in the
+  division they were in that day. Same rule as the colours board.
+- Part 1 of the workout-customisation plan (swaps in official games, personal
+  games replacing `/log`, natural input formats). Design record:
+  `docs/designs/workout-customisation-spec.md`, gitignored.
+
 ## Security posture (August 2026) — read before touching RLS or players_public
 
 An OWASP pass (SQL injection / XSS / auth / access control) found three

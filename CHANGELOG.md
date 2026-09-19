@@ -2,6 +2,14 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.10.0.0] - 2026-09-19
+
+### Added
+- **A season medal table on the leaderboard.** Switch the board from Colours to Season 2026 to see every player's 1st, 2nd and 3rd place finishes in their division this year, ranked the Olympic way: most 1sts first, then 2nds, then 3rds. Players level on all three share a place. It starts fresh every January, while colours stay yours for good. Every division tab works on both boards.
+
+### Changed
+- **The leaderboard's introduction describes both boards.** It used to say the board never resets, which is now only true of the colours board.
+
 ## [0.9.2.0] - 2026-09-18
 
 ### Changed
