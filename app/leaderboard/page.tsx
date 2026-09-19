@@ -13,6 +13,7 @@ import {
 } from '@/lib/percentile'
 import { gradeForRung, DOMAIN_COUNT, GRADES } from '@/lib/grading'
 import { rankByColours } from '@/lib/colourBoard'
+import { seasonMedals, rankMedals, type MedalRow, type MedalCount } from '@/lib/medalTable'
 import { GradeDot } from '@/components/GradesCard'
 
 /**
@@ -78,6 +79,66 @@ type StatsBundle = {
   events: RatingEventRow[]
   sessions: RatingSessionRow[]
   players: RatingPlayerRow[]
+}
+
+const MEDAL_COLOURS = { gold: '#F9B051', silver: '#c0c0c0', bronze: '#cd7f32' } as const
+
+/**
+ * The season medal table. One grid for every width: six narrow columns fit a
+ * phone, unlike the colours table, so it needs no separate card layout.
+ */
+function MedalTable({ data, accentColor, loading, year }: { data: MedalRow[]; accentColor: string; loading: boolean; year: number }) {
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        {[1, 2, 3, 4, 5].map(i => (
+          <div key={i} style={{ height: '52px', background: '#111', border: '1px solid #1a1a1a', borderRadius: '8px', opacity: 1 - i * 0.15 }} />
+        ))}
+      </div>
+    )
+  }
+  if (data.length === 0) {
+    return (
+      <div style={{ textAlign: 'center', padding: '80px 0', color: '#444' }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: '32px', marginBottom: '8px' }}>No games yet in {year}</div>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: '15px' }}>Medals appear once a game in this division closes.</p>
+      </div>
+    )
+  }
+  // Fixed narrow columns: minmax tracks grow to their max before `1fr` gets
+  // anything, which crushed the name column on a phone.
+  const cols = '26px minmax(0, 1fr) 36px 36px 36px 46px'
+  const head = { fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '11px', letterSpacing: '0.12em', textTransform: 'uppercase' as const, textAlign: 'center' as const, overflow: 'hidden' }
+  const count = (n: number, colour: string) => (
+    <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', textAlign: 'center', color: n > 0 ? colour : '#2a2a2a' }}>{n}</div>
+  )
+  return (
+    <div style={{ maxWidth: '680px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: cols, gap: '4px', padding: '8px 10px' }}>
+        <div style={{ ...head, color: '#444', textAlign: 'left' }}>#</div>
+        <div style={{ ...head, color: '#444', textAlign: 'left' }}>Player</div>
+        <div style={{ ...head, color: MEDAL_COLOURS.gold }}>1st</div>
+        <div style={{ ...head, color: MEDAL_COLOURS.silver }}>2nd</div>
+        <div style={{ ...head, color: MEDAL_COLOURS.bronze }}>3rd</div>
+        <div style={{ ...head, color: '#444' }}>Games</div>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+        {data.map(p => (
+          <div key={p.playerId} style={{
+            display: 'grid', gridTemplateColumns: cols, gap: '4px', padding: '12px 10px', alignItems: 'center',
+            border: '1px solid', borderColor: p.rank === 1 ? `${accentColor}33` : '#1a1a1a', background: '#0d0d0d', borderRadius: '8px',
+          }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', color: p.rank <= 3 ? '#F9B051' : '#333333' }}>{p.rank}</div>
+            <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '15px', color: '#ffffff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
+            {count(p.gold, MEDAL_COLOURS.gold)}
+            {count(p.silver, MEDAL_COLOURS.silver)}
+            {count(p.bronze, MEDAL_COLOURS.bronze)}
+            <div style={{ fontFamily: 'var(--font-label)', fontSize: '15px', textAlign: 'center', color: '#555' }}>{p.games}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 // Shape returned by the `leaderboard_page(p_season)` RPC
@@ -319,6 +380,10 @@ function computeLeader(results: SessionResult[]): SessionLeader | null {
 
 export default function Leaderboard() {
   const [activeTab, setActiveTab] = useState('all-divisions')
+  // Two boards over the same division tabs: colours (lifetime) and the season
+  // medal table (this calendar year's 1st/2nd/3rd finishes).
+  const [board, setBoard] = useState<'colours' | 'season'>('colours')
+  const seasonYear = new Date().getFullYear()
   const [roster, setRoster] = useState<RosterPlayer[]>([])
   // Conferred colours per player: domain -> highest colour held. This is what
   // the board ranks on (lib/colourBoard.ts).
@@ -505,6 +570,23 @@ export default function Leaderboard() {
     })
   }
 
+  const medals = useMemo(
+    () => (statsData ? seasonMedals(statsData.results, statsData.sessions, seasonYear) : new Map<string, MedalCount>()),
+    [statsData, seasonYear],
+  )
+
+  // The medal table for a tab. A player sits under their CURRENT division, the
+  // same rule the colours board uses; each placement was earned in the division
+  // they were in on the day.
+  const getMedalData = (tabKey: string): MedalRow[] => {
+    const division = DIVISION_MAP[tabKey]
+    const inTab = (d: string | null) => tabKey === 'all-divisions'
+      || d === division || (tabKey === 'juniors' && d === 'Youth')
+    return rankMedals(roster
+      .filter(p => inTab(p.division) && medals.has(p.id))
+      .map(p => ({ playerId: p.id, name: p.display_name || p.username || 'Anonymous', ...medals.get(p.id)! })))
+  }
+
   const activeTabData = tabs.find(t => t.key === activeTab)!
   const tabData = getTabData(activeTab)
 
@@ -530,14 +612,14 @@ export default function Leaderboard() {
       <section style={{ paddingTop: '152px', paddingBottom: '80px', background: '#000000', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(#141414 1px, transparent 1px), linear-gradient(90deg, #141414 1px, transparent 1px)', backgroundSize: '80px 80px', opacity: 0.5 }} />
         <div className="container" style={{ position: 'relative', zIndex: 1 }}>
-          <div className="tag">All-time standings</div>
+          <div className="tag">Standings</div>
           <h1 style={{ fontSize: 'clamp(56px, 8vw, 112px)', lineHeight: 0.95, marginBottom: '8px' }}>
             LEADER<br />
             <span className="rainbow-text">BOARD</span>
           </h1>
           <div className="rainbow-line" style={{ width: '80px', marginBottom: '28px' }} />
           <p style={{ color: '#cccccc', fontSize: '20px', maxWidth: '560px', lineHeight: 1.7 }}>
-            Ranked by colours. Every colour is earned against a published standard, confirmed by a kaiwhakawā, and yours for good, so this board never resets. The only way up is to get better at the part of the sport you train least.
+            Two boards. <strong style={{ color: '#ffffff' }}>Colours</strong> are earned against published standards, confirmed by a kaiwhakawā and yours for good, so that board never resets. The <strong style={{ color: '#ffffff' }}>Season</strong> board counts every game you finish 1st, 2nd or 3rd in your division this year, and starts fresh each January.
           </p>
         </div>
       </section>
@@ -595,6 +677,18 @@ export default function Leaderboard() {
       {/* Tabs + table */}
       <section className="section" style={{ background: '#0d0d0d', borderTop: `3px solid ${activeTabData.color}` }}>
         <div className="container">
+          <div role="group" aria-label="Board" style={{ display: 'inline-flex', gap: '4px', padding: '4px', marginBottom: '20px', background: '#0a0a0a', border: '1px solid #1e1e1e', borderRadius: '999px' }}>
+            {([['colours', 'Colours'], ['season', `Season ${seasonYear}`]] as const).map(([key, text]) => (
+              <button key={key} aria-pressed={board === key} onClick={() => setBoard(key)}
+                style={{
+                  minHeight: '44px', padding: '0 20px', borderRadius: '999px', border: 'none', cursor: 'pointer',
+                  fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '14px', letterSpacing: '0.1em', textTransform: 'uppercase',
+                  background: board === key ? '#ffffff' : 'transparent', color: board === key ? '#000000' : '#777777',
+                }}>
+                {text}
+              </button>
+            ))}
+          </div>
           <div style={{ display: 'flex', gap: '4px', marginBottom: '48px', flexWrap: 'wrap' }}>
             {tabs.map(tab => (
               <button key={tab.key} className={`tab-btn${activeTab === tab.key ? ' active' : ''}`} onClick={() => setActiveTab(tab.key)}
@@ -605,8 +699,18 @@ export default function Leaderboard() {
           </div>
           <div className="tag">{activeTabData.label}</div>
           <h2 style={{ fontSize: 'clamp(32px, 4vw, 48px)', marginBottom: '16px' }}>
-            <span style={{ color: activeTabData.color }}>{activeTabData.label.toUpperCase()}</span> RANKINGS
+            <span style={{ color: activeTabData.color }}>{activeTabData.label.toUpperCase()}</span> {board === 'season' ? `SEASON ${seasonYear}` : 'RANKINGS'}
           </h2>
+
+          {board === 'season' ? (
+            <>
+              <p style={{ color: 'var(--grey)', fontSize: '14px', lineHeight: 1.7, maxWidth: '680px', margin: '0 0 28px' }}>
+                Every game finished 1st, 2nd or 3rd in your division this year, ranked the Olympic way: most 1sts first,
+                then 2nds, then 3rds. Only the official ten events decide a game. Starts fresh every January.
+              </p>
+              <MedalTable data={getMedalData(activeTab)} accentColor={activeTabData.color} loading={loading} year={seasonYear} />
+            </>
+          ) : (<>
 
           {/* How the numbers work — comprehension helper */}
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '18px 22px', marginBottom: '32px', maxWidth: '780px', position: 'relative', overflow: 'hidden' }}>
@@ -633,6 +737,7 @@ export default function Leaderboard() {
           </div>
 
           <LeaderboardTable data={tabData} accentColor={activeTabData.color} loading={loading} />
+          </>)}
         </div>
       </section>
 
