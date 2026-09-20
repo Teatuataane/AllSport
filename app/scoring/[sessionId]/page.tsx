@@ -3,7 +3,7 @@ import { opponentPicks as pickOpponents } from '@/lib/matches'
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient, getSessionUser } from '@/lib/supabase-browser'
-import { getEventByName, type EventData } from '@/lib/eventData'
+import { getEventByName, getEventBySlug, type EventData } from '@/lib/eventData'
 import { unitsForResult, unitsForResultRow, unitsIn, fmtUnits, fmtUnitsLabel } from '@/lib/units'
 import { parseLocalDate } from '@/lib/dates'
 import EventIcon, { domainColor } from '@/components/EventIcon'
@@ -15,6 +15,9 @@ import {
 // The play screen's shared pieces. A personal game (app/workout/[id]) draws
 // with exactly these, so scoring keeps ONE code path.
 import QuickEntrySheet, { type SubmitOutcome } from '@/components/play/QuickEntrySheet'
+import SwapPicker from '@/components/play/SwapPicker'
+import { playList, domainsCovered, type PlaySlot } from '@/lib/gameSwaps'
+import { useGameSwaps } from '@/lib/useGameSwaps'
 import EventListRow from '@/components/play/EventListRow'
 import {
   formatPR, sportWDL, sectionLabel, ProgressSegments, INP, QES_LBL as SHEET_LBL,
@@ -1038,6 +1041,10 @@ export default function SessionPage() {
   const [player, setPlayer] = useState<Record<string, unknown> | null>(null)
   const [familyMembers, setFamilyMembers] = useState<Record<string, unknown>[]>([])
   const [activePlayerId, setActivePlayerId] = useState<string | null>(null)
+  // The signed-in account, which is who WRITES a swap workout (logged_by).
+  // Distinct from activePlayerId, which is whose tab is open: a parent scoring
+  // for their child writes the child's workout under their own id.
+  const [authUserId, setAuthUserId] = useState<string | null>(null)
   // Keyed by the player and events they were loaded for (see prsKey below), so a
   // family-tab switch never shows the previous player's PRs, without resetting
   // state inside the loading effect.
@@ -1088,6 +1095,23 @@ export default function SessionPage() {
     () => resolveJudgeTarget(judgeTargetId, judgeGuestName, sessionPlayers, results),
     [judgeTargetId, judgeGuestName, sessionPlayers, results],
   )
+
+  // Swapped and extra events for whoever's tab is open. ONE hook at page level
+  // rather than one per tab: the player tabs are rendered inside a map, where a
+  // hook cannot go. A guest has no id and so cannot swap — their scores are the
+  // kaiwhakawā's record, and a workout needs an owner.
+  const swapPlayerId = activeTab.startsWith('player-')
+    ? activeTab.slice('player-'.length)
+    : activeTab === 'judge' ? (judgeTarget?.id ?? null)
+    : null
+  const swaps = useGameSwaps({
+    sessionId: sessionId as string,
+    playerId: swapPlayerId,
+    userId: authUserId,
+    sessionOpen: !sessionEnded,
+  })
+  const [swapFor, setSwapFor] = useState<SessionEvent | null>(null)
+  const [addingExtra, setAddingExtra] = useState(false)
 
   // Every roster row's scored-event set, computed once per results change
   const rosterScored = useMemo(
@@ -1173,6 +1197,7 @@ export default function SessionPage() {
       // Reads the locally stored session — no network round trip. See the note
       // on getSessionUser() in lib/supabase-browser.ts.
       const authUser = await getSessionUser()
+      setAuthUserId(authUser?.id ?? null)
 
       // Every query below needs either sessionId (known before this effect ran)
       // or authUser.id (known now), and none of them needs another one's answer.
@@ -1575,11 +1600,22 @@ export default function SessionPage() {
         const pName = (p.display_name || p.username || p.full_name) as string
         const pDivision = (p.division as string | null) ?? null
         const myResults = results.filter(r => r.player_id === pid)
-        const totalUnits = unitsFor(myResults, events)
+        const totalUnits = unitsFor(myResults, events) + swaps.units
         const scoredIds = new Set(events.filter(ev => myResults.some(r => r.event_id === ev.id)).map(ev => ev.id))
         const todoEvents = events.filter(ev => !scoredIds.has(ev.id))
         const doneEvents = events.filter(ev => scoredIds.has(ev.id))
-        const sheetEvent = sheetEventId ? events.find(e => e.id === sheetEventId) : undefined
+        // The ten, plus whatever this player swapped in or added on top.
+        const slots: PlaySlot[] = playList(events, swaps.chosen)
+        const slotRows = (slot: PlaySlot) => slot.kind === 'official'
+          ? results.filter(r => r.event_id === slot.se.id && r.player_id === pid)
+          : swaps.entriesFor(slot.se.id)
+        // A swapped domain fills its segment: the bar is the player's own
+        // progress. The placement banner is untouched, because a swapped event
+        // is still ranked last.
+        const covered = domainsCovered(events, scoredIds, swaps.scoredSlugs)
+        const barScored = new Set(events.filter(ev => covered.has(ev.domain_number)).map(ev => ev.id))
+        const sheetSlot = sheetEventId ? slots.find(sl => sl.se.id === sheetEventId) : undefined
+        const sheetEvent = sheetSlot?.kind === 'official' ? events.find(e => e.id === sheetEventId) : undefined
 
         return (
           <div key={pid} style={{ padding: '16px' }}>
@@ -1604,7 +1640,7 @@ export default function SessionPage() {
                 </div>
               </div>
               <div style={{ position: 'relative' }}>
-                <ProgressSegments events={events} scoredIds={scoredIds} />
+                <ProgressSegments events={events} scoredIds={barScored} />
                 {fullHousePulseId === pid && (
                   <div style={{ position: 'absolute', inset: 0, borderRadius: '99px', overflow: 'hidden', pointerEvents: 'none' }}>
                     <div style={{
@@ -1617,33 +1653,111 @@ export default function SessionPage() {
               </div>
             </div>
 
-            {/* Still to play */}
-            {todoEvents.length > 0 && sectionLabel(`Still to play — ${todoEvents.length} event${todoEvents.length === 1 ? '' : 's'}`)}
-            {todoEvents.map(ev => (
-              <EventListRow
-                key={ev.id}
-                se={ev}
-                eventData={getEventByName(ev.event_name)}
-                myResults={results.filter(r => r.event_id === ev.id && r.player_id === pid)}
-                note={eventDivisionRank(ev.id, results, playerInfoMap, pDivision,
-                  bestRaw(results.filter(r => r.event_id === ev.id && r.player_id === pid)))}
-                onOpen={() => setSheetEventId(ev.id)}
-              />
-            ))}
+            {/* Still to play, then Scored. A swap sits under the event it
+                stands in for; scoring it never places you, so the row carries
+                the training it earns instead of a division rank. */}
+            {(['todo', 'done'] as const).map(section => {
+              const rows = slots.filter(s => (slotRows(s).length > 0) === (section === 'done'))
+              if (rows.length === 0) return null
+              return (
+                <div key={section}>
+                  {section === 'todo'
+                    ? sectionLabel(`Still to play — ${rows.length} event${rows.length === 1 ? '' : 's'}`)
+                    : sectionLabel('Scored')}
+                  {rows.map(slot => (
+                    <div key={slot.se.id} style={slot.kind === 'official' ? undefined : { marginLeft: 14 }}>
+                      {slot.kind !== 'official' && (
+                        <div style={{
+                          fontFamily: 'var(--font-label)', fontSize: 10.5, letterSpacing: '0.12em',
+                          textTransform: 'uppercase', color: '#777', margin: '2px 4px 4px',
+                        }}>
+                          {slot.kind === 'swap' ? `Swapped from ${slot.replaces?.event_name}` : 'Extra'}
+                          {swaps.available && !swaps.scoredSlugs.has(slot.se.id) && (
+                            <button onClick={() => swaps.remove(slot.se.id)} style={{
+                              background: 'none', border: 'none', color: '#2371BB', cursor: 'pointer',
+                              fontFamily: 'var(--font-label)', fontSize: 10.5, letterSpacing: '0.12em',
+                              textTransform: 'uppercase', minHeight: 44, padding: '0 10px',
+                            }}>Remove</button>
+                          )}
+                        </div>
+                      )}
+                      <EventListRow
+                        se={slot.se}
+                        eventData={slot.kind === 'official' ? getEventByName(slot.se.event_name) : getEventBySlug(slot.se.event_slug)}
+                        myResults={slotRows(slot)}
+                        note={slot.kind === 'official'
+                          ? eventDivisionRank(slot.se.id, results, playerInfoMap, pDivision,
+                              bestRaw(results.filter(r => r.event_id === slot.se.id && r.player_id === pid)))
+                          : { label: 'Training only', color: '#B87DB5' }}
+                        onOpen={() => setSheetEventId(slot.se.id)}
+                      />
+                      {slot.kind === 'official' && swaps.available && slotRows(slot).length === 0
+                        && !slots.some(o => o.kind === 'swap' && o.replaces?.id === slot.se.id) && (
+                        <button onClick={() => setSwapFor(slot.se as SessionEvent)} style={{
+                          background: 'none', border: 'none', cursor: 'pointer', color: '#777',
+                          fontFamily: 'var(--font-label)', fontSize: 11, letterSpacing: '0.12em',
+                          textTransform: 'uppercase', minHeight: 44, padding: '0 8px', margin: '-6px 0 6px 56px',
+                        }}>Swap this event</button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )
+            })}
 
-            {/* Scored */}
-            {doneEvents.length > 0 && sectionLabel('Scored')}
-            {doneEvents.map(ev => (
-              <EventListRow
-                key={ev.id}
-                se={ev}
-                eventData={getEventByName(ev.event_name)}
-                myResults={results.filter(r => r.event_id === ev.id && r.player_id === pid)}
-                note={eventDivisionRank(ev.id, results, playerInfoMap, pDivision,
-                  bestRaw(results.filter(r => r.event_id === ev.id && r.player_id === pid)))}
-                onOpen={() => setSheetEventId(ev.id)}
+            {/* Extras — anything on top of the ten */}
+            {swaps.available && (
+              <button onClick={() => setAddingExtra(true)} style={{
+                width: '100%', minHeight: 48, marginTop: 12, borderRadius: 999, cursor: 'pointer',
+                background: 'none', border: '1px dashed #2a2a2a', color: '#777',
+                fontFamily: 'var(--font-label)', fontSize: 12, letterSpacing: '0.12em', textTransform: 'uppercase',
+              }}>+ Add an event</button>
+            )}
+
+            {/* A swapped or extra event: the same sheet, the other store. */}
+            {sheetSlot && sheetSlot.kind !== 'official' && (
+              <QuickEntrySheet
+                key={`swap-${sheetSlot.se.id}`}
+                se={sheetSlot.se}
+                eventData={getEventBySlug(sheetSlot.se.event_slug)}
+                myResults={swaps.entriesFor(sheetSlot.se.id)}
+                opponents={[]}
+                seasonPR={null}
+                locked={sessionEnded}
+                bestLabel="Best today"
+                prLabel="Training"
+                allowGames={false}
+                onClose={() => setSheetEventId(null)}
+                onSubmit={(v, editingId) => swaps.submit(sheetSlot.se.id, v, editingId)}
+                onDelete={swaps.deleteEntry}
+                onSubmitted={(labelText, meta) => {
+                  setSheetEventId(null)
+                  setToast({ eventName: sheetSlot.se.event_name, label: labelText, isPR: false, isNewEvent: false, units: meta.units })
+                  setTimeout(() => setToast(null), 3000)
+                }}
+                onDeleted={() => { /* the store reloaded itself */ }}
               />
-            ))}
+            )}
+
+            {/* Picking a swap, or an extra */}
+            {swapFor && (
+              <SwapPicker
+                title={`Instead of ${swapFor.event_name}`}
+                domainNumber={swapFor.domain_number}
+                exclude={[...events.map(e => e.event_slug), ...swaps.chosen]}
+                onPick={async slug => { setSwapFor(null); await swaps.add(slug) }}
+                onClose={() => setSwapFor(null)}
+              />
+            )}
+            {addingExtra && (
+              <SwapPicker
+                title="Add an event"
+                domainNumber={null}
+                exclude={[...events.map(e => e.event_slug), ...swaps.chosen]}
+                onPick={async slug => { setAddingExtra(false); await swaps.add(slug) }}
+                onClose={() => setAddingExtra(false)}
+              />
+            )}
 
             {/* Quick-entry sheet */}
             {sheetEvent && (
@@ -1731,11 +1845,17 @@ export default function SessionPage() {
         const target = judgeTarget
         const targetResults = target ? resultsForTarget(results, target) : []
         const targetDivision = target?.id ? (playerInfoMap[target.id]?.division ?? null) : null
-        const totalUnits = unitsFor(targetResults, events)
+        const totalUnits = unitsFor(targetResults, events) + swaps.units
         const scoredIds = scoredEventIds(targetResults, events.map(ev => ev.id))
         const todoEvents = events.filter(ev => !scoredIds.has(ev.id))
         const doneEvents = events.filter(ev => scoredIds.has(ev.id))
-        const sheetEvent = sheetEventId ? events.find(e => e.id === sheetEventId) : undefined
+        const judgeSlots: PlaySlot[] = playList(events, swaps.chosen)
+        const judgeSlotRows = (slot: PlaySlot) => slot.kind === 'official'
+          ? targetResults.filter(r => r.event_id === slot.se.id)
+          : swaps.entriesFor(slot.se.id)
+        const judgeSheetSlot = sheetEventId ? judgeSlots.find(sl => sl.se.id === sheetEventId) : undefined
+        const sheetEvent = judgeSheetSlot?.kind === 'official' ? events.find(e => e.id === sheetEventId) : undefined
+        const judgeCovered = domainsCovered(events, scoredIds, swaps.scoredSlugs)
         const unlistedPlayers = sessionPlayers.filter(sp => !judgeRoster.registeredIds.has(sp.id))
         const canPickMore = unlistedPlayers.length > 0
         const guestDraft = judgeGuestDraft.trim()
@@ -1866,36 +1986,111 @@ export default function SessionPage() {
                       {fmtUnitsLabel(totalUnits)} toward colours
                     </div>
                   </div>
-                  <ProgressSegments events={events} scoredIds={scoredIds} />
+                  <ProgressSegments events={events} scoredIds={new Set(events.filter(ev => judgeCovered.has(ev.domain_number)).map(ev => ev.id))} />
                 </div>
 
-                {/* Still to play */}
-                {todoEvents.length > 0 && sectionLabel(`Still to play — ${todoEvents.length} event${todoEvents.length === 1 ? '' : 's'}`)}
-                {todoEvents.map(ev => (
-                  <EventListRow
-                    key={ev.id}
-                    se={ev}
-                    eventData={getEventByName(ev.event_name)}
-                    myResults={targetResults.filter(r => r.event_id === ev.id)}
-                    note={eventDivisionRank(ev.id, results, playerInfoMap, targetDivision,
-                      bestRaw(targetResults.filter(r => r.event_id === ev.id)))}
-                    onOpen={() => setSheetEventId(ev.id)}
-                  />
-                ))}
+                {/* The same list a player sees, including their swaps. A guest
+                    has no swaps: a workout needs an owner. */}
+                {(['todo', 'done'] as const).map(section => {
+                  const rows = judgeSlots.filter(sl => (judgeSlotRows(sl).length > 0) === (section === 'done'))
+                  if (rows.length === 0) return null
+                  return (
+                    <div key={section}>
+                      {section === 'todo'
+                        ? sectionLabel(`Still to play — ${rows.length} event${rows.length === 1 ? '' : 's'}`)
+                        : sectionLabel('Scored')}
+                      {rows.map(slot => (
+                        <div key={slot.se.id} style={slot.kind === 'official' ? undefined : { marginLeft: 14 }}>
+                          {slot.kind !== 'official' && (
+                            <div style={{
+                              fontFamily: 'var(--font-label)', fontSize: 10.5, letterSpacing: '0.12em',
+                              textTransform: 'uppercase', color: '#777', margin: '2px 4px 4px',
+                            }}>
+                              {slot.kind === 'swap' ? `Swapped from ${slot.replaces?.event_name}` : 'Extra'}
+                              {swaps.available && !swaps.scoredSlugs.has(slot.se.id) && (
+                                <button onClick={() => swaps.remove(slot.se.id)} style={{
+                                  background: 'none', border: 'none', color: '#2371BB', cursor: 'pointer',
+                                  fontFamily: 'var(--font-label)', fontSize: 10.5, letterSpacing: '0.12em',
+                                  textTransform: 'uppercase', minHeight: 44, padding: '0 10px',
+                                }}>Remove</button>
+                              )}
+                            </div>
+                          )}
+                          <EventListRow
+                            se={slot.se}
+                            eventData={slot.kind === 'official' ? getEventByName(slot.se.event_name) : getEventBySlug(slot.se.event_slug)}
+                            myResults={judgeSlotRows(slot)}
+                            note={slot.kind === 'official'
+                              ? eventDivisionRank(slot.se.id, results, playerInfoMap, targetDivision,
+                                  bestRaw(targetResults.filter(r => r.event_id === slot.se.id)))
+                              : { label: 'Training only', color: '#B87DB5' }}
+                            onOpen={() => setSheetEventId(slot.se.id)}
+                          />
+                          {slot.kind === 'official' && swaps.available && judgeSlotRows(slot).length === 0
+                            && !judgeSlots.some(o => o.kind === 'swap' && o.replaces?.id === slot.se.id) && (
+                            <button onClick={() => setSwapFor(slot.se as SessionEvent)} style={{
+                              background: 'none', border: 'none', cursor: 'pointer', color: '#777',
+                              fontFamily: 'var(--font-label)', fontSize: 11, letterSpacing: '0.12em',
+                              textTransform: 'uppercase', minHeight: 44, padding: '0 8px', margin: '-6px 0 6px 56px',
+                            }}>Swap this event</button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )
+                })}
 
-                {/* Scored */}
-                {doneEvents.length > 0 && sectionLabel('Scored')}
-                {doneEvents.map(ev => (
-                  <EventListRow
-                    key={ev.id}
-                    se={ev}
-                    eventData={getEventByName(ev.event_name)}
-                    myResults={targetResults.filter(r => r.event_id === ev.id)}
-                    note={eventDivisionRank(ev.id, results, playerInfoMap, targetDivision,
-                      bestRaw(targetResults.filter(r => r.event_id === ev.id)))}
-                    onOpen={() => setSheetEventId(ev.id)}
+                {swaps.available && (
+                  <button onClick={() => setAddingExtra(true)} style={{
+                    width: '100%', minHeight: 48, marginTop: 12, borderRadius: 999, cursor: 'pointer',
+                    background: 'none', border: '1px dashed #2a2a2a', color: '#777',
+                    fontFamily: 'var(--font-label)', fontSize: 12, letterSpacing: '0.12em', textTransform: 'uppercase',
+                  }}>+ Add an event</button>
+                )}
+
+                {/* A swapped or extra event, scored by the kaiwhakawā. */}
+                {judgeSheetSlot && judgeSheetSlot.kind !== 'official' && (
+                  <QuickEntrySheet
+                    key={`judge-swap-${target?.id ?? 'none'}-${judgeSheetSlot.se.id}`}
+                    se={judgeSheetSlot.se}
+                    eventData={getEventBySlug(judgeSheetSlot.se.event_slug)}
+                    myResults={swaps.entriesFor(judgeSheetSlot.se.id)}
+                    opponents={[]}
+                    seasonPR={null}
+                    locked={sessionEnded}
+                    bestLabel="Best today"
+                    prLabel="Training"
+                    allowGames={false}
+                    onClose={() => setSheetEventId(null)}
+                    onSubmit={(v, editingId) => swaps.submit(judgeSheetSlot.se.id, v, editingId)}
+                    onDelete={swaps.deleteEntry}
+                    onSubmitted={(labelText, meta) => {
+                      setSheetEventId(null)
+                      setToast({ eventName: judgeSheetSlot.se.event_name, label: labelText, isPR: false, isNewEvent: false, units: meta.units, playerName: target?.name })
+                      setTimeout(() => setToast(null), 3000)
+                    }}
+                    onDeleted={() => { /* the store reloaded itself */ }}
                   />
-                ))}
+                )}
+
+                {swapFor && (
+                  <SwapPicker
+                    title={`Instead of ${swapFor.event_name}`}
+                    domainNumber={swapFor.domain_number}
+                    exclude={[...events.map(e => e.event_slug), ...swaps.chosen]}
+                    onPick={async slug => { setSwapFor(null); await swaps.add(slug) }}
+                    onClose={() => setSwapFor(null)}
+                  />
+                )}
+                {addingExtra && (
+                  <SwapPicker
+                    title="Add an event"
+                    domainNumber={null}
+                    exclude={[...events.map(e => e.event_slug), ...swaps.chosen]}
+                    onPick={async slug => { setAddingExtra(false); await swaps.add(slug) }}
+                    onClose={() => setAddingExtra(false)}
+                  />
+                )}
 
                 {/* Quick-entry sheet */}
                 {sheetEvent && (
