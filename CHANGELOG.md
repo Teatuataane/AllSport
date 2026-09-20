@@ -2,6 +2,16 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.13.0.0] - 2026-09-20
+
+### Added
+- **Log lifts as sets.** On a swapped, extra or personal event, add each set of weight and reps. The best set counts toward your colours, and every set counts as training. Your one-rep max is estimated from it and shown beside what you actually lifted: "100kg × 5 · est. 1RM 112.5kg".
+- **Log runs, rides and rows as distance and time.** Enter 5km in 26:10 and the app works out your pace and what that predicts over the event's distance, so a normal training run counts toward your colours instead of only being volume. Everything you cover counts as training: a 5km run is five units.
+
+### Notes
+- Estimates are only made where they are reliable: up to 10 reps for a lift, and only shortening a distance (never stretching one), up to ten times the event's distance. Outside that, the effort still counts as training.
+- Official events at a game keep the official format, so an estimate can never beat a measured score.
+
 ## [0.12.0.0] - 2026-09-20
 
 ### Added

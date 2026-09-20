@@ -1663,6 +1663,37 @@ SAME domain, or add extras on top. Part 3 of the workout-customisation plan.
   workout — while the placement banner is untouched. A guest cannot swap: a
   workout needs an owner.
 
+## Natural input formats (September 2026) — v0.13.0.0
+
+How people actually train, converted into the score AllSport ranks. Part 4 of
+the workout-customisation plan, and the part that prompted it.
+
+- **Only two families clashed**, which the September 2026 research pass
+  established: strength (sets of weight × reps against a heaviest single) and
+  distance efforts (5km in 26:10 against a fixed rung). Reps, holds, throws and
+  games are already logged the way they are scored.
+- **`lib/naturalFormats.ts` is pure and tested.** Brzycki for 1–10 reps, chosen
+  over Epley because it is the LOWER estimate inside that range — a number that
+  can only be wrong should be wrong low, the same rule as
+  `GOOD_SESSION_POINTS_LOW`. Riegel for distance, SHORTENING only and at most
+  10× the rung. `bestSet` ranks by estimated 1RM, not by load.
+- **On swapped, extra and personal-game events ONLY** (`natural` on the sheet).
+  An official event keeps the official format, so a prediction can never beat a
+  measured result in a game.
+- **No new columns, deliberately.** What was actually done stays in
+  `weight_kg`/`reps` or `distance_m`/`time_seconds`, `raw_score` carries the
+  converted score, and the label reads "100kg × 5 · est. 1RM 112.5kg". No
+  migration at all.
+- **Units follow the VOLUME, not the rung.** `unitsForPayload` reads `count` and
+  `volume_distance_m` off the stored payload, so five sets is five units and a
+  5km run is five — reading the converted rung instead would pay a 5km run the
+  units of a 1000m. Both stores and both screens were switched to it.
+- An exact rung distance is not labelled an estimate; an effort shorter than the
+  shortest rung, or a set past 10 reps, earns training units only.
+- **Not built: matches on workout entries.** Rating a game played as a swap or
+  solo needs `matches.workout_entry_id` AND a change to the rule that refuses a
+  logged Game-rung result. Its own piece of work.
+
 ## Security posture (August 2026) — read before touching RLS or players_public
 
 An OWASP pass (SQL injection / XSS / auth / access control) found three
