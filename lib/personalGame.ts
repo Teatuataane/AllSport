@@ -156,14 +156,23 @@ export function naturalPayload(ev: EventData, v: EntryVals): EntryPayload | null
  * training — and rating it is a later piece of work (the match can hang off the
  * entry once `matches.workout_entry_id` exists).
  */
-export function entryPayload(ev: EventData, v: EntryVals): EntryPayload | null {
+export function entryPayload(
+  ev: EventData,
+  v: EntryVals,
+  /**
+   * Keep the win/draw/loss on a Game rung. True only for a SWAP at an official
+   * game, where the opponent is a registered player in the room; the database
+   * refuses it anywhere else (20260920053207).
+   */
+  opts: { allowGameScore?: boolean } = {},
+): EntryPayload | null {
   const natural = naturalPayload(ev, v)
   if (natural) return natural
   const scored = scoreColumns(ev.inputMode, ev, v)
   if (!scored) return null
   const tier = v.difficultyTier || null
   const base = { activity: ev.name, event_slug: ev.slug, ...volumeFor(ev, tier) }
-  if (isGameTier(ev, tier)) return base
+  if (isGameTier(ev, tier) && !opts.allowGameScore) return base
   return {
     ...base,
     raw_score: scored.raw_score,
