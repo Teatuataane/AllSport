@@ -77,8 +77,20 @@ describe('the history migration agrees with the ladders', () => {
     const events = [...m![1].matchAll(/'([^']+)'/g)].map(x => x[1])
     const rungs = [...m![2].matchAll(/'([^']+)'/g)].map(x => x[1])
     expect(events).toEqual(['Weighted Carry', 'Wheelbarrow Push', 'Wheelbarrow Pull'])
+    // 20260915040534 is APPLIED and frozen, so it names the carries as they were
+    // called in September 2026. All three were renamed later that month, which
+    // is why this maps the historical names onto today's roster rather than
+    // looking them up directly — a rename must not be able to make an applied
+    // migration look wrong.
+    const RENAMED: Record<string, string> = {
+      'Weighted Carry': 'Sandbag Carry',
+      'Wheelbarrow Push': 'Farmer Carry',
+      'Wheelbarrow Pull': 'Weighted Drag',
+    }
     for (const name of events) {
-      expect(getEventByName(name)!.difficultyTiers!.map(t => t.name), name).toEqual(rungs)
+      const e = getEventByName(RENAMED[name] ?? name)
+      expect(e, `${name} (now ${RENAMED[name] ?? name}) is not on the roster`).toBeDefined()
+      expect(e!.difficultyTiers!.map(t => t.name), name).toEqual(rungs)
     }
   })
 

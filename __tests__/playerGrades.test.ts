@@ -97,8 +97,9 @@ describe('a player\'s grades', () => {
 
   it('takes lifts out of the denominator for an adult with no band', () => {
     const strength = computePlayerGrades({ player: master, ...none }).domains[0]
+    const inDomain1 = EVENTS.filter(e => e.domainNumber === 1).length
     const lifts = EVENTS.filter(e => e.domainNumber === 1 && e.inputMode === 'strength').length
-    expect(strength.availableCount).toBe(12 - lifts)
+    expect(strength.availableCount).toBe(inDomain1 - lifts)
   })
 
   it('ignores rows from retired events', () => {
@@ -109,7 +110,7 @@ describe('a player\'s grades', () => {
   it('removes an exempt event from both sides of the rule', () => {
     const slug = ev('Pause Dips').slug
     const g = computePlayerGrades({ player: openMan, ...none, exemptions: new Set([slug]) })
-    expect(g.domains[0].availableCount).toBe(11)
+    expect(g.domains[0].availableCount).toBe(EVENTS.filter(e => e.domainNumber === 1).length - 1)
   })
 })
 

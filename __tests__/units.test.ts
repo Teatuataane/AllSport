@@ -66,7 +66,7 @@ describe('what one unit is', () => {
   })
 
   it('treats a ladder of loads over one distance as one effort per carry', () => {
-    expect(unitRule(ev('Weighted Carry')).rule).toBe('set')
+    expect(unitRule(ev('Sandbag Carry')).rule).toBe('set')
   })
 
   it('earns nothing for an entry that is not fitted to an event yet', () => {

@@ -1694,6 +1694,99 @@ the workout-customisation plan, and the part that prompted it.
   solo needs `matches.workout_entry_id` AND a change to the rule that refuses a
   logged Game-rung result. Its own piece of work.
 
+## Roster update — 128 events, uneven domains (September 2026) — MIGRATION NOT YET APPLIED
+
+Tāne's list of 21 Sept 2026. Eight events added, three renamed, one moved, and the
+domain-colour threshold capped. `20260920220344_roster_update_128.sql` is written and
+**not applied**; deploy the code first, then the migration.
+
+- **Added (8):** **Pullover & Press**, **Loaded Lunge** (Maximal Strength, `strength`);
+  **Skull Hang** (Calisthenics, `difficulty+time` hold — "like the chin hang but on the back
+  of the neck/skull", Chin Hang's ladder unchanged); **Calf Raises** (Anaerobic Endurance,
+  `difficulty+reps`); **Plie Squat**, **Seiza**, **Wrist Stretch**, **Reverse Wrist Stretch**
+  (Flexibility, `difficulty+time` holds).
+- **Moved (1):** **Climbing**, Calisthenics → Body Awareness, and topped with a **Game rung**
+  (D9). Slug stays `rope-climb`, so its 7 result rows stay attached. It is a timed effort, and
+  the Game term is deliberately NOT inverted — inverting it makes a loss beat a win.
+  **Consequence: Climbing is now a `game: true` standard, so its drills stop at Kahurangi and
+  the head-to-head rating gives Poroporo and above.** D4–D8 lost their own colours; flagged in
+  the standards sheet for Tāne.
+- **Renamed (3), SLUGS MOVED TOO:** Weighted Carry → **Sandbag Carry**, Wheelbarrow Push →
+  **Farmer Carry**, Wheelbarrow Pull → **Weighted Drag**. All three rewritten as real
+  movements (bag against the body / a matched pair in the hands / a dragged sled), not just
+  relabelled. The shared ¼–1× bodyweight ladder is unchanged.
+
+**THE SLUGS COULD MOVE BECAUSE PRODUCTION HELD ZERO ROWS FOR ALL THREE.** Verified before
+writing anything, not assumed. Normally a rename orphans every score ever set on the event
+and needs a `session_events.event_name` backfill. Here there was nothing to carry.
+
+**The standards sheet said Weighted Carry had 12 players, and that was TRUE WHEN WRITTEN.**
+Its counts come from a snapshot taken before `20260915040534` archived and deleted 15
+fixed-weight carry rows when that ladder changed to bodyweight fractions. They sit in
+`results_grading_archive_20260915040534`, not in `results`. **A player count in a review sheet
+is a snapshot, not a live query** — re-check against production before relying on one. The one
+accepted cost of this rename: that archive can no longer be restored onto a live event of that
+name.
+
+**Four `activity_aliases` rows pointed at `weighted-carry`, which no longer exists.** An alias
+matching no event does nothing at all — no error, no warning, `fit_activity()` simply never
+fits it — the same failure mode as the `'climbing'`/`rope-climb` entry that sat wrong in
+`TIMED_EFFORT_SLUGS` for three months. `__tests__/trainingLoad.test.ts` caught it. The
+migration repoints them (and lands them better: 'farmer carry' now means Farmer Carry), and
+asserts no alias points at nothing. The test now replays every later `UPDATE activity_aliases`
+before checking, so it asserts the EFFECTIVE state and a future rename that forgets its
+repoint fails there rather than in the gym.
+
+### Domains are no longer even, and the threshold is CAPPED at six
+
+`requiredForDomain` was `ceil(available × 0.5)`, read from the LIVE domain size. Flexibility
+going 12 → 16 would therefore have raised its bar from 6 events to **8**, retroactively, for
+everyone, on the domain that is already the second-least-played. Tāne accepted the bigger pool
+and chose to hold the threshold: **`min(ceil(available ÷ 2), DOMAIN_REQUIRED_CAP)`**, cap 6.
+
+**The CAP, not a flat 6.** `availableCount` is what is available TO THAT PLAYER — exemptions
+and ungradeable events leave the count — so a player with five available events must still be
+asked for three. A flat 6 would ask them for six of five, which nobody can ever meet.
+
+Counts are now **14 / 12 / 12 / 12 / 13 / 12 / 16 / 13 / 12 / 12**. The test that demanded
+exactly 12 per domain is replaced by one asserting **at least 12**, plus the expected count per
+domain: a domain thinner than twelve would start asking for a majority of a shrinking pool.
+`scripts/grading-readiness.mjs` kept its own copy of the half rule and reported 8 where the
+engine asked 6 — it now restates the cap with a comment saying so. The user-facing copy on
+/how-to-play (×2) and /leaderboard said "half of a domain's events" and now says "six".
+
+**Everything is compiled, not hand-written.** All three sheets were edited and re-run:
+`EVENT_DIFFICULTY_REVIEW.md` (round-tripped through `apply-difficulty-sheet.mjs` — the only
+diff was key order, so the sheet and `lib/eventData.ts` agree), `WORKOUT_UNITS_REVIEW.md` and
+`GRADING_STANDARDS_REVIEW.md`. `scripts/gen-standards-sheet.mjs` held three APPROVED standards
+keyed on the old carry names; left stale it would have aborted the next sheet regeneration.
+
+**Standards for the eight new events are DRAFTED BY CLAUDE and unreviewed.** Each says so in
+the sheet, with its reasoning (Pullover & Press at ~0.9 of Clean & Press, Loaded Lunge at ~0.6
+of Pause Back Squat, Skull Hang as Chin Hang unchanged). Nobody has scored any of them, so
+there is no usage to calibrate against. **Read these hardest.**
+
+**Icons: 8 missing**, so the new events fall back to their emoji — silently, by design. The
+three renamed PNGs were `git mv`d to their new slugs. `lunges` and `animal-crawl` were ALREADY
+missing before this change.
+
+### Still open
+
+- **Wrestling did NOT move.** Tāne chose the log-only Combat domain drafted on
+  `origin/claude/log-only-domains` — but that branch is one unmerged review sheet with no code,
+  so there is nowhere to move it to. Removing it now would strand 21 results from 7 players and
+  delete a played event for an unknown stretch. Body Awareness therefore sits at 13, and
+  Wrestling is still the roster's only pure `sport` event and the only ungradeable one.
+- **Toe Lift and Tibialis Curl are the same movement**, both in Anaerobic Endurance: heels
+  planted, toes lifted toward the shins, heaviest wins. Toe Lift's text was invented in session
+  19 and flagged for review then. Tāne chose to add Calf Raises and KEEP Toe Lift, so the
+  duplicate stands and domain 5 holds 13. Toe Lift's text is untouched: inventing a distinction
+  is what created this.
+- **Climbing's lowest three rungs are HANGS on a fastest-wins ladder**, so a longer hang scores
+  worse. Raised in the last standards round, still unsettled, unchanged here.
+- **The /events "Scoring Method" label says "Difficulty tier + hold time" for every
+  `difficulty+time` event**, including timed efforts where fastest wins. Pre-existing.
+
 ## A game played as a swap counts toward the rating (September 2026) — v0.14.0.0
 
 Decided with Tāne 2026-09-20, closing the last piece of the workout-customisation

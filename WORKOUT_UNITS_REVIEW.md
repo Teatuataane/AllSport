@@ -34,6 +34,8 @@ Generated from the per-mode defaults on 2026-09-15.
 | `arthur-lift` | Arthur Lift | 1 | set | 1 | one set |
 | `pause-row` | Pause Row | 1 | set | 1 | one set |
 | `pause-front-squat` | Pause Front Squat | 1 | set | 1 | one set |
+| `pullover-and-press` | Pullover & Press | 1 | set | 1 | one set |
+| `loaded-lunge` | Loaded Lunge | 1 | set | 1 | one set |
 
 ## 2. Calisthenics
 
@@ -47,7 +49,7 @@ Generated from the per-mode defaults on 2026-09-15.
 | `iron-cross` | Iron Cross | 2 | hold | 1 | one hold |
 | `front-lever` | Front Lever | 2 | hold | 1 | one hold |
 | `chin-hang` | Chin Hang | 2 | hold | 1 | one hold |
-| `rope-climb` | Climbing | 2 | set | 1 | one set |
+| `skull-hang` | Skull Hang | 2 | hold | 1 | one hold |
 | `hand-walk` | Handstand | 2 | hold | 1 | one hold |
 | `headstand` | Headstand | 2 | hold | 1 | one hold |
 | `l-sit-hold` | L-Sit Hold | 2 | hold | 1 | one hold |
@@ -102,6 +104,7 @@ Generated from the per-mode defaults on 2026-09-15.
 | `wall-sit` | Wall Sit | 5 | hold | 1 | one hold |
 | `toe-lift` | Toe Lift | 5 | set | 1 | one set |
 | `lunges` | Lunges | 5 | set | 1 | one set |
+| `calf-raises` | Calf Raises | 5 | set | 1 | one set |
 
 ## 6. Aerobic Endurance
 
@@ -113,12 +116,12 @@ Generated from the per-mode defaults on 2026-09-15.
 | `ski-erg` | Ski Erg | 6 | distance | 1000 | 1000 metres |
 | `row-erg` | Row Erg | 6 | distance | 1000 | 1000 metres |
 | `breath-hold` | Breath Hold | 6 | hold | 1 | one hold |
-| `weighted-carry` | Weighted Carry | 6 | set | 1 | one set |
+| `sandbag-carry` | Sandbag Carry | 6 | set | 1 | one set |
 | `animal-crawl` | Animal Crawl | 6 | distance | 100 | 100 metres |
 | `bronco` | Bronco | 6 | set | 1 | one set |
 | `scooting` | Scooting | 6 | distance | 1000 | 1000 metres |
-| `wheelbarrow-push` | Wheelbarrow Push | 6 | set | 1 | one set |
-| `wheelbarrow-pull` | Wheelbarrow Pull | 6 | set | 1 | one set |
+| `farmer-carry` | Farmer Carry | 6 | set | 1 | one set |
+| `weighted-drag` | Weighted Drag | 6 | set | 1 | one set |
 
 ## 7. Flexibility
 
@@ -136,6 +139,10 @@ Generated from the per-mode defaults on 2026-09-15.
 | `pancake` | Pancake | 7 | hold | 1 | one hold |
 | `side-bend` | Side Bend | 7 | hold | 1 | one hold |
 | `full-bound-twist` | Full Bound Twist | 7 | hold | 1 | one hold |
+| `plie-squat` | Plie Squat | 7 | hold | 1 | one hold |
+| `seiza` | Seiza | 7 | hold | 1 | one hold |
+| `wrist-stretch` | Wrist Stretch | 7 | hold | 1 | one hold |
+| `reverse-wrist-stretch` | Reverse Wrist Stretch | 7 | hold | 1 | one hold |
 
 ## 8. Body Awareness
 
@@ -153,6 +160,7 @@ Generated from the per-mode defaults on 2026-09-15.
 | `juggling` | Juggling | 8 | hold | 1 | one hold |
 | `foot-juggling` | Foot Juggling | 8 | set | 1 | one set |
 | `slackline` | Slackline | 8 | hold | 1 | one hold |
+| `rope-climb` | Climbing | 8 | set | 1 | one set |
 
 ## 9. Coordination
 

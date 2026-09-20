@@ -84,10 +84,16 @@ const DOMAINS = ['', 'Maximal Strength', 'Calisthenics', 'Power', 'Speed', 'Anae
 // Half of the domain's gradeable events, rounded up. Mirrors DOMAIN_FRACTION in
 // lib/grading.ts, which is authoritative — this file is .mjs and cannot import
 // it. If that fraction ever changes, change this too.
-const needed = (gradeable) => Math.ceil(gradeable * 0.5)
+// MUST agree with requiredForDomain() in lib/grading.ts. This script is a .mjs
+// that parses the roster rather than importing it, so the rule is restated
+// here — half, rounded up, CAPPED at DOMAIN_REQUIRED_CAP. It drifted once
+// already: when Flexibility went to sixteen events this script reported a
+// threshold of 8 while the engine asked for 6.
+const DOMAIN_REQUIRED_CAP = 6
+const needed = (gradeable) => Math.min(Math.ceil(gradeable * 0.5), DOMAIN_REQUIRED_CAP)
 
 const events = roster()
-console.log(`\nRoster parsed: ${events.length} events` + (events.length === 120 ? '' : '  ⚠ expected 120'))
+console.log(`\nRoster parsed: ${events.length} events` + (events.length === 128 ? '' : '  ⚠ expected 128'))
 
 // ── 1. Roster readiness ─────────────────────────────────────────────────────
 console.log('\n─── ROSTER READINESS ────────────────────────────────────────────────')
@@ -103,7 +109,7 @@ for (let d = 1; d <= 10; d++) {
   const req = needed(gradeable.length)
   if (gradeable.length < 2) blocked++
   console.log(
-    `${String(d).padStart(2)}. ${DOMAINS[d].padEnd(20)}${String(gradeable.length).padStart(6)}/12` +
+    `${String(d).padStart(2)}. ${DOMAINS[d].padEnd(20)}${String(gradeable.length).padStart(6)}/${String(inDomain.length).padEnd(3)}` +
     `${String(inDomain.length - gradeable.length).padStart(9)}${String(req).padStart(8)}`
   )
 }
@@ -148,7 +154,7 @@ const rows = [...played.entries()].map(([pid, byDomain]) => {
 
 console.log('\n─── PLAYER READINESS ────────────────────────────────────────────────')
 console.log('Distinct gradeable events played per domain, against each domain\'s own')
-console.log('threshold (half its gradeable events, so Speed asks 3 and most ask 6).\n')
+console.log(`threshold (half its gradeable events, capped at ${DOMAIN_REQUIRED_CAP}, so every domain asks 6).\n`)
 console.log('PLAYER              ' + Array.from({ length: 10 }, (_, i) => String(i + 1).padStart(4)).join('') + '   DOMAINS MET')
 for (const r of rows) {
   console.log(r.name.slice(0, 18).padEnd(20) + r.counts.map((n) => String(n).padStart(4)).join('') + `      ${r.met}/10`)

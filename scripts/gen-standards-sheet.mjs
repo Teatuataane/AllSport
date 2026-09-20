@@ -103,9 +103,13 @@ const APPROVED = {
   },
   'Jump Rope': { E: ['D1 · 1', 'D1 · 10', 'D2 · 10', 'D3 · 10', 'D4 · 10', 'D5 · 10'] },
   'Bridge': { E: ['D1 · 10s', 'D1 · 60s', 'D2 · 15s', 'D2 · 45s', 'D3 · 10s', 'D3 · 30s', 'D4 · 10s', 'D4 · 30s', 'D5 · 10s', 'D5 · 30s', 'D6 · 15s', 'D6 · 60s'] },
-  'Weighted Carry': { E: CARRY },
-  'Wheelbarrow Push': { E: CARRY },
-  'Wheelbarrow Pull': { E: CARRY },
+  // Approved in review as Weighted Carry / Wheelbarrow Push / Wheelbarrow Pull;
+  // renamed Sept 2026 with the numbers untouched. These keys are checked against
+  // the live roster further down, so a stale name here stops the generator dead
+  // rather than quietly dropping an approved standard.
+  'Sandbag Carry': { E: CARRY },
+  'Farmer Carry': { E: CARRY },
+  'Weighted Drag': { E: CARRY },
   'Vertical Jump': {
     M: [10, 20, 27, 33, 39, 45, 51, 54, 57, 60, 62, 64].map(c => `${c}cm`),
     F: [8, 15, 20, 25, 29, 33, 38, 40, 42, 44, 47, 50].map(c => `${c}cm`),

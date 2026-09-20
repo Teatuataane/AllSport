@@ -1,12 +1,13 @@
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'fs'
+import { readFileSync, readdirSync } from 'fs'
 import { EVENTS } from '@/lib/eventData'
 import {
   workoutMinutes, sessionLoad, recentLoad, weekStart, weeklyActivity, normaliseActivity,
   EFFORT_WORDS, GAME_MINUTES, GUIDELINE_MINUTES, MIN_COHORT, type ActivityInput,
 } from '@/lib/workouts'
 
-const sql = readFileSync('supabase/migrations/20260918023038_training_load.sql', 'utf8')
+const dir = 'supabase/migrations'
+const sql = readFileSync(`${dir}/20260918023038_training_load.sql`, 'utf8')
 
 describe('how long and how hard', () => {
   it('uses the workout minutes when given, and never adds the entries on top', () => {
@@ -80,8 +81,24 @@ describe('training load migration', () => {
   })
 
   const seed = sql.slice(sql.indexOf('INSERT INTO public.activity_aliases'), sql.indexOf('ON CONFLICT (alias) DO NOTHING'))
-  const pairs = [...seed.matchAll(/\('([^']+)', '([^']+)'\)/g)].map(m => [m[1], m[2]] as const)
+  const seeded = [...seed.matchAll(/\('([^']+)', '([^']+)'\)/g)].map(m => [m[1], m[2]] as const)
   const slugs = new Set(EVENTS.map(e => e.slug))
+
+  // This migration is APPLIED and frozen, so it still names slugs that a later
+  // roster change may have renamed — 20260920220344 repointed four carries.
+  // What has to hold is the EFFECTIVE state: no alias in the database may point
+  // at an event that does not exist, because fit_activity() then silently never
+  // fits it. So replay every later repoint before checking, which also means a
+  // future rename that forgets its UPDATE fails here rather than in the gym.
+  const effective = new Map<string, string>(seeded)
+  for (const name of readdirSync(dir).sort()) {
+    if (name <= '20260918023038_training_load.sql') continue
+    const later = readFileSync(`${dir}/${name}`, 'utf8')
+    for (const u of later.matchAll(/UPDATE activity_aliases SET event_slug = '([^']+)'\s+WHERE alias (?:IN \(([^)]*)\)|= ('[^']*'))/g)) {
+      for (const a of (u[2] ?? u[3]).matchAll(/'([^']+)'/g)) effective.set(a[1], u[1])
+    }
+  }
+  const pairs = [...effective.entries()]
 
   it('seeds aliases only for real events, already normalised', () => {
     expect(pairs.length).toBeGreaterThan(100)
@@ -89,6 +106,12 @@ describe('training load migration', () => {
       expect(slugs.has(slug), `${alias} → ${slug}`).toBe(true)
       expect(normaliseActivity(alias)).toBe(alias)
     }
+  })
+
+  it('repoints the carries the Sept 2026 rename retired', () => {
+    expect(effective.get('farmers walk')).toBe('farmer-carry')
+    expect(effective.get('farmer carry')).toBe('farmer-carry')
+    expect(effective.get('sandbag carry')).toBe('sandbag-carry')
   })
 
   it('never aliases the movements the roster deliberately keeps apart', () => {

@@ -2,7 +2,7 @@
 
 **Approved by Tāne on 16 September 2026 as a trial. These numbers run as they stand and are reviewed after the trial.** Edit this sheet and re-run `node scripts/apply-standards-sheet.mjs` to change any of them.
 
-Every standard for all 120 events: one line per colour. Go through them the way you went through the difficulty sheet.
+Every standard for all 128 events: one line per colour. Go through them the way you went through the difficulty sheet.
 
 ## How to fill this in
 
@@ -439,9 +439,85 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 ---
 
+### 13. Pullover & Press
+
+*Scored by: heaviest weight lifted, as a ratio of bodyweight · new event, nobody has scored it*
+
+> Drafted by hand. NEW EVENT — nobody has scored it, so there is no usage to calibrate against. Read this one hard.
+> Set at about 0.9 of the approved Clean & Press ratios: the same overhead lockout, reached from a
+> weaker starting position with no leg drive and no rack.
+
+**Men**
+
+- Kiwikiwi: empty bar
+- Whero: 0.21× BW
+- Karaka: 0.26× BW
+- Kōwhai: 0.32× BW
+- Kākāriki: 0.38× BW
+- Kahurangi: 0.44× BW
+- Poroporo: 0.5× BW
+- Parahi: 0.54× BW
+- Hiriwa: 0.59× BW
+- Kōura: 0.65× BW
+- Uenuku: 0.73× BW
+- Taniwha: 0.88× BW
+
+**Women**
+
+- Kiwikiwi: empty bar
+- Whero: 0.14× BW
+- Karaka: 0.18× BW
+- Kōwhai: 0.21× BW
+- Kākāriki: 0.25× BW
+- Kahurangi: 0.3× BW
+- Poroporo: 0.32× BW
+- Parahi: 0.36× BW
+- Hiriwa: 0.4× BW
+- Kōura: 0.44× BW
+- Uenuku: 0.5× BW
+- Taniwha: 0.59× BW
+
+### 14. Loaded Lunge
+
+*Scored by: heaviest weight lifted, as a ratio of bodyweight · new event, nobody has scored it*
+
+> Drafted by hand. NEW EVENT — nobody has scored it, so there is no usage to calibrate against. Read this one hard.
+> Set at about 0.6 of the approved Pause Back Squat ratios — one leg at a time, and the tier is the
+> total load on the bar or in the hands, not the load per side.
+
+**Men**
+
+- Kiwikiwi: empty bar
+- Whero: 0.27× BW
+- Karaka: 0.35× BW
+- Kōwhai: 0.43× BW
+- Kākāriki: 0.51× BW
+- Kahurangi: 0.59× BW
+- Poroporo: 0.67× BW
+- Parahi: 0.73× BW
+- Hiriwa: 0.78× BW
+- Kōura: 0.86× BW
+- Uenuku: 0.98× BW
+- Taniwha: 1.17× BW
+
+**Women**
+
+- Kiwikiwi: empty bar
+- Whero: 0.18× BW
+- Karaka: 0.23× BW
+- Kōwhai: 0.28× BW
+- Kākāriki: 0.34× BW
+- Kahurangi: 0.39× BW
+- Poroporo: 0.44× BW
+- Parahi: 0.49× BW
+- Hiriwa: 0.53× BW
+- Kōura: 0.59× BW
+- Uenuku: 0.67× BW
+- Taniwha: 0.78× BW
+
 ## 2. Calisthenics
 
-### 13. 1 Leg Squat
+### 15. 1 Leg Squat
 
 *Scored by: difficulty level, then most reps · 14 players have scored it*
 
@@ -462,7 +538,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: D6 · 5
 - Taniwha: D6 · 15
 
-### 14. Human Flag
+### 16. Human Flag
 
 *Scored by: difficulty level, then longest hold · 3 players have scored it*
 
@@ -483,7 +559,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: D6 · 10s
 - Taniwha: D6 · 30s
 
-### 15. Windshield Wipers
+### 17. Windshield Wipers
 
 *Scored by: difficulty level, then most reps · 5 players have scored it*
 
@@ -504,7 +580,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: D5 · 5
 - Taniwha: D5 · 15
 
-### 16. Planche
+### 18. Planche
 
 *Scored by: difficulty level, then longest hold · 5 players have scored it*
 
@@ -525,7 +601,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: D6 · 30s
 - Taniwha: D7 · 30s
 
-### 17. Back Lever
+### 19. Back Lever
 
 *Scored by: difficulty level, then longest hold · 4 players have scored it*
 
@@ -546,7 +622,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: D6 · 30s
 - Taniwha: D7 · 30s
 
-### 18. Iron Cross
+### 20. Iron Cross
 
 *Scored by: difficulty level, then longest hold · 4 players have scored it*
 
@@ -567,7 +643,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: D6 · 30s
 - Taniwha: D7 · 30s
 
-### 19. Front Lever
+### 21. Front Lever
 
 *Scored by: difficulty level, then longest hold · 4 players have scored it*
 
@@ -588,7 +664,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: D6 · 30s
 - Taniwha: D7 · 30s
 
-### 20. Chin Hang
+### 22. Chin Hang
 
 *Scored by: difficulty level, then longest hold · 6 players have scored it*
 
@@ -609,28 +685,31 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: D6 · 10s
 - Taniwha: D6 · 30s
 
-### 21. Climbing
+### 23. Skull Hang
 
-*Scored by: difficulty level, then fastest time · 2 players have scored it*
+*Scored by: difficulty level, then longest hold · new event, nobody has scored it*
 
-> Drafted by hand. The four hardest rungs are one colour each for completing them. NOTE: the lowest three rungs are HANGS on a ladder ranked fastest-first, so a longer hang scores worse. That came from the difficulty review; say if the hangs should move off this ladder.
+> Drafted by rule. Twelve colours spread over the rungs, extras on the lowest. Reach a rung, then own it.
+> NEW EVENT — nobody has scored it.
+> Deliberately the Chin Hang ladder unchanged: the same six levels of assistance, the same holds. If this
+> position turns out to be harder to hold than a chin hang, every number here should come down together.
 
 **Everyone**
 
-- Kiwikiwi: D1 · finish
-- Whero: D1 · ≤ 20s
-- Karaka: D2 · finish
-- Kōwhai: D2 · ≤ 20s
-- Kākāriki: D3 · finish
-- Kahurangi: D3 · ≤ 20s
-- Poroporo: D4 · finish
-- Parahi: D4 · ≤ 20s
-- Hiriwa: D5 · finish
-- Kōura: D6 · finish
-- Uenuku: D7 · finish
-- Taniwha: D8 · finish
+- Kiwikiwi: D1 · 10s
+- Whero: D1 · 30s
+- Karaka: D2 · 10s
+- Kōwhai: D2 · 30s
+- Kākāriki: D3 · 10s
+- Kahurangi: D3 · 30s
+- Poroporo: D4 · 10s
+- Parahi: D4 · 30s
+- Hiriwa: D5 · 10s
+- Kōura: D5 · 30s
+- Uenuku: D6 · 10s
+- Taniwha: D6 · 30s
 
-### 22. Handstand
+### 24. Handstand
 
 *Scored by: difficulty level, then longest hold · 2 players have scored it*
 
@@ -651,7 +730,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: D5 · 10s
 - Taniwha: D5 · 30s
 
-### 23. Headstand
+### 25. Headstand
 
 *Scored by: difficulty level, then longest hold · 3 players have scored it*
 
@@ -672,7 +751,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: D6 · 10s
 - Taniwha: D6 · 30s
 
-### 24. L-Sit Hold
+### 26. L-Sit Hold
 
 *Scored by: difficulty level, then longest hold · 4 players have scored it*
 
@@ -697,7 +776,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 ## 3. Power
 
-### 25. Kelly Snatch
+### 27. Kelly Snatch
 
 *Scored by: heaviest weight lifted, as a ratio of bodyweight · 4 players have scored it*
 
@@ -733,7 +812,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: 0.34× BW
 - Taniwha: 0.4× BW
 
-### 26. 1A Snatch
+### 28. 1A Snatch
 
 *Scored by: heaviest weight lifted, as a ratio of bodyweight · 4 players have scored it*
 
@@ -769,7 +848,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: 0.34× BW
 - Taniwha: 0.4× BW
 
-### 27. Javelin
+### 29. Javelin
 
 *Scored by: difficulty level, then furthest throw · 4 players have scored it*
 
@@ -805,7 +884,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: D3 · 24m
 - Taniwha: D3 · 32m
 
-### 28. Shotput
+### 30. Shotput
 
 *Scored by: difficulty level, then furthest throw · 5 players have scored it*
 
@@ -841,7 +920,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: D3 · 8m
 - Taniwha: D3 · 10m
 
-### 29. Australian Football
+### 31. Australian Football
 
 *Scored by: difficulty level, then most reps · 4 players have scored it*
 
@@ -858,7 +937,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 *Poroporo and above: the head-to-head rating.*
 
-### 30. Vertical Jump
+### 32. Vertical Jump
 
 *Scored by: furthest or highest · 14 players have scored it*
 
@@ -894,7 +973,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: 47cm
 - Taniwha: 50cm
 
-### 31. Clean & Jerk
+### 33. Clean & Jerk
 
 *Scored by: heaviest weight lifted, as a ratio of bodyweight · 6 players have scored it*
 
@@ -930,7 +1009,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: 0.85× BW
 - Taniwha: 1× BW
 
-### 32. Snatch
+### 34. Snatch
 
 *Scored by: heaviest weight lifted, as a ratio of bodyweight · 3 players have scored it*
 
@@ -966,7 +1045,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: 0.68× BW
 - Taniwha: 0.8× BW
 
-### 33. Standing Broad Jump
+### 35. Standing Broad Jump
 
 *Scored by: furthest or highest · 2 players have scored it*
 
@@ -1002,7 +1081,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: 210cm
 - Taniwha: 230cm
 
-### 34. High Jump
+### 36. High Jump
 
 *Scored by: furthest or highest · 2 players have scored it*
 
@@ -1038,7 +1117,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: 145cm
 - Taniwha: 160cm
 
-### 35. Arm Wrestling
+### 37. Arm Wrestling
 
 *Scored by: difficulty level, then longest hold · 2 players have scored it*
 
@@ -1055,7 +1134,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 *Poroporo and above: the head-to-head rating.*
 
-### 36. Tug of War
+### 38. Tug of War
 
 *Scored by: difficulty level, then fastest time · 0 players have scored it*
 
@@ -1076,7 +1155,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 ## 4. Speed
 
-### 37. 100m Sprint
+### 39. 100m Sprint
 
 *Scored by: difficulty level, then fastest time · 11 players have scored it*
 
@@ -1102,7 +1181,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 *Poroporo and above: the head-to-head rating.*
 
-### 38. Tag
+### 40. Tag
 
 *Scored by: difficulty level, then fastest time · 4 players have scored it*
 
@@ -1119,7 +1198,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 *Poroporo and above: the head-to-head rating.*
 
-### 39. T-Race
+### 41. T-Race
 
 *Scored by: difficulty level, then fastest time · 4 players have scored it*
 
@@ -1136,7 +1215,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 *Poroporo and above: the head-to-head rating.*
 
-### 40. Beach Flags
+### 42. Beach Flags
 
 *Scored by: difficulty level, then fastest time · 7 players have scored it*
 
@@ -1153,7 +1232,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 *Poroporo and above: the head-to-head rating.*
 
-### 41. 200m Sprint
+### 43. 200m Sprint
 
 *Scored by: difficulty level, then fastest time · 3 players have scored it*
 
@@ -1179,7 +1258,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 *Poroporo and above: the head-to-head rating.*
 
-### 42. Touch Rugby
+### 44. Touch Rugby
 
 *Scored by: difficulty level, then most reps · 5 players have scored it*
 
@@ -1196,7 +1275,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 *Poroporo and above: the head-to-head rating.*
 
-### 43. Repeat High Jump
+### 45. Repeat High Jump
 
 *Scored by: difficulty level, then fastest time · 5 players have scored it*
 
@@ -1217,7 +1296,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: D6 · finish
 - Taniwha: D6 · ≤ 30s
 
-### 44. Rats & Rabbits
+### 46. Rats & Rabbits
 
 *Scored by: difficulty level, then fastest time · 3 players have scored it*
 
@@ -1234,7 +1313,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 *Poroporo and above: the head-to-head rating.*
 
-### 45. Speed Chess
+### 47. Speed Chess
 
 *Scored by: difficulty level, then most reps · 3 players have scored it*
 
@@ -1251,7 +1330,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 *Poroporo and above: the head-to-head rating.*
 
-### 46. American Football
+### 48. American Football
 
 *Scored by: difficulty level, then most reps · 0 players have scored it*
 
@@ -1268,7 +1347,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 *Poroporo and above: the head-to-head rating.*
 
-### 47. Capture the Flag
+### 49. Capture the Flag
 
 *Scored by: difficulty level, then fastest time · 0 players have scored it*
 
@@ -1285,7 +1364,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 *Poroporo and above: the head-to-head rating.*
 
-### 48. Kabaddi
+### 50. Kabaddi
 
 *Scored by: difficulty level, then most reps · 2 players have scored it*
 
@@ -1305,7 +1384,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 ## 5. Anaerobic Endurance
 
-### 49. Chinup Contest
+### 51. Chinup Contest
 
 *Scored by: difficulty level, then most reps · 4 players have scored it*
 
@@ -1326,7 +1405,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: D6 · 5
 - Taniwha: D6 · 15
 
-### 50. Pushup Contest
+### 52. Pushup Contest
 
 *Scored by: difficulty level, then most reps · 13 players have scored it*
 
@@ -1362,7 +1441,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: D5 · 5
 - Taniwha: D6 · 5
 
-### 51. Tibialis Curl
+### 53. Tibialis Curl
 
 *Scored by: heaviest weight lifted, as a ratio of bodyweight · 5 players have scored it*
 
@@ -1398,7 +1477,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: 0.17× BW
 - Taniwha: 0.2× BW
 
-### 52. Finger Pushup
+### 54. Finger Pushup
 
 *Scored by: difficulty level, then most reps · 3 players have scored it*
 
@@ -1419,7 +1498,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: D6 · 10
 - Taniwha: D7 · 10
 
-### 53. GHD Situp
+### 55. GHD Situp
 
 *Scored by: difficulty level, then most reps · 3 players have scored it*
 
@@ -1440,7 +1519,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: D5 · +10kg
 - Taniwha: D5 · +20kg
 
-### 54. Leg Ext Hold
+### 56. Leg Ext Hold
 
 *Scored by: heaviest load, then longest hold · 1 players have scored it*
 
@@ -1461,7 +1540,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: 28kg · 30s
 - Taniwha: 32kg · 30s
 
-### 55. Ab Rollout
+### 57. Ab Rollout
 
 *Scored by: difficulty level, then most reps · 3 players have scored it*
 
@@ -1482,7 +1561,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: D5 · 5
 - Taniwha: D5 · 15
 
-### 56. Hamstring Curl
+### 58. Hamstring Curl
 
 *Scored by: difficulty level, then most reps · 2 players have scored it*
 
@@ -1503,7 +1582,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: D5 · 5
 - Taniwha: D5 · 15
 
-### 57. Sandbag to Shoulder
+### 59. Sandbag to Shoulder
 
 *Scored by: difficulty level, then most reps · 2 players have scored it*
 
@@ -1524,7 +1603,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: D6 · 5
 - Taniwha: D6 · 15
 
-### 58. Wall Sit
+### 60. Wall Sit
 
 *Scored by: longest hold · 2 players have scored it*
 
@@ -1545,7 +1624,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: 5:00
 - Taniwha: 7:00
 
-### 59. Toe Lift
+### 61. Toe Lift
 
 *Scored by: heaviest weight lifted, as a ratio of bodyweight · 2 players have scored it*
 
@@ -1581,7 +1660,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: 0.17× BW
 - Taniwha: 0.2× BW
 
-### 60. Lunges
+### 62. Lunges
 
 *Scored by: difficulty level, then most reps · 0 players have scored it*
 
@@ -1604,9 +1683,32 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 ---
 
+### 63. Calf Raises
+
+*Scored by: difficulty level, then most reps · new event, nobody has scored it*
+
+> Drafted by rule. Twelve colours spread over the rungs, extras on the lowest. Reach a rung, then own it.
+> NEW EVENT — nobody has scored it.
+> Rep counts run higher than the other rep ladders because the calf takes far more reps to fatigue.
+
+**Everyone**
+
+- Kiwikiwi: D1 · 15
+- Whero: D1 · 30
+- Karaka: D1 · 50
+- Kōwhai: D2 · 15
+- Kākāriki: D2 · 30
+- Kahurangi: D2 · 50
+- Poroporo: D3 · 10
+- Parahi: D3 · 20
+- Hiriwa: D3 · 35
+- Kōura: D4 · 10
+- Uenuku: D4 · 20
+- Taniwha: D4 · 35
+
 ## 6. Aerobic Endurance
 
-### 61. Burpee Broad Jump
+### 64. Burpee Broad Jump
 
 *Scored by: difficulty level, then fastest time · 3 players have scored it*
 
@@ -1627,7 +1729,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: D4 · ≤ 10:00
 - Taniwha: D4 · ≤ 8:30
 
-### 62. Running
+### 65. Running
 
 *Scored by: difficulty level, then fastest time · 3 players have scored it*
 
@@ -1663,7 +1765,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: D3 · ≤ 3:55
 - Taniwha: D3 · ≤ 3:40
 
-### 63. Cycling
+### 66. Cycling
 
 *Scored by: difficulty level, then fastest time · 4 players have scored it*
 
@@ -1699,7 +1801,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: D3 · ≤ 1:25
 - Taniwha: D3 · ≤ 1:20
 
-### 64. Ski Erg
+### 67. Ski Erg
 
 *Scored by: difficulty level, then fastest time · 4 players have scored it*
 
@@ -1735,7 +1837,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: D3 · ≤ 4:00
 - Taniwha: D3 · ≤ 3:50
 
-### 65. Row Erg
+### 68. Row Erg
 
 *Scored by: difficulty level, then fastest time · 4 players have scored it*
 
@@ -1771,7 +1873,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: D3 · ≤ 3:40
 - Taniwha: D3 · ≤ 3:35
 
-### 66. Breath Hold
+### 69. Breath Hold
 
 *Scored by: longest hold · 4 players have scored it*
 
@@ -1792,11 +1894,11 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: 3:00
 - Taniwha: 4:00
 
-### 67. Weighted Carry
+### 70. Sandbag Carry
 
 *Scored by: difficulty level, then fastest time · 12 players have scored it*
 
-> Approved in review.
+> Approved in review as Weighted Carry; renamed Sept 2026, standards unchanged.
 
 **Everyone**
 
@@ -1813,7 +1915,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: D4 · ≤ 4:00
 - Taniwha: D4 · ≤ 2:00
 
-### 68. Animal Crawl
+### 71. Animal Crawl
 
 *Scored by: difficulty level, then fastest time · 0 players have scored it*
 
@@ -1834,7 +1936,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: D5 · ≤ 2:30
 - Taniwha: D5 · ≤ 1:45
 
-### 69. Bronco
+### 72. Bronco
 
 *Scored by: difficulty level, then fastest time · 4 players have scored it*
 
@@ -1855,7 +1957,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: D5 · ≤ 6:30
 - Taniwha: D5 · ≤ 5:00
 
-### 70. Scooting
+### 73. Scooting
 
 *Scored by: difficulty level, then fastest time · 0 players have scored it*
 
@@ -1876,11 +1978,11 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: D3 · ≤ 2:35
 - Taniwha: D3 · ≤ 2:25
 
-### 71. Wheelbarrow Push
+### 74. Farmer Carry
 
 *Scored by: difficulty level, then fastest time · 0 players have scored it*
 
-> Approved in review.
+> Renamed from Wheelbarrow Push, Sept 2026. Standards unchanged.
 
 **Everyone**
 
@@ -1897,11 +1999,11 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: D4 · ≤ 4:00
 - Taniwha: D4 · ≤ 2:00
 
-### 72. Wheelbarrow Pull
+### 75. Weighted Drag
 
 *Scored by: difficulty level, then fastest time · 0 players have scored it*
 
-> Approved in review.
+> Renamed from Wheelbarrow Pull, Sept 2026. Standards unchanged.
 
 **Everyone**
 
@@ -1922,7 +2024,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 ## 7. Flexibility
 
-### 73. Rear Hand Clasp
+### 76. Rear Hand Clasp
 
 *Scored by: difficulty level, then longest hold · 4 players have scored it*
 
@@ -1943,7 +2045,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: D6 · 30s
 - Taniwha: D7 · 30s
 
-### 74. Bridge
+### 77. Bridge
 
 *Scored by: difficulty level, then longest hold · 12 players have scored it*
 
@@ -1964,7 +2066,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: D6 · 15s
 - Taniwha: D6 · 60s
 
-### 75. Forward Fold
+### 78. Forward Fold
 
 *Scored by: difficulty level, then longest hold · 3 players have scored it*
 
@@ -1985,7 +2087,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: D7 · 30s
 - Taniwha: D8 · 30s
 
-### 76. Needle Pose
+### 79. Needle Pose
 
 *Scored by: difficulty level, then longest hold · 0 players have scored it*
 
@@ -2006,7 +2108,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: D6 · 10s
 - Taniwha: D6 · 30s
 
-### 77. Forward Split
+### 80. Forward Split
 
 *Scored by: difficulty level, then longest hold · 5 players have scored it*
 
@@ -2027,7 +2129,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: D6 · 10s
 - Taniwha: D6 · 30s
 
-### 78. Middle Split
+### 81. Middle Split
 
 *Scored by: difficulty level, then longest hold · 3 players have scored it*
 
@@ -2048,7 +2150,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: D6 · 30s
 - Taniwha: D7 · 30s
 
-### 79. Standing Split
+### 82. Standing Split
 
 *Scored by: difficulty level, then longest hold · 4 players have scored it*
 
@@ -2069,7 +2171,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: D6 · 30s
 - Taniwha: D7 · 30s
 
-### 80. Foot Behind Head Pose
+### 83. Foot Behind Head Pose
 
 *Scored by: difficulty level, then longest hold · 3 players have scored it*
 
@@ -2090,7 +2192,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: D6 · 30s
 - Taniwha: D7 · 30s
 
-### 81. Shoulder Dislocate
+### 84. Shoulder Dislocate
 
 *Scored by: narrowest hand width · 2 players have scored it*
 
@@ -2111,7 +2213,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: ≤ 65cm
 - Taniwha: ≤ 60cm
 
-### 82. Pancake
+### 85. Pancake
 
 *Scored by: difficulty level, then longest hold · 3 players have scored it*
 
@@ -2132,7 +2234,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: D6 · 30s
 - Taniwha: D7 · 30s
 
-### 83. Side Bend
+### 86. Side Bend
 
 *Scored by: difficulty level, then longest hold · 0 players have scored it*
 
@@ -2153,7 +2255,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: D4 · 20s
 - Taniwha: D4 · 45s
 
-### 84. Full Bound Twist
+### 87. Full Bound Twist
 
 *Scored by: difficulty level, then longest hold · 2 players have scored it*
 
@@ -2176,9 +2278,103 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 ---
 
+### 88. Plie Squat
+
+*Scored by: difficulty level, then longest hold · new event, nobody has scored it*
+
+> Drafted by rule. Twelve colours spread over the rungs, extras on the lowest. Reach a rung, then own it.
+> NEW EVENT — nobody has scored it.
+> Holds shorten as the rungs get deeper: a full plie on the balls of the feet is a strength hold as much
+> as a flexibility one.
+
+**Everyone**
+
+- Kiwikiwi: D1 · 20s
+- Whero: D1 · 45s
+- Karaka: D1 · 1:30
+- Kōwhai: D2 · 20s
+- Kākāriki: D2 · 45s
+- Kahurangi: D2 · 1:30
+- Poroporo: D3 · 15s
+- Parahi: D3 · 30s
+- Hiriwa: D3 · 1:00
+- Kōura: D4 · 10s
+- Uenuku: D4 · 20s
+- Taniwha: D4 · 45s
+
+### 89. Seiza
+
+*Scored by: difficulty level, then longest hold · new event, nobody has scored it*
+
+> Drafted by rule. Twelve colours spread over the rungs, extras on the lowest. Reach a rung, then own it.
+> NEW EVENT — nobody has scored it.
+> The longest holds on the sheet: seiza is a sitting position people hold for many minutes, so the low
+> rungs have to run long or everyone tops them out at once.
+
+**Everyone**
+
+- Kiwikiwi: D1 · 30s
+- Whero: D1 · 1:00
+- Karaka: D1 · 2:00
+- Kōwhai: D2 · 30s
+- Kākāriki: D2 · 1:00
+- Kahurangi: D2 · 2:00
+- Poroporo: D3 · 20s
+- Parahi: D3 · 45s
+- Hiriwa: D3 · 1:30
+- Kōura: D4 · 15s
+- Uenuku: D4 · 30s
+- Taniwha: D4 · 1:00
+
+### 90. Wrist Stretch
+
+*Scored by: difficulty level, then longest hold · new event, nobody has scored it*
+
+> Drafted by rule. Twelve colours spread over the rungs, extras on the lowest. Reach a rung, then own it.
+> NEW EVENT — nobody has scored it.
+
+**Everyone**
+
+- Kiwikiwi: D1 · 20s
+- Whero: D1 · 45s
+- Karaka: D1 · 1:30
+- Kōwhai: D2 · 20s
+- Kākāriki: D2 · 45s
+- Kahurangi: D2 · 1:30
+- Poroporo: D3 · 15s
+- Parahi: D3 · 30s
+- Hiriwa: D3 · 1:00
+- Kōura: D4 · 15s
+- Uenuku: D4 · 30s
+- Taniwha: D4 · 1:00
+
+### 91. Reverse Wrist Stretch
+
+*Scored by: difficulty level, then longest hold · new event, nobody has scored it*
+
+> Drafted by rule. Twelve colours spread over the rungs, extras on the lowest. Reach a rung, then own it.
+> NEW EVENT — nobody has scored it.
+> Shorter than Wrist Stretch at every rung, on purpose: the wrist has far less range palms-up than
+> palms-down, so the same times would not be the same ask.
+
+**Everyone**
+
+- Kiwikiwi: D1 · 15s
+- Whero: D1 · 30s
+- Karaka: D1 · 1:00
+- Kōwhai: D2 · 15s
+- Kākāriki: D2 · 30s
+- Kahurangi: D2 · 1:00
+- Poroporo: D3 · 10s
+- Parahi: D3 · 25s
+- Hiriwa: D3 · 45s
+- Kōura: D4 · 10s
+- Uenuku: D4 · 20s
+- Taniwha: D4 · 40s
+
 ## 8. Body Awareness
 
-### 85. Tae Kwon Do
+### 92. Tae Kwon Do
 
 *Scored by: difficulty level, then most reps · 4 players have scored it*
 
@@ -2195,7 +2391,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 *Poroporo and above: the head-to-head rating.*
 
-### 86. Breakdancing
+### 93. Breakdancing
 
 *Scored by: difficulty level, then longest hold · 0 players have scored it*
 
@@ -2212,7 +2408,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 *Poroporo and above: the head-to-head rating.*
 
-### 87. Trampolining
+### 94. Trampolining
 
 *Scored by: difficulty level, then most reps · 4 players have scored it*
 
@@ -2229,7 +2425,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 *Poroporo and above: the head-to-head rating.*
 
-### 88. Jump Rope
+### 95. Jump Rope
 
 *Scored by: difficulty level, then most reps · 12 players have scored it*
 
@@ -2246,13 +2442,13 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 *Poroporo and above: the head-to-head rating.*
 
-### 89. Wrestling
+### 96. Wrestling
 
 *Scored by: win, draw or loss against another player · 7 players have scored it*
 
 **Rating only.** No fair solo drill exists, so every colour comes from the head-to-head rating.
 
-### 90. Gymnastics
+### 97. Gymnastics
 
 *Scored by: difficulty level, then most reps · 2 players have scored it*
 
@@ -2269,7 +2465,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 *Poroporo and above: the head-to-head rating.*
 
-### 91. Balance Ball
+### 98. Balance Ball
 
 *Scored by: difficulty level, then longest hold · 5 players have scored it*
 
@@ -2286,7 +2482,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 *Poroporo and above: the head-to-head rating.*
 
-### 92. SKATE
+### 99. SKATE
 
 *Scored by: difficulty level, then most reps · 4 players have scored it*
 
@@ -2303,7 +2499,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 *Poroporo and above: the head-to-head rating.*
 
-### 93. Fencing
+### 100. Fencing
 
 *Scored by: difficulty level, then most reps · 6 players have scored it*
 
@@ -2320,7 +2516,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 *Poroporo and above: the head-to-head rating.*
 
-### 94. Juggling
+### 101. Juggling
 
 *Scored by: difficulty level, then longest hold · 4 players have scored it*
 
@@ -2337,7 +2533,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 *Poroporo and above: the head-to-head rating.*
 
-### 95. Foot Juggling
+### 102. Foot Juggling
 
 *Scored by: difficulty level, then most reps · 0 players have scored it*
 
@@ -2354,7 +2550,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 *Poroporo and above: the head-to-head rating.*
 
-### 96. Slackline
+### 103. Slackline
 
 *Scored by: difficulty level, then longest hold · 0 players have scored it*
 
@@ -2373,9 +2569,30 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 ---
 
+### 104. Climbing
+
+*Scored by: difficulty level, then fastest time · 2 players have scored it*
+
+> Drafted by hand. Topped with a Game rung (Sept 2026), so the drills stop at Kahurangi and the head-to-head
+> rating gives Poroporo and above, after ten recorded races. D4 to D8 now carry no colour of their own: reaching
+> them is worth more than any drill time, but the colour above Kahurangi comes from racing people. Say if the
+> six should be respread across all eight rungs instead.
+>
+> STILL OPEN from the last round: the lowest three rungs are HANGS on a ladder ranked fastest-first, so a longer
+> hang scores worse. That came from the difficulty review and is unchanged here.
+
+**Everyone**
+
+- Kiwikiwi: D1 · finish
+- Whero: D1 · ≤ 20s
+- Karaka: D2 · finish
+- Kōwhai: D2 · ≤ 20s
+- Kākāriki: D3 · finish
+- Kahurangi: D3 · ≤ 20s
+
 ## 9. Coordination
 
-### 97. Volleyball
+### 105. Volleyball
 
 *Scored by: difficulty level, then most reps · 4 players have scored it*
 
@@ -2392,7 +2609,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 *Poroporo and above: the head-to-head rating.*
 
-### 98. Baseball
+### 106. Baseball
 
 *Scored by: difficulty level, then most reps · 4 players have scored it*
 
@@ -2409,7 +2626,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 *Poroporo and above: the head-to-head rating.*
 
-### 99. Teqball
+### 107. Teqball
 
 *Scored by: difficulty level, then most reps · 5 players have scored it*
 
@@ -2426,7 +2643,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 *Poroporo and above: the head-to-head rating.*
 
-### 100. Tennis
+### 108. Tennis
 
 *Scored by: difficulty level, then most reps · 4 players have scored it*
 
@@ -2443,7 +2660,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 *Poroporo and above: the head-to-head rating.*
 
-### 101. Cricket
+### 109. Cricket
 
 *Scored by: difficulty level, then most reps · 7 players have scored it*
 
@@ -2460,7 +2677,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 *Poroporo and above: the head-to-head rating.*
 
-### 102. Badminton
+### 110. Badminton
 
 *Scored by: difficulty level, then most reps · 15 players have scored it*
 
@@ -2477,7 +2694,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 *Poroporo and above: the head-to-head rating.*
 
-### 103. Basketball
+### 111. Basketball
 
 *Scored by: difficulty level, then most reps · 5 players have scored it*
 
@@ -2494,7 +2711,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 *Poroporo and above: the head-to-head rating.*
 
-### 104. Football
+### 112. Football
 
 *Scored by: difficulty level, then most reps · 5 players have scored it*
 
@@ -2511,7 +2728,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 *Poroporo and above: the head-to-head rating.*
 
-### 105. Hockey
+### 113. Hockey
 
 *Scored by: difficulty level, then most reps · 6 players have scored it*
 
@@ -2528,7 +2745,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 *Poroporo and above: the head-to-head rating.*
 
-### 106. Squash
+### 114. Squash
 
 *Scored by: difficulty level, then most reps · 4 players have scored it*
 
@@ -2545,7 +2762,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 *Poroporo and above: the head-to-head rating.*
 
-### 107. Lacrosse
+### 115. Lacrosse
 
 *Scored by: difficulty level, then most reps · 0 players have scored it*
 
@@ -2562,7 +2779,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 *Poroporo and above: the head-to-head rating.*
 
-### 108. Ultimate Frisbee
+### 116. Ultimate Frisbee
 
 *Scored by: difficulty level, then most reps · 4 players have scored it*
 
@@ -2583,7 +2800,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 ## 10. Aim & Precision
 
-### 109. Netball
+### 117. Netball
 
 *Scored by: difficulty level, then most reps · 6 players have scored it*
 
@@ -2600,7 +2817,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 *Poroporo and above: the head-to-head rating.*
 
-### 110. Bocce
+### 118. Bocce
 
 *Scored by: difficulty level, then most reps · 4 players have scored it*
 
@@ -2617,7 +2834,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 *Poroporo and above: the head-to-head rating.*
 
-### 111. Dodgeball
+### 119. Dodgeball
 
 *Scored by: difficulty level, then most reps · 4 players have scored it*
 
@@ -2634,7 +2851,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 *Poroporo and above: the head-to-head rating.*
 
-### 112. Carrom
+### 120. Carrom
 
 *Scored by: difficulty level, then most reps · 16 players have scored it*
 
@@ -2651,7 +2868,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 *Poroporo and above: the head-to-head rating.*
 
-### 113. Archery
+### 121. Archery
 
 *Scored by: difficulty level, then most reps · 5 players have scored it*
 
@@ -2668,7 +2885,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 *Poroporo and above: the head-to-head rating.*
 
-### 114. Bowling
+### 122. Bowling
 
 *Scored by: difficulty level, then most reps · 2 players have scored it*
 
@@ -2685,7 +2902,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 *Poroporo and above: the head-to-head rating.*
 
-### 115. Darts
+### 123. Darts
 
 *Scored by: difficulty level, then most reps · 3 players have scored it*
 
@@ -2702,7 +2919,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 *Poroporo and above: the head-to-head rating.*
 
-### 116. Disc Golf
+### 124. Disc Golf
 
 *Scored by: difficulty level, then most reps · 7 players have scored it*
 
@@ -2719,7 +2936,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 *Poroporo and above: the head-to-head rating.*
 
-### 117. Golf
+### 125. Golf
 
 *Scored by: difficulty level, then most reps · 5 players have scored it*
 
@@ -2736,7 +2953,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 *Poroporo and above: the head-to-head rating.*
 
-### 118. Handball
+### 126. Handball
 
 *Scored by: difficulty level, then most reps · 0 players have scored it*
 
@@ -2753,7 +2970,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 *Poroporo and above: the head-to-head rating.*
 
-### 119. Table Tennis
+### 127. Table Tennis
 
 *Scored by: difficulty level, then most reps · 0 players have scored it*
 
@@ -2770,7 +2987,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 *Poroporo and above: the head-to-head rating.*
 
-### 120. Kubb
+### 128. Kubb
 
 *Scored by: difficulty level, then most reps · 4 players have scored it*
 
