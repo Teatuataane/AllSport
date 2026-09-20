@@ -1720,6 +1720,65 @@ is rated; a game logged at home still is not.
   query. A missing column takes the whole request down, and before this
   migration `matches` has no such column.
 
+## The four customisation migrations — APPLIED AND VERIFIED 2026-09-20
+
+`20260918023038` (training load), `20260920040735` (personal games),
+`20260920042215` (game swaps) and `20260920053207` (a swapped game is rated),
+applied in that order from `main` after the code was live, and checked by
+querying the objects rather than the ledger.
+
+**The push had to run from a WORKTREE, and the main checkout would have gone
+wrong in a new way.** `~/allsport` had HEAD on current `main` but its index and
+working files held an exact snapshot of `a700d1e` (26 August): 317 files staged,
+VERSION reading `0.6.1.0`, and none of the four migrations on disk. `db push`
+from there refused with **"Remote migration versions not found in local
+migrations directory"**, naming 18 migrations, and suggested
+`supabase migration repair --status reverted <those 18>`. **Running that would
+have told production that 18 applied, working migrations were absent.** The
+refusal is the CLI protecting itself from a stale tree; the fix is to push from
+a clean checkout, never to repair. Confirmed afterwards that the failed attempt
+changed nothing.
+
+**Verified in production, by object:**
+- `workouts` carries all five new columns (`planned_events`, `finished_at`,
+  `session_id`, `duration_minutes`, `effort_rating`); `matches` carries
+  `workout_entry_id` and `event_name`.
+- Three CHECKs present (`matches_one_anchor`, `matches_entry_needs_name`,
+  `workouts_planned_events_size`) and **zero matches with the wrong number of
+  anchors**.
+- `workouts_one_per_game` (the UNIQUE partial index) exists. It **replaced** the
+  plain `workouts_session_idx`: the composite covers the only query that reads
+  it, which filters on player AND session.
+- Both guards kept every rule they already had — the witnessed rule, the 7-day
+  window, the roster check, the game-open window and the Game-rung refusal —
+  and gained the new ones. Both triggers present; all three SECURITY DEFINER
+  functions carry `search_path=public`.
+- `record_entry_match` is granted to `authenticated` and `service_role`, **not
+  `anon`**. 198 activity aliases.
+- As `anon` through PostgREST: `workouts` and `workout_entries` return **401**,
+  `record_entry_match` returns **401**, and `matches` returns **200** — public
+  read is deliberate there, the same as `results`, and it also proves
+  `event_name` exists.
+
+### Baseline at apply time, and what the first real game should show
+
+Production on 2026-09-20, immediately after the four migrations and with
+v0.14.0.0 live (confirmed by `allowGameScore` — a v0.14-only identifier — being
+in the deployed bundle): **1 workout, 1 entry, 0 game-linked workouts, 0
+personal games, 0 matches, 0 swap matches.** Everything below is therefore new
+behaviour, never yet exercised by a player.
+
+**What to check after the first game that uses it**, since none of it has run
+for real yet:
+- a swap writes ONE workout with `session_id` set, and its entries carry
+  `game` evidence (the release panel should not call them solo);
+- a personal game writes a workout with `planned_events` and, on Finish, a
+  `finished_at`; an empty one is deleted rather than left behind;
+- a swapped game event with an opponent picked writes a `matches` row with
+  `workout_entry_id` set and `event_name` filled;
+- the closing game still writes placements and NULL-point summary rows
+  (the open item from the points retirement).
+
 ## Security posture (August 2026) — read before touching RLS or players_public
 
 An OWASP pass (SQL injection / XSS / auth / access control) found three
