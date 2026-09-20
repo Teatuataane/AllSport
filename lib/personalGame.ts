@@ -10,7 +10,8 @@
 
 import { EVENTS, getEventBySlug, type EventData } from './eventData'
 import { scoreColumns, type EntryVals } from './scoring'
-import { isGameTier, metresIn, unitRule, unitsForResult } from './units'
+import { estimateFromSets, estimateFromDistance, takesSets, takesDistance } from './naturalFormats'
+import { isGameTier, metresIn, unitRule, unitsForVolume } from './units'
 import { nzDay } from './workouts'
 
 /** The database CHECK. A plan is a workout, not a programme. */
@@ -89,7 +90,64 @@ export function volumeFor(ev: EventData, tierName: string | null | undefined): P
 }
 
 /**
- * One scored submission as a workout entry. Returns null when the score is not
+ * The sets a player typed, as numbers. A half-filled row is dropped rather than
+ * counted as a zero-weight set.
+ */
+function validSets(v: EntryVals) {
+  return (v.setRows ?? [])
+    .map(r => ({ weightKg: parseFloat(r.weightKg) || 0, reps: parseInt(r.reps) || 0 }))
+    .filter(r => r.weightKg > 0 && r.reps > 0)
+}
+
+/**
+ * One submission in a NATURAL format, where the event takes one: sets of
+ * weight × reps on a lift, or a distance and a time on a raced distance event.
+ * The columns store what was actually done; `raw_score` carries the estimate it
+ * converts to, and the label says so.
+ *
+ * Volume is the real work: five sets is five completions, and a 5km run is
+ * 5000m — so a long run earns the units it deserves, not the units of the rung
+ * it converts to.
+ *
+ * Returns null when the event has no natural format, or nothing usable was
+ * typed, so the caller falls through to the official fields.
+ */
+export function naturalPayload(ev: EventData, v: EntryVals): EntryPayload | null {
+  if (takesSets(ev)) {
+    const sets = validSets(v)
+    if (sets.length === 0) return null
+    const est = estimateFromSets(sets)
+    if (!est) return null
+    return {
+      activity: ev.name, event_slug: ev.slug,
+      count: sets.length, volume_distance_m: null,
+      raw_score: est.raw_score, score_label: est.score_label,
+      difficulty_tier: null, exercise_variation: null,
+      weight_kg: est.weight_kg ?? null, reps: est.reps ?? null,
+      time_seconds: null, distance_m: null,
+    }
+  }
+  if (takesDistance(ev)) {
+    const metres = Math.round((parseFloat(v.distanceKm ?? '') || 0) * 1000)
+    const secs = (parseFloat(v.timeMins) || 0) * 60 + (parseFloat(v.timeSecs) || 0)
+    if (metres <= 0 || secs <= 0) return null
+    const est = estimateFromDistance(ev, metres, secs)
+    if (!est) return null
+    return {
+      activity: ev.name, event_slug: ev.slug,
+      count: null, volume_distance_m: metres,
+      raw_score: est.raw_score, score_label: est.score_label,
+      difficulty_tier: est.difficulty_tier ?? null, exercise_variation: null,
+      weight_kg: null, reps: null,
+      time_seconds: est.time_seconds ?? null, distance_m: metres,
+    }
+  }
+  return null
+}
+
+/**
+ * One scored submission as a workout entry: a natural format where the event
+ * takes one, the official fields otherwise. Returns null when the score is not
  * complete, exactly as the game path does.
  *
  * A GAME rung stores no score: the database refuses a logged Game-rung result
@@ -99,6 +157,8 @@ export function volumeFor(ev: EventData, tierName: string | null | undefined): P
  * entry once `matches.workout_entry_id` exists).
  */
 export function entryPayload(ev: EventData, v: EntryVals): EntryPayload | null {
+  const natural = naturalPayload(ev, v)
+  if (natural) return natural
   const scored = scoreColumns(ev.inputMode, ev, v)
   if (!scored) return null
   const tier = v.difficultyTier || null
@@ -117,9 +177,13 @@ export function entryPayload(ev: EventData, v: EntryVals): EntryPayload | null {
   }
 }
 
-/** The units one entry of a personal game earns. Mirrors a game result exactly. */
-export function unitsForEntry(ev: EventData, tierName: string | null | undefined): number {
-  return unitsForResult(ev, tierName)
+/**
+ * The units one submission earns, read off the payload it stored — NOT off the
+ * rung. A natural entry records the real work (five sets, 5000m), and reading
+ * the rung instead would pay a 5km run the units of a 1000m.
+ */
+export function unitsForPayload(ev: EventData, p: EntryPayload): number {
+  return unitsForVolume(ev, { count: p.count, distanceM: p.volume_distance_m })
 }
 
 // ─── Lifecycle ───────────────────────────────────────────────────────────────

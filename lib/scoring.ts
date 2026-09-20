@@ -121,6 +121,14 @@ export type EntryVals = {
   exerciseVariation: string
   difficultyTier: string
   scoreInput: string
+  // ── Natural formats (September 2026) ───────────────────────────────────────
+  // How people actually train, on a SWAPPED, extra or personal-game event only.
+  // An official event keeps the official format, so a prediction can never beat
+  // a measured result in a game. lib/naturalFormats.ts converts these.
+  /** Sets of weight × reps on a lift. The best set by estimated 1RM scores. */
+  setRows?: { weightKg: string; reps: string }[]
+  /** Kilometres actually covered on a distance event; the time is timeMins/timeSecs. */
+  distanceKm?: string
 }
 
 export const EMPTY_VALS: EntryVals = {
