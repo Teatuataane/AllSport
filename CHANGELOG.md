@@ -2,6 +2,11 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.14.1.0] - 2026-09-21
+
+### Changed
+- Documentation only: the project reference now records the workout-customisation work and what is still unproven, and the todo list carries the two open questions from it.
+
 ## [0.14.0.0] - 2026-09-20
 
 ### Added
