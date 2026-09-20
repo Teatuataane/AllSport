@@ -1,16 +1,20 @@
 'use client'
+
+// ─── New official game ───────────────────────────────────────────────────────
+// A kaiwhakawā picks one event per domain and starts the game. The picker is
+// the SAME component a player uses to set up a personal game
+// (components/play/EventPlanPicker), so setting up a workout and setting up a
+// game are one experience — the first thing the September 2026 customisation
+// review asked for.
+
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase-browser'
-import { EVENTS, DOMAIN_ORDER, getEventByName } from '@/lib/eventData'
+import { DOMAIN_ORDER } from '@/lib/eventData'
 import { DOMAIN_COLORS } from '@/lib/domainColours'
 import { sessionStart } from '@/lib/dates'
-
-const DOMAINS = DOMAIN_ORDER.map((domainName, idx) => ({
-  number: idx + 1,
-  name: domainName,
-  events: EVENTS.filter(e => e.domainNumber === idx + 1).map(e => e.name),
-}))
+import { drawPlan, planEvents } from '@/lib/personalGame'
+import EventPlanPicker from '@/components/play/EventPlanPicker'
 
 export default function ScoringSetup() {
   const router = useRouter()
@@ -20,16 +24,12 @@ export default function ScoringSetup() {
     const now = new Date()
     return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
   })
-  const [selectedEvents, setSelectedEvents] = useState<{ [domainNumber: number]: string }>({})
+  const [plan, setPlan] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const selected = Object.keys(selectedEvents).length
-  const allSelected = selected === 10
-
-  const handleEventSelect = (domainNumber: number, event: string) => {
-    setSelectedEvents(prev => ({ ...prev, [domainNumber]: event }))
-  }
+  const events = planEvents(plan)
+  const allSelected = events.length === 10
 
   const handleStart = async () => {
     if (!allSelected) return
@@ -72,19 +72,15 @@ export default function ScoringSetup() {
 
       if (sessionError) throw sessionError
 
-      const eventsToInsert = DOMAINS.map(d => {
-        const evName = selectedEvents[d.number]
-        const evData = getEventByName(evName)
-        return {
-          session_id: session.id,
-          domain_number: d.number,
-          domain_name: d.name,
-          event_name: evName,
-          event_slug: evData?.slug ?? '',
-          input_mode: evData?.inputMode ?? 'strength',
-          display_order: d.number,
-        }
-      })
+      const eventsToInsert = events.map(ev => ({
+        session_id: session.id,
+        domain_number: ev.domainNumber,
+        domain_name: ev.domain,
+        event_name: ev.name,
+        event_slug: ev.slug,
+        input_mode: ev.inputMode,
+        display_order: ev.domainNumber,
+      }))
 
       const { error: eventsError } = await supabase
         .from('session_events')
@@ -93,8 +89,8 @@ export default function ScoringSetup() {
       if (eventsError) throw eventsError
 
       router.push(`/scoring/${session.id}`)
-    } catch (e: any) {
-      setError(e.message || 'Something went wrong')
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Something went wrong')
       setLoading(false)
     }
   }
@@ -105,18 +101,21 @@ export default function ScoringSetup() {
       <div style={{ background: '#000', borderBottom: '1px solid #1a1a1a', padding: '16px 24px', position: 'sticky', top: 0, zIndex: 10 }}>
         <div style={{ maxWidth: '680px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: '28px', color: '#2371BB', lineHeight: 1 }}>New Session</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '28px', color: '#2371BB', lineHeight: 1 }}>New Game</div>
             <div style={{ fontFamily: 'var(--font-label)', fontSize: '12px', color: '#555', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Select one event per domain</div>
           </div>
           {/* Progress ring */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{ display: 'flex', gap: '4px' }}>
-              {DOMAINS.map(d => (
-                <div key={d.number} style={{ width: '6px', height: '24px', borderRadius: '3px', background: selectedEvents[d.number] ? DOMAIN_COLORS[d.number - 1] : '#222', transition: 'background 0.2s' }} />
+              {DOMAIN_ORDER.map((_, i) => (
+                <div key={i} style={{
+                  width: '6px', height: '24px', borderRadius: '3px', transition: 'background 0.2s',
+                  background: events.some(e => e.domainNumber === i + 1) ? DOMAIN_COLORS[i] : '#222',
+                }} />
               ))}
             </div>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', color: allSelected ? '#4DB26E' : '#555' }}>
-              {selected}/10
+              {events.length}/10
             </div>
           </div>
         </div>
@@ -124,23 +123,25 @@ export default function ScoringSetup() {
 
       <div style={{ maxWidth: '680px', margin: '0 auto', padding: '24px' }}>
         {/* Session config */}
-        <div style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '20px', marginBottom: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '20px', marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '12px' }}>
             <div>
-              <label style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '11px', color: '#555', letterSpacing: '0.15em', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>Location</label>
+              <label htmlFor="location" style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '11px', color: '#555', letterSpacing: '0.15em', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>Location</label>
               <input
+                id="location"
                 value={location}
                 onChange={e => setLocation(e.target.value)}
-                style={{ width: '100%', background: '#0a0a0a', border: '1px solid #2a2a2a', borderRadius: '8px', padding: '10px 14px', color: '#fff', fontSize: '15px', fontFamily: 'var(--font-body)', boxSizing: 'border-box' as const, outline: 'none' }}
+                style={{ width: '100%', background: '#0a0a0a', border: '1px solid #2a2a2a', borderRadius: '8px', padding: '10px 14px', color: '#fff', fontSize: '16px', fontFamily: 'var(--font-body)', boxSizing: 'border-box' as const, minHeight: '44px' }}
               />
             </div>
             <div>
-              <label style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '11px', color: '#555', letterSpacing: '0.15em', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>Start Time</label>
+              <label htmlFor="start-time" style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '11px', color: '#555', letterSpacing: '0.15em', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>Start Time</label>
               <input
+                id="start-time"
                 type="time"
                 value={startTime}
                 onChange={e => setStartTime(e.target.value)}
-                style={{ background: '#0a0a0a', border: '1px solid #2a2a2a', borderRadius: '8px', padding: '10px 14px', color: '#fff', fontSize: '15px', fontFamily: 'var(--font-body)', outline: 'none', colorScheme: 'dark' as any }}
+                style={{ background: '#0a0a0a', border: '1px solid #2a2a2a', borderRadius: '8px', padding: '10px 14px', color: '#fff', fontSize: '16px', fontFamily: 'var(--font-body)', minHeight: '44px', colorScheme: 'dark' as const }}
               />
             </div>
           </div>
@@ -152,65 +153,32 @@ export default function ScoringSetup() {
               style={{ width: '18px', height: '18px', accentColor: '#F9B051' }}
             />
             <div>
-              <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '14px', color: isChampionship ? '#F9B051' : '#ccc' }}>Championship Session</div>
+              <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '14px', color: isChampionship ? '#F9B051' : '#ccc' }}>Championship Game</div>
               <div style={{ fontFamily: 'var(--font-body)', fontSize: '12px', color: '#555' }}>Marks this game as the annual Championship</div>
             </div>
           </label>
         </div>
 
-        {/* Domain event selectors */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '32px' }}>
-          {DOMAINS.map(domain => {
-            const domainColor = DOMAIN_COLORS[domain.number - 1]
-            const chosen = selectedEvents[domain.number]
-            return (
-              <div key={domain.number} style={{ background: '#111', border: `1px solid ${chosen ? domainColor + '44' : '#1a1a1a'}`, borderRadius: '10px', overflow: 'hidden', transition: 'border-color 0.2s' }}>
-                <div style={{ padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `1px solid ${chosen ? domainColor + '22' : '#1a1a1a'}` }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ width: '4px', height: '20px', borderRadius: '2px', background: chosen ? domainColor : '#2a2a2a', flexShrink: 0 }} />
-                    <div>
-                      <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '13px', color: chosen ? '#fff' : '#888', letterSpacing: '0.05em' }}>
-                        {domain.number}. {domain.name.toUpperCase()}
-                      </div>
-                    </div>
-                  </div>
-                  {chosen && (
-                    <div style={{ fontFamily: 'var(--font-label)', fontSize: '12px', fontWeight: 700, color: domainColor, background: domainColor + '22', padding: '3px 10px', borderRadius: '4px', letterSpacing: '0.05em' }}>
-                      {chosen}
-                    </div>
-                  )}
-                </div>
-                <div style={{ padding: '10px', display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
-                  {domain.events.map(event => {
-                    const isSelected = selectedEvents[domain.number] === event
-                    return (
-                      <button
-                        key={event}
-                        onClick={() => handleEventSelect(domain.number, event)}
-                        style={{
-                          padding: '5px 10px', fontSize: '12px', borderRadius: '5px', cursor: 'pointer',
-                          border: isSelected ? `1px solid ${domainColor}` : '1px solid #222',
-                          background: isSelected ? domainColor : '#0d0d0d',
-                          color: isSelected ? '#fff' : '#777',
-                          fontFamily: 'var(--font-label)',
-                          fontWeight: isSelected ? 700 : 400,
-                          letterSpacing: '0.03em',
-                          transition: 'all 0.15s',
-                        }}
-                      >
-                        {event}
-                        {(() => { const ev = getEventByName(event); return ev?.hasDifficultyTiers && ev.difficultyTiers ? <span style={{ marginLeft: '5px', color: isSelected ? 'rgba(255,255,255,0.7)' : '#B87DB5', fontSize: '10px' }}>D1–D{ev.difficultyTiers.length}</span> : null })()}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            )
-          })}
+        {/* Draw — the same shortcut a personal game offers */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+          <button type="button" onClick={() => setPlan(drawPlan())} style={{
+            minHeight: 44, padding: '0 16px', borderRadius: 999, cursor: 'pointer',
+            background: '#151515', border: '1px solid #2a2a2a', color: '#fff',
+            fontFamily: 'var(--font-label)', fontSize: 13, letterSpacing: '0.08em', textTransform: 'uppercase',
+          }}>Draw for me</button>
+          {plan.length > 0 && (
+            <button type="button" onClick={() => setPlan([])} style={{
+              minHeight: 44, padding: '0 16px', borderRadius: 999, cursor: 'pointer',
+              background: 'none', border: '1px solid #2a2a2a', color: '#888',
+              fontFamily: 'var(--font-label)', fontSize: 13, letterSpacing: '0.08em', textTransform: 'uppercase',
+            }}>Clear</button>
+          )}
         </div>
 
+        <EventPlanPicker mode="official" plan={plan} onChange={setPlan} />
+
         {error && (
-          <div style={{ background: '#2e0d0d', border: '1px solid #EA4742', borderRadius: '8px', padding: '12px 16px', color: '#EA4742', fontSize: '14px', fontFamily: 'var(--font-body)', marginBottom: '16px' }}>
+          <div style={{ background: '#2e0d0d', border: '1px solid #EA4742', borderRadius: '8px', padding: '12px 16px', color: '#EA4742', fontSize: '14px', fontFamily: 'var(--font-body)', margin: '16px 0' }}>
             {error}
           </div>
         )}
@@ -219,16 +187,15 @@ export default function ScoringSetup() {
           onClick={handleStart}
           disabled={!allSelected || loading}
           style={{
-            width: '100%', padding: '18px', borderRadius: '10px', border: 'none',
+            width: '100%', marginTop: '24px', padding: '18px', borderRadius: '10px', border: 'none',
             cursor: allSelected && !loading ? 'pointer' : 'not-allowed',
             background: allSelected ? 'linear-gradient(90deg, #2371BB, #EA4742)' : '#1a1a1a',
             color: allSelected ? '#fff' : '#444',
             fontFamily: 'var(--font-display)', fontSize: '22px', letterSpacing: '0.1em',
-            transition: 'opacity 0.2s',
             opacity: loading ? 0.7 : 1,
           }}
         >
-          {loading ? 'Starting session...' : allSelected ? 'Start Session →' : `Select ${10 - selected} more event${10 - selected !== 1 ? 's' : ''}`}
+          {loading ? 'Starting game...' : allSelected ? 'Start Game →' : `Select ${10 - events.length} more event${10 - events.length !== 1 ? 's' : ''}`}
         </button>
       </div>
     </div>
