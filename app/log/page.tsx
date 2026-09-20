@@ -28,6 +28,7 @@ import { computeScoreVals, scoreColumns, tierScoring, EMPTY_VALS, type EntryVals
 import { unitRule, unitsForVolume, fmtUnits, fmtUnitsLabel, RULE_WORDS } from '@/lib/units'
 import {
   fitActivity, suggestEvents, allowedDays, workoutEvidence, recentUnitsByDomain, RECENT_DAYS, type WorkoutEntryRow,
+  EFFORT_WORDS, recentLoad, workoutMinutes, type LoadWorkout,
 } from '@/lib/workouts'
 import { useActivePlayer, playerLabel } from '@/lib/useActivePlayer'
 import PlayerTabs, { ViewingAsBanner } from '@/components/PlayerTabs'
@@ -221,6 +222,13 @@ export default function LogPage() {
   const [chosenDay, setDay] = useState<string | null>(null)
   const day = chosenDay && days.includes(chosenDay) ? chosenDay : today
   const [notes, setNotes] = useState('')
+  const [minutes, setMinutes] = useState('')
+  const [effort, setEffort] = useState<number | null>(null)
+  // How long and how hard, read in their OWN query: until 20260918023038 is
+  // applied the columns are missing, and folding them into the workouts select
+  // would take the whole list down with 42703.
+  const [loadCols, setLoadCols] = useState<{ id: string; rows: Map<string, { duration_minutes: number | null; effort_rating: number | null }> } | null>(null)
+  const [loadLive, setLoadLive] = useState(true)
   const [drafts, setDrafts] = useState<Draft[]>(() => [newDraft()])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -271,8 +279,31 @@ export default function LogPage() {
         if (e) { if (e.code === 'PGRST205') setLive(false); setLoaded({ id: targetId, workouts: [] }); return }
         setLoaded({ id: targetId, workouts: (data ?? []) as Workout[] })
       })
+    supabase.from('workouts')
+      .select('id, duration_minutes, effort_rating')
+      .eq('player_id', targetId)
+      .order('performed_on', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(60)
+      .then(({ data, error: e }) => {
+        if (cancelled) return
+        if (e) { if (e.code === '42703' || e.code === 'PGRST204') setLoadLive(false); return }
+        const rows = (data ?? []) as { id: string; duration_minutes: number | null; effort_rating: number | null }[]
+        setLoadCols({ id: targetId, rows: new Map(rows.map(r => [r.id, r])) })
+      })
     return () => { cancelled = true }
   }, [targetId, reloadKey])
+
+  const loadOf = (w: Workout): LoadWorkout => {
+    const c = loadCols && loadCols.id === w.player_id ? loadCols.rows.get(w.id) : undefined
+    return {
+      performed_on: w.performed_on,
+      duration_minutes: c?.duration_minutes ?? null,
+      effort_rating: c?.effort_rating ?? null,
+      entry_seconds: w.workout_entries.map(e => e.duration_seconds),
+    }
+  }
+  const week = recentLoad((workouts ?? []).map(loadOf), RECENT_DAYS)
 
   const recent = useMemo(() => {
     const rows: WorkoutEntryRow[] = (workouts ?? []).flatMap(w => w.workout_entries.map(e => ({
@@ -326,10 +357,22 @@ export default function LogPage() {
       })
     }
 
+    const mins = minutes ? Math.round(parseFloat(minutes) || 0) : 0
+    if (minutes && (mins < 1 || mins > 1440)) { setError('How long: enter minutes between 1 and 1440.'); return }
+
     setBusy(true)
-    const { data: w, error: e1 } = await supabase.from('workouts')
-      .insert({ player_id: targetId, logged_by: userId, performed_on: day, notes: notes.trim() || null })
-      .select('id').single()
+    const base = { player_id: targetId, logged_by: userId, performed_on: day, notes: notes.trim() || null }
+    const load = {
+      ...(mins ? { duration_minutes: mins } : {}),
+      ...(effort ? { effort_rating: effort } : {}),
+    }
+    let { data: w, error: e1 } = await supabase.from('workouts').insert({ ...base, ...load }).select('id').single()
+    // Before 20260918023038 the two columns do not exist (PGRST204). Save the
+    // workout without them rather than lose it.
+    if (e1?.code === 'PGRST204' && Object.keys(load).length > 0) {
+      setLoadLive(false)
+      ;({ data: w, error: e1 } = await supabase.from('workouts').insert(base).select('id').single())
+    }
     if (e1 || !w) {
       setBusy(false)
       setError(e1?.code === 'PGRST205' ? 'Workout logging is not live yet.'
@@ -353,6 +396,8 @@ export default function LogPage() {
     setBusy(false)
     setDrafts([newDraft()])
     setNotes('')
+    setMinutes('')
+    setEffort(null)
     setNotice(`Logged${units > 0 ? ` · ${fmtUnitsLabel(units)}` : ''}${waiting ? ` · ${waiting} not fitted yet` : ''}`)
     setReloadKey(k => k + 1)
   }
@@ -517,6 +562,28 @@ export default function LogPage() {
           + Add another
         </button>
 
+        {loadLive && (
+          <div style={card}>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+              <Num value={minutes} onChange={setMinutes} placeholder="How long (min)" step="1" width={150} />
+              <div style={{ fontSize: 12.5, color: 'var(--text-muted)', paddingBottom: 14 }}>The whole workout, warm up included.</div>
+            </div>
+            <div style={{ ...label, fontSize: 11, color: 'var(--text-muted)', margin: '12px 0 6px' }}>
+              How hard{effort ? <span style={{ color: 'var(--white)' }}> · {effort} {EFFORT_WORDS[effort]}</span> : ''}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6 }} role="radiogroup" aria-label="How hard">
+              {Array.from({ length: 10 }, (_, i) => i + 1).map(n => (
+                <button key={n} type="button" role="radio" aria-checked={effort === n} aria-label={`${n}, ${EFFORT_WORDS[n]}`}
+                  onClick={() => setEffort(effort === n ? null : n)}
+                  style={{ ...chip(effort === n, 'var(--amber)'), padding: 0, color: effort === n ? '#000' : 'var(--grey-light)' }}>
+                  {n}
+                </button>
+              ))}
+            </div>
+            <div style={{ fontSize: 12, color: '#666', marginTop: 6 }}>1 is barely working, 10 is everything you had. Both are optional.</div>
+          </div>
+        )}
+
         <textarea value={notes} onChange={e => setNotes(e.target.value.slice(0, 500))} placeholder="Notes (optional): how it felt, what was modified"
           aria-label="Notes" rows={2} style={{ ...field, resize: 'vertical', marginBottom: 12 }} />
 
@@ -535,6 +602,21 @@ export default function LogPage() {
         {/* ── The last seven days ─────────────────────────────────────── */}
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 26, letterSpacing: '0.03em', margin: '28px 0 4px' }}>LAST {RECENT_DAYS} DAYS</h2>
         <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 10 }}>Units logged by domain. Game scores count too, on your colours page.</div>
+        {loadLive && week.workouts > 0 && (
+          <div style={{ ...card, display: 'flex', gap: 18, flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 30, lineHeight: 1 }}>{week.minutes}</div>
+              <div style={{ ...label, fontSize: 10.5, color: 'var(--text-muted)', marginTop: 3 }}>Minutes logged</div>
+            </div>
+            <div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 30, lineHeight: 1, color: week.rated ? 'var(--amber)' : '#444' }}>{week.rated ? week.load : '—'}</div>
+              <div style={{ ...label, fontSize: 10.5, color: 'var(--text-muted)', marginTop: 3 }}>Training load</div>
+            </div>
+            <div style={{ fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.5, flex: '1 1 180px', alignSelf: 'center' }}>
+              Load is minutes × how hard. {week.rated < week.workouts ? `${week.workouts - week.rated} of ${week.workouts} workouts have no effort rating, so they add minutes but no load.` : 'Games are not included here.'}
+            </div>
+          </div>
+        )}
         <div style={card}>
           {DOMAIN_ORDER.map((dn, i) => {
             const u = recent.get(i + 1) ?? 0
@@ -584,6 +666,13 @@ export default function LogPage() {
               <span style={{ ...label, fontSize: 12, color: 'var(--white)' }}>
                 {dayLabel(w.performed_on, today)}
                 {w.witnessed && <span style={{ color: 'var(--green)', marginLeft: 8 }}>Witnessed</span>}
+                {(() => {
+                  const lw = loadOf(w)
+                  const m = workoutMinutes(lw)
+                  const bits = [m ? `${m} min` : '', lw.effort_rating ? `${EFFORT_WORDS[lw.effort_rating]} (${lw.effort_rating})` : '']
+                    .filter(Boolean).join(' · ')
+                  return bits ? <span style={{ color: 'var(--text-muted)', marginLeft: 8, textTransform: 'none', letterSpacing: 0 }}>{bits}</span> : null
+                })()}
               </span>
               <button type="button" onClick={() => deleteWorkout(w.id)} style={{ ...quiet, color: 'var(--red)' }}>Delete</button>
             </div>

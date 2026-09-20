@@ -1439,6 +1439,29 @@ not short. **`award_session_points`
 still awards effort points for events played and PRs**, and `/leaderboard` still ranks on
 season points — retiring points properly is a separate piece of work, not done here.
 
+### Training load (September 2026 session 39) — migration `20260918023038`, NOT YET APPLIED
+
+Every workout can now carry **how long** (`workouts.duration_minutes`, 1–1440) and **how hard**
+(`workouts.effort_rating`, 1–10, Foster's session RPE). Minutes × rating is session training
+load, which works for ANY activity, fitted to an event or not. Both optional. Minutes live on
+the WORKOUT because per-entry `duration_seconds` only exists for distance and unfitted rows;
+`workoutMinutes()` uses the workout figure and falls back to the entries, never both.
+
+- **/log** asks for both, shows minutes and load for the last 7 days, and each recent workout
+  shows its minutes and effort. The new columns are read in their OWN query (42703-safe) and
+  an insert that hits PGRST204 retries without them, so either deploy order is safe.
+- **/judge Activity Report** (`app/components/ActivityReport.tsx`): weekly active minutes by
+  cohort (all / rangatahi / adults) for the last 12 complete weeks, CSV export, for funder
+  evidence. A game counts as `GAME_MINUTES` (100). Guideline 150 min/week adults, 420
+  rangatahi. Computed in the browser from rows a kaiwhakawā already reads through RLS, so no
+  new SECURITY DEFINER function. **Suppression is stricter than the wellbeing report's:** a
+  cohort under 3 is dropped AND so is that week's 'all' row, because all minus adults would
+  otherwise give one child's minutes exactly.
+- **~160 more aliases** (198 total). Deliberately NOT aliased, and pinned by a test: OHP,
+  calf raises, burpees, sit ups, "tramp" (a hike here), and anything waiting on the log-only
+  domains (swim, surf, bouldering, yoga, walking). `squat`/`bench` point at the pause lifts:
+  they train the same event, and solo evidence is moderated by the kaiwhakawā anyway.
+
 **Scripts can now import the app's TypeScript**: `node --import ./scripts/ts-loader.mjs x.ts`
 (Node 24 type stripping + a resolve hook for extensionless and `@/` imports).
 
