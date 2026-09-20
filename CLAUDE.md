@@ -1630,6 +1630,39 @@ gitignored).
 - Built on `claude/training-load` (duration/effort + the activity report), which
   is merged into this branch.
 
+## Swaps and extras at an official game (September 2026) — v0.12.0.0
+
+An injured or uninterested player can swap an official event for another in the
+SAME domain, or add extras on top. Part 3 of the workout-customisation plan.
+
+- **A swapped event is ranked exactly as a missed one: last.** That rule already
+  existed, so no placement code changed. The medal table still compares the same
+  ten events for everyone.
+- **Swaps are stored in a workout linked to the game** (`workouts.session_id`,
+  `20260920042215`), never in `results`. Five things rank off `results`
+  (`award_session_points`, `compute_event_placements`, the live leaderboard, the
+  game report, `lib/percentile.ts`); putting a swap there would mean an
+  "official only" filter in all five, and missing one leaks a swap into a
+  placement.
+- **The evidence label is `game`, and the server is what makes that true.**
+  `session_id` is settable only while the game is open and pinned on UPDATE, and
+  an entry on a game-linked workout is writable only while that game is open.
+  Without both, anyone could attach a home workout to a past game and upgrade it
+  to `game` evidence.
+- **`lib/loadGrades.ts` asks for `session_id` with a 42703 retry.** A missing
+  COLUMN takes the WHOLE PostgREST request down, so the workout-entries query
+  re-runs without it against a database that has not caught up. Deploy code
+  first, then the migration.
+- **One swap workout per player per game**, enforced by a UNIQUE index: two taps
+  on Swap would otherwise create two workouts and the screen's single-row read
+  would start failing. The client handles 23505 by reading back the winner.
+- `lib/gameSwaps.ts` is the pure half: the first chosen event in a domain is that
+  domain's swap, any further one is an extra, and a choice that IS the official
+  event is dropped so one score cannot go in two places.
+- The progress bar counts a swapped domain as covered — it is the player's own
+  workout — while the placement banner is untouched. A guest cannot swap: a
+  workout needs an owner.
+
 ## Security posture (August 2026) — read before touching RLS or players_public
 
 An OWASP pass (SQL injection / XSS / auth / access control) found three

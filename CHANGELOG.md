@@ -2,6 +2,17 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.12.0.0] - 2026-09-20
+
+### Added
+- **Swap an event during a game.** If you are hurt, or today's event is not for you, tap Swap on it and pick another from the same domain. You can also add extra events on top with + Add an event. Both count as training toward your colours.
+- Swapped and extra events appear under the event they stand in for, marked, and your progress bar counts them.
+
+### Notes
+- Swapping does not place you: the official event is still counted as missed, which is the rule it always was. The ten official events decide the medal table.
+- A kaiwhakawā can swap for any registered player from their tab. Guests cannot swap.
+- Needs a database update. Until it is applied, the swap buttons do not appear and nothing else changes.
+
 ## [0.11.0.0] - 2026-09-20
 
 ### Added

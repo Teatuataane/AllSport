@@ -143,6 +143,26 @@ function countedRows(rows: readonly ResultRow[], recorded: ReadonlySet<string> |
  * loading several players, so every match is fetched once. Returns null only
  * if the player cannot be found.
  */
+/**
+ * A player's logged entries. `workouts.session_id` (a swap or extra made at a
+ * game) arrived after this query did, and a missing COLUMN is 42703, which
+ * takes the WHOLE request down rather than returning nulls — so the column is
+ * asked for, and the query is re-run without it if the database has not caught
+ * up. Any other error is left to the caller, which treats it as no entries.
+ */
+async function loadWorkoutEntries(playerId: string) {
+  const cols = 'event_slug, count, volume_distance_m, raw_score, weight_kg, difficulty_tier'
+  const withSession = await supabase.from('workout_entries')
+    .select(`${cols}, workouts!inner(player_id, performed_on, witnessed, created_at, session_id)`)
+    .eq('workouts.player_id', playerId)
+    .range(0, 4999)
+  if (withSession.error?.code !== '42703') return withSession
+  return supabase.from('workout_entries')
+    .select(`${cols}, workouts!inner(player_id, performed_on, witnessed, created_at)`)
+    .eq('workouts.player_id', playerId)
+    .range(0, 4999)
+}
+
 export async function loadGradeState(playerId: string, matches?: readonly MatchRow[]): Promise<GradeState | null> {
   const [profile, gender, band, results, exemptions, awards, workouts, allMatches, voids] = await Promise.all([
     supabase.from('players_public').select('division, age_years').eq('id', playerId).maybeSingle(),
@@ -156,10 +176,7 @@ export async function loadGradeState(playerId: string, matches?: readonly MatchR
       .range(0, 4999),
     supabase.from('grade_exemptions').select('event_slug').eq('player_id', playerId),
     supabase.from('grade_awards').select('domain_number, rung, grade_name, conferred_at').eq('player_id', playerId),
-    supabase.from('workout_entries')
-      .select('event_slug, count, volume_distance_m, raw_score, weight_kg, difficulty_tier, workouts!inner(player_id, performed_on, witnessed, created_at)')
-      .eq('workouts.player_id', playerId)
-      .range(0, 4999),
+    loadWorkoutEntries(playerId),
     matches ? Promise.resolve(matches) : loadMatches(),
     loadRecordedVoids(),
   ])

@@ -17,7 +17,14 @@ export type WorkoutEntryRow = {
   raw_score: number | null
   weight_kg: number | null
   difficulty_tier: string | null
-  workouts: { player_id: string; performed_on: string; witnessed: boolean; created_at: string } | null
+  workouts: {
+    player_id: string
+    performed_on: string
+    witnessed: boolean
+    created_at: string
+    /** The game it was done at (a swap or an extra). Absent before 20260920042215. */
+    session_id?: string | null
+  } | null
 }
 
 /** Lower case, trimmed, single spaces: the SAME rule as the database's public.normalise_activity(). */
@@ -110,7 +117,11 @@ export function workoutEvidence(entries: readonly WorkoutEntryRow[]): { rows: Gr
         raw_score: Number(e.raw_score),
         weight_kg: e.weight_kg == null ? null : Number(e.weight_kg),
         difficulty_tier: e.difficulty_tier,
-        source: e.workouts.witnessed ? 'witnessed' : 'solo',
+        // An entry made AT a game is `game` evidence: official scores are
+        // entered by the players themselves too, in the same room, in front of
+        // the same kaiwhakawā. The server only lets it be written while that
+        // game is open (20260920042215), which is what makes the label safe.
+        source: e.workouts.session_id ? 'game' : e.workouts.witnessed ? 'witnessed' : 'solo',
       })
     }
     const u = unitsForEntryRow({
