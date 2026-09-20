@@ -16,16 +16,16 @@
 import { useCallback, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase-browser'
 import { getEventBySlug } from '@/lib/eventData'
-import { entryPayload } from '@/lib/personalGame'
+import { entryPayload, unitsForPayload } from '@/lib/personalGame'
 import { addChoice, removeChoice } from '@/lib/gameSwaps'
 import { nzDay } from '@/lib/workouts'
-import { unitsForResult } from '@/lib/units'
+import { unitsForEntryRow } from '@/lib/units'
 import type { EntryRow } from '@/components/play/chrome'
 import type { EntryVals } from '@/lib/scoring'
 
 const supabase = createClient()
 
-export type SwapEntry = EntryRow & { event_slug: string | null }
+export type SwapEntry = EntryRow & { event_slug: string | null; count: number | null; volume_distance_m: number | null }
 
 type Loaded = {
   /** Who these belong to: the hook clears when the judge switches player. */
@@ -35,7 +35,10 @@ type Loaded = {
   entries: SwapEntry[]
 }
 
-const ENTRY_COLS = 'id, event_slug, raw_score, score_label, difficulty_tier, weight_kg, reps, time_seconds, distance_m, exercise_variation'
+// count and volume_distance_m ride along because the units an entry earned are
+// read off the VOLUME it stored, not off its rung: a 5km run is five units, not
+// the one its converted rung would pay.
+const ENTRY_COLS = 'id, event_slug, count, volume_distance_m, raw_score, score_label, difficulty_tier, weight_kg, reps, time_seconds, distance_m, exercise_variation'
 
 export type GameSwaps = {
   /** Slugs the player chose instead of, or on top of, the official ten. */
@@ -138,10 +141,11 @@ export function useGameSwaps(args: {
   const scoredSlugs = new Set(
     (state?.entries ?? []).map(e => e.event_slug).filter((s): s is string => !!s))
 
-  const units = (state?.entries ?? []).reduce((sum, e) => {
-    const ev = e.event_slug ? getEventBySlug(e.event_slug) : undefined
-    return ev ? sum + unitsForResult(ev, e.difficulty_tier) : sum
-  }, 0)
+  const units = (state?.entries ?? []).reduce(
+    (sum, e) => sum + (unitsForEntryRow({
+      event_slug: e.event_slug, count: e.count,
+      volume_distance_m: e.volume_distance_m == null ? null : Number(e.volume_distance_m),
+    })?.units ?? 0), 0)
 
   return {
     chosen: state?.chosen ?? [],
@@ -174,7 +178,7 @@ export function useGameSwaps(args: {
       await load()
       // A swap never sets a PR badge here: the badge on this screen means a
       // season best on an official event, and these are not ranked.
-      return { error: null, isPR: false, units: editingId ? 0 : unitsForResult(ev, v.difficultyTier || null) }
+      return { error: null, isPR: false, units: editingId ? 0 : unitsForPayload(ev, payload) }
     },
 
     deleteEntry: async (id: string) => {

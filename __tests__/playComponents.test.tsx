@@ -125,3 +125,43 @@ describe('the plan picker', () => {
     expect(onChange).toHaveBeenCalledWith(['deadlift', 'pause-bench'])
   })
 })
+
+describe('natural formats in the sheet', () => {
+  const running = getEventBySlug('running')!
+
+  it('offers sets on a lift, and only when natural is on', () => {
+    const { rerender } = render(<QuickEntrySheet {...sheetProps}
+      onSubmit={vi.fn(async () => ({ error: null, isPR: false, units: 0 }))} />)
+    expect(screen.queryByText('Sets')).toBeNull()
+
+    rerender(<QuickEntrySheet {...sheetProps} natural
+      onSubmit={vi.fn(async () => ({ error: null, isPR: false, units: 0 }))} />)
+    expect(screen.getByText('Sets')).toBeTruthy()
+  })
+
+  it('shows the estimate beside what was lifted, and submits it', async () => {
+    const onSubmit = vi.fn(async () => ({ error: null, isPR: false, units: 5 }))
+    render(<QuickEntrySheet {...sheetProps} natural onSubmit={onSubmit} />)
+
+    fireEvent.change(screen.getByLabelText('Set 1 weight'), { target: { value: '100' } })
+    fireEvent.change(screen.getByLabelText('Set 1 reps'), { target: { value: '5' } })
+    expect(screen.getByText('Best set — 100kg × 5 · est. 1RM 112.5kg')).toBeTruthy()
+
+    fireEvent.click(screen.getByText(/Submit — 100kg × 5/))
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled())
+    const [vals] = onSubmit.mock.calls[0] as unknown as [{ setRows: { weightKg: string; reps: string }[] }]
+    expect(vals.setRows[0]).toEqual({ weightKg: '100', reps: '5' })
+  })
+
+  it('takes a distance and a time on a run, with the pace and the converted rung', () => {
+    render(<QuickEntrySheet {...sheetProps} natural se={asPlayEvent('running')} eventData={running}
+      onSubmit={vi.fn(async () => ({ error: null, isPR: false, units: 5 }))} />)
+
+    fireEvent.change(screen.getByLabelText('Distance in kilometres'), { target: { value: '5' } })
+    fireEvent.change(screen.getByLabelText('Minutes'), { target: { value: '26' } })
+    fireEvent.change(screen.getByLabelText('Seconds'), { target: { value: '10' } })
+    // The pace line carries the estimate; the submit button restates it.
+    expect(screen.getByText(/5:14\/km · 5km · 26:10 · est\. 1000m/)).toBeTruthy()
+    expect(screen.getByText(/Submit — 5km · 26:10 · est\. 1000m/)).toBeTruthy()
+  })
+})

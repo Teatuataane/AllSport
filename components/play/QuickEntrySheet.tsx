@@ -16,6 +16,9 @@ import { isTimedEffort, type EventData } from '@/lib/eventData'
 import { unitsIn, unitRule, fmtUnitsLabel, RULE_WORDS } from '@/lib/units'
 import { computeScoreVals, valsFromResult, valsFromRaw, EMPTY_VALS, type EntryVals } from '@/lib/scoring'
 import {
+  takesSets, takesDistance, estimateFromSets, estimateFromDistance, paceLabel, MAX_ESTIMATED_REPS,
+} from '@/lib/naturalFormats'
+import {
   formatPR, sportWDL, StepBtn, INP, QES_LBL, QES_CHIP, QES_INP,
   type PlayEvent, type EntryRow,
 } from './chrome'
@@ -40,6 +43,13 @@ type QuickEntrySheetProps = {
   bestLabel?: string
   prLabel?: string
   /**
+   * Log it the way people train: sets of weight × reps on a lift, a distance
+   * and a time on a run or a ride. ON A SWAPPED, EXTRA OR PERSONAL EVENT ONLY —
+   * an official event keeps the official format, so a prediction can never beat
+   * a measured result in a game.
+   */
+  natural?: boolean
+  /**
    * Whether a Game rung records a win, draw or loss. False in a personal game:
    * the database refuses a logged Game-rung result, so playing is recorded as
    * training and the drill fields stay.
@@ -54,7 +64,7 @@ type QuickEntrySheetProps = {
 
 export default function QuickEntrySheet({
   se, eventData, myResults, opponents, seasonPR, locked,
-  bestLabel = "Today's best", prLabel = 'Season PR', allowGames = true,
+  bestLabel = "Today's best", prLabel = 'Season PR', allowGames = true, natural = false,
   onClose, onSubmit, onDelete, onSubmitted, onDeleted,
 }: QuickEntrySheetProps) {
   // A stored opponent NAME resolves to an id only when exactly one pick carries
@@ -83,6 +93,11 @@ export default function QuickEntrySheet({
     // A Game rung pre-fills the last opponent's NAME from the best result. Resolve
     // the id too, so what the sheet shows as picked is what gets recorded.
     init = { ...init, opponentId: opponentIdFor(init.opponentName) ?? '' }
+    // A lift opens with one set, pre-filled from the last one done, so the
+    // common case (another set of the same) is two taps.
+    if (natural && eventData && takesSets(eventData)) {
+      init = { ...init, setRows: [{ weightKg: init.weightKg || '', reps: init.repCount || '' }] }
+    }
     return init
   })
   const [showHow, setShowHow] = useState(false)
@@ -115,8 +130,27 @@ export default function QuickEntrySheet({
     set({ timeMins: String(Math.floor(t / 60)), timeSecs: String(Math.round(t % 60)) })
   }
 
-  const scored = computeScoreVals(mode, eventData, v)
+  const setMode = natural && !!eventData && takesSets(eventData)
+  const distanceMode = natural && !!eventData && takesDistance(eventData)
+  const sets = (v.setRows ?? []).map(r => ({ weightKg: parseFloat(r.weightKg) || 0, reps: parseInt(r.reps) || 0 }))
+    .filter(r => r.weightKg > 0 && r.reps > 0)
+  const naturalMetres = Math.round((parseFloat(v.distanceKm ?? '') || 0) * 1000)
+  const naturalSecs = (parseFloat(v.timeMins) || 0) * 60 + (parseFloat(v.timeSecs) || 0)
+  const estimate = setMode ? estimateFromSets(sets)
+    : distanceMode && eventData ? estimateFromDistance(eventData, naturalMetres, naturalSecs)
+    : null
+
+  const scored = setMode || distanceMode ? estimate : computeScoreVals(mode, eventData, v)
   const canSubmit = scored !== null && !submitting && !locked
+
+  const setRows = v.setRows ?? []
+  const setSet = (i: number, patch: Partial<{ weightKg: string; reps: string }>) =>
+    set({ setRows: setRows.map((r, j) => (i === j ? { ...r, ...patch } : r)) })
+  // "+ Set" copies the last row, the pattern every gym app uses: a 5×5 is one
+  // row filled in and four taps.
+  const addSet = () => set({
+    setRows: [...setRows, setRows.length > 0 ? { ...setRows[setRows.length - 1] } : { weightKg: v.weightKg, reps: v.repCount }],
+  })
 
   async function handleSheetSubmit() {
     if (!canSubmit || !scored) return
@@ -152,7 +186,7 @@ export default function QuickEntrySheet({
 
   // Quick-pick chips: pre-fill from last submission / season PR
   const quickPicks: { label: string; patch: Partial<EntryVals> }[] = []
-  if (mode !== 'sport') {
+  if (mode !== 'sport' && !setMode && !distanceMode) {
     if (myBestResult) quickPicks.push({ label: `Today · ${myBestResult.score_label}`, patch: valsFromResult(mode, myBestResult) })
     if (seasonPRNum !== null) {
       quickPicks.push({ label: `PR · ${formatPR(seasonPRNum, mode, eventData?.slug, eventData)}`, patch: valsFromRaw(mode, eventData, seasonPRNum) })
@@ -306,8 +340,8 @@ export default function QuickEntrySheet({
                     </>
                   )}
 
-                  {/* Difficulty tier chips */}
-                  {showTierChips && (
+                  {/* Difficulty tier chips — the ladder is derived in a natural entry */}
+                  {showTierChips && !distanceMode && (
                     <>
                       <div style={QES_LBL}>Difficulty tier — tap How To for descriptions</div>
                       <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px' }}>
@@ -327,8 +361,68 @@ export default function QuickEntrySheet({
                     </>
                   )}
 
+                  {/* Sets — a lift, logged the way it is trained */}
+                  {setMode && (
+                    <>
+                      <div style={QES_LBL}>Sets</div>
+                      {setRows.length === 0 && (
+                        <div style={{ fontSize: 13, color: '#777', marginBottom: 8 }}>
+                          Add the sets you did. The best one counts toward your colours.
+                        </div>
+                      )}
+                      {setRows.map((r, i) => (
+                        <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+                          <span style={{ width: 22, color: '#555', fontFamily: 'var(--font-label)', fontSize: 13 }}>{i + 1}</span>
+                          <input type="number" inputMode="decimal" value={r.weightKg} aria-label={`Set ${i + 1} weight`}
+                            onChange={e => setSet(i, { weightKg: e.target.value })} placeholder="kg"
+                            style={{ ...QES_INP, fontSize: 22 }} />
+                          <span style={{ color: '#555' }}>×</span>
+                          <input type="number" inputMode="numeric" value={r.reps} aria-label={`Set ${i + 1} reps`}
+                            onChange={e => setSet(i, { reps: e.target.value })} placeholder="reps"
+                            style={{ ...QES_INP, fontSize: 22 }} />
+                          <button onClick={() => set({ setRows: setRows.filter((_, j) => j !== i) })}
+                            aria-label={`Remove set ${i + 1}`}
+                            style={{ minWidth: 44, minHeight: 44, borderRadius: 12, background: '#181818', border: '1px solid #2a2a2a', color: '#777', cursor: 'pointer' }}>✕</button>
+                        </div>
+                      ))}
+                      <button onClick={addSet} style={{
+                        width: '100%', minHeight: 48, borderRadius: 999, cursor: 'pointer', marginBottom: 6,
+                        background: 'none', border: '1px dashed #2a2a2a', color: '#999',
+                        fontFamily: 'var(--font-label)', fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase',
+                      }}>+ Set</button>
+                      <div style={{ fontSize: 12.5, color: '#777', lineHeight: 1.5 }}>
+                        {estimate
+                          ? `Best set — ${estimate.score_label}`
+                          : sets.length > 0
+                            ? `Over ${MAX_ESTIMATED_REPS} reps a one-rep max cannot be estimated, so these count as training only.`
+                            : 'Each set is one unit of training.'}
+                      </div>
+                    </>
+                  )}
+
+                  {/* Distance and time — a run or a ride as it was actually done */}
+                  {distanceMode && (
+                    <>
+                      <div style={QES_LBL}>Distance and time</div>
+                      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                        <input type="number" inputMode="decimal" value={v.distanceKm ?? ''} aria-label="Distance in kilometres"
+                          onChange={e => set({ distanceKm: e.target.value })} placeholder="km" style={QES_INP} />
+                        <input type="number" inputMode="numeric" value={v.timeMins} aria-label="Minutes"
+                          onChange={e => set({ timeMins: e.target.value })} placeholder="min" style={QES_INP} />
+                        <span style={{ color: '#555', fontSize: 26, fontFamily: 'var(--font-display)' }}>:</span>
+                        <input type="number" inputMode="numeric" value={v.timeSecs} aria-label="Seconds"
+                          onChange={e => set({ timeSecs: e.target.value })} placeholder="sec" style={QES_INP} />
+                      </div>
+                      <div style={{ fontSize: 12.5, color: '#777', marginTop: 8, lineHeight: 1.5 }}>
+                        {naturalMetres > 0 && naturalSecs > 0
+                          ? `${paceLabel(naturalMetres, naturalSecs)}${estimate ? ` · ${estimate.score_label}` : ' · too short to compare to a rung, so it counts as training only'}`
+                          : 'Everything you cover counts as training.'}
+                      </div>
+                    </>
+                  )}
+
                   {/* Weight stepper */}
-                  {showWeight && (
+                  {showWeight && !setMode && (
                     <>
                       <div style={QES_LBL}>{isDislocate ? 'Grip width (cm)' : 'Weight (kg)'}</div>
                       <div style={{ display: 'flex', gap: '10px' }}>
@@ -340,7 +434,7 @@ export default function QuickEntrySheet({
                   )}
 
                   {/* Reps stepper */}
-                  {showReps && (
+                  {showReps && !setMode && (
                     <>
                       <div style={QES_LBL}>Reps</div>
                       <div style={{ display: 'flex', gap: '10px' }}>
@@ -352,7 +446,7 @@ export default function QuickEntrySheet({
                   )}
 
                   {/* Time stepper (min:sec, ±5s) */}
-                  {showTime && (
+                  {showTime && !distanceMode && (
                     <>
                       <div style={QES_LBL}>{mode === 'time' || isTimedEffort(eventData?.slug) ? 'Time' : 'Hold time'}</div>
                       <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>

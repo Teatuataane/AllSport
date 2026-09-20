@@ -1727,6 +1727,7 @@ export default function SessionPage() {
                 bestLabel="Best today"
                 prLabel="Training"
                 allowGames={false}
+                natural
                 onClose={() => setSheetEventId(null)}
                 onSubmit={(v, editingId) => swaps.submit(sheetSlot.se.id, v, editingId)}
                 onDelete={swaps.deleteEntry}
@@ -2061,6 +2062,7 @@ export default function SessionPage() {
                     bestLabel="Best today"
                     prLabel="Training"
                     allowGames={false}
+                    natural
                     onClose={() => setSheetEventId(null)}
                     onSubmit={(v, editingId) => swaps.submit(judgeSheetSlot.se.id, v, editingId)}
                     onDelete={swaps.deleteEntry}

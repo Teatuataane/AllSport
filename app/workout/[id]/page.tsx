@@ -19,9 +19,9 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase-browser'
 import { getEventBySlug } from '@/lib/eventData'
-import { fmtUnitsLabel, unitsForResult } from '@/lib/units'
+import { fmtUnitsLabel, unitsForEntryRow } from '@/lib/units'
 import { formatNZDate } from '@/lib/dates'
-import { entryPayload, isOpen, planEvents, sortPlan, PLAN_MAX } from '@/lib/personalGame'
+import { entryPayload, isOpen, planEvents, sortPlan, unitsForPayload, PLAN_MAX } from '@/lib/personalGame'
 import QuickEntrySheet from '@/components/play/QuickEntrySheet'
 import EventListRow from '@/components/play/EventListRow'
 import { sectionLabel, ProgressSegments, type PlayEvent, type EntryRow } from '@/components/play/chrome'
@@ -30,7 +30,7 @@ import type { EntryVals } from '@/lib/scoring'
 
 const supabase = createClient()
 
-type Entry = EntryRow & { event_slug: string | null }
+type Entry = EntryRow & { event_slug: string | null; count: number | null; volume_distance_m: number | null }
 
 type Workout = {
   id: string
@@ -71,7 +71,7 @@ export default function PersonalGamePage() {
   const load = useCallback(async () => {
     const { data, error: e } = await supabase
       .from('workouts')
-      .select('id, player_id, performed_on, witnessed, finished_at, planned_events, notes, workout_entries(id, event_slug, raw_score, score_label, difficulty_tier, weight_kg, reps, time_seconds, distance_m, exercise_variation)')
+      .select('id, player_id, performed_on, witnessed, finished_at, planned_events, notes, workout_entries(id, event_slug, count, volume_distance_m, raw_score, score_label, difficulty_tier, weight_kg, reps, time_seconds, distance_m, exercise_variation)')
       .eq('id', id)
       .maybeSingle()
     if (e || !data) { setNotFound(true); return }
@@ -121,10 +121,13 @@ export default function PersonalGamePage() {
   const open = workout ? isOpen(workout) : false
   const locked = !open
 
-  const units = useMemo(() => entries.reduce((sum, e) => {
-    const ev = e.event_slug ? getEventBySlug(e.event_slug) : undefined
-    return ev ? sum + unitsForResult(ev, e.difficulty_tier) : sum
-  }, 0), [entries])
+  // Read off the VOLUME each entry stored, so a 5km run pays five units rather
+  // than the one its converted rung would.
+  const entryUnits = (e: Entry) => unitsForEntryRow({
+    event_slug: e.event_slug, count: e.count,
+    volume_distance_m: e.volume_distance_m == null ? null : Number(e.volume_distance_m),
+  })?.units ?? 0
+  const units = useMemo(() => entries.reduce((sum, e) => sum + entryUnits(e), 0), [entries])
 
   const todo = events.filter(e => !scoredSlugs.has(e.id))
   const done = events.filter(e => scoredSlugs.has(e.id))
@@ -156,7 +159,7 @@ export default function PersonalGamePage() {
     if (isPR && payload.raw_score !== undefined) setPRs(p => ({ ...p, [slug]: payload.raw_score! }))
     await load()
     // An edit replaces a completion, it does not add one.
-    return { error: null, isPR, units: editingId ? 0 : unitsForResult(ev, v.difficultyTier || null) }
+    return { error: null, isPR, units: editingId ? 0 : unitsForPayload(ev, payload) }
   }
 
   const remove = async (entryId: string): Promise<string | null> => {
@@ -238,7 +241,7 @@ export default function PersonalGamePage() {
       {done.map(ev => {
         const rows = entriesFor(ev.id)
         const evData = getEventBySlug(ev.event_slug)
-        const u = evData ? rows.reduce((s, r) => s + unitsForResult(evData, r.difficulty_tier), 0) : 0
+        const u = rows.reduce((s, r) => s + entryUnits(r), 0)
         return (
           <EventListRow
             key={ev.id}
@@ -308,6 +311,7 @@ export default function PersonalGamePage() {
           bestLabel="Best today"
           prLabel="Your best"
           allowGames={false}
+          natural
           onClose={() => setSheetSlug(null)}
           onSubmit={(v, editingId) => submit(sheetEvent.id, v, editingId)}
           onDelete={remove}
