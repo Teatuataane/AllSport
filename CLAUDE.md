@@ -1590,6 +1590,46 @@ that points are retired. `lib/medalTable.ts` is pure and tested.
   games replacing `/log`, natural input formats). Design record:
   `docs/designs/workout-customisation-spec.md`, gitignored.
 
+## Personal games — one setup, one play screen (September 2026) — v0.11.0.0
+
+`/log` is retired. A player now PLANS a workout in the same picker a kaiwhakawā
+uses for an official game and plays it on the same screen. Part 2 of the
+workout-customisation plan (`docs/designs/workout-customisation-spec.md`,
+gitignored).
+
+- **A personal game is a WORKOUT carrying a plan**, never a `sessions` row:
+  sessions hold the one-active-game rule, the placement and award triggers and
+  the public game report. `workouts.planned_events` (slugs) and
+  `workouts.finished_at` are added by `20260920040735_personal_games.sql`, which
+  also redefines `guard_workouts_write` whole to check every planned slug
+  against `event_domains`. **A whole redefinition is how a rule goes missing**,
+  so `__tests__/personalGame.test.ts` reads the file and fails if one of
+  20260915214702's rules is not in it.
+- **`components/play/` is the shared scoring UI** — `chrome.tsx` (PlayEvent,
+  EntryRow, formatPR, the progress bar), `QuickEntrySheet.tsx`,
+  `EventListRow.tsx`, `EventPlanPicker.tsx`. The sheet no longer writes to a
+  table: the screen passes `onSubmit` / `onDelete`, which is what lets `results`
+  and `workout_entries` share one sheet. Both screens are behind a login, so
+  `__tests__/playComponents.test.tsx` is the only thing that would notice the
+  extraction breaking.
+- **One submission stores volume that matches a game exactly.** `volumeFor()`
+  writes the rung's metres on a distance event and one completion otherwise, so
+  `unitsForVolume` returns what `unitsForResult` gives the same score at a game.
+  A test asserts the two agree rather than trusting the arithmetic.
+- **A Game rung in a personal game records no win or loss** — `20260916211643`
+  refuses a logged Game-rung result — so `allowGames={false}` hides W/D/L and
+  the rung counts as training. Rating a solo game waits for match recording on
+  workout entries.
+- **Open until Finish, and the NZ day closes it.** No timer, nothing sweeps it.
+  An empty personal game is deleted on Finish. Entries stay editable for 7 days,
+  which is the database's window, not the screen's.
+- **`Something else` is kept on purpose.** Retiring free text would have stopped
+  a swim or a yoga class being recorded at all until the log-only domains exist,
+  and the funder activity report counts those minutes. It earns minutes, never
+  units or a colour.
+- Built on `claude/training-load` (duration/effort + the activity report), which
+  is merged into this branch.
+
 ## Security posture (August 2026) — read before touching RLS or players_public
 
 An OWASP pass (SQL injection / XSS / auth / access control) found three
