@@ -52,7 +52,13 @@ export type GameSwaps = {
   available: boolean
   add: (slug: string) => Promise<string | null>
   remove: (slug: string) => Promise<string | null>
-  submit: (slug: string, v: EntryVals, editingId: string | null) => Promise<{ error: string | null; isPR: boolean; units: number }>
+  submit: (
+    slug: string,
+    v: EntryVals,
+    editingId: string | null,
+    /** Opponent player ids to record as a match, or null to leave matches alone. */
+    matchOpponents?: string[] | null,
+  ) => Promise<{ error: string | null; isPR: boolean; units: number }>
   deleteEntry: (id: string) => Promise<string | null>
 }
 
@@ -157,16 +163,19 @@ export function useGameSwaps(args: {
     add: (slug: string) => writeChosen(addChoice(state?.chosen ?? [], slug)),
     remove: (slug: string) => writeChosen(removeChoice(state?.chosen ?? [], slug, scoredSlugs)),
 
-    submit: async (slug, v, editingId) => {
+    submit: async (slug, v, editingId, matchOpponents = null) => {
       const ev = getEventBySlug(slug)
       if (!ev) return { error: 'That event is no longer on the roster', isPR: false, units: 0 }
-      const payload = entryPayload(ev, v)
+      // A swap IS at a game, so a Game rung keeps its win, draw or loss here —
+      // and only here (20260920053207).
+      const payload = entryPayload(ev, v, { allowGameScore: true })
       if (!payload) return { error: 'Enter a valid score first', isPR: false, units: 0 }
       const { id, error } = await ensureWorkout()
       if (!id) return { error: error ?? 'Could not save', isPR: false, units: 0 }
-      const { error: e } = editingId
-        ? await supabase.from('workout_entries').update(payload).eq('id', editingId)
-        : await supabase.from('workout_entries').insert({ ...payload, workout_id: id })
+      const written = editingId
+        ? await supabase.from('workout_entries').update(payload).eq('id', editingId).select('id').maybeSingle()
+        : await supabase.from('workout_entries').insert({ ...payload, workout_id: id }).select('id').single()
+      const e = written.error
       if (e) {
         return {
           error: e.code === '23514' ? 'One of the numbers is out of range. Check the weight, time and distance.'
@@ -174,6 +183,17 @@ export function useGameSwaps(args: {
             : e.message,
           isPR: false, units: 0,
         }
+      }
+      // The score is the record; the match hangs off it. Best-effort, exactly
+      // as match recording is on an official score: a failure here must never
+      // turn a saved score into an error, and PGRST202 means the function is
+      // not deployed yet.
+      const entryId = (written.data as { id: string } | null)?.id ?? editingId
+      if (entryId && matchOpponents !== null) {
+        const { error: me } = await supabase.rpc('record_entry_match', {
+          p_entry_id: entryId, p_opponent_ids: matchOpponents,
+        })
+        if (me && me.code !== 'PGRST202') console.warn('record_entry_match:', me.message)
       }
       await load()
       // A swap never sets a PR badge here: the badge on this screen means a

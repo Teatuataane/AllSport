@@ -1721,15 +1721,14 @@ export default function SessionPage() {
                 se={sheetSlot.se}
                 eventData={getEventBySlug(sheetSlot.se.event_slug)}
                 myResults={swaps.entriesFor(sheetSlot.se.id)}
-                opponents={[]}
+                opponents={pickOpponents(results, { id: pid, name: pName })}
                 seasonPR={null}
                 locked={sessionEnded}
                 bestLabel="Best today"
                 prLabel="Training"
-                allowGames={false}
                 natural
                 onClose={() => setSheetEventId(null)}
-                onSubmit={(v, editingId) => swaps.submit(sheetSlot.se.id, v, editingId)}
+                onSubmit={(v, editingId, matchOpponents) => swaps.submit(sheetSlot.se.id, v, editingId, matchOpponents)}
                 onDelete={swaps.deleteEntry}
                 onSubmitted={(labelText, meta) => {
                   setSheetEventId(null)
@@ -2056,15 +2055,14 @@ export default function SessionPage() {
                     se={judgeSheetSlot.se}
                     eventData={getEventBySlug(judgeSheetSlot.se.event_slug)}
                     myResults={swaps.entriesFor(judgeSheetSlot.se.id)}
-                    opponents={[]}
+                    opponents={pickOpponents(results, { id: target?.id ?? null, name: target?.name ?? '' })}
                     seasonPR={null}
                     locked={sessionEnded}
                     bestLabel="Best today"
                     prLabel="Training"
-                    allowGames={false}
                     natural
                     onClose={() => setSheetEventId(null)}
-                    onSubmit={(v, editingId) => swaps.submit(judgeSheetSlot.se.id, v, editingId)}
+                    onSubmit={(v, editingId, matchOpponents) => swaps.submit(judgeSheetSlot.se.id, v, editingId, matchOpponents)}
                     onDelete={swaps.deleteEntry}
                     onSubmitted={(labelText, meta) => {
                       setSheetEventId(null)
