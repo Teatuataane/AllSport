@@ -298,7 +298,7 @@ export default function HowToPlay() {
             <div className="info-card">
               <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555555', marginBottom: '8px' }}>Training Units</div>
               <p style={{ color: 'var(--grey)', fontSize: '13px', lineHeight: 1.65, marginBottom: '16px' }}>
-                Every new colour needs training in that domain since your last colour there. Game scores earn units, and so does anything you <Link href="/log" style={{ color: 'var(--purple)' }}>log between games</Link>. Any effort counts.
+                Every new colour needs training in that domain since your last colour there. Game scores earn units, and so does anything you <Link href="/workout/new" style={{ color: 'var(--purple)' }}>log between games</Link>. Any effort counts.
               </p>
               {unitRules.map(r => (
                 <div key={r.label} className="bonus-row">

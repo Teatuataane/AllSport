@@ -146,7 +146,7 @@ export default function GradesCard({ state, askBand = false }: { state: GradeSta
       </div>
 
       <div style={{ display: 'flex', borderTop: '1px solid var(--border)', marginTop: 6 }}>
-        <Link href="/log" style={{ ...footerLink, color: 'var(--purple)', borderRight: '1px solid var(--border)' }}>
+        <Link href="/workout/new" style={{ ...footerLink, color: 'var(--purple)', borderRight: '1px solid var(--border)' }}>
           Log a workout
         </Link>
         <Link href="/grades" style={{ ...footerLink, color: 'var(--blue)' }}>

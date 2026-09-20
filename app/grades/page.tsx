@@ -70,7 +70,7 @@ export default function GradesPage() {
           </h1>
           {/* Logging is how a player moves a domain between games, so it lives
               on the page that shows what each domain still needs. */}
-          <Link href="/log" style={{
+          <Link href="/workout/new" style={{
             flexShrink: 0, display: 'inline-flex', alignItems: 'center', minHeight: 44, padding: '0 16px',
             borderRadius: 999, background: 'var(--purple)', color: '#0a0a0a',
             ...label, fontSize: 13,
@@ -87,7 +87,7 @@ export default function GradesPage() {
         <p style={{ color: 'var(--text-muted)', fontSize: 14.5, lineHeight: 1.6, margin: '0 0 16px' }}>
           Each new colour also needs <span style={{ color: 'var(--white)' }}>games</span>, played in the room, and{' '}
           <span style={{ color: 'var(--white)' }}>training</span> in that domain since your last colour there. Game scores
-          count toward both; so does anything you <Link href="/log" style={{ color: 'var(--purple)' }}>log between games</Link>.
+          count toward both; so does anything you <Link href="/workout/new" style={{ color: 'var(--purple)' }}>log between games</Link>.
         </p>
 
         {/* "3 of 5 units" is counted on every domain below, so the word is
