@@ -70,6 +70,8 @@ type MatchQueryRow = {
   outcome: MatchRow['outcome']
   created_at: string
   confirmed_at: string | null
+  /** Stored on an entry match (a swap); null on a match anchored to a result. */
+  event_name?: string | null
   session_events: { event_name: string } | null
   match_players: { player_id: string; side: 'a' | 'b' }[]
 }
@@ -82,6 +84,26 @@ type MatchQueryRow = {
  * has the table cannot lack the column, so it cannot raise 42703 here.
  */
 export async function loadMatches(): Promise<MatchRow[]> {
+  const { data, error } = await supabase
+    .from('matches')
+    // event_name is stored on an entry match (a game played as a SWAP), which
+    // has no session_events row to read it from. Asked for with a fallback,
+    // because a missing COLUMN is 42703 and takes the whole request down.
+    .select('id, session_id, outcome, created_at, confirmed_at, event_name, session_events(event_name), match_players(player_id, side)')
+    .order('created_at', { ascending: true })
+  if (error?.code === '42703') return loadMatchesLegacy()
+  if (error || !data) return []
+  return (data as unknown as MatchQueryRow[])
+    .map(m => ({ ...m, event_name: m.event_name ?? m.session_events?.event_name ?? '' }))
+    .filter(m => m.event_name)
+    .map(m => ({
+      id: m.id, session_id: m.session_id, outcome: m.outcome, created_at: m.created_at,
+      confirmed_at: m.confirmed_at, event_name: m.event_name, players: m.match_players ?? [],
+    }))
+}
+
+/** Before 20260920053207 a match had no event_name of its own. */
+async function loadMatchesLegacy(): Promise<MatchRow[]> {
   const { data, error } = await supabase
     .from('matches')
     .select('id, session_id, outcome, created_at, confirmed_at, session_events(event_name), match_players(player_id, side)')

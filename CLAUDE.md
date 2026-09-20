@@ -1694,6 +1694,32 @@ the workout-customisation plan, and the part that prompted it.
   solo needs `matches.workout_entry_id` AND a change to the rule that refuses a
   logged Game-rung result. Its own piece of work.
 
+## A game played as a swap counts toward the rating (September 2026) — v0.14.0.0
+
+Decided with Tāne 2026-09-20, closing the last piece of the workout-customisation
+plan. A player who swaps today's Tennis for Badminton plays a real match, so it
+is rated; a game logged at home still is not.
+
+- **`workouts.session_id` is the whole difference.** `20260916211643` refused
+  every logged game result because a logged game has nobody on the other side.
+  At an official game there IS somebody, they are a registered player, and a
+  kaiwhakawā is in the room. `20260920053207` relaxes the guard for a
+  game-linked workout ONLY; a personal game stays drills.
+- **`matches` may anchor to a `workout_entries` row instead of a `results` row**,
+  with a CHECK that it is exactly one. A swapped event has no `session_events`
+  row, so an entry match carries its own `event_name` (the rating groups games
+  by name), resolved server-side through `event_domains`.
+- **`record_entry_match()` is a separate function, not an overload**: two
+  functions differing only by a uuid argument are ambiguous to PostgREST.
+- **The outcome is still read off the SCORE**, never sent: a Game rung encodes
+  it as the within-tier term (`win 2 / draw 1 / loss 0`).
+  `__tests__/rateSwapGames.test.ts` asserts the SQL's mapping against what
+  `computeScoreVals` actually writes, because this is now the second place that
+  knows the encoding.
+- **`loadMatches` asks for `event_name` with a 42703 fallback** to the old
+  query. A missing column takes the whole request down, and before this
+  migration `matches` has no such column.
+
 ## Security posture (August 2026) — read before touching RLS or players_public
 
 An OWASP pass (SQL injection / XSS / auth / access control) found three
