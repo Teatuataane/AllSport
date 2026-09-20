@@ -1,20 +1,24 @@
 'use client'
-import { isGameEntry, opponentPicks as pickOpponents, resolveOpponentId } from '@/lib/matches'
+import { opponentPicks as pickOpponents } from '@/lib/matches'
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient, getSessionUser } from '@/lib/supabase-browser'
-import { getEventByName, isTimedEffort, decodeDiffTime, type EventData } from '@/lib/eventData'
-import { unitsForResult, unitsForResultRow, unitsIn, unitRule, fmtUnits, fmtUnitsLabel, RULE_WORDS } from '@/lib/units'
+import { getEventByName, type EventData } from '@/lib/eventData'
+import { unitsForResult, unitsForResultRow, unitsIn, fmtUnits, fmtUnitsLabel } from '@/lib/units'
 import { parseLocalDate } from '@/lib/dates'
 import EventIcon, { domainColor } from '@/components/EventIcon'
-import {
-  fmtTime, computeScoreVals, valsFromResult, valsFromRaw,
-  tierScoring, EMPTY_VALS, type EntryVals, scoreColumns,
-} from '@/lib/scoring'
+import { type EntryVals, scoreColumns } from '@/lib/scoring'
 import {
   buildJudgeRoster, resolveJudgeTarget, resultsForTarget, scoredEventIds,
   scoredEventIdsByTarget, NO_SCORES,
 } from '@/lib/judgeRoster'
+// The play screen's shared pieces. A personal game (app/workout/[id]) draws
+// with exactly these, so scoring keeps ONE code path.
+import QuickEntrySheet, { type SubmitOutcome } from '@/components/play/QuickEntrySheet'
+import EventListRow from '@/components/play/EventListRow'
+import {
+  formatPR, sportWDL, sectionLabel, ProgressSegments, INP, QES_LBL as SHEET_LBL,
+} from '@/components/play/chrome'
 const supabase = createClient()
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -64,57 +68,6 @@ function fmtCountdown(secs: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
-function formatPR(rawScore: number, inputMode: string, slug?: string, eventData?: EventData): string {
-  switch (inputMode) {
-    case 'strength':   return slug === 'shoulder-dislocate' ? `${Math.abs(rawScore)}cm` : `${rawScore} kg`
-    case 'reps':       return `${rawScore} reps`
-    case 'time':
-    case 'sprint':     return fmtTime(Math.abs(rawScore))
-    case 'hold':       return fmtTime(rawScore)
-    case 'distance':   return rawScore >= 100 ? `${(rawScore / 100).toFixed(2)}m` : `${rawScore}cm`
-    case 'sport':      return rawScore === 2 ? 'Win' : rawScore === 1 ? 'Draw' : 'Loss'
-    case 'score':      return `${Math.abs(rawScore)} strokes`
-    case 'difficulty+time': {
-      const bandIdx = Math.floor(rawScore / 10000)
-      if (tierScoring(eventData, bandIdx) === 'sport') {
-        const term = rawScore % 10000
-        return `D${bandIdx + 1} · ${term === 2 ? 'Win' : term === 1 ? 'Draw' : 'Loss'}`
-      }
-      const { tierIdx, secs } = decodeDiffTime(rawScore, isTimedEffort(slug))
-      return `D${tierIdx + 1} · ${fmtTime(secs)}`
-    }
-    case 'difficulty+reps': {
-      const tierIdx = Math.floor(rawScore / 10000)
-      const term = rawScore % 10000
-      // The within-tier term is only reps on an ordinary rung.
-      const scoring = tierScoring(eventData, tierIdx)
-      if (scoring === 'weight') return `D${tierIdx + 1} · ${term / 100}kg`
-      if (scoring === 'sport') return `D${tierIdx + 1} · ${term === 2 ? 'Win' : term === 1 ? 'Draw' : 'Loss'}`
-      return `D${tierIdx + 1} · ${term} reps`
-    }
-    case 'difficulty+distance': {
-      const tierIdx = Math.floor(rawScore / 10000)
-      return `D${tierIdx + 1} · ${(rawScore % 10000) / 10}m`
-    }
-    case 'weight+time': {
-      const kg = Math.floor(rawScore / 10000) / 100
-      const secs = rawScore % 10000
-      return `${kg > 0 ? `${kg}kg` : 'Bodyweight'} · ${fmtTime(secs)}`
-    }
-    default: return String(rawScore)
-  }
-}
-
-function sportWDL(results: Result[]): string {
-  const w = results.filter(r => r.raw_score === 2).length
-  const d = results.filter(r => r.raw_score === 1).length
-  const l = results.filter(r => r.raw_score === 0).length
-  const parts: string[] = []
-  if (w > 0) parts.push(`${w}W`)
-  if (d > 0) parts.push(`${d}D`)
-  if (l > 0) parts.push(`${l}L`)
-  return parts.join(' ') || '–'
-}
 
 function ordinal(n: number): string {
   const s = ['th', 'st', 'nd', 'rd']
@@ -138,17 +91,10 @@ function unitsFor(rows: Result[], events: SessionEvent[]): number {
   return rows.reduce((sum, r) => sum + rowUnits(r, events), 0)
 }
 
-const INP: React.CSSProperties = {
-  background: '#0d0d0d', border: '1px solid #2a2a2a', borderRadius: '8px',
-  padding: '14px', color: '#fff', fontSize: '20px', fontWeight: 'bold',
-  width: '100%', boxSizing: 'border-box',
-}
 
 // Builds the results payload and inserts (or updates) it, including PR flag and
 // the units it earns. Returns { error } on failure; on success error is null and
 // isPR / units describe the submission so the caller can pick the right toast.
-type SubmitOutcome = { error: string | null; isPR: boolean; units: number }
-
 async function submitEntry(args: {
   sessionId: string
   eventId: string
@@ -220,526 +166,18 @@ async function recordMatch(resultId: string, opponentIds: string[]): Promise<voi
   if (error && error.code !== 'PGRST202') console.warn('record_match:', error.message)
 }
 
-// ─── Quick-entry sheet (player scoring redesign) ──────────────────────────────
-
-const QES_LBL: React.CSSProperties = {
-  fontSize: '11px', color: '#777', letterSpacing: '0.14em', textTransform: 'uppercase',
-  fontFamily: 'var(--font-label)', margin: '16px 2px 8px',
-}
-const QES_CHIP: React.CSSProperties = {
-  fontFamily: 'var(--font-label)', textTransform: 'uppercase', letterSpacing: '0.08em',
-  fontSize: '13px', color: '#fff', background: '#161616', border: '1px solid #2a2a2a',
-  borderRadius: '999px', padding: '0 14px', minHeight: '44px', cursor: 'pointer', flexShrink: 0,
-  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-}
-
-function StepBtn({ children, onClick, disabled }: { children: React.ReactNode; onClick: () => void; disabled?: boolean }) {
-  return (
-    <button onClick={onClick} disabled={disabled} style={{
-      width: '56px', minHeight: '56px', flexShrink: 0, borderRadius: '14px',
-      background: '#181818', border: '1px solid #2a2a2a', color: disabled ? '#444' : '#fff',
-      fontSize: '26px', fontFamily: 'var(--font-display)', cursor: disabled ? 'default' : 'pointer',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-    }}>{children}</button>
-  )
-}
-
-const QES_INP: React.CSSProperties = {
-  flex: 1, minWidth: 0, background: '#0d0d0d', border: '1px solid #2a2a2a', borderRadius: '14px',
-  color: '#fff', fontSize: '30px', fontFamily: 'var(--font-display)', textAlign: 'center',
-  padding: '10px 4px', boxSizing: 'border-box',
-}
-
-type QuickEntrySheetProps = {
-  se: SessionEvent
-  eventData: EventData | undefined
-  myResults: Result[]
-  allResults: Result[]
-  seasonPR: number | string | null
-  playerId: string | null
-  playerName: string
-  sessionId: string
-  sessionEnded: boolean
-  onClose: () => void
-  onSubmitted: (label: string, meta: { isPR: boolean; units: number }) => void
-  onDeleted: () => void
-}
-
-function QuickEntrySheet({
-  se, eventData, myResults, allResults, seasonPR,
-  playerId, playerName, sessionId, sessionEnded,
-  onClose, onSubmitted, onDeleted,
-}: QuickEntrySheetProps) {
-  const mode = (eventData?.inputMode || se.input_mode || 'strength') as string
-  const isDislocate = eventData?.slug === 'shoulder-dislocate'
-  const seasonPRNum = typeof seasonPR === 'number' ? seasonPR : null
-  const myBestResult = myResults.length > 0
-    ? myResults.reduce((best, r) => r.raw_score > best.raw_score ? r : best, myResults[0])
-    : undefined
-  const unitsHere = unitsIn(eventData, myResults)
-  const unitWords = eventData ? RULE_WORDS[unitRule(eventData).rule] : RULE_WORDS.set
-
-  const [v, setV] = useState<EntryVals>(() => {
-    let init: EntryVals = { ...EMPTY_VALS }
-    if (myBestResult) init = { ...init, ...valsFromResult(mode, myBestResult) }
-    else if (seasonPRNum !== null) init = { ...init, ...valsFromRaw(mode, eventData, seasonPRNum) }
-    if (mode === 'sport') init = { ...init, sportResult: '', opponentName: '', sportScore: '' }
-    // A Game rung pre-fills the last opponent's NAME from the best result. Resolve
-    // the id too, so what the sheet shows as picked is what gets recorded.
-    init = { ...init, opponentId: resolveOpponentId(init.opponentName, allResults, playerId) ?? '' }
-    return init
-  })
-  const [showHow, setShowHow] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState('')
-  const [editingResult, setEditingResult] = useState<Result | null>(null)
-  const inFlight = useRef(false)
-  // True while editing a result whose stored opponent name could not be
-  // resolved to exactly one player. Until the opponent is changed on purpose,
-  // its match is left alone — sending "no opponent" would silently delete a
-  // match the player never meant to touch.
-  const keepExistingMatch = useRef(false)
-
-  const set = (patch: Partial<EntryVals>) => setV(prev => ({ ...prev, ...patch }))
-
-  // Lock body scroll while the sheet is open
-  useEffect(() => {
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = prev }
-  }, [])
-
-  function bumpNum(field: 'weightKg' | 'repCount' | 'distanceVal' | 'scoreInput', delta: number, min = 0) {
-    const cur = parseFloat(v[field]) || 0
-    const next = Math.max(min, Math.round((cur + delta) * 100) / 100)
-    set({ [field]: String(next) } as Partial<EntryVals>)
-  }
-  function bumpTime(delta: number) {
-    const t = Math.max(0, (parseFloat(v.timeMins) || 0) * 60 + (parseFloat(v.timeSecs) || 0) + delta)
-    set({ timeMins: String(Math.floor(t / 60)), timeSecs: String(Math.round(t % 60)) })
-  }
-
-  const scored = computeScoreVals(mode, eventData, v)
-  const canSubmit = scored !== null && !submitting && !sessionEnded
-
-  async function handleSheetSubmit() {
-    if (!canSubmit || !scored) return
-    if (inFlight.current) return // ref guard — React state alone lets a double-tap insert twice
-    inFlight.current = true
-    setSubmitting(true); setError('')
-    // What to record as a match. null leaves matches untouched.
-    //   · Not a game (a drill rung, a measured event): on an edit, clear any match
-    //     this row carried — it may have been a Game result before the edit.
-    //   · A game with a picked player: record it.
-    //   · An edit whose unresolvable opponent was never touched: leave it be.
-    //   · Otherwise there is no registered opponent: clear on edit, skip on new.
-    const isGame = isGameEntry(mode, eventData, v.difficultyTier)
-    const matchOpponents: string[] | null =
-      !isGame ? (editingResult ? [] : null)
-      : v.opponentId ? [v.opponentId]
-      : editingResult && keepExistingMatch.current ? null
-      : editingResult ? [] : null
-    const outcome = await submitEntry({
-      sessionId, eventId: se.id, playerId, playerName,
-      mode, eventData, v, myResults, seasonPRNum,
-      editingResultId: editingResult?.id ?? null,
-      matchOpponents,
-    })
-    inFlight.current = false
-    setSubmitting(false)
-    if (outcome.error) { setError(outcome.error); return }
-    setEditingResult(null)
-    onSubmitted(scored.score_label, { isPR: outcome.isPR, units: outcome.units })
-  }
-
-  async function handleSheetDelete(resultId: string) {
-    if (editingResult?.id === resultId) setEditingResult(null)
-    const { error: delErr } = await supabase.from('results').delete().eq('id', resultId)
-    if (delErr) { setError(delErr.message); return }
-    onDeleted()
-  }
-
-  // Quick-pick chips: pre-fill from last submission / season PR
-  const quickPicks: { label: string; patch: Partial<EntryVals> }[] = []
-  if (mode !== 'sport') {
-    if (myBestResult) quickPicks.push({ label: `Today · ${myBestResult.score_label}`, patch: valsFromResult(mode, myBestResult) })
-    if (seasonPRNum !== null) {
-      quickPicks.push({ label: `PR · ${formatPR(seasonPRNum, mode, eventData?.slug, eventData)}`, patch: valsFromRaw(mode, eventData, seasonPRNum) })
-      if (mode === 'strength' && !isDislocate) {
-        quickPicks.push({ label: `PR +2.5kg`, patch: { weightKg: String(seasonPRNum + 2.5) } })
-      }
-    }
-  }
-
-  // Opponent quick picks for sport mode: everyone else with a result this session
-  const tiers = eventData?.difficultyTiers ?? []
-  // How the SELECTED rung is scored. A `Game` rung tops a drill ladder with the
-  // real contest, so it swaps the reps/time input for win/draw/loss; a `weight`
-  // rung swaps reps for load. Both are read off the tier, never matched by name.
-  const rung = tiers.find(t => t.name === v.difficultyTier)
-  const gameRung = rung?.scoring === 'sport'
-  const weightRung = rung?.scoring === 'weight'
-
-  const showSport = mode === 'sport' || gameRung
-  // Keyed by player id, so two players sharing a display name stay two people
-  // and a picked chip records a real match. Guests keep a name-only chip.
-  const opponentPicks = showSport ? pickOpponents(allResults, { id: playerId, name: playerName }) : []
-  const opponentPickActive = (p: { id: string | null; name: string }) =>
-    p.id ? v.opponentId === p.id : !v.opponentId && v.opponentName === p.name
-
-  const showTierChips = tiers.length > 0 && (
-    mode === 'difficulty+time' || mode === 'difficulty+reps' ||
-    mode === 'difficulty+distance' || mode === 'hold')
-  const showWeight = mode === 'strength' || mode === 'weight+time' || weightRung
-  // A weight rung records reps as well as load — the load ranks, the reps are
-  // the record of what was actually done.
-  // `records` is load-bearing, not decoration: a weight rung shows the rep field
-  // only because it declares `records: 'reps'`.
-  const showReps = mode === 'strength' || mode === 'reps' ||
-    (mode === 'difficulty+reps' && !gameRung && (!weightRung || rung?.records === 'reps'))
-  const showTime = mode === 'time' || mode === 'hold' || mode === 'weight+time' ||
-    (mode === 'difficulty+time' && !gameRung)
-  const showDistance = mode === 'distance' || (mode === 'difficulty+distance' && !gameRung)
-  // Golf and Disc Golf keep their stroke count on the Game rung.
-  const showStrokes = mode === 'score' || (gameRung && rung?.records === 'strokes')
-  const domainC = domainColor(se.domain_number)
-  const contentMissing = !eventData || eventData.howToPerform === 'Content coming soon.'
-  const myResultsSorted = [...myResults].sort((a, b) => b.raw_score - a.raw_score)
-
-  return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 100 }}>
-      <style>{`@keyframes qesUp { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>
-      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(3px)' }} />
-      <div style={{
-        position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)',
-        width: 'min(640px, 100vw)', maxHeight: '88dvh', display: 'flex', flexDirection: 'column',
-        background: '#141414', border: '1px solid #2a2a2a', borderBottom: 'none',
-        borderRadius: '24px 24px 0 0', overflow: 'hidden', animation: 'qesUp 0.28s cubic-bezier(0.16,1,0.3,1)',
-      }}>
-        <div style={{ height: '4px', flexShrink: 0, background: 'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)' }} />
-
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '14px 16px 10px', flexShrink: 0 }}>
-          <EventIcon slug={se.event_slug || eventData?.slug || ''} emoji={eventData?.emoji} domainNumber={se.domain_number} size={46} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: '26px', lineHeight: 1, color: '#fff', letterSpacing: '0.03em' }}>{se.event_name}</div>
-            <div style={{ fontFamily: 'var(--font-label)', fontSize: '11px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.12em', marginTop: '3px' }}>
-              {se.domain_name}{unitsHere > 0 ? ` · ${fmtUnitsLabel(unitsHere)}` : ''}
-            </div>
-          </div>
-          <button onClick={() => setShowHow(h => !h)} style={{
-            height: '38px', padding: '0 12px', borderRadius: '10px', cursor: 'pointer',
-            background: showHow ? '#2371BB26' : '#181818', border: `1px solid ${showHow ? '#2371BB' : '#2a2a2a'}`,
-            color: showHow ? '#fff' : '#999', fontFamily: 'var(--font-label)',
-            fontSize: '13px', letterSpacing: '0.1em', fontWeight: 600,
-          }}>HOW TO</button>
-          <button onClick={onClose} style={{
-            width: '38px', height: '38px', borderRadius: '10px', cursor: 'pointer', flexShrink: 0,
-            background: '#181818', border: '1px solid #2a2a2a', color: '#999', fontSize: '15px',
-          }}>✕</button>
-        </div>
-
-        {/* Body */}
-        <div style={{ overflowY: 'auto', padding: '0 16px 20px' }}>
-          {showHow ? (
-            <div>
-              <div style={{ ...QES_LBL, color: '#F9B051' }}>How to perform</div>
-              <p style={{ fontSize: '14.5px', lineHeight: 1.6, color: '#ccc', fontWeight: 300, margin: 0 }}>
-                {contentMissing ? 'Content coming soon — ask your kaiwhakawā for a demo.' : eventData!.howToPerform}
-              </p>
-              <div style={{ ...QES_LBL, color: '#F9B051' }}>Rules & standards</div>
-              <p style={{ fontSize: '14.5px', lineHeight: 1.6, color: '#ccc', fontWeight: 300, margin: 0 }}>
-                {contentMissing || eventData!.rules === 'Content coming soon.' ? 'Content coming soon.' : eventData!.rules}
-              </p>
-              {tiers.length > 0 && (
-                <>
-                  <div style={{ ...QES_LBL, color: '#F9B051' }}>Difficulty tiers</div>
-                  {tiers.map(t => (
-                    <div key={t.level} style={{ display: 'flex', gap: '10px', padding: '8px 0', borderBottom: '1px solid #1e1e1e', fontSize: '13.5px' }}>
-                      <span style={{ fontFamily: 'var(--font-label)', color: '#4DB26E', width: '30px', flexShrink: 0, fontWeight: 600 }}>D{t.level}</span>
-                      <span style={{ color: '#ccc', fontWeight: 300 }}>
-                        {t.name}
-                        {t.detail && <span style={{ display: 'block', color: '#777', fontSize: '12.5px' }}>{t.detail}</span>}
-                      </span>
-                    </div>
-                  ))}
-                </>
-              )}
-              <button onClick={() => setShowHow(false)} style={{
-                width: '100%', marginTop: '18px', height: '50px', borderRadius: '999px',
-                border: '1px solid #2a2a2a', background: '#181818', color: '#fff', cursor: 'pointer',
-                fontFamily: 'var(--font-label)', textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '14px',
-              }}>Back to scoring</button>
-            </div>
-          ) : (
-            <div>
-              {/* Session best + PR hints */}
-              <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
-                <div style={{ flex: 1, background: '#101010', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '9px 12px' }}>
-                  <div style={{ fontFamily: 'var(--font-label)', fontSize: '10.5px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.12em' }}>Today's best</div>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '19px', color: myBestResult ? '#4DB26E' : '#444', marginTop: '2px' }}>
-                    {myBestResult ? (mode === 'sport' ? sportWDL(myResults) : myBestResult.score_label) : '—'}
-                  </div>
-                </div>
-                <div style={{ flex: 1, background: '#101010', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '9px 12px' }}>
-                  <div style={{ fontFamily: 'var(--font-label)', fontSize: '10.5px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.12em' }}>Season PR</div>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '19px', color: seasonPRNum !== null ? '#F9B051' : '#444', marginTop: '2px' }}>
-                    {seasonPRNum !== null ? formatPR(seasonPRNum, mode, eventData?.slug, eventData) : '—'}
-                  </div>
-                </div>
-              </div>
-
-              {sessionEnded ? (
-                <div style={{ background: '#2e0d0d', border: '1px solid #EA4742', borderRadius: '10px', padding: '12px 14px', marginTop: '14px', color: '#EA4742', fontSize: '13px' }}>
-                  Session ended — scoring locked
-                </div>
-              ) : (
-                <>
-                  {editingResult && (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#0d1a2d', border: '1px solid #2371BB55', borderRadius: '10px', padding: '8px 12px', marginTop: '14px' }}>
-                      <span style={{ fontSize: '12.5px', color: '#2371BB', fontFamily: 'var(--font-label)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Editing: {editingResult.score_label}</span>
-                      <button onClick={() => { keepExistingMatch.current = false; setEditingResult(null); setV({ ...EMPTY_VALS }) }} style={{ fontSize: '12px', color: '#888', background: 'none', border: '1px solid #333', borderRadius: '6px', padding: '3px 10px', cursor: 'pointer' }}>Cancel</button>
-                    </div>
-                  )}
-
-                  {/* Variation selector (rare) */}
-                  {eventData?.variations && (
-                    <>
-                      <div style={QES_LBL}>Variation</div>
-                      <select value={v.exerciseVariation} onChange={e => set({ exerciseVariation: e.target.value })} style={{ ...INP, fontSize: '15px' }}>
-                        <option value="">Select variation...</option>
-                        {eventData.variations.map((va, i) => (
-                          <option key={va} value={va}>D{i + 1} — {va}{eventData.weightVariations?.includes(va) ? ' (weight + reps)' : ''}</option>
-                        ))}
-                      </select>
-                    </>
-                  )}
-
-                  {/* Difficulty tier chips */}
-                  {showTierChips && (
-                    <>
-                      <div style={QES_LBL}>Difficulty tier — tap How To for descriptions</div>
-                      <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px' }}>
-                        {tiers.map(t => {
-                          const sel = v.difficultyTier === t.name
-                          return (
-                            <button key={t.level} onClick={() => set({ difficultyTier: t.name })} style={{
-                              flexShrink: 0, minWidth: '64px', padding: '8px 11px', borderRadius: '12px', cursor: 'pointer', textAlign: 'center',
-                              background: sel ? '#4DB26E1f' : '#161616', border: `1px solid ${sel ? '#4DB26E' : '#2a2a2a'}`,
-                            }}>
-                              <div style={{ fontFamily: 'var(--font-label)', fontSize: '14px', fontWeight: 600, color: sel ? '#4DB26E' : '#fff' }}>D{t.level}</div>
-                              <div style={{ fontFamily: 'var(--font-label)', fontSize: '11px', color: sel ? '#4DB26E' : '#888', textTransform: 'uppercase', letterSpacing: '0.04em', maxWidth: '110px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.name}</div>
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </>
-                  )}
-
-                  {/* Weight stepper */}
-                  {showWeight && (
-                    <>
-                      <div style={QES_LBL}>{isDislocate ? 'Grip width (cm)' : 'Weight (kg)'}</div>
-                      <div style={{ display: 'flex', gap: '10px' }}>
-                        <StepBtn onClick={() => bumpNum('weightKg', isDislocate ? -1 : -2.5)}>−</StepBtn>
-                        <input type="number" inputMode="decimal" value={v.weightKg} onChange={e => set({ weightKg: e.target.value })} placeholder="0" style={QES_INP} />
-                        <StepBtn onClick={() => bumpNum('weightKg', isDislocate ? 1 : 2.5)}>+</StepBtn>
-                      </div>
-                    </>
-                  )}
-
-                  {/* Reps stepper */}
-                  {showReps && (
-                    <>
-                      <div style={QES_LBL}>Reps</div>
-                      <div style={{ display: 'flex', gap: '10px' }}>
-                        <StepBtn onClick={() => bumpNum('repCount', -1, 0)}>−</StepBtn>
-                        <input type="number" inputMode="numeric" value={v.repCount} onChange={e => set({ repCount: e.target.value })} placeholder="0" style={QES_INP} />
-                        <StepBtn onClick={() => bumpNum('repCount', 1)}>+</StepBtn>
-                      </div>
-                    </>
-                  )}
-
-                  {/* Time stepper (min:sec, ±5s) */}
-                  {showTime && (
-                    <>
-                      <div style={QES_LBL}>{mode === 'time' || isTimedEffort(eventData?.slug) ? 'Time' : 'Hold time'}</div>
-                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                        <StepBtn onClick={() => bumpTime(-5)}>−</StepBtn>
-                        <input type="number" inputMode="numeric" value={v.timeMins} onChange={e => set({ timeMins: e.target.value })} placeholder="min" style={QES_INP} />
-                        <span style={{ color: '#555', fontSize: '26px', fontFamily: 'var(--font-display)' }}>:</span>
-                        <input type="number" inputMode="numeric" value={v.timeSecs} onChange={e => set({ timeSecs: e.target.value })} placeholder="sec" style={QES_INP} />
-                        <StepBtn onClick={() => bumpTime(5)}>+</StepBtn>
-                      </div>
-                    </>
-                  )}
-
-                  {/* Sprint (sec.cs) */}
-                  {mode === 'sprint' && (
-                    <>
-                      <div style={QES_LBL}>Time (seconds . centiseconds)</div>
-                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                        <input type="number" inputMode="numeric" value={v.timeSecs} onChange={e => set({ timeSecs: e.target.value })} placeholder="sec" style={QES_INP} />
-                        <span style={{ color: '#555', fontSize: '26px', fontFamily: 'var(--font-display)' }}>.</span>
-                        <input type="number" inputMode="numeric" value={v.sprintCs} onChange={e => set({ sprintCs: e.target.value })} placeholder="cs" min={0} max={99} style={QES_INP} />
-                      </div>
-                    </>
-                  )}
-
-                  {/* Distance */}
-                  {showDistance && (
-                    <>
-                      <div style={QES_LBL}>Distance</div>
-                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                        <input type="number" inputMode="decimal" value={v.distanceVal} onChange={e => set({ distanceVal: e.target.value })} placeholder="0" style={QES_INP} />
-                        <div style={{ display: 'flex', borderRadius: '12px', overflow: 'hidden', flexShrink: 0 }} hidden={mode !== 'distance'}>
-                          {(['m', 'cm'] as const).map(u => (
-                            <button key={u} onClick={() => set({ distanceUnit: u })} style={{
-                              padding: '14px 18px', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '15px',
-                              background: v.distanceUnit === u ? '#2371BB' : '#1a1a1a',
-                              color: v.distanceUnit === u ? '#fff' : '#666',
-                            }}>{u}</button>
-                          ))}
-                        </div>
-                      </div>
-                    </>
-                  )}
-
-                  {/* Sport, and the `Game` rung that tops a drill ladder */}
-                  {showSport && (
-                    <>
-                      <div style={QES_LBL}>Result</div>
-                      <div style={{ display: 'flex', gap: '10px' }}>
-                        {(['win', 'draw', 'loss'] as const).map(r => {
-                          const colors = { win: '#4DB26E', draw: '#F9B051', loss: '#EA4742' }
-                          const active = v.sportResult === r
-                          return (
-                            <button key={r} onClick={() => set({ sportResult: r })} style={{
-                              flex: 1, padding: '18px 0', border: `2px solid ${active ? colors[r] : '#222'}`,
-                              borderRadius: '14px', cursor: 'pointer', fontFamily: 'var(--font-display)', fontSize: '20px',
-                              letterSpacing: '0.05em', background: active ? colors[r] + '22' : '#111',
-                              color: active ? colors[r] : '#555',
-                            }}>{r.toUpperCase()}</button>
-                          )
-                        })}
-                      </div>
-                      <div style={QES_LBL}>Opponent</div>
-                      {opponentPicks.length > 0 && (
-                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
-                          {opponentPicks.map(p => (
-                            <button key={p.id ?? `guest:${p.name}`} onClick={() => { keepExistingMatch.current = false; set({ opponentName: p.name, opponentId: p.id ?? '' }) }} style={{
-                              ...QES_CHIP,
-                              borderColor: opponentPickActive(p) ? '#2371BB' : '#2a2a2a',
-                              background: opponentPickActive(p) ? '#2371BB' : '#161616',
-                            }}>{p.name}</button>
-                          ))}
-                        </div>
-                      )}
-                      <input value={v.opponentName} onChange={e => { keepExistingMatch.current = false; set({ opponentName: e.target.value, opponentId: '' }) }} placeholder="Opponent name (optional)" style={{ ...INP, fontSize: '15px' }} />
-                      {/* A typed name cannot be rated — only a picked player records the match. */}
-                      {v.opponentName.trim() && !v.opponentId && opponentPicks.some(p => p.id) &&
-                        !opponentPicks.some(p => p.id === null && p.name === v.opponentName.trim()) && (
-                        <div style={{ fontSize: '12px', color: '#888', marginTop: '6px', lineHeight: 1.4 }}>
-                          Typed names aren&apos;t recorded as a match. Pick your opponent above so this game counts.
-                        </div>
-                      )}
-                      <input value={v.sportScore} onChange={e => set({ sportScore: e.target.value })} placeholder="Score e.g. 21–18 (optional)" style={{ ...INP, fontSize: '15px', marginTop: '8px' }} />
-                    </>
-                  )}
-
-                  {/* Golf/Disc Golf strokes */}
-                  {showStrokes && (
-                    <>
-                      <div style={QES_LBL}>Stroke count (4 holes)</div>
-                      <div style={{ display: 'flex', gap: '10px' }}>
-                        <StepBtn onClick={() => bumpNum('scoreInput', -1, 1)}>−</StepBtn>
-                        <input type="number" inputMode="numeric" value={v.scoreInput} onChange={e => set({ scoreInput: e.target.value })} placeholder="e.g. 18" style={QES_INP} />
-                        <StepBtn onClick={() => bumpNum('scoreInput', 1)}>+</StepBtn>
-                      </div>
-                    </>
-                  )}
-
-                  {/* Quick picks */}
-                  {quickPicks.length > 0 && (
-                    <>
-                      <div style={QES_LBL}>Quick pick</div>
-                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                        {quickPicks.map(qp => (
-                          <button key={qp.label} onClick={() => set(qp.patch)} style={{ ...QES_CHIP, borderColor: '#F9B05155', color: '#F9B051' }}>{qp.label}</button>
-                        ))}
-                      </div>
-                    </>
-                  )}
-
-                  {error && <div style={{ color: '#EA4742', fontSize: '13px', marginTop: '12px' }}>{error}</div>}
-
-                  <button onClick={handleSheetSubmit} disabled={!canSubmit} style={{
-                    width: '100%', marginTop: '18px', height: '58px', border: 'none', borderRadius: '999px',
-                    cursor: canSubmit ? 'pointer' : 'default',
-                    background: canSubmit ? 'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)' : '#1a1a1a',
-                    color: canSubmit ? '#0a0a0a' : '#555',
-                    fontFamily: 'var(--font-label)', textTransform: 'uppercase',
-                    letterSpacing: '0.12em', fontSize: '16px', fontWeight: 600,
-                  }}>
-                    {submitting ? 'Saving...' : scored ? `${editingResult ? 'Save' : 'Submit'} — ${scored.score_label}` : 'Enter your score'}
-                  </button>
-                </>
-              )}
-
-              {/* Today's submissions */}
-              {myResults.length > 0 && (
-                <>
-                  <div style={{ ...QES_LBL, display: 'flex', justifyContent: 'space-between' }}>
-                    <span>Today's scores</span>
-                    {mode === 'sport' && <span style={{ color: '#4DB26E' }}>{sportWDL(myResults)}</span>}
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    {myResultsSorted.map(r => (
-                      <div key={r.id} style={{
-                        background: editingResult?.id === r.id ? '#0d1a2d' : '#101010',
-                        border: `1px solid ${editingResult?.id === r.id ? '#2371BB55' : '#1e1e1e'}`,
-                        borderRadius: '10px', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '10px',
-                      }}>
-                        <div style={{ fontSize: '15px', color: '#fff', flex: 1 }}>{r.score_label}</div>
-                        {r.is_pr && (
-                          <div style={{ fontSize: '10px', fontWeight: 700, color: '#F9B051', background: '#F9B05122', borderRadius: '4px', padding: '2px 6px', fontFamily: 'var(--font-label)', letterSpacing: '0.05em' }}>PR</div>
-                        )}
-                        {!sessionEnded && (
-                          <>
-                            <button onClick={() => {
-                              const opp = resolveOpponentId(r.opponent_name, allResults, playerId)
-                              keepExistingMatch.current = !!r.opponent_name && !opp
-                              setEditingResult(r)
-                              setV({ ...EMPTY_VALS, ...valsFromResult(mode, r), opponentId: opp ?? '' })
-                            }}
-                              style={{ background: 'none', border: '1px solid #2371BB44', borderRadius: '4px', color: '#2371BB', cursor: 'pointer', fontSize: '11px', padding: '2px 8px', flexShrink: 0, fontFamily: 'var(--font-label)', fontWeight: 700 }}>Edit</button>
-                            <button onClick={() => handleSheetDelete(r.id)}
-                              style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: '14px', padding: '2px 6px', flexShrink: 0 }}>✕</button>
-                          </>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-
-              {/* Training units — what replaced effort tasks */}
-              <div style={{ ...QES_LBL, display: 'flex', justifyContent: 'space-between' }}>
-                <span>Training units</span>
-                <span style={{ color: '#B87DB5' }}>{fmtUnitsLabel(unitsHere)} this game</span>
-              </div>
-              <div style={{ fontSize: '13px', color: '#777', lineHeight: 1.5 }}>
-                Every {unitWords.one} counts toward your next colour in {se.domain_name}, at any effort. Submit each one.
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // ─── Event list row (player redesign) ─────────────────────────────────────────
+
+/** The best raw score in a set of rows, or null when there are none. */
+function bestRaw(rows: readonly Result[]): number | null {
+  return rows.length === 0 ? null : rows.reduce((b, r) => Math.max(b, r.raw_score), -Infinity)
+}
+
+/** Deleting a score is this page's job; the sheet only asks for it. */
+async function deleteResult(id: string): Promise<string | null> {
+  const { error } = await supabase.from('results').delete().eq('id', id)
+  return error?.message ?? null
+}
 
 function eventDivisionRank(
   seId: string, allResults: Result[], playerInfoMap: Record<string, PlayerInfo>,
@@ -760,86 +198,8 @@ function eventDivisionRank(
   return { label: `${ordinal(rank)} in event`, color }
 }
 
-function EventListRow({
-  se, eventData, myResults, allResults, playerInfoMap, playerDivision, onOpen,
-}: {
-  se: SessionEvent
-  eventData: EventData | undefined
-  myResults: Result[]
-  allResults: Result[]
-  playerInfoMap: Record<string, PlayerInfo>
-  playerDivision: string | null | undefined
-  onOpen: () => void
-}) {
-  const mode = (eventData?.inputMode || se.input_mode || 'strength') as string
-  const myBestResult = myResults.length > 0
-    ? myResults.reduce((best, r) => r.raw_score > best.raw_score ? r : best, myResults[0])
-    : undefined
-  const unitsHere = unitsIn(eventData, myResults)
-  const rank = eventDivisionRank(se.id, allResults, playerInfoMap, playerDivision, myBestResult?.raw_score ?? null)
-  const todo = !myBestResult
-
-  return (
-    <button onClick={onOpen} style={{
-      width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '12px',
-      padding: '12px 14px', marginBottom: '8px', borderRadius: '16px', cursor: 'pointer',
-      background: todo ? 'linear-gradient(180deg, rgba(35,113,187,0.10), #111 70%)' : '#111',
-      border: `1px solid ${todo ? '#1c3a5e' : '#1e1e1e'}`,
-      color: '#fff', fontFamily: 'var(--font-body)',
-    }}>
-      <EventIcon slug={se.event_slug || eventData?.slug || ''} emoji={eventData?.emoji} domainNumber={se.domain_number} size={46} />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: '19px', letterSpacing: '0.03em', lineHeight: 1 }}>{se.event_name}</div>
-        <div style={{ fontFamily: 'var(--font-label)', fontSize: '11px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '3px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {se.domain_name}
-          {unitsHere > 0 && (
-            <span style={{ fontSize: '10.5px', color: '#B87DB5', border: '1px solid #B87DB566', borderRadius: '999px', padding: '0 7px' }}>{fmtUnitsLabel(unitsHere)}</span>
-          )}
-        </div>
-      </div>
-      {todo ? (
-        <span style={{
-          fontFamily: 'var(--font-label)', textTransform: 'uppercase', letterSpacing: '0.1em',
-          fontSize: '12px', color: '#fff', background: '#2371BB', borderRadius: '999px', padding: '6px 12px', flexShrink: 0, fontWeight: 500,
-        }}>Tap to score</span>
-      ) : (
-        <div style={{ textAlign: 'right', flexShrink: 0 }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', color: '#4DB26E' }}>
-            {mode === 'sport' ? sportWDL(myResults) : myBestResult!.score_label}
-          </div>
-          <div style={{ fontFamily: 'var(--font-label)', fontSize: '11px', color: rank.color, textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: '2px' }}>
-            {rank.label}
-          </div>
-        </div>
-      )}
-    </button>
-  )
-}
 
 // ─── Shared scoring-screen chrome ─────────────────────────────────────────────
-
-function sectionLabel(text: string) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '16px 4px 8px', fontFamily: 'var(--font-label)', fontSize: '11.5px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.14em' }}>
-      <span style={{ width: '14px', height: '3px', borderRadius: '2px', background: 'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)' }} />
-      {text}
-    </div>
-  )
-}
-
-function ProgressSegments({ events, scoredIds, height = 8 }: { events: SessionEvent[]; scoredIds: ReadonlySet<string>; height?: number }) {
-  return (
-    <div style={{ display: 'flex', gap: '3px' }}>
-      {events.map(ev => (
-        <div key={ev.id} style={{
-          flex: 1, height: `${height}px`, borderRadius: '99px',
-          background: scoredIds.has(ev.id) ? domainColor(ev.domain_number) : '#1e1e1e',
-          transition: 'background 0.3s',
-        }} />
-      ))}
-    </div>
-  )
-}
 
 // ─── Kaiwhakawā picker ────────────────────────────────────────────────────────
 
@@ -1607,7 +967,7 @@ function SessionEndTakeover({
           {/* PRs set today */}
           {prs.length > 0 && (
             <>
-              <div style={{ ...QES_LBL, color: '#F9B051' }}>PRs set today</div>
+              <div style={{ ...SHEET_LBL, color: '#F9B051' }}>PRs set today</div>
               {prs.map(r => (
                 <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#161616', border: '1px solid #F9B05133', borderRadius: '12px', padding: '10px 14px', marginBottom: '6px' }}>
                   <span style={{ fontSize: '10px', fontWeight: 700, color: '#F9B051', background: '#F9B05122', borderRadius: '4px', padding: '2px 6px', fontFamily: 'var(--font-label)', letterSpacing: '0.05em', flexShrink: 0 }}>PR</span>
@@ -2265,9 +1625,8 @@ export default function SessionPage() {
                 se={ev}
                 eventData={getEventByName(ev.event_name)}
                 myResults={results.filter(r => r.event_id === ev.id && r.player_id === pid)}
-                allResults={results}
-                playerInfoMap={playerInfoMap}
-                playerDivision={pDivision}
+                note={eventDivisionRank(ev.id, results, playerInfoMap, pDivision,
+                  bestRaw(results.filter(r => r.event_id === ev.id && r.player_id === pid)))}
                 onOpen={() => setSheetEventId(ev.id)}
               />
             ))}
@@ -2280,9 +1639,8 @@ export default function SessionPage() {
                 se={ev}
                 eventData={getEventByName(ev.event_name)}
                 myResults={results.filter(r => r.event_id === ev.id && r.player_id === pid)}
-                allResults={results}
-                playerInfoMap={playerInfoMap}
-                playerDivision={pDivision}
+                note={eventDivisionRank(ev.id, results, playerInfoMap, pDivision,
+                  bestRaw(results.filter(r => r.event_id === ev.id && r.player_id === pid)))}
                 onOpen={() => setSheetEventId(ev.id)}
               />
             ))}
@@ -2294,12 +1652,18 @@ export default function SessionPage() {
                 se={sheetEvent}
                 eventData={getEventByName(sheetEvent.event_name)}
                 myResults={results.filter(r => r.event_id === sheetEvent.id && r.player_id === pid)}
-                allResults={results}
+                opponents={pickOpponents(results, { id: pid, name: pName })}
                 seasonPR={seasonPRs[sheetEvent.id] ?? null}
-                playerId={pid}
-                playerName={pName}
-                sessionId={sessionId as string}
-                sessionEnded={sessionEnded}
+                locked={sessionEnded}
+                onSubmit={(v, editingId, matchOpponents) => submitEntry({
+                  sessionId: sessionId as string, eventId: sheetEvent.id, playerId: pid, playerName: pName,
+                  mode: getEventByName(sheetEvent.event_name)?.inputMode || sheetEvent.input_mode,
+                  eventData: getEventByName(sheetEvent.event_name),
+                  v, myResults: results.filter(r => r.event_id === sheetEvent.id && r.player_id === pid),
+                  seasonPRNum: typeof seasonPRs[sheetEvent.id] === 'number' ? (seasonPRs[sheetEvent.id] as number) : null,
+                  editingResultId: editingId, matchOpponents,
+                })}
+                onDelete={deleteResult}
                 onClose={() => setSheetEventId(null)}
                 onSubmitted={async (label, meta) => {
                   setSheetEventId(null)
@@ -2513,9 +1877,8 @@ export default function SessionPage() {
                     se={ev}
                     eventData={getEventByName(ev.event_name)}
                     myResults={targetResults.filter(r => r.event_id === ev.id)}
-                    allResults={results}
-                    playerInfoMap={playerInfoMap}
-                    playerDivision={targetDivision}
+                    note={eventDivisionRank(ev.id, results, playerInfoMap, targetDivision,
+                      bestRaw(targetResults.filter(r => r.event_id === ev.id)))}
                     onOpen={() => setSheetEventId(ev.id)}
                   />
                 ))}
@@ -2528,9 +1891,8 @@ export default function SessionPage() {
                     se={ev}
                     eventData={getEventByName(ev.event_name)}
                     myResults={targetResults.filter(r => r.event_id === ev.id)}
-                    allResults={results}
-                    playerInfoMap={playerInfoMap}
-                    playerDivision={targetDivision}
+                    note={eventDivisionRank(ev.id, results, playerInfoMap, targetDivision,
+                      bestRaw(targetResults.filter(r => r.event_id === ev.id)))}
                     onOpen={() => setSheetEventId(ev.id)}
                   />
                 ))}
@@ -2542,12 +1904,18 @@ export default function SessionPage() {
                     se={sheetEvent}
                     eventData={getEventByName(sheetEvent.event_name)}
                     myResults={targetResults.filter(r => r.event_id === sheetEvent.id)}
-                    allResults={results}
+                    opponents={pickOpponents(results, { id: target.id, name: target.name })}
                     seasonPR={target.id ? (judgePRs[sheetEvent.id] ?? null) : null}
-                    playerId={target.id}
-                    playerName={target.name}
-                    sessionId={sessionId as string}
-                    sessionEnded={sessionEnded}
+                    locked={sessionEnded}
+                    onSubmit={(v, editingId, matchOpponents) => submitEntry({
+                      sessionId: sessionId as string, eventId: sheetEvent.id, playerId: target.id, playerName: target.name,
+                      mode: getEventByName(sheetEvent.event_name)?.inputMode || sheetEvent.input_mode,
+                      eventData: getEventByName(sheetEvent.event_name),
+                      v, myResults: targetResults.filter(r => r.event_id === sheetEvent.id),
+                      seasonPRNum: target.id && typeof judgePRs[sheetEvent.id] === 'number' ? (judgePRs[sheetEvent.id] as number) : null,
+                      editingResultId: editingId, matchOpponents,
+                    })}
+                    onDelete={deleteResult}
                     onClose={() => setSheetEventId(null)}
                     onSubmitted={async (label, meta) => {
                       setSheetEventId(null)

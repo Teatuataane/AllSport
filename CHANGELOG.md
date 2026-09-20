@@ -2,6 +2,19 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.11.0.0] - 2026-09-20
+
+### Added
+- **Plan a workout and play it like a game.** Logging a workout now works exactly like an official game: pick your events from the same list a kaiwhakawā picks from, then score them on the same screen, with the same quick-entry sheet, progress bar and how-to. Pick any number of events, draw ten at random, or copy today's official ten. Date it up to a week back, say how long and how hard it was, and finish when you are done.
+- **Something else.** Anything AllSport has no event for yet, like a swim or a yoga class, can still be logged. It counts toward your weekly minutes, not toward a colour.
+- **Play history shows your workouts**, with a Continue link for one you have not finished, and lists old entries that were never fitted to an event.
+
+### Changed
+- **The old Log a workout form is gone.** The menu link opens the new setup screen, and the old address still works.
+
+### Notes
+- Personal games need a database update. Until it is applied the setup screen says so and nothing else changes.
+
 ## [0.10.0.0] - 2026-09-19
 
 ### Added

@@ -21,6 +21,9 @@ import { formatNZDate } from '@/lib/dates'
 // like. This page is its only consumer, by design.
 import { colourByRung } from '@/lib/colours'
 import { useActivePlayer } from '@/lib/useActivePlayer'
+import { isPersonalGame, isOpen as workoutOpen, planEvents } from '@/lib/personalGame'
+import { fmtUnitsLabel, unitsForResult } from '@/lib/units'
+import { getEventBySlug } from '@/lib/eventData'
 import PlayerTabs, { ViewingAsBanner } from '@/components/PlayerTabs'
 
 const supabase = createClient()
@@ -42,6 +45,26 @@ type Award = {
   location: string | null
 }
 
+/**
+ * A workout of this player's, for the two blocks /log used to carry: their own
+ * workouts, and the entries that were never fitted to an event. Its own query,
+ * and a database without the personal-game columns (42703) or the workout
+ * tables (PGRST205) simply shows neither block.
+ */
+type WorkoutRow = {
+  id: string
+  player_id: string
+  performed_on: string
+  finished_at: string | null
+  planned_events: string[] | null
+  workout_entries: {
+    id: string
+    activity: string
+    event_slug: string | null
+    difficulty_tier: string | null
+  }[]
+}
+
 type Bundle = {
   summaries: Summary[]
   awards: Award[]
@@ -53,6 +76,7 @@ export default function HistoryPage() {
   const router = useRouter()
   const { loading, userId, familyMembers, activePlayerId, activePlayer } = useActivePlayer()
   const [bundle, setBundle] = useState<Bundle | null>(null)
+  const [workouts, setWorkouts] = useState<WorkoutRow[] | null>(null)
   // Keyed by player, so switching players starts from the first page without
   // resetting state inside an effect.
   const [paging, setPaging] = useState<{ id: string | null; shown: number }>({ id: null, shown: PAGE })
@@ -78,6 +102,26 @@ export default function HistoryPage() {
     // Keyed on the ids themselves, not the array identity.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [householdIds.join(',')])
+
+  // Workouts: own query, so a missing column or table costs this block only.
+  useEffect(() => {
+    if (!activePlayerId) return
+    let cancelled = false
+    supabase
+      .from('workouts')
+      .select('id, player_id, performed_on, finished_at, planned_events, workout_entries(id, activity, event_slug, difficulty_tier)')
+      .eq('player_id', activePlayerId)
+      .order('performed_on', { ascending: false })
+      .limit(40)
+      .then(({ data, error }) => {
+        if (cancelled) return
+        setWorkouts(error ? [] : (data ?? []) as WorkoutRow[])
+      })
+    return () => { cancelled = true }
+  }, [activePlayerId])
+
+  const myWorkouts = workouts ?? []
+  const unfitted = myWorkouts.flatMap(w => w.workout_entries.filter(e => !e.event_slug).map(e => ({ w, e })))
 
   const mySummaries = useMemo(
     () => (bundle?.summaries ?? [])
@@ -148,6 +192,74 @@ export default function HistoryPage() {
             </button>
           )}
         </Panel>
+
+        <Section>Your workouts</Section>
+        <Panel>
+          {workouts === null ? (
+            <Empty>Loading…</Empty>
+          ) : myWorkouts.length === 0 ? (
+            <Empty>No workouts logged yet.</Empty>
+          ) : (
+            myWorkouts.slice(0, 10).map(w => {
+              const units = w.workout_entries.reduce((sum, e) => {
+                const ev = e.event_slug ? getEventBySlug(e.event_slug) : undefined
+                return ev ? sum + unitsForResult(ev, e.difficulty_tier) : sum
+              }, 0)
+              const open = isPersonalGame(w) && workoutOpen(w)
+              const planned = planEvents(w.planned_events ?? []).length
+              return (
+                <Row key={w.id}>
+                  <div style={{ flexGrow: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600 }}>{formatNZDate(w.performed_on)}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                      {planned > 0 ? `${w.workout_entries.filter(e => e.event_slug).length} of ${planned} scored` : `${w.workout_entries.length} entr${w.workout_entries.length === 1 ? 'y' : 'ies'}`}
+                      {units > 0 ? ` · ${fmtUnitsLabel(units)}` : ''}
+                    </div>
+                  </div>
+                  {open ? (
+                    <Link href={`/workout/${w.id}`} style={{
+                      flexShrink: 0, color: 'var(--green)', fontFamily: 'var(--font-label)',
+                      textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: 11, fontWeight: 600,
+                    }}>Continue ›</Link>
+                  ) : isPersonalGame(w) ? (
+                    <Link href={`/workout/${w.id}`} style={{
+                      flexShrink: 0, color: 'var(--text-muted)', fontFamily: 'var(--font-label)',
+                      textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: 11, fontWeight: 600,
+                    }}>View ›</Link>
+                  ) : null}
+                </Row>
+              )
+            })
+          )}
+          <div style={{ padding: '12px 14px', borderTop: '1px solid var(--border)' }}>
+            <Link href="/workout/new" style={{
+              fontFamily: 'var(--font-label)', textTransform: 'uppercase',
+              letterSpacing: '0.1em', fontWeight: 600, fontSize: 12, color: 'var(--purple)',
+            }}>Log a workout →</Link>
+          </div>
+        </Panel>
+
+        {/* Entries logged before the picker existed, which never earned
+            anything because they were never fitted to an event. */}
+        {unfitted.length > 0 && (
+          <>
+            <Section>Not fitted to an event</Section>
+            <Panel>
+              {unfitted.slice(0, 10).map(({ w, e }) => (
+                <Row key={e.id}>
+                  <div style={{ flexGrow: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14 }}>{e.activity}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{formatNZDate(w.performed_on)}</div>
+                  </div>
+                </Row>
+              ))}
+              <div style={{ fontSize: 11, color: '#555', lineHeight: 1.5, padding: '12px 14px', borderTop: '1px solid var(--border)' }}>
+                These were typed in before workouts were planned from the event list, so they earned no training.
+                Log them again from the event list to have them count.
+              </div>
+            </Panel>
+          </>
+        )}
 
         {myAwards.length > 0 && (
           <>

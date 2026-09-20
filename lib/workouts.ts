@@ -193,3 +193,145 @@ export function loggedBestRows(entries: readonly LoggedBestEntry[]): LoggedBestR
   }
   return out
 }
+
+// ─── Training load ───────────────────────────────────────────────────────────
+// How long and how hard (20260918023038). Minutes × effort (1 to 10) is session
+// training load, Foster's session-RPE: it works for ANY activity, fitted to an
+// event or not, which units cannot. Weekly active minutes is also what funders
+// report against, so both are worked out here once, for /log and for the
+// kaiwhakawā's activity report.
+
+/** The effort scale, 1 to 10 (Foster CR-10), in words a player recognises. */
+export const EFFORT_WORDS: readonly string[] = [
+  '', 'Very easy', 'Easy', 'Moderate', 'Somewhat hard', 'Hard', 'Harder', 'Very hard', 'Very, very hard', 'Near max', 'Max',
+]
+
+/** NZ physical activity guidelines, minutes a week: adults 2.5 hours, under-18s an hour a day. */
+export const GUIDELINE_MINUTES = { adult: 150, rangatahi: 420 } as const
+
+/** A game is 100 minutes (the sport's own session length). */
+export const GAME_MINUTES = 100
+
+export type LoadWorkout = {
+  performed_on: string
+  duration_minutes: number | null
+  effort_rating: number | null
+  /** Per-entry durations, the fallback when the workout's own minutes were not given. */
+  entry_seconds?: readonly (number | null)[]
+}
+
+/**
+ * A workout's minutes: its own figure when given, otherwise the sum of what its
+ * entries recorded, otherwise 0. Never both: an entry's time is part of the
+ * workout's time, so adding them would count it twice.
+ */
+export function workoutMinutes(w: LoadWorkout): number {
+  if (w.duration_minutes != null && w.duration_minutes > 0) return w.duration_minutes
+  const secs = (w.entry_seconds ?? []).reduce<number>((s, x) => s + (x != null && x > 0 ? x : 0), 0)
+  return Math.round(secs / 60)
+}
+
+/** Session training load (minutes × effort), or null when either is missing. */
+export function sessionLoad(w: LoadWorkout): number | null {
+  const m = workoutMinutes(w)
+  if (!m || w.effort_rating == null) return null
+  return m * w.effort_rating
+}
+
+export type WeekLoad = { minutes: number; load: number; rated: number; workouts: number }
+
+/** Minutes and load over the last `days` days, today included. Load sums only the rated workouts. */
+export function recentLoad(workouts: readonly LoadWorkout[], days: number, now: Date = new Date()): WeekLoad {
+  const from = addDays(nzDay(now), -(days - 1))
+  const out: WeekLoad = { minutes: 0, load: 0, rated: 0, workouts: 0 }
+  for (const w of workouts) {
+    if (w.performed_on < from) continue
+    out.workouts++
+    out.minutes += workoutMinutes(w)
+    const l = sessionLoad(w)
+    if (l != null) { out.load += l; out.rated++ }
+  }
+  return out
+}
+
+/** The Monday (NZ calendar) that starts a day's week, YYYY-MM-DD. */
+export function weekStart(day: string): string {
+  const [y, m, d] = day.split('-').map(Number)
+  const dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay() // 0 = Sunday
+  return addDays(day, -((dow + 6) % 7))
+}
+
+export type ActivityInput = {
+  playerId: string
+  rangatahi: boolean
+  /** Logged workouts: day and minutes. */
+  logged: readonly { day: string; minutes: number }[]
+  /** Days this player played a game (one per session). */
+  games: readonly string[]
+}
+
+export type ActivityRow = {
+  week: string
+  cohort: 'all' | 'rangatahi' | 'adults'
+  players: number
+  medianMinutes: number
+  meetingGuideline: number
+  loggedMinutes: number
+  gameMinutes: number
+}
+
+/** Cohorts smaller than this are suppressed, as the wellbeing report does. */
+export const MIN_COHORT = 3
+
+/**
+ * Weekly active minutes by cohort for the kaiwhakawā's report. A player is
+ * counted in a week when they logged or played anything that week; their
+ * minutes are logged minutes plus GAME_MINUTES per game. Meeting the guideline
+ * uses their own cohort's figure, so the 'all' row mixes the two honestly.
+ * Weeks are Monday-start, NZ calendar; rows with fewer than MIN_COHORT players
+ * are dropped so no individual can be read off the report, and the 'all' row
+ * goes with them when a sub-cohort is small, so the two cannot be subtracted.
+ */
+export function weeklyActivity(inputs: readonly ActivityInput[]): ActivityRow[] {
+  type P = { rangatahi: boolean; logged: number; games: number }
+  const weeks = new Map<string, Map<string, P>>()
+  const at = (week: string, i: ActivityInput) => {
+    let w = weeks.get(week)
+    if (!w) { w = new Map(); weeks.set(week, w) }
+    let p = w.get(i.playerId)
+    if (!p) { p = { rangatahi: i.rangatahi, logged: 0, games: 0 }; w.set(i.playerId, p) }
+    return p
+  }
+  for (const i of inputs) {
+    for (const l of i.logged) at(weekStart(l.day), i).logged += Math.max(0, l.minutes)
+    for (const g of i.games) at(weekStart(g), i).games += GAME_MINUTES
+  }
+  const median = (xs: number[]) => {
+    const s = [...xs].sort((a, b) => a - b)
+    const n = s.length
+    return n % 2 ? s[(n - 1) / 2] : Math.round((s[n / 2 - 1] + s[n / 2]) / 2)
+  }
+  const rows: ActivityRow[] = []
+  for (const [week, ps] of [...weeks.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
+    const all = [...ps.values()]
+    const young = all.filter(p => p.rangatahi).length
+    // A small sub-cohort is suppressed, and so is the 'all' row beside it:
+    // otherwise all minus adults gives the one rangatahi's minutes exactly.
+    const small = (n: number) => n > 0 && n < MIN_COHORT
+    const differenceable = small(young) || small(all.length - young)
+    for (const cohort of ['all', 'rangatahi', 'adults'] as const) {
+      const group = cohort === 'all' ? all : all.filter(p => p.rangatahi === (cohort === 'rangatahi'))
+      if (group.length < MIN_COHORT || (cohort === 'all' && differenceable)) continue
+      const totals = group.map(p => p.logged + p.games)
+      rows.push({
+        week, cohort,
+        players: group.length,
+        medianMinutes: median(totals),
+        meetingGuideline: group.filter(p => p.logged + p.games >= (p.rangatahi ? GUIDELINE_MINUTES.rangatahi : GUIDELINE_MINUTES.adult)).length,
+        loggedMinutes: group.reduce((s, p) => s + p.logged, 0),
+        gameMinutes: group.reduce((s, p) => s + p.games, 0),
+      })
+    }
+  }
+  return rows
+}

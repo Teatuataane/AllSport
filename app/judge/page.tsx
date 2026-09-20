@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { createClient, getSessionUser } from '@/lib/supabase-browser'
 import JudgeCard from '@/app/components/JudgeCard'
 import WellbeingReport from '@/app/components/WellbeingReport'
+import ActivityReport from '@/app/components/ActivityReport'
 import Link from 'next/link'
 
 const supabase = createClient()
@@ -67,6 +68,7 @@ export default function JudgePage() {
 
         <JudgeCard playerRole={player.role} />
         <WellbeingReport />
+        <ActivityReport />
       </div>
     </div>
   )
