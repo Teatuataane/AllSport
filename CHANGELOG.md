@@ -2,6 +2,20 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.14.0.0] - 2026-09-20
+
+### Added
+- **A game you play as a swap now counts toward your rating.** Swap an event at a game, play the real contest against another player there, and the win, draw or loss is recorded like any other game — so the higher colours on game events are reachable for someone who swaps. Pick your opponent in the sheet, the same as an official game.
+
+### Notes
+- Only at an official game. A game logged at home still counts as training only, because there is nobody on the other side to record it.
+- Needs a database update. Until it is applied, a swapped game records training as before.
+
+## [0.13.1.0] - 2026-09-20
+
+### Changed
+- **How To Play explains swapping.** A new step tells players they can swap an event that does not suit them for another in the same discipline, and says plainly what that costs: the official event counts as missed, because the ten decide the game for everyone equally. Getting Placed now also mentions the season board.
+
 ## [0.13.0.0] - 2026-09-20
 
 ### Added

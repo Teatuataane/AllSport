@@ -114,11 +114,16 @@ const steps = [
   },
   {
     number: '05',
-    title: 'Get Placed',
-    desc: 'In each event, players are ranked by their result. Your placement in each event (1st, 2nd, 3rd...) is recorded, and the lowest total placement across all 10 events wins the game. Every score you set also counts toward your colours.',
+    title: 'Swap What Does Not Suit You',
+    desc: 'Hurt a shoulder, or today’s event is not for you? Swap it for another event from the same discipline, or add extras on top. Swapped events count as training toward your colours, not toward the day’s result — the official event is counted as missed, the same as skipping it, because the ten decide the game for everyone equally.',
   },
   {
     number: '06',
+    title: 'Get Placed',
+    desc: 'In each event, players are ranked by their result. Your placement in each event (1st, 2nd, 3rd...) is recorded, and the lowest total placement across all 10 events wins the game. Every score you set also counts toward your colours, and every 1st, 2nd and 3rd is tallied on the season board.',
+  },
+  {
+    number: '07',
     title: 'Earn Your Colours',
     desc: 'Every event has a standard for each of twelve colours, from Kiwikiwi to Taniwha. Meet a colour in half of a domain’s events and you hold that domain at that colour; your overall colour is the lowest of your ten. Each new colour also needs games played in the room and training in that domain. A kaiwhakawā confirms each one, and it is yours for good.',
   },
@@ -179,7 +184,7 @@ export default function HowToPlay() {
       </section>
 
       {/* The whole sport in three lines. The page below is thirteen screens on a
-          phone, and what a colour is used to sit at step 06 of 06, seven screens
+          phone, and what a colour is used to sit at the last step, seven screens
           down. A newcomer gets the shape of it before any of the detail. */}
       <section style={{ background: '#0d0d0d', borderTop: '1px solid var(--border)', padding: '40px 0' }}>
         <div className="container">
