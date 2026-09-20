@@ -1760,6 +1760,25 @@ changed nothing.
   read is deliberate there, the same as `results`, and it also proves
   `event_name` exists.
 
+### Baseline at apply time, and what the first real game should show
+
+Production on 2026-09-20, immediately after the four migrations and with
+v0.14.0.0 live (confirmed by `allowGameScore` — a v0.14-only identifier — being
+in the deployed bundle): **1 workout, 1 entry, 0 game-linked workouts, 0
+personal games, 0 matches, 0 swap matches.** Everything below is therefore new
+behaviour, never yet exercised by a player.
+
+**What to check after the first game that uses it**, since none of it has run
+for real yet:
+- a swap writes ONE workout with `session_id` set, and its entries carry
+  `game` evidence (the release panel should not call them solo);
+- a personal game writes a workout with `planned_events` and, on Finish, a
+  `finished_at`; an empty one is deleted rather than left behind;
+- a swapped game event with an opponent picked writes a `matches` row with
+  `workout_entry_id` set and `event_name` filled;
+- the closing game still writes placements and NULL-point summary rows
+  (the open item from the points retirement).
+
 ## Security posture (August 2026) — read before touching RLS or players_public
 
 An OWASP pass (SQL injection / XSS / auth / access control) found three
