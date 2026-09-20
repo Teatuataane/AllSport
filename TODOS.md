@@ -2,6 +2,15 @@
 
 ## ✅ Done
 
+- **Workout customisation shipped in four parts and applied to production** (v0.10.0.0 → v0.14.0.0, 2026-09-19/20). Designed in a `/grill-me` (21 decisions, `docs/designs/workout-customisation-spec.md`, gitignored).
+  - **Season medal table** on `/leaderboard`: this year's 1st/2nd/3rd per division, Olympic order. Read from `results.placement` in the payload the page already loads, so no migration. Walkovers count — 64 of 103 division-games in 2026 had one player — which Tāne chose knowingly.
+  - **Personal games replace `/log`**: one setup picker and one play screen for a workout and an official game. `components/play/` is the shared scoring UI, and the sheet no longer writes to a table, which is what lets `results` and `workout_entries` share it.
+  - **Swaps and extras at a game**, stored as a workout linked to the session so nothing that ranks can see them, labelled `game` evidence with the server enforcing the window.
+  - **Natural formats** (sets of weight × reps, distance + time) converted by Brzycki and Riegel inside the range each holds, shown as estimates beside what was actually done. No new columns.
+  - **A game played as a swap is rated** (`record_entry_match`); one logged at home is not.
+  - All four migrations applied 2026-09-20 and verified by querying the objects. **The main checkout was holding a stale August snapshot and `db push` refused**, suggesting `migration repair --status reverted` on 18 applied migrations — which would have been damaging. Pushed from a clean worktree instead.
+
+
 - **Difficulty levels reviewed and rebuilt across all 120 events** (v0.7.0.0). Tāne reviewed every event in `EVENT_DIFFICULTY_REVIEW.md`, a generated worksheet with the production usage of each rung beside it; the sheet is compiled into `lib/eventData.ts` by `scripts/parse-difficulty-sheet.mjs` + `scripts/apply-difficulty-sheet.mjs` rather than hand-transcribed, and re-running the parser reports zero drift, which is how the file and the sheet are known to agree. 86 events carry a ladder, 34 deliberately carry none, 34 changed input mode.
   - **Per-rung scoring is declared on the tier** (`scoring: 'weight' | 'sport'`, `records: 'reps' | 'strokes'`), not matched by event name. Name matching is what silently dropped the weight input across the `Pause Chin Up` → `Pause Chinup` rename; with 37 Game rungs on the roster that failure mode would have been everywhere.
   - **Fixed: the hardest rung ranked below the second easiest.** A weight rung stored a bare `raw_score` (20 for 20kg) against a banded 10,005 for five reps at D2. It is now banded like every other rung, and records reps alongside the load.
@@ -152,6 +161,13 @@
 
 ## P1 — Do Next
 
+### Confirm the first real game that uses swaps or a personal game
+**What:** every part of the customisation work is live and verified at the object level, but **no player has used any of it yet**. Baseline at apply time (2026-09-20): 1 workout, 1 entry, 0 game-linked workouts, 0 personal games, 0 matches.
+**Verify after the next game:** a swap writes ONE workout with `session_id` set and its entries read as `game` evidence, not solo; a personal game writes `planned_events` and a `finished_at` on Finish, and an empty one is deleted; a swapped game with an opponent picked writes a `matches` row carrying `workout_entry_id` and `event_name`; and the closing game still writes placements with NULL-point summary rows.
+**Why it matters:** these are the first writes through three new guards. A guard that refuses a legitimate write looks identical to a player deciding not to bother.
+**Noticed:** applied 2026-09-20
+
+
 ### Confirm the first real game after `20260918021529` (applied 2026-09-18)
 **What:** applied and verified; see CLAUDE.md "Points retired server-side". One thing no dry run can prove: a real game closing under it.
 **Verify after:** `pg_proc` shows no `points_earned` in `award_session_points`, `session_void_recorded` exists, `trg_update_average_placement` is gone, `leaderboard_page` as anon has no `rankings` key, and the first real game after it closes with placements and NULL-point summary rows.
@@ -264,6 +280,13 @@ now only reachable if Whānau's own art goes missing, and for Te Kāhui, which n
 ---
 
 ## P2 — Soon
+
+### The distance conversion cap is one number for every event
+**What:** `MAX_DISTANCE_RATIO` in `lib/naturalFormats.ts` is 10 for all of them, so a 10km run predicts a 1000m rung and a 2.5km row predicts a 250m one. Riegel does not hold equally well across every event on the roster.
+**Why it is not already done:** it was left open at the end of the grill, deliberately. One number is explainable and errs toward refusing a conversion rather than inventing one.
+**How to settle it:** once there are real logged distances, compare a player's converted rung time against a measured one on the same event.
+**Noticed:** /grill-me, 2026-09-19
+
 
 ### `/schedule` and CLAUDE.md disagree on the Selwyn Winter Jam champions
 **What:** the page credits Women's to Meredith alone and Masters Women to Tarsh. CLAUDE.md (session 22) records Women's as Meredith **and Clairebear, shared 1st**, and Masters Women as **Jing**. Two of four divisions differ.
