@@ -161,7 +161,9 @@
 
 ## P1 — Do Next
 
-### Apply `20260920220344_roster_update_128.sql` straight after v0.15.0.0 deploys
+### ~~Apply `20260920220344_roster_update_128.sql` straight after v0.15.0.0 deploys~~ DONE 2026-09-22
+**Done:** applied after v0.15.0.0 was confirmed live with nothing running, verified by object (128 rows, counts correct, Climbing in domain 8, no retired names or slugs anywhere, no orphaned aliases) and recorded in the ledger. **Still to do by hand:** hard-refresh every kaiwhakawā device.
+
 **What:** re-seeds `event_domains` to 128, repoints seven 'Weighted Carry' draws (name AND slug) in `session_events`, repoints four `activity_aliases`, and asserts nothing still stores a retired slug.
 **Order:** code first, then this, with no game or workout running. Until it runs, logging a new or renamed event fails with 22023 and `confer_grade` refuses colours citing them, so release no colours in the gap. Afterwards hard-refresh every kaiwhakawā device.
 **Verify by object:** `event_domains` holds 128 rows at 14/12/12/12/13/12/16/13/12/12 with `rope-climb` in domain 8; zero `session_events` rows on the old names or slugs; `activity_aliases` 'farmer carry' points at `farmer-carry`.

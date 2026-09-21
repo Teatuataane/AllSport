@@ -1,4 +1,9 @@
 # AllSport Event Definitions
+
+> **SUPERSEDED — historical record only.** This was the June 2026 spec. Events, ladders and
+> modes now live in `lib/eventData.ts`, compiled from `EVENT_DIFFICULTY_REVIEW.md`, and the
+> roster has changed several times since (128 events as of v0.15.0.0; Weighted Carry and the
+> Wheelbarrows are now Sandbag Carry, Farmer Carry and Weighted Drag). Do not implement from it.
 ## Input Modes, Difficulty Tiers & Effort Tasks
 
 > **Purpose:** This document is the authoritative spec for every event's input type, difficulty tiers, and effort task targets. It is the reference for the AI implementation that will update `lib/eventData.ts` and the scoring engine. Review and correct this before implementation begins.
