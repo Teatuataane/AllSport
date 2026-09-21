@@ -753,7 +753,7 @@ export default function Leaderboard() {
         <div className="rainbow-line" style={{ width: '60px', marginBottom: '16px' }} />
         <p style={{ color: '#888888', fontSize: '15px', maxWidth: '620px', marginBottom: '10px', lineHeight: 1.7 }}>
           Twelve colours, earned against published standards in every event. A domain&apos;s colour is the highest
-          one you meet in at least half of its events; your overall colour is the lowest of the ten.
+          one you meet in at least six of its events; your overall colour is the lowest of the ten.
         </p>
         <p style={{ color: '#666666', fontSize: '14px', maxWidth: '620px', marginBottom: '40px', lineHeight: 1.7 }}>
           Each colour is a share of the general population, not of this club, so nobody loses a colour because

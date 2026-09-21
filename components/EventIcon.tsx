@@ -37,11 +37,12 @@ export default function EventIcon({
   // and swapped to the real pictogram only after hydration plus a network round
   // trip — a guaranteed flash on every page load, worst on /prs where dozens
   // swap at once. The fallback was designed for partial icon coverage; coverage
-  // has been 120/120 since August 2026, so the pessimistic default now costs
-  // every icon on every page to guard a case that no longer occurs.
+  // was 120/120 from August 2026, so the pessimistic default cost every icon on
+  // every page to guard a case that had stopped occurring.
   //
-  // The probe stays, because "no longer occurs" is not "cannot occur" — a new
-  // event ships before its PNG does. It just demotes to what it should always
+  // The probe stays, because "stopped occurring" is not "cannot occur" — a new
+  // event ships before its PNG does. It did in Sept 2026: the 128-event roster
+  // shipped ten events without icons, which is exactly this path. It just demotes to what it should always
   // have been: an error path, not a gate. Worst case for a genuinely missing
   // icon is an empty tile for one round trip before the emoji appears.
   //

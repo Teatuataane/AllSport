@@ -1,6 +1,6 @@
 // ─── Effort units ────────────────────────────────────────────────────────────
 // The training currency inside colours (workout logging, September 2026).
-// Every domain colour needs three things: the standards met in half the domain,
+// Every domain colour needs three things: the standards met in six of the domain,
 // the games quota, and a number of effort units in THAT domain since the last
 // colour there (lib/grading.ts holds the numbers; this module says what one
 // unit IS).
@@ -69,7 +69,7 @@ export function defaultRule(ev: EventData): { rule: UnitRule; per: number } {
       const drills = (ev.difficultyTiers ?? []).filter(t => t.scoring !== 'sport').map(t => metresIn(t.name))
       if (drills.length === 0 || drills.some(d => d == null)) return { rule: 'set', per: 1 }
       const top = Math.max(...(drills as number[]))
-      // A ladder of LOADS over one distance (Weighted Carry) is one effort per carry.
+      // A ladder of LOADS over one distance (Sandbag Carry) is one effort per carry.
       if (drills.every(d => d === top)) return { rule: 'set', per: 1 }
       return { rule: 'distance', per: top }
     }

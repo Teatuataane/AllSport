@@ -79,7 +79,7 @@ export default function GradesPage() {
           </Link>
         </div>
         <p style={{ color: 'var(--text-muted)', fontSize: 14.5, lineHeight: 1.6, margin: '0 0 16px' }}>
-          {playerLabel(activePlayer)} holds a colour in each domain: the highest colour met in at least half of
+          {playerLabel(activePlayer)} holds a colour in each domain: the highest colour met in at least six of
           that domain&apos;s events. The overall colour is the lowest of the ten, so it is only as strong as
           the domain you train least.
           {shift > 0 && <> As {BAND_WORDS[state!.grades.band]}, every standard is shifted {shift} colour{shift > 1 ? 's' : ''} in your favour.</>}

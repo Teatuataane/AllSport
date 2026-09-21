@@ -103,13 +103,24 @@ describe('the standards approved in review come back out of the engine', () => {
     expect(rungForScore(3 * 10000 + 31, all, 'Masters')).toBe(9)
   })
 
-  it('Weighted Carry: a bodyweight carry is Uenuku under 4:00 and Taniwha under 2:00', () => {
-    const all = std('Weighted Carry').all!
+  // Approved in review as Weighted Carry; renamed Sandbag Carry in Sept 2026
+  // with its numbers untouched, which is what the shared ladder below checks.
+  it('Sandbag Carry: a bodyweight carry is Uenuku under 4:00 and Taniwha under 2:00', () => {
+    const all = std('Sandbag Carry').all!
     const bodyweight = (secs: number) => 3 * 10000 + (10000 - secs)
     expect(rungForScore(bodyweight(119), all, 'Open')).toBe(12)
     expect(rungForScore(bodyweight(121), all, 'Open')).toBe(11)
     expect(rungForScore(bodyweight(241), all, 'Open')).toBe(10)
-    for (const w of ['Wheelbarrow Push', 'Wheelbarrow Pull']) expect(std(w).all).toEqual(all)
+    for (const w of ['Farmer Carry', 'Weighted Drag']) expect(std(w).all).toEqual(all)
+  })
+
+  it('Climbing: the Game rung makes it a game event with six drill colours', () => {
+    // Sept 2026: the Game rung on top means drills stop at Kahurangi and the
+    // head-to-head rating gives Poroporo and above. D9 carries no threshold.
+    const s = std('Climbing')
+    expect(s.game).toBe(true)
+    expect(s.all).toHaveLength(DRILL_CAP)
+    expect(Math.max(...s.all!)).toBeLessThan(8 * 10000)
   })
 
   it('Vertical Jump: Taniwha is 64cm for men and 50cm for women', () => {

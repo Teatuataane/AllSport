@@ -161,6 +161,13 @@
 
 ## P1 — Do Next
 
+### Apply `20260920220344_roster_update_128.sql` straight after v0.15.0.0 deploys
+**What:** re-seeds `event_domains` to 128, repoints seven 'Weighted Carry' draws (name AND slug) in `session_events`, repoints four `activity_aliases`, and asserts nothing still stores a retired slug.
+**Order:** code first, then this, with no game or workout running. Until it runs, logging a new or renamed event fails with 22023 and `confer_grade` refuses colours citing them, so release no colours in the gap. Afterwards hard-refresh every kaiwhakawā device.
+**Verify by object:** `event_domains` holds 128 rows at 14/12/12/12/13/12/16/13/12/12 with `rope-climb` in domain 8; zero `session_events` rows on the old names or slugs; `activity_aliases` 'farmer carry' points at `farmer-carry`.
+**Dry run:** passed against production 2026-09-21 in a rolled-back transaction, with negative controls raising and production unchanged afterwards.
+**Noticed:** v0.15.0.0
+
 ### Confirm the first real game that uses swaps or a personal game
 **What:** every part of the customisation work is live and verified at the object level, but **no player has used any of it yet**. Baseline at apply time (2026-09-20): 1 workout, 1 entry, 0 game-linked workouts, 0 personal games, 0 matches.
 **Verify after the next game:** a swap writes ONE workout with `session_id` set and its entries read as `game` evidence, not solo; a personal game writes `planned_events` and a `finished_at` on Finish, and an empty one is deleted; a swapped game with an opponent picked writes a `matches` row carrying `workout_entry_id` and `event_name`; and the closing game still writes placements with NULL-point summary rows.
@@ -281,6 +288,22 @@ now only reachable if Whānau's own art goes missing, and for Te Kāhui, which n
 
 ## P2 — Soon
 
+### Review the drafted standards for the eight v0.15.0.0 events
+**What:** Pullover & Press (about 0.9 of Clean & Press), Loaded Lunge (about 0.6 of Pause Back Squat), Skull Hang (Chin Hang's numbers unchanged), Calf Raises, and the four Flexibility holds were drafted by Claude with no usage to calibrate against. Each is marked in `GRADING_STANDARDS_REVIEW.md`.
+**Noticed:** v0.15.0.0
+
+### Climbing's drill ladder under a Game rung
+**What:** topping Climbing with a Game rung made it a game event, so its drills stop at Kahurangi (a D3 hang in 20s) and D4 to D8 carry no colour of their own; everything above needs ten rated races. The lowest three rungs are also still hangs on a fastest-wins ladder, so a longer hang scores worse. Both need Tāne.
+**Noticed:** v0.15.0.0
+
+### Toe Lift and Tibialis Curl are the same movement
+**What:** both in Anaerobic Endurance, both heels planted and toes lifted toward the shins, heaviest wins. Tāne kept Toe Lift when Calf Raises went in, so the duplicate stands. Toe Lift's text was invented in session 19; it needs its real movement from Tāne rather than another invented one.
+**Noticed:** v0.15.0.0
+
+### Move Wrestling to the Combat domain once it exists
+**What:** Tāne chose to move Wrestling into the log-only Combat domain drafted on `origin/claude/log-only-domains`. That branch is still one unmerged review sheet, so Wrestling stays in Body Awareness (13 events) until the log-only domains ship. Moving it earlier would strand 21 results from 7 players.
+**Noticed:** v0.15.0.0
+
 ### The distance conversion cap is one number for every event
 **What:** `MAX_DISTANCE_RATIO` in `lib/naturalFormats.ts` is 10 for all of them, so a 10km run predicts a 1000m rung and a 2.5km row predicts a 250m one. Riegel does not hold equally well across every event on the roster.
 **Why it is not already done:** it was left open at the end of the grill, deliberately. One number is explainable and errs toward refusing a conversion rather than inventing one.
@@ -302,10 +325,10 @@ now only reachable if Whānau's own art goes missing, and for Te Kāhui, which n
 **Noticed:** session 35 audit, 2026-08-29 (Amanda, 2 games)
 **Effort:** S
 
-### Lunges has no icon
-**What:** `public/event-icons/lunges.png` does not exist, so Lunges falls back to the 🦵 emoji on `/prs` and in the live session. `toe-balance.png` is now an orphan (harmless — nine others already are).
+### Ten events have no icon
+**What:** no PNG in `public/event-icons/` for `lunges`, `animal-crawl`, and the eight v0.15.0.0 events: `pullover-and-press`, `loaded-lunge`, `skull-hang`, `calf-raises`, `plie-squat`, `seiza`, `wrist-stretch`, `reverse-wrist-stretch`. Each shows an empty tile for one round trip, then its emoji. `toe-balance.png` is an orphan (harmless — nine others already are).
 **Reminder:** the filename must be the exact slug, or it silently falls back to emoji.
-**Effort:** S (one Canva export)
+**Effort:** S (ten Canva exports)
 
 ### Fold lifetime points into `leaderboard_page()` (needs a migration)
 **What:** The board's Taniwha column shows PIECES, because nobody has a crown yet and a

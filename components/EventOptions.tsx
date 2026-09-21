@@ -1,6 +1,6 @@
 // ─── Every event, grouped by domain, as <option>s ────────────────────────────
 // For a native <select>: the log form's event picker, its not-fitted list and
-// the kaiwhakawā's activity fitting all offer the same 120 events the same way.
+// the kaiwhakawā's activity fitting all offer the same roster the same way.
 
 import { EVENTS, DOMAIN_ORDER } from '@/lib/eventData'
 

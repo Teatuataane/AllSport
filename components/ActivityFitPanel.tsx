@@ -2,7 +2,7 @@
 
 // ─── Fitting activities ──────────────────────────────────────────────────────
 // Workout logging, decision 14: anything can be logged, and what someone typed
-// is fitted to one of the 120 events by an alias. An activity that matches no
+// is fitted to one of the roster's events by an alias. An activity that matches no
 // alias is saved but earns nothing until it is fitted. This lists every such
 // activity across the club, and fitting one through fit_activity() adds the
 // alias AND fits every entry that typed it, earlier logs included.

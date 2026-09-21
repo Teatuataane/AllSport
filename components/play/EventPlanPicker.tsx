@@ -39,7 +39,7 @@ export default function EventPlanPicker({
   onChange: (next: string[]) => void
   search?: boolean
 }) {
-  // Every domain open at once is a wall of 120 chips on a phone, so a domain
+  // Every domain open at once is a wall of 128 chips on a phone, so a domain
   // opens on tap. In official mode the first unfilled domain leads.
   const [open, setOpen] = useState<number | null>(mode === 'official' ? 1 : null)
   const [query, setQuery] = useState('')

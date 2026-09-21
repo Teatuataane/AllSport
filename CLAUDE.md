@@ -102,16 +102,18 @@ linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)
 
 ### Domain Display Order
 
+128 events as of v0.15.0.0, and domains are no longer even (14 / 12 / 12 / 12 / 13 / 12 / 16 / 13 / 12 / 12). `lib/eventData.ts` is the source of truth; this table mirrors it.
+
 | # | Domain | Events |
 |---|--------|--------|
-| 1 | Maximal Strength | 1A Press, Deadlift, Clean & Press, Pause Dips, Pause Chinup, Pause Back Squat, Zercher Dead, Pause Bench, Turkish Getup, Arthur Lift, Pause Row, Pause Front Squat |
-| 2 | Calisthenics | 1 Leg Squat, Human Flag, Windshield Wipers, Planche, Back Lever, Iron Cross, Front Lever, Chin Hang, Climbing, Handstand, Headstand, L-Sit Hold |
+| 1 | Maximal Strength | 1A Press, Deadlift, Clean & Press, Pause Dips, Pause Chinup, Pause Back Squat, Zercher Dead, Pause Bench, Turkish Getup, Arthur Lift, Pause Row, Pause Front Squat, Pullover & Press, Loaded Lunge |
+| 2 | Calisthenics | 1 Leg Squat, Human Flag, Windshield Wipers, Planche, Back Lever, Iron Cross, Front Lever, Chin Hang, Skull Hang, Handstand, Headstand, L-Sit Hold |
 | 3 | Power | Kelly Snatch, 1A Snatch, Javelin, Shotput, Australian Football, Vertical Jump, Clean & Jerk, Snatch, Standing Broad Jump, High Jump, Arm Wrestling, Tug of War |
 | 4 | Speed | 100m Sprint, Tag, T-Race, Beach Flags, 200m Sprint, Touch Rugby, Repeat High Jump, Rats & Rabbits, Speed Chess, American Football, Capture the Flag, Kabaddi |
-| 5 | Anaerobic Endurance | Chinup Contest, Pushup Contest, Tibialis Curl, Finger Pushup, GHD Situp, Leg Ext Hold, Ab Rollout, Hamstring Curl, Sandbag to Shoulder, Wall Sit, Toe Lift, Lunges |
-| 6 | Aerobic Endurance | Burpee Broad Jump, Running, Cycling, Ski Erg, Row Erg, Breath Hold, Weighted Carry, Duck Walk, Bronco, Scooting, Wheelbarrow Push, Wheelbarrow Pull |
-| 7 | Flexibility | Rear Hand Clasp, Bridge, Forward Fold, Needle Pose, Forward Split, Middle Split, Standing Split, Foot Behind Head Pose, Shoulder Dislocate, Pancake, Side Bend, Full Bound Twist |
-| 8 | Body Awareness | Tae Kwon Do, Breakdancing, Trampolining, Jump Rope, Wrestling, Gymnastics, Balance Ball, SKATE, Fencing, Juggling, Foot Juggling, Slackline |
+| 5 | Anaerobic Endurance | Chinup Contest, Pushup Contest, Tibialis Curl, Finger Pushup, GHD Situp, Leg Ext Hold, Ab Rollout, Hamstring Curl, Sandbag to Shoulder, Wall Sit, Toe Lift, Lunges, Calf Raises |
+| 6 | Aerobic Endurance | Burpee Broad Jump, Running, Cycling, Ski Erg, Row Erg, Breath Hold, Sandbag Carry, Animal Crawl, Bronco, Scooting, Farmer Carry, Weighted Drag |
+| 7 | Flexibility | Rear Hand Clasp, Bridge, Forward Fold, Needle Pose, Forward Split, Middle Split, Standing Split, Foot Behind Head Pose, Shoulder Dislocate, Pancake, Side Bend, Full Bound Twist, Plie Squat, Seiza, Wrist Stretch, Reverse Wrist Stretch |
+| 8 | Body Awareness | Climbing, Tae Kwon Do, Breakdancing, Trampolining, Jump Rope, Wrestling, Gymnastics, Balance Ball, SKATE, Fencing, Juggling, Foot Juggling, Slackline |
 | 9 | Coordination | Volleyball, Baseball, Teqball, Tennis, Cricket, Badminton, Basketball, Football, Hockey, Squash, Lacrosse, Ultimate Frisbee |
 | 10 | Aim & Precision | Netball, Bocce, Dodgeball, Carrom, Archery, Bowling, Darts, Disc Golf, Golf, Handball, Table Tennis, Kubb |
 
@@ -1694,6 +1696,132 @@ the workout-customisation plan, and the part that prompted it.
   solo needs `matches.workout_entry_id` AND a change to the rule that refuses a
   logged Game-rung result. Its own piece of work.
 
+## Roster update — 128 events, uneven domains (September 2026) — MIGRATION NOT YET APPLIED
+
+Tāne's list of 21 Sept 2026. Eight events added, three renamed, one moved, and the
+domain-colour threshold capped. `20260920220344_roster_update_128.sql` is written and
+**not applied**; deploy the code first, then the migration.
+
+- **Added (8):** **Pullover & Press**, **Loaded Lunge** (Maximal Strength, `strength`);
+  **Skull Hang** (Calisthenics, `difficulty+time` hold — "like the chin hang but on the back
+  of the neck/skull", Chin Hang's ladder unchanged); **Calf Raises** (Anaerobic Endurance,
+  `difficulty+reps`); **Plie Squat**, **Seiza**, **Wrist Stretch**, **Reverse Wrist Stretch**
+  (Flexibility, `difficulty+time` holds).
+- **Moved (1):** **Climbing**, Calisthenics → Body Awareness, and topped with a **Game rung**
+  (D9). Slug stays `rope-climb`, so its 7 result rows stay attached. It is a timed effort, and
+  the Game term is deliberately NOT inverted — inverting it makes a loss beat a win.
+  **Consequence: Climbing is now a `game: true` standard, so its drills stop at Kahurangi and
+  the head-to-head rating gives Poroporo and above.** D4–D8 lost their own colours; flagged in
+  the standards sheet for Tāne.
+- **Renamed (3), SLUGS MOVED TOO:** Weighted Carry → **Sandbag Carry**, Wheelbarrow Push →
+  **Farmer Carry**, Wheelbarrow Pull → **Weighted Drag**. All three rewritten as real
+  movements (bag against the body / a matched pair in the hands / a dragged sled), not just
+  relabelled. The shared ¼–1× bodyweight ladder is unchanged.
+
+**THE SLUGS COULD MOVE BECAUSE NOTHING STORED THEM.** Verified against production, not
+assumed: `results`, `workout_entries`, `workouts.planned_events` and `grade_exemptions`
+all held zero rows for the three old slugs. The migration asserts it again at apply time,
+so a workout logged in between aborts the push rather than becoming an entry the guard
+refuses to let anyone edit.
+
+**BUT THE FIRST CHECK ONLY LOOKED AT `results`, AND THAT WAS NOT ENOUGH.** The /ship red
+team caught it: `session_events` stores the event NAME for every draw, scored or not, and
+seven 'Weighted Carry' draws (June to September 2026) would have left their game reports
+pointing at an event `getEventByName()` cannot resolve. The migration repoints them to
+Sandbag Carry, **name AND `event_slug`**: session_events stores both, and the first repoint
+fixed only the name, leaving seven rows over a `weighted-carry` slug that the season-PR RPC,
+the swap list and the live screen's exclude list would all silently fail to match. The
+adversarial pass caught that one. That credits nobody, because their 15 result rows were already archived by
+`20260915040534`. **When renaming, check every table that stores a slug OR a name —
+`results`, `session_events`, `workout_entries`, `workouts.planned_events`,
+`grade_exemptions`, `activity_aliases` — not just the one that holds scores.**
+
+**DEPLOY CODE FIRST, THEN THE MIGRATION STRAIGHT AFTER, with no game or workout running.**
+The first draft said either order was safe, and that was wrong: `event_domains` is the
+WRITE GATE for workouts (the entries guard, `guard_workouts_write` and `record_entry_match`
+all resolve slugs through it), not just a rollup. In the gap, whichever side is ahead has
+its new slugs refused with 22023. A failed save, never bad data, but real for anyone
+logging in those minutes. `confer_grade` checks slugs against it too, so **release no
+colours until the migration has run**, and **hard-refresh every kaiwhakawā device
+afterwards**: an old-bundle tab can still draw 'Weighted Carry' into a new session, and
+session_events has no roster gate to stop it.
+
+**Climbing's history moved domain with it.** The engine reads an event's domain from the
+CURRENT roster, so its 7 historical results and their units now count toward Body
+Awareness. No colour was conferred in domain 2 or 8, so this demoted nobody; the migration
+refuses to run if a Calisthenics colour ever cites Climbing.
+
+**Dry-run against production 2026-09-21 in a rolled-back transaction**: every assertion
+passed, a negative control (expecting 129 rows) raised, and production was unchanged
+afterwards (120 rows, 7 draws, aliases untouched).
+
+**The standards sheet said Weighted Carry had 12 players, and that was TRUE WHEN WRITTEN.**
+Its counts come from a snapshot taken before `20260915040534` archived and deleted 15
+fixed-weight carry rows when that ladder changed to bodyweight fractions. They sit in
+`results_grading_archive_20260915040534`, not in `results`. **A player count in a review sheet
+is a snapshot, not a live query** — re-check against production before relying on one. The one
+accepted cost of this rename: that archive can no longer be restored onto a live event of that
+name.
+
+**Four `activity_aliases` rows pointed at `weighted-carry`, which no longer exists.** An alias
+matching no event does nothing at all — no error, no warning, `fit_activity()` simply never
+fits it — the same failure mode as the `'climbing'`/`rope-climb` entry that sat wrong in
+`TIMED_EFFORT_SLUGS` for three months. `__tests__/trainingLoad.test.ts` caught it. The
+migration repoints them (and lands them better: 'farmer carry' now means Farmer Carry), and
+asserts no alias points at nothing. The test now replays every later `UPDATE activity_aliases`
+before checking, so it asserts the EFFECTIVE state and a future rename that forgets its
+repoint fails there rather than in the gym.
+
+### Domains are no longer even, and the threshold is CAPPED at six
+
+`requiredForDomain` was `ceil(available × 0.5)`, read from the LIVE domain size. Flexibility
+going 12 → 16 would therefore have raised its bar from 6 events to **8**, retroactively, for
+everyone, on the domain that is already the second-least-played. Tāne accepted the bigger pool
+and chose to hold the threshold: **`min(ceil(available ÷ 2), DOMAIN_REQUIRED_CAP)`**, cap 6.
+
+**The CAP, not a flat 6.** `availableCount` is what is available TO THAT PLAYER — exemptions
+and ungradeable events leave the count — so a player with five available events must still be
+asked for three. A flat 6 would ask them for six of five, which nobody can ever meet.
+
+Counts are now **14 / 12 / 12 / 12 / 13 / 12 / 16 / 13 / 12 / 12**. The test that demanded
+exactly 12 per domain is replaced by one asserting **at least 12**, plus the expected count per
+domain: a domain thinner than twelve would start asking for a majority of a shrinking pool.
+`scripts/grading-readiness.mjs` kept its own copy of the half rule and reported 8 where the
+engine asked 6 — it now restates the cap with a comment saying so. The user-facing copy on
+/how-to-play (×2) and /leaderboard said "half of a domain's events" and now says "six".
+
+**Everything is compiled, not hand-written.** All three sheets were edited and re-run:
+`EVENT_DIFFICULTY_REVIEW.md` (round-tripped through `apply-difficulty-sheet.mjs` — the only
+diff was key order, so the sheet and `lib/eventData.ts` agree), `WORKOUT_UNITS_REVIEW.md` and
+`GRADING_STANDARDS_REVIEW.md`. `scripts/gen-standards-sheet.mjs` held three APPROVED standards
+keyed on the old carry names; left stale it would have aborted the next sheet regeneration.
+
+**Standards for the eight new events are DRAFTED BY CLAUDE and unreviewed.** Each says so in
+the sheet, with its reasoning (Pullover & Press at ~0.9 of Clean & Press, Loaded Lunge at ~0.6
+of Pause Back Squat, Skull Hang as Chin Hang unchanged). Nobody has scored any of them, so
+there is no usage to calibrate against. **Read these hardest.**
+
+**Icons: 8 missing**, so the new events fall back to their emoji — silently, by design. The
+three renamed PNGs were `git mv`d to their new slugs. `lunges` and `animal-crawl` were ALREADY
+missing before this change.
+
+### Still open
+
+- **Wrestling did NOT move.** Tāne chose the log-only Combat domain drafted on
+  `origin/claude/log-only-domains` — but that branch is one unmerged review sheet with no code,
+  so there is nowhere to move it to. Removing it now would strand 21 results from 7 players and
+  delete a played event for an unknown stretch. Body Awareness therefore sits at 13, and
+  Wrestling is still the roster's only pure `sport` event and the only ungradeable one.
+- **Toe Lift and Tibialis Curl are the same movement**, both in Anaerobic Endurance: heels
+  planted, toes lifted toward the shins, heaviest wins. Toe Lift's text was invented in session
+  19 and flagged for review then. Tāne chose to add Calf Raises and KEEP Toe Lift, so the
+  duplicate stands and domain 5 holds 13. Toe Lift's text is untouched: inventing a distinction
+  is what created this.
+- **Climbing's lowest three rungs are HANGS on a fastest-wins ladder**, so a longer hang scores
+  worse. Raised in the last standards round, still unsettled, unchanged here.
+- **The /events "Scoring Method" label says "Difficulty tier + hold time" for every
+  `difficulty+time` event**, including timed efforts where fastest wins. Pre-existing.
+
 ## A game played as a swap counts toward the rating (September 2026) — v0.14.0.0
 
 Decided with Tāne 2026-09-20, closing the last piece of the workout-customisation
@@ -1956,7 +2084,7 @@ update players set role = 'judge' where id = '[uuid]';
 |---|---|---|---|
 | Home | / | Complete | Hero, ethos, colours (cycle 1 + a "beyond Taniwha" line), CTA. *(No "My Colour History" button exists — an earlier claim here was wrong.)* |
 | How To Play | /how-to-play | Complete | Rules, scoring, 10 domains. Links to /events |
-| Events Index | /events | Complete | All 100 events grouped by domain, links to detail pages |
+| Events Index | /events | Complete | All 128 events grouped by domain, links to detail pages |
 | Event Detail | /events/[slug] | Complete | Template page: how to perform, rules, tiers, personal best |
 | Schedule | /schedule | Complete | Times correct (4:30pm Tue/Thu, 9am Sat), Championship 14 Mar 2027 |
 | Leaderboard | /leaderboard | Complete | Real data, All-Divisions tab, active session live banner |
@@ -2158,7 +2286,7 @@ RLS: own + parent (family) + judge.
     supabase-server.ts              # Server client
     supabase-cookies.ts             # AUTH_COOKIE_OPTIONS — MUST be passed to every Supabase client (secure/sameSite/path). See HTTP security below
     securityHeaders.ts              # buildCsp / buildSecurityHeaders — the CSP + 8 headers, unit tested in __tests__/securityHeaders.test.ts
-    eventData.ts                    # Single source of truth for all events (120) + difficulty+time encode/decode helpers (encodeDiffTime/decodeDiffTime/isTimedEffort, TIMED_EFFORT_SLUGS).
+    eventData.ts                    # Single source of truth for all events (128) + difficulty+time encode/decode helpers (encodeDiffTime/decodeDiffTime/isTimedEffort, TIMED_EFFORT_SLUGS).
                                     #   DifficultyTier carries `detail` (judge criteria) plus `scoring`/`records` — how a single rung is scored, declared on the tier so nothing matches on event name. COMPILED from EVENT_DIFFICULTY_REVIEW.md by scripts/apply-difficulty-sheet.mjs; do not hand-edit a ladder without updating the sheet.
     dates.ts                        # parseLocalDate / formatNZDate — parse DATE columns in local time (avoids off-by-one)
     activePlayer.ts                 # Pure half of the family switcher — resolveActiveId/playerLabel. No React, no Supabase, so it is testable
@@ -2187,14 +2315,14 @@ RLS: own + parent (family) + judge.
     leaderboard/page.tsx            # All-Divisions tab
     koha/page.tsx
     events/
-      page.tsx                      # Event index — all 100 events by domain
+      page.tsx                      # Event index — all 128 events by domain
       [slug]/page.tsx               # Event detail — how to, rules, tiers, PB
     register/page.tsx
     login/page.tsx
     dashboard/page.tsx              # Bento grid dashboard — 6 cards + points history modal
     judge/page.tsx                  # Judge panel page — wraps JudgeCard, judge-role-gated
     profile/page.tsx                # Player profile — icon picker, editing, family switcher
-    prs/page.tsx                    # Personal best history — all 100 events
+    prs/page.tsx                    # Personal best history — all 128 events
     scoring/page.tsx
     scoring/[sessionId]/page.tsx    # Live session — banner (div placement + timer), player event list + quick-entry sheet (session 19), judge EventCard grid, leaderboard (3-section, Masters toggle, age chips, event filter)
     games/[sessionId]/page.tsx      # Game review — full all-player report (divisions, events, scores, placements, standings); computed live from raw_score
@@ -2514,8 +2642,8 @@ real host is `evil.com`. `safeNext()` now rejects that plus the `//` and `/\` va
 - Colours — LIFETIME points (Aug 2026): 19-rung ladder through Ngā Taniwha, colour timeline replacing year tabs, kaiwhakawā live alert + /judge watchlist, session-end colour headline. See the Colours rework block above
 - Colours section on dashboard — renamed from Grade, conditional year tabs, coloured progress bar
 - Event detail pages — /events/[slug] with how-to, rules, difficulty tiers, personal best
-- Events index — /events, all 100 events grouped by domain
-- Personal bests page — /prs, all 100 events, expandable history, this season + previous seasons
+- Events index — /events, all 128 events grouped by domain
+- Personal bests page — /prs, all 128 events, expandable history, this season + previous seasons
 - All-Divisions tab — renamed from Overall everywhere
 - T-Race — renamed from T-Test, now uses sport/win-loss input mode
 - Chin Hang — renamed from Chin Lift
@@ -2609,7 +2737,7 @@ real host is `evil.com`. `safeNext()` now rejects that plus the `//` and `/\` va
 - **Renaming an event requires a `session_events.event_name` backfill migration** (August 2026): keeping the slug is NOT enough. /prs, `lib/percentile.ts` and the My Events card all group results by event_name, so a rename detaches every score ever set on that event; `lib/scoring.ts` also matches weight-scored tiers on the name literal. Checklist for any future rename: (1) write the backfill, deriving old names from git history of eventData.ts rather than memory, (2) grep lib/ and app/ for the old name string, (3) deploy the code BEFORE running the migration or `getEventByName()` goes undefined mid-session
 - **Never merge history across a rename that changed the movement** (August 2026): OHP → Clean & Press, Cornhole → Bocce and Sprint Repeats → Bronco were logged as renames but are different activities, so their old rows stay orphaned rather than crediting a PR to something nobody did. Bowling/Kubb is date-dependent (pre-May-2026 Bowling became Kubb; Bowling was re-added July 2026) so it is never swept by name
 - **A Supabase archive table needs explicit RLS** (August 2026): `CREATE TABLE … AS SELECT` does not inherit RLS from its source, and anything in `public` is reachable through PostgREST. Enable RLS with zero policies — denies all API access while `service_role` keeps BYPASSRLS read for a restore
-- lib/eventData.ts is the single source of truth for all 100 events
+- lib/eventData.ts is the single source of truth for all 128 events
 - Score resubmission: upsert on (player_id, session_id, event_id) — updates existing row
 - Time events: raw_score stored as negative seconds so faster = higher
 - Void vs End: Void sets points_awarded_at before closing to prevent trigger firing

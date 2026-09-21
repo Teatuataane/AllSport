@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { EVENTS } from '@/lib/eventData'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import {
@@ -53,7 +54,10 @@ describe('the play list', () => {
 describe('choosing', () => {
   it('offers the rest of the domain, minus what is already in play', () => {
     const choices = swapChoices(1, ['deadlift'])
-    expect(choices).toHaveLength(11)
+    // Domain 1 holds 14 events since Sept 2026, so this is the whole domain
+    // minus the one already in play. Derived, not a literal, because the pool
+    // is now expected to keep growing.
+    expect(choices).toHaveLength(EVENTS.filter(e => e.domainNumber === 1).length - 1)
     expect(choices.some(e => e.slug === 'deadlift')).toBe(false)
   })
 

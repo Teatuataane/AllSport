@@ -15,8 +15,8 @@ import {
 // ─── EVENTS array integrity ───────────────────────────────────────────────────
 
 describe('EVENTS array', () => {
-  it('contains exactly 120 events', () => {
-    expect(EVENTS).toHaveLength(120)
+  it('contains exactly 128 events', () => {
+    expect(EVENTS).toHaveLength(128)
   })
 
   it('every event has a unique slug', () => {
@@ -173,7 +173,10 @@ describe('getEventByName', () => {
 
   it.each([
     'Arm Wrestling', 'Tug of War', 'Capture the Flag', 'Kabaddi',
-    'Wheelbarrow Push', 'Wheelbarrow Pull', 'Kubb',
+    'Farmer Carry', 'Weighted Drag', 'Kubb',
+    // Added Sept 2026
+    'Pullover & Press', 'Loaded Lunge', 'Skull Hang', 'Calf Raises',
+    'Plie Squat', 'Seiza', 'Wrist Stretch', 'Reverse Wrist Stretch',
   ])('new event %s is defined with real content', (name) => {
     const e = getEventByName(name)
     expect(e).toBeDefined()
@@ -218,15 +221,31 @@ describe('getEventByName', () => {
     expect(isTimedEffort(e.slug)).toBe(false)
   })
 
-  it('wheelbarrow events share Weighted Carry\'s bodyweight ladder and rank fastest-first', () => {
+  // The Sept 2026 additions are HOLDS: longer wins. A hold wrongly listed in
+  // TIMED_EFFORT_SLUGS would be encoded inverted and rank the shortest hold
+  // first, which is the Climbing bug of June 2026 in the other direction.
+  it.each(['skull-hang', 'plie-squat', 'seiza', 'wrist-stretch', 'reverse-wrist-stretch'])(
+    '%s is a hold, not a timed effort', (slug) => {
+      const faster = isTimedEffort(slug)
+      expect(faster).toBe(false)
+      // Longer holds encode higher inside a tier, and any hold on a harder tier
+      // outranks the longest hold on the one below.
+      expect(encodeDiffTime(0, 60, faster)).toBeGreaterThan(encodeDiffTime(0, 30, faster))
+      expect(encodeDiffTime(1, 1, faster)).toBeGreaterThan(encodeDiffTime(0, 600, faster))
+    })
+
+  it('the three carries share one bodyweight ladder and rank fastest-first', () => {
     // The Sept 2026 grading rebuild moved all three from fixed kilos to fractions
     // of bodyweight, topping out at a bodyweight load, so they now share the
     // whole ladder (the 200kg wheelbarrow rung went with the fixed weights).
-    const carry = getEventByName('Weighted Carry')!
+    // Renamed Sept 2026: Weighted Carry -> Sandbag Carry, Wheelbarrow Push ->
+    // Farmer Carry, Wheelbarrow Pull -> Weighted Drag. The ladder is unchanged,
+    // which is the point of this test: three implements, one ask.
+    const carry = getEventByName('Sandbag Carry')!
     const carryNames = carry.difficultyTiers!.map(t => t.name)
     expect(carryNames).toEqual(['¼ BW — 200m', '½ BW — 200m', '¾ BW — 200m', 'Bodyweight — 200m'])
     expect(isTimedEffort(carry.slug)).toBe(true)
-    for (const name of ['Wheelbarrow Push', 'Wheelbarrow Pull']) {
+    for (const name of ['Farmer Carry', 'Weighted Drag']) {
       const e = getEventByName(name)!
       expect(e.difficultyTiers!.map(t => t.name)).toEqual(carryNames)
       expect(isTimedEffort(e.slug)).toBe(true)
@@ -246,9 +265,9 @@ describe('getEventsByDomain', () => {
     expect(Object.keys(map)).toHaveLength(10)
   })
 
-  it('Maximal Strength has 12 events', () => {
+  it('Maximal Strength has 14 events', () => {
     const map = getEventsByDomain()
-    expect(map['Maximal Strength']).toHaveLength(12)
+    expect(map['Maximal Strength']).toHaveLength(14)
   })
 
   it('every event appears in exactly one domain bucket', () => {
@@ -257,10 +276,21 @@ describe('getEventsByDomain', () => {
     expect(total).toBe(EVENTS.length)
   })
 
-  it('every domain holds exactly 12 events', () => {
+  // Domains stopped being even in Sept 2026, when Tāne took Flexibility to
+  // sixteen rather than trim four of his own additions. What still has to hold
+  // is that no domain is thinner than twelve: a colour asks for six events met,
+  // DOMAIN_REQUIRED_CAP caps that ask at six, and a domain that fell below
+  // twelve would start asking for a majority of a shrinking pool.
+  it('holds at least 12 events in every domain, and the expected count in each', () => {
     const map = getEventsByDomain()
+    const expected: Record<string, number> = {
+      'Maximal Strength': 14, 'Calisthenics': 12, 'Power': 12, 'Speed': 12,
+      'Anaerobic Endurance': 13, 'Aerobic Endurance': 12, 'Flexibility': 16,
+      'Body Awareness': 13, 'Coordination': 12, 'Aim & Precision': 12,
+    }
     for (const [domain, events] of Object.entries(map)) {
-      expect(events.length, `${domain} should have 12 events`).toBe(12)
+      expect(events.length, `${domain} should hold at least 12 events`).toBeGreaterThanOrEqual(12)
+      expect(events.length, `${domain}`).toBe(expected[domain])
     }
   })
 
@@ -279,8 +309,14 @@ describe('getEventsByDomain', () => {
     expect(slugs).not.toContain('duck-walk')
     expect(slugs).toContain('breath-hold')
     expect(slugs).toContain('bronco')
-    expect(slugs).toContain('wheelbarrow-push')
-    expect(slugs).toContain('wheelbarrow-pull')
+    expect(slugs).toContain('farmer-carry')
+    expect(slugs).toContain('weighted-drag')
+    expect(slugs).toContain('sandbag-carry')
+    // Renamed Sept 2026. The slugs moved with the names because production held
+    // ZERO result rows for all three, so there was no history to strand.
+    expect(slugs).not.toContain('wheelbarrow-push')
+    expect(slugs).not.toContain('wheelbarrow-pull')
+    expect(slugs).not.toContain('weighted-carry')
     expect(slugs).not.toContain('1k-run')
     expect(slugs).not.toContain('sprint-repeats')
     expect(slugs).not.toContain('30-15-test')

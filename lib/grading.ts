@@ -20,11 +20,15 @@
 //
 // ── Why HALF the events, and why "of the events available to you" ───────────
 // Requiring half a domain rather than one event is what stops a grade being
-// won on a single favourable movement. But applied to all twelve events it
-// would exclude the people the charity exists for: eight of Maximal Strength's
-// twelve events load the shoulder, so a player whose shoulder will never press
-// has four available and could never reach six — and under rule 3 that caps
-// their overall grade forever.
+// won on a single favourable movement. But applied to every event in the pool
+// it would exclude the people the charity exists for: most of Maximal
+// Strength's events load the shoulder, so a player whose shoulder will never
+// press has only a few available and could never reach six — and under rule 3
+// that caps their overall grade forever.
+//
+// And the ask never exceeds SIX (DOMAIN_REQUIRED_CAP), however big a pool
+// grows. Domains stopped being even in Sept 2026 — Flexibility holds sixteen —
+// and an uncapped half would have made the biggest pools the hardest colours.
 //
 // So the denominator is the events AVAILABLE to that player. A kaiwhakawā marks
 // an event unavailable (injury, disability, permanent limitation) and the
@@ -114,7 +118,8 @@ export function gradeForRung(rung: number): GradeRung {
 
 /**
  * The fraction of a domain's available events whose standard must be met.
- * Half, rounded up: 12 available needs 6, 5 available needs 3.
+ * Half, rounded up: 12 available needs 6, 5 available needs 3 — then capped
+ * by DOMAIN_REQUIRED_CAP, so 16 available still needs 6, not 8.
  */
 export const DOMAIN_FRACTION = 0.5
 
@@ -168,9 +173,24 @@ export type DomainGradeResult = {
   metAtNextRung: number
 }
 
+/**
+ * The most events a domain may ever ask for, however big its pool grows.
+ *
+ * Half of twelve. Tāne, Sept 2026, on taking Flexibility to sixteen events:
+ * accept the bigger pool, "keep the threshold at any 6 events". A domain's
+ * pool is a menu, not a syllabus — growing it should give a player more ways
+ * to reach the colour, never a longer list to finish.
+ *
+ * The CAP rather than a flat 6, because `availableCount` is what is available
+ * TO THAT PLAYER: exemptions and ungradeable events leave the count, so a
+ * player with five available events must still be asked for three. A flat 6
+ * would ask them for six of five, which nobody can ever meet.
+ */
+export const DOMAIN_REQUIRED_CAP = 6
+
 /** How many of a player's available events must meet a rung to hold it. */
 export function requiredForDomain(availableCount: number): number {
-  return Math.ceil(availableCount * DOMAIN_FRACTION)
+  return Math.min(Math.ceil(availableCount * DOMAIN_FRACTION), DOMAIN_REQUIRED_CAP)
 }
 
 export function domainGrade(input: DomainGradeInput): DomainGradeResult {

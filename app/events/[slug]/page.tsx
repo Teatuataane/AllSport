@@ -3,7 +3,7 @@
 // and the 2171-line roster never reaches the browser. The personal best is the
 // one per-viewer piece and lives in its own client island.
 //
-// generateStaticParams prerenders all 120 event pages at build time; they were
+// generateStaticParams prerenders every event page at build time; they were
 // previously rendered on demand for every request despite the content being
 // fixed. Unknown slugs still fall through to the "Event not found" branch below.
 import Link from 'next/link'

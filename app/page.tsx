@@ -2,7 +2,7 @@
 // accordion, which lives in its own client island (DomainList) — so the ~340
 // lines of static marketing copy no longer ship as client JS, and neither does
 // lib/eventData.ts. `domains` is derived here and passed down already flattened
-// to name strings, which is what keeps the roster (and its 120 events' worth of
+// to name strings, which is what keeps the roster (and every event's worth of
 // how-to prose) on the server. Same split as /how-to-play.
 import Link from 'next/link'
 import { EVENTS, DOMAIN_ORDER } from '@/lib/eventData'
@@ -203,7 +203,7 @@ export default function Home() {
               </h2>
               <div className="lp-rainbow-line" style={{ width: '60px', marginBottom: '28px' }} />
               <p style={{ color: '#cccccc', fontSize: '16px', lineHeight: 1.8, marginBottom: '16px' }}>
-                Every event has a standard for every colour, from Kiwikiwi to Taniwha. Meet a colour in half
+                Every event has a standard for every colour, from Kiwikiwi to Taniwha. Meet a colour in six
                 of a domain&apos;s events and you hold that domain at that colour.
               </p>
               <p style={{ color: '#888', fontSize: '15px', lineHeight: 1.8, marginBottom: '16px' }}>
