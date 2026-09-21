@@ -2,6 +2,22 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.15.0.0] - 2026-09-22
+
+### Added
+- **Eight new events, 128 in all.** Pullover & Press and Loaded Lunge in Maximal Strength, Skull Hang in Calisthenics, Calf Raises in Anaerobic Endurance, and four Flexibility holds: Plie Squat, Seiza, Wrist Stretch and Reverse Wrist Stretch. Each comes with how-to, judge rules, a difficulty ladder and standards for every colour.
+- **Climbing can now be raced.** It moves to Body Awareness and gains a top level where you race another climber up the same rope or board. The fastest climber takes the win, recorded like any other game.
+
+### Changed
+- **Three carries are now named for what you carry.** Weighted Carry is Sandbag Carry, Wheelbarrow Push is Farmer Carry (a weight in each hand), and Wheelbarrow Pull is Weighted Drag (a sled behind you). Same bodyweight ladder, same standards.
+- **A domain colour never asks for more than six events.** Domains now differ in size (Flexibility holds sixteen), so a colour asks for half a domain's events, up to six. Growing a domain gives you more ways to reach its colour, never a longer list.
+- Climbing's results count toward Body Awareness now, not Calisthenics. Nobody held a colour in either, so nobody loses one.
+
+### Notes
+- Needs a database update, applied straight after this is deployed, with no game running. Until then, logging one of the new or renamed events fails to save, and colours citing them can't be released. Hard-refresh kaiwhakawā devices afterwards.
+- The standards for the eight new events are drafts: nobody has scored any of them yet, so they are the ones to review first.
+- The new events show an emoji until their icons are drawn.
+
 ## [0.14.1.0] - 2026-09-21
 
 ### Changed
