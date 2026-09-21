@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   GRADES, MA, TOP_RUNG, DOMAIN_COUNT, gradeForRung,
-  requiredForDomain, domainGrade, overallGrade,
+  requiredForDomain, domainGrade, overallGrade, DOMAIN_REQUIRED_CAP,
   AGE_SHIFT, thresholdFor, rungForScore, ageBand,
   DRILL_CAP, MIN_RATED_GAMES, ratingRung, gameEventRung,
   BODYWEIGHT_BANDS, JUNIOR_BODYWEIGHT_KG, ratioThresholdsKg, strengthBodyweight,
@@ -55,6 +55,33 @@ describe('rule 2 — the domain colour is the highest rung met in half your even
     expect(requiredForDomain(5)).toBe(3)
     expect(requiredForDomain(4)).toBe(2)
     expect(requiredForDomain(1)).toBe(1)
+  })
+
+  it('caps the ask at six however big the domain grows', () => {
+    // Sept 2026: Flexibility went to sixteen and Tāne held the bar at six.
+    expect(DOMAIN_REQUIRED_CAP).toBe(6)
+    expect(requiredForDomain(16)).toBe(6)
+    expect(requiredForDomain(14)).toBe(6)
+    expect(requiredForDomain(13)).toBe(6)
+    expect(requiredForDomain(11)).toBe(6)
+    expect(requiredForDomain(100)).toBe(6)
+  })
+
+  it('never asks a player for more events than they have available', () => {
+    // The cap is a CAP, not a flat 6: exemptions shrink the pool, and a flat
+    // six would ask a five-event player for six of five.
+    for (let n = 1; n <= 20; n++) expect(requiredForDomain(n), `${n} available`).toBeLessThanOrEqual(n)
+  })
+
+  it('awards the colour on six of a sixteen-event domain, not eight', () => {
+    const SIXTEEN = Array.from({ length: 16 }, (_, i) => `f${i + 1}`)
+    const six = new Map(SIXTEEN.slice(0, 6).map((s) => [s, 5]))
+    const r = domainGrade({ domainNumber: 7, eventSlugs: SIXTEEN, rungByEvent: six })
+    expect(r.availableCount).toBe(16)
+    expect(r.required).toBe(6)
+    expect(r.rung).toBe(5)
+    const five = new Map(SIXTEEN.slice(0, 5).map((s) => [s, 5]))
+    expect(domainGrade({ domainNumber: 7, eventSlugs: SIXTEEN, rungByEvent: five }).rung).toBe(0)
   })
 
   it('awards the highest rung met widely enough, not the best single event', () => {

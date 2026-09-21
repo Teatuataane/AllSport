@@ -48,7 +48,7 @@ async function all(path) {
 
 // The roster is parsed out of lib/eventData.ts rather than imported, for the
 // same .mjs reason. If this ever stops matching, the parsed count below will
-// not be 120 and the script says so instead of quietly reporting on a subset.
+// not be 128 and the script says so instead of quietly reporting on a subset.
 //
 // An event is GRADEABLE when it has at least one rung that is not the contest.
 // After the overhaul a ladder tops out in a `scoring: 'sport'` Game rung — that
@@ -81,19 +81,18 @@ function roster() {
 
 const DOMAINS = ['', 'Maximal Strength', 'Calisthenics', 'Power', 'Speed', 'Anaerobic Endurance',
   'Aerobic Endurance', 'Flexibility', 'Body Awareness', 'Coordination', 'Aim & Precision']
-// Half of the domain's gradeable events, rounded up. Mirrors DOMAIN_FRACTION in
-// lib/grading.ts, which is authoritative — this file is .mjs and cannot import
-// it. If that fraction ever changes, change this too.
-// MUST agree with requiredForDomain() in lib/grading.ts. This script is a .mjs
-// that parses the roster rather than importing it, so the rule is restated
-// here — half, rounded up, CAPPED at DOMAIN_REQUIRED_CAP. It drifted once
-// already: when Flexibility went to sixteen events this script reported a
-// threshold of 8 while the engine asked for 6.
-const DOMAIN_REQUIRED_CAP = 6
-const needed = (gradeable) => Math.min(Math.ceil(gradeable * 0.5), DOMAIN_REQUIRED_CAP)
+// The rule is IMPORTED, not restated. This script used to keep its own copy of
+// the half-the-domain rule, and it drifted: when Flexibility went to sixteen
+// events the copy reported a threshold of 8 while the engine asked for 6.
+// lib/grading.ts imports nothing, so Node 24's built-in type stripping loads it
+// directly and the command stays `node scripts/grading-readiness.mjs`.
+const { requiredForDomain: needed, DOMAIN_REQUIRED_CAP } = await import('../lib/grading.ts')
 
 const events = roster()
-console.log(`\nRoster parsed: ${events.length} events` + (events.length === 128 ? '' : '  ⚠ expected 128'))
+// Compared with the slugs the source declares, not a pinned count: a pinned 120
+// is what broke the standards generator when the roster grew.
+const declared = (readFileSync('lib/eventData.ts', 'utf8').match(/^\s+slug: '/gm) || []).length
+console.log(`\nRoster parsed: ${events.length} events` + (events.length === declared ? '' : `  ⚠ the source declares ${declared}`))
 
 // ── 1. Roster readiness ─────────────────────────────────────────────────────
 console.log('\n─── ROSTER READINESS ────────────────────────────────────────────────')
@@ -154,7 +153,7 @@ const rows = [...played.entries()].map(([pid, byDomain]) => {
 
 console.log('\n─── PLAYER READINESS ────────────────────────────────────────────────')
 console.log('Distinct gradeable events played per domain, against each domain\'s own')
-console.log(`threshold (half its gradeable events, capped at ${DOMAIN_REQUIRED_CAP}, so every domain asks 6).\n`)
+console.log(`threshold (half its gradeable events, capped at ${DOMAIN_REQUIRED_CAP}).\n`)
 console.log('PLAYER              ' + Array.from({ length: 10 }, (_, i) => String(i + 1).padStart(4)).join('') + '   DOMAINS MET')
 for (const r of rows) {
   console.log(r.name.slice(0, 18).padEnd(20) + r.counts.map((n) => String(n).padStart(4)).join('') + `      ${r.met}/10`)

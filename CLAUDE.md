@@ -1716,9 +1716,42 @@ domain-colour threshold capped. `20260920220344_roster_update_128.sql` is writte
   movements (bag against the body / a matched pair in the hands / a dragged sled), not just
   relabelled. The shared ¼–1× bodyweight ladder is unchanged.
 
-**THE SLUGS COULD MOVE BECAUSE PRODUCTION HELD ZERO ROWS FOR ALL THREE.** Verified before
-writing anything, not assumed. Normally a rename orphans every score ever set on the event
-and needs a `session_events.event_name` backfill. Here there was nothing to carry.
+**THE SLUGS COULD MOVE BECAUSE NOTHING STORED THEM.** Verified against production, not
+assumed: `results`, `workout_entries`, `workouts.planned_events` and `grade_exemptions`
+all held zero rows for the three old slugs. The migration asserts it again at apply time,
+so a workout logged in between aborts the push rather than becoming an entry the guard
+refuses to let anyone edit.
+
+**BUT THE FIRST CHECK ONLY LOOKED AT `results`, AND THAT WAS NOT ENOUGH.** The /ship red
+team caught it: `session_events` stores the event NAME for every draw, scored or not, and
+seven 'Weighted Carry' draws (June to September 2026) would have left their game reports
+pointing at an event `getEventByName()` cannot resolve. The migration repoints them to
+Sandbag Carry, **name AND `event_slug`**: session_events stores both, and the first repoint
+fixed only the name, leaving seven rows over a `weighted-carry` slug that the season-PR RPC,
+the swap list and the live screen's exclude list would all silently fail to match. The
+adversarial pass caught that one. That credits nobody, because their 15 result rows were already archived by
+`20260915040534`. **When renaming, check every table that stores a slug OR a name —
+`results`, `session_events`, `workout_entries`, `workouts.planned_events`,
+`grade_exemptions`, `activity_aliases` — not just the one that holds scores.**
+
+**DEPLOY CODE FIRST, THEN THE MIGRATION STRAIGHT AFTER, with no game or workout running.**
+The first draft said either order was safe, and that was wrong: `event_domains` is the
+WRITE GATE for workouts (the entries guard, `guard_workouts_write` and `record_entry_match`
+all resolve slugs through it), not just a rollup. In the gap, whichever side is ahead has
+its new slugs refused with 22023. A failed save, never bad data, but real for anyone
+logging in those minutes. `confer_grade` checks slugs against it too, so **release no
+colours until the migration has run**, and **hard-refresh every kaiwhakawā device
+afterwards**: an old-bundle tab can still draw 'Weighted Carry' into a new session, and
+session_events has no roster gate to stop it.
+
+**Climbing's history moved domain with it.** The engine reads an event's domain from the
+CURRENT roster, so its 7 historical results and their units now count toward Body
+Awareness. No colour was conferred in domain 2 or 8, so this demoted nobody; the migration
+refuses to run if a Calisthenics colour ever cites Climbing.
+
+**Dry-run against production 2026-09-21 in a rolled-back transaction**: every assertion
+passed, a negative control (expecting 129 rows) raised, and production was unchanged
+afterwards (120 rows, 7 draws, aliases untouched).
 
 **The standards sheet said Weighted Carry had 12 players, and that was TRUE WHEN WRITTEN.**
 Its counts come from a snapshot taken before `20260915040534` archived and deleted 15

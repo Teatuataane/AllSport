@@ -373,7 +373,7 @@ _No levels yet._
 - D3: Two-Hand Hang   (Bar resting behind the neck, both hands gripping)
 - D4: One-Hand Hang   (Bar resting behind the neck, one hand gripping)
 - D5: Banded Hands-Free   (No hands on the bar, heavy band assistance)
-- D6: Unassisted   (Bar behind the neck, no hands and no band)
+- D6: Free Hang   (Bar behind the neck, no hands and no band)
 
 > NEW EVENT, Sept 2026 (Tāne). Nobody has scored it, so there is no usage to calibrate against.
 > Deliberately the Chin Hang ladder unchanged. If this position turns out harder to hold,
@@ -1080,9 +1080,9 @@ _No levels yet._
 *Scored by: difficulty level, then longest hold*
 
 - D1: Supported Demi   (Hand on a wall or barre, knees bent to half depth, heels down)
-- D2: Demi Plie   (No support, thighs above parallel, heels down, knees tracking over the toes)
-- D3: Grand Plie   (Thighs at or below parallel, heels staying down throughout)
-- D4: Relevé Grand Plie   (Full depth held on the balls of both feet, heels lifted and still)
+- D2: Demi   (No support, thighs above parallel, heels down, knees tracking over the toes)
+- D3: Grand   (Thighs at or below parallel, heels staying down throughout)
+- D4: Relevé Grand   (Full depth held on the balls of both feet, heels lifted and still)
 
 > NEW EVENT, Sept 2026 (Tāne). Nobody has scored it, so there is no usage to calibrate against.
 
@@ -1114,7 +1114,7 @@ _No levels yet._
 
 - D1: Backs Down · Bent   (Backs of the hands on the floor, fingers pointing back, elbows soft)
 - D2: Backs Down · Straight   (Backs of the hands flat, fingers pointing back, arms straight)
-- D3: Fingers Turned Out   (Backs of the hands flat, fingers pointing away from the knees, arms straight)
+- D3: Fingers Forward   (Backs of the hands flat, fingers pointing away from the knees, arms straight)
 - D4: Backs Down · Loaded   (Backs of the hands flat with the hips stacked over them)
 
 > NEW EVENT, Sept 2026 (Tāne). Nobody has scored it, so there is no usage to calibrate against.

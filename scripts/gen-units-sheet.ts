@@ -27,7 +27,7 @@ const meaning = (rule: keyof typeof RULE_WORDS, per: number) => {
 const lines: string[] = [
   '# Workout units — review sheet',
   '',
-  'What ONE effort unit is, for each of the 120 events. Units are the training',
+  `What ONE effort unit is, for each of the ${EVENTS.length} events. Units are the training`,
   'gate on every colour: each domain colour needs a number of units in that',
   'domain since the last colour there (see `lib/grading.ts`). Any completed unit',
   'counts; there is no intensity floor.',

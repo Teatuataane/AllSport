@@ -221,6 +221,19 @@ describe('getEventByName', () => {
     expect(isTimedEffort(e.slug)).toBe(false)
   })
 
+  // The Sept 2026 additions are HOLDS: longer wins. A hold wrongly listed in
+  // TIMED_EFFORT_SLUGS would be encoded inverted and rank the shortest hold
+  // first, which is the Climbing bug of June 2026 in the other direction.
+  it.each(['skull-hang', 'plie-squat', 'seiza', 'wrist-stretch', 'reverse-wrist-stretch'])(
+    '%s is a hold, not a timed effort', (slug) => {
+      const faster = isTimedEffort(slug)
+      expect(faster).toBe(false)
+      // Longer holds encode higher inside a tier, and any hold on a harder tier
+      // outranks the longest hold on the one below.
+      expect(encodeDiffTime(0, 60, faster)).toBeGreaterThan(encodeDiffTime(0, 30, faster))
+      expect(encodeDiffTime(1, 1, faster)).toBeGreaterThan(encodeDiffTime(0, 600, faster))
+    })
+
   it('the three carries share one bodyweight ladder and rank fastest-first', () => {
     // The Sept 2026 grading rebuild moved all three from fixed kilos to fractions
     // of bodyweight, topping out at a bodyweight load, so they now share the

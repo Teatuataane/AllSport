@@ -17,15 +17,19 @@
 --   RENAMED (3)  Weighted Carry -> Sandbag Carry, Wheelbarrow Push -> Farmer
 --                Carry, Wheelbarrow Pull -> Weighted Drag. THE SLUGS MOVE TOO.
 --
--- WHY NO session_events SWEEP FOR THE THREE CARRIES. Renaming an event normally
--- orphans its whole PR history (CLAUDE.md, August 2026). Verified against
--- production on 2026-09-21 before writing this: `results` holds ZERO rows for
--- all three names, so there is no history to carry over and nothing to orphan.
--- Weighted Carry's 15 historical rows from 12 players were archived and deleted
--- by 20260915040534 when its ladder changed from fixed weights to bodyweight
--- fractions; they live in results_grading_archive_20260915040534 and are NOT in
--- `results`. That archive can no longer be restored onto a live event of that
--- name, which is the one cost of this rename and is accepted.
+-- WHY THE SLUGS COULD MOVE. Renaming an event normally orphans its whole PR
+-- history (CLAUDE.md, August 2026). Verified against production on 2026-09-21
+-- before writing this: `results`, `workout_entries`, `workouts.planned_events`
+-- and `grade_exemptions` hold ZERO rows for all three, so no score, plan or
+-- exemption is carried or orphaned. Weighted Carry's 15 historical rows from 12
+-- players were archived and deleted by 20260915040534 when its ladder changed
+-- from fixed weights to bodyweight fractions; they live in
+-- results_grading_archive_20260915040534 and are NOT in `results`.
+--
+-- The one place the old NAME survives is session_events, which records every
+-- draw. Seven 'Weighted Carry' draws are repointed below; see there for why that
+-- credits nobody. An earlier draft of this file checked `results` only and
+-- would have left those game reports pointing at an event that no longer exists.
 --
 -- DOMAINS ARE NO LONGER EVEN. Tāne accepted 14/12/12/12/13/12/16/13/12/12
 -- rather than trim to twelve. The old assertion that every domain holds exactly
@@ -33,10 +37,60 @@
 -- invariant that still matters is that no domain can be drained below the six
 -- events a colour asks for.
 --
--- Code-first or migration-first are both safe: event_domains feeds domain
--- rollup only, and every read of it is its own query.
+-- DEPLOY ORDER: CODE FIRST, THEN THIS MIGRATION STRAIGHT AFTER, WITH NO GAME
+-- OR WORKOUT RUNNING. An earlier draft of this header said either order was
+-- safe, and that was wrong: event_domains is not only a rollup table, it is the
+-- WRITE GATE for workouts. The workout-entries guard rejects any event_slug it
+-- cannot find here (20260920053207), guard_workouts_write checks every
+-- planned_events slug against it (20260920040735), and record_entry_match
+-- resolves an entry's event name through it. So between the two steps:
+--   code first    -> the new bundle offers 8 new events and 3 new slugs this
+--                    table does not know yet; logging one fails with 22023.
+--   migration first -> the old bundle still sends weighted-carry and
+--                    wheelbarrow-*, which this table no longer knows.
+-- Either way the window is a failed save, never bad data. Code first matches
+-- the project rule for renames, and keeps the window to the minutes it takes
+-- to run this file. The same window also refuses confer_grade for any colour
+-- citing a new, renamed or moved slug (it checks each slug's domain here), so
+-- release no colours until this has run.
+--
+-- AFTER applying: hard-refresh every kaiwhakawā device. A tab still on the old
+-- bundle can create a session that draws 'Weighted Carry', and session_events
+-- has no roster gate, so that row lands after this file's assertions have run.
+--
+-- CLIMBING'S HISTORY MOVES DOMAIN WITH IT. The grading engine reads an event's
+-- domain from the CURRENT roster, so the 7 historical Climbing results and
+-- their training units now count toward Body Awareness, not Calisthenics.
+-- Checked 2026-09-21: grade_awards holds no colour in domain 2 or 8, so this
+-- changes nobody's conferred colour. The assertion at the end keeps it so.
 
 BEGIN;
+
+-- ─── session_events: seven historical draws still say 'Weighted Carry' ──────
+--
+-- The zero-rows check above covered `results`. It did not cover
+-- session_events, which stores the event NAME for every draw, scored or not.
+-- Checked 2026-09-21: 7 'Weighted Carry' draws (2026-06-11 to 2026-09-05), none
+-- in an active session, and no Wheelbarrow draw at all. Left alone, every one
+-- of those game reports would show an event getEventByName() cannot resolve.
+--
+-- Repointing credits nobody with anything: those draws' 15 result rows were
+-- archived and deleted by 20260915040534, so no PR moves. And the ladder the
+-- archived rows were scored on is the one Sandbag Carry carries unchanged.
+-- The wheelbarrow lines are no-ops today and are kept so this file states the
+-- whole rename rather than only the part that happened to have data.
+-- session_events stores the SLUG as well as the name (written by
+-- app/scoring/page.tsx), and the slug is what get_player_season_pr, the swap
+-- list and the live screen's exclude list read. An earlier draft of this file
+-- repointed the name only, leaving seven rows reading 'Sandbag Carry' over a
+-- 'weighted-carry' slug that resolves to nothing: the adversarial review in
+-- /ship caught it.
+UPDATE session_events SET event_name = 'Sandbag Carry', event_slug = 'sandbag-carry'
+ WHERE event_name = 'Weighted Carry' OR event_slug = 'weighted-carry';
+UPDATE session_events SET event_name = 'Farmer Carry',  event_slug = 'farmer-carry'
+ WHERE event_name = 'Wheelbarrow Push' OR event_slug = 'wheelbarrow-push';
+UPDATE session_events SET event_name = 'Weighted Drag', event_slug = 'weighted-drag'
+ WHERE event_name = 'Wheelbarrow Pull' OR event_slug = 'wheelbarrow-pull';
 
 -- event_domains: the roster mirrored into SQL, 128 rows.
 -- Per domain: 1: 14, 2: 12, 3: 12, 4: 12, 5: 13, 6: 12, 7: 16, 8: 13, 9: 12, 10: 12.
@@ -198,6 +252,46 @@ BEGIN
 
   IF NOT EXISTS (SELECT 1 FROM event_domains WHERE slug = 'rope-climb' AND domain_number = 8) THEN
     RAISE EXCEPTION 'roster mirror: Climbing did not land in Body Awareness';
+  END IF;
+
+  -- Every guard reads `WHERE slug = ...` and event_domains.slug carries no
+  -- UNIQUE constraint, so a duplicated slug would let a lookup pick either row.
+  IF EXISTS (SELECT 1 FROM event_domains GROUP BY slug HAVING count(*) > 1) THEN
+    RAISE EXCEPTION 'roster mirror: a slug is seeded twice';
+  END IF;
+
+  -- The exact shape, not just a floor: a mis-seeded row that lands in the wrong
+  -- domain would still pass "at least 12".
+  IF EXISTS (
+    SELECT 1 FROM (VALUES (1,14),(2,12),(3,12),(4,12),(5,13),(6,12),(7,16),(8,13),(9,12),(10,12)) AS want(d, n)
+     WHERE n <> (SELECT count(*) FROM event_domains WHERE domain_number = want.d)
+  ) THEN
+    RAISE EXCEPTION 'roster mirror: per-domain counts are not 14/12/12/12/13/12/16/13/12/12';
+  END IF;
+
+  IF (SELECT count(*) FROM event_domains WHERE slug IN ('sandbag-carry', 'farmer-carry', 'weighted-drag')) <> 3 THEN
+    RAISE EXCEPTION 'roster mirror: a renamed carry slug is missing';
+  END IF;
+
+  -- Nothing may still store a retired slug. All four were zero on 2026-09-21;
+  -- asserting it here means a workout logged between that check and this
+  -- migration aborts the push instead of becoming an entry nobody can edit
+  -- (the entries guard re-checks event_slug against event_domains on UPDATE).
+  IF EXISTS (SELECT 1 FROM workout_entries WHERE event_slug IN ('weighted-carry', 'wheelbarrow-push', 'wheelbarrow-pull'))
+     OR EXISTS (SELECT 1 FROM workouts WHERE planned_events && ARRAY['weighted-carry', 'wheelbarrow-push', 'wheelbarrow-pull'])
+     OR EXISTS (SELECT 1 FROM grade_exemptions WHERE event_slug IN ('weighted-carry', 'wheelbarrow-push', 'wheelbarrow-pull')) THEN
+    RAISE EXCEPTION 'roster mirror: a workout, plan or exemption still stores a retired carry slug';
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM session_events
+              WHERE event_name IN ('Weighted Carry', 'Wheelbarrow Push', 'Wheelbarrow Pull')
+                 OR event_slug IN ('weighted-carry', 'wheelbarrow-push', 'wheelbarrow-pull')) THEN
+    RAISE EXCEPTION 'roster mirror: a session_events row still carries a retired carry name or slug';
+  END IF;
+
+  -- Climbing moved out of Calisthenics. No colour may rest on it there.
+  IF EXISTS (SELECT 1 FROM grade_awards WHERE domain_number = 2 AND 'rope-climb' = ANY(events)) THEN
+    RAISE EXCEPTION 'roster mirror: a Calisthenics colour cites Climbing, which has moved to Body Awareness';
   END IF;
 END $$;
 

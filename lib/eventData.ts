@@ -240,7 +240,7 @@ export const EVENTS: EventData[] = [
     inputMode: 'strength',
     hasDifficultyTiers: false,
     howToPerform: "Lie back with the barbell on the floor behind your head. Pull it over your face and down to your chest in one continuous movement, then press it to full lockout with your arms straight. Lower under control.",
-    rules: "The bar travels from behind the head to the chest in one pullover — no rolling it up the body in stages. The press is strict from the chest to full lockout. Barbell or dumbbells allowed. Score is your heaviest successful pullover and press.",
+    rules: "The bar travels from behind the head to the chest in one pullover — no rolling it up the body in stages. The press is strict from the chest to full lockout. Barbell or dumbbells allowed; with two dumbbells, score their combined weight. Score is your heaviest successful pullover and press.",
     videoPlaceholder: true,
     emoji: '🏋️',
   },
@@ -255,7 +255,7 @@ export const EVENTS: EventData[] = [
     inputMode: 'strength',
     hasDifficultyTiers: false,
     howToPerform: "Take the load on your back, in the front rack, or in each hand. Step forward into a lunge until the back knee touches or nearly touches the floor and the front thigh is at least parallel. Drive back to standing under control, then change legs.",
-    rules: "Both legs must be lunged for the lift to count — one rep each side. The back knee comes to within a fist of the floor and the front shin stays roughly vertical. Barbell, dumbbells or kettlebells allowed; declare which before you lift. Score is your heaviest successful lunge.",
+    rules: "Both legs must be lunged for the lift to count — one rep each side. The back knee comes to within a fist of the floor and the front shin stays roughly vertical. Barbell, dumbbells or kettlebells allowed; declare which before you lift, and with two implements score their combined weight. Score is your heaviest successful lunge.",
     videoPlaceholder: true,
     emoji: '🏋️',
   },
@@ -433,8 +433,10 @@ export const EVENTS: EventData[] = [
   },
   {
     // Tāne, Sept 2026: "similar to the chin hang but performed using the back
-    // of the neck/skull". Same ladder shape as Chin Hang, one rung per level of
-    // assistance removed. A hold — longer wins — so NOT a timed effort.
+    // of the neck/skull", and confirmed in /ship review: the SAME ladder as Chin
+    // Hang, two hands, one hand, banded hands-free, then a free hang. The free
+    // hang is the point of the event, so the rules must not forbid it. A hold,
+    // longer wins, so NOT a timed effort.
     slug: 'skull-hang',
     name: 'Skull Hang',
     domain: 'Calisthenics',
@@ -447,10 +449,10 @@ export const EVENTS: EventData[] = [
       { level: 3, name: 'Two-Hand Hang', detail: 'Bar resting behind the neck, both hands gripping' },
       { level: 4, name: 'One-Hand Hang', detail: 'Bar resting behind the neck, one hand gripping' },
       { level: 5, name: 'Banded Hands-Free', detail: 'No hands on the bar, heavy band assistance' },
-      { level: 6, name: 'Unassisted', detail: 'Bar behind the neck, no hands and no band' },
+      { level: 6, name: 'Free Hang', detail: 'Bar behind the neck, no hands and no band' },
     ],
     howToPerform: "Pull up until the bar sits behind your neck, across the base of the skull and the top of the traps, using the grip or assistance your tier allows. Keep your chest up and your shoulders pulled down away from your ears. Hold as long as you can.",
-    rules: "Declare your tier before starting. The bar stays behind the neck for the whole hold — the timer stops when it slides onto the shoulders or the head drops through. Never hang the full bodyweight from the neck alone: the shoulders and traps carry the load, and a kaiwhakawā will stop the hold if they do not. Longest hold at your tier wins; a higher tier always outranks a lower one.",
+    rules: "Declare your tier before starting. The bar stays behind the neck for the whole hold — the timer stops when it slides onto the shoulders or the head drops through. The upper tiers load the neck fully, so build up through the tiers rather than starting at the top; a kaiwhakawā will stop any hold where the head is pulled forward or the neck is strained. Longest hold at your tier wins; a higher tier always outranks a lower one.",
     videoPlaceholder: true,
     emoji: '🧗',
   },
@@ -1195,9 +1197,9 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: true,
     difficultyTiers: [
       { level: 1, name: 'Supported Demi', detail: 'Hand on a wall or barre, knees bent to half depth, heels down' },
-      { level: 2, name: 'Demi Plie', detail: 'No support, thighs above parallel, heels down, knees tracking over the toes' },
-      { level: 3, name: 'Grand Plie', detail: 'Thighs at or below parallel, heels staying down throughout' },
-      { level: 4, name: 'Relevé Grand Plie', detail: 'Full depth held on the balls of both feet, heels lifted and still' },
+      { level: 2, name: 'Demi', detail: 'No support, thighs above parallel, heels down, knees tracking over the toes' },
+      { level: 3, name: 'Grand', detail: 'Thighs at or below parallel, heels staying down throughout' },
+      { level: 4, name: 'Relevé Grand', detail: 'Full depth held on the balls of both feet, heels lifted and still' },
     ],
     howToPerform: "Stand with your feet wide and your toes turned out, heels down. Keeping your torso upright and your knees tracking out over your toes, bend to the depth your tier calls for and hold.",
     rules: "Declare your tier before starting. Torso stays upright — leaning forward to reach depth ends the hold. Knees track over the toes and must not fall inward. On every tier but Relevé, both heels stay flat on the floor; on Relevé both heels stay lifted and still. Longest hold at your tier wins; a higher tier always outranks a lower one.",
@@ -1217,7 +1219,7 @@ export const EVENTS: EventData[] = [
       { level: 3, name: 'Toes Tucked', detail: 'Hips on the heels with the toes tucked under' },
       { level: 4, name: 'Reclined Kneel', detail: 'Sitting on the heels and leaning back, shoulders toward the floor' },
     ],
-    howToPerform: "Kneel with your shins flat and your big toes together, then sit your hips back onto your heels in the position your tier calls for. Sit tall, breathe, and hold.",
+    howToPerform: "Kneel with your shins on the floor and your feet as your tier calls for, then sit your hips back onto your heels. Sit tall, breathe, and hold.",
     rules: "Declare your tier before starting. Hips stay in contact with the heels for the whole hold — lifting away ends it. Hands rest on the thighs and may not take weight, except on Reclined Kneel where they may brace behind you. Longest hold at your tier wins; a higher tier always outranks a lower one.",
     videoPlaceholder: true,
     emoji: '🧘',
@@ -1250,7 +1252,7 @@ export const EVENTS: EventData[] = [
     difficultyTiers: [
       { level: 1, name: 'Backs Down · Bent', detail: 'Backs of the hands on the floor, fingers pointing back, elbows soft' },
       { level: 2, name: 'Backs Down · Straight', detail: 'Backs of the hands flat, fingers pointing back, arms straight' },
-      { level: 3, name: 'Fingers Turned Out', detail: 'Backs of the hands flat, fingers pointing away from the knees, arms straight' },
+      { level: 3, name: 'Fingers Forward', detail: 'Backs of the hands flat, fingers pointing away from the knees, arms straight' },
       { level: 4, name: 'Backs Down · Loaded', detail: 'Backs of the hands flat with the hips stacked over them' },
     ],
     howToPerform: "Kneel and place the BACKS of your hands flat on the floor in the direction your tier calls for. Straighten your arms and ease your weight over them until you feel the stretch through the back of the forearm. Hold.",

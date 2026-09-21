@@ -64,7 +64,12 @@ function parseEvents(src) {
       tiers,
     })
   }
-  if (events.length !== 120) throw new Error(`parsed ${events.length} events from ${SRC}, expected 120`)
+  // The roster size is not pinned here: it was, at 120, and the Sept 2026
+  // change to 128 would have aborted the next regeneration. What this guards
+  // against is a parser that silently reads a SUBSET, so compare against the
+  // slug count in the source instead of a number someone has to remember.
+  const declared = (src.match(/^\s+slug: '/gm) || []).length
+  if (events.length !== declared) throw new Error(`parsed ${events.length} events from ${SRC}, but it declares ${declared}`)
   return events
 }
 

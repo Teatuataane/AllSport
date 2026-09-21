@@ -94,9 +94,19 @@ describe('training load migration', () => {
   for (const name of readdirSync(dir).sort()) {
     if (name <= '20260918023038_training_load.sql') continue
     const later = readFileSync(`${dir}/${name}`, 'utf8')
-    for (const u of later.matchAll(/UPDATE activity_aliases SET event_slug = '([^']+)'\s+WHERE alias (?:IN \(([^)]*)\)|= ('[^']*'))/g)) {
+    // A later migration can reach the table three ways. Each is replayed, and a
+    // form this parser does not understand FAILS the test rather than being
+    // skipped — skipping is exactly how an orphaned alias would get through.
+    for (const ins of later.matchAll(/INSERT INTO (?:public\.)?activity_aliases[^;]*;/g)) {
+      for (const t of ins[0].matchAll(/\('([^']+)', '([^']+)'\)/g)) effective.set(t[1], t[2])
+    }
+    for (const u of later.matchAll(/UPDATE (?:public\.)?activity_aliases SET event_slug = '([^']+)'\s+WHERE alias (?:IN \(([^)]*)\)|= ('[^']*'))/g)) {
       for (const a of (u[2] ?? u[3]).matchAll(/'([^']+)'/g)) effective.set(a[1], u[1])
     }
+    const touches = (later.match(/(?:INSERT INTO|UPDATE|DELETE FROM) (?:public\.)?activity_aliases/g) ?? []).length
+    const understood = (later.match(/INSERT INTO (?:public\.)?activity_aliases/g) ?? []).length
+      + (later.match(/UPDATE (?:public\.)?activity_aliases SET event_slug = '[^']+'\s+WHERE alias (?:IN \(|= ')/g) ?? []).length
+    if (touches !== understood) throw new Error(`${name} changes activity_aliases in a form this test cannot replay`)
   }
   const pairs = [...effective.entries()]
 

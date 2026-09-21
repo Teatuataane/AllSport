@@ -114,6 +114,15 @@ describe('the standards approved in review come back out of the engine', () => {
     for (const w of ['Farmer Carry', 'Weighted Drag']) expect(std(w).all).toEqual(all)
   })
 
+  it('Climbing: the Game rung makes it a game event with six drill colours', () => {
+    // Sept 2026: the Game rung on top means drills stop at Kahurangi and the
+    // head-to-head rating gives Poroporo and above. D9 carries no threshold.
+    const s = std('Climbing')
+    expect(s.game).toBe(true)
+    expect(s.all).toHaveLength(DRILL_CAP)
+    expect(Math.max(...s.all!)).toBeLessThan(8 * 10000)
+  })
+
   it('Vertical Jump: Taniwha is 64cm for men and 50cm for women', () => {
     const s = std('Vertical Jump')
     expect(s.M!.at(-1)).toBe(64)

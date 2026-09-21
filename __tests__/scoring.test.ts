@@ -532,6 +532,40 @@ describe('sport records survive the move onto tiered ladders', () => {
   })
 })
 
+describe('Climbing: a Game rung on top of a raced ladder (Sept 2026)', () => {
+  const ev = getEventBySlug('rope-climb')!
+  const idx = ev.difficultyTiers!.findIndex(t => t.scoring === 'sport')
+  const game = ev.difficultyTiers![idx].name
+  const mk = (res: 'win' | 'draw' | 'loss') =>
+    computeScoreVals('difficulty+time', ev, vals({ difficultyTier: game, sportResult: res }))!
+
+  it('tops the ladder at D9 and is a timed effort in Body Awareness', () => {
+    expect(ev.domainNumber).toBe(8)
+    expect(isTimedEffort(ev.slug)).toBe(true)
+    expect(idx).toBe(8)
+    expect(idx).toBe(ev.difficultyTiers!.length - 1)
+  })
+
+  it('encodes the result un-inverted: win 8*10000+2, draw +1, loss +0', () => {
+    expect(mk('win').raw_score).toBe(8 * 10000 + 2)
+    expect(mk('draw').raw_score).toBe(8 * 10000 + 1)
+    expect(mk('loss').raw_score).toBe(8 * 10000 + 0)
+  })
+
+  it('a loss still outranks the fastest possible D8 Pegboard Climb', () => {
+    const d8 = ev.difficultyTiers![idx - 1].name
+    const fastest = computeScoreVals('difficulty+time', ev, vals({ difficultyTier: d8, timeMins: '0', timeSecs: '1' }))!
+    expect(fastest.raw_score).toBe(7 * 10000 + (10000 - 1))
+    expect(mk('loss').raw_score).toBeGreaterThan(fastest.raw_score)
+  })
+
+  it('prefills a stored win as a result, not a 9998-second climb', () => {
+    const p = _vfr('difficulty+time', ev, 8 * 10000 + 2)
+    expect(p.sportResult).toBe('win')
+    expect(p.timeSecs).toBeUndefined()
+  })
+})
+
 describe('a Game rung on a TIMED-EFFORT ladder is not a time', () => {
   // 100m Sprint, 200m Sprint and T-Race each top a timed ladder with a Game
   // rung. decodeDiffTime would turn a win (term 2) into 10000 - 2 = 9998 seconds.
