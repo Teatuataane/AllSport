@@ -105,7 +105,7 @@ describe('logged workouts as evidence', () => {
   })
 
   it('carries the source through to the event colour', () => {
-    const player: GradePlayer = { division: "Men's", ageYears: 30, gender: 'Male', bodyweightBand: null }
+    const player: GradePlayer = { division: "Men's", ageYears: 30, gender: 'Male' }
     const cycling = getEventByName('Cycling')!
     const g = eventGrade(cycling, [
       { event_name: 'Cycling', raw_score: 19935, weight_kg: null, difficulty_tier: '500m', source: 'game' },
@@ -198,7 +198,7 @@ describe('matching activities', () => {
 
 describe('a colour earned only by rating', () => {
   it('names the game as its source', () => {
-    const player: GradePlayer = { division: "Men's", ageYears: 30, gender: 'Male', bodyweightBand: null }
+    const player: GradePlayer = { division: "Men's", ageYears: 30, gender: 'Male' }
     const w = getEventByName('Wrestling')!
     expect(eventGrade(w, [], player, { rating: 1310, games: 10 }).source).toBe('game')
     expect(eventGrade(w, [], player).source).toBeUndefined()

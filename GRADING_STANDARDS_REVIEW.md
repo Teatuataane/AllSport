@@ -17,7 +17,7 @@ How a value is written:
 - `D3 · 20` — twenty reps on level D3. `D3 · 30s` or `D3 · 1:30` — a hold that long on D3.
 - `D3 · ≤ 4:05` — D3 done in 4:05 or faster. `D3 · finish` — D3 done, any time.
 - `D6 · +10kg` — the weighted top level with 10kg added. `D2 · 15m` — a 15m throw on D2; `D1 · any` — any throw.
-- `1.1× BW` — a lift of 1.1 times the middle of your bodyweight band. `empty bar` — any lift.
+- `1.1× BW` — a lift of 1.1 times your bodyweight on the day. `empty bar` — any lift.
 - `64cm`, `1:30`, `12kg · 30s` — a jump, a hold, a load held for that long.
 
 Three rules:

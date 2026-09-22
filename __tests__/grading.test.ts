@@ -4,7 +4,7 @@ import {
   requiredForDomain, domainGrade, overallGrade, DOMAIN_REQUIRED_CAP,
   AGE_SHIFT, thresholdFor, rungForScore, ageBand,
   DRILL_CAP, MIN_RATED_GAMES, ratingRung, gameEventRung,
-  BODYWEIGHT_BANDS, JUNIOR_BODYWEIGHT_KG, ratioThresholdsKg, strengthBodyweight,
+  BODYWEIGHT_BANDS, JUNIOR_BODYWEIGHT_KG, ratioThresholdsKg, bandMidpointKg, bodyweightOn,
   type DomainGradeResult,
 } from '@/lib/grading'
 
@@ -391,12 +391,52 @@ describe('strength is a ratio of bodyweight', () => {
     expect(rungForScore(15, junior, 'U14')).toBe(3)
   })
 
-  it('takes a junior at 50kg, an adult at their band, and grades no adult without one', () => {
-    expect(strengthBodyweight('U12', null)).toBe(50)
-    expect(strengthBodyweight('U16', '90 to 100kg')).toBe(50)
-    expect(strengthBodyweight('Open', '70 to 80kg')).toBe(75)
-    expect(strengthBodyweight('Masters', null)).toBeNull()
-    expect(strengthBodyweight('Open', 'not a band')).toBeNull()
+  it('reads a stored band back as its midpoint, and nothing else', () => {
+    // The legacy bridge: bodyweight is declared as an exact number now, and
+    // this only exists so a band stored before 20260922213125 still resolves.
+    expect(bandMidpointKg('70 to 80kg')).toBe(75)
+    expect(bandMidpointKg('90 to 100kg')).toBe(95)
+    expect(bandMidpointKg('not a band')).toBeNull()
+    expect(bandMidpointKg(null)).toBeNull()
+    expect(bandMidpointKg(undefined)).toBeNull()
+  })
+})
+
+describe('resolving a bodyweight to the day a lift was done', () => {
+  const d = (measured_on: string, kg: number) => ({ measured_on, kg })
+
+  it('takes the most recent declaration at or before the day', () => {
+    const rows = [d('2026-01-01', 70), d('2026-06-01', 80), d('2026-09-01', 90)]
+    expect(bodyweightOn(rows, '2026-07-15')).toBe(80)
+    expect(bodyweightOn(rows, '2026-06-01')).toBe(80)   // inclusive
+    expect(bodyweightOn(rows, '2026-05-31')).toBe(70)
+  })
+
+  it('carries the last declaration forward indefinitely', () => {
+    // Deliberate and provisional: an expiry would retroactively un-grade the
+    // history seeded from the old bands. See bodyweightOn's comment.
+    expect(bodyweightOn([d('2026-01-01', 70)], '2030-01-01')).toBe(70)
+  })
+
+  it('never reaches forward for a declaration made later', () => {
+    // The whole point of dating them: a weight declared today cannot re-price
+    // a lift done last year.
+    expect(bodyweightOn([d('2026-09-01', 60)], '2026-08-31')).toBeNull()
+  })
+
+  it('has nothing to say without a day or a declaration', () => {
+    expect(bodyweightOn([], '2026-09-01')).toBeNull()
+    expect(bodyweightOn([d('2026-01-01', 70)], null)).toBeNull()
+    expect(bodyweightOn([d('2026-01-01', 70)], undefined)).toBeNull()
+  })
+
+  it('refuses a nonsense weight rather than dividing by it', () => {
+    expect(bodyweightOn([d('2026-01-01', 0)], '2026-02-01')).toBeNull()
+  })
+
+  it('does not assume the rows arrive in order', () => {
+    const rows = [d('2026-09-01', 90), d('2026-01-01', 70), d('2026-06-01', 80)]
+    expect(bodyweightOn(rows, '2026-07-15')).toBe(80)
   })
 })
 

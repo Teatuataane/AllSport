@@ -166,7 +166,7 @@ describe('scoreColumns writes exactly what the live session used to write', () =
 // ─── Event colour: which source earned it ────────────────────────────────────
 
 describe('the source behind an event colour', () => {
-  const adult: GradePlayer = { division: "Men's", ageYears: 30, gender: 'Male', bodyweightBand: null }
+  const adult: GradePlayer = { division: "Men's", ageYears: 30, gender: 'Male' }
   const tennis = ev('Tennis')
   const drill = tennis.difficultyTiers!.find(t => t.scoring !== 'sport')!.name
   const row = (raw: number, source: 'game' | 'witnessed' | 'solo' | undefined, tier = drill) =>
@@ -204,9 +204,11 @@ describe('the source behind an event colour', () => {
   })
 
   it('takes the source from the heaviest lift on a bodyweight-ratio event', () => {
-    const junior: GradePlayer = { division: 'Juniors', ageYears: 14, gender: 'Male', bodyweightBand: null }
+    const junior: GradePlayer = { division: 'Juniors', ageYears: 14, gender: 'Male' }
+    // Juniors declare a bodyweight like everyone else now; they used to be
+    // graded as a fixed 50kg lifter whatever they weighed.
     const lift = (kg: number, source: 'solo' | 'witnessed') =>
-      ({ event_name: 'Deadlift', raw_score: kg, weight_kg: kg, difficulty_tier: null, source })
+      ({ event_name: 'Deadlift', raw_score: kg, weight_kg: kg, difficulty_tier: null, source, bodyweightKg: 50 })
     const g = eventGrade(ev('Deadlift'), [lift(60, 'witnessed'), lift(40, 'solo')], junior)
     expect(g.rung).toBeGreaterThan(0)
     expect(g.source).toBe('witnessed')

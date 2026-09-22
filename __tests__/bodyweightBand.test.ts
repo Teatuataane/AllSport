@@ -18,10 +18,10 @@ const sql = readFileSync(`${dir}/${readdirSync(dir).find(n => n.endsWith('_bodyw
 const code = sql.split('\n').filter(l => !l.trim().startsWith('--')).join('\n')
 
 const deadlift = getEventByName('Deadlift')!
-const lifter = (bodyweightBand: string | null): GradePlayer =>
-  ({ division: "Men's", ageYears: 30, gender: 'Male', bodyweightBand })
-const lift = (kg: number, bodyweightBand?: string | null): GradeResultRow =>
-  ({ event_name: 'Deadlift', raw_score: kg, weight_kg: kg, difficulty_tier: null, ...(bodyweightBand !== undefined ? { bodyweightBand } : {}) })
+const lifter = (): GradePlayer => ({ division: "Men's", ageYears: 30, gender: 'Male' })
+/** A deadlift of `kg`, done at a declared bodyweight of `bw`. */
+const lift = (kg: number, bw?: number | null): GradeResultRow =>
+  ({ event_name: 'Deadlift', raw_score: kg, weight_kg: kg, difficulty_tier: null, ...(bw !== undefined ? { bodyweightKg: bw } : {}) })
 const rungOf = (rows: GradeResultRow[], p: GradePlayer) => eventGrade(deadlift, rows, p).rung
 
 /** The name of the one trigger a migration file creates on a table. */
@@ -106,71 +106,68 @@ describe('the migration', () => {
   })
 })
 
-describe('the first band', () => {
-  it('grades an unstamped lift against the first band, not the current one', () => {
-    // Set "90 to 100kg" first, later "Under 50kg": a lift logged while they had
-    // no band still grades at 90 to 100kg. Clearing and resetting gains nothing.
-    const p: GradePlayer = { ...lifter('Under 50kg'), firstBodyweightBand: '90 to 100kg' }
-    expect(rungOf([lift(100, null)], p)).toBe(5)
+describe('grading against the bodyweight of the day', () => {
+  // A lift is graded against the bodyweight declared for the day it was done
+  // (lib/loadGrades.ts resolves it; these tests pin the engine reading it).
+  // Deadlift's ladder puts a 100kg pull at rung 5 for a 95kg lifter and rung 11
+  // for a 45kg one. That gap is why the number is per-row and not per-profile.
+
+  it('grades a lift against the bodyweight on the row', () => {
+    expect(rungOf([lift(100, 95)], lifter())).toBe(5)
+    expect(rungOf([lift(100, 45)], lifter())).toBe(11)
   })
 
-  it('falls back to the current band before the migration (undefined first band)', () => {
-    expect(rungOf([lift(100, null)], lifter('90 to 100kg'))).toBe(5)
-  })
-
-  it('never overrides a band stamped on the row', () => {
-    const p: GradePlayer = { ...lifter('90 to 100kg'), firstBodyweightBand: '90 to 100kg' }
-    expect(rungOf([lift(100, 'Under 50kg')], p)).toBe(11)
-  })
-})
-
-describe('grading against the band of the day', () => {
-  it('grades a lift against the band on the row', () => {
-    expect(rungOf([lift(100, '90 to 100kg')], lifter('90 to 100kg'))).toBe(5)
-    expect(rungOf([lift(100, 'Under 50kg')], lifter('Under 50kg'))).toBe(11)
-  })
-
-  it('does not re-grade a stamped lift when the player re-declares', () => {
-    // The exploit, closed: the lift stays rung 5 however the profile changes.
-    const honest = [lift(100, '90 to 100kg')]
-    expect(rungOf(honest, lifter('90 to 100kg'))).toBe(5)
-    expect(rungOf(honest, lifter('Under 50kg'))).toBe(5)
+  it('cannot be re-priced by a later declaration', () => {
+    // The exploit, closed by construction: nothing about the player is read,
+    // so there is no "current" bodyweight for a new entry to re-grade with.
+    const honest = [lift(100, 95)]
+    expect(rungOf(honest, lifter())).toBe(5)
+    expect(rungOf(honest, lifter())).toBe(5)
   })
 
   it('takes the best RUNG, not the heaviest lift', () => {
-    // 80kg at a light bodyweight is a better lift than 100kg at a heavy one,
-    // and the old code picked by weight_kg alone.
-    const rows = [lift(100, '90 to 100kg'), lift(80, 'Under 50kg')]
-    expect(rungOf(rows, lifter('90 to 100kg'))).toBe(10)
-    expect(eventGrade(deadlift, rows, lifter('90 to 100kg')).rung)
-      .toBeGreaterThan(rungOf([lift(100, '90 to 100kg')], lifter('90 to 100kg')))
+    // 80kg at 45kg bodyweight is a better lift than 100kg at 95kg, and picking
+    // by weight_kg alone got that backwards.
+    const rows = [lift(100, 95), lift(80, 45)]
+    expect(rungOf(rows, lifter())).toBe(10)
+    expect(rungOf(rows, lifter())).toBeGreaterThan(rungOf([lift(100, 95)], lifter()))
   })
 
-  it('falls back to the current band for a row written before the stamp', () => {
-    // Unstamped rows must behave exactly as they did before the migration, so
-    // the code is safe to deploy in either order.
-    expect(rungOf([lift(100, null)], lifter('90 to 100kg')))
-      .toBe(rungOf([lift(100, '90 to 100kg')], lifter('90 to 100kg')))
-    expect(rungOf([lift(100)], lifter('90 to 100kg'))).toBe(5)
+  it('ignores a row with no bodyweight, and grades the ones that have it', () => {
+    expect(rungOf([lift(100, null), lift(100, 45)], lifter())).toBe(11)
   })
 
-  it('is ungradeable, not failed, when no band exists anywhere', () => {
-    const g = eventGrade(deadlift, [lift(100, null)], lifter(null))
-    expect(g.gradeable).toBe(false)
+  it('counts as UNMET, not absent, when nothing they lifted carries a bodyweight', () => {
+    // This is the whole fix. It used to return gradeable:false, which took the
+    // event OUT of its domain's denominator — and 12 of Maximal Strength's 14
+    // events are ratio standards, so skipping the question left the domain
+    // judged on 2 events needing 1, against a declared player's 6 of 14.
+    const g = eventGrade(deadlift, [lift(100, null)], lifter())
     expect(g.rung).toBe(0)
-  })
-
-  it('is gradeable on a stamped row even if the player has cleared their band', () => {
-    const g = eventGrade(deadlift, [lift(100, '90 to 100kg')], lifter(null))
     expect(g.gradeable).toBe(true)
-    expect(g.rung).toBe(5)
+    expect(g.bodyweightBlocked).toBe(true)
   })
 
-  it('ignores the stamp for juniors, who are always graded at 50kg', () => {
-    const junior: GradePlayer = { division: 'Juniors', ageYears: 12, gender: 'Female', bodyweightBand: null }
-    // A stamped band must not let a junior out of the fixed junior weight.
-    expect(rungOf([lift(60, 'Under 50kg')], junior)).toBe(rungOf([lift(60, null)], junior))
-    expect(eventGrade(deadlift, [lift(60, null)], junior).gradeable).toBe(true)
+  it('treats an absent bodyweight the same as a null one', () => {
+    const g = eventGrade(deadlift, [lift(100)], lifter())
+    expect(g.rung).toBe(0)
+    expect(g.bodyweightBlocked).toBe(true)
+  })
+
+  it('rejects a nonsense bodyweight rather than dividing by it', () => {
+    for (const bad of [0, -70]) {
+      const g = eventGrade(deadlift, [lift(100, bad)], lifter())
+      expect(g.rung).toBe(0)
+      expect(g.bodyweightBlocked).toBe(true)
+    }
+  })
+
+  it('grades a junior against their own declaration, like everyone else', () => {
+    // Juniors are asked too (Tāne, 23 September 2026). They used to be graded
+    // as a fixed 50kg lifter whatever they weighed.
+    const junior: GradePlayer = { division: 'Juniors', ageYears: 12, gender: 'Female' }
+    expect(rungOf([lift(60, 35)], junior)).toBeGreaterThan(rungOf([lift(60, 80)], junior))
+    expect(eventGrade(deadlift, [lift(60, null)], junior).bodyweightBlocked).toBe(true)
   })
 })
 

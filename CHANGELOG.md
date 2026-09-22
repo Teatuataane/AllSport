@@ -2,6 +2,21 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.17.0.0] - 2026-09-23
+
+### Changed
+- **Your bodyweight is asked on the day you lift, not on your profile.** It appears at the top of the scoring screen, in a game and in your own workout, and only on a day that actually includes a lift. It is an exact weight now rather than a 10kg range, so a lift is graded against what you really weighed. One player in twenty-seven had ever set the old range, which is why the question has moved to where the lifting happens.
+- **A kaiwhakawā can record a weigh-in for the player they are scoring.**
+- **Lifts with no bodyweight now count as not met, rather than being set aside.** Before this, skipping the question quietly made Maximal Strength the easiest domain to earn a colour in: twelve of its fourteen events need a bodyweight, and leaving them out meant the domain was judged on the two that do not. It is now judged on all fourteen for everyone.
+- **A missing bodyweight no longer costs you your overall colour.** Strength waits for the number; your other nine domains and your overall colour carry on.
+- **Juniors are asked for a bodyweight too**, and like everyone else it is optional. A parent who holds the account can see and change it. Juniors used to be graded as a fixed 50kg lifter whatever they weighed.
+- The bodyweight range picker is gone from your profile.
+- The privacy page describes what is now stored: the weight you enter and the day you entered it, kept so an old lift stays graded against what you weighed then, and deleted with your account.
+
+### Notes
+- Needs one database update after this is deployed. Existing bodyweight ranges are carried over automatically, so no colour changes.
+- The old profile columns are deliberately left in place and removed in a later update, so nothing breaks part-way through the deploy.
+
 ## [0.16.0.0] - 2026-09-22
 
 ### Added

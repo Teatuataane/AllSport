@@ -22,10 +22,11 @@ import {
   computePlayerGrades, heldRungs, voidedSessions, colourGates, unitsSinceConferral, gameEvidence,
   type PlayerGrades,
 } from './playerGrades'
-import type { ColourGate } from './grading'
+import { bodyweightOn, bandMidpointKg, type ColourGate, type BodyweightDeclaration } from './grading'
 import { workoutEvidence, GAME_MINUTES, type WorkoutEntryRow } from './workouts'
 import { rateGames, type SportRating } from './headToHead'
 import { disputedBySport, type MatchRow } from './matches'
+import { toNZDateString } from './dates'
 
 /**
  * The Supabase client to read through. Passed in rather than created here, so
@@ -65,7 +66,11 @@ export type GradeState = {
   held: Map<number, number>
   /** Event slugs a kaiwhakawā has confirmed this player cannot do. */
   exemptions: Set<string>
-  /** False when the player has no bodyweight band, so lifts cannot be graded. */
+  /**
+   * False when the player has declared no bodyweight, so their strength events
+   * cannot be graded. Reads declarations once 20260922213125 is applied, and
+   * the stored band before it.
+   */
   hasBand: boolean
   /** False until the grading migration is applied: nothing can be conferred yet. */
   schemaReady: boolean
@@ -97,6 +102,13 @@ export type ResultRow = {
     started_at: string | null
     /** When it closed. Read only by the history replay, to know WHEN a game started counting. */
     ended_at?: string | null
+    /**
+     * The NZ day the game was played, trigger-derived from started_at at
+     * Pacific/Auckland (20260902020602). This is the day a bodyweight
+     * declaration is resolved against — never created_at, which is when the
+     * row was typed and can be a different day for a late entry.
+     */
+    session_date?: string | null
   } | null
   /** The band of the day. Absent before 20260921232726. */
   bodyweight_band?: string | null
@@ -244,6 +256,29 @@ async function loadWorkoutEntries(db: GradeDb, playerId: string) {
 }
 
 /**
+ * The player's dated bodyweight declarations (20260922213125).
+ *
+ * Its own query, never folded into another, because a table that does not exist
+ * yet returns PGRST205 in `error` and would otherwise take a read the player's
+ * whole grade depends on down with it. `live` false means the migration has not
+ * run: the caller falls back to the stored bands, which is exactly the
+ * behaviour before this. `failed` true means the read ERRORED against a
+ * database that does have the table, which must mark the state incomplete — a
+ * silent empty would read as "declared nothing", and a kaiwhakawā deleting a
+ * score re-judges that domain and would withdraw strength colours on a
+ * transient network error.
+ */
+async function loadBodyweights(db: GradeDb, playerId: string) {
+  const { data, error } = await db
+    .from('player_bodyweights')
+    .select('measured_on, kg, created_at')
+    .eq('player_id', playerId)
+  if (missing(error)) return { rows: [] as BodyweightDeclaration[], live: false, failed: false }
+  if (error) return { rows: [] as BodyweightDeclaration[], live: true, failed: true }
+  return { rows: (data ?? []) as unknown as BodyweightDeclaration[], live: true, failed: false }
+}
+
+/**
  * The player's current band and the first band they ever set. The first
  * arrived with 20260921232726; a missing COLUMN is 42703 and would cost the
  * current band too, so it is asked for and the query re-run without it.
@@ -262,7 +297,7 @@ async function loadBand(db: GradeDb, playerId: string) {
  */
 async function loadResults(db: GradeDb, playerId: string) {
   const base = 'raw_score, weight_kg, difficulty_tier, session_id, points_earned, created_at,'
-    + ' session_events(event_name), sessions(is_active, points_awarded_at, started_at, ended_at)'
+    + ' session_events(event_name), sessions(is_active, points_awarded_at, started_at, ended_at, session_date)'
   const ask = (cols: string) => db.from('results')
     .select(cols)
     .eq('player_id', playerId)
@@ -288,6 +323,13 @@ export type GradeInputs = {
   band: string | null
   /** players.bodyweight_band_first. Undefined before 20260921232726. */
   firstBand?: string | null
+  /** Dated bodyweight declarations, newest-wins per day. Empty before 20260922213125. */
+  bodyweights?: BodyweightDeclaration[]
+  /**
+   * False until 20260922213125 is applied. While false the stored bands are
+   * used instead, so an old database grades exactly as it did before.
+   */
+  bodyweightsLive?: boolean
   results: ResultRow[]
   entries: WorkoutEntryRow[]
   exemptions: { event_slug: string; created_at: string | null }[]
@@ -316,10 +358,11 @@ const missing = (e: { code?: string } | null | undefined) => !!e && (e.code === 
  * if the player cannot be found.
  */
 export async function loadGradeInputs(db: GradeDb, playerId: string, matches?: readonly MatchRow[]): Promise<GradeInputs | null> {
-  const [profile, gender, band, results, exemptions, awards, workouts, allMatches, voids] = await Promise.all([
+  const [profile, gender, band, bodyweights, results, exemptions, awards, workouts, allMatches, voids] = await Promise.all([
     db.from('players_public').select('division, age_years, is_active, is_guest').eq('id', playerId).maybeSingle(),
     db.from('players').select('gender').eq('id', playerId).maybeSingle(),
     loadBand(db, playerId),
+    loadBodyweights(db, playerId),
     loadResults(db, playerId),
     db.from('grade_exemptions').select('event_slug, created_at').eq('player_id', playerId),
     db.from('grade_awards').select('id, domain_number, rung, grade_name, conferred_at, conferred_by').eq('player_id', playerId),
@@ -335,6 +378,8 @@ export async function loadGradeInputs(db: GradeDb, playerId: string, matches?: r
     band: band.error ? null : (band.data as { bodyweight_band: string | null } | null)?.bodyweight_band ?? null,
     firstBand: band.error ? undefined
       : (band.data as { bodyweight_band_first?: string | null } | null)?.bodyweight_band_first,
+    bodyweights: bodyweights.rows,
+    bodyweightsLive: bodyweights.live,
     results: (results.data ?? []) as unknown as ResultRow[],
     entries: workouts.error ? [] : (workouts.data ?? []) as unknown as WorkoutEntryRow[],
     exemptions: exemptions.error ? [] : (exemptions.data ?? []) as { event_slug: string; created_at: string | null }[],
@@ -343,7 +388,7 @@ export async function loadGradeInputs(db: GradeDb, playerId: string, matches?: r
     voids: voids.set,
     schemaReady: !awards.error,
     workoutsReady: !workouts.error,
-    complete: !results.error && !allMatches.failed && !voids.failed
+    complete: !results.error && !allMatches.failed && !voids.failed && !bodyweights.failed
       && (!workouts.error || missing(workouts.error))
       && (!exemptions.error || missing(exemptions.error))
       && (!awards.error || missing(awards.error))
@@ -387,6 +432,26 @@ export function gradeStateFrom(
   const awardRows = opts.awards ?? inputs.awards
   const exempt = new Set(inputs.exemptions.filter(e => upTo(e.created_at)).map(e => e.event_slug))
 
+  // Declarations the player had made by `asOf`. Filtered on created_at (when
+  // the row was written), never measured_on (the day it describes), or a
+  // kaiwhakawā's later correction of an old weigh-in would appear to have
+  // existed at the time.
+  const all = inputs.bodyweights ?? []
+  const declared = asOfMs == null ? all : all.filter(b => upTo(b.created_at ?? null))
+
+  /**
+   * The bodyweight a row is graded against.
+   *
+   * Once 20260922213125 is applied, declarations are the only source. Before
+   * it, the stored bands stand in, which is exactly the behaviour that shipped
+   * with 20260921232726: the row's own band, else the first band the player
+   * ever set, else their current one.
+   */
+  const kgOn = (day: string | null | undefined, legacyBand: string | null | undefined) =>
+    inputs.bodyweightsLive
+      ? bodyweightOn(declared, day)
+      : bandMidpointKg(legacyBand ?? inputs.firstBand ?? inputs.band)
+
   const results = inputs.results.filter(r => upTo(r.sessions?.started_at ?? r.created_at))
   const counted = countedRows(results, inputs.voids)
   const game = gameEvidence(counted.map(r => ({
@@ -397,9 +462,20 @@ export function gradeStateFrom(
     // Live: whatever the session says now. Replay: closed only if it had
     // closed BY THEN — a game in progress is not yet a game (gameEvidence).
     closed: !r.sessions ? true : asOf ? (!r.sessions.is_active && upTo(closedAt(r))) : !r.sessions.is_active,
-    bodyweightBand: r.bodyweight_band,
+    // The NZ day the game was played. session_date is trigger-derived from
+    // started_at (20260902020602); created_at is when the score was typed,
+    // which for a late entry is a different day.
+    bodyweightKg: kgOn(
+      r.sessions?.session_date ?? toNZDateString(new Date(r.sessions?.started_at ?? r.created_at)),
+      r.bodyweight_band,
+    ),
   })))
-  const logged = workoutEvidence(inputs.entries.filter(e => upTo(e.workouts?.created_at)))
+  const logged = workoutEvidence(inputs.entries.filter(e => upTo(e.workouts?.created_at)).map(e => ({
+    ...e,
+    // performed_on is the day it was TRAINED, which is what a bodyweight
+    // describes. Backdating up to 7 days is allowed, so this is observable.
+    bodyweightKg: kgOn(e.workouts?.performed_on, e.bodyweight_band),
+  })))
   const matches = asOfMs == null ? inputs.matches : inputs.matches.filter(m => upTo(m.created_at))
 
   const grades = computePlayerGrades({
@@ -407,8 +483,6 @@ export function gradeStateFrom(
       division: inputs.profile.division,
       ageYears: inputs.profile.age_years,
       gender: inputs.gender,
-      bodyweightBand: inputs.band,
-      firstBodyweightBand: inputs.firstBand,
     },
     results: [...game.rows, ...logged.rows],
     ratings: ratingsFor(playerId, matches),
@@ -423,7 +497,8 @@ export function gradeStateFrom(
     active: inputs.profile.is_active !== false,
     guest: inputs.profile.is_guest === true,
     grades, awards: awardRows, held, exemptions: exempt,
-    hasBand: inputs.band != null, schemaReady: inputs.schemaReady,
+    hasBand: inputs.bodyweightsLive ? (inputs.bodyweights ?? []).length > 0 : inputs.band != null,
+    schemaReady: inputs.schemaReady,
     games, unitsByDomain,
     gates: colourGates(grades.domains, held, games, unitsByDomain),
     workoutsReady: inputs.workoutsReady,

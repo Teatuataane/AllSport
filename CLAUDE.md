@@ -1934,7 +1934,7 @@ for real yet:
 - the closing game still writes placements and NULL-point summary rows
   (the open item from the points retirement).
 
-## Auto-conferral — a colour confers itself (September 2026) — MIGRATIONS NOT YET APPLIED
+## Auto-conferral — a colour confers itself (September 2026) — APPLIED AND VERIFIED 2026-09-22
 
 Designed in a `/grill-me` on 2026-09-21; the full record is
 `docs/designs/auto-conferral-spec.md` (gitignored, like the other grading design
@@ -2039,11 +2039,16 @@ Postgres writes `…06.123456+00:00` and JavaScript `…06.123Z`.
 - **A withdrawal never moves the watermark**: it re-judged one domain and ran no
   conferral pass.
 
-**Migrations, all NOT YET APPLIED.** Code first, then `supabase db push` from a
-clean worktree on `main` (never `~/allsport`; never accept the CLI's
-`migration repair`). All four sort AFTER main's `20260920220344_roster_update_128`,
-so no `--include-all` is needed whichever order they reach production in. Two were
-renumbered to guarantee that.
+**Migrations, ALL FOUR APPLIED AND VERIFIED IN PRODUCTION 2026-09-22**, after the
+v0.16.0.0 deploy was confirmed live (`POST /api/grades/recheck` answering 401 rather
+than 404) and with no game running. Applied through `supabase db query --linked -f`
+in one BEGIN/COMMIT each, with the ledger row written in the same transaction — the
+roster-128 precedent, because a session has no `SUPABASE_DB_PASSWORD` and `db push`
+needs one. Verified by object, not the ledger: 402 of 1353 results stamped with a
+band, all five triggers present, `grades_need_recheck` definer with no anon execute,
+`guard_players_grading_identity` and `pin_bodyweight_band_first` NOT definer,
+`delete_my_account.prosrc` carrying `bodyweight_band_first = NULL`,
+`grade_awards.conferred_by` nullable, and `grade_withdrawals` returning 401 as anon.
 1. `20260920234713_grade_withdrawals` — the private withdrawal log.
 2. `20260921182106_pin_grading_identity` — the division/DOB/gender/is_active guard.
 3. `20260921232726_bodyweight_band_of_the_day` — the band columns, the pinned
@@ -2083,6 +2088,118 @@ and that self-service erasure still completes.
 (home, How to Play ×2, leaderboard ×2, /grades, the colours card, /privacy) was
 rewritten. /privacy now names the withdrawal record, because a privacy policy has
 to be accurate about what is stored.
+
+## Bodyweight of the day (September 2026) — v0.17.0.0, MIGRATION NOT YET APPLIED
+
+Strength standards are a ratio of bodyweight. That bodyweight was a 10kg band picked
+on `/profile`, and **one player in 27 ever set one — the kaiwhakawā.** Twenty players
+had lifted; 210 lifts carried no band. Design record:
+`docs/designs/bodyweight-of-the-day.md` (gitignored, like the other grading designs).
+
+**THE BUG THIS CLOSES IS NOT THE ONE IT LOOKS LIKE.** `domainGrade()` drops
+ungradeable events from the denominator, and **12 of Maximal Strength's 14 events are
+`ratio` standards** (only Pause Dips and Pause Chinup are not). So an undeclared
+player had the domain judged on 2 events with `requiredForDomain(2)` = 1, while a
+declared player needed 6 of 14. Verified by running `domainGrade()` directly: an
+undeclared player who maxes both raw events scored **Taniwha** in Maximal Strength.
+Skipping the question was the winning move, and 26 of 27 players were on that path.
+Nobody noticed because no colour has ever been conferred. **Anaerobic Endurance has
+the same shape** (Toe Lift, Tibialis Curl), 11 available against 13.
+
+**The exemption rule was being spent on a form field.** An exemption exists for a
+player who genuinely cannot do an event. A blank bodyweight is a choice, and it was
+being rewarded with the same treatment.
+
+- **Declared on the day, not on a profile.** `player_bodyweights (player_id,
+  measured_on, kg, recorded_by, created_at)`, one row per player per day.
+  `components/play/BodyweightField.tsx` sits at the top of the live-session player
+  tab, the kaiwhakawā tab and the personal-game screen, and **renders nothing unless
+  that day holds a `ratio` event** — asking someone their weight on a day of
+  Flexibility and Coordination is a cost with no benefit.
+- **An exact number, not a band.** The midpoint over-graded the heavy half of every
+  band. Measured on the real ladder: a 150kg deadlift, man, Open, inside "70 to 80kg"
+  is rung 11 (Uenuku) at 70.1kg and rung 10 (Kōura) at 79.9kg — and both were awarded
+  Uenuku. Bigger on shallow ladders (Toe Lift, Tibialis Curl: adjacent ratios differ
+  by 0.01–0.02).
+- **A lift grades against the declaration in force on ITS OWN day** —
+  `sessions.session_date` for a result (trigger-derived at Pacific/Auckland by
+  20260902020602, never `created_at`, which is when the score was typed) and
+  `workouts.performed_on` for a logged entry (backdating up to 7 days is allowed, so
+  the difference is observable). `bodyweightOn()` in `lib/grading.ts` is the pure
+  resolver.
+- **CARRY-FORWARD IS UNLIMITED, deliberately and provisionally.** One declaration
+  grades every later lift until the next. An expiry was considered and NOT added:
+  adding one now would retroactively un-grade the history seeded from the old bands.
+  It is one constant plus a decision about history — not a free change.
+- **No declaration means UNMET, not absent.** The event stays in its domain's
+  denominator and scores 0. That is the whole fix.
+- **BUT a domain blocked only by a missing bodyweight does NOT veto the overall
+  colour** (`blockedByBodyweight`, Tāne 23 Sept 2026). Without that second half the
+  rule is not "harder", it is "impossible": an undeclared player reaches at most 2 of
+  6 required, and `overallGrade()` returned null while ANY domain was ungraded — so a
+  player could be Hiriwa in nine domains and display nothing at all. **Only domain
+  colours are conferred into `grade_awards`; the overall is derived**, so declaring
+  later can lower it and nothing is taken back.
+- **`bodyweightBlocked` is only set when they have ACTUALLY LIFTED.** An event nobody
+  has played is unplayed, not blocked, or every new player is told their strength
+  domain is waiting on a number when it is waiting on them turning up.
+- **Juniors declare too** (Tāne, 23 Sept 2026), reversing the September decision.
+  `JUNIOR_BODYWEIGHT_KG` is no longer a grading input, kept as the reference weight
+  the junior standards were calibrated against. A junior who declines is treated like
+  any undeclared player: strength unmet, overall unaffected.
+- **`record_bodyweight()` is the ONLY write path.** No INSERT/UPDATE/DELETE policy
+  exists and the grants are revoked, because a PostgREST upsert is
+  `INSERT ... ON CONFLICT DO UPDATE` and needs the UPDATE privilege the day-pin
+  depends on nobody having. `measured_on` is pinned server-side to the NZ day;
+  **only a kaiwhakawā may date a weigh-in**, and that is the correction path.
+- **The pin is SECURITY INVOKER and tests `current_user`, not `auth.uid()`** — the
+  trap 20260921182106 documents. As a definer, `current_user` is always the owner and
+  every client write would be waved through as trusted server code.
+- **`record_bodyweight` deliberately does not touch `players`.** Clearing the
+  watermark there would have worked, but `__tests__/autoConferral.test.ts` asserts
+  `delete_my_account` is the ONLY definer that updates `players` — the invariant that
+  stops a definer becoming a way around `guard_players_grading_identity`.
+  `grades_need_recheck` probes `player_bodyweights` instead: same signal, no write.
+- **SELECT is own row, parent, kaiwhakawā; `anon` revoked.** An exact kilogram is
+  more sensitive than a band, and `players` shipped world-readable for months. Never
+  joined into `players_public` or any leaderboard payload.
+- **`lib/loadGrades.ts` reads it in its own guarded query.** PGRST205/42P01 = "not
+  live yet", and the stored bands stand in (`bandMidpointKg`), so an old database
+  grades exactly as it did before. **Any other error marks `GradeState.complete`
+  false** — a silent empty reads as "declared nothing", and a kaiwhakawā deleting a
+  score re-judges that domain and would withdraw strength colours on a transient
+  network error.
+- **The migration does NOT drop the old columns.** A missing COLUMN returns 42703 and
+  takes the whole PostgREST request down, four app surfaces still select them, and
+  `delete_my_account` sets both to NULL and would raise at runtime, **failing every
+  self-service erasure**. Separate later migration once no deployed bundle reads them.
+- **`delete_my_account` is redefined whole with one added line** (`DELETE FROM
+  player_bodyweights`): the table's ON DELETE CASCADE never fires, because erasure
+  ANONYMISES the players row rather than deleting it.
+- **History is seeded from the stored bands**, at each player's earliest banded row,
+  or nothing would grade in Maximal Strength and the pending replay would confer
+  nothing there. One player, 402 rows, in production. The migration asserts every
+  player holding a band ends with a declaration.
+
+**DEPLOY CODE FIRST, THEN THE MIGRATION.** Either order is survivable (the loader
+treats a missing table as not-live), code-first keeps the window shortest.
+
+**Dry-run against production 2026-09-23 in a rolled-back transaction**: every
+assertion passed, the seed produced 1 declaration, and production was unchanged
+afterwards (no table, no function, bands intact).
+
+**HOLD `scripts/replay-colours.ts --apply` UNTIL THIS IS APPLIED.** Under the old
+rules it confers Maximal Strength colours on a 2-event denominator, and an ordinary
+recheck never withdraws. This is the only moment the fix is free.
+
+### Still open
+
+- **The juniors decision needs a safeguarding pass.** It reverses "Players under 17
+  are never asked" and asks children for health data. `/privacy` is rewritten to
+  match; the pack has not been re-read against it.
+- **Staleness.** See carry-forward above.
+- **Guests are never asked and never graded** — a guest has no `player_id`. Their
+  ratio rows are simply ungraded, as before.
 
 ## Security posture (August 2026) — read before touching RLS or players_public
 
@@ -2280,7 +2397,7 @@ update players set role = 'judge' where id = '[uuid]';
 | My Taniwha | /taniwha | Complete | All twelve. Four counts (Taniwha · Pieces · Crowns · Points), then each taniwha as an expandable row revealing its eleven named pieces and what its crown still needs. States the field-of-three win rule |
 | Taniwha History | /taniwha/history | Complete | What the taniwha card opens: the choose/switch picker, pieces earned with the session each landed in (derived — see `limbCrossings`), the play-history timeline, and the colours era |
 | Judge Panel | /judge | Complete | Players tab opens with an **"Approaching a colour"** watchlist (sessions-away). Dedicated page — JudgeCard moved here. Create/end/void sessions, QR code, history, real-time player count, Event Votes panel (Kōwhiringa Tūāhuatanga). Judge bento card on dashboard links here. |
-| Player Profile | /profile | Complete | Icon picker (20 sport emojis), username/display name editing, leaderboard display prefs, family member management (add/remove), active profile switcher (localStorage) |
+| Player Profile | /profile | Complete | Icon picker (20 sport emojis), username/display name editing, leaderboard display prefs, family member management (add/remove), active profile switcher (localStorage). **The bodyweight band picker was removed in v0.17.0.0** — bodyweight is declared on the scoring screen on the day |
 | Scoring Setup | /scoring | Complete | One event per domain through the SHARED picker (v0.11.0.0), Draw for me, editable start time, create the game |
 | Live Session | /scoring/[sessionId] | Complete | Per-division leaderboard tabs, Kaiwhakawā mode (player picker + score/edit/delete for any player), difficulty tier selector, sport W/D/L display, missing scores = last place, post-game popup on session end. **(v0.12.0.0)** Swap an official event for another in its domain, or add extras — both stored as a game-linked workout, never in `results` |
 | My Events | /prs | Complete | Retitled from Personal Bests (v0.6.2.0). Ten domains ranked strongest to weakest by Top % above the list; collapsible domain sections below, each event row showing **PR, average placement and wins side by side** (no lens toggle). Honours the active player. Per-event history still expands |
@@ -2476,6 +2593,7 @@ RLS: own + parent (family) + judge.
     recheckGrades.ts                # Auto-conferral client half: posts "check me" to /api/grades/recheck, sends no colour or score, never throws
     replayColours.ts                # History replay (pure): confers each colour when it would have landed, through the live route's own path
     newColours.ts                   # Unseen colours and withdrawals against a per-player localStorage watermark (pure)
+                                    #   bodyweightOn() lives in grading.ts: the declaration in force on a lift's own day
     useNewColours.ts                # The hook HOME and COLOURS share: runs the recheck and yields the moment for components/NewColourCard.tsx
     eventData.ts                    # Single source of truth for all events (128) + difficulty+time encode/decode helpers (encodeDiffTime/decodeDiffTime/isTimedEffort, TIMED_EFFORT_SLUGS).
                                     #   DifficultyTier carries `detail` (judge criteria) plus `scoring`/`records` — how a single rung is scored, declared on the tier so nothing matches on event name. COMPILED from EVENT_DIFFICULTY_REVIEW.md by scripts/apply-difficulty-sheet.mjs; do not hand-edit a ladder without updating the sheet.
@@ -2533,6 +2651,8 @@ RLS: own + parent (family) + judge.
       WellbeingSurvey.tsx           # Quarterly wellbeing check-in — dashboard card (only when due) + full-screen 10-item form
       WellbeingReport.tsx           # Kaiwhakawā aggregate wellbeing report + CSV export (/judge)
   components/
+    play/BodyweightField.tsx        # Bodyweight of the day — the only caller of record_bodyweight(). Renders
+                                    #   nothing unless that day holds a `ratio` event, and nothing for a guest
     Navbar.tsx                      # Glass sticky nav, 5px rainbow edge, pill CTAs
     Footer.tsx                      # Rainbow rule, HQ address + session times
     ui.tsx                          # Shared brand UI kit — Button, Card, Badge, Tag, Input, Select, Dialog, RainbowText, RainbowRule, SectionLabel, StatBlock

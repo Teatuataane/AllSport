@@ -152,6 +152,15 @@ export type DomainGradeInput = {
    * beyond shrinking the domain.
    */
   unavailable?: ReadonlySet<string>
+  /**
+   * Strength events this player has declared no bodyweight for.
+   *
+   * These stay in the denominator and score 0 — they are NOT subtracted the
+   * way `ungradeable` is. Passing them here only lets the result say WHY the
+   * domain has no colour, so a missing number does not silently cost the
+   * player their overall grade as well.
+   */
+  bodyweightBlocked?: ReadonlySet<string>
 }
 
 export type DomainGradeResult = {
@@ -171,6 +180,21 @@ export type DomainGradeResult = {
   nextRung: number | null
   /** How many available events already meet `nextRung` — progress. */
   metAtNextRung: number
+  /**
+   * The domain has no colour AND at least one of its events is a strength
+   * standard this player has not declared a bodyweight for.
+   *
+   * It exists so overallGrade can tell "not graded here yet" from "cannot be
+   * graded here until a number is declared". Maximal Strength holds 12 ratio
+   * events against 14, so an undeclared player can reach at most 2 of the 6
+   * required and the domain is not merely hard, it is unreachable — and an
+   * ungraded domain used to veto the overall colour outright, so a player
+   * could be Hiriwa in nine domains and display nothing at all.
+   *
+   * Optional so a caller building a DomainGradeResult by hand (tests, the
+   * release panel's projections) need not care; absent reads as false.
+   */
+  blockedByBodyweight?: boolean
 }
 
 /**
@@ -196,6 +220,10 @@ export function requiredForDomain(availableCount: number): number {
 export function domainGrade(input: DomainGradeInput): DomainGradeResult {
   const unavailable = input.unavailable ?? new Set<string>()
   const ungradeable = input.ungradeable ?? new Set<string>()
+  // NOT subtracted from `available`: a strength event with no declared
+  // bodyweight stays in the denominator and scores 0. That is the whole fix —
+  // dropping it is what made skipping the question the winning move.
+  const blocked = input.bodyweightBlocked ?? new Set<string>()
   const available = input.eventSlugs.filter((s) => !unavailable.has(s) && !ungradeable.has(s))
   const required = requiredForDomain(available.length)
 
@@ -211,6 +239,7 @@ export function domainGrade(input: DomainGradeInput): DomainGradeResult {
       metAtRung: 0,
       nextRung: 1,
       metAtNextRung: 0,
+      blockedByBodyweight: false,
     }
   }
 
@@ -237,6 +266,10 @@ export function domainGrade(input: DomainGradeInput): DomainGradeResult {
     metAtRung: rung === 0 ? 0 : countAtLeast(rung),
     nextRung,
     metAtNextRung: nextRung === null ? 0 : countAtLeast(nextRung),
+    // Only when the domain has nothing at all: once a colour is held, a
+    // missing bodyweight is holding it back rather than blocking it, and the
+    // player already appears in the overall.
+    blockedByBodyweight: rung === 0 && available.some((s) => blocked.has(s)),
   }
 }
 
@@ -260,15 +293,26 @@ export type OverallGradeResult = {
  * colours and only shows an overall grade once all ten exist.
  */
 export function overallGrade(domains: readonly DomainGradeResult[]): OverallGradeResult {
-  const ungraded = domains.filter((d) => d.rung === 0).map((d) => d.domainNumber)
-  if (domains.length < DOMAIN_COUNT || ungraded.length > 0) {
+  // A domain blocked ONLY by a missing bodyweight does not veto the overall
+  // colour (Tāne, 23 September 2026). Strength is genuinely gated on declaring
+  // a number, but 12 of Maximal Strength's 14 events are ratio standards, so
+  // treating it as merely "ungraded" would take the overall colour off every
+  // undeclared player however well they did in the other nine domains.
+  //
+  // The blocked domain contributes no rung, so it cannot be the weakest, and
+  // declaring later can LOWER the overall. That is correct and safe: only
+  // domain colours are conferred into grade_awards, the overall is derived for
+  // display, so nothing is taken back.
+  const ungraded = domains.filter((d) => d.rung === 0 && !d.blockedByBodyweight).map((d) => d.domainNumber)
+  const graded = domains.filter((d) => d.rung > 0)
+  if (domains.length < DOMAIN_COUNT || ungraded.length > 0 || graded.length === 0) {
     return { rung: null, ungraded, weakest: [] }
   }
-  const min = Math.min(...domains.map((d) => d.rung))
+  const min = Math.min(...graded.map((d) => d.rung))
   return {
     rung: min,
     ungraded: [],
-    weakest: domains.filter((d) => d.rung === min).map((d) => d.domainNumber),
+    weakest: graded.filter((d) => d.rung === min).map((d) => d.domainNumber),
   }
 }
 
@@ -459,12 +503,24 @@ export function gameEventRung(drillRung: number, ratingColour: number): number {
 }
 
 // ─── Strength: a ratio of bodyweight ─────────────────────────────────────────
-// The player picks an optional 10kg band, never a number, and the ratio is
-// taken against the band's MIDDLE: the bottom edge would flatter everyone in
-// the band and the top edge would punish them, and the middle halves the worst
-// case. No band means no strength grade: the event is ungradeable for that
-// player, not failed. Juniors are never asked; they are graded as a 50kg
-// lifter, then shifted by age like any other standard.
+// The player declares an exact bodyweight on the day they score, at the top of
+// the scoring screen (player_bodyweights, 20260922213125). A lift grades against
+// the most recent declaration at or before its own day.
+//
+// It used to be an optional 10kg band on /profile, graded against the band's
+// MIDDLE. One player in 27 ever set one, and the midpoint over-graded the heavy
+// half of every band by about a rung on the main lifts. BODYWEIGHT_BANDS and
+// bandMidpointKg survive only to read those stored labels back.
+//
+// No declaration means the lift cannot be graded, but the event STAYS in its
+// domain's denominator and scores 0 — see domainGrade. Dropping it made
+// skipping the question the winning move: 12 of Maximal Strength's 14 events
+// are ratio standards, so an undeclared player had the domain judged on 2
+// events needing 1, while a declared player needed 6 of 14.
+//
+// Juniors declare too (Tāne, 23 September 2026). JUNIOR_BODYWEIGHT_KG is no
+// longer a grading input; it is kept as the reference weight the junior
+// standards were calibrated against.
 
 export type BodyweightBand = { label: string; min: number; max: number | null; mid: number }
 
@@ -492,13 +548,59 @@ export function ratioThresholdsKg(ratios: readonly (number | null)[], bodyweight
 }
 
 /**
- * The bodyweight a strength standard is taken against: the fixed junior weight,
- * or the middle of the player's band. Null means the player has no band, so
- * their strength events are ungradeable rather than failed.
+ * The middle of a 10kg band, in kilograms. Null for anything that is not one
+ * of BODYWEIGHT_BANDS' labels.
+ *
+ * LEGACY BRIDGE ONLY. Bodyweight is declared as an exact number on the day
+ * (player_bodyweights, 20260922213125) and the engine works in kilograms.
+ * This survives so lib/loadGrades.ts can synthesise a declaration from a stored
+ * band while the old columns still exist, and so the seed in that migration has
+ * a single definition of the midpoints to agree with. Do not reach for it when
+ * grading: take the kilograms off the row.
  */
-export function strengthBodyweight(band: AgeBand, bandLabel: string | null): number | null {
-  if (band === 'U12' || band === 'U14' || band === 'U16') return JUNIOR_BODYWEIGHT_KG
+export function bandMidpointKg(bandLabel: string | null | undefined): number | null {
   return BODYWEIGHT_BANDS.find((b) => b.label === bandLabel)?.mid ?? null
+}
+
+/** A bodyweight a player declared on a given NZ day. */
+export type BodyweightDeclaration = {
+  /** 'YYYY-MM-DD', the NZ day, pinned server-side. */
+  measured_on: string
+  kg: number
+  /** When the row was written. Only the history replay reads it. */
+  created_at?: string | null
+}
+
+/**
+ * The bodyweight a score scored on `day` is graded against: the most recent
+ * declaration made on or before that day.
+ *
+ * CARRY-FORWARD IS UNLIMITED, deliberately and provisionally. A declaration
+ * grades every later lift until the next one, so a player who declares once and
+ * gains 15kg keeps being graded at the old number. An expiry was considered and
+ * NOT added, because adding one now would retroactively un-grade the history
+ * seeded from the old bands, and because the scoring screen prompts each
+ * session, so in practice the number refreshes. If an expiry is ever wanted it
+ * is one constant here plus a decision about what it does to history — it is
+ * not a free change.
+ *
+ * Days are compared as 'YYYY-MM-DD' strings, which sort correctly and are
+ * already how both sides store them (sessions.session_date and
+ * workouts.performed_on are DATE columns; toNZDateString writes the same shape).
+ * These are dates, not instants, so the timestamp trap in gradeStateFrom does
+ * not apply.
+ */
+export function bodyweightOn(
+  declarations: readonly BodyweightDeclaration[],
+  day: string | null | undefined,
+): number | null {
+  if (!day) return null
+  let best: BodyweightDeclaration | null = null
+  for (const d of declarations) {
+    if (d.measured_on > day) continue
+    if (best === null || d.measured_on > best.measured_on) best = d
+  }
+  return best && best.kg > 0 ? best.kg : null
 }
 
 /** Age band from a player's division and age. Mirrors the division rules. */

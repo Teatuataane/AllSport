@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation'
 import { createClient, getSessionUser } from '@/lib/supabase-browser'
 import { getEventByName, getEventBySlug, DOMAIN_ORDER, type EventData } from '@/lib/eventData'
 import { unitsForResult, unitsForResultRow, unitsIn, fmtUnits, fmtUnitsLabel } from '@/lib/units'
-import { parseLocalDate } from '@/lib/dates'
+import { parseLocalDate, toNZDateString } from '@/lib/dates'
 import EventIcon, { domainColor } from '@/components/EventIcon'
 import { type EntryVals, scoreColumns } from '@/lib/scoring'
 import {
@@ -25,6 +25,7 @@ import EventListRow from '@/components/play/EventListRow'
 import {
   formatPR, sportWDL, sectionLabel, ProgressSegments, INP, QES_LBL as SHEET_LBL,
 } from '@/components/play/chrome'
+import BodyweightField from '@/components/play/BodyweightField'
 const supabase = createClient()
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -1155,6 +1156,16 @@ export default function SessionPage() {
   const [swapFor, setSwapFor] = useState<SessionEvent | null>(null)
   const [addingExtra, setAddingExtra] = useState(false)
 
+  // The NZ day this game belongs to, for resolving a bodyweight declaration.
+  // sessions.session_date is trigger-derived from started_at at
+  // Pacific/Auckland (20260902020602) and is the same day the grading engine
+  // resolves against; deriving it here from the device clock instead would put
+  // the two a day apart for anyone on a mis-set phone.
+  const sessionDay = useMemo(() => {
+    const d = session?.session_date
+    return typeof d === 'string' && d ? d : toNZDateString(new Date())
+  }, [session])
+
   // Every roster row's scored-event set, computed once per results change
   const rosterScored = useMemo(
     () => scoredEventIdsByTarget(results, events.map(ev => ev.id)),
@@ -1668,6 +1679,18 @@ export default function SessionPage() {
               </div>
             )}
 
+            {/* Strength is a ratio of bodyweight, so it is asked at the top of
+                the screen where the lifting happens, not on a profile page
+                nobody returns to. Renders nothing unless one of today's events
+                is a ratio standard, and nothing for a guest. Swapped-in events
+                count: a swap can bring a lift into a day that had none. */}
+            <BodyweightField
+              playerId={pid}
+              eventSlugs={[...events.map(e => e.event_slug), ...swaps.chosen]}
+              day={sessionDay}
+              locked={sessionEnded}
+            />
+
             {/* Session progress */}
             <div style={{ marginBottom: '4px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '6px' }}>
@@ -2014,6 +2037,18 @@ export default function SessionPage() {
                     fontFamily: 'var(--font-label)', fontSize: '12px', letterSpacing: '0.08em', textTransform: 'uppercase',
                   }}>Roster</button>
                 </div>
+
+                {/* A kaiwhakawā can record the weigh-in for the player they
+                    are scoring — record_bodyweight() takes the same authority
+                    as writing their score. Guests have no player_id and are
+                    never graded, so the field renders nothing for them. */}
+                <BodyweightField
+                  playerId={target.isGuest ? null : (target.id ?? null)}
+                  eventSlugs={[...events.map(e => e.event_slug), ...swaps.chosen]}
+                  day={sessionDay}
+                  locked={sessionEnded}
+                  forName={target.name}
+                />
 
                 {/* Session progress */}
                 <div style={{ marginBottom: '4px' }}>

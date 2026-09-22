@@ -25,6 +25,7 @@ import { entryPayload, isOpen, planEvents, sortPlan, unitsForPayload, PLAN_MAX }
 import QuickEntrySheet from '@/components/play/QuickEntrySheet'
 import EventListRow from '@/components/play/EventListRow'
 import { sectionLabel, ProgressSegments, type PlayEvent, type EntryRow } from '@/components/play/chrome'
+import BodyweightField from '@/components/play/BodyweightField'
 import EventPlanPicker from '@/components/play/EventPlanPicker'
 import type { EntryVals } from '@/lib/scoring'
 
@@ -223,6 +224,16 @@ export default function PersonalGamePage() {
           </div>
         )}
       </div>
+
+      {/* Strength is a ratio of bodyweight, so it is asked where the lifting
+          happens rather than on a profile page nobody returns to. Renders
+          nothing unless today's plan holds a ratio standard. */}
+      <BodyweightField
+        playerId={workout.player_id}
+        eventSlugs={events.map(e => e.event_slug)}
+        day={workout.performed_on}
+        locked={locked}
+      />
 
       {/* Still to play */}
       {todo.length > 0 && sectionLabel('Still to play')}

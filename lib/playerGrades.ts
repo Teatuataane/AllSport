@@ -11,7 +11,7 @@ import { STANDARDS } from './standards'
 import { isGameTier, unitsForResultRow } from './units'
 import { toNZDateString } from './dates'
 import {
-  ageBand, rungForScore, ratioThresholdsKg, strengthBodyweight, ratingRung, gameEventRung,
+  ageBand, rungForScore, ratioThresholdsKg, ratingRung, gameEventRung,
   domainGrade, overallGrade, colourGate, DRILL_CAP, DOMAIN_COUNT,
   type AgeBand, type DomainGradeResult, type OverallGradeResult, type ColourGate,
 } from './grading'
@@ -22,15 +22,6 @@ export type GradePlayer = {
   ageYears: number | null
   /** The registration answer. Only read for juniors, who share one division. */
   gender: string | null
-  /** One of BODYWEIGHT_BANDS' labels, or null when the player has not picked one. */
-  bodyweightBand: string | null
-  /**
-   * The first band this player ever set (players.bodyweight_band_first), pinned
-   * by trigger. A score written before they had any band grades against THIS,
-   * never the current band, so clearing a band and setting a lighter one cannot
-   * re-price old lifts. Undefined before 20260921232726.
-   */
-  firstBodyweightBand?: string | null
 }
 
 /**
@@ -48,23 +39,35 @@ export type GradeResultRow = {
   difficulty_tier: string | null
   source?: EvidenceSource
   /**
-   * The band the player held when this row was written (the band OF THE DAY).
-   * Strength is a ratio of bodyweight, and the band is self-declared on
-   * /profile, so grading an old lift against today's declaration lets one
-   * dropdown re-price a whole domain. Null means the player had no band when
-   * it was written: it grades against their pinned FIRST band. Undefined means
-   * the database predates 20260921232726, and the current band is used —
-   * exactly the behaviour before it.
+   * The player's bodyweight in kilograms ON THE DAY this row was scored: their
+   * most recent declaration at or before the row's own day, resolved in
+   * lib/loadGrades.ts. Null or undefined means they had declared nothing by
+   * then, so a ratio event this row belongs to cannot be graded.
+   *
+   * Per-row rather than per-player because a declaration is dated and pinned
+   * server-side: grading an old lift against today's number would let one
+   * entry re-price a whole domain, which is what the band on /profile allowed.
    */
-  bodyweightBand?: string | null
+  bodyweightKg?: number | null
 }
 
 export type EventGrade = {
   slug: string
   /** 0 = below Kiwikiwi, or never played. */
   rung: number
-  /** False when this player cannot be graded in it — a lift with no band. */
+  /**
+   * False when this event leaves the domain's denominator entirely: it has no
+   * standard, or it is rating-only and the player holds no rating colour yet.
+   *
+   * A strength event with no declared bodyweight is NOT one of these. It stays
+   * gradeable, scores 0, and sets `bodyweightBlocked` instead.
+   */
   gradeable: boolean
+  /**
+   * A ratio standard the player has declared no bodyweight for. Counts as
+   * unmet, stays in the denominator, and tells the domain why it has no colour.
+   */
+  bodyweightBlocked?: boolean
   played: boolean
   /** Where the result behind `rung` came from. Absent when nothing earns a colour, or the rows carry no source. */
   source?: EvidenceSource
@@ -122,10 +125,10 @@ export function eventGrade(
     // at 100kg. Rank by the rung each row reaches, earliest winning a tie,
     // which is what maxBy did before.
     const ratios = ladder.map(r => r || null)
-    let anyBw = strengthBodyweight(band, p.bodyweightBand) != null
+    let anyBw = false
     for (const r of drillRows) {
-      const bw = strengthBodyweight(band, r.bodyweightBand ?? p.firstBodyweightBand ?? p.bodyweightBand)
-      if (bw == null) continue
+      const bw = r.bodyweightKg
+      if (bw == null || !(bw > 0)) continue
       anyBw = true
       const kg = r.weight_kg ?? 0
       // The empty bar is Kiwikiwi, and it means a lift that happened: never a 0.
@@ -133,9 +136,20 @@ export function eventGrade(
       const rung = rungForScore(kg, ratioThresholdsKg(ratios, bw), band)
       if (rung > drill) { drill = rung; bestRow = r }
     }
-    // No band anywhere — on this player or on any row they lifted in. The event
-    // is ungradeable for them, not failed.
-    if (!anyBw) return { slug: ev.slug, rung: 0, gradeable: false, played }
+    // They lifted, and NOTHING they lifted carries a bodyweight. The event
+    // counts as UNMET and stays in the domain's denominator — it does not leave
+    // it. Dropping it is what made skipping the question the winning move: 12
+    // of Maximal Strength's 14 events are ratio standards, so an undeclared
+    // player had the domain judged on 2 events needing 1, against a declared
+    // player's 6 of 14.
+    //
+    // Only when they have actually lifted. An event nobody has played is not
+    // blocked by anything, it is unplayed, and saying otherwise would tell a
+    // brand new player their strength domain is waiting on a number when it is
+    // waiting on them turning up.
+    if (!anyBw && drillRows.length > 0) {
+      return { slug: ev.slug, rung: 0, gradeable: true, bodyweightBlocked: true, played }
+    }
   } else if (drillRows.length) {
     bestRow = maxBy(drillRows, r => r.raw_score!)
     drill = rungForScore(bestRow!.raw_score!, ladder, band, s.game ? { cap: DRILL_CAP } : {})
@@ -194,10 +208,15 @@ export function computePlayerGrades(input: {
       const g = events.get(e.slug)!
       return !g.gradeable || (STANDARDS[e.slug]?.kind === 'rating' && g.rung === 0)
     }).map(e => e.slug))
+    // Kept OUT of `ungradeable` on purpose: these stay in the denominator.
+    const bodyweightBlocked = new Set(
+      inDomain.filter(e => events.get(e.slug)!.bodyweightBlocked).map(e => e.slug),
+    )
     domains.push(domainGrade({
       domainNumber: d,
       eventSlugs: inDomain.map(e => e.slug),
       ungradeable,
+      bodyweightBlocked,
       unavailable: input.exemptions,
       rungByEvent: new Map(inDomain.map(e => [e.slug, events.get(e.slug)!.rung])),
     }))
@@ -288,8 +307,8 @@ export type GameResultRow = {
   difficulty_tier: string | null
   /** When it counts for the training gate: the session's start. */
   at: string
-  /** results.bodyweight_band — the band of the day. See GradeResultRow. */
-  bodyweightBand?: string | null
+  /** The player's declared bodyweight on this game's day. See GradeResultRow. */
+  bodyweightKg?: number | null
   /** The session has finished. A game still in progress is not yet a game. */
   closed: boolean
 }
@@ -308,7 +327,7 @@ export function gameEvidence(rows: readonly GameResultRow[]): { rows: GradeResul
   for (const r of rows) {
     out.push({
       event_name: r.event_name, raw_score: r.raw_score, weight_kg: r.weight_kg,
-      difficulty_tier: r.difficulty_tier, source: 'game', bodyweightBand: r.bodyweightBand,
+      difficulty_tier: r.difficulty_tier, source: 'game', bodyweightKg: r.bodyweightKg,
     })
     if (!r.closed) continue
     games.add(r.session_id)

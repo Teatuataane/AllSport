@@ -44,9 +44,9 @@ const accountData: Row[] = [
     who: 'Kaiwhakawā. Your division is structural, so it is visible — the label next to your name is what "show division" controls. A junior\'s answer is never shown to anyone.',
   },
   {
-    what: 'Bodyweight band',
-    why: 'Optional. Strength and loaded-carry grades are measured against your bodyweight, so a lighter player is not graded against a heavier player\'s numbers. You pick a 10kg band, such as 70 to 80kg. We never ask for or store an exact weight. Leave it blank and those events are simply not graded for you. Players under 17 are never asked.',
-    who: 'Only you and kaiwhakawā. Never shown to other players or anywhere on the site.',
+    what: 'Bodyweight',
+    why: 'Optional, and asked at the top of the screen on a day you play or train a lift. Strength and loaded-carry grades are measured against your bodyweight, so a lighter player is not graded against a heavier player\'s numbers. We store the weight you enter and the day you entered it, so an old lift stays graded against what you weighed then. Leave it blank and those events count as not met, which means no strength colour until you give one — your other nine domains and your overall colour are unaffected. Everyone is asked, including players under 17.',
+    who: 'Only you, your parent if you are under 18, and kaiwhakawā. Never shown to other players or anywhere on the site.',
   },
   {
     what: 'Phone number',
@@ -83,8 +83,8 @@ const competitionData: Row[] = [
   },
   {
     what: 'Your grades',
-    why: 'A colour in each of the ten domains, earned by meeting a standard in your events. Worked out from your scores, your age group and, where it applies, your bodyweight band. Each new colour is recorded automatically the moment you meet it. If a kaiwhakawā removes a logged score that did not happen, a colour that rested on it is taken back, and a private note of that is kept for you, your parent and kaiwhakawā.',
-    who: 'Your colours are public. The band and age allowance behind them are not.',
+    why: 'A colour in each of the ten domains, earned by meeting a standard in your events. Worked out from your scores, your age group and, where it applies, your bodyweight on the day. Each new colour is recorded automatically the moment you meet it. If a kaiwhakawā removes a logged score that did not happen, a colour that rested on it is taken back, and a private note of that is kept for you, your parent and kaiwhakawā.',
+    who: 'Your colours are public. The bodyweight and age allowance behind them are not.',
   },
   {
     what: 'Your training log',
@@ -294,7 +294,7 @@ export default function PrivacyPolicy() {
           <div className="privacy-grid-2" style={{ marginTop: '32px' }}>
             {[
               ['Your scores are public', 'AllSport is a competition. Your display name, scores, placements and colour are visible to anyone — that is how a leaderboard works.'],
-              ['Your contact details are not', 'Your email, phone number, date of birth and bodyweight band are never shown anywhere on the site. They are for kaiwhakawā to run sessions, keep you safe and grade you fairly.'],
+              ['Your contact details are not', 'Your email, phone number, date of birth and bodyweight are never shown anywhere on the site. They are for kaiwhakawā to run sessions, keep you safe and grade you fairly.'],
               ['The wellbeing check-in is yours', 'Nobody at AllSport can read your individual answers. Kaiwhakawā only ever see group averages, and only when at least three people have answered.'],
               ['We do not sell or advertise', 'No advertising, no tracking pixels, no analytics, no data broker. We have never sold personal information and we will not.'],
               ['You can leave', 'One button on your profile erases your details for good. Another downloads everything we hold about you. Neither needs to go through us.'],
@@ -413,10 +413,12 @@ export default function PrivacyPolicy() {
               wellbeing check-in answers.
             </p>
             <p className="privacy-p">
-              Juniors are never asked for a bodyweight band. Their strength grades use a fixed junior standard
-              instead, with the age allowance on top. Because every junior plays in one Juniors division, the
-              answer given at registration is used privately to choose between the boys&apos; and girls&apos;
-              standards. It is never shown to anyone.
+              Juniors are asked for a bodyweight, the same as everyone else, and the same as everyone else it
+              is optional. It is asked on the day, on the scoring screen, only when that day includes a lift.
+              A parent who holds the account sees and can change it. If it is left blank, the strength events
+              count as not met and nothing else about the grade changes. Because every junior plays in one
+              Juniors division, the answer given at registration is used privately to choose between the
+              boys&apos; and girls&apos; standards. It is never shown to anyone.
             </p>
             <p className="privacy-p">
               A junior&apos;s display name, age group, scores and placements appear on public leaderboards in the
@@ -526,9 +528,9 @@ export default function PrivacyPolicy() {
               your name and contact details.
             </p>
             <p className="privacy-p">
-              <strong style={{ color: 'var(--white)' }}>Your bodyweight band</strong> — kept until you change or
-              clear it on your profile, and deleted with your account. Grades already earned stay earned if you
-              clear it.
+              <strong style={{ color: 'var(--white)' }}>Your bodyweight</strong> — each entry is kept with the
+              day it was recorded, so a past lift stays graded against what you weighed then, and all of them
+              are deleted with your account. Grades already earned stay earned.
             </p>
             <p className="privacy-p">
               <strong style={{ color: 'var(--white)' }}>Wellbeing check-in answers</strong> — kept for as long as

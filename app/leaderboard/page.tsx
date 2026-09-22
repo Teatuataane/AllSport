@@ -22,7 +22,7 @@ import { GradeDot } from '@/components/GradesCard'
  * It shows the overall colour a kaiwhakawā has CONFERRED: the lowest of the ten
  * domain colours, once all ten are held. Conferred colours are public
  * (grade_awards). A player's live, computed colours are not, because computing
- * them needs their bodyweight band and, for a junior, their sex. Until the
+ * them needs their declared bodyweight and, for a junior, their sex. Until the
  * overall exists the cell counts the domains that hold a colour instead.
  */
 function ColourCell({ player, size = 'wide' }: { player: EnrichedPlayer; size?: 'wide' | 'narrow' }) {
