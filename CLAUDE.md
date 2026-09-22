@@ -2060,18 +2060,31 @@ band, all five triggers present, `grades_need_recheck` definer with no anon exec
    `conferred_by`, `grades_need_recheck()`, the watermark reset, and a
    `results(player_id, created_at)` index. `confer_grade` is untouched.
 
-**Then switch it on in THIS order, or the replay skips the players it exists for.**
-The route starts conferring the moment Vercel has the key (Kiwikiwi needs no
-training units), and the replay skips anyone who already holds a colour, so a
-veteran who opened HOME in between would lose their history.
-1. Put `SUPABASE_SERVICE_ROLE_KEY` in `.env.local` ONLY (the script runs locally).
-2. Dry run, and read it:
-```
-node --env-file=.env.local --import ./scripts/ts-loader.mjs scripts/replay-colours.ts
-```
-3. Re-run with `--apply`.
-4. Only now add the key to Vercel and redeploy. Until then the route answers 503
-   and the panel's manual Confirm is the fallback.
+**SWITCHED ON 2026-09-23, in this order** (the order mattered: the route confers
+the moment Vercel has the key, and the replay skips anyone already holding a
+colour, so a veteran who opened HOME in between would have lost their history).
+
+1. `SUPABASE_SERVICE_ROLE_KEY` in `.env.local` only, and the replay dry-run read.
+2. `scripts/replay-colours.ts --apply`: **48 colours to 3 of 27 players**, all
+   `conferred_by` NULL, no duplicates, no withdrawals, dates 30 May to 23 Sept NZ
+   and none in the future. A second dry run returns 0, so it is idempotent.
+   **Exactly ONE Maximal Strength award**, which is the bodyweight fix working.
+3. Key added to Vercel (Production) and redeployed.
+
+**Proving the key is live is harder than it looks, and two obvious checks do not
+do it.** `POST /api/grades/recheck` returning 401 proves nothing: the route
+rejects an unsigned caller at line 32, well before the `hasServiceKey()` 503 at
+line 91. And the /judge Colours tab does not call the route at all once
+everything is conferred — `GradeReleasePanel.tsx:169` builds `due` from players
+with something PENDING and returns early when that is empty. Likewise a player
+whose watermark is already current is skipped by the cheap probe, correctly.
+
+**The check that works:** clear one player's `grades_checked_at`, have them load
+HOME, and watch the watermark come back. `stampChecked` runs only after
+`createSupabaseAdminClient()`, so a new stamp is unforgeable evidence the key is
+present. Done 2026-09-23: watermark moved 22:51:47 → 23:09:51 UTC. Clearing a
+watermark is a normal operation (`reset_grades_watermark` does it on any profile
+change) and costs one recompute.
 
 Inactive (erased) profiles are skipped by the replay, as the live route refuses
 them; reactivate a player and re-run with `--player <id>`. **Verify by querying the objects**, as
