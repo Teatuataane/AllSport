@@ -13,6 +13,11 @@
 // desktop bar had the tabs but no MORE, so a signed-in player on a laptop could
 // not sign out or reach their profile. `useNavState` is shared with BottomNav
 // so PLAY cannot point two different ways on two different widths.
+//
+// The one place the two bars deliberately differ: a kaiwhakawā gets no PLAY tab
+// here, because this bar also has room for a KAIWHAKAWĀ link and the two were
+// the same destination. That link carries `playHref`, so nothing is lost. The
+// bottom bar has no such link (the panel is a MORE row), so its PLAY tab stays.
 
 import { useState, useEffect, useRef, useSyncExternalStore } from 'react'
 import Link from 'next/link'
@@ -152,8 +157,14 @@ export default function Navbar() {
   )
 
   // The bottom bar's tabs, in the same order. Only rendered ≥769px.
+  //
+  // A kaiwhakawā does NOT get the PLAY tab here. For them it is labelled JUDGE
+  // and points at /judge whenever nothing is live, which is the same place the
+  // KAIWHAKAWĀ link below goes — so the bar carried the same destination twice,
+  // under two names for the same word. The KAIWHAKAWĀ link takes over its
+  // `playHref` instead, so the live-session route is not lost with it.
   const desktopTabs = [
-    { href: playHref, label: playLabel.toUpperCase(), colour: playColour, match: '/scoring' },
+    ...(isJudge ? [] : [{ href: playHref, label: playLabel.toUpperCase(), colour: playColour, match: '/scoring' }]),
     { href: '/dashboard', label: 'HOME', match: '/dashboard' },
     { href: '/grades', label: 'COLOURS', match: '/grades' },
     { href: '/leaderboard', label: 'BOARD', match: '/leaderboard' },
@@ -198,10 +209,15 @@ export default function Navbar() {
               )
             })}
             {isJudge && (
-              <Link href="/judge" style={{
+              // playHref, not '/judge': the live game while one is running, the
+              // panel otherwise — exactly what the PLAY tab did for a judge
+              // before it was folded into this one link.
+              <Link href={playHref} style={{
                 fontFamily: 'var(--font-label)', fontSize: 13,
                 letterSpacing: '0.1em', fontWeight: 600, color: 'var(--red)',
-                lineHeight: 1,
+                borderBottom: pathname.startsWith('/judge') || pathname.startsWith('/scoring')
+                  ? '2px solid var(--red)' : '2px solid transparent',
+                paddingBottom: 3, lineHeight: 1,
               }}>
                 KAIWHAKAWĀ
               </Link>
