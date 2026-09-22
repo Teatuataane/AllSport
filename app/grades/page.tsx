@@ -121,13 +121,16 @@ export default function GradesPage() {
           ))}
         </details>
 
-        {state && !state.hasBand && !/Junior|Youth/.test(activePlayer.division ?? '') && (
-          <Link href="/profile" style={{
+        {/* Juniors are asked for a bodyweight too now (Tāne, 23 September
+            2026), so this is no longer gated on division. */}
+        {state && !state.hasBand && (
+          <Link href="/workout/new" style={{
             display: 'block', background: '#0d0d0d', border: '1px solid var(--border)', borderRadius: 12,
             padding: '11px 13px', marginBottom: 16, fontSize: 13.5, color: 'var(--text-muted)', lineHeight: 1.5,
           }}>
             <span style={{ color: 'var(--white)' }}>Lifts and loaded carries are not graded yet.</span> They are measured
-            against your bodyweight band, which you have not set. <span style={{ color: 'var(--blue)' }}>Set it on your profile →</span>
+            against your bodyweight, and you are asked for it at the top of the screen whenever you play or train
+            a lift. <span style={{ color: 'var(--blue)' }}>Start a workout →</span>
           </Link>
         )}
 
@@ -165,10 +168,15 @@ export default function GradesPage() {
                 const eg = state.grades.events.get(e.slug)!
                 const waiting = state.disputed.get(e.name) ?? 0
                 const eventColour = gradeForRung(eg.rung)
+                // bodyweightBlocked, not !gradeable: a lift with no declared
+                // bodyweight now COUNTS as unmet and stays in the domain's
+                // denominator, so it is still gradeable — it just has no number
+                // to be graded against yet. !gradeable means the event left the
+                // denominator entirely (rating-only, or no standard at all).
                 const why = state.exemptions.has(e.slug)
                   ? 'Exempt, confirmed by a kaiwhakawā'
-                  : !eg.gradeable
-                    ? 'Needs a bodyweight band'
+                  : eg.bodyweightBlocked
+                    ? 'Needs your bodyweight — you are asked when you next play or train it'
                     : STANDARDS[e.slug]?.kind === 'rating' && eg.rung === 0
                       ? 'Graded by head-to-head rating, after ten games both players recorded'
                       : !eg.played

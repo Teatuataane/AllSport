@@ -4,16 +4,18 @@ import {
   type GradePlayer, type GradeResultRow,
 } from '@/lib/playerGrades'
 import { getEventByName, EVENTS } from '@/lib/eventData'
-import { DOMAIN_COUNT } from '@/lib/grading'
+import { DOMAIN_COUNT, overallGrade } from '@/lib/grading'
 
 const ev = (name: string) => {
   const e = getEventByName(name)
   if (!e) throw new Error(`${name} is not on the roster`)
   return e
 }
-const openMan: GradePlayer = { division: "Men's", ageYears: 30, gender: 'Male', bodyweightBand: '70 to 80kg' }
-const master: GradePlayer = { division: 'Masters Men', ageYears: 45, gender: 'Male', bodyweightBand: null }
-const under14: GradePlayer = { division: 'Juniors', ageYears: 12, gender: 'Female', bodyweightBand: null }
+const openMan: GradePlayer = { division: "Men's", ageYears: 30, gender: 'Male' }
+const master: GradePlayer = { division: 'Masters Men', ageYears: 45, gender: 'Male' }
+const under14: GradePlayer = { division: 'Juniors', ageYears: 12, gender: 'Female' }
+/** 75kg was the middle of the old "70 to 80kg" band, so the numbers below hold. */
+const BW = 75
 const row = (event_name: string, raw_score: number, extra: Partial<GradeResultRow> = {}): GradeResultRow =>
   ({ event_name, raw_score, weight_kg: null, difficulty_tier: null, ...extra })
 
@@ -61,15 +63,18 @@ describe('an event\'s colour', () => {
     expect(eventGrade(rope, drills, openMan, { rating: 1215, games: 9 }).rung).toBe(6)
   })
 
-  it('grades a lift against the band, and not at all without one', () => {
+  it('grades a lift against the declared bodyweight, and counts it unmet without one', () => {
     const bench = ev('Pause Bench')
-    const lift = [row('Pause Bench', 95, { weight_kg: 95 })]
-    expect(eventGrade(bench, lift, openMan).rung).toBe(11) // 1.25x of a 75kg middle is 95kg
-    expect(eventGrade(bench, lift, master)).toMatchObject({ rung: 0, gradeable: false })
+    const lift = [row('Pause Bench', 95, { weight_kg: 95, bodyweightKg: BW })]
+    expect(eventGrade(bench, lift, openMan).rung).toBe(11) // 1.25x of 75kg is 95kg
+    // No declaration: unmet and still in the denominator, NOT removed from it.
+    const undeclared = [row('Pause Bench', 95, { weight_kg: 95 })]
+    expect(eventGrade(bench, undeclared, master))
+      .toMatchObject({ rung: 0, gradeable: true, bodyweightBlocked: true })
   })
 
-  it('grades a junior\'s lift as a 50kg lifter, on their own ladder, then shifts it', () => {
-    const lift = [row('Pause Bench', 15, { weight_kg: 15 })]
+  it('grades a junior against their own declaration, on their own ladder, then shifts it', () => {
+    const lift = [row('Pause Bench', 15, { weight_kg: 15, bodyweightKg: 50 })]
     // A boy: 15kg is under the men's second rung (17.5kg), so Kiwikiwi, then +2.
     expect(eventGrade(ev('Pause Bench'), lift, { ...under14, gender: 'Male' }).rung).toBe(3)
     // A girl: 15kg meets the women's third rung (0.3 x 50kg), so Karaka, then +2.
@@ -95,11 +100,39 @@ describe('a player\'s grades', () => {
     expect(g.overall.ungraded).toHaveLength(DOMAIN_COUNT)
   })
 
-  it('takes lifts out of the denominator for an adult with no band', () => {
-    const strength = computePlayerGrades({ player: master, ...none }).domains[0]
+  it('KEEPS lifts in the denominator for an adult who has not declared a bodyweight', () => {
+    // The loophole this closed: they used to leave it. 12 of Maximal Strength's
+    // 14 events are ratio standards, so an undeclared player had the domain
+    // judged on 2 events needing 1 — skipping the question was the winning
+    // move, and 26 of 27 real players were on that path.
     const inDomain1 = EVENTS.filter(e => e.domainNumber === 1).length
-    const lifts = EVENTS.filter(e => e.domainNumber === 1 && e.inputMode === 'strength').length
-    expect(strength.availableCount).toBe(inDomain1 - lifts)
+    const lifts = [
+      row('Deadlift', 200, { weight_kg: 200 }),
+      row('Pause Bench', 150, { weight_kg: 150 }),
+    ]
+    const strength = computePlayerGrades({ player: master, ...none, results: lifts }).domains[0]
+    expect(strength.availableCount).toBe(inDomain1)
+    expect(strength.required).toBe(6)
+    expect(strength.rung).toBe(0)
+    expect(strength.blockedByBodyweight).toBe(true)
+  })
+
+  it('does not blame a bodyweight for a domain nobody has played', () => {
+    // A brand new player has no lifts, so nothing is blocked — they just have
+    // not turned up yet, and the domain must not tell them otherwise.
+    const strength = computePlayerGrades({ player: master, ...none }).domains[0]
+    expect(strength.blockedByBodyweight).toBe(false)
+  })
+
+  it('an undeclared player still gets an overall colour from the other domains', () => {
+    // Blocking strength must not delete someone's whole grade: overallGrade
+    // returns null while ANY domain is ungraded, so without this a player
+    // could be Hiriwa in nine domains and display nothing at all.
+    const blocked = { domainNumber: 1, rung: 0, availableCount: 14, required: 6, metAtRung: 0, nextRung: 1, metAtNextRung: 2, blockedByBodyweight: true }
+    const rest = [2, 3, 4, 5, 6, 7, 8, 9, 10].map(d => ({ domainNumber: d, rung: 6, availableCount: 12, required: 6, metAtRung: 6, nextRung: 7, metAtNextRung: 0 }))
+    expect(overallGrade([blocked, ...rest]).rung).toBe(6)
+    // An ordinary ungraded domain still withholds it.
+    expect(overallGrade([{ ...blocked, blockedByBodyweight: false }, ...rest]).rung).toBeNull()
   })
 
   it('ignores rows from retired events', () => {

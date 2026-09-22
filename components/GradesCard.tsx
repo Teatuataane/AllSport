@@ -75,17 +75,20 @@ export default function GradesCard({ state, askBand = false }: { state: GradeSta
         )}
       </div>
 
-      {/* Strength is graded against a bodyweight band nothing else asks for, so
-          a new player's first game left a whole domain ungraded with the only
-          prompt on /grades. The dashboard is where they actually are. */}
+      {/* Strength is graded against a bodyweight nothing else asks for, so a
+          new player's first game left a whole domain ungraded with the only
+          prompt on /grades. The dashboard is where they actually are.
+          It is DECLARED on the scoring screen now, not on /profile, so this
+          points at somewhere they can actually do it. */}
       {askBand && !state.hasBand && (
-        <Link href="/profile" style={{
+        <Link href="/workout/new" style={{
           display: 'block', fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.5,
           background: '#0d0d0d', border: '1px solid var(--border)', borderRadius: 10,
           padding: '9px 11px', marginBottom: 12,
         }}>
-          <span style={{ color: 'var(--white)' }}>Lifts and loaded carries need your bodyweight band.</span>{' '}
-          Pick a 10kg range and they start counting. <span style={{ color: 'var(--blue)' }}>Set it →</span>
+          <span style={{ color: 'var(--white)' }}>Lifts and loaded carries need your bodyweight.</span>{' '}
+          You are asked at the top of the screen next time you play or train.{' '}
+          <span style={{ color: 'var(--blue)' }}>Start a workout →</span>
         </Link>
       )}
 

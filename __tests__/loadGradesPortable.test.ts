@@ -14,6 +14,8 @@ import { loadGradeState, type GradeDb } from '@/lib/loadGrades'
 type Resp = { data: unknown; error: { code: string } | null }
 const ok = (data: unknown): Resp => ({ data, error: null })
 const missingColumn: Resp = { data: null, error: { code: '42703' } }
+/** A table that does not exist yet — a known empty, not a failure. */
+const missingTable: Resp = { data: null, error: { code: 'PGRST205' } }
 
 /** Every query logs the table and the columns it asked for, then answers from a script. */
 function fakeDb(script: Record<string, Resp[]>, log: { table: string; cols: string }[] = []) {
@@ -36,7 +38,12 @@ function fakeDb(script: Record<string, Resp[]>, log: { table: string; cols: stri
   return { db: { from } as unknown as GradeDb, log }
 }
 
+// The base fixture is a database from BEFORE 20260922213125: no
+// player_bodyweights table, so the loader falls back to the stored bands. That
+// is the deploy-order case worth pinning, and the declarations path gets its
+// own block at the bottom.
 const base = (): Record<string, Resp[]> => ({
+  player_bodyweights: [missingTable],
   players_public: [ok({ division: "Men's", age_years: 30 })],
   players: [ok({ gender: 'Male', bodyweight_band: '90 to 100kg' })],
   results: [ok([{
@@ -160,6 +167,65 @@ describe('the 42703 fallbacks keep the scores', () => {
     expect(bandAsks).toEqual(['bodyweight_band, bodyweight_band_first', 'bodyweight_band'])
     expect(state!.hasBand).toBe(true)
     expect(state!.grades.events.get('deadlift')!.rung).toBe(5)
+  })
+})
+
+describe('the bodyweight of the day', () => {
+  // Once 20260922213125 is applied, declarations are the ONLY source: the
+  // stored band is not consulted, or moving the question would have changed
+  // nothing for the 26 of 27 players who never answered it.
+  const declaring = (rows: unknown[]) => {
+    const script = base()
+    script.player_bodyweights = [ok(rows)]
+    // The lift is on 2026-09-01 and carries a stale band, to prove neither is read.
+    const results = (script.results[0].data as Record<string, unknown>[]).map(r => ({
+      ...r, bodyweight_band: 'Under 50kg',
+      sessions: { ...(r.sessions as object), session_date: '2026-09-01' },
+    }))
+    script.results = [ok(results)]
+    return script
+  }
+
+  it('grades the lift against the declaration in force on the day', async () => {
+    const script = declaring([{ measured_on: '2026-08-01', kg: 95, created_at: '2026-08-01T00:00:00Z' }])
+    const state = await loadGradeState(fakeDb(script).db, 'p1')
+    // 100kg at 95kg bodyweight is rung 5. The row's own band says Under 50kg,
+    // which would be rung 11 — so the band is genuinely no longer read.
+    expect(state!.grades.events.get('deadlift')!.rung).toBe(5)
+    expect(state!.hasBand).toBe(true)
+  })
+
+  it('uses the most recent declaration at or before the day, not the latest overall', async () => {
+    const script = declaring([
+      { measured_on: '2026-08-01', kg: 95, created_at: '2026-08-01T00:00:00Z' },
+      { measured_on: '2026-09-20', kg: 45, created_at: '2026-09-20T00:00:00Z' },
+    ])
+    // A lighter weight declared AFTER the lift must not re-price it.
+    expect((await loadGradeState(fakeDb(script).db, 'p1'))!.grades.events.get('deadlift')!.rung).toBe(5)
+  })
+
+  it('counts the lift as unmet when the table is live but they have declared nothing', async () => {
+    const script = declaring([])
+    const state = await loadGradeState(fakeDb(script).db, 'p1')
+    const g = state!.grades.events.get('deadlift')!
+    expect(g.rung).toBe(0)
+    expect(g.gradeable).toBe(true)
+    expect(g.bodyweightBlocked).toBe(true)
+    expect(state!.hasBand).toBe(false)
+  })
+
+  it('marks the state INCOMPLETE when the declarations read fails', async () => {
+    // Not a missing table — a real error against a database that has it. A
+    // silent empty reads as "declared nothing", and a kaiwhakawā deleting a
+    // score re-judges that domain and would withdraw strength colours on a
+    // transient network error. The route must not write on this.
+    const script = declaring([])
+    script.player_bodyweights = [{ data: null, error: { code: '08006' } }]
+    expect((await loadGradeState(fakeDb(script).db, 'p1'))!.complete).toBe(false)
+  })
+
+  it('stays complete when the table simply is not there yet', async () => {
+    expect((await loadGradeState(fakeDb(base()).db, 'p1'))!.complete).toBe(true)
   })
 })
 
