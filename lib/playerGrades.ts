@@ -24,6 +24,13 @@ export type GradePlayer = {
   gender: string | null
   /** One of BODYWEIGHT_BANDS' labels, or null when the player has not picked one. */
   bodyweightBand: string | null
+  /**
+   * The first band this player ever set (players.bodyweight_band_first), pinned
+   * by trigger. A score written before they had any band grades against THIS,
+   * never the current band, so clearing a band and setting a lighter one cannot
+   * re-price old lifts. Undefined before 20260921232726.
+   */
+  firstBodyweightBand?: string | null
 }
 
 /**
@@ -40,6 +47,16 @@ export type GradeResultRow = {
   weight_kg: number | null
   difficulty_tier: string | null
   source?: EvidenceSource
+  /**
+   * The band the player held when this row was written (the band OF THE DAY).
+   * Strength is a ratio of bodyweight, and the band is self-declared on
+   * /profile, so grading an old lift against today's declaration lets one
+   * dropdown re-price a whole domain. Null means the player had no band when
+   * it was written: it grades against their pinned FIRST band. Undefined means
+   * the database predates 20260921232726, and the current band is used —
+   * exactly the behaviour before it.
+   */
+  bodyweightBand?: string | null
 }
 
 export type EventGrade = {
@@ -100,12 +117,25 @@ export function eventGrade(
   let drill = 0
   let bestRow: GradeResultRow | undefined
   if (s.kind === 'ratio') {
-    const bw = strengthBodyweight(band, p.bodyweightBand)
-    if (bw == null) return { slug: ev.slug, rung: 0, gradeable: false, played }
-    bestRow = maxBy(drillRows, r => r.weight_kg ?? 0)
-    const best = bestRow?.weight_kg ?? 0
-    // The empty bar is Kiwikiwi, and it means a lift that happened: never a 0.
-    if (best > 0) drill = rungForScore(best, ratioThresholdsKg(ladder.map(r => r || null), bw), band)
+    // Each lift is graded against ITS OWN bodyweight, so the heaviest lift is
+    // no longer necessarily the best one: 95kg at 70kg bodyweight beats 100kg
+    // at 100kg. Rank by the rung each row reaches, earliest winning a tie,
+    // which is what maxBy did before.
+    const ratios = ladder.map(r => r || null)
+    let anyBw = strengthBodyweight(band, p.bodyweightBand) != null
+    for (const r of drillRows) {
+      const bw = strengthBodyweight(band, r.bodyweightBand ?? p.firstBodyweightBand ?? p.bodyweightBand)
+      if (bw == null) continue
+      anyBw = true
+      const kg = r.weight_kg ?? 0
+      // The empty bar is Kiwikiwi, and it means a lift that happened: never a 0.
+      if (kg <= 0) continue
+      const rung = rungForScore(kg, ratioThresholdsKg(ratios, bw), band)
+      if (rung > drill) { drill = rung; bestRow = r }
+    }
+    // No band anywhere — on this player or on any row they lifted in. The event
+    // is ungradeable for them, not failed.
+    if (!anyBw) return { slug: ev.slug, rung: 0, gradeable: false, played }
   } else if (drillRows.length) {
     bestRow = maxBy(drillRows, r => r.raw_score!)
     drill = rungForScore(bestRow!.raw_score!, ladder, band, s.game ? { cap: DRILL_CAP } : {})
@@ -226,7 +256,8 @@ export function heldRungs(awards: readonly { domain_number: number; rung: number
 
 /**
  * Domains whose next colour passes all three gates — standards, games and
- * training — which is what the release panel offers. ONE colour per domain at
+ * training — which is what auto-conferral writes (lib/autoConfer.ts), and what
+ * the release panel offers as its fallback. ONE colour per domain at
  * a time: the training count restarts at each conferral, so the colour above
  * needs its own units first.
  */
@@ -257,6 +288,8 @@ export type GameResultRow = {
   difficulty_tier: string | null
   /** When it counts for the training gate: the session's start. */
   at: string
+  /** results.bodyweight_band — the band of the day. See GradeResultRow. */
+  bodyweightBand?: string | null
   /** The session has finished. A game still in progress is not yet a game. */
   closed: boolean
 }
@@ -273,7 +306,10 @@ export function gameEvidence(rows: readonly GameResultRow[]): { rows: GradeResul
   const units: UnitEvent[] = []
   const games = new Set<string>()
   for (const r of rows) {
-    out.push({ event_name: r.event_name, raw_score: r.raw_score, weight_kg: r.weight_kg, difficulty_tier: r.difficulty_tier, source: 'game' })
+    out.push({
+      event_name: r.event_name, raw_score: r.raw_score, weight_kg: r.weight_kg,
+      difficulty_tier: r.difficulty_tier, source: 'game', bodyweightBand: r.bodyweightBand,
+    })
     if (!r.closed) continue
     games.add(r.session_id)
     const u = unitsForResultRow({ event_name: r.event_name, difficulty_tier: r.difficulty_tier })
@@ -324,6 +360,21 @@ export function colourGates(
     games,
     unitsSinceHeld: unitsByDomain.get(d.domainNumber) ?? 0,
   }))
+}
+
+/**
+ * The event slugs standing behind a colour in a domain: everything already at
+ * that rung or above. Stored on the award as its evidence, and shown by the
+ * release panel as what the colour rests on.
+ *
+ * Shared because BOTH writers must record the same thing — a kaiwhakawā
+ * releasing by hand and the server conferring automatically — and an award
+ * whose evidence disagreed with the panel would be impossible to audit.
+ */
+export function eventsBehind(grades: PlayerGrades, domainNumber: number, rung: number): string[] {
+  return EVENTS
+    .filter(e => e.domainNumber === domainNumber && (grades.events.get(e.slug)?.rung ?? 0) >= rung)
+    .map(e => e.slug)
 }
 
 /** What is holding a domain's next colour back, in a few words. Null when it is ready, or at the top. */

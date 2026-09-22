@@ -1171,6 +1171,11 @@ second copy of the rules in plpgsql would be one more place for the grade to
 silently disagree with the app. Revisit only if a colour is conferred that
 should not have been.
 
+> **SUPERSEDED 2026-09-21 by auto-conferral** (see "Auto-conferral" below). The
+> kaiwhakawā is no longer the trigger. The objection above still holds and was
+> honoured: there is still NO second copy of the rules in plpgsql. The server
+> runs the same TypeScript engine instead.
+
 - **The ladder:** Mā (start, not an award), then Kiwikiwi, Whero, Karaka, Kōwhai,
   Kākāriki, Kahurangi, Poroporo, Parahi, Hiriwa, Kōura, Uenuku, Taniwha —
   targeting anyone, then the 90th down to the 1st percentile. Grades own colour;
@@ -1556,7 +1561,12 @@ players. The `NOTICE ... trigger "session_void_recorded" ... does not exist, ski
 **Still to confirm:** the first REAL game after this closes with placements and NULL-point
 summary rows, and appears in play history.
 
-**The menu.** Tabs are **PLAY · HOME · COLOURS · BOARD · MORE** on both widths. MORE holds
+**The menu.** Tabs are **PLAY · HOME · COLOURS · BOARD · MORE** on both widths.
+**One exception (2026-09-21): a kaiwhakawā gets no PLAY tab in the DESKTOP top bar.**
+For them it read JUDGE and pointed at /judge, the same place as the KAIWHAKAWĀ link
+beside it, so the bar showed one destination twice. The KAIWHAKAWĀ link now carries
+`playHref` (the live game while one runs, /judge otherwise), so nothing is lost. The
+phone bar has no such link, so its PLAY tab stays. MORE holds
 only the player's own things: (Kaiwhakawā) · Log a workout · My events · Play history ·
 Profile & family · My koha · Sign out. Schedule, Give koha, Event guide, How to play and
 Supporters moved to the footer, which renders on every page. **The desktop top bar opens
@@ -1625,10 +1635,14 @@ gitignored).
 - **Open until Finish, and the NZ day closes it.** No timer, nothing sweeps it.
   An empty personal game is deleted on Finish. Entries stay editable for 7 days,
   which is the database's window, not the screen's.
-- **`Something else` is kept on purpose.** Retiring free text would have stopped
-  a swim or a yoga class being recorded at all until the log-only domains exist,
-  and the funder activity report counts those minutes. It earns minutes, never
-  units or a colour.
+- **`Something else` and "How long" were REMOVED from /workout/new on
+  2026-09-21**, Tāne's call after being told the cost: they cluttered the form.
+  The cost is real and accepted: a swim or yoga class can no longer be
+  recorded, and the funder Activity Report stops gaining self-reported minutes
+  (it still counts each game as `GAME_MINUTES` and reads distance entries' own
+  seconds). `workouts.duration_minutes` and unfitted entries are NOT dropped:
+  the column, the guards and the report all still read them, so old logs keep
+  their minutes and a future screen can set them again.
 - Built on `claude/training-load` (duration/effort + the activity report), which
   is merged into this branch.
 
@@ -1907,6 +1921,156 @@ for real yet:
 - the closing game still writes placements and NULL-point summary rows
   (the open item from the points retirement).
 
+## Auto-conferral — a colour confers itself (September 2026) — MIGRATIONS NOT YET APPLIED
+
+Designed in a `/grill-me` on 2026-09-21; the full record is
+`docs/designs/auto-conferral-spec.md` (gitignored, like the other grading design
+records, because it describes who could game what). **It supersedes decision 9:**
+the kaiwhakawā is no longer the trigger for a colour.
+
+**The problem was a bottleneck, not authority.** The rule was right; the tap was
+the friction. Nothing about what earns a colour changed, only who pulls the trigger.
+
+**The shape. THE CLIENT ASSERTS NOTHING.** A player's screen posts "check me" to
+`POST /api/grades/recheck`. The route reads that player's data through the
+CALLER'S OWN login (so RLS is still the guard), re-runs `lib/grading.ts` (the same
+module the browser runs), and only then writes the award with the service key.
+There is nothing to forge. There is also no plpgsql copy of the rules, which is
+what Tāne rejected in September. Do NOT let the browser call a conferring RPC for
+itself: `grade_awards` is public and feeds the leaderboard.
+
+- **Triggers:** HOME, COLOURS, and the session-end takeover (`force: true`, so the
+  colour lands while the player is still in the room). The /judge Colours tab
+  rechecks everyone with something due, which covers players who stopped opening
+  the app. All four go through the same route.
+- **Cheap path:** `grades_need_recheck(player)` compares a `players.grades_checked_at`
+  watermark against new results, entries, exemptions, matches and closed or voided
+  sessions. It is SECURITY DEFINER **and checks `can_log_for` before reading
+  anything**, or it would be an activity oracle for every player. It is
+  conservative by construction: the route skips only on an explicit `false`.
+- **One colour per domain per run.** `colourGate` only ever offers `held + 1`, and
+  units restart at each conferral, so nothing chains.
+- **`grade_awards.conferred_by` NULL means the server conferred it.**
+- **Awards are NO LONGER APPEND-ONLY.** A kaiwhakawā deleting a logged score from
+  the audit panel re-judges that ONE domain and takes back what the remaining
+  scores no longer support (`awardsToWithdraw`), logged to the private
+  `grade_withdrawals` table, which also drives the player's plain "taken back"
+  notice (no rainbow: never a celebration in reverse). **An ordinary recheck
+  never withdraws.** That is the whole of "rules cannot drop a colour": a revised
+  standards sheet reaches players only through rechecks that can give, never
+  take. A player deleting their OWN log keeps the colour, by design.
+- **Strength is graded against the band OF THE DAY** (`results.bodyweight_band`,
+  `workout_entries.bodyweight_band`, stamped on INSERT and pinned on every UPDATE,
+  nulls included). A row written before the player had any band grades against
+  `players.bodyweight_band_first`, the first band they ever set, itself pinned by
+  trigger, so clearing a band and setting a lighter one re-prices nothing. **No
+  trigger ever rewrites a score row after the one-time backfill**: an earlier
+  draft did, under the player's login, and the results and entries guards
+  refused every finished game and old log, so nobody with history could have set
+  a band. The
+  band is self-declared on /profile, and before this, declaring "Under 50kg"
+  lowered every lift threshold at once: a 100kg deadlift is Kākāriki at 90 to
+  100kg and Uenuku at Under 50kg. With no release step nobody would ever look.
+  A lift is now ranked by the rung each row reaches, not by `weight_kg`, because
+  the heaviest lift is no longer necessarily the best one.
+- **`lib/loadGrades.ts` takes its Supabase client as an argument** and never
+  imports the browser one, so it runs on a server. Its voided-sessions cache is
+  keyed per client (a WeakMap), because a module-scope memo means "once per
+  process lifetime" on a server and a voided game would stay invisible until
+  the next deploy.
+- **The moment** is driven off the awards, not the recheck's response, against a
+  per-player localStorage watermark. A null watermark shows NOTHING (the history
+  replay would otherwise open the app on a stack of old news), seeded from the
+  latest award, or the epoch when they hold none so a first colour is still news.
+- **Manual Confirm survives only as the fallback** while the server has no key
+  (the route answers 503). Safe to deploy before the key exists.
+- **The route writes nothing on a partial read** (`GradeState.complete`). A failed
+  results read looked like a player with no scores, and a withdrawal would have
+  taken back every colour in the domain; a failed voids read would have conferred
+  on voided games. A table that does not exist yet is a known empty, not a failure.
+- **Only games both players recorded (or a kaiwhakawā settled) are rated**, and
+  the 10-game minimum reads that count (`rateGames`, decided 2026-09-22). A game
+  one side recorded let a player enter wins against anyone at an open game and
+  reach the top rating colours in a sitting.
+- **A guest and an inactive profile are never conferred on**, by the route or the
+  replay.
+
+**The history replay.** Units only count after a conferral, so switching this on
+naively would land everyone on Kiwikiwi and discard their training.
+`lib/replayColours.ts` walks each player's history and confers each colour when it
+would have landed, through `gradeStateFrom(..., { asOf })`, the same path the live
+route uses. The test that matters: after a replay, the live path finds nothing
+more to give. Script: `scripts/replay-colours.ts`, dry run by default, `--apply` to
+write, skips anyone already holding a colour. Ages are today's ages throughout
+(stated in the output). **Timestamps are compared as instants, never strings:**
+Postgres writes `…06.123456+00:00` and JavaScript `…06.123Z`.
+
+- **Division, date of birth, gender and `is_active` can only be changed by a
+  kaiwhakawā or server code** (`20260921182106`). The route also **never confers
+  on an inactive profile**: erasure nulls the date of birth and a junior with no
+  age grades as U14, a colour easier than U16, while the login survives. So
+  `is_active` is pinned too, or a player could switch themselves back on. The engine grades on all three and
+  `players_update_own` let a player PATCH any of them: "Grandmaster Women" was two
+  colours and another ladder from one request, and nobody looks any more.
+  **Server code is recognised by `current_user`, not `auth.uid()`**:
+  `delete_my_account` nulls date of birth and gender while `auth.uid()` is still
+  the player, so an `auth.uid()` guard broke every self-service erasure (caught in
+  the second review cycle). The guard and the first-band pin are therefore
+  SECURITY INVOKER, and a test fails if any definer function other than
+  `delete_my_account` ever updates `players`.
+- **A change to a player's band, division, date of birth or gender clears their
+  watermark** (`reset_grades_watermark`), because none of those leaves a row for
+  the cheap probe to find. **The probe cannot see an EDIT to a score** (no
+  `updated_at`); the session-end screen and the panel both force a full run,
+  which is what catches it.
+- **A withdrawal never moves the watermark**: it re-judged one domain and ran no
+  conferral pass.
+
+**Migrations, all NOT YET APPLIED.** Code first, then `supabase db push` from a
+clean worktree on `main` (never `~/allsport`; never accept the CLI's
+`migration repair`). All four sort AFTER main's `20260920220344_roster_update_128`,
+so no `--include-all` is needed whichever order they reach production in. Two were
+renumbered to guarantee that.
+1. `20260920234713_grade_withdrawals` — the private withdrawal log.
+2. `20260921182106_pin_grading_identity` — the division/DOB/gender/is_active guard.
+3. `20260921232726_bodyweight_band_of_the_day` — the band columns, the pinned
+   first band, a one-time backfill BEFORE the stamp triggers exist, the stamp
+   triggers, and `delete_my_account` redefined whole with one added line
+   (clearing the first band). No trigger is ever disabled. PRE-FLIGHT in the
+   header: an existing entry off the roster would roll it back.
+4. `20260921232728_auto_conferral_route` — `grades_checked_at`, nullable
+   `conferred_by`, `grades_need_recheck()`, the watermark reset, and a
+   `results(player_id, created_at)` index. `confer_grade` is untouched.
+
+**Then switch it on in THIS order, or the replay skips the players it exists for.**
+The route starts conferring the moment Vercel has the key (Kiwikiwi needs no
+training units), and the replay skips anyone who already holds a colour, so a
+veteran who opened HOME in between would lose their history.
+1. Put `SUPABASE_SERVICE_ROLE_KEY` in `.env.local` ONLY (the script runs locally).
+2. Dry run, and read it:
+```
+node --env-file=.env.local --import ./scripts/ts-loader.mjs scripts/replay-colours.ts
+```
+3. Re-run with `--apply`.
+4. Only now add the key to Vercel and redeploy. Until then the route answers 503
+   and the panel's manual Confirm is the fallback.
+
+Inactive (erased) profiles are skipped by the replay, as the live route refuses
+them; reactivate a player and re-run with `--player <id>`. **Verify by querying the objects**, as
+this file insists: `pg_proc` for `grades_need_recheck` (SECURITY DEFINER,
+`search_path=public`, no `anon` in `proacl`) and for `guard_players_grading_identity`
+and `pin_bodyweight_band_first` (both NOT definer); `pg_trigger` for the stamp,
+pin, identity and watermark triggers; `prosrc` of `delete_my_account` containing
+`bodyweight_band_first = NULL`; `information_schema.columns` for `conferred_by`
+nullable; and `grade_withdrawals` returning 401 / `42501` as `anon`. Then, as a
+player, confirm setting a band on /profile succeeds for someone with past games,
+and that self-service erasure still completes.
+
+**Also in this PR:** every player-facing line saying a kaiwhakawā confirms a colour
+(home, How to Play ×2, leaderboard ×2, /grades, the colours card, /privacy) was
+rewritten. /privacy now names the withdrawal record, because a privacy policy has
+to be accurate about what is stored.
+
 ## Security posture (August 2026) — read before touching RLS or players_public
 
 An OWASP pass (SQL injection / XSS / auth / access control) found three
@@ -1916,6 +2080,13 @@ authentication came back clean: there is no dynamic SQL anywhere in the
 migrations, no `dangerouslySetInnerHTML`/`innerHTML`/`eval` anywhere in the app,
 auth is entirely Supabase Auth with no hand-rolled tokens, and no `service_role`
 key exists in client code.
+
+**Since auto-conferral (2026-09-21) a service key DOES exist, server-side only**:
+`SUPABASE_SERVICE_ROLE_KEY`, read by `lib/supabase-admin.ts`, imported by exactly one
+file (`app/api/grades/recheck/route.ts`) and by the one-off replay script. It is
+never `NEXT_PUBLIC_`, and `__tests__/autoConferral.test.ts` fails if any other file
+imports it or a `'use client'` file does. It is used for WRITES ONLY. A leak is
+total: it bypasses every RLS policy this section describes.
 
 **`players` is no longer publicly readable.** It was `USING (true)` from the
 April 2026 rebuild, so one unauthenticated request returned all 27 players with
@@ -2103,7 +2274,7 @@ update players set role = 'judge' where id = '[uuid]';
 | Vote | /vote/[voteId] | Complete | Step-by-step voting flow, one domain per screen, partial save, review screen, locked on submit |
 | Vote Results | /vote/[voteId]/results | Complete | Spoiler-free until voted, bar chart per domain, counts only while open / percentages on close, judge full breakdown |
 | Log a Workout | /log | **Retired (v0.11.0.0)** — a redirect to `/workout/new`. The route stays for old links |
-| New Workout | /workout/new | Complete (v0.11.0.0) | Plan a personal game with the SAME picker an official game uses: any number of events, Draw me ten, Copy today's game, a date chip row back 7 days, how long / how hard, and "Something else" for an activity with no event yet |
+| New Workout | /workout/new | Complete (v0.11.0.0) | Plan a personal game with the SAME picker an official game uses: any number of events, Draw me ten, Copy today's game, a date chip row back 7 days, how hard and notes. ("How long" and "Something else" removed 2026-09-21) |
 | Personal Game | /workout/[id] | Complete (v0.11.0.0) | Playing a personal game on the official live screen: progress header, Still to play / Scored, the quick-entry sheet. Natural formats on (sets, distance + time). Open until Finish; the NZ day closes it |
 | Play History | /history | Complete | Every game, plus (v0.11.0.0) your workouts with a Continue link for an unfinished one, the never-fitted entries, and the points-ladder colours era |
 | Game Review | /games/[sessionId] | Complete | Full all-player game report — every division, every event with score + placement, division standings. Linked from dashboard session history. Any logged-in player. Placements computed live from raw_score |

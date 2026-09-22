@@ -17,6 +17,8 @@ export type WorkoutEntryRow = {
   raw_score: number | null
   weight_kg: number | null
   difficulty_tier: string | null
+  /** The band of the day. Absent before 20260921232726. See GradeResultRow. */
+  bodyweight_band?: string | null
   workouts: {
     player_id: string
     performed_on: string
@@ -122,6 +124,7 @@ export function workoutEvidence(entries: readonly WorkoutEntryRow[]): { rows: Gr
         // the same kaiwhakawā. The server only lets it be written while that
         // game is open (20260920042215), which is what makes the label safe.
         source: e.workouts.session_id ? 'game' : e.workouts.witnessed ? 'witnessed' : 'solo',
+        bodyweightBand: e.bodyweight_band,
       })
     }
     const u = unitsForEntryRow({

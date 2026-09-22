@@ -422,7 +422,8 @@ export function rungForScore(
 // On an event topped by a Game rung, the drills grade Kiwikiwi to Kahurangi and
 // a head-to-head rating grades Poroporo to Taniwha: 1,100 to 1,600, one colour
 // per 100 points, so the colour above you wins about two games in three. A
-// rating colour needs ten recorded games in that sport. The colour shown is the
+// rating colour needs ten games in that sport recorded by both sides (or settled by
+// a kaiwhakawā; see rateGames). The colour shown is the
 // higher of the two, and like every colour it is never taken back when the
 // rating later falls.
 //

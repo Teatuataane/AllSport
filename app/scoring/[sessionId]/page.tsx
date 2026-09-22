@@ -3,7 +3,7 @@ import { opponentPicks as pickOpponents } from '@/lib/matches'
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient, getSessionUser } from '@/lib/supabase-browser'
-import { getEventByName, getEventBySlug, type EventData } from '@/lib/eventData'
+import { getEventByName, getEventBySlug, DOMAIN_ORDER, type EventData } from '@/lib/eventData'
 import { unitsForResult, unitsForResultRow, unitsIn, fmtUnits, fmtUnitsLabel } from '@/lib/units'
 import { parseLocalDate } from '@/lib/dates'
 import EventIcon, { domainColor } from '@/components/EventIcon'
@@ -17,6 +17,9 @@ import {
 import QuickEntrySheet, { type SubmitOutcome } from '@/components/play/QuickEntrySheet'
 import SwapPicker from '@/components/play/SwapPicker'
 import { playList, domainsCovered, type PlaySlot } from '@/lib/gameSwaps'
+import { recheckGrades, type ConferredColour } from '@/lib/recheckGrades'
+import { gradeForRung } from '@/lib/grading'
+import { GradeDot } from '@/components/GradesCard'
 import { useGameSwaps } from '@/lib/useGameSwaps'
 import EventListRow from '@/components/play/EventListRow'
 import {
@@ -868,6 +871,7 @@ function SessionEndTakeover({
   const [summary, setSummary] = useState<EndSummary | null>(null)
   const [sessionCount, setSessionCount] = useState<number | null>(null)
   const [loaded, setLoaded] = useState(false)
+  const [newColours, setNewColours] = useState<ConferredColour[]>([])
 
   // Lock body scroll while the takeover is open (same pattern as the sheet)
   useEffect(() => {
@@ -893,6 +897,20 @@ function SessionEndTakeover({
     }
     load()
   }, [sessionId, playerId])
+
+  // The colour lands HERE, while the player is still in the room — the moment
+  // the whole grading system is built around (spec decision 7). `force`,
+  // because the game closed seconds ago and the cheap watermark on the server
+  // may not have caught up with it yet.
+  //
+  // Its own effect: a slow or failed recheck must not hold up the placement
+  // and PRs above, which are what most players open this screen for.
+  useEffect(() => {
+    let cancelled = false
+    void recheckGrades({ playerId, force: true })
+      .then(r => { if (!cancelled) setNewColours(r.conferred) })
+    return () => { cancelled = true }
+  }, [playerId])
 
   // Points are retired. What a game gives a player now is its placement,
   // the events they played, and training units toward their colours.
@@ -981,8 +999,32 @@ function SessionEndTakeover({
             </>
           )}
 
-          {/* Colours. What today did for them is worked out from the standards
-              and shown on /grades; a kaiwhakawā confirms each new colour. */}
+          {/* Colours earned today. Conferred by the server while this screen
+              was opening, so it is a fact by the time it is announced, not a
+              promise that a kaiwhakawā will get to it later. */}
+          {newColours.length > 0 && (
+            <>
+              <div style={{ ...SHEET_LBL, color: '#4DB26E' }}>
+                {newColours.length > 1 ? 'New colours' : 'New colour'}
+              </div>
+              {newColours.map(c => {
+                const g = gradeForRung(c.rung)
+                return (
+                  <div key={`${c.domainNumber}:${c.rung}`} style={{
+                    display: 'flex', alignItems: 'center', gap: '10px', background: '#161616',
+                    border: '1px solid #4DB26E33', borderRadius: '12px', padding: '10px 14px', marginBottom: '6px',
+                  }}>
+                    <GradeDot grade={g} size={14} />
+                    <span style={{ flex: 1, fontSize: '14px', color: '#fff' }}>{c.name}</span>
+                    <span style={{ fontSize: '13px', color: '#888' }}>
+                      {DOMAIN_ORDER[c.domainNumber - 1]}
+                    </span>
+                  </div>
+                )
+              })}
+            </>
+          )}
+
           <a href="/grades" style={{
             display: 'block', marginTop: '18px', background: '#161616', border: '1px solid #1e1e1e',
             borderRadius: '14px', padding: '14px 16px', color: '#fff', textDecoration: 'none',

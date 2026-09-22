@@ -5,7 +5,10 @@
 // ten domains, and the overall colour once all ten hold one (decision 10 — the
 // ten lead; the overall appears only when it means something).
 //
-// What a player sees is what a kaiwhakawā has CONFERRED (decision 9). Each
+// What a player sees is what has been CONFERRED — automatically since
+// docs/designs/auto-conferral-spec.md, by a kaiwhakawā before it. A row showing
+// "earned" is the brief moment between the engine agreeing and the recheck
+// writing it, or the server having no key to write with. Each
 // domain's next colour needs three things (workout logging, September 2026):
 // the standards, the games quota and training units in that domain. The row
 // says which is missing, and a thin bar shows the training toward it. Before
@@ -92,7 +95,7 @@ export default function GradesCard({ state, askBand = false }: { state: GradeSta
           background: '#0d0d0d', border: '1px solid var(--border)', borderRadius: 10,
           padding: '9px 11px', marginBottom: 12,
         }}>
-          Provisional: worked out from your scores. A kaiwhakawā confirms each colour once grading goes live.
+          Provisional: worked out from your scores. Colours are recorded once grading goes live.
         </div>
       )}
 
@@ -103,7 +106,7 @@ export default function GradesCard({ state, askBand = false }: { state: GradeSta
           const standardsNext = d.nextRung ? gradeForRung(d.nextRung) : null
           const blocker = gateBlocker(gate)
           const status = ready
-            ? <span style={{ color: 'var(--green)' }}>{next!.name} is ready for a kaiwhakawā to confirm</span>
+            ? <span style={{ color: 'var(--green)' }}>{next!.name} earned</span>
             : d.availableCount === 0
               ? 'Nothing here can be graded for you yet'
               : !schemaReady

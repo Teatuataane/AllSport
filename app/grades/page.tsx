@@ -5,11 +5,13 @@
 // holds a domain back. The dashboard card is the summary; this is the detail.
 // Honours the family switcher like every other stats page.
 //
-// Colours a kaiwhakawā has conferred are the ones a player HOLDS (decision 9).
+// Colours in grade_awards are the ones a player HOLDS. Since auto-conferral the
+// server confers them (app/api/grades/recheck); a kaiwhakawā confirms by hand
+// only while the server has no service key.
 // Event colours here are always computed from the standards: they are how the
 // player gets to the next one, not an award.
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { EVENTS } from '@/lib/eventData'
@@ -17,10 +19,15 @@ import { STANDARDS } from '@/lib/standards'
 import { gradeForRung, AGE_SHIFT, type ColourGate } from '@/lib/grading'
 import { useActivePlayer, playerLabel } from '@/lib/useActivePlayer'
 import { loadGradeState, type GradeState } from '@/lib/loadGrades'
+import { useNewColours } from '@/lib/useNewColours'
+import NewColourCard from '@/components/NewColourCard'
+import { createClient } from '@/lib/supabase-browser'
 import { unitRulesSummary } from '@/lib/units'
 import PlayerTabs, { ViewingAsBanner } from '@/components/PlayerTabs'
 import DomainIcon from '@/components/DomainIcon'
 import { GradeDot } from '@/components/GradesCard'
+
+const supabase = createClient()
 
 const DOMAIN_NAMES = Array.from({ length: 10 }, (_, i) => EVENTS.find(e => e.domainNumber === i + 1)?.domain ?? '')
 
@@ -45,12 +52,16 @@ export default function GradesPage() {
     if (!loading && !userId) router.push('/play')
   }, [loading, userId, router])
 
+  const [gradesNonce, setGradesNonce] = useState(0)
+  const reloadGrades = useCallback(() => setGradesNonce(n => n + 1), [])
   useEffect(() => {
     if (!activePlayerId) return
     let cancelled = false
-    loadGradeState(activePlayerId).then(s => { if (!cancelled) setLoaded({ id: activePlayerId, state: s }) })
+    loadGradeState(supabase, activePlayerId).then(s => { if (!cancelled) setLoaded({ id: activePlayerId, state: s }) })
     return () => { cancelled = true }
-  }, [activePlayerId])
+  }, [activePlayerId, gradesNonce])
+
+  const newColours = useNewColours(activePlayerId, state, reloadGrades)
 
   if (loading || !activePlayer) {
     return <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555' }}>Loading…</div>
@@ -63,6 +74,7 @@ export default function GradesPage() {
       <PlayerTabs />
       <div style={{ maxWidth: 560, margin: '0 auto', padding: '14px 16px 48px', color: 'var(--white)' }}>
         <ViewingAsBanner />
+        <NewColourCard awards={newColours.unseen} withdrawn={newColours.withdrawn} onDismiss={newColours.dismiss} />
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, margin: '8px 0 6px' }}>
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 40, lineHeight: 1, margin: 0, letterSpacing: '0.03em' }}>
@@ -158,7 +170,7 @@ export default function GradesPage() {
                   : !eg.gradeable
                     ? 'Needs a bodyweight band'
                     : STANDARDS[e.slug]?.kind === 'rating' && eg.rung === 0
-                      ? 'Graded by head-to-head rating, after ten games'
+                      ? 'Graded by head-to-head rating, after ten games both players recorded'
                       : !eg.played
                         ? 'Not played yet'
                         : eg.rung === 0
@@ -207,7 +219,7 @@ function GateRow({ gate }: { gate: ColourGate }) {
   return (
     <div style={{ fontSize: 12.5, margin: '2px 0 8px', lineHeight: 1.6 }}>
       <div style={{ color: gate.releasable ? 'var(--green)' : 'var(--white)', marginBottom: 2 }}>
-        {gate.releasable ? `${next.name} is ready: a kaiwhakawā confirms it.` : `Toward ${next.name}`}
+        {gate.releasable ? `${next.name} earned.` : `Toward ${next.name}`}
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px' }}>
         {item(gate.standardsMet, 'Standards')}

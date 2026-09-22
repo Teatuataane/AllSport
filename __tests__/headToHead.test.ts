@@ -13,6 +13,16 @@ const match = (recorder: string, opp: string, outcome: MatchRow['outcome'], extr
   ...extra,
 })
 
+// The same game as the OTHER player recorded it: sides swapped, the outcome
+// flipped, a draw still a draw. Only games both sides recorded are rated
+// (decided 2026-09-22), so rating-maths tests record every game twice.
+const mirror = (m: MatchRow): MatchRow => ({
+  ...m, id: `${m.id}r`,
+  outcome: m.outcome === 'a' ? 'b' : m.outcome === 'b' ? 'a' : m.outcome,
+  players: m.players.map(p => ({ ...p, side: p.side === 'a' ? 'b' as const : 'a' as const })),
+})
+const both = (ms: MatchRow[]) => ms.flatMap(m => [m, mirror(m)])
+
 describe('the model approved in review', () => {
   it('starts everyone at 1,000', () => {
     expect(RATING_START).toBe(1000)
@@ -54,9 +64,16 @@ describe('rating the games match recording collects', () => {
     expect(r.get('B')).toEqual({ rating: 980, games: 1 })
   })
 
-  it('rates a game only one side logged', () => {
-    const r = rateGames([match('B', 'A', 'b')]).get('Squash')!
+  it('does NOT rate a game only one side recorded', () => {
+    // One player's word alone let them enter wins against anyone at an open
+    // game and reach the top rating colours in a sitting, with nobody looking.
+    expect(rateGames([match('B', 'A', 'b')]).get('Squash')).toBeUndefined()
+  })
+
+  it('rates it once the other side records it too', () => {
+    const r = rateGames(both([match('B', 'A', 'b')])).get('Squash')!
     expect(r.get('A')!.rating).toBe(1020)
+    expect(r.get('A')!.games).toBe(1)   // one game, not two, for two records
   })
 
   it('leaves a disputed game unrated, and out of the ten-game count', () => {
@@ -73,13 +90,13 @@ describe('rating the games match recording collects', () => {
   })
 
   it('keeps a separate rating in every sport', () => {
-    const r = rateGames([match('A', 'B', 'a'), match('B', 'A', 'a', { event_name: 'Tennis' })])
+    const r = rateGames(both([match('A', 'B', 'a'), match('B', 'A', 'a', { event_name: 'Tennis' })]))
     expect(r.get('Squash')!.get('A')!.rating).toBe(1020)
     expect(r.get('Tennis')!.get('A')!.rating).toBe(980)
   })
 
   it('rates a draw between equals as no change', () => {
-    const r = rateGames([match('A', 'B', 'draw')]).get('Squash')!
+    const r = rateGames(both([match('A', 'B', 'draw')])).get('Squash')!
     expect(r.get('A')!.rating).toBe(1000)
     expect(r.get('B')!.games).toBe(1)
   })
@@ -89,7 +106,7 @@ describe('rating the games match recording collects', () => {
       { player_id: 'A', side: 'a' as const }, { player_id: 'A2', side: 'a' as const },
       { player_id: 'B', side: 'b' as const }, { player_id: 'B2', side: 'b' as const },
     ]
-    const r = rateGames([match('A', 'B', 'a', { players })]).get('Squash')!
+    const r = rateGames(both([match('A', 'B', 'a', { players })])).get('Squash')!
     for (const id of ['A', 'A2']) expect(r.get(id)!.rating).toBe(1020)
     for (const id of ['B', 'B2']) expect(r.get(id)!.rating).toBe(980)
   })
@@ -102,12 +119,12 @@ describe('rating the games match recording collects', () => {
   it('earns Poroporo only after ten games, and only by winning them', () => {
     // A beats a string of new players: ten wins at K 40, then settles.
     const wins = Array.from({ length: 10 }, (_, i) => match('A', `P${i}`, 'a', { session_id: `s${i}` }))
-    const a = rateGames(wins).get('Squash')!.get('A')!
+    const a = rateGames(both(wins)).get('Squash')!.get('A')!
     expect(a.games).toBe(10)
     expect(a.rating).toBeGreaterThan(RATING_FLOOR)
     expect(ratingRung(a.rating, a.games)).toBeGreaterThanOrEqual(7)
     // Nine of the same wins are not enough, however high the rating.
-    const nine = rateGames(wins.slice(0, 9)).get('Squash')!.get('A')!
+    const nine = rateGames(both(wins.slice(0, 9))).get('Squash')!.get('A')!
     expect(ratingRung(nine.rating, nine.games)).toBe(0)
   })
 })
