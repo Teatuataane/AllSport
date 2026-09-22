@@ -1710,11 +1710,24 @@ the workout-customisation plan, and the part that prompted it.
   solo needs `matches.workout_entry_id` AND a change to the rule that refuses a
   logged Game-rung result. Its own piece of work.
 
-## Roster update — 128 events, uneven domains (September 2026) — MIGRATION NOT YET APPLIED
+## Roster update — 128 events, uneven domains (September 2026) — v0.15.0.0, APPLIED AND VERIFIED 2026-09-22
 
 Tāne's list of 21 Sept 2026. Eight events added, three renamed, one moved, and the
-domain-colour threshold capped. `20260920220344_roster_update_128.sql` is written and
-**not applied**; deploy the code first, then the migration.
+domain-colour threshold capped. Shipped in PR #132. **`20260920220344_roster_update_128.sql`
+APPLIED TO PRODUCTION 2026-09-22**, after v0.15.0.0 was confirmed live (the new
+`/events/skull-hang` served, the old `/events/weighted-carry` rendered "Event not found") and
+with no game, personal game or recent workout entry open. Verified by querying the objects:
+`event_domains` 128 rows at 14/12/12/12/13/12/16/13/12/12, `rope-climb` in domain 8, zero
+`session_events` rows on the old names or slugs, all 7 draws now `Sandbag Carry` /
+`sandbag-carry`, the carry aliases repointed, and zero aliases pointing at no event.
+
+**Applied through `supabase db query --linked -f`, not `db push`**, because `db push` needs
+`SUPABASE_DB_PASSWORD` and a session does not have it. The file applied was taken from
+`origin/main` and byte-compared with the one dry-run twice. The ledger row was then written by
+hand in the CLI's own format (`version`, `name`, `statements`), and `supabase migration list
+--linked` shows every version matched local and remote. **If you apply a migration this way,
+write the ledger row too**, or the next `db push` will offer it again. That is harmless for an
+idempotent file like this one but not in general: `20260713000001` corrupts scores if re-run.
 
 - **Added (8):** **Pullover & Press**, **Loaded Lunge** (Maximal Strength, `strength`);
   **Skull Hang** (Calisthenics, `difficulty+time` hold — "like the chin hang but on the back
