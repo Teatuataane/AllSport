@@ -161,6 +161,17 @@
 
 ## P1 — Do Next
 
+### Switch on auto-conferral (v0.16.0.0) — in this order
+**What:** four migrations, a one-off history replay, then the service key.
+**Order matters.** The route confers the moment Vercel has the key, and the replay skips anyone already holding a colour, so the key goes to Vercel LAST:
+1. Deploy v0.16.0.0 (the code is safe without the key: the route answers 503 and manual Confirm still works).
+2. `supabase db push` from a clean worktree on `main`. All four sort after `20260920220344`, so no `--include-all`. Pre-flight in `20260921232726`'s header: zero `workout_entries` with a slug off the roster.
+3. `SUPABASE_SERVICE_ROLE_KEY` in `.env.local` only. Dry-run `scripts/replay-colours.ts`, read it, then `--apply`.
+4. Add the key to Vercel and redeploy.
+**Verify by object:** `grades_need_recheck` SECURITY DEFINER with `search_path=public` and no anon; `guard_players_grading_identity` and `pin_bodyweight_band_first` NOT definer; the stamp, pin, identity and watermark triggers in `pg_trigger`; `delete_my_account`'s `prosrc` contains `bodyweight_band_first = NULL`; `grade_awards.conferred_by` nullable; `grade_withdrawals` 401 as anon.
+**Then prove the two things the review nearly broke:** as a player with past games, set a band on /profile (it must save); and run a self-service erasure on a test account (it must complete).
+**Noticed:** v0.16.0.0
+
 ### Apply `20260920220344_roster_update_128.sql` straight after v0.15.0.0 deploys
 **What:** re-seeds `event_domains` to 128, repoints seven 'Weighted Carry' draws (name AND slug) in `session_events`, repoints four `activity_aliases`, and asserts nothing still stores a retired slug.
 **Order:** code first, then this, with no game or workout running. Until it runs, logging a new or renamed event fails with 22023 and `confer_grade` refuses colours citing them, so release no colours in the gap. Afterwards hard-refresh every kaiwhakawā device.
@@ -288,6 +299,22 @@ now only reachable if Whānau's own art goes missing, and for Te Kāhui, which n
 
 ## P2 — Soon
 
+### Show the band of the day in the kaiwhakawā audit, and record band changes
+**What:** a player can pick a lighter band before a game, lift, and switch back; the lift is graded light for good and nobody sees the switch. Show the band stamped on each lift beside it in the Colours tab, and keep a history of band changes so a sudden switch is visible. Decided 2026-09-22: moderate it in person, like solo logs, rather than block it.
+**Noticed:** v0.16.0.0 adversarial review
+
+### A band change can be lost to the recheck watermark
+**What:** `reset_grades_watermark` clears `grades_checked_at` on a band/division change, but a recheck already in flight then stamps over it with its earlier start time, so the cheap probe misses the change. Self-heals at the next game close or panel catch-up. Fix: record `grade_inputs_changed_at` in the trigger and have the probe compare it, instead of relying on NULL surviving.
+**Noticed:** v0.16.0.0 review, cycle 3
+
+### Page `loadMatches` past PostgREST's 1,000-row cap
+**What:** it reads every match, ascending, with no range. Past 1,000 rows the rating is computed from the OLDEST 1,000 and new games stop counting, silently. It now runs on the server for every full recheck too.
+**Noticed:** v0.16.0.0 review (pre-existing)
+
+### The add-family-member form never records a junior's gender
+**What:** gender is only asked for adults, so every child added from /profile keeps it null and grades on the boys' ladder. Since v0.16.0.0 only a kaiwhakawā can set it afterwards. Ask it for juniors in the form (INSERT is not guarded).
+**Noticed:** v0.16.0.0 review, cycle 2
+
 ### Review the drafted standards for the eight v0.15.0.0 events
 **What:** Pullover & Press (about 0.9 of Clean & Press), Loaded Lunge (about 0.6 of Pause Back Squat), Skull Hang (Chin Hang's numbers unchanged), Calf Raises, and the four Flexibility holds were drafted by Claude with no usage to calibrate against. Each is marked in `GRADING_STANDARDS_REVIEW.md`.
 **Noticed:** v0.15.0.0
@@ -381,6 +408,22 @@ from `main` and this is a review branch.
 ---
 
 ## P3 — Later
+
+### Throttle forced rechecks
+**What:** any signed-in user can POST `force: true` in a loop; each call skips the cheap probe and does about ten queries. Ignore `force` when that player was checked in the last 30 seconds. Decided 2026-09-22 to log rather than build.
+**Noticed:** v0.16.0.0 review
+
+### A batch form of the recheck route for the Colours tab
+**What:** the tab's catch-up rechecks each due player separately, and each server call reloads every match. Accept `playerIds[]`, load matches once, and return fresh states so the tab stops reloading each player afterwards.
+**Noticed:** v0.16.0.0 review
+
+### The end-of-game "New colour" does not move the HOME watermark
+**What:** the takeover announces a colour, then HOME announces the same one again. Harmless, but it reads as two colours.
+**Noticed:** v0.16.0.0 adversarial review
+
+### Show the armed Delete's countdown
+**What:** it disarms itself after 4 seconds with no visible timer, so a kaiwhakawā reading the row can tap into a disarmed button. Show a countdown on the armed state.
+**Noticed:** v0.16.0.0 review, cycle 2
 
 ### A session created on a non-NZ device still gets the wrong time
 **What:** `sessionStart()` in `lib/dates.ts` builds the start instant with `setHours()`, which resolves in the DEVICE's timezone. A kaiwhakawā whose phone is set to something other than NZ produces a `started_at` wrong by the offset — and `session_date` then faithfully reports the NZ day of that wrong instant. The pair stays self-consistent (the DB trigger enforces the same rule), so the data is never internally contradictory, but neither half is rescued from a mis-set clock. The 100-minute expiry would also be off, so `close_expired_sessions()` could close the game early or late.
