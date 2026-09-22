@@ -83,7 +83,7 @@ const competitionData: Row[] = [
   },
   {
     what: 'Your grades',
-    why: 'A colour in each of the ten domains, earned by meeting a standard in your events. Worked out from your scores, your age group and, where it applies, your bodyweight band. A kaiwhakawā releases each new colour.',
+    why: 'A colour in each of the ten domains, earned by meeting a standard in your events. Worked out from your scores, your age group and, where it applies, your bodyweight band. Each new colour is recorded automatically the moment you meet it. If a kaiwhakawā removes a logged score that did not happen, a colour that rested on it is taken back, and a private note of that is kept for you, your parent and kaiwhakawā.',
     who: 'Your colours are public. The band and age allowance behind them are not.',
   },
   {

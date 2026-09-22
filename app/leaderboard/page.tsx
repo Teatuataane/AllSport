@@ -619,7 +619,7 @@ export default function Leaderboard() {
           </h1>
           <div className="rainbow-line" style={{ width: '80px', marginBottom: '28px' }} />
           <p style={{ color: '#cccccc', fontSize: '20px', maxWidth: '560px', lineHeight: 1.7 }}>
-            Two boards. <strong style={{ color: '#ffffff' }}>Colours</strong> are earned against published standards, confirmed by a kaiwhakawā and yours for good, so that board never resets. The <strong style={{ color: '#ffffff' }}>Season</strong> board counts every game you finish 1st, 2nd or 3rd in your division this year, and starts fresh each January.
+            Two boards. <strong style={{ color: '#ffffff' }}>Colours</strong> are earned against published standards and land the moment you meet them, so that board never resets. The <strong style={{ color: '#ffffff' }}>Season</strong> board counts every game you finish 1st, 2nd or 3rd in your division this year, and starts fresh each January.
           </p>
         </div>
       </section>
@@ -729,7 +729,7 @@ export default function Leaderboard() {
               <p style={{ color: 'var(--grey)', fontSize: '13px', lineHeight: 1.6, margin: 0 }}>
                 {(
                   <>
-                    <strong style={{ color: 'var(--white)' }}>Domains &amp; colour</strong> — how many of your ten domains hold a colour, and your overall colour: the lowest of the ten, shown once a kaiwhakawā has confirmed all ten. Never lost. See the key below.
+                    <strong style={{ color: 'var(--white)' }}>Domains &amp; colour</strong> — how many of your ten domains hold a colour, and your overall colour: the lowest of the ten, shown once all ten hold a colour. See the key below.
                   </>
                 )}
               </p>
