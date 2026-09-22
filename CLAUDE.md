@@ -2469,7 +2469,14 @@ RLS: own + parent (family) + judge.
     supabase-browser.ts             # Browser client (use this in ALL client components)
     supabase-server.ts              # Server client
     supabase-cookies.ts             # AUTH_COOKIE_OPTIONS — MUST be passed to every Supabase client (secure/sameSite/path). See HTTP security below
+    supabase-admin.ts               # SERVER ONLY service-key client, for WRITES only. Imported by app/api/grades/recheck/route.ts and
+                                    #   scripts/replay-colours.ts and nothing else; __tests__/autoConferral.test.ts enforces it
     securityHeaders.ts              # buildCsp / buildSecurityHeaders — the CSP + 8 headers, unit tested in __tests__/securityHeaders.test.ts
+    autoConfer.ts                   # Auto-conferral decision half (pure): which colours to write, and which to withdraw, from a grade state
+    recheckGrades.ts                # Auto-conferral client half: posts "check me" to /api/grades/recheck, sends no colour or score, never throws
+    replayColours.ts                # History replay (pure): confers each colour when it would have landed, through the live route's own path
+    newColours.ts                   # Unseen colours and withdrawals against a per-player localStorage watermark (pure)
+    useNewColours.ts                # The hook HOME and COLOURS share: runs the recheck and yields the moment for components/NewColourCard.tsx
     eventData.ts                    # Single source of truth for all events (128) + difficulty+time encode/decode helpers (encodeDiffTime/decodeDiffTime/isTimedEffort, TIMED_EFFORT_SLUGS).
                                     #   DifficultyTier carries `detail` (judge criteria) plus `scoring`/`records` — how a single rung is scored, declared on the tier so nothing matches on event name. COMPILED from EVENT_DIFFICULTY_REVIEW.md by scripts/apply-difficulty-sheet.mjs; do not hand-edit a ladder without updating the sheet.
     dates.ts                        # parseLocalDate / formatNZDate — parse DATE columns in local time (avoids off-by-one)
@@ -2492,6 +2499,8 @@ RLS: own + parent (family) + judge.
                                     #   and passed down as name strings, which is what keeps eventData.ts off the client
     layout.tsx                      # Root layout
     globals.css                     # Design system
+    api/grades/recheck/route.ts     # POST: re-runs lib/grading.ts for a player under the caller's own login, then writes earned colours
+                                    #   (and a kaiwhakawā's withdrawals) with the service key. 503 while SUPABASE_SERVICE_ROLE_KEY is unset (manual Confirm is the fallback)
     play/page.tsx
     how-to-play/page.tsx            # Links to /events. SERVER component (Aug 2026) — interactive domain accordion split out below
     how-to-play/DomainAccordion.tsx # Client island for the domain accordion; receives `domains` already derived so eventData.ts stays server-side
