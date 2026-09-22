@@ -2060,18 +2060,31 @@ band, all five triggers present, `grades_need_recheck` definer with no anon exec
    `conferred_by`, `grades_need_recheck()`, the watermark reset, and a
    `results(player_id, created_at)` index. `confer_grade` is untouched.
 
-**Then switch it on in THIS order, or the replay skips the players it exists for.**
-The route starts conferring the moment Vercel has the key (Kiwikiwi needs no
-training units), and the replay skips anyone who already holds a colour, so a
-veteran who opened HOME in between would lose their history.
-1. Put `SUPABASE_SERVICE_ROLE_KEY` in `.env.local` ONLY (the script runs locally).
-2. Dry run, and read it:
-```
-node --env-file=.env.local --import ./scripts/ts-loader.mjs scripts/replay-colours.ts
-```
-3. Re-run with `--apply`.
-4. Only now add the key to Vercel and redeploy. Until then the route answers 503
-   and the panel's manual Confirm is the fallback.
+**SWITCHED ON 2026-09-23, in this order** (the order mattered: the route confers
+the moment Vercel has the key, and the replay skips anyone already holding a
+colour, so a veteran who opened HOME in between would have lost their history).
+
+1. `SUPABASE_SERVICE_ROLE_KEY` in `.env.local` only, and the replay dry-run read.
+2. `scripts/replay-colours.ts --apply`: **48 colours to 3 of 27 players**, all
+   `conferred_by` NULL, no duplicates, no withdrawals, dates 30 May to 23 Sept NZ
+   and none in the future. A second dry run returns 0, so it is idempotent.
+   **Exactly ONE Maximal Strength award**, which is the bodyweight fix working.
+3. Key added to Vercel (Production) and redeployed.
+
+**Proving the key is live is harder than it looks, and two obvious checks do not
+do it.** `POST /api/grades/recheck` returning 401 proves nothing: the route
+rejects an unsigned caller at line 32, well before the `hasServiceKey()` 503 at
+line 91. And the /judge Colours tab does not call the route at all once
+everything is conferred — `GradeReleasePanel.tsx:169` builds `due` from players
+with something PENDING and returns early when that is empty. Likewise a player
+whose watermark is already current is skipped by the cheap probe, correctly.
+
+**The check that works:** clear one player's `grades_checked_at`, have them load
+HOME, and watch the watermark come back. `stampChecked` runs only after
+`createSupabaseAdminClient()`, so a new stamp is unforgeable evidence the key is
+present. Done 2026-09-23: watermark moved 22:51:47 → 23:09:51 UTC. Clearing a
+watermark is a normal operation (`reset_grades_watermark` does it on any profile
+change) and costs one recompute.
 
 Inactive (erased) profiles are skipped by the replay, as the live route refuses
 them; reactivate a player and re-run with `--player <id>`. **Verify by querying the objects**, as
@@ -2089,7 +2102,7 @@ and that self-service erasure still completes.
 rewritten. /privacy now names the withdrawal record, because a privacy policy has
 to be accurate about what is stored.
 
-## Bodyweight of the day (September 2026) — v0.17.0.0, MIGRATION NOT YET APPLIED
+## Bodyweight of the day (September 2026) — v0.17.0.0, APPLIED AND VERIFIED 2026-09-23
 
 Strength standards are a ratio of bodyweight. That bodyweight was a 10kg band picked
 on `/profile`, and **one player in 27 ever set one — the kaiwhakawā.** Twenty players
@@ -2181,16 +2194,37 @@ being rewarded with the same treatment.
   nothing there. One player, 402 rows, in production. The migration asserts every
   player holding a band ends with a declaration.
 
-**DEPLOY CODE FIRST, THEN THE MIGRATION.** Either order is survivable (the loader
-treats a missing table as not-live), code-first keeps the window shortest.
+**Deployed code first, then the migration.** Either order is survivable (the loader
+treats a missing table as not-live); code-first kept the window shortest.
 
-**Dry-run against production 2026-09-23 in a rolled-back transaction**: every
-assertion passed, the seed produced 1 declaration, and production was unchanged
-afterwards (no table, no function, bands intact).
+**`20260922213125_player_bodyweights` APPLIED AND VERIFIED IN PRODUCTION 2026-09-23**
+(PR #135), after confirming v0.17.0.0 was actually serving — the new `/privacy` copy
+was live and the old "we never ask for or store an exact weight" line was gone — with
+no game, no open personal game, nothing written in 30 minutes, and zero awards
+conferred. Dry-run first in a rolled-back transaction (every assertion passed, seed
+produced 1 declaration, production unchanged afterwards). Applied through
+`supabase db query --linked -f` in one transaction with the ledger row inside it, from
+a file byte-compared against `origin/main`.
 
-**HOLD `scripts/replay-colours.ts --apply` UNTIL THIS IS APPLIED.** Under the old
-rules it confers Maximal Strength colours on a 2-event denominator, and an ordinary
-recheck never withdraws. This is the only moment the fix is free.
+**Verified by object, not the ledger:** RLS on with 1 policy and **zero** direct
+INSERT/UPDATE/DELETE grants; `record_bodyweight` definer with `search_path=public` and
+no anon; `pin_bodyweight_measured_on` **not** definer (so the `current_user` test
+actually fires); `grades_need_recheck` probing `player_bodyweights` and keeping every
+probe it had; `delete_my_account` carrying `DELETE FROM player_bodyweights` alongside
+its old rules; 401 as anon on both the table and the RPC against a 200 control; ledger
+matched local and remote. The seed produced **one** declaration — 85kg, dated
+2026-04-30, the midpoint of the one banded player's band at their earliest banded row —
+so no colour changed.
+
+**A bare `LIKE` against `prosrc` matched a COMMENT, again.** The first check for
+"does `record_bodyweight` write to players" came back true, from the comment reading
+"the ONLY SECURITY DEFINER function that updates players". Same trap as
+`20260917021257`. Re-checked with comment lines stripped and a pattern requiring a real
+`UPDATE players SET`: `record_bodyweight` clean, `delete_my_account` still has its one.
+**Strip comments before asserting on `prosrc`.**
+
+**`scripts/replay-colours.ts --apply` is now UNBLOCKED** and is the next step in the
+auto-conferral switch-on.
 
 ### Still open
 
