@@ -125,7 +125,7 @@ const steps = [
   {
     number: '07',
     title: 'Earn Your Colours',
-    desc: 'Every event has a standard for each of twelve colours, from Kiwikiwi to Taniwha. Meet a colour in six of a domain’s events and you hold that domain at that colour; your overall colour is the lowest of your ten. Each new colour also needs games played in the room and training in that domain. A kaiwhakawā confirms each one, and it is yours for good.',
+    desc: 'Every event has a standard for each of twelve colours, from Kiwikiwi to Taniwha. Meet a colour in six of a domain’s events and you hold that domain at that colour; your overall colour is the lowest of your ten. Each new colour also needs games played in the room and training in that domain. It lands the moment all three are met, and a change to the standards never takes it away.',
   },
 ]
 
@@ -281,7 +281,7 @@ export default function HowToPlay() {
             <div className="info-card">
               <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555555', marginBottom: '8px' }}>The Colours</div>
               <p style={{ color: 'var(--grey)', fontSize: '13px', lineHeight: 1.65, marginBottom: '16px' }}>
-                Twelve colours, climbed one at a time in each of the ten domains. Each new colour needs three things, and a kaiwhakawā confirms it once all three are met.
+                Twelve colours, climbed one at a time in each of the ten domains. Each new colour needs three things, and it lands the moment all three are met.
               </p>
               {[
                 { label: 'Standards', rule: 'Meet the colour in six of the domain’s events' },

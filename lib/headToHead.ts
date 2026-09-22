@@ -56,7 +56,12 @@ export type SportRating = { rating: number; games: number }
 export function rateGames(matches: readonly MatchRow[]): Map<string, Map<string, SportRating>> {
   const out = new Map<string, Map<string, SportRating>>()
   for (const g of reconcileGames(matches)) {
-    if (g.status === 'disputed') continue
+    // Only games resting on more than one side's word: both players recorded
+    // it, or a kaiwhakawā settled it. Colours now confer themselves, and a game
+    // only one side recorded let a player enter wins against anyone at an open
+    // game and reach the top rating colours in a sitting, with nobody looking.
+    // Decided with Tāne 2026-09-22. The 10-game minimum reads this count too.
+    if (g.status !== 'agreed' && g.status !== 'settled') continue
     const { a, b } = g.sides
     // A side left empty, or one player on both sides, is not a game to rate.
     if (!a.length || !b.length || a.some(id => b.includes(id))) continue

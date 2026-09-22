@@ -9,8 +9,16 @@
 // Decisions (docs/designs/workout-customisation-spec.md): any number of
 // events; "Draw for me" and "Copy today's official ten"; a date chip row for
 // the last 7 days, so logging yesterday's session opens the same screen dated
-// yesterday; how long and how hard ride along, because the funder activity
-// report counts minutes.
+// yesterday.
+//
+// The "how long" field and the free-text "something else" box were removed in
+// September 2026 (Tāne's call, told what it costs): the form is events, effort
+// and notes. `workouts.duration_minutes` and unfitted entries are NOT dropped —
+// the column, the guards and /judge's Activity Report all still read them, so
+// old logs keep their minutes and a future screen can set them again. What the
+// report loses from here on is self-reported minutes and activities the roster
+// has no event for; it still counts a game as GAME_MINUTES and reads any
+// distance entry's own seconds.
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
@@ -55,17 +63,11 @@ export default function NewWorkoutPage() {
   const day = chosenDay && days.includes(chosenDay) ? chosenDay : today
 
   const [plan, setPlan] = useState<string[]>([])
-  const [minutes, setMinutes] = useState('')
   const [effort, setEffort] = useState<number | null>(null)
   const [notes, setNotes] = useState('')
   const [players, setPlayers] = useState<{ id: string; display_name: string }[]>([])
   const [forPlayer, setForPlayer] = useState<string | null>(null)
   const [officialTen, setOfficialTen] = useState<string[] | null>(null)
-  // Something else: an activity the roster has no event for (a swim, yoga).
-  // It earns no units and no colour, but it is still a workout, and the funder
-  // activity report counts its minutes. Until the log-only domains land, this
-  // is the only way to record one — the old free-text /log could.
-  const [otherActivity, setOtherActivity] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [live, setLive] = useState(true)
@@ -109,10 +111,8 @@ export default function NewWorkoutPage() {
   const start = async () => {
     setError('')
     if (!targetId || !userId) return
-    const other = otherActivity.trim()
-    if (plan.length === 0 && !other) { setError('Pick at least one event, or say what else you did.'); return }
+    if (plan.length === 0) { setError('Pick at least one event.'); return }
     setBusy(true)
-    const mins = parseInt(minutes) || null
     const { data, error: e } = await supabase.from('workouts')
       .insert({
         player_id: targetId,
@@ -120,7 +120,6 @@ export default function NewWorkoutPage() {
         performed_on: day,
         planned_events: plan,
         notes: notes.trim() || null,
-        ...(mins ? { duration_minutes: mins } : {}),
         ...(effort ? { effort_rating: effort } : {}),
       })
       .select('id').single()
@@ -135,17 +134,8 @@ export default function NewWorkoutPage() {
         : e?.message ?? 'The workout did not start. Try again.')
       return
     }
-    const workoutId = (data as { id: string }).id
-    if (other) {
-      // Not fitted to an event on purpose: it earns nothing but the minutes.
-      const { error: e2 } = await supabase.from('workout_entries').insert({
-        workout_id: workoutId, activity: other.slice(0, 80),
-        ...(mins ? { duration_seconds: mins * 60 } : { count: 1 }),
-      })
-      if (e2) { setError(e2.message); return }
-    }
-    // With nothing planned there is nothing to score, so it is a plain log.
-    router.push(plan.length > 0 ? `/workout/${workoutId}` : '/history')
+    // There is always a plan now, so there is always something to score.
+    router.push(`/workout/${(data as { id: string }).id}`)
   }
 
   if (loading || !activePlayer) {
@@ -220,24 +210,9 @@ export default function NewWorkoutPage() {
 
         <EventPlanPicker mode="personal" plan={plan} onChange={setPlan} />
 
-        {/* ── Something else ───────────────────────────────────────────── */}
+        {/* ── How hard ─────────────────────────────────────────────────── */}
         <div style={{ ...card, marginTop: 16 }}>
-          <div style={{ ...label, fontSize: 11, color: 'var(--text-muted)', marginBottom: 6 }}>Something else (optional)</div>
-          <input value={otherActivity} onChange={e => setOtherActivity(e.target.value)} maxLength={80}
-            placeholder="Swim, yoga, tramp…" aria-label="Something else"
-            style={{ width: '100%', boxSizing: 'border-box', background: '#0d0d0d', color: 'var(--white)', border: '1px solid var(--border)', borderRadius: 10, padding: '11px 12px', fontSize: 16, minHeight: 44 }} />
-          <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.5 }}>
-            Anything AllSport has no event for yet. It counts toward your weekly minutes, not toward a colour.
-          </div>
-        </div>
-
-        {/* ── How long, how hard ───────────────────────────────────────── */}
-        <div style={{ ...card, marginTop: 16 }}>
-          <div style={{ ...label, fontSize: 11, color: 'var(--text-muted)', marginBottom: 6 }}>How long (optional)</div>
-          <input inputMode="numeric" type="number" min="1" max="1440" value={minutes} onChange={e => setMinutes(e.target.value)}
-            placeholder="Minutes" aria-label="Minutes"
-            style={{ width: 140, background: '#0d0d0d', color: 'var(--white)', border: '1px solid var(--border)', borderRadius: 10, padding: '11px 12px', fontSize: 16, minHeight: 44 }} />
-          <div style={{ ...label, fontSize: 11, color: 'var(--text-muted)', margin: '12px 0 6px' }}>How hard (optional)</div>
+          <div style={{ ...label, fontSize: 11, color: 'var(--text-muted)', marginBottom: 6 }}>How hard (optional)</div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
               <button key={n} type="button" onClick={() => setEffort(effort === n ? null : n)}
@@ -257,15 +232,14 @@ export default function NewWorkoutPage() {
           </div>
         )}
 
-        <button onClick={start} disabled={busy || (plan.length === 0 && !otherActivity.trim())} style={{
+        <button onClick={start} disabled={busy || plan.length === 0} style={{
           width: '100%', minHeight: 58, borderRadius: 999, border: 'none',
-          cursor: (plan.length > 0 || otherActivity.trim()) && !busy ? 'pointer' : 'not-allowed',
-          background: plan.length > 0 || otherActivity.trim() ? 'var(--rainbow)' : '#1a1a1a',
-          color: plan.length > 0 || otherActivity.trim() ? '#0a0a0a' : '#555',
+          cursor: plan.length > 0 && !busy ? 'pointer' : 'not-allowed',
+          background: plan.length > 0 ? 'var(--rainbow)' : '#1a1a1a',
+          color: plan.length > 0 ? '#0a0a0a' : '#555',
           fontFamily: 'var(--font-label)', textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: 16, fontWeight: 600,
         }}>
           {busy ? 'Starting…'
-            : plan.length === 0 && otherActivity.trim() ? 'Log it'
             : plan.length === 0 ? 'Pick your events'
             : `Start — ${plan.length} event${plan.length === 1 ? '' : 's'}`}
         </button>

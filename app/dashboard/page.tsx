@@ -13,11 +13,11 @@
 // colours era). The dashboard used to be an action hub with stats bolted on; it
 // is a stats page with one action on it.
 //
-// TWO CLOCKS, ON PURPOSE. Colours are lifetime and never taken back. `rankings`
+// TWO CLOCKS, ON PURPOSE. Colours are lifetime; a standards change never takes one back. `rankings`
 // is still seasonal, so the division rank line is explicitly labelled with the
 // year — that is the only seasonal number on the page.
 
-import { useEffect, useMemo, useState, Suspense } from 'react'
+import { useCallback, useEffect, useMemo, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase-browser'
@@ -28,6 +28,8 @@ import PlayerTabs, { ViewingAsBanner } from '@/components/PlayerTabs'
 import DomainRadar from '@/components/DomainRadar'
 import GradesCard from '@/components/GradesCard'
 import { loadGradeState, type GradeState } from '@/lib/loadGrades'
+import { useNewColours } from '@/lib/useNewColours'
+import NewColourCard from '@/components/NewColourCard'
 import VoteCard from '@/app/components/VoteCard'
 import WellbeingSurvey from '@/app/components/WellbeingSurvey'
 import { DOMAIN_COLORS } from '@/lib/domainColours'
@@ -114,13 +116,19 @@ function DashboardInner() {
   // ── Grades. Their OWN queries, never folded into the bundle above. ──────────
   // lib/loadGrades.ts reads every source separately, so a missing grading table
   // returns PGRST205 there and the rest of this page is untouched.
+  // `gradesNonce` is what the recheck bumps when the server confers something,
+  // so the card below describes rows that are actually in the database.
+  const [gradesNonce, setGradesNonce] = useState(0)
+  const reloadGrades = useCallback(() => setGradesNonce(n => n + 1), [])
   useEffect(() => {
     if (!activePlayerId) return
     let cancelled = false
     setGrades(null)
-    loadGradeState(activePlayerId).then(s => { if (!cancelled) setGrades(s) })
+    loadGradeState(supabase, activePlayerId).then(s => { if (!cancelled) setGrades(s) })
     return () => { cancelled = true }
-  }, [activePlayerId])
+  }, [activePlayerId, gradesNonce])
+
+  const newColours = useNewColours(activePlayerId, grades, reloadGrades)
 
   // ── Events won: the player_event_wins view, which /prs reads too. ──────────
   // The >= 3 field rule lives in the view. It used to arrive through the taniwha
@@ -293,6 +301,7 @@ function DashboardInner() {
         </div>
 
         {/* ── 2. Colours ──────────────────────────────────────────────────── */}
+        <NewColourCard awards={newColours.unseen} withdrawn={newColours.withdrawn} onDismiss={newColours.dismiss} />
         {grades && <GradesCard state={grades} askBand={!/Junior|Youth/.test(activePlayer.division ?? '')} />}
         <Link href="/history" style={{
           display: 'block', textAlign: 'right', margin: '-6px 2px 16px',

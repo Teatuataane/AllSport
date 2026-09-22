@@ -2,6 +2,26 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.16.0.0] - 2026-09-22
+
+### Added
+- **Colours now arrive on their own.** Meet the standard, play the games and do the training, and the colour is yours straight away: at the end of the game you earned it in, or the next time you open HOME or COLOURS. Nobody has to confirm it first.
+- **You are told when a colour lands.** The end-of-game screen names any new colour, and a card on HOME and COLOURS catches you up on colours earned between games.
+- **A colour resting on a score that did not happen can be taken back.** When a kaiwhakawā removes a logged score, any colour it was holding up in that domain is re-checked, and the player gets a plain note saying which colour went and why. A change to the standards never takes a colour away.
+- **The kaiwhakawā Colours tab is now a catch-up and audit view.** Opening it brings everyone's colours up to date, including players who have not opened the app. Each player shows the colours they hold, whether the app or a kaiwhakawā gave them, the logged scores behind them marked solo or witnessed, a two-tap delete, and their exemptions.
+
+### Changed
+- **Lifts are graded against the bodyweight you were on the day.** Changing your bodyweight band no longer re-grades old lifts. A lift logged before you ever picked a band uses the first band you picked.
+- **Head-to-head colours on game events count only games both players recorded**, or that a kaiwhakawā settled. One player's record on its own no longer moves a rating.
+- **Division, date of birth, gender and active status can only be changed by a kaiwhakawā**, as the privacy page already said.
+- Every page that said a kaiwhakawā confirms each colour now says how colours actually work. The privacy page names the note kept when a colour is taken back.
+- **The laptop top bar shows one KAIWHAKAWĀ link instead of both JUDGE and KAIWHAKAWĀ.** It opens the live game while one is running, and the kaiwhakawā panel otherwise.
+- **The new-workout form is shorter:** "How long" and "Something else" are gone. It is now your events, how hard it was, and notes.
+
+### Notes
+- Needs four database updates after this is deployed, then a one-off catch-up that gives existing players the colours they have already earned, dated when they earned them. Until the server is switched on, nothing changes: a kaiwhakawā still confirms colours by hand.
+- A swim, yoga class or other activity with no AllSport event can no longer be logged, and the activity report stops gaining self-reported minutes. Games and distance entries still count.
+
 ## [0.15.0.0] - 2026-09-22
 
 ### Added

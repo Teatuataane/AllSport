@@ -1,11 +1,23 @@
 'use client'
 
-// ─── Confirming colours ──────────────────────────────────────────────────────
-// The kaiwhakawā half of decision 9: colours are computed automatically and
-// RELEASED by a kaiwhakawā. This lists every player whose events now meet a
-// colour above the one they hold, and confers it through confer_grade(), the
-// only write path into grade_awards. It also records exemptions (decision 4):
-// events a player cannot do, which leave both sides of the half-the-domain rule.
+// ─── Colours: catch-up and audit ─────────────────────────────────────────────
+// Since auto-conferral (docs/designs/auto-conferral-spec.md) a colour confers
+// itself when the player's own screen asks. This panel stopped being a to-do
+// list and became three things:
+//
+//   1. CATCH-UP (decision 8). Opening it asks the server to recheck every
+//      player with something due, through the same route their own screen
+//      uses. That is what covers the players who have stopped opening the app.
+//   2. AUDIT (decision 5). Each player expands into the colours they hold, who
+//      or what conferred them, and the LOGGED scores behind them. Deleting a
+//      score that did not happen re-judges that domain, and the colour it was
+//      propping up is taken back and the player told.
+//   3. EXEMPTIONS (decision 4), unchanged: events a player cannot do, which
+//      leave both sides of the half-the-domain rule.
+//
+// The old "confirm" list survives as the FALLBACK. Until the server has its
+// service key the route cannot write, and a kaiwhakawā pressing Confirm
+// through confer_grade() is still the only way a colour lands.
 //
 // It computes with lib/loadGrades.ts, the same code the player's own view uses,
 // so the colour offered here is exactly the colour the player sees as ready.
@@ -23,16 +35,26 @@ import { useEffect, useMemo, useState } from 'react'
 import { createClient, getSessionUser } from '@/lib/supabase-browser'
 import { EVENTS } from '@/lib/eventData'
 import { gradeForRung } from '@/lib/grading'
-import { releasable } from '@/lib/playerGrades'
+import { releasable, eventsBehind } from '@/lib/playerGrades'
 import { loadGradeState, loadMatches, type GradeState } from '@/lib/loadGrades'
+import { recheckGrades, withdrawColours } from '@/lib/recheckGrades'
 import { reconcileGames, type Game, type MatchRow } from '@/lib/matches'
-import { formatNZDate } from '@/lib/dates'
+import { formatNZDate, toNZDateString } from '@/lib/dates'
 import { GradeDot } from '@/components/GradesCard'
 
 const supabase = createClient()
 const DOMAIN_NAMES = Array.from({ length: 10 }, (_, i) => EVENTS.find(e => e.domainNumber === i + 1)?.domain ?? '')
 
 type Player = { id: string; display_name: string; division: string | null }
+
+/** A logged best effort, as the audit lists it. Never a game-linked entry: those were scored in front of you. */
+type EvidenceRow = {
+  id: string
+  event_slug: string
+  score_label: string | null
+  performed_on: string
+  witnessed: boolean
+}
 type Row = { player: Player; state: GradeState }
 
 /** Each player is six small queries, so they load a few at a time. */
@@ -77,6 +99,20 @@ export default function GradeReleasePanel() {
   const [reloadKey, setReloadKey] = useState(0)
   const [matches, setMatches] = useState<MatchRow[] | null>(null)
   const [disputeCtx, setDisputeCtx] = useState<DisputeContext | null>(null)
+  // Null until the catch-up has asked. False when the server has no service
+  // key, which is what brings the manual Confirm buttons back.
+  const [writable, setWritable] = useState<boolean | null>(null)
+  const [caught, setCaught] = useState<{ colours: number; players: number } | null>(null)
+  // Its own state, not `error`: an action's error and the catch-up's outcome
+  // must not overwrite each other, and Refresh must clear the latter.
+  const [catchUpFailed, setCatchUpFailed] = useState(0)
+  const [evidence, setEvidence] = useState<{ playerId: string; rows: EvidenceRow[] } | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  const [notice, setNotice] = useState('')
+  // A re-judge that did not happen after its score was deleted. The score is
+  // already gone and Refresh never withdraws, so without this the colour the
+  // kaiwhakawā meant to take back would stay for good.
+  const [pendingRejudge, setPendingRejudge] = useState<{ player: Player; domain: number; reason: string } | null>(null)
 
   // Disputed games still waiting, then settled ones, each newest first.
   const disputes = useMemo(() => {
@@ -99,7 +135,7 @@ export default function GradeReleasePanel() {
       const players: Player[] = ((data ?? []) as (Player & { is_guest: boolean | null })[])
         .filter(p => !p.is_guest)
         .map(({ id, display_name, division }) => ({ id, display_name, division }))
-      const matches = await loadMatches()
+      const matches = await loadMatches(supabase)
       if (cancelled) return
       setMatches(matches)
 
@@ -119,30 +155,125 @@ export default function GradeReleasePanel() {
       })
 
       const loaded = await inBatches(players, 5, async (p): Promise<Row | null> => {
-        const state = await loadGradeState(p.id, matches)
+        const state = await loadGradeState(supabase, p.id, matches)
         return state ? { player: p, state } : null
       })
       if (cancelled) return
-      setRows(loaded
-        .filter((r): r is Row => r != null)
+      const present = loaded.filter((r): r is Row => r != null)
+      setRows(present
         .sort((a, b) => pending(b).length - pending(a).length || a.player.display_name.localeCompare(b.player.display_name)))
+
+      // Catch-up. Only players with something due, and `force`, because the
+      // engine here has already said there is work — the server's cheap probe
+      // would only spend a round trip agreeing.
+      const due = present.filter(r => pending(r).length > 0)
+      if (due.length === 0) { setWritable(true); return }
+      const results = await inBatches(due, 5, r => recheckGrades({ playerId: r.player.id, force: true }))
+      if (cancelled) return
+      setWritable(results.every(x => x.writable))
+      // A failed recheck looks exactly like "nothing to confer" unless it is
+      // said out loud, and this panel is where anyone would notice.
+      setCatchUpFailed(results.filter(x => !x.ok).length)
+      const landed = results.map((x, i) => ({ r: due[i], n: x.conferred.length })).filter(x => x.n > 0)
+      if (landed.length > 0) {
+        setCaught({ colours: landed.reduce((a, x) => a + x.n, 0), players: landed.length })
+        const fresh = await inBatches(landed, 5, async ({ r }) => ({ r, s: await loadGradeState(supabase, r.player.id, matches) }))
+        if (cancelled) return
+        const byId = new Map(fresh.filter(f => f.s).map(f => [f.r.player.id, f.s!]))
+        setRows(rs => rs?.map(x => {
+          const s = byId.get(x.player.id)
+          return s ? { player: x.player, state: s } : x
+        }) ?? rs)
+      }
     })()
     return () => { cancelled = true }
   }, [reloadKey])
 
   const refresh = async (p: Player) => {
-    const s = await loadGradeState(p.id)
+    const s = await loadGradeState(supabase, p.id)
     if (s) setRows(rs => rs?.map(x => (x.player.id === p.id ? { player: p, state: s } : x)) ?? rs)
   }
 
   const live = !!rows?.some(r => r.state.schemaReady)
 
+  // The logged scores behind a player's colours, loaded when their row opens.
+  // Its own query with ids, rather than widening loadGradeState: the grades
+  // engine never needs an entry id, and this panel is the only thing that
+  // deletes one.
+  useEffect(() => {
+    if (!expanded) return
+    let cancelled = false
+    supabase.from('workout_entries')
+      .select('id, event_slug, score_label, workouts!inner(player_id, performed_on, witnessed, session_id)')
+      .eq('workouts.player_id', expanded)
+      .not('raw_score', 'is', null)
+      .not('event_slug', 'is', null)
+      .then(({ data }) => {
+        if (cancelled) return
+        type Q = { id: string; event_slug: string; score_label: string | null
+          workouts: { performed_on: string; witnessed: boolean; session_id?: string | null } }
+        setEvidence({
+          playerId: expanded,
+          rows: ((data ?? []) as unknown as Q[])
+            // A swap entered AT a game was scored in front of a kaiwhakawā.
+            .filter(e => !e.workouts.session_id)
+            .map(e => ({ id: e.id, event_slug: e.event_slug, score_label: e.score_label,
+              performed_on: e.workouts.performed_on, witnessed: e.workouts.witnessed }))
+            .sort((a, b) => b.performed_on.localeCompare(a.performed_on)),
+        })
+      })
+    return () => { cancelled = true }
+  }, [expanded, reloadKey])
+
+  // An armed Delete disarms itself. Left armed, a kaiwhakawā who tapped once,
+  // was called away and came back could delete with a single tap.
+  useEffect(() => {
+    if (!confirmDelete) return
+    const t = setTimeout(() => setConfirmDelete(null), 4000)
+    return () => clearTimeout(t)
+  }, [confirmDelete])
+
+  /** Two taps: the first arms it, the second deletes. Deleting evidence can take a colour away. */
+  const deleteEvidence = async (r: Row, e: EvidenceRow) => {
+    if (confirmDelete !== e.id) { setConfirmDelete(e.id); return }
+    setConfirmDelete(null)
+    setBusy(`ev:${e.id}`)
+    setError('')
+    setNotice('')
+    const domain = EVENTS.find(x => x.slug === e.event_slug)?.domainNumber
+    const { error: delError } = await supabase.from('workout_entries').delete().eq('id', e.id)
+    if (delError) { setBusy(null); setError(delError.message); return }
+    setEvidence(ev => ev && { ...ev, rows: ev.rows.filter(x => x.id !== e.id) })
+
+    if (domain) {
+      const eventName = EVENTS.find(x => x.slug === e.event_slug)?.name ?? e.event_slug
+      await rejudge(r.player, domain, `${eventName}: ${e.score_label ?? 'a logged score'} was removed.`)
+    } else {
+      await refresh(r.player)
+    }
+    setBusy(null)
+  }
+
+  /** Re-judge one domain after a deletion, and keep it pending if it did not happen. */
+  const rejudge = async (player: Player, domain: number, reason: string) => {
+    const out = await withdrawColours(player.id, domain, reason)
+    const failed = !out.ok || !out.writable
+    setPendingRejudge(failed ? { player, domain, reason } : null)
+    setNotice(
+      !out.ok ? `The score is deleted, but ${player.display_name}'s ${DOMAIN_NAMES[domain - 1]} colours could not be re-checked yet.`
+      : !out.writable ? 'The score is deleted. Colours cannot be taken back until the server has its service key.'
+      : out.withdrawn.length > 0 ? `Taken back from ${player.display_name}: ${out.withdrawn.map(w => `${w.name} in ${DOMAIN_NAMES[w.domainNumber - 1]}`).join(', ')}. ${
+          out.logged ? 'They will be told.' : 'Their notice could not be recorded, so tell them yourself.'}`
+      : `Deleted. ${player.display_name}'s colours still stand on their other scores.`)
+    await refresh(player)
+  }
+
   const confer = async (r: Row, domain: number, rung: number) => {
     setBusy(`${r.player.id}:${domain}`)
     setError('')
-    const events = EVENTS
-      .filter(e => e.domainNumber === domain && (r.state.grades.events.get(e.slug)?.rung ?? 0) >= rung)
-      .map(e => e.slug)
+    // Shared with the auto-conferral route: both writers must record the same
+    // evidence, or an award's events would disagree with the panel showing it.
+    const events = eventsBehind(r.state.grades, domain, rung)
     const { error: e } = await supabase.rpc('confer_grade', {
       p_player_id: r.player.id, p_domain_number: domain, p_rung: rung, p_events: events,
     })
@@ -170,7 +301,7 @@ export default function GradeReleasePanel() {
     else await refresh(r.player)
   }
 
-  const reloadAll = () => { setRows(null); setMatches(null); setDisputeCtx(null); setReloadKey(k => k + 1) }
+  const reloadAll = () => { setRows(null); setMatches(null); setDisputeCtx(null); setCatchUpFailed(0); setCaught(null); setReloadKey(k => k + 1) }
 
   // p_true null reopens a settled game.
   const settle = async (g: Game, trueId: string | null) => {
@@ -200,9 +331,9 @@ export default function GradeReleasePanel() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
         <div>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', color: '#4DB26E', letterSpacing: '0.05em', lineHeight: 1 }}>
-            Colours to confirm
+            Colours
           </div>
-          <div style={{ ...label, marginTop: '2px' }}>STANDARDS · GAMES · TRAINING · YOU RELEASE THEM</div>
+          <div style={{ ...label, marginTop: '2px' }}>CONFERRED AUTOMATICALLY · YOU AUDIT THE EVIDENCE</div>
         </div>
         <button onClick={reloadAll} style={btn(true)}>Refresh</button>
       </div>
@@ -215,6 +346,39 @@ export default function GradeReleasePanel() {
       )}
       {error && (
         <div style={{ color: '#EA4742', fontSize: '13px', fontFamily: 'var(--font-body)', marginBottom: '12px' }}>{error}</div>
+      )}
+      {notice && (
+        <div style={{ color: '#ccc', fontSize: '13px', fontFamily: 'var(--font-body)', lineHeight: 1.5, marginBottom: '12px' }}>
+          {notice}
+          {pendingRejudge && (
+            <button
+              disabled={busy === 'rejudge'}
+              onClick={async () => {
+                setBusy('rejudge')
+                await rejudge(pendingRejudge.player, pendingRejudge.domain, pendingRejudge.reason)
+                setBusy(null)
+              }}
+              style={{ ...btn(busy !== 'rejudge'), marginLeft: '8px', minHeight: '44px' }}>
+              {busy === 'rejudge' ? 'Re-checking…' : 'Re-check now'}
+            </button>
+          )}
+        </div>
+      )}
+      {catchUpFailed > 0 && (
+        <div style={{ color: '#EA4742', fontSize: '13px', fontFamily: 'var(--font-body)', marginBottom: '12px' }}>
+          Could not check colours for {catchUpFailed} player{catchUpFailed === 1 ? '' : 's'}. Press Refresh to try again.
+        </div>
+      )}
+      {caught && (
+        <div style={{ color: '#4DB26E', fontSize: '13px', fontFamily: 'var(--font-body)', marginBottom: '12px' }}>
+          Caught up: {caught.colours} colour{caught.colours === 1 ? '' : 's'} conferred for {caught.players} player{caught.players === 1 ? '' : 's'}.
+        </div>
+      )}
+      {live && writable === false && (
+        <div style={{ fontSize: '13px', color: '#F9B051', fontFamily: 'var(--font-body)', lineHeight: 1.5, marginBottom: '12px' }}>
+          Automatic conferral is not switched on yet: the server has no service key. Until it does, the colours
+          below still need you to confirm them.
+        </div>
       )}
 
       {(disputes.open.length > 0 || disputes.settled.length > 0) && (
@@ -268,7 +432,7 @@ export default function GradeReleasePanel() {
         </div>
       ) : ready.length === 0 ? (
         <div style={{ color: '#555', fontSize: '13px', fontFamily: 'var(--font-body)', textAlign: 'center', padding: '12px 0 18px' }}>
-          Nobody has a colour waiting.
+          Nobody has a colour waiting. Every colour earned has been conferred.
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '18px' }}>
@@ -316,7 +480,7 @@ export default function GradeReleasePanel() {
 
       {rows && rows.length > 0 && (
         <>
-          <div style={{ ...label, margin: '4px 0 8px' }}>EXEMPTIONS · EVENTS A PLAYER CANNOT DO</div>
+          <div style={{ ...label, margin: '4px 0 8px' }}>PLAYERS · COLOURS HELD, LOGGED EVIDENCE, EXEMPTIONS</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {rows.map(r => {
               const open = expanded === r.player.id
@@ -328,10 +492,21 @@ export default function GradeReleasePanel() {
                     style={{ width: '100%', padding: '10px 12px', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', color: '#ccc', fontFamily: 'var(--font-body)', fontSize: '13px' }}
                   >
                     <span>{r.player.display_name}</span>
-                    <span style={{ color: '#555' }}>{exempt.length ? `${exempt.length} exempt` : ''} {open ? '▴' : '▾'}</span>
+                    <span style={{ color: '#555' }}>
+                      {r.state.held.size ? `${r.state.held.size} held` : ''}{r.state.held.size && exempt.length ? ' · ' : ''}{exempt.length ? `${exempt.length} exempt` : ''} {open ? '▴' : '▾'}
+                    </span>
                   </button>
                   {open && (
                     <div style={{ padding: '0 12px 12px' }}>
+                      <HeldColours state={r.state} nameOf={id => rows.find(x => x.player.id === id)?.player.display_name ?? 'a kaiwhakawā'} />
+                      <EvidenceList
+                        rows={evidence?.playerId === r.player.id ? evidence.rows : null}
+                        held={r.state.held}
+                        busy={busy}
+                        armed={confirmDelete}
+                        onDelete={e => deleteEvidence(r, e)}
+                      />
+                      <div style={{ ...label, margin: '12px 0 4px' }}>EXEMPTIONS</div>
                       {exempt.map(slug => (
                         <div key={slug} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0', fontSize: '13px', color: '#aaa', fontFamily: 'var(--font-body)' }}>
                           {EVENTS.find(e => e.slug === slug)?.name ?? slug}
@@ -359,5 +534,89 @@ export default function GradeReleasePanel() {
         </>
       )}
     </div>
+  )
+}
+
+// ─── The audit ───────────────────────────────────────────────────────────────
+
+/** What a player holds in each domain, and whether a person or the server conferred it. */
+function HeldColours({ state, nameOf }: { state: GradeState; nameOf: (id: string) => string }) {
+  const latest = new Map<number, (typeof state.awards)[number]>()
+  for (const a of state.awards) {
+    const cur = latest.get(a.domain_number)
+    if (!cur || a.rung > cur.rung) latest.set(a.domain_number, a)
+  }
+  if (latest.size === 0) {
+    return <div style={{ fontSize: '13px', color: '#555', fontFamily: 'var(--font-body)', padding: '4px 0' }}>No colours held yet.</div>
+  }
+  return (
+    <>
+      <div style={{ ...label, margin: '4px 0 4px' }}>COLOURS HELD</div>
+      {[...latest.values()].sort((a, b) => a.domain_number - b.domain_number).map(a => (
+        <div key={a.domain_number} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '3px 0', fontSize: '13px', color: '#ccc', fontFamily: 'var(--font-body)' }}>
+          <GradeDot grade={gradeForRung(a.rung)} size={10} />
+          <span style={{ flexGrow: 1 }}>{a.grade_name} <span style={{ color: '#666' }}>· {DOMAIN_NAMES[a.domain_number - 1]}</span></span>
+          <span style={{ fontSize: '12px', color: '#666' }}>
+            {a.conferred_by ? `by ${nameOf(a.conferred_by)}` : 'automatic'} · {formatNZDate(toNZDateString(new Date(a.conferred_at)))}
+          </span>
+        </div>
+      ))}
+    </>
+  )
+}
+
+/**
+ * Logged scores in the domains the player holds a colour in, newest first.
+ * Solo ones are flagged in amber, because a solo score is the one nobody but
+ * the player saw.
+ */
+function EvidenceList({ rows, held, busy, armed, onDelete }: {
+  rows: EvidenceRow[] | null
+  held: ReadonlyMap<number, number>
+  busy: string | null
+  armed: string | null
+  onDelete: (e: EvidenceRow) => void
+}) {
+  if (rows === null) {
+    return <div style={{ fontSize: '12px', color: '#555', fontFamily: 'var(--font-body)', padding: '8px 0 0' }}>Loading logged scores…</div>
+  }
+  const relevant = rows.filter(e => {
+    const d = EVENTS.find(x => x.slug === e.event_slug)?.domainNumber
+    return d != null && (held.get(d) ?? 0) > 0
+  })
+  return (
+    <>
+      <div style={{ ...label, margin: '12px 0 4px' }}>LOGGED SCORES BEHIND THEM</div>
+      {relevant.length === 0 ? (
+        <div style={{ fontSize: '12px', color: '#555', fontFamily: 'var(--font-body)' }}>
+          None. Every colour here rests on scores from official games.
+        </div>
+      ) : relevant.map(e => {
+        const ev = EVENTS.find(x => x.slug === e.event_slug)
+        const key = `ev:${e.id}`
+        return (
+          <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0', borderTop: '1px solid #161616', fontSize: '13px', color: '#ccc', fontFamily: 'var(--font-body)' }}>
+            <span style={{
+              fontSize: '10px', fontFamily: 'var(--font-label)', letterSpacing: '0.05em', borderRadius: '4px', padding: '1px 5px', flexShrink: 0,
+              color: e.witnessed ? '#888' : '#F9B051', background: e.witnessed ? '#1a1a1a' : '#F9B05122',
+            }}>
+              {e.witnessed ? 'WITNESSED' : 'SOLO'}
+            </span>
+            <span style={{ flexGrow: 1, minWidth: 0 }}>
+              {ev?.name ?? e.event_slug} <span style={{ color: '#888' }}>{e.score_label}</span>
+              <span style={{ display: 'block', fontSize: '11.5px', color: '#555' }}>{formatNZDate(e.performed_on)}</span>
+            </span>
+            <button onClick={() => onDelete(e)} disabled={busy === key} style={{
+              ...btn(busy !== key),
+              background: armed === e.id ? '#EA4742' : busy === key ? '#1a1a1a' : '#2a1414',
+              color: armed === e.id ? '#fff' : busy === key ? '#555' : '#EA4742',
+              minHeight: '44px',
+            }}>
+              {busy === key ? 'Deleting…' : armed === e.id ? 'Tap again to delete' : 'Delete'}
+            </button>
+          </div>
+        )
+      })}
+    </>
   )
 }

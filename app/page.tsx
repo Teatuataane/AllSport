@@ -213,11 +213,11 @@ export default function Home() {
               <p style={{ color: '#888', fontSize: '15px', lineHeight: 1.8, marginBottom: '16px' }}>
                 Each new colour also asks for games played in the room and training in that domain, and you
                 climb one colour at a time. In the game events the top colours are won, not measured: they come
-                from a head-to-head rating, after ten recorded games. Juniors, Masters and Grandmasters meet every
+                from a head-to-head rating, after ten games recorded by both players. Juniors, Masters and Grandmasters meet every
                 standard with an allowance for age.
               </p>
               <p style={{ color: '#555', fontSize: '14px', lineHeight: 1.8, fontStyle: 'italic' }}>
-                A kaiwhakawā confirms each colour, and once it is yours it is never taken back. Uenuku is
+                Each colour is yours the moment you meet it, and a change to the standards never takes one away. Uenuku is
                 within reach of anyone who trains for years. Taniwha is one in a hundred.
               </p>
             </div>
