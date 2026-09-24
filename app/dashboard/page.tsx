@@ -152,14 +152,17 @@ function DashboardInner() {
     let cancelled = false
     const check = async () => {
       await supabase.rpc('close_expired_sessions')
-      const { data } = await supabase.from('sessions').select('*').eq('is_active', true).maybeSingle()
-      if (!cancelled) setActiveSession(data ?? null)
+      const { data, error } = await supabase.from('sessions').select('*').eq('is_active', true).maybeSingle()
+      // A failed poll keeps the last known answer: one flaky request must not
+      // take the JOIN button away mid-game.
+      if (!cancelled && !error) setActiveSession(data ?? null)
     }
     check()
     // The JOIN button is now the only way in from HOME (no code box), so a
     // player who opened the page before the game started must see it appear
     // without reloading: re-check on an interval and when the tab comes back.
-    const timer = setInterval(check, 30_000)
+    // Hidden tabs skip the poll; visibilitychange catches them up on return.
+    const timer = setInterval(() => { if (document.visibilityState === 'visible') check() }, 30_000)
     const onVisible = () => { if (document.visibilityState === 'visible') check() }
     document.addEventListener('visibilitychange', onVisible)
     return () => {
