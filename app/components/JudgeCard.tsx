@@ -10,7 +10,7 @@ import { EVENTS } from '@/lib/eventData'
 import { formatNZDate } from '@/lib/dates'
 import { gradeForRung } from '@/lib/grading'
 import { rankByColours, displayOverall } from '@/lib/colourBoard'
-import { GradeDot } from '@/components/GradesCard'
+import { GradeDot } from '@/components/GradeDot'
 
 type Session = {
   id: string

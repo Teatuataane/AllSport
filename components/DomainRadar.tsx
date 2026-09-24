@@ -82,7 +82,10 @@ export default function DomainRadar({ held, width = 326 }: DomainRadarProps) {
         aria-label={`Colours across the ten domains: ${rungs.map((r, i) => `${SHORT_NAMES[i].toLowerCase()} ${gradeForRung(r).name}`).join(', ')}`}
       >
         <defs>
-          <linearGradient id="radar-rainbow" x1="0" y1="0" x2="1" y2="1">
+          {/* userSpaceOnUse, not the default bounding box: a due-north or
+              due-south spoke is a vertical line with zero width, and a
+              bounding-box gradient on it paints nothing at all. */}
+          <linearGradient id="radar-rainbow" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="200" y2="200">
             {RAINBOW_STOPS.map((c, i) => (
               <stop key={c} offset={`${(i / (RAINBOW_STOPS.length - 1)) * 100}%`} stopColor={c} />
             ))}

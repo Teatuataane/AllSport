@@ -18,7 +18,7 @@
 import { gradeForRung } from '@/lib/grading'
 import { DOMAIN_ORDER } from '@/lib/eventData'
 import { RAINBOW } from '@/lib/domainColours'
-import { GradeDot } from '@/components/GradesCard'
+import { GradeDot } from '@/components/GradeDot'
 import type { AwardLike, WithdrawalLike } from '@/lib/newColours'
 
 const label = {

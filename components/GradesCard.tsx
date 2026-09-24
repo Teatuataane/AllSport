@@ -31,9 +31,6 @@ import type { GradeState } from '@/lib/loadGrades'
 
 const DOMAIN_NAMES = Array.from({ length: 10 }, (_, i) => EVENTS.find(e => e.domainNumber === i + 1)?.domain ?? '')
 
-// Re-exported so existing importers keep working; new code imports it from
-// components/GradeDot, which is safe in a server component.
-export { GradeDot }
 
 const label = {
   fontFamily: 'var(--font-label)', textTransform: 'uppercase' as const,

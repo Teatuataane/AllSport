@@ -156,7 +156,17 @@ function DashboardInner() {
       if (!cancelled) setActiveSession(data ?? null)
     }
     check()
-    return () => { cancelled = true }
+    // The JOIN button is now the only way in from HOME (no code box), so a
+    // player who opened the page before the game started must see it appear
+    // without reloading: re-check on an interval and when the tab comes back.
+    const timer = setInterval(check, 30_000)
+    const onVisible = () => { if (document.visibilityState === 'visible') check() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      cancelled = true
+      clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
   }, [userId])
 
   // Silent auto-join from the QR code. The typed code box is gone (home

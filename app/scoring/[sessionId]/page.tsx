@@ -19,7 +19,7 @@ import SwapPicker from '@/components/play/SwapPicker'
 import { playList, domainsCovered, type PlaySlot } from '@/lib/gameSwaps'
 import { recheckGrades, type ConferredColour } from '@/lib/recheckGrades'
 import { gradeForRung } from '@/lib/grading'
-import { GradeDot } from '@/components/GradesCard'
+import { GradeDot } from '@/components/GradeDot'
 import { useGameSwaps } from '@/lib/useGameSwaps'
 import EventListRow from '@/components/play/EventListRow'
 import {

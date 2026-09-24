@@ -14,7 +14,7 @@ import {
 import { gradeForRung, DOMAIN_COUNT, GRADES } from '@/lib/grading'
 import { rankByColours, displayOverall } from '@/lib/colourBoard'
 import { seasonMedals, rankMedals, type MedalRow, type MedalCount } from '@/lib/medalTable'
-import { GradeDot } from '@/components/GradesCard'
+import { GradeDot } from '@/components/GradeDot'
 
 /**
  * The colour cell, shared by the wide table and the narrow cards.
