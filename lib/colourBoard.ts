@@ -41,6 +41,19 @@ export function colourStanding(held: Map<number, number> | undefined) {
   }
 }
 
+/**
+ * What a board cell shows as the overall colour: the rung, or null while it is
+ * still Mā, so the cell can count domains instead. One rule for the leaderboard
+ * and the kaiwhakawā Players tab.
+ */
+export function displayOverall(r: Pick<BoardRow, 'overall'>): number | null {
+  return r.overall > 0 ? r.overall : null
+}
+
+// overall = floor(colourSum / 10), so it never reorders anything colourSum
+// would not; it leads the key because it is what the board SHOWS, and a tie
+// on it is then broken by the finer sum. Depth beats breadth here on purpose:
+// that is what an average means (one Taniwha domain outranks ten Kiwikiwi).
 const keyOf = (r: BoardRow) => [r.overall, r.colourSum, r.domainsHeld, r.games]
 
 export function rankByColours(players: readonly BoardInput[]): BoardRow[] {

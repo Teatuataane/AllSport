@@ -10,21 +10,22 @@
 //      published standards, not points.
 //   2. Your colour in a domain is the highest grade whose standard you have met
 //      in at least HALF of that domain's events.
-//   3. Your overall grade is your LOWEST domain colour.
+//   3. Your overall grade is the AVERAGE of your ten domain colours, rounded
+//      down (overallRung). It was the LOWEST domain until 24 September 2026.
 //
-// Rule 3 is the whole point: AllSport is "one sport, every sport", so a grade
-// set by your weakest domain says structurally that you are only as good as the
-// thing you avoid. Average and maximum both reward specialists, which is the
-// opposite of the sport. It also makes your worst domain the only thing worth
-// training, which is a self-correcting coaching system.
+// Rule 3 still says "one sport, every sport": the average is always over TEN,
+// so a domain on Mā counts zero and drags it. But under "lowest", work in nine
+// domains counted for nothing while the tenth lagged; Tāne changed it so that
+// raising ANY domain moves the overall and players are rewarded for bringing up
+// several things, not only the one they avoid.
 //
 // ── Why HALF the events, and why "of the events available to you" ───────────
 // Requiring half a domain rather than one event is what stops a grade being
 // won on a single favourable movement. But applied to every event in the pool
 // it would exclude the people the charity exists for: most of Maximal
 // Strength's events load the shoulder, so a player whose shoulder will never
-// press has only a few available and could never reach six — and under rule 3
-// that caps their overall grade forever.
+// press has only a few available and could never reach six — and that domain
+// would drag their overall grade forever.
 //
 // And the ask never exceeds SIX (DOMAIN_REQUIRED_CAP), however big a pool
 // grows. Domains stopped being even in Sept 2026 — Flexibility holds sixteen —
@@ -192,8 +193,11 @@ export type DomainGradeResult = {
    * The domain has no colour AND at least one of its events is a strength
    * standard this player has not declared a bodyweight for.
    *
-   * It exists so overallGrade can tell "not graded here yet" from "cannot be
-   * graded here until a number is declared". Maximal Strength holds 12 ratio
+   * Display only since 24 September 2026: the overall colour became an
+   * average, and a blocked domain now counts 0 like any other. It still tells
+   * "not graded here yet" from "cannot be graded here until a number is
+   * declared", which is worth saying to the player. The history below is why
+   * it existed: Maximal Strength holds 12 ratio
    * events against 14, so an undeclared player can reach at most 2 of the 6
    * required and the domain is not merely hard, it is unreachable — and an
    * ungraded domain used to veto the overall colour outright, so a player

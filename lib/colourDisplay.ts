@@ -5,8 +5,10 @@
 // tested rather than eyeballed in a login-gated page.
 
 import { getEventBySlug } from './eventData'
-import { unitRulesSummary } from './units'
-import { formatPR } from '@/components/play/chrome'
+import { unitFacts } from './units'
+import { formatPR } from './scoreFormat'
+import { DOMAIN_COUNT } from './grading'
+import type { GradeState } from './loadGrades'
 import type { EventGrade } from './playerGrades'
 
 /**
@@ -34,9 +36,8 @@ export function bestScoreLabel(eg: Pick<EventGrade, 'slug' | 'best' | 'rating'>)
 export function domainExtremesByColour(
   held: ReadonlyMap<number, number>,
   topPct: ReadonlyMap<number, number | null>,
-  domainCount = 10,
 ): { best: { domainNumber: number; rung: number }; weakest: { domainNumber: number; rung: number } } | null {
-  const rows = Array.from({ length: domainCount }, (_, i) => ({
+  const rows = Array.from({ length: DOMAIN_COUNT }, (_, i) => ({
     domainNumber: i + 1,
     rung: held.get(i + 1) ?? 0,
     pct: topPct.get(i + 1) ?? null,
@@ -67,12 +68,22 @@ export function bestEventByColour(
 }
 
 /**
- * The one line at the top of YOUR COLOURS that says what a unit is. Built from
- * the same rules How to Play and the guide show, so the numbers cannot drift.
+ * The one line at the top of YOUR COLOURS that says what a unit is. Its numbers
+ * come from unitFacts, the same source How to Play and the guide use.
  */
 export function unitLine(): string {
-  const rules = unitRulesSummary()
-  const km = rules.find(r => r.label.startsWith('Rides'))?.rule.match(/^([\d.]+)km/)?.[1] ?? '1'
-  const throws = rules.find(r => r.label.startsWith('Throws'))?.rule.match(/Every (\d+)/)?.[1] ?? '3'
-  return `1 unit = one set, one hold, one game, ${throws} throws or jumps, or ${km}km of distance work, in that domain's events.`
+  const { rideKm, throws } = unitFacts()
+  return `1 unit = one set, one hold, one game, ${throws} throws or jumps, or ${rideKm}km of distance work, in that domain's events.`
+}
+
+/**
+ * The colour SHOWN for each domain: conferred colours once grading is live,
+ * the computed ones before. One rule for the YOUR COLOURS list and the radar,
+ * so the two can never disagree.
+ */
+export function shownDomainRungs(state: Pick<GradeState, 'grades' | 'held' | 'schemaReady'>): Map<number, number> {
+  return new Map(state.grades.domains.map(d => [
+    d.domainNumber,
+    state.schemaReady ? (state.held.get(d.domainNumber) ?? 0) : d.rung,
+  ]))
 }

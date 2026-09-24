@@ -33,8 +33,8 @@ import NewColourCard from '@/components/NewColourCard'
 import VoteCard from '@/app/components/VoteCard'
 import WellbeingSurvey from '@/app/components/WellbeingSurvey'
 import { gradeForRung, gradeInk } from '@/lib/grading'
-import { GradeDot } from '@/components/GradesCard'
-import { domainExtremesByColour, bestEventByColour } from '@/lib/colourDisplay'
+import { GradeDot } from '@/components/GradeDot'
+import { domainExtremesByColour, bestEventByColour, shownDomainRungs } from '@/lib/colourDisplay'
 import {
   sessionWins,
   type RatingResultRow, type RatingEventRow, type RatingSessionRow, type RatingPlayerRow,
@@ -208,14 +208,7 @@ function DashboardInner() {
   // The colour HELD per domain, which the radar and the two boxes under it
   // draw. The same rule as the YOUR COLOURS list above, so the two agree:
   // conferred colours once grading is live, computed ones before.
-  const heldRungs = useMemo(() => {
-    const m = new Map<number, number>()
-    if (!grades) return m
-    for (const d of grades.grades.domains) {
-      m.set(d.domainNumber, grades.schemaReady ? (grades.held.get(d.domainNumber) ?? 0) : d.rung)
-    }
-    return m
-  }, [grades])
+  const heldRungs = useMemo(() => (grades ? shownDomainRungs(grades) : new Map<number, number>()), [grades])
 
   // Best / weakest DOMAIN by colour; Top % only breaks a tie, unseen.
   const domainExtremes = useMemo(() => {
@@ -307,7 +300,9 @@ function DashboardInner() {
 
         {/* ── 2. Colours ──────────────────────────────────────────────────── */}
         <NewColourCard awards={newColours.unseen} withdrawn={newColours.withdrawn} onDismiss={newColours.dismiss} />
-        {grades && <GradesCard state={grades} askBand={!/Junior|Youth/.test(activePlayer.division ?? '')} />}
+        {/* Juniors are asked for a bodyweight too (Tāne, 23 September 2026), and
+            /grades no longer carries a personal prompt, so this is the only one. */}
+        {grades && <GradesCard state={grades} askBand />}
         <Link href="/history" style={{
           display: 'block', textAlign: 'right', margin: '-6px 2px 16px',
           fontFamily: 'var(--font-label)', textTransform: 'uppercase',
@@ -335,7 +330,7 @@ function DashboardInner() {
           <Stat value={counts?.prs ?? 0} label="Total PRs" colour="var(--green)" />
         </div>
 
-        {/* ── 4. Skill across the domains ─────────────────────────────────── */}
+        {/* ── 4. Colours across the domains ────────────────────────────────── */}
         <div style={{
           background: 'var(--surface)', border: '1px solid var(--border)',
           borderRadius: 16, padding: '18px 16px 16px',
@@ -568,6 +563,7 @@ function JoinBlock({ game, isJudge, nextSession, highlight, error }: {
         <div style={{ fontSize: 13, color: '#9fc4ab', marginTop: 6 }}>
           {game.location ?? 'AllSport HQ'}
         </div>
+        {error && <div style={{ color: 'var(--red)', fontSize: 13, marginTop: 10 }}>{error}</div>}
         <Link href={`/scoring/${game.id}`} style={{
           display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 50,
           marginTop: 14, borderRadius: 999, background: 'var(--green)', color: '#0a0a0a',

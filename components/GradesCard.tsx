@@ -22,22 +22,18 @@ import DomainIcon from '@/components/DomainIcon'
 import { EVENTS } from '@/lib/eventData'
 import { STANDARDS } from '@/lib/standards'
 import { RAINBOW } from '@/lib/domainColours'
-import { gradeForRung, gradeInk, overallRung, type GradeRung, type ColourGate } from '@/lib/grading'
-import { bestScoreLabel, unitLine } from '@/lib/colourDisplay'
+import {
+  gradeForRung, gradeInk, overallRung, DOMAIN_REQUIRED_CAP, MIN_RATED_GAMES, type ColourGate,
+} from '@/lib/grading'
+import { bestScoreLabel, unitLine, shownDomainRungs } from '@/lib/colourDisplay'
+import { GradeDot } from '@/components/GradeDot'
 import type { GradeState } from '@/lib/loadGrades'
 
 const DOMAIN_NAMES = Array.from({ length: 10 }, (_, i) => EVENTS.find(e => e.domainNumber === i + 1)?.domain ?? '')
 
-/** A colour swatch. Uenuku is the rainbow; Taniwha a black dot with a rim. */
-export function GradeDot({ grade, size = 12 }: { grade: GradeRung; size?: number }) {
-  return (
-    <span aria-hidden style={{
-      width: size, height: size, borderRadius: '50%', flexShrink: 0, display: 'inline-block',
-      background: grade.rainbow ? RAINBOW : grade.hex,
-      boxShadow: grade.rung === 0 ? 'inset 0 0 0 1px #444' : grade.inverted ? '0 0 0 1px #555' : 'none',
-    }} />
-  )
-}
+// Re-exported so existing importers keep working; new code imports it from
+// components/GradeDot, which is safe in a server component.
+export { GradeDot }
 
 const label = {
   fontFamily: 'var(--font-label)', textTransform: 'uppercase' as const,
@@ -50,14 +46,14 @@ const pill = {
 }
 
 export default function GradesCard({ state, askBand = false }: { state: GradeState; askBand?: boolean }) {
-  const { grades, held, schemaReady, gates } = state
+  const { grades, schemaReady, gates } = state
   const [open, setOpen] = useState<Set<number>>(() => new Set())
   const toggle = (n: number) => setOpen(s => { const t = new Set(s); if (t.has(n)) t.delete(n); else t.add(n); return t })
 
+  const shownRungs = shownDomainRungs(state)
   const rows = grades.domains.map(d => {
     const gate = gates.find(g => g.domainNumber === d.domainNumber)!
-    const shown = schemaReady ? (held.get(d.domainNumber) ?? 0) : d.rung
-    return { d, gate, shown }
+    return { d, gate, shown: shownRungs.get(d.domainNumber) ?? 0 }
   })
   const overall = gradeForRung(overallRung(rows.map(r => r.shown)))
   const graded = rows.filter(r => r.shown > 0).length
@@ -127,8 +123,8 @@ export default function GradesCard({ state, askBand = false }: { state: GradeSta
       {/* What each domain row counts. Said once, always visible, because
           "2/3 units" is meaningless to anyone who has not read the guide. */}
       <div style={{ fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: 6 }}>
-        Each new colour needs <span style={{ color: 'var(--white)' }}>the standard</span> in six of that
-        domain&apos;s events, <span style={{ color: 'var(--white)' }}>games</span> played in the room, and{' '}
+        Each new colour needs <span style={{ color: 'var(--white)' }}>the standard</span> in half of
+        that domain&apos;s events (never more than {DOMAIN_REQUIRED_CAP}), <span style={{ color: 'var(--white)' }}>games</span> played in the room, and{' '}
         <span style={{ color: 'var(--white)' }}>training units</span>. {unitLine()}
       </div>
 
@@ -167,7 +163,7 @@ export default function GradesCard({ state, askBand = false }: { state: GradeSta
                     </div>
                   )}
                 </div>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, flexShrink: 0, ...label, fontSize: 12, color: shown ? 'var(--white)' : '#555' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, flexShrink: 0, ...label, fontSize: 12, color: shown ? 'var(--white)' : 'var(--text-muted)' }}>
                   <GradeDot grade={g} /> {g.name}
                 </span>
                 <span aria-hidden style={{
@@ -191,6 +187,7 @@ function NextLine({ state, gate, d }: {
   d: GradeState['grades']['domains'][number]
 }) {
   if (d.availableCount === 0) return <>Nothing here can be graded for you yet</>
+  if (d.blockedByBodyweight) return <>Needs your bodyweight — you are asked when you next play or train a lift</>
   if (!state.schemaReady) {
     const n = d.nextRung ? gradeForRung(d.nextRung) : null
     return <>{n ? `Next ${n.name}: ${d.metAtNextRung} of ${d.required} events at the standard` : 'The top of the ladder'}</>
@@ -222,7 +219,7 @@ const COLS = 'minmax(0,1.15fr) minmax(0,1fr) 92px'
 /** A domain, opened: every event as Event · Your best · Colour. */
 function DomainEvents({ state, domainNumber }: { state: GradeState; domainNumber: number }) {
   const events = EVENTS.filter(e => e.domainNumber === domainNumber)
-  const head = { ...label, fontSize: 10, color: '#555' }
+  const head = { ...label, fontSize: 10, color: 'var(--text-muted)' }
   return (
     <div style={{ padding: '0 0 10px' }}>
       <div style={{ display: 'grid', gridTemplateColumns: COLS, gap: 10, padding: '2px 0 6px' }}>
@@ -243,14 +240,14 @@ function DomainEvents({ state, domainNumber }: { state: GradeState; domainNumber
           : eg.bodyweightBlocked
             ? 'Needs bodyweight'
             : STANDARDS[e.slug]?.kind === 'rating' && eg.rung === 0
-              ? 'After 10 rated games'
+              ? `After ${MIN_RATED_GAMES} rated games`
               : !eg.played
                 ? 'Not played'
                 : null
         return (
           <Link key={e.slug} href={`/events/${e.slug}`} style={{
             display: 'grid', gridTemplateColumns: COLS, gap: 10, alignItems: 'center',
-            padding: '8px 0', borderTop: '1px solid #151515', color: 'inherit', minHeight: 36,
+            padding: '8px 0', borderTop: '1px solid #151515', color: 'inherit', minHeight: 44,
           }}>
             <span style={{ fontSize: 13, color: eg.played ? 'var(--white)' : 'var(--text-muted)', minWidth: 0 }}>
               {e.name}
@@ -262,13 +259,13 @@ function DomainEvents({ state, domainNumber }: { state: GradeState; domainNumber
                 </span>
               )}
             </span>
-            <span style={{ fontSize: 12, color: best ? 'var(--grey-light)' : '#444', textAlign: 'right', lineHeight: 1.35 }}>
+            <span style={{ fontSize: 12, color: best ? 'var(--grey-light)' : 'var(--text-muted)', textAlign: 'right', lineHeight: 1.35 }}>
               {best ?? '—'}
             </span>
             {why ? (
-              <span style={{ fontSize: 11.5, color: '#555' }}>{why}</span>
+              <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>{why}</span>
             ) : (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, ...label, fontSize: 11, color: eg.rung ? 'var(--white)' : '#555' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, ...label, fontSize: 11, color: eg.rung ? 'var(--white)' : 'var(--text-muted)' }}>
                 <GradeDot grade={colour} size={10} /> {colour.name}
               </span>
             )}

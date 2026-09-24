@@ -12,7 +12,7 @@ import {
   computePercentiles, strongestEvent, topDomain as pctTopDomain, eventPctLabel,
 } from '@/lib/percentile'
 import { gradeForRung, DOMAIN_COUNT, GRADES } from '@/lib/grading'
-import { rankByColours } from '@/lib/colourBoard'
+import { rankByColours, displayOverall } from '@/lib/colourBoard'
 import { seasonMedals, rankMedals, type MedalRow, type MedalCount } from '@/lib/medalTable'
 import { GradeDot } from '@/components/GradesCard'
 
@@ -36,7 +36,11 @@ function ColourCell({ player, size = 'wide' }: { player: EnrichedPlayer; size?: 
         color: g ? '#ffffff' : player.domainsHeld > 0 ? '#999999' : '#444444',
         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
       }}>
-        {g ? g.name : player.domainsHeld > 0 ? `${player.domainsHeld} of ${DOMAIN_COUNT} domains` : 'No colour yet'}
+        {/* Under the average rule a colour no longer implies ten domains held,
+            so the count rides along until it does. */}
+        {g
+          ? player.domainsHeld < DOMAIN_COUNT ? `${g.name} · ${player.domainsHeld}/${DOMAIN_COUNT}` : g.name
+          : player.domainsHeld > 0 ? `${player.domainsHeld} of ${DOMAIN_COUNT} domains` : 'No colour yet'}
       </span>
     </div>
   )
@@ -192,7 +196,10 @@ const tabs = [
 /** Podium sub-line: the overall colour, or how many domains hold one. */
 function podiumColourLabel(p: EnrichedPlayer | undefined): string {
   if (!p) return '—'
-  if (p.overall != null) return gradeForRung(p.overall).name
+  if (p.overall != null) {
+    const name = gradeForRung(p.overall).name
+    return p.domainsHeld < DOMAIN_COUNT ? `${name} · ${p.domainsHeld}/${DOMAIN_COUNT}` : name
+  }
   if (p.domainsHeld > 0) return `${p.domainsHeld} of ${DOMAIN_COUNT} domains`
   return 'Getting started'
 }
@@ -565,7 +572,7 @@ export default function Leaderboard() {
         topEvent: stats?.topEvent ?? '—',
         topEventPct: stats?.topEventPct ?? '',
         // Mā overall shows the domain count instead, as before.
-        overall: r.overall > 0 ? r.overall : null,
+        overall: displayOverall(r),
         domainsHeld: r.domainsHeld,
       }
     })

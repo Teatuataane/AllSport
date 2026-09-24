@@ -15,7 +15,7 @@ import {
   DRILL_CAP, RATING_FLOOR, RATING_STEP, MIN_RATED_GAMES, gradeForRung, gradeInk, overallRung,
 } from '@/lib/grading'
 import { unitRulesSummary } from '@/lib/units'
-import { GradeDot } from '@/components/GradesCard'
+import { GradeDot } from '@/components/GradeDot'
 
 export const metadata = {
   title: 'Colours · AllSport',
@@ -102,8 +102,10 @@ export default function ColoursGuide() {
             <Row key={g.rung} cells={[
               <span key="n" style={{ display: 'inline-flex', alignItems: 'center', gap: 9, minWidth: 0 }}>
                 <GradeDot grade={g} size={14} />
-                <span style={{ ...label, fontSize: 13, color: g.rung ? gradeInk(g) : 'var(--white)' }}>{g.name}</span>
-                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{g.rung ? ENGLISH[g.colour] ?? '' : 'White · the start'}</span>
+                <span style={{ minWidth: 0 }}>
+                  <span style={{ ...label, display: 'block', fontSize: 13, color: g.rung ? gradeInk(g) : 'var(--white)' }}>{g.name}</span>
+                  <span style={{ display: 'block', fontSize: 11.5, color: 'var(--text-muted)' }}>{g.rung ? ENGLISH[g.colour] ?? '' : 'White · the start'}</span>
+                </span>
               </span>,
               g.rung === 0 ? '—' : g.populationTarget == null ? 'Anyone' : `Top ${g.populationTarget}%`,
               g.rung === 0 ? '—' : String(GAMES_REQUIRED[g.rung]),

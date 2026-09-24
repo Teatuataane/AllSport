@@ -1490,7 +1490,7 @@ system. No page shows a points total any more:
 - **The session-end screen** shows events played, training units and PRs instead of
   placement/effort/total points. **Play history** links to each game report instead of
   a points total. **How To Play**'s Points Formula card is now a colours card (the three
-  gates, overall = lowest of ten).
+  gates, overall = average of ten since 24 Sept 2026).
 - `totalPlacement` on the live leaderboard and game report was labelled "pts" but is the
   sum of ordinal placements; it now reads "N total".
 
@@ -2149,7 +2149,8 @@ being rewarded with the same treatment.
   It is one constant plus a decision about history — not a free change.
 - **No declaration means UNMET, not absent.** The event stays in its domain's
   denominator and scores 0. That is the whole fix.
-- **BUT a domain blocked only by a missing bodyweight does NOT veto the overall
+- **SUPERSEDED 24 Sept 2026 (overall is now the average of ten, so a blocked domain
+  simply counts 0):** a domain blocked only by a missing bodyweight does NOT veto the overall
   colour** (`blockedByBodyweight`, Tāne 23 Sept 2026). Without that second half the
   rule is not "harder", it is "impossible": an undeclared player reaches at most 2 of
   6 required, and `overallGrade()` returned null while ANY domain was ungraded — so a
@@ -2162,7 +2163,7 @@ being rewarded with the same treatment.
 - **Juniors declare too** (Tāne, 23 Sept 2026), reversing the September decision.
   `JUNIOR_BODYWEIGHT_KG` is no longer a grading input, kept as the reference weight
   the junior standards were calibrated against. A junior who declines is treated like
-  any undeclared player: strength unmet, overall unaffected.
+  any undeclared player: strength unmet, overall dragged by that domain.
 - **`record_bodyweight()` is the ONLY write path.** No INSERT/UPDATE/DELETE policy
   exists and the grants are revoked, because a PostgREST upsert is
   `INSERT ... ON CONFLICT DO UPDATE` and needs the UPDATE privilege the day-pin

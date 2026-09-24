@@ -268,7 +268,7 @@ export default function ProfilePage() {
     </div>
   )
 
-  // Neutral since taniwha retired: a player's colours live on /grades.
+  // Neutral since taniwha retired: a player's colours live on HOME (components/GradesCard).
   const gradeBorder = '#888888'
   const displayName = form.display_name || form.username || player.full_name || '?'
 

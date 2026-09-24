@@ -1026,7 +1026,7 @@ function SessionEndTakeover({
             </>
           )}
 
-          <a href="/grades" style={{
+          <a href="/dashboard" style={{
             display: 'block', marginTop: '18px', background: '#161616', border: '1px solid #1e1e1e',
             borderRadius: '14px', padding: '14px 16px', color: '#fff', textDecoration: 'none',
           }}>

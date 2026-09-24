@@ -15,8 +15,9 @@
 // whether it got rounder. A domain on Mā sits at the centre rather than being
 // dropped, so a gap is a visible dent.
 
-import { GRADES, TOP_RUNG, gradeForRung } from '@/lib/grading'
+import { GRADES, TOP_RUNG, gradeForRung, gradeInk } from '@/lib/grading'
 import { RAINBOW_STOPS } from '@/lib/domainColours'
+import { GradeDot } from '@/components/GradeDot'
 
 const CX = 100
 const CY = 100
@@ -51,8 +52,7 @@ export function radiusFor(rung: number): number {
 /** A colour's stroke on a dark page. Taniwha is black, so it draws white. */
 function ink(rung: number): string {
   const g = gradeForRung(rung)
-  if (g.rainbow) return 'url(#radar-rainbow)'
-  return g.rung === 0 ? '#555' : g.inverted ? '#ffffff' : g.hex
+  return g.rainbow ? 'url(#radar-rainbow)' : gradeInk(g)
 }
 
 export type DomainRadarProps = {
@@ -146,13 +146,7 @@ export default function DomainRadar({ held, width = 326 }: DomainRadarProps) {
           Mā
         </span>
         <span style={{ display: 'inline-flex', gap: 3 }} aria-hidden>
-          {GRADES.map(g => (
-            <span key={g.rung} title={g.name} style={{
-              width: 9, height: 9, borderRadius: '50%', display: 'inline-block',
-              background: g.rainbow ? `linear-gradient(135deg, ${RAINBOW_STOPS.join(', ')})` : g.hex,
-              boxShadow: g.inverted ? '0 0 0 1px #777' : 'none',
-            }} />
-          ))}
+          {GRADES.map(g => <GradeDot key={g.rung} grade={g} size={9} />)}
         </span>
         <span style={{ fontFamily: 'var(--font-label)', fontSize: 10, letterSpacing: '0.1em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
           Taniwha

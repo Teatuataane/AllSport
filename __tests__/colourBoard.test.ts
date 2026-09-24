@@ -44,3 +44,11 @@ describe('rankByColours', () => {
     expect(rows.map(r => r.rank)).toEqual([1, 1, 3])
   })
 })
+
+describe('displayOverall', () => {
+  it('hides a Mā overall so the cell counts domains instead', async () => {
+    const { displayOverall } = await import('@/lib/colourBoard')
+    expect(displayOverall({ overall: 0 })).toBeNull()
+    expect(displayOverall({ overall: 4 })).toBe(4)
+  })
+})

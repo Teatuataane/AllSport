@@ -301,7 +301,7 @@ export default function HistoryPage() {
         )}
 
         <div style={{ textAlign: 'center', marginTop: 22 }}>
-          <Link href="/grades" style={{
+          <Link href="/dashboard" style={{
             fontFamily: 'var(--font-label)', textTransform: 'uppercase',
             letterSpacing: '0.1em', fontWeight: 600, fontSize: 12, color: 'var(--blue)',
           }}>
