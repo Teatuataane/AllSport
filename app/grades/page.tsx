@@ -90,12 +90,12 @@ export default function ColoursGuide() {
       <section style={card}>
         <H2 n={1}>The twelve colours</H2>
         <P>
-          Everyone starts at Mā. The standards are set so each colour is reached by a shrinking share of
-          players, down to Taniwha for the top one percent. Each new colour also needs a total number of
+          Everyone starts at Mā. Each colour&apos;s standards are aimed at a shrinking share of players:
+          Whero at the top 90%, down to Taniwha for the top one percent. Each new colour also needs a total number of
           games played and training units in that domain.
         </P>
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 62px 48px 44px', gap: '0 8px', marginTop: 8 }}>
-          {['Colour', 'Reached by', 'Games', 'Units'].map((h, i) => (
+          {['Colour', 'Aimed at', 'Games', 'Units'].map((h, i) => (
             <span key={h} style={{ ...label, fontSize: 10, color: '#555', textAlign: i ? 'right' : 'left', paddingBottom: 6 }}>{h}</span>
           ))}
           {[MA, ...GRADES].map(g => (
@@ -107,7 +107,7 @@ export default function ColoursGuide() {
                   <span style={{ display: 'block', fontSize: 11.5, color: 'var(--text-muted)' }}>{g.rung ? ENGLISH[g.colour] ?? '' : 'White · the start'}</span>
                 </span>
               </span>,
-              g.rung === 0 ? '—' : g.populationTarget == null ? 'Anyone' : `Top ${g.populationTarget}%`,
+              g.rung === 0 ? '—' : g.populationTarget == null ? 'Everyone' : `Top ${g.populationTarget}%`,
               g.rung === 0 ? '—' : String(GAMES_REQUIRED[g.rung]),
               g.rung === 0 ? '—' : String(UNITS_REQUIRED[g.rung]),
             ]} />
@@ -124,7 +124,7 @@ export default function ColoursGuide() {
         </P>
         {[
           { t: 'The standard', c: 'var(--amber)', d: `Meet the next colour's standard in half the domain's events, and never more than ${DOMAIN_REQUIRED_CAP}. A higher colour in an event counts toward every colour below it.` },
-          { t: 'Games', c: 'var(--green)', d: 'A total number of official games played in the room, shown in the table above. It counts every game you have ever played.' },
+          { t: 'Games', c: 'var(--green)', d: 'A total number of official games played in the room, shown in the table above. Every finished official game counts, across all domains; a voided game does not.' },
           { t: 'Training units', c: 'var(--purple)', d: 'Units in THAT domain since its last colour. The count starts again each time the domain moves up, so every colour is trained for.' },
         ].map(x => (
           <div key={x.t} style={{ display: 'flex', gap: 12, padding: '10px 0', borderTop: '1px solid #181818' }}>

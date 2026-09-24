@@ -35,7 +35,7 @@ describe('DomainRadar', () => {
     const spokes = [...container.querySelectorAll('line')].filter(l => l.getAttribute('stroke-width') === '3')
     expect(spokes).toHaveLength(2)
     // Uenuku draws with the rainbow gradient, not a flat hex.
-    expect(spokes.map(s => s.getAttribute('stroke'))).toContain('url(#radar-rainbow)')
+    expect(spokes.map(s => s.getAttribute('stroke')).some(v => /^url\(#radar-rainbow-[\w-]+\)$/.test(v ?? ''))).toBe(true)
   })
 
   it('draws ten vertices even with nothing held', () => {

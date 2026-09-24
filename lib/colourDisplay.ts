@@ -19,6 +19,9 @@ import type { EventGrade } from './playerGrades'
 export function bestScoreLabel(eg: Pick<EventGrade, 'slug' | 'best' | 'rating'>): string | null {
   const ev = getEventBySlug(eg.slug)
   if (!ev) return null
+  // The label written at the time wins: for a natural-format entry raw_score
+  // is a conversion, and only the stored label says "est." (v0.13.0.0).
+  if (eg.best?.score_label) return eg.best.score_label
   if (eg.best?.raw_score != null) {
     const label = formatPR(eg.best.raw_score, ev.inputMode, ev.slug, ev)
     const tier = eg.best.difficulty_tier

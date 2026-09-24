@@ -2,7 +2,8 @@
 
 // ─── Colours across the ten domains ──────────────────────────────────────────
 // One spoke per domain, reaching the colour HELD there and drawn in it. Twelve
-// rings, one per colour, Kiwikiwi at the centre to Taniwha on the edge, each
+// rings, one per colour, Mā at the centre, Kiwikiwi the first ring and Taniwha
+// the edge, each
 // faintly tinted, so a player can see how far every domain is from Taniwha.
 //
 // It spoke Top % until the home colours rework (24 September 2026,
@@ -15,6 +16,7 @@
 // whether it got rounder. A domain on Mā sits at the centre rather than being
 // dropped, so a gap is a visible dent.
 
+import { useId } from 'react'
 import { GRADES, TOP_RUNG, gradeForRung, gradeInk } from '@/lib/grading'
 import { RAINBOW_STOPS } from '@/lib/domainColours'
 import { GradeDot } from '@/components/GradeDot'
@@ -50,9 +52,9 @@ export function radiusFor(rung: number): number {
 }
 
 /** A colour's stroke on a dark page. Taniwha is black, so it draws white. */
-function ink(rung: number): string {
+function ink(rung: number, rainbowId: string): string {
   const g = gradeForRung(rung)
-  return g.rainbow ? 'url(#radar-rainbow)' : gradeInk(g)
+  return g.rainbow ? `url(#${rainbowId})` : gradeInk(g)
 }
 
 export type DomainRadarProps = {
@@ -62,6 +64,8 @@ export type DomainRadarProps = {
 }
 
 export default function DomainRadar({ held, width = 326 }: DomainRadarProps) {
+  // Per instance, so two radars on one page never share a gradient id.
+  const rainbowId = `radar-rainbow-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`
   const rungs = Array.from({ length: 10 }, (_, i) => held.get(i + 1) ?? 0)
   const shape = rungs.map((r, i) => point(i, radiusFor(r)).map(n => n.toFixed(1)).join(',')).join(' ')
 
@@ -85,7 +89,7 @@ export default function DomainRadar({ held, width = 326 }: DomainRadarProps) {
           {/* userSpaceOnUse, not the default bounding box: a due-north or
               due-south spoke is a vertical line with zero width, and a
               bounding-box gradient on it paints nothing at all. */}
-          <linearGradient id="radar-rainbow" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="200" y2="200">
+          <linearGradient id={rainbowId} gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="200" y2="200">
             {RAINBOW_STOPS.map((c, i) => (
               <stop key={c} offset={`${(i / (RAINBOW_STOPS.length - 1)) * 100}%`} stopColor={c} />
             ))}
@@ -99,7 +103,7 @@ export default function DomainRadar({ held, width = 326 }: DomainRadarProps) {
             key={g.rung}
             points={ring(radiusFor(g.rung))}
             fill="none"
-            stroke={g.rung === TOP_RUNG ? '#bbbbbb' : g.rainbow ? 'url(#radar-rainbow)' : g.hex}
+            stroke={g.rung === TOP_RUNG ? '#bbbbbb' : g.rainbow ? `url(#${rainbowId})` : g.hex}
             strokeOpacity={g.rung === TOP_RUNG ? 0.6 : 0.4}
             strokeWidth={g.rung === TOP_RUNG ? 1.2 : 0.9}
           />
@@ -116,13 +120,13 @@ export default function DomainRadar({ held, width = 326 }: DomainRadarProps) {
         {rungs.map((r, i) => {
           if (r <= 0) return null
           const [x, y] = point(i, radiusFor(r))
-          return <line key={`c${i}`} x1={CX} y1={CY} x2={x} y2={y} stroke={ink(r)} strokeWidth="3" strokeLinecap="round" />
+          return <line key={`c${i}`} x1={CX} y1={CY} x2={x} y2={y} stroke={ink(r, rainbowId)} strokeWidth="3" strokeLinecap="round" />
         })}
         {rungs.map((r, i) => {
           const [x, y] = point(i, radiusFor(r))
           return (
             <circle key={`v${i}`} cx={x} cy={y} r="4"
-              fill={r > 0 ? ink(r) : '#0a0a0a'}
+              fill={r > 0 ? ink(r, rainbowId) : '#0a0a0a'}
               stroke={gradeForRung(r).inverted ? '#ffffff' : r > 0 ? 'none' : '#555'}
               strokeWidth="1.2" />
           )

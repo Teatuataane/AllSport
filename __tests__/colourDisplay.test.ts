@@ -53,3 +53,13 @@ describe('unitLine', () => {
     expect(unitLine()).toMatch(/^1 unit = one set, one hold, one game, \d+ throws or jumps, or [\d.]+km of distance work/)
   })
 })
+
+describe('bestScoreLabel prefers the label written at the time', () => {
+  it('keeps the estimate marker on a natural-format entry', () => {
+    const label = bestScoreLabel({
+      slug: slug('Deadlift'),
+      best: { raw_score: 112.5, weight_kg: 112.5, difficulty_tier: null, score_label: '100kg × 5 · est. 1RM 112.5kg' },
+    })
+    expect(label).toBe('100kg × 5 · est. 1RM 112.5kg')
+  })
+})

@@ -150,12 +150,21 @@ function DashboardInner() {
   useEffect(() => {
     if (!userId) return
     let cancelled = false
+    // One check at a time: an interval tick and a tab coming back can overlap,
+    // and a slow older answer must not land after a newer one.
+    let running = false
     const check = async () => {
-      await supabase.rpc('close_expired_sessions')
-      const { data, error } = await supabase.from('sessions').select('*').eq('is_active', true).maybeSingle()
-      // A failed poll keeps the last known answer: one flaky request must not
-      // take the JOIN button away mid-game.
-      if (!cancelled && !error) setActiveSession(data ?? null)
+      if (running) return
+      running = true
+      try {
+        await supabase.rpc('close_expired_sessions')
+        const { data, error } = await supabase.from('sessions').select('*').eq('is_active', true).maybeSingle()
+        // A failed poll keeps the last known answer: one flaky request must not
+        // take the JOIN button away mid-game.
+        if (!cancelled && !error) setActiveSession(data ?? null)
+      } finally {
+        running = false
+      }
     }
     check()
     // The JOIN button is now the only way in from HOME (no code box), so a

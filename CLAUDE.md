@@ -2680,7 +2680,7 @@ RLS: own + parent (family) + judge.
     replayColours.ts                # History replay (pure): confers each colour when it would have landed, through the live route's own path
     newColours.ts                   # Unseen colours and withdrawals against a per-player localStorage watermark (pure)
                                     #   bodyweightOn() lives in grading.ts: the declaration in force on a lift's own day
-    useNewColours.ts                # The hook HOME and COLOURS share: runs the recheck and yields the moment for components/NewColourCard.tsx
+    useNewColours.ts                # The hook HOME uses (COLOURS did, until it became a public guide): runs the recheck and yields the moment for components/NewColourCard.tsx
     eventData.ts                    # Single source of truth for all events (128) + difficulty+time encode/decode helpers (encodeDiffTime/decodeDiffTime/isTimedEffort, TIMED_EFFORT_SLUGS).
                                     #   DifficultyTier carries `detail` (judge criteria) plus `scoring`/`records` — how a single rung is scored, declared on the tier so nothing matches on event name. COMPILED from EVENT_DIFFICULTY_REVIEW.md by scripts/apply-difficulty-sheet.mjs; do not hand-edit a ladder without updating the sheet.
     dates.ts                        # parseLocalDate / formatNZDate — parse DATE columns in local time (avoids off-by-one)
