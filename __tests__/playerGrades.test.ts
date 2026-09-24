@@ -38,7 +38,15 @@ describe('which ladder applies', () => {
 describe('an event\'s colour', () => {
   it('reproduces the review: one 1-arm push-up is Hiriwa for a Master', () => {
     const g = eventGrade(ev('Pushup Contest'), [row('Pushup Contest', 30001, { difficulty_tier: '1 Arm Pushup' })], master)
-    expect(g).toEqual({ slug: ev('Pushup Contest').slug, rung: 9, gradeable: true, played: true })
+    expect(g).toEqual({
+      slug: ev('Pushup Contest').slug, rung: 9, gradeable: true, played: true,
+      best: { raw_score: 30001, weight_kg: null, difficulty_tier: '1 Arm Pushup' },
+    })
+  })
+
+  it('carries the score that earned the colour, for HOME to show', () => {
+    const rows = [row('Pushup Contest', 20010), row('Pushup Contest', 20049)]
+    expect(eventGrade(ev('Pushup Contest'), rows, openMan).best?.raw_score).toBe(20049)
   })
 
   it('takes the best row, not the latest', () => {
@@ -93,10 +101,10 @@ describe('an event\'s colour', () => {
 describe('a player\'s grades', () => {
   const none = { results: [], ratings: new Map(), exemptions: new Set<string>() }
 
-  it('grades all ten domains, and withholds the overall until every one holds a colour', () => {
+  it('grades all ten domains, and a player with nothing is Mā overall', () => {
     const g = computePlayerGrades({ player: openMan, ...none })
     expect(g.domains).toHaveLength(DOMAIN_COUNT)
-    expect(g.overall.rung).toBeNull()
+    expect(g.overall.rung).toBe(0)
     expect(g.overall.ungraded).toHaveLength(DOMAIN_COUNT)
   })
 
@@ -124,15 +132,14 @@ describe('a player\'s grades', () => {
     expect(strength.blockedByBodyweight).toBe(false)
   })
 
-  it('an undeclared player still gets an overall colour from the other domains', () => {
-    // Blocking strength must not delete someone's whole grade: overallGrade
-    // returns null while ANY domain is ungraded, so without this a player
-    // could be Hiriwa in nine domains and display nothing at all.
+  it('an undeclared player still gets an overall colour, dragged by the blocked domain', () => {
+    // Under the average rule (24 Sept 2026) the bodyweight exception is gone:
+    // a blocked domain counts 0 like any other, so it lowers the overall
+    // rather than deleting it. 9 × 6 = 54 -> 5.
     const blocked = { domainNumber: 1, rung: 0, availableCount: 14, required: 6, metAtRung: 0, nextRung: 1, metAtNextRung: 2, blockedByBodyweight: true }
     const rest = [2, 3, 4, 5, 6, 7, 8, 9, 10].map(d => ({ domainNumber: d, rung: 6, availableCount: 12, required: 6, metAtRung: 6, nextRung: 7, metAtNextRung: 0 }))
-    expect(overallGrade([blocked, ...rest]).rung).toBe(6)
-    // An ordinary ungraded domain still withholds it.
-    expect(overallGrade([{ ...blocked, blockedByBodyweight: false }, ...rest]).rung).toBeNull()
+    expect(overallGrade([blocked, ...rest]).rung).toBe(5)
+    expect(overallGrade([{ ...blocked, blockedByBodyweight: false }, ...rest]).rung).toBe(5)
   })
 
   it('ignores rows from retired events', () => {

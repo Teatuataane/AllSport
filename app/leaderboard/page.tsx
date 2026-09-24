@@ -19,11 +19,11 @@ import { GradeDot } from '@/components/GradesCard'
 /**
  * The colour cell, shared by the wide table and the narrow cards.
  *
- * It shows the overall colour a kaiwhakawā has CONFERRED: the lowest of the ten
- * domain colours, once all ten are held. Conferred colours are public
+ * It shows the overall colour CONFERRED: the average of the ten domain colours,
+ * rounded down (overallRung). Conferred colours are public
  * (grade_awards). A player's live, computed colours are not, because computing
- * them needs their declared bodyweight and, for a junior, their sex. Until the
- * overall exists the cell counts the domains that hold a colour instead.
+ * them needs their declared bodyweight and, for a junior, their sex. While the
+ * overall is still Mā the cell counts the domains that hold a colour instead.
  */
 function ColourCell({ player, size = 'wide' }: { player: EnrichedPlayer; size?: 'wide' | 'narrow' }) {
   const g = player.overall != null ? gradeForRung(player.overall) : null
@@ -161,7 +161,7 @@ type EnrichedPlayer = {
   topDomainPct: string
   topEvent: string
   topEventPct: string
-  /** The overall conferred colour (the lowest domain), or null until all ten are held. */
+  /** The overall conferred colour (the average domain), or null while it is Mā. */
   overall: number | null
   /** Domains holding a conferred colour. */
   domainsHeld: number
@@ -564,7 +564,8 @@ export default function Leaderboard() {
         topDomainPct: stats?.topDomainPct ?? '',
         topEvent: stats?.topEvent ?? '—',
         topEventPct: stats?.topEventPct ?? '',
-        overall: r.overall,
+        // Mā overall shows the domain count instead, as before.
+        overall: r.overall > 0 ? r.overall : null,
         domainsHeld: r.domainsHeld,
       }
     })
@@ -729,7 +730,7 @@ export default function Leaderboard() {
               <p style={{ color: 'var(--grey)', fontSize: '13px', lineHeight: 1.6, margin: 0 }}>
                 {(
                   <>
-                    <strong style={{ color: 'var(--white)' }}>Domains &amp; colour</strong> — how many of your ten domains hold a colour, and your overall colour: the lowest of the ten, shown once all ten hold a colour. See the key below.
+                    <strong style={{ color: 'var(--white)' }}>Domains &amp; colour</strong> — how many of your ten domains hold a colour, and your overall colour: the average of the ten, rounded down. See the key below.
                   </>
                 )}
               </p>
@@ -753,7 +754,7 @@ export default function Leaderboard() {
         <div className="rainbow-line" style={{ width: '60px', marginBottom: '16px' }} />
         <p style={{ color: '#888888', fontSize: '15px', maxWidth: '620px', marginBottom: '10px', lineHeight: 1.7 }}>
           Twelve colours, earned against published standards in every event. A domain&apos;s colour is the highest
-          one you meet in at least six of its events; your overall colour is the lowest of the ten.
+          one you meet in at least six of its events; your overall colour is the average of the ten.
         </p>
         <p style={{ color: '#666666', fontSize: '14px', maxWidth: '620px', marginBottom: '40px', lineHeight: 1.7 }}>
           Each colour is a share of the general population, not of this club, so nobody loses a colour because

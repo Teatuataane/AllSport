@@ -480,7 +480,7 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
       division: (byId.get(r.playerId)?.division || '') as string,
       sessions: r.games,
       icon: (byId.get(r.playerId)?.icon ?? null) as string | null,
-      overall: r.overall,
+      overall: r.overall > 0 ? r.overall : null,
       domainsHeld: r.domainsHeld,
     })))
     setPlayersLoading(false)

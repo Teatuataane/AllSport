@@ -8,15 +8,15 @@
 // cannot use.
 //
 // The active chip's accent is the player's conferred OVERALL colour (the
-// lowest of their ten domain colours in grade_awards), and anyone without one
-// yet gets the brand red. It was the points-ladder rung from player_totals
+// average of their ten domain colours in grade_awards, overallRung), and anyone
+// still on Mā overall gets the brand red. It was the points-ladder rung from player_totals
 // until points retired in September 2026, which showed a colour the player no
 // longer holds under the current system.
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase-browser'
-import { gradeForRung, DOMAIN_COUNT } from '@/lib/grading'
+import { gradeForRung, overallRung } from '@/lib/grading'
 import {
   useActivePlayer, playerLabel, type ActivePlayerRow,
 } from '@/lib/useActivePlayer'
@@ -43,8 +43,9 @@ async function loadAccents(ids: string[]): Promise<Map<string, string>> {
     held.set(a.player_id, m)
   }
   for (const [id, m] of held) {
-    if (m.size < DOMAIN_COUNT) continue
-    const g = gradeForRung(Math.min(...m.values()))
+    const overall = overallRung(m.values())
+    if (overall === 0) continue
+    const g = gradeForRung(overall)
     // A 6-digit hex, never a var(): it is suffixed with an alpha below. Taniwha
     // is black, which would vanish on the dark bar, so it takes white.
     accentCache.set(id, g.inverted ? '#ffffff' : g.hex)

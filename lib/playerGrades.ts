@@ -71,6 +71,14 @@ export type EventGrade = {
   played: boolean
   /** Where the result behind `rung` came from. Absent when nothing earns a colour, or the rows carry no source. */
   source?: EvidenceSource
+  /**
+   * The drill score shown beside the colour on HOME: the row that earned
+   * `rung`, or the best row when none earns anything. Display only — nothing
+   * grades on it.
+   */
+  best?: Pick<GradeResultRow, 'raw_score' | 'weight_kg' | 'difficulty_tier'>
+  /** The head-to-head rating, when the player has one in this sport. */
+  rating?: SportRating
 }
 
 export type PlayerGrades = {
@@ -111,10 +119,14 @@ export function eventGrade(
   const drillRows = rows.filter(r => r.raw_score != null && !isGameRow(ev, r))
   const played = rows.length > 0 || !!rating
 
-  if (!s) return { slug: ev.slug, rung: 0, gradeable: false, played }
+  const pick = (r: GradeResultRow | undefined) =>
+    r ? { best: { raw_score: r.raw_score, weight_kg: r.weight_kg, difficulty_tier: r.difficulty_tier } } : {}
+  const topRow = maxBy(drillRows, r => r.raw_score!)
+  const withRating = rating ? { rating } : {}
+  if (!s) return { slug: ev.slug, rung: 0, gradeable: false, played, ...pick(topRow), ...withRating }
   // Wrestling: no fair solo drill, so its only colours are rating colours,
   // and a rating only comes from matches recorded in official sessions.
-  if (s.kind === 'rating') return { slug: ev.slug, rung: rated, gradeable: true, played, ...(rated ? { source: 'game' as const } : {}) }
+  if (s.kind === 'rating') return { slug: ev.slug, rung: rated, gradeable: true, played, ...withRating, ...(rated ? { source: 'game' as const } : {}) }
 
   const ladder = s.all ?? s[ladderFor(p)] ?? []
   let drill = 0
@@ -148,7 +160,7 @@ export function eventGrade(
     // brand new player their strength domain is waiting on a number when it is
     // waiting on them turning up.
     if (!anyBw && drillRows.length > 0) {
-      return { slug: ev.slug, rung: 0, gradeable: true, bodyweightBlocked: true, played }
+      return { slug: ev.slug, rung: 0, gradeable: true, bodyweightBlocked: true, played, ...pick(topRow) }
     }
   } else if (drillRows.length) {
     bestRow = maxBy(drillRows, r => r.raw_score!)
@@ -158,7 +170,10 @@ export function eventGrade(
   const rung = s.game ? gameEventRung(drill, rated) : drill
   // The rating comes from recorded matches, which only official sessions hold.
   const source = rung === 0 ? undefined : s.game && rated >= rung && rated > Math.min(drill, DRILL_CAP) ? 'game' : bestRow?.source
-  return { slug: ev.slug, rung, gradeable: true, played, ...(source ? { source } : {}) }
+  // A lift's best is the row that reached the highest rung, not the heaviest,
+  // since each is graded against its own bodyweight; with no rung, the heaviest.
+  const shown = bestRow ?? (s.kind === 'ratio' ? maxBy(drillRows, r => r.weight_kg ?? 0) : topRow)
+  return { slug: ev.slug, rung, gradeable: true, played, ...pick(shown), ...withRating, ...(source ? { source } : {}) }
 }
 
 /** The row with the highest key; the earliest on a tie. */

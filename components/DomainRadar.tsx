@@ -1,20 +1,22 @@
 'use client'
 
-// ─── Skill across the ten domains ────────────────────────────────────────────
-// One spoke per domain, in that domain's colour, reaching `100 − Top%`. Further
-// out is stronger.
+// ─── Colours across the ten domains ──────────────────────────────────────────
+// One spoke per domain, reaching the colour HELD there and drawn in it. Twelve
+// rings, one per colour, Kiwikiwi at the centre to Taniwha on the edge, each
+// faintly tinted, so a player can see how far every domain is from Taniwha.
 //
-// Why a radar and not ten bars: the shape is the point. AllSport's whole claim is
-// that you should be able to do everything, so a lopsided outline says something
-// a sorted bar list does not — and the same outline six months later says whether
-// it got rounder. Ten axes is at the top of what a radar can carry, which is
-// exactly ten here and will never grow, because there are ten domains.
+// It spoke Top % until the home colours rework (24 September 2026,
+// docs/designs/home-colours-rework-spec.md). Colours are the one progression
+// system now, so the radar and the list above it tell the same story.
 //
-// An unplayed domain sits at the centre rather than being dropped, so the gaps in
-// someone's coverage are visible as dents in the shape.
+// Why a radar and not ten bars: the shape is the point. AllSport's whole claim
+// is that you should be able to do everything, so a lopsided outline says
+// something a sorted list does not, and the same outline six months later says
+// whether it got rounder. A domain on Mā sits at the centre rather than being
+// dropped, so a gap is a visible dent.
 
-import { DOMAIN_COLORS } from '@/lib/domainColours'
-import type { DomainPercentile } from '@/lib/percentile'
+import { GRADES, TOP_RUNG, gradeForRung } from '@/lib/grading'
+import { RAINBOW_STOPS } from '@/lib/domainColours'
 
 const CX = 100
 const CY = 100
@@ -41,28 +43,27 @@ function ring(r: number): string {
   return Array.from({ length: 10 }, (_, i) => point(i, r).map(n => n.toFixed(1)).join(',')).join(' ')
 }
 
+/** Radius of a colour: rung 0 (Mā) at the centre, Taniwha on the edge. */
+export function radiusFor(rung: number): number {
+  return (Math.max(0, Math.min(TOP_RUNG, rung)) / TOP_RUNG) * MAX_R
+}
+
+/** A colour's stroke on a dark page. Taniwha is black, so it draws white. */
+function ink(rung: number): string {
+  const g = gradeForRung(rung)
+  if (g.rainbow) return 'url(#radar-rainbow)'
+  return g.rung === 0 ? '#555' : g.inverted ? '#ffffff' : g.hex
+}
+
 export type DomainRadarProps = {
-  /** One entry per domain the player has anything rated in. Order does not matter. */
-  domains: DomainPercentile[]
-  /** Outline and fill colour. */
-  accent: string
+  /** Domain number -> colour rung held. Missing = Mā. */
+  held: ReadonlyMap<number, number>
   width?: number
 }
 
-export default function DomainRadar({ domains, accent, width = 326 }: DomainRadarProps) {
-  const byDomain = new Map(domains.map(d => [d.domainNumber, d]))
-
-  // 0 at the centre for an unrated domain: no data is not the same as no skill,
-  // but a dent is the honest picture of a domain you have never played.
-  const radii = Array.from({ length: 10 }, (_, i) => {
-    const d = byDomain.get(i + 1)
-    const skill = d?.topPct == null ? 0 : Math.max(0, Math.min(100, 100 - d.topPct))
-    return (skill / 100) * MAX_R
-  })
-
-  const shape = radii
-    .map((r, i) => point(i, r).map(n => n.toFixed(1)).join(','))
-    .join(' ')
+export default function DomainRadar({ held, width = 326 }: DomainRadarProps) {
+  const rungs = Array.from({ length: 10 }, (_, i) => held.get(i + 1) ?? 0)
+  const shape = rungs.map((r, i) => point(i, radiusFor(r)).map(n => n.toFixed(1)).join(',')).join(' ')
 
   const anchorFor = (i: number): 'start' | 'middle' | 'end' => {
     const [x] = point(i, LABEL_R)
@@ -71,52 +72,92 @@ export default function DomainRadar({ domains, accent, width = 326 }: DomainRada
   }
 
   return (
-    <svg
-      viewBox="-32 -24 264 248"
-      width={width}
-      height={Math.round((width / 264) * 248)}
-      style={{ display: 'block', margin: '0 auto' }}
-      role="img"
-      aria-label="Skill across the ten domains"
-    >
-      <polygon points={ring(MAX_R)} fill="none" stroke="var(--border)" strokeWidth="1" />
-      <polygon points={ring(MAX_R / 2)} fill="none" stroke="var(--border)" strokeWidth="1" />
+    <div>
+      <svg
+        viewBox="-32 -24 264 248"
+        width={width}
+        height={Math.round((width / 264) * 248)}
+        style={{ display: 'block', margin: '0 auto', maxWidth: '100%', height: 'auto' }}
+        role="img"
+        aria-label={`Colours across the ten domains: ${rungs.map((r, i) => `${SHORT_NAMES[i].toLowerCase()} ${gradeForRung(r).name}`).join(', ')}`}
+      >
+        <defs>
+          <linearGradient id="radar-rainbow" x1="0" y1="0" x2="1" y2="1">
+            {RAINBOW_STOPS.map((c, i) => (
+              <stop key={c} offset={`${(i / (RAINBOW_STOPS.length - 1)) * 100}%`} stopColor={c} />
+            ))}
+          </linearGradient>
+        </defs>
 
-      {Array.from({ length: 10 }, (_, i) => {
-        const [x, y] = point(i, MAX_R)
-        return <line key={`s${i}`} x1={CX} y1={CY} x2={x} y2={y} stroke="#1a1a1a" strokeWidth="1" />
-      })}
+        {/* One ring per colour, tinted faintly in it. Taniwha, the edge, is the
+            one ring drawn solid, because it is the goal. */}
+        {GRADES.map(g => (
+          <polygon
+            key={g.rung}
+            points={ring(radiusFor(g.rung))}
+            fill="none"
+            stroke={g.rung === TOP_RUNG ? '#bbbbbb' : g.rainbow ? 'url(#radar-rainbow)' : g.hex}
+            strokeOpacity={g.rung === TOP_RUNG ? 0.6 : 0.4}
+            strokeWidth={g.rung === TOP_RUNG ? 1.2 : 0.9}
+          />
+        ))}
 
-      <polygon
-        points={shape}
-        fill={`${accent}29`}
-        stroke={accent}
-        strokeWidth="2"
-        strokeLinejoin="round"
-      />
+        {Array.from({ length: 10 }, (_, i) => {
+          const [x, y] = point(i, MAX_R)
+          return <line key={`s${i}`} x1={CX} y1={CY} x2={x} y2={y} stroke="#1a1a1a" strokeWidth="1" />
+        })}
 
-      {radii.map((r, i) => {
-        const [x, y] = point(i, r)
-        return <circle key={`v${i}`} cx={x} cy={y} r="3.6" fill={DOMAIN_COLORS[i]} />
-      })}
+        <polygon points={shape} fill="#ffffff0f" stroke="#ffffff55" strokeWidth="1.2" strokeLinejoin="round" />
 
-      {SHORT_NAMES.map((name, i) => {
-        const [x, y] = point(i, LABEL_R)
-        return (
-          <text
-            key={`l${i}`}
-            x={x}
-            y={y + 3}
-            fill={DOMAIN_COLORS[i]}
-            fontFamily="var(--font-label)"
-            fontSize="10"
-            letterSpacing="0.08em"
-            textAnchor={anchorFor(i)}
-          >
-            {name}
-          </text>
-        )
-      })}
-    </svg>
+        {/* Each domain's spoke in the colour it holds. */}
+        {rungs.map((r, i) => {
+          if (r <= 0) return null
+          const [x, y] = point(i, radiusFor(r))
+          return <line key={`c${i}`} x1={CX} y1={CY} x2={x} y2={y} stroke={ink(r)} strokeWidth="3" strokeLinecap="round" />
+        })}
+        {rungs.map((r, i) => {
+          const [x, y] = point(i, radiusFor(r))
+          return (
+            <circle key={`v${i}`} cx={x} cy={y} r="4"
+              fill={r > 0 ? ink(r) : '#0a0a0a'}
+              stroke={gradeForRung(r).inverted ? '#ffffff' : r > 0 ? 'none' : '#555'}
+              strokeWidth="1.2" />
+          )
+        })}
+
+        <text x={CX + 3} y={CY - MAX_R - 3} fill="#bbbbbb" fontFamily="var(--font-label)" fontSize="6.5" letterSpacing="0.1em">
+          TANIWHA
+        </text>
+
+        {SHORT_NAMES.map((name, i) => {
+          const [x, y] = point(i, LABEL_R)
+          return (
+            <text key={`l${i}`} x={x} y={y + 3} fill="#8a8a8a" fontFamily="var(--font-label)"
+              fontSize="10" letterSpacing="0.08em" textAnchor={anchorFor(i)}>
+              {name}
+            </text>
+          )
+        })}
+      </svg>
+
+      {/* The ring key: Mā at the centre, one dot per ring, Taniwha the edge. */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', marginTop: 4 }}>
+        <span style={{ fontFamily: 'var(--font-label)', fontSize: 10, letterSpacing: '0.1em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+          Mā
+        </span>
+        <span style={{ display: 'inline-flex', gap: 3 }} aria-hidden>
+          {GRADES.map(g => (
+            <span key={g.rung} title={g.name} style={{
+              width: 9, height: 9, borderRadius: '50%', display: 'inline-block',
+              background: g.rainbow ? `linear-gradient(135deg, ${RAINBOW_STOPS.join(', ')})` : g.hex,
+              boxShadow: g.inverted ? '0 0 0 1px #777' : 'none',
+            }} />
+          ))}
+        </span>
+        <span style={{ fontFamily: 'var(--font-label)', fontSize: 10, letterSpacing: '0.1em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+          Taniwha
+        </span>
+      </div>
+    </div>
   )
 }

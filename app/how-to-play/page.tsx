@@ -125,7 +125,7 @@ const steps = [
   {
     number: '07',
     title: 'Earn Your Colours',
-    desc: 'Every event has a standard for each of twelve colours, from Kiwikiwi to Taniwha. Meet a colour in six of a domain’s events and you hold that domain at that colour; your overall colour is the lowest of your ten. Each new colour also needs games played in the room and training in that domain. It lands the moment all three are met, and a change to the standards never takes it away.',
+    desc: 'Every event has a standard for each of twelve colours, from Kiwikiwi to Taniwha. Meet a colour in six of a domain’s events and you hold that domain at that colour; your overall colour is the average of your ten. Each new colour also needs games played in the room and training in that domain. It lands the moment all three are met, and a change to the standards never takes it away.',
   },
 ]
 
@@ -192,7 +192,7 @@ export default function HowToPlay() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
             {[
               { title: 'Play a game', color: 'var(--red)', desc: 'Ten events, one from each domain, in 100 minutes. Lowest total placement wins the day.' },
-              { title: 'Earn your colours', color: 'var(--amber)', desc: 'Meet published standards, play games and train. Twelve colours in each domain; your overall colour is your lowest.' },
+              { title: 'Earn your colours', color: 'var(--amber)', desc: 'Meet published standards, play games and train. Twelve colours in each domain; your overall colour is the average of the ten.' },
               { title: 'Train between games', color: 'var(--green)', desc: 'Log any workout and fit it to an event. It counts toward your next colour.' },
             ].map(c => (
               <div key={c.title} className="info-card" style={{ padding: '20px 22px' }}>
@@ -295,7 +295,7 @@ export default function HowToPlay() {
               ))}
               <div style={{ marginTop: '16px', padding: '12px', background: 'var(--dark)', border: '1px solid var(--border)', borderRadius: '8px' }}>
                 <div style={{ fontFamily: 'var(--font-label)', fontSize: '12px', color: '#555', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '4px' }}>Your overall colour</div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: '26px', color: 'var(--blue)', lineHeight: 1.1 }}>The lowest of your ten</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '26px', color: 'var(--blue)', lineHeight: 1.1 }}>The average of your ten</div>
               </div>
             </div>
 

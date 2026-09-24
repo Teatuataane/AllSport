@@ -1,239 +1,229 @@
-'use client'
-
-// ─── Colours, in full ────────────────────────────────────────────────────────
-// Every domain and every event: the colour each event gives today, and what
-// holds a domain back. The dashboard card is the summary; this is the detail.
-// Honours the family switcher like every other stats page.
+// ─── The colours guide ───────────────────────────────────────────────────────
+// What the COLOURS tab opens. Since the home colours rework (24 September 2026,
+// docs/designs/home-colours-rework-spec.md) this page explains the system and
+// shows NO personal data: a player's own colours, event by event, live on HOME
+// (components/GradesCard.tsx). Public, like How to Play, so a newcomer or a
+// parent can read it before signing up.
 //
-// Colours in grade_awards are the ones a player HOLDS. Since auto-conferral the
-// server confers them (app/api/grades/recheck); a kaiwhakawā confirms by hand
-// only while the server has no service key.
-// Event colours here are always computed from the standards: they are how the
-// player gets to the next one, not an award.
+// A server component: nothing here depends on who is looking. Every number is
+// read from lib/grading.ts and lib/units.ts, never typed, so the guide cannot
+// drift from the engine that awards the colours.
 
-import { useCallback, useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { EVENTS } from '@/lib/eventData'
-import { STANDARDS } from '@/lib/standards'
-import { gradeForRung, AGE_SHIFT, type ColourGate } from '@/lib/grading'
-import { useActivePlayer, playerLabel } from '@/lib/useActivePlayer'
-import { loadGradeState, type GradeState } from '@/lib/loadGrades'
-import { useNewColours } from '@/lib/useNewColours'
-import NewColourCard from '@/components/NewColourCard'
-import { createClient } from '@/lib/supabase-browser'
+import {
+  GRADES, MA, GAMES_REQUIRED, UNITS_REQUIRED, AGE_SHIFT, DOMAIN_REQUIRED_CAP,
+  DRILL_CAP, RATING_FLOOR, RATING_STEP, MIN_RATED_GAMES, gradeForRung, gradeInk, overallRung,
+} from '@/lib/grading'
 import { unitRulesSummary } from '@/lib/units'
-import PlayerTabs, { ViewingAsBanner } from '@/components/PlayerTabs'
-import DomainIcon from '@/components/DomainIcon'
 import { GradeDot } from '@/components/GradesCard'
 
-const supabase = createClient()
-
-const DOMAIN_NAMES = Array.from({ length: 10 }, (_, i) => EVENTS.find(e => e.domainNumber === i + 1)?.domain ?? '')
+export const metadata = {
+  title: 'Colours · AllSport',
+  description: 'Mā to Taniwha: how AllSport colours are earned, domain by domain.',
+}
 
 const label = {
   fontFamily: 'var(--font-label)', textTransform: 'uppercase' as const,
   letterSpacing: '0.1em', fontWeight: 600,
 }
 
-const BAND_WORDS: Record<string, string> = {
-  U12: 'under 14', U14: 'under 14', U16: '14 to 16', Open: 'Open', Masters: 'Masters', Grandmaster: 'Grandmaster',
+const card = {
+  background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16,
+  padding: '18px 16px', marginBottom: 14,
 }
 
-export default function GradesPage() {
-  const router = useRouter()
-  const { loading, userId, activePlayerId, activePlayer } = useActivePlayer()
-  // Keyed by the player it was loaded for, so switching players shows nothing
-  // until that player's grades arrive, without resetting state in the effect.
-  const [loaded, setLoaded] = useState<{ id: string; state: GradeState | null } | null>(null)
-  const state = loaded && loaded.id === activePlayerId ? loaded.state : null
+const ENGLISH: Record<string, string> = {
+  grey: 'Grey', red: 'Red', orange: 'Orange', yellow: 'Yellow', green: 'Green', blue: 'Blue',
+  purple: 'Purple', bronze: 'Bronze', silver: 'Silver', gold: 'Gold', rainbow: 'Rainbow', black: 'Black',
+}
 
-  useEffect(() => {
-    if (!loading && !userId) router.push('/play')
-  }, [loading, userId, router])
+function H2({ n, children }: { n: number; children: React.ReactNode }) {
+  return (
+    <h2 style={{
+      fontFamily: 'var(--font-display)', fontSize: 26, letterSpacing: '0.04em',
+      lineHeight: 1.05, margin: '0 0 8px',
+    }}>
+      <span style={{ color: 'var(--text-muted)', marginRight: 8 }}>{n}</span>{children}
+    </h2>
+  )
+}
 
-  const [gradesNonce, setGradesNonce] = useState(0)
-  const reloadGrades = useCallback(() => setGradesNonce(n => n + 1), [])
-  useEffect(() => {
-    if (!activePlayerId) return
-    let cancelled = false
-    loadGradeState(supabase, activePlayerId).then(s => { if (!cancelled) setLoaded({ id: activePlayerId, state: s }) })
-    return () => { cancelled = true }
-  }, [activePlayerId, gradesNonce])
+function P({ children }: { children: React.ReactNode }) {
+  return <p style={{ color: 'var(--grey-light)', fontSize: 14.5, lineHeight: 1.6, margin: '0 0 10px' }}>{children}</p>
+}
 
-  const newColours = useNewColours(activePlayerId, state, reloadGrades)
+export default function ColoursGuide() {
+  const firstRatingColour = gradeForRung(DRILL_CAP + 1)
+  const exampleRungs = [5, 5, 5, 5, 5, 5, 5, 2, 2, 2]
+  const exampleSum = exampleRungs.reduce((a, b) => a + b, 0)
 
-  if (loading || !activePlayer) {
-    return <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555' }}>Loading…</div>
-  }
+  return (
+    <div style={{ maxWidth: 620, margin: '0 auto', padding: '22px 16px 56px', color: 'var(--white)' }}>
 
-  const shift = state ? AGE_SHIFT[state.grades.band] : 0
+      {/* ── Hero ─────────────────────────────────────────────────────────── */}
+      <div style={{ display: 'flex', gap: 3, marginBottom: 14 }} aria-hidden>
+        {[MA, ...GRADES].map(g => <GradeDot key={g.rung} grade={g} size={14} />)}
+      </div>
+      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 52, lineHeight: 0.95, margin: 0, letterSpacing: '0.02em' }}>
+        MĀ TO TANIWHA
+      </h1>
+      <p style={{ fontSize: 17, lineHeight: 1.5, margin: '12px 0 22px', color: 'var(--grey-light)' }}>
+        Every event has twelve standards. Meet them across a domain to take its colour.
+        Your colour is the average of all ten.
+      </p>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 26, flexWrap: 'wrap' }}>
+        <Link href="/dashboard" style={{
+          minHeight: 44, display: 'inline-flex', alignItems: 'center', padding: '0 18px',
+          borderRadius: 999, background: 'var(--blue)', color: 'var(--white)', ...label, fontSize: 13,
+        }}>
+          See your colours →
+        </Link>
+        <Link href="/workout/new" style={{
+          minHeight: 44, display: 'inline-flex', alignItems: 'center', padding: '0 18px',
+          borderRadius: 999, background: 'var(--purple)', color: '#0a0a0a', ...label, fontSize: 13,
+        }}>
+          + Log a workout
+        </Link>
+      </div>
 
+      {/* ── 1. The ladder ────────────────────────────────────────────────── */}
+      <section style={card}>
+        <H2 n={1}>The twelve colours</H2>
+        <P>
+          Everyone starts at Mā. The standards are set so each colour is reached by a shrinking share of
+          players, down to Taniwha for the top one percent. Each new colour also needs a total number of
+          games played and training units in that domain.
+        </P>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 62px 48px 44px', gap: '0 8px', marginTop: 8 }}>
+          {['Colour', 'Reached by', 'Games', 'Units'].map((h, i) => (
+            <span key={h} style={{ ...label, fontSize: 10, color: '#555', textAlign: i ? 'right' : 'left', paddingBottom: 6 }}>{h}</span>
+          ))}
+          {[MA, ...GRADES].map(g => (
+            <Row key={g.rung} cells={[
+              <span key="n" style={{ display: 'inline-flex', alignItems: 'center', gap: 9, minWidth: 0 }}>
+                <GradeDot grade={g} size={14} />
+                <span style={{ ...label, fontSize: 13, color: g.rung ? gradeInk(g) : 'var(--white)' }}>{g.name}</span>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{g.rung ? ENGLISH[g.colour] ?? '' : 'White · the start'}</span>
+              </span>,
+              g.rung === 0 ? '—' : g.populationTarget == null ? 'Anyone' : `Top ${g.populationTarget}%`,
+              g.rung === 0 ? '—' : String(GAMES_REQUIRED[g.rung]),
+              g.rung === 0 ? '—' : String(UNITS_REQUIRED[g.rung]),
+            ]} />
+          ))}
+        </div>
+      </section>
+
+      {/* ── 2. A domain colour ───────────────────────────────────────────── */}
+      <section style={card}>
+        <H2 n={2}>Three checks for each domain</H2>
+        <P>
+          The ten domains each hold their own colour. A domain moves up one colour at a time, and only when all
+          three checks pass. It then lands by itself, the moment they do.
+        </P>
+        {[
+          { t: 'The standard', c: 'var(--amber)', d: `Meet the next colour's standard in half the domain's events, and never more than ${DOMAIN_REQUIRED_CAP}. A higher colour in an event counts toward every colour below it.` },
+          { t: 'Games', c: 'var(--green)', d: 'A total number of official games played in the room, shown in the table above. It counts every game you have ever played.' },
+          { t: 'Training units', c: 'var(--purple)', d: 'Units in THAT domain since its last colour. The count starts again each time the domain moves up, so every colour is trained for.' },
+        ].map(x => (
+          <div key={x.t} style={{ display: 'flex', gap: 12, padding: '10px 0', borderTop: '1px solid #181818' }}>
+            <span style={{ width: 4, borderRadius: 4, background: x.c, flexShrink: 0 }} />
+            <div>
+              <div style={{ ...label, fontSize: 13, color: x.c }}>{x.t}</div>
+              <div style={{ fontSize: 14, color: 'var(--grey-light)', lineHeight: 1.55, marginTop: 2 }}>{x.d}</div>
+            </div>
+          </div>
+        ))}
+      </section>
+
+      {/* ── 3. Overall ───────────────────────────────────────────────────── */}
+      <section style={card}>
+        <H2 n={3}>Your overall colour</H2>
+        <P>
+          The average of your ten domain colours, rounded down. Every domain you raise lifts it, and a domain
+          still on Mā counts as zero, so skipping one holds you back.
+        </P>
+        <div style={{ background: '#0b0b0b', border: '1px solid var(--border)', borderRadius: 12, padding: '12px 14px' }}>
+          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8 }} aria-hidden>
+            {exampleRungs.map((r, i) => <GradeDot key={i} grade={gradeForRung(r)} size={16} />)}
+          </div>
+          <div style={{ fontSize: 14, color: 'var(--grey-light)', lineHeight: 1.55 }}>
+            Seven domains at {gradeForRung(5).name} (colour 5) and three at {gradeForRung(2).name} (colour 2):
+            {' '}{exampleSum} ÷ 10 = {(exampleSum / 10).toFixed(1)}, so{' '}
+            <span style={{ color: gradeInk(gradeForRung(overallRung(exampleRungs))), fontWeight: 600 }}>
+              {gradeForRung(overallRung(exampleRungs)).name}
+            </span>.
+          </div>
+        </div>
+      </section>
+
+      {/* ── 4. Units ─────────────────────────────────────────────────────── */}
+      <section style={card}>
+        <H2 n={4}>What is a unit?</H2>
+        <P>
+          One piece of training in an event. Game scores and workouts you log both count. Any effort counts;
+          there is no intensity floor, because the standard is what tests how good it was.
+        </P>
+        {unitRulesSummary().map(r => (
+          <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '8px 0', borderTop: '1px solid #181818', fontSize: 14 }}>
+            <span style={{ color: 'var(--white)' }}>{r.label}</span>
+            <span style={{ color: 'var(--text-muted)', textAlign: 'right' }}>{r.rule}</span>
+          </div>
+        ))}
+      </section>
+
+      {/* ── 5. Fairness ──────────────────────────────────────────────────── */}
+      <section style={card}>
+        <H2 n={5}>Fair at every age and size</H2>
+        <P>
+          Younger and older players get a head start of whole colours: under 14 and Grandmasters (60+)
+          {' '}{AGE_SHIFT.U14}, ages 14 to 16 and Masters (40+) {AGE_SHIFT.U16}.
+          Men and women have their own standards.
+        </P>
+        <P>
+          Lifts and loaded carries are measured against your bodyweight, which you are asked for on the
+          scoring screen on any day you play or train one. Without it those events count as not met.
+        </P>
+      </section>
+
+      {/* ── 6. Game events ───────────────────────────────────────────────── */}
+      <section style={card}>
+        <H2 n={6}>Sports and games</H2>
+        <P>
+          On events that end in a real game, the drills take you as far as {gradeForRung(DRILL_CAP).name}.
+          From {firstRatingColour.name} up, the colour comes from a head-to-head rating: after{' '}
+          {MIN_RATED_GAMES} games that both players recorded, a rating of {RATING_FLOOR.toLocaleString()} gives{' '}
+          {firstRatingColour.name}, and every {RATING_STEP} more gives the next colour.
+        </P>
+      </section>
+
+      {/* ── 7. Keeping it ────────────────────────────────────────────────── */}
+      <section style={card}>
+        <H2 n={7}>A colour stays</H2>
+        <P>
+          A change to the standards never takes a colour away. The only way to lose one is a kaiwhakawā
+          removing the score it rested on.
+        </P>
+        <Link href="/events" style={{ ...label, fontSize: 12.5, color: 'var(--blue)' }}>
+          Every event and its tiers →
+        </Link>
+      </section>
+    </div>
+  )
+}
+
+function Row({ cells }: { cells: React.ReactNode[] }) {
   return (
     <>
-      <PlayerTabs />
-      <div style={{ maxWidth: 560, margin: '0 auto', padding: '14px 16px 48px', color: 'var(--white)' }}>
-        <ViewingAsBanner />
-        <NewColourCard awards={newColours.unseen} withdrawn={newColours.withdrawn} onDismiss={newColours.dismiss} />
-
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, margin: '8px 0 6px' }}>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 40, lineHeight: 1, margin: 0, letterSpacing: '0.03em' }}>
-            COLOURS
-          </h1>
-          {/* Logging is how a player moves a domain between games, so it lives
-              on the page that shows what each domain still needs. */}
-          <Link href="/workout/new" style={{
-            flexShrink: 0, display: 'inline-flex', alignItems: 'center', minHeight: 44, padding: '0 16px',
-            borderRadius: 999, background: 'var(--purple)', color: '#0a0a0a',
-            ...label, fontSize: 13,
-          }}>
-            + Log a workout
-          </Link>
-        </div>
-        <p style={{ color: 'var(--text-muted)', fontSize: 14.5, lineHeight: 1.6, margin: '0 0 16px' }}>
-          {playerLabel(activePlayer)} holds a colour in each domain: the highest colour met in at least six of
-          that domain&apos;s events. The overall colour is the lowest of the ten, so it is only as strong as
-          the domain you train least.
-          {shift > 0 && <> As {BAND_WORDS[state!.grades.band]}, every standard is shifted {shift} colour{shift > 1 ? 's' : ''} in your favour.</>}
-        </p>
-        <p style={{ color: 'var(--text-muted)', fontSize: 14.5, lineHeight: 1.6, margin: '0 0 16px' }}>
-          Each new colour also needs <span style={{ color: 'var(--white)' }}>games</span>, played in the room, and{' '}
-          <span style={{ color: 'var(--white)' }}>training</span> in that domain since your last colour there. Game scores
-          count toward both; so does anything you <Link href="/workout/new" style={{ color: 'var(--purple)' }}>log between games</Link>.
-        </p>
-
-        {/* "3 of 5 units" is counted on every domain below, so the word is
-            defined here rather than only on How To Play, which a signed-in
-            player never goes back to. */}
-        <details style={{
-          background: '#0d0d0d', border: '1px solid var(--border)', borderRadius: 12,
-          padding: '10px 13px', marginBottom: 16, fontSize: 13.5, color: 'var(--text-muted)',
+      {cells.map((c, i) => (
+        <span key={i} style={{
+          display: 'flex', alignItems: 'center', justifyContent: i ? 'flex-end' : 'flex-start',
+          padding: '8px 0', borderTop: '1px solid #181818', fontSize: 13,
+          color: i ? 'var(--grey-light)' : undefined, minWidth: 0,
+          fontVariantNumeric: 'tabular-nums',
         }}>
-          <summary style={{ cursor: 'pointer', color: 'var(--white)', ...label, fontSize: 12 }}>What is a unit?</summary>
-          <p style={{ margin: '8px 0 6px', lineHeight: 1.55 }}>
-            A unit is one piece of training in an event. Any effort counts; there is no intensity floor.
-          </p>
-          {unitRulesSummary().map(r => (
-            <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '6px 0', borderTop: '1px solid #181818' }}>
-              <span style={{ color: 'var(--grey-light)' }}>{r.label}</span>
-              <span style={{ textAlign: 'right' }}>{r.rule}</span>
-            </div>
-          ))}
-        </details>
-
-        {/* Juniors are asked for a bodyweight too now (Tāne, 23 September
-            2026), so this is no longer gated on division. */}
-        {state && !state.hasBand && (
-          <Link href="/workout/new" style={{
-            display: 'block', background: '#0d0d0d', border: '1px solid var(--border)', borderRadius: 12,
-            padding: '11px 13px', marginBottom: 16, fontSize: 13.5, color: 'var(--text-muted)', lineHeight: 1.5,
-          }}>
-            <span style={{ color: 'var(--white)' }}>Lifts and loaded carries are not graded yet.</span> They are measured
-            against your bodyweight, and you are asked for it at the top of the screen whenever you play or train
-            a lift. <span style={{ color: 'var(--blue)' }}>Start a workout →</span>
-          </Link>
-        )}
-
-        {!state ? (
-          <div style={{ color: '#555', padding: '40px 0', textAlign: 'center' }}>Working out your colours…</div>
-        ) : state.grades.domains.map(d => {
-          const held = state.held.get(d.domainNumber) ?? 0
-          const shown = state.schemaReady ? held : d.rung
-          const g = gradeForRung(shown)
-          const events = EVENTS.filter(e => e.domainNumber === d.domainNumber)
-          return (
-            <section key={d.domainNumber} style={{
-              background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16,
-              padding: '14px 14px 6px', marginBottom: 12,
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 6 }}>
-                <DomainIcon domainName={DOMAIN_NAMES[d.domainNumber - 1]} domainNumber={d.domainNumber} size={34} />
-                <div style={{ flexGrow: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 21, letterSpacing: '0.03em', lineHeight: 1.05 }}>
-                    {d.domainNumber}. {DOMAIN_NAMES[d.domainNumber - 1].toUpperCase()}
-                  </div>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-                    {d.availableCount === 0
-                      ? 'Nothing here can be graded for you yet'
-                      : `${d.required} of ${d.availableCount} events must meet a colour to hold it`}
-                  </div>
-                </div>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, flexShrink: 0, ...label, fontSize: 12.5, color: shown ? 'var(--white)' : '#555' }}>
-                  <GradeDot grade={g} size={14} /> {g.name}
-                </span>
-              </div>
-              {state.schemaReady && <GateRow gate={state.gates.find(g => g.domainNumber === d.domainNumber)!} />}
-
-              {events.map(e => {
-                const eg = state.grades.events.get(e.slug)!
-                const waiting = state.disputed.get(e.name) ?? 0
-                const eventColour = gradeForRung(eg.rung)
-                // bodyweightBlocked, not !gradeable: a lift with no declared
-                // bodyweight now COUNTS as unmet and stays in the domain's
-                // denominator, so it is still gradeable — it just has no number
-                // to be graded against yet. !gradeable means the event left the
-                // denominator entirely (rating-only, or no standard at all).
-                const why = state.exemptions.has(e.slug)
-                  ? 'Exempt, confirmed by a kaiwhakawā'
-                  : eg.bodyweightBlocked
-                    ? 'Needs your bodyweight — you are asked when you next play or train it'
-                    : STANDARDS[e.slug]?.kind === 'rating' && eg.rung === 0
-                      ? 'Graded by head-to-head rating, after ten games both players recorded'
-                      : !eg.played
-                        ? 'Not played yet'
-                        : eg.rung === 0
-                          ? 'Below Kiwikiwi'
-                          : null
-                return (
-                  <Link key={e.slug} href={`/events/${e.slug}`} style={{
-                    display: 'flex', alignItems: 'center', gap: 10, padding: '9px 2px',
-                    borderTop: '1px solid #181818', color: 'inherit',
-                  }}>
-                    <span style={{ flexGrow: 1, minWidth: 0, fontSize: 14, color: why ? 'var(--text-muted)' : 'var(--white)' }}>
-                      {e.name}
-                      {waiting > 0 && (
-                        // A disputed game counts for nothing until settled, so a
-                        // player stuck short of ten games can see why.
-                        <span style={{ display: 'block', fontSize: 11.5, color: 'var(--amber)', marginTop: 2 }}>
-                          {waiting} disputed game{waiting > 1 ? 's' : ''} waiting for a kaiwhakawā
-                        </span>
-                      )}
-                    </span>
-                    {why ? (
-                      <span style={{ fontSize: 12, color: '#555', textAlign: 'right' }}>{why}</span>
-                    ) : (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0, ...label, fontSize: 11.5 }}>
-                        <GradeDot grade={eventColour} size={10} /> {eventColour.name}
-                      </span>
-                    )}
-                  </Link>
-                )
-              })}
-            </section>
-          )
-        })}
-      </div>
+          {c}
+        </span>
+      ))}
     </>
-  )
-}
-
-/** The three gates on a domain's next colour, each ticked or counted. */
-function GateRow({ gate }: { gate: ColourGate }) {
-  if (!gate.next) return null
-  const next = gradeForRung(gate.next)
-  const item = (ok: boolean, text: string) => (
-    <span style={{ color: ok ? 'var(--green)' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>{ok ? '✓' : '○'} {text}</span>
-  )
-  return (
-    <div style={{ fontSize: 12.5, margin: '2px 0 8px', lineHeight: 1.6 }}>
-      <div style={{ color: gate.releasable ? 'var(--green)' : 'var(--white)', marginBottom: 2 }}>
-        {gate.releasable ? `${next.name} earned.` : `Toward ${next.name}`}
-      </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px' }}>
-        {item(gate.standardsMet, 'Standards')}
-        {item(gate.gamesMet, `${Math.min(gate.games, gate.gamesNeeded)} of ${gate.gamesNeeded} games`)}
-        {item(gate.trainingMet, `${Math.min(Math.floor(gate.units), gate.unitsNeeded)} of ${gate.unitsNeeded} units`)}
-      </div>
-    </div>
   )
 }
