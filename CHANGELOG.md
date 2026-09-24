@@ -2,6 +2,24 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.18.0.0] - 2026-09-25
+
+### Changed
+- **Your overall colour is now the average of your ten domains, rounded down.** It used to be your lowest domain, so work in nine domains counted for nothing while the tenth lagged. Now raising any domain lifts it. A domain with no colour still counts as zero, so skipping one holds you back, and a missing bodyweight pulls it down rather than leaving it untouched.
+- **HOME shows your colours in full.** Your overall colour sits at the top, with Log a workout and the Colours guide right under it. One line says what a training unit is. Each domain says what its next colour still needs ("Next Karaka: ✓ standard · 3/5 games · 2/3 units"), and tapping it opens every event with your best score and the colour it earns. An estimated lift or run still reads as an estimate.
+- **The radar shows colours.** Each domain's spoke reaches the colour you hold there, drawn in that colour, on twelve rings from Kiwikiwi to Taniwha at the edge. Best domain, weakest domain and best event now show a colour instead of a Top %.
+- **Joining a game is one button.** When a game is running, HOME shows a big JOIN button straight into it, and it appears on its own if the game starts while you have the page open. The join-code box is gone. The QR code still joins you automatically.
+- **The leaderboard and the kaiwhakawā Players tab show a colour and how many domains hold one** ("Kōwhai · 7/10") until all ten do, since an average no longer means every domain is covered.
+- The privacy page, How to Play, the homepage and the leaderboard explain the average rule.
+
+### Added
+- **The COLOURS tab is now a guide to how colours work, "Mā to Taniwha", readable without logging in.** It covers the twelve colours with the games and training each needs, the three checks a domain passes, how the overall colour is worked out with an example, what a unit is, age and bodyweight, and how sports are rated. Your own colours are on HOME.
+
+### Fixed
+- The "Your colours" links on the end-of-game screen and in play history now open HOME, where your colours are, rather than the guide.
+- Juniors are asked for their bodyweight on HOME again. The prompt used to live on the COLOURS page.
+- Easier-to-read status text and larger tap targets on the event rows in each domain.
+
 ## [0.17.0.0] - 2026-09-23
 
 ### Changed
