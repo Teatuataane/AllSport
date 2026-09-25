@@ -2,6 +2,16 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.19.0.0] - 2026-09-26
+
+### Changed
+- **The game screen is laid out by domain, and nothing moves as you score.** Each of the ten domains has a plain title with its official event under it. Events used to jump from "Still to play" down to "Scored" the moment they had a score; now each one stays where it is all game.
+- **A scored event turns the colour your score reaches on the grading standards.** A deadlift that meets Kākāriki goes green, a sprint that meets Kōura goes gold, Uenuku gets a rainbow border and Taniwha a black card. The colour's name sits next to your rank ("Kākāriki · 2nd in event"), and the progress bar at the top uses the same colours. It is the same calculation as HOME, so a button never promises a colour HOME would not give. Games you played, lifts with no bodyweight for the day, and guests stay uncoloured. Enter your weight at the top of the screen and your lifts colour straight away.
+- **Add more events with the + on any official event.** It opens that domain's other events. Tick as many as you like and add them in one go. They appear under that event, marked "Added", and count toward your colours and training but not your placement. A ✕ takes one off again until it has a score. A kaiwhakawā can do the same for the player they are scoring.
+
+### Removed
+- "Swap this event" and the separate "+ Add an event" button. There is no longer any difference between swapping and adding: an official event you do not play is ranked last either way.
+
 ## [0.18.0.0] - 2026-09-25
 
 ### Changed
