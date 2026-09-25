@@ -21,6 +21,8 @@ import { render, cleanup, fireEvent, screen, waitFor } from '@testing-library/re
 import QuickEntrySheet from '@/components/play/QuickEntrySheet'
 import EventListRow from '@/components/play/EventListRow'
 import EventPlanPicker from '@/components/play/EventPlanPicker'
+import GameEventList from '@/components/play/GameEventList'
+import AddEventsSheet from '@/components/play/AddEventsSheet'
 import { getEventBySlug, EVENTS } from '@/lib/eventData'
 import type { PlayEvent } from '@/components/play/chrome'
 
@@ -105,6 +107,82 @@ describe('the event row', () => {
       note={{ label: '1st in event', color: '#F9B051' }} onOpen={vi.fn()} />)
     expect(screen.getByText('100kg × 3')).toBeTruthy()
     expect(screen.getByText('1st in event')).toBeTruthy()
+  })
+})
+
+describe('the live game list', () => {
+  const official = [asPlayEvent('deadlift'), asPlayEvent('tennis')]
+  const scored = { id: 'r1', raw_score: 140, score_label: '140kg × 1', difficulty_tier: null, weight_kg: 140, reps: 1, time_seconds: null, result_type: null, opponent_name: null, match_score: null }
+  const base = {
+    events: official,
+    chosen: ['pause-row'],
+    eventDataFor: (sl: { se: PlayEvent }) => getEventBySlug(sl.se.event_slug),
+    rowsFor: () => [],
+    noteFor: () => undefined,
+    rungFor: () => 0,
+    scoredSlugs: new Set<string>(),
+    onOpen: vi.fn(), onAdd: vi.fn(), onRemove: vi.fn(),
+  }
+
+  it('titles each domain and puts the added event under it', () => {
+    render(<GameEventList {...base} canAdd />)
+    expect(screen.getByText('1 · Maximal Strength')).toBeTruthy()
+    expect(screen.getByText('9 · Coordination')).toBeTruthy()
+    const order = screen.getAllByText(/^(Deadlift|Pause Row|Tennis)$/).map(n => n.textContent)
+    expect(order).toEqual(['Deadlift', 'Pause Row', 'Tennis'])
+  })
+
+  it('opens the domain from the + on its official event', () => {
+    const onAdd = vi.fn()
+    render(<GameEventList {...base} canAdd onAdd={onAdd} />)
+    fireEvent.click(screen.getByLabelText('Add Maximal Strength events'))
+    expect(onAdd).toHaveBeenCalledWith(expect.objectContaining({ domainNumber: 1 }))
+  })
+
+  it('removes an unscored added event, and keeps a scored one', () => {
+    const onRemove = vi.fn()
+    const { unmount } = render(<GameEventList {...base} canAdd onRemove={onRemove} />)
+    fireEvent.click(screen.getByLabelText('Remove Pause Row'))
+    expect(onRemove).toHaveBeenCalledWith('pause-row')
+    unmount()
+    render(<GameEventList {...base} canAdd scoredSlugs={new Set(['pause-row'])} />)
+    expect(screen.queryByLabelText('Remove Pause Row')).toBeNull()
+  })
+
+  it('offers no + and no ✕ to a guest or after the game', () => {
+    render(<GameEventList {...base} canAdd={false} />)
+    expect(screen.queryByLabelText('Add Maximal Strength events')).toBeNull()
+    expect(screen.queryByLabelText('Remove Pause Row')).toBeNull()
+  })
+
+  it('names the colour a score reached beside its rank', () => {
+    render(<GameEventList {...base} canAdd rowsFor={sl => sl.se.event_slug === 'deadlift' ? [scored] : []}
+      rungFor={sl => sl.se.event_slug === 'deadlift' ? 7 : 0}
+      noteFor={() => ({ label: '2nd in event', color: '#F9B051' })} />)
+    expect(screen.getByText('Poroporo')).toBeTruthy()
+    expect(screen.getByText('2nd in event')).toBeTruthy()
+  })
+})
+
+describe('the add events sheet', () => {
+  it('lists only that domain, minus what is in play, and adds several at once', () => {
+    const onAdd = vi.fn()
+    render(<AddEventsSheet domainName="Maximal Strength" domainNumber={1}
+      exclude={['deadlift', 'pause-row']} onAdd={onAdd} onClose={vi.fn()} />)
+    expect(screen.queryByText('Deadlift')).toBeNull()
+    expect(screen.queryByText('Pause Row')).toBeNull()
+    expect(screen.queryByText('Tennis')).toBeNull()
+    fireEvent.click(screen.getByText('Pause Bench'))
+    fireEvent.click(screen.getByText('Arthur Lift'))
+    fireEvent.click(screen.getByText('Add 2 events'))
+    expect(onAdd).toHaveBeenCalledWith(['pause-bench', 'arthur-lift'])
+  })
+
+  it('adds nothing until something is ticked', () => {
+    const onAdd = vi.fn()
+    render(<AddEventsSheet domainName="Maximal Strength" domainNumber={1} exclude={[]} onAdd={onAdd} onClose={vi.fn()} />)
+    fireEvent.click(screen.getByText('Choose events to add'))
+    expect(onAdd).not.toHaveBeenCalled()
   })
 })
 
