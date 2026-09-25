@@ -2680,6 +2680,8 @@ RLS: own + parent (family) + judge.
     replayColours.ts                # History replay (pure): confers each colour when it would have landed, through the live route's own path
     newColours.ts                   # Unseen colours and withdrawals against a per-player localStorage watermark (pure)
                                     #   bodyweightOn() lives in grading.ts: the declaration in force on a lift's own day
+    colourDisplay.ts                # How colours are SHOWN on HOME (pure): bestScoreLabel, unitLine, domainExtremesByColour, bestEventByColour
+    scoreFormat.ts                  # formatPR, moved out of the 'use client' components/play/chrome.tsx (which re-exports it) so pure libs can call it
     useNewColours.ts                # The hook HOME uses (COLOURS did, until it became a public guide): runs the recheck and yields the moment for components/NewColourCard.tsx
     eventData.ts                    # Single source of truth for all events (128) + difficulty+time encode/decode helpers (encodeDiffTime/decodeDiffTime/isTimedEffort, TIMED_EFFORT_SLUGS).
                                     #   DifficultyTier carries `detail` (judge criteria) plus `scoring`/`records` — how a single rung is scored, declared on the tier so nothing matches on event name. COMPILED from EVENT_DIFFICULTY_REVIEW.md by scripts/apply-difficulty-sheet.mjs; do not hand-edit a ladder without updating the sheet.
@@ -2745,7 +2747,9 @@ RLS: own + parent (family) + judge.
     EventIcon.tsx                   # Event pictogram tile — CSS-mask of /event-icons/{slug}.png in domain colour, emoji fallback
     BottomNav.tsx                   # Five-tab bottom bar (phones) + the MORE sheet (judge · my taniwha · profile · my koha · koha · schedule · how to play · supporters · sign out). Hidden >768px by .bottom-nav in globals.css
     PlayerTabs.tsx                  # Sticky family switcher + ViewingAsBanner. Renders null on a solo account
-    DomainRadar.tsx                 # Ten-spoke skill radar, one spoke per domain, driven by Top %
+    DomainRadar.tsx                 # Ten-spoke colours radar on twelve rings (Mā centre, Taniwha edge); each spoke reaches the colour HELD
+    GradesCard.tsx                  # YOUR COLOURS on HOME: overall colour, then ten expandable domain rows (Event · Your best · Colour)
+    GradeDot.tsx                    # A colour swatch. No 'use client', so the server-rendered /grades guide can draw it
     TaniwhaFigure.tsx               # The eleven pieces assembling. Real art via CSS mask where drawn, filler geometry where not
     TaniwhaCard.tsx                 # Dashboard taniwha card + TaniwhaPicker + TaniwhaTimeline
     TaniwhaWatchlist.tsx            # "Approaching a crown" panel — /judge, leads with the BLOCKER not sessions-away
