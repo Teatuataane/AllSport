@@ -2290,6 +2290,37 @@ Settled in a `/grill-me` with Tāne on 2026-09-24; nine decisions in
   it shows the next session and "Join opens here when the game starts". The QR
   link's `?code=` still joins silently.
 
+## Game screen by domain, + to add, colour by grade (September 2026) — v0.19.0.0
+
+Settled in a `/grill-me` with Tāne on 2026-09-26. No migration.
+
+- **No more swaps, only adds.** A player adds events on top; an official event
+  they do not play is ranked last either way, so "swap" and "extra" were one idea
+  with two names. `PlaySlot.kind` is now `'official' | 'added'`. The hook, the
+  workout column and the migrations still say "swap" and were left alone.
+- **Ten domain titles in a fixed order** (`components/play/GameEventList.tsx`,
+  shared by the player and kaiwhakawā tabs). The Still to play / Scored split is
+  gone because rows jumped as they were scored. Domain titles are plain grey.
+- **A + on each official event** opens `AddEventsSheet`: that domain only,
+  multi-select, "Add N events". Shown for the whole game, scored or not; hidden
+  for guests and after the game. Added events sit under it with a ✕ until scored.
+  `useGameSwaps().add` now takes an array.
+- **The kaiwhakawā tab keeps its +.** It already let a kaiwhakawā swap and add
+  for the player they score; removing it would have been a regression. (An
+  earlier answer in the grill said it had no such feature. That was wrong.)
+- **A scored button takes the colour its score reaches** (`lib/scoreColour.ts`):
+  `scoreRung` is `eventGrade()` over today's rows, so it cannot disagree with
+  HOME. Game results, lifts with no bodyweight for the day, Wrestling without a
+  rating, and guests stay neutral. `lib/useGradeProfile.ts` loads division, age,
+  gender and the day's bodyweight, each failure falling back to no colour;
+  `BodyweightField.onSaved` re-colours lifts the moment a weight is entered.
+- **Colour means grade on that screen, so nothing else carries colour:** event
+  icons are tinted grey (`EventIcon` `tint`), an unscored row is grey not blue
+  (the blue read as Kahurangi), and progress segments take each domain's best
+  grade (`ProgressSegments` `fillFor`; Taniwha is white there, black vanishes).
+  The personal-game screen keeps the old domain-coloured rows: `EventListRow`
+  switches only when `gradeRung` is passed.
+
 ## Security posture (August 2026) — read before touching RLS or players_public
 
 An OWASP pass (SQL injection / XSS / auth / access control) found three
@@ -2489,7 +2520,7 @@ update players set role = 'judge' where id = '[uuid]';
 | Judge Panel | /judge | Complete | Players tab opens with an **"Approaching a colour"** watchlist (sessions-away). Dedicated page — JudgeCard moved here. Create/end/void sessions, QR code, history, real-time player count, Event Votes panel (Kōwhiringa Tūāhuatanga). Judge bento card on dashboard links here. |
 | Player Profile | /profile | Complete | Icon picker (20 sport emojis), username/display name editing, leaderboard display prefs, family member management (add/remove), active profile switcher (localStorage). **The bodyweight band picker was removed in v0.17.0.0** — bodyweight is declared on the scoring screen on the day |
 | Scoring Setup | /scoring | Complete | One event per domain through the SHARED picker (v0.11.0.0), Draw for me, editable start time, create the game |
-| Live Session | /scoring/[sessionId] | Complete | Per-division leaderboard tabs, Kaiwhakawā mode (player picker + score/edit/delete for any player), difficulty tier selector, sport W/D/L display, missing scores = last place, post-game popup on session end. **(v0.12.0.0)** Swap an official event for another in its domain, or add extras — both stored as a game-linked workout, never in `results` |
+| Live Session | /scoring/[sessionId] | Complete | Per-division leaderboard tabs, Kaiwhakawā mode (player picker + score/edit/delete for any player), difficulty tier selector, sport W/D/L display, missing scores = last place, post-game popup on session end. **(v0.19.0.0)** Ten domain titles in a fixed order; a + on each official event adds more from its domain (stored as a game-linked workout, never in `results`); scored buttons coloured by the grade they reach |
 | My Events | /prs | Complete | Retitled from Personal Bests (v0.6.2.0). Ten domains ranked strongest to weakest by Top % above the list; collapsible domain sections below, each event row showing **PR, average placement and wins side by side** (no lens toggle). Honours the active player. Per-event history still expands |
 | Vote | /vote/[voteId] | Complete | Step-by-step voting flow, one domain per screen, partial save, review screen, locked on submit |
 | Vote Results | /vote/[voteId]/results | Complete | Spoiler-free until voted, bar chart per domain, counts only while open / percentages on close, judge full breakdown |

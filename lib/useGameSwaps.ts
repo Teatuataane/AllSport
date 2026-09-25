@@ -17,7 +17,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase-browser'
 import { getEventBySlug } from '@/lib/eventData'
 import { entryPayload, unitsForPayload } from '@/lib/personalGame'
-import { addChoice, removeChoice } from '@/lib/gameSwaps'
+import { addChoices, removeChoice } from '@/lib/gameSwaps'
 import { nzDay } from '@/lib/workouts'
 import { unitsForEntryRow } from '@/lib/units'
 import type { EntryRow } from '@/components/play/chrome'
@@ -41,7 +41,7 @@ type Loaded = {
 const ENTRY_COLS = 'id, event_slug, count, volume_distance_m, raw_score, score_label, difficulty_tier, weight_kg, reps, time_seconds, distance_m, exercise_variation'
 
 export type GameSwaps = {
-  /** Slugs the player chose instead of, or on top of, the official ten. */
+  /** Slugs the player added on top of the official ten. */
   chosen: string[]
   entriesFor: (slug: string) => SwapEntry[]
   /** Slugs that already carry a score. */
@@ -50,7 +50,8 @@ export type GameSwaps = {
   units: number
   /** False when the database has no session_id column yet: hide the controls. */
   available: boolean
-  add: (slug: string) => Promise<string | null>
+  /** Several at once: the sheet lets a player tick more than one. */
+  add: (slugs: readonly string[]) => Promise<string | null>
   remove: (slug: string) => Promise<string | null>
   submit: (
     slug: string,
@@ -160,7 +161,7 @@ export function useGameSwaps(args: {
     available: available && sessionOpen && !!playerId,
     entriesFor: (slug: string) => (state?.entries ?? []).filter(e => e.event_slug === slug),
 
-    add: (slug: string) => writeChosen(addChoice(state?.chosen ?? [], slug)),
+    add: (slugs: readonly string[]) => writeChosen(addChoices(state?.chosen ?? [], slugs)),
     remove: (slug: string) => writeChosen(removeChoice(state?.chosen ?? [], slug, scoredSlugs)),
 
     submit: async (slug, v, editingId, matchOpponents = null) => {

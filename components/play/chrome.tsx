@@ -114,13 +114,19 @@ export function sectionLabel(text: string) {
   )
 }
 
-export function ProgressSegments({ events, scoredIds, height = 8 }: { events: readonly PlayEvent[]; scoredIds: ReadonlySet<string>; height?: number }) {
+export function ProgressSegments({ events, scoredIds, height = 8, fillFor }: {
+  events: readonly PlayEvent[]
+  scoredIds: ReadonlySet<string>
+  height?: number
+  /** A scored segment's fill. Defaults to the domain colour; the live game passes the grade. */
+  fillFor?: (ev: PlayEvent) => string
+}) {
   return (
     <div style={{ display: 'flex', gap: '3px' }}>
       {events.map(ev => (
         <div key={ev.id} style={{
           flex: 1, height: `${height}px`, borderRadius: '99px',
-          background: scoredIds.has(ev.id) ? domainColor(ev.domain_number) : '#1e1e1e',
+          background: scoredIds.has(ev.id) ? (fillFor ? fillFor(ev) : domainColor(ev.domain_number)) : '#1e1e1e',
           transition: 'background 0.3s',
         }} />
       ))}
