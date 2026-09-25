@@ -146,14 +146,22 @@ export function fmtUnitsLabel(u: number): string {
 }
 
 /**
+ * The two numbers every plain-words explanation of a unit quotes: km of a ride
+ * per unit, and throws per unit. Read from the compiled sheet, so the copy on
+ * HOME, the guide and How To Play cannot drift from what the engine counts.
+ */
+export function unitFacts(): { rideKm: number; throws: number } {
+  const per = (slug: string) => { const e = getEventBySlug(slug); return e ? unitRule(e).per : 1 }
+  return { rideKm: per('cycling') / 1000, throws: per('javelin-throw') }
+}
+
+/**
  * What a unit is, in five plain lines, for readers rather than the engine.
  * Read from the compiled sheet, never typed: if the sheet changes a unit, every
  * page that explains units follows it (How To Play and /grades both use this).
  */
 export function unitRulesSummary(): { label: string; rule: string }[] {
-  const per = (slug: string) => { const e = getEventBySlug(slug); return e ? unitRule(e).per : 1 }
-  const rideKm = per('cycling') / 1000
-  const throws = per('javelin-throw')
+  const { rideKm, throws } = unitFacts()
   return [
     { label: 'Lifts and reps', rule: 'Every working set is 1 unit' },
     { label: 'Holds', rule: 'Every hold is 1 unit' },

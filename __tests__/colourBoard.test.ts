@@ -4,27 +4,27 @@ import { rankByColours, colourStanding } from '@/lib/colourBoard'
 const all = (rung: number) => new Map(Array.from({ length: 10 }, (_, i) => [i + 1, rung]))
 
 describe('colourStanding', () => {
-  it('has no overall colour until all ten domains hold one', () => {
+  it('counts a missing domain as Mā in the average', () => {
     const nine = all(4); nine.delete(10)
-    expect(colourStanding(nine)).toEqual({ domainsHeld: 9, colourSum: 36, overall: null })
+    expect(colourStanding(nine)).toEqual({ domainsHeld: 9, colourSum: 36, overall: 3 })
   })
-  it('the overall is the lowest domain', () => {
+  it('the overall is the average domain, rounded down', () => {
     const m = all(5); m.set(3, 2)
-    expect(colourStanding(m).overall).toBe(2)
+    expect(colourStanding(m).overall).toBe(4)
   })
   it('handles a player with nothing conferred', () => {
-    expect(colourStanding(undefined)).toEqual({ domainsHeld: 0, colourSum: 0, overall: null })
+    expect(colourStanding(undefined)).toEqual({ domainsHeld: 0, colourSum: 0, overall: 0 })
   })
 })
 
 describe('rankByColours', () => {
-  it('ranks an overall colour above any number of partial domains', () => {
+  it('ranks on the average, so nine Taniwha domains beat ten Kiwikiwi', () => {
     const nine = all(12); nine.delete(1)
     const rows = rankByColours([
       { playerId: 'a', name: 'A', held: nine, games: 90 },
       { playerId: 'b', name: 'B', held: all(1), games: 2 },
     ])
-    expect(rows.map(r => r.playerId)).toEqual(['b', 'a'])
+    expect(rows.map(r => r.playerId)).toEqual(['a', 'b'])
   })
 
   it('falls back to games when nobody holds a colour, so the board does not all tie', () => {
@@ -42,5 +42,13 @@ describe('rankByColours', () => {
       { playerId: 'c', name: 'C', held: undefined, games: 1 },
     ])
     expect(rows.map(r => r.rank)).toEqual([1, 1, 3])
+  })
+})
+
+describe('displayOverall', () => {
+  it('hides a Mā overall so the cell counts domains instead', async () => {
+    const { displayOverall } = await import('@/lib/colourBoard')
+    expect(displayOverall({ overall: 0 })).toBeNull()
+    expect(displayOverall({ overall: 4 })).toBe(4)
   })
 })

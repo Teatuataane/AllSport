@@ -90,6 +90,8 @@ export type GradeState = {
 
 export type ResultRow = {
   raw_score: number | null
+  /** As written at the time. Display only (HOME's "Your best"). */
+  score_label?: string | null
   weight_kg: number | null
   difficulty_tier: string | null
   session_id: string
@@ -236,7 +238,9 @@ function countedRows(rows: readonly ResultRow[], recorded: ReadonlySet<string> |
  * up. Any other error is left to the caller, which treats it as no entries.
  */
 async function loadWorkoutEntries(db: GradeDb, playerId: string) {
-  const base = 'event_slug, count, volume_distance_m, raw_score, weight_kg, difficulty_tier'
+  // score_label has existed since the table did (20260915214702), so it adds
+  // no new 42703 risk to this query. Display only; HOME shows it.
+  const base = 'event_slug, count, volume_distance_m, raw_score, weight_kg, difficulty_tier, score_label'
   const ask = (cols: string, workoutCols: string) => db.from('workout_entries')
     .select(`${cols}, workouts!inner(${workoutCols})`)
     .eq('workouts.player_id', playerId)
@@ -296,7 +300,8 @@ async function loadBand(db: GradeDb, playerId: string) {
  * cost every score the player has.
  */
 async function loadResults(db: GradeDb, playerId: string) {
-  const base = 'raw_score, weight_kg, difficulty_tier, session_id, points_earned, created_at,'
+  // score_label is an original results column (never dropped), display only.
+  const base = 'raw_score, weight_kg, difficulty_tier, score_label, session_id, points_earned, created_at,'
     + ' session_events(event_name), sessions(is_active, points_awarded_at, started_at, ended_at, session_date)'
   const ask = (cols: string) => db.from('results')
     .select(cols)
@@ -458,6 +463,7 @@ export function gradeStateFrom(
     session_id: r.session_id,
     event_name: r.session_events!.event_name,
     raw_score: r.raw_score, weight_kg: r.weight_kg, difficulty_tier: r.difficulty_tier,
+    score_label: r.score_label ?? null,
     at: r.sessions?.started_at ?? r.created_at,
     // Live: whatever the session says now. Replay: closed only if it had
     // closed BY THEN — a game in progress is not yet a game (gameEvidence).

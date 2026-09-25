@@ -507,8 +507,8 @@ describe('found by the adversarial review', () => {
     // The route confers the moment Vercel has the key, and the replay skips
     // anyone who already holds a colour.
     const doc = readFileSync('CLAUDE.md', 'utf8')
-    const applyStep = doc.indexOf('3. Re-run with `--apply`.')
-    const vercelStep = doc.indexOf('4. Only now add the key to Vercel')
+    const applyStep = doc.indexOf('2. `scripts/replay-colours.ts --apply`')
+    const vercelStep = doc.indexOf('3. Key added to Vercel')
     expect(applyStep).toBeGreaterThan(-1)
     expect(vercelStep).toBeGreaterThan(applyStep)
   })

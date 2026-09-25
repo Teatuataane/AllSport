@@ -3,8 +3,8 @@
 // can be tested, and so the ordering rule lives in exactly one place.
 //
 // The order, most important first:
-//   1. The overall colour (the lowest of the ten domains). A player with an
-//      overall colour always ranks above one without.
+//   1. The overall colour (the average of the ten domains, rounded down;
+//      overallRung in lib/grading.ts).
 //   2. The sum of the ten domain colours held — progress toward the overall.
 //   3. Domains holding any colour.
 //   4. Games played. Nobody held a conferred colour at launch, so without this
@@ -13,7 +13,7 @@
 //
 // Ties on all four share a rank, like a tied event.
 
-import { DOMAIN_COUNT } from './grading'
+import { overallRung } from './grading'
 
 export type BoardInput = {
   playerId: string
@@ -25,8 +25,8 @@ export type BoardInput = {
 
 export type BoardRow = BoardInput & {
   rank: number
-  /** The lowest domain colour, or null until all ten domains hold one. */
-  overall: number | null
+  /** The average domain colour, rounded down. 0 = Mā. */
+  overall: number
   domainsHeld: number
   colourSum: number
 }
@@ -37,11 +37,24 @@ export function colourStanding(held: Map<number, number> | undefined) {
   return {
     domainsHeld,
     colourSum: rungs.reduce((s, r) => s + r, 0),
-    overall: domainsHeld >= DOMAIN_COUNT ? Math.min(...rungs) : null,
+    overall: overallRung(rungs),
   }
 }
 
-const keyOf = (r: BoardRow) => [r.overall ?? -1, r.colourSum, r.domainsHeld, r.games]
+/**
+ * What a board cell shows as the overall colour: the rung, or null while it is
+ * still Mā, so the cell can count domains instead. One rule for the leaderboard
+ * and the kaiwhakawā Players tab.
+ */
+export function displayOverall(r: Pick<BoardRow, 'overall'>): number | null {
+  return r.overall > 0 ? r.overall : null
+}
+
+// overall = floor(colourSum / 10), so it never reorders anything colourSum
+// would not; it leads the key because it is what the board SHOWS, and a tie
+// on it is then broken by the finer sum. Depth beats breadth here on purpose:
+// that is what an average means (one Taniwha domain outranks ten Kiwikiwi).
+const keyOf = (r: BoardRow) => [r.overall, r.colourSum, r.domainsHeld, r.games]
 
 export function rankByColours(players: readonly BoardInput[]): BoardRow[] {
   const rows: BoardRow[] = players.map(p => ({ ...p, rank: 0, ...colourStanding(p.held) }))

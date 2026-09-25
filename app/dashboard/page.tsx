@@ -6,7 +6,7 @@
 //   1  identity + seasonal division rank
 //   2  the grades card — a colour in each of the ten domains
 //   3  four numbers — games, events won, games won, PRs
-//   4  the skill radar across the ten domains
+//   4  the colours radar across the ten domains
 //
 // Everything the old bento grid carried is now either a nav destination (judge,
 // koha, profile, personal bests) or lives on /history (play history and the
@@ -32,14 +32,15 @@ import { useNewColours } from '@/lib/useNewColours'
 import NewColourCard from '@/components/NewColourCard'
 import VoteCard from '@/app/components/VoteCard'
 import WellbeingSurvey from '@/app/components/WellbeingSurvey'
-import { DOMAIN_COLORS } from '@/lib/domainColours'
+import { gradeForRung, gradeInk } from '@/lib/grading'
+import { GradeDot } from '@/components/GradeDot'
+import { domainExtremesByColour, bestEventByColour, shownDomainRungs } from '@/lib/colourDisplay'
 import {
   sessionWins,
   type RatingResultRow, type RatingEventRow, type RatingSessionRow, type RatingPlayerRow,
 } from '@/lib/rating'
 import {
-  computePercentiles, domainPercentiles, strongestEvent, weakestEvent,
-  eventPctLabel, type DomainPercentile,
+  computePercentiles, domainPercentiles, type DomainPercentile,
 } from '@/lib/percentile'
 
 const supabase = createClient()
@@ -70,7 +71,7 @@ function DashboardInner() {
   const [grades, setGrades] = useState<GradeState | null>(null)
   const [eventsWon, setEventsWon] = useState<number | null>(null)
   const [activeSession, setActiveSession] = useState<any>(null)
-  const [joinCode, setJoinCode] = useState('')
+  // Only the QR link's ?code= joins by code now; nobody types one.
   const [joinError, setJoinError] = useState('')
 
   const isJudge = self?.role === 'judge'
@@ -149,16 +150,39 @@ function DashboardInner() {
   useEffect(() => {
     if (!userId) return
     let cancelled = false
+    // One check at a time: an interval tick and a tab coming back can overlap,
+    // and a slow older answer must not land after a newer one.
+    let running = false
     const check = async () => {
-      await supabase.rpc('close_expired_sessions')
-      const { data } = await supabase.from('sessions').select('*').eq('is_active', true).maybeSingle()
-      if (!cancelled) setActiveSession(data ?? null)
+      if (running) return
+      running = true
+      try {
+        await supabase.rpc('close_expired_sessions')
+        const { data, error } = await supabase.from('sessions').select('*').eq('is_active', true).maybeSingle()
+        // A failed poll keeps the last known answer: one flaky request must not
+        // take the JOIN button away mid-game.
+        if (!cancelled && !error) setActiveSession(data ?? null)
+      } finally {
+        running = false
+      }
     }
     check()
-    return () => { cancelled = true }
+    // The JOIN button is now the only way in from HOME (no code box), so a
+    // player who opened the page before the game started must see it appear
+    // without reloading: re-check on an interval and when the tab comes back.
+    // Hidden tabs skip the poll; visibilitychange catches them up on return.
+    const timer = setInterval(() => { if (document.visibilityState === 'visible') check() }, 30_000)
+    const onVisible = () => { if (document.visibilityState === 'visible') check() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      cancelled = true
+      clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
   }, [userId])
 
-  // Silent auto-join from the QR code.
+  // Silent auto-join from the QR code. The typed code box is gone (home
+  // colours rework, 24 September 2026): a running game gets one JOIN button.
   useEffect(() => {
     const code = searchParams.get('code')
     if (code && userId) handleJoinByCode(code.toUpperCase())
@@ -189,10 +213,11 @@ function DashboardInner() {
     const minePct = allPct.get(activePlayerId)
     const domains: DomainPercentile[] = domainPercentiles(minePct, EVENT_DOMAIN)
     const myRows = stats.results.filter(r => r.player_id === activePlayerId)
+    const eventPct = new Map<string, number | null>()
+    for (const [name, ep] of minePct ?? []) eventPct.set(name, ep.topPct)
     return {
       domains,
-      strong: strongestEvent(minePct, EVENT_DOMAIN),
-      weak: weakestEvent(minePct, EVENT_DOMAIN),
+      eventPct,
       gamesWon: sessionWins(myRows).get(activePlayerId) ?? 0,
     }
   }, [stats, activePlayerId])
@@ -202,13 +227,21 @@ function DashboardInner() {
   // bug, so the tile rendered with no tint at all.
   const accent = '#2371BB'
 
-  // Strongest / weakest DOMAIN, for the two boxes under the radar.
+  // The colour HELD per domain, which the radar and the two boxes under it
+  // draw. The same rule as the YOUR COLOURS list above, so the two agree:
+  // conferred colours once grading is live, computed ones before.
+  const heldRungs = useMemo(() => (grades ? shownDomainRungs(grades) : new Map<number, number>()), [grades])
+
+  // Best / weakest DOMAIN by colour; Top % only breaks a tie, unseen.
   const domainExtremes = useMemo(() => {
-    const rated = (derived?.domains ?? []).filter(d => d.topPct != null)
-    if (rated.length === 0) return null
-    const sorted = [...rated].sort((a, b) => (a.topPct! - b.topPct!))
-    return { best: sorted[0], worst: sorted[sorted.length - 1] }
-  }, [derived])
+    const pct = new Map((derived?.domains ?? []).map(d => [d.domainNumber, d.topPct]))
+    return domainExtremesByColour(heldRungs, pct)
+  }, [heldRungs, derived])
+
+  const bestEvent = useMemo(
+    () => (grades ? bestEventByColour(grades.grades.events, derived?.eventPct) : null),
+    [grades, derived],
+  )
 
   if (playerLoading) {
     return (
@@ -246,30 +279,17 @@ function DashboardInner() {
         <ViewingAsBanner />
 
         {/* ── The one action on the page ──────────────────────────────────── */}
-        {activeSession ? (
-          <ActionStrip
-            href={`/scoring/${activeSession.id}`}
-            tone="var(--green)"
-            title={isJudge ? 'Session running' : 'Session in progress'}
-            detail={`${activeSession.location ?? 'AllSport HQ'} — tap to ${isJudge ? 'score' : 'return'}`}
-            live
-          />
-        ) : userId ? (
-          <VoteCard userId={userId} isJudge={isJudge} />
-        ) : null}
+        {!activeSession && userId && <VoteCard userId={userId} isJudge={isJudge} />}
 
-        {!activeSession && (
-          <div id="join">
-            <JoinBlock
-              nextSession={nextSession}
-              highlight={firstRun}
-              code={joinCode}
-              onCode={setJoinCode}
-              onJoin={() => handleJoinByCode(joinCode.trim().toUpperCase())}
-              error={joinError}
-            />
-          </div>
-        )}
+        <div id="join">
+          <JoinBlock
+            game={activeSession ? { id: activeSession.id, location: activeSession.location ?? null } : null}
+            isJudge={isJudge}
+            nextSession={nextSession}
+            highlight={firstRun}
+            error={joinError}
+          />
+        </div>
 
         {/* ── 1. Identity ─────────────────────────────────────────────────── */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
@@ -302,7 +322,9 @@ function DashboardInner() {
 
         {/* ── 2. Colours ──────────────────────────────────────────────────── */}
         <NewColourCard awards={newColours.unseen} withdrawn={newColours.withdrawn} onDismiss={newColours.dismiss} />
-        {grades && <GradesCard state={grades} askBand={!/Junior|Youth/.test(activePlayer.division ?? '')} />}
+        {/* Juniors are asked for a bodyweight too (Tāne, 23 September 2026), and
+            /grades no longer carries a personal prompt, so this is the only one. */}
+        {grades && <GradesCard state={grades} askBand />}
         <Link href="/history" style={{
           display: 'block', textAlign: 'right', margin: '-6px 2px 16px',
           fontFamily: 'var(--font-label)', textTransform: 'uppercase',
@@ -330,7 +352,7 @@ function DashboardInner() {
           <Stat value={counts?.prs ?? 0} label="Total PRs" colour="var(--green)" />
         </div>
 
-        {/* ── 4. Skill across the domains ─────────────────────────────────── */}
+        {/* ── 4. Colours across the domains ────────────────────────────────── */}
         <div style={{
           background: 'var(--surface)', border: '1px solid var(--border)',
           borderRadius: 16, padding: '18px 16px 16px',
@@ -339,17 +361,17 @@ function DashboardInner() {
             display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
             marginBottom: 4,
           }}>
-            <SectionLabel>Skill across the domains</SectionLabel>
+            <SectionLabel>Colours across the domains</SectionLabel>
             <span style={{
               fontFamily: 'var(--font-label)', textTransform: 'uppercase',
               letterSpacing: '0.1em', fontWeight: 600, fontSize: 10, color: 'var(--text-muted)',
             }}>
-              Further out = stronger
+              Edge = Taniwha
             </span>
           </div>
 
-          {derived ? (
-            <DomainRadar domains={derived.domains} accent={accent} />
+          {grades ? (
+            <DomainRadar held={heldRungs} />
           ) : (
             <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#444' }}>
               Loading…
@@ -357,35 +379,38 @@ function DashboardInner() {
           )}
 
           {domainExtremes ? (
-            <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+            <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
               <ExtremeBox
-                label="Strongest"
+                label="Best domain"
                 name={DOMAIN_NAMES[domainExtremes.best.domainNumber - 1]}
-                colour={DOMAIN_COLORS[domainExtremes.best.domainNumber - 1]}
-                detail={`Top ${domainExtremes.best.topPct}%`}
+                rung={domainExtremes.best.rung}
               />
               <ExtremeBox
-                label="Weakest"
-                name={DOMAIN_NAMES[domainExtremes.worst.domainNumber - 1]}
-                colour={DOMAIN_COLORS[domainExtremes.worst.domainNumber - 1]}
-                detail={`Top ${domainExtremes.worst.topPct}%`}
+                label="Weakest domain"
+                name={DOMAIN_NAMES[domainExtremes.weakest.domainNumber - 1]}
+                rung={domainExtremes.weakest.rung}
               />
             </div>
-          ) : (
-            <div style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '8px 0 2px', lineHeight: 1.5 }}>
-              Play a session and this fills in — every event you score is compared
-              against everyone in your division pool who has played it.
+          ) : grades && (
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '10px 0 2px', lineHeight: 1.5 }}>
+              Each spoke grows as that domain earns a colour. Taniwha is the edge.
             </div>
           )}
 
-          {derived?.strong && (
+          {bestEvent && (
             <div style={{
-              display: 'flex', justifyContent: 'space-between', gap: 12,
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12,
               marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)',
               fontSize: 12.5, color: 'var(--text-muted)',
             }}>
-              <span>Best event: <span style={{ color: 'var(--white)' }}>{derived.strong.eventName}</span></span>
-              <span style={{ color: 'var(--amber)', flexShrink: 0 }}>{eventPctLabel(derived.strong.ep)}</span>
+              <span>Best event: <span style={{ color: 'var(--white)' }}>{EVENTS.find(e => e.slug === bestEvent.slug)?.name}</span></span>
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0,
+                fontFamily: 'var(--font-label)', textTransform: 'uppercase', letterSpacing: '0.1em',
+                fontWeight: 600, fontSize: 11.5, color: 'var(--white)',
+              }}>
+                <GradeDot grade={gradeForRung(bestEvent.rung)} size={10} /> {gradeForRung(bestEvent.rung).name}
+              </span>
             </div>
           )}
 
@@ -506,9 +531,8 @@ function Stat({ value, label, colour = 'var(--white)' }: {
   )
 }
 
-function ExtremeBox({ label, name, colour, detail }: {
-  label: string; name: string; colour: string; detail: string
-}) {
+function ExtremeBox({ label, name, rung }: { label: string; name: string; rung: number }) {
+  const g = gradeForRung(rung)
   return (
     <div style={{
       flex: 1, background: '#0d0d0d', border: '1px solid #1a1a1a',
@@ -520,57 +544,59 @@ function ExtremeBox({ label, name, colour, detail }: {
       }}>
         {label}
       </div>
-      <div style={{ fontSize: 13.5, color: colour, fontWeight: 600, marginTop: 3 }}>{name}</div>
+      <div style={{ fontSize: 13.5, color: 'var(--white)', fontWeight: 600, marginTop: 3 }}>{name}</div>
       <div style={{
-        fontFamily: 'var(--font-label)', textTransform: 'uppercase',
-        fontSize: 11, color: 'var(--text-muted)', marginTop: 1,
+        display: 'flex', alignItems: 'center', gap: 6, marginTop: 3,
+        fontFamily: 'var(--font-label)', textTransform: 'uppercase', letterSpacing: '0.08em',
+        fontWeight: 600, fontSize: 11.5, color: gradeInk(g),
       }}>
-        {detail}
+        <GradeDot grade={g} size={10} /> {g.name}
       </div>
     </div>
   )
 }
 
-function ActionStrip({ href, tone, title, detail, live }: {
-  href: string; tone: string; title: string; detail: string; live?: boolean
-}) {
-  return (
-    <Link href={href} style={{
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      background: 'linear-gradient(135deg,#061a0d,#0d2e1a)',
-      border: `1px solid ${tone}44`, borderLeft: `4px solid ${tone}`,
-      borderRadius: 16, padding: '13px 16px', marginBottom: 14, textDecoration: 'none',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        {live && (
-          <span style={{
-            width: 8, height: 8, borderRadius: 999, background: tone,
-            boxShadow: `0 0 0 4px ${tone}2e`, flexShrink: 0,
-          }} />
-        )}
-        <div>
-          <div style={{
-            fontFamily: 'var(--font-label)', textTransform: 'uppercase',
-            letterSpacing: '0.08em', fontWeight: 600, fontSize: 13, color: tone,
-          }}>
-            {title}
-          </div>
-          <div style={{ fontSize: 12, color: '#7a7a7a', marginTop: 1 }}>{detail}</div>
-        </div>
-      </div>
-      <span style={{ color: tone, fontSize: 20 }}>→</span>
-    </Link>
-  )
-}
-
-function JoinBlock({ nextSession, highlight, code, onCode, onJoin, error }: {
+/**
+ * The top of the page. A game running: one JOIN button straight into it. No
+ * game: when and where the next one is. Nobody types a join code any more (home
+ * colours rework, 24 September 2026); the QR link's ?code= still joins silently.
+ */
+function JoinBlock({ game, isJudge, nextSession, highlight, error }: {
+  game: { id: string; location: string | null } | null
+  isJudge: boolean
   nextSession: ReturnType<typeof nextScheduledSession>
   highlight: boolean
-  code: string
-  onCode: (v: string) => void
-  onJoin: () => void
   error: string
 }) {
+  if (game) {
+    return (
+      <div style={{
+        background: 'linear-gradient(135deg,#061a0d,#0d2e1a)',
+        border: '1px solid #4DB26E55', borderRadius: 16, padding: 18, marginBottom: 16,
+        boxShadow: '0 8px 30px rgba(77,178,110,0.18)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{
+            width: 8, height: 8, borderRadius: 999, background: 'var(--green)',
+            boxShadow: '0 0 0 4px #4DB26E2e', flexShrink: 0,
+          }} />
+          <SectionLabel>Game on now</SectionLabel>
+        </div>
+        <div style={{ fontSize: 13, color: '#9fc4ab', marginTop: 6 }}>
+          {game.location ?? 'AllSport HQ'}
+        </div>
+        {error && <div style={{ color: 'var(--red)', fontSize: 13, marginTop: 10 }}>{error}</div>}
+        <Link href={`/scoring/${game.id}`} style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 50,
+          marginTop: 14, borderRadius: 999, background: 'var(--green)', color: '#0a0a0a',
+          fontFamily: 'var(--font-label)', textTransform: 'uppercase',
+          letterSpacing: '0.1em', fontWeight: 700, fontSize: 16,
+        }}>
+          {isJudge ? 'Open the game →' : 'Join →'}
+        </Link>
+      </div>
+    )
+  }
   return (
     <div style={{
       background: highlight ? 'linear-gradient(135deg,#0d2140,#061428)' : 'var(--surface)',
@@ -591,26 +617,8 @@ function JoinBlock({ nextSession, highlight, code, onCode, onJoin, error }: {
           </div>
         </>
       )}
-      <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-        <input
-          value={code}
-          onChange={e => onCode(e.target.value.toUpperCase())}
-          placeholder="JOIN CODE"
-          style={{
-            flexGrow: 1, minWidth: 0, background: '#0a0a0a',
-            border: '1px solid var(--border-strong)', borderRadius: 999,
-            padding: '11px 18px', color: 'var(--white)',
-            fontFamily: 'var(--font-label)', letterSpacing: '0.1em', fontSize: 13,
-          }}
-        />
-        <button onClick={onJoin} style={{
-          background: 'var(--blue)', color: 'var(--white)', border: 'none',
-          borderRadius: 999, padding: '11px 22px', cursor: 'pointer',
-          fontFamily: 'var(--font-label)', textTransform: 'uppercase',
-          letterSpacing: '0.08em', fontWeight: 600, fontSize: 13, flexShrink: 0,
-        }}>
-          Join
-        </button>
+      <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 10 }}>
+        Join opens here when the game starts.
       </div>
       {error && <div style={{ color: 'var(--red)', fontSize: 13, marginTop: 10 }}>{error}</div>}
     </div>

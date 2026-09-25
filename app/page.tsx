@@ -207,8 +207,8 @@ export default function Home() {
                 of a domain&apos;s events and you hold that domain at that colour.
               </p>
               <p style={{ color: '#888', fontSize: '15px', lineHeight: 1.8, marginBottom: '16px' }}>
-                Your overall colour is the lowest of your ten domains, so it is only as strong as the part of
-                the sport you train least. That is the whole idea of AllSport: one sport, every sport.
+                Your overall colour is the average of your ten domains, so every domain you raise lifts it and
+                every one you skip holds it back. That is the whole idea of AllSport: one sport, every sport.
               </p>
               <p style={{ color: '#888', fontSize: '15px', lineHeight: 1.8, marginBottom: '16px' }}>
                 Each new colour also asks for games played in the room and training in that domain, and you

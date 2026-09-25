@@ -19,7 +19,7 @@ import SwapPicker from '@/components/play/SwapPicker'
 import { playList, domainsCovered, type PlaySlot } from '@/lib/gameSwaps'
 import { recheckGrades, type ConferredColour } from '@/lib/recheckGrades'
 import { gradeForRung } from '@/lib/grading'
-import { GradeDot } from '@/components/GradesCard'
+import { GradeDot } from '@/components/GradeDot'
 import { useGameSwaps } from '@/lib/useGameSwaps'
 import EventListRow from '@/components/play/EventListRow'
 import {
@@ -1026,7 +1026,7 @@ function SessionEndTakeover({
             </>
           )}
 
-          <a href="/grades" style={{
+          <a href="/dashboard" style={{
             display: 'block', marginTop: '18px', background: '#161616', border: '1px solid #1e1e1e',
             borderRadius: '14px', padding: '14px 16px', color: '#fff', textDecoration: 'none',
           }}>

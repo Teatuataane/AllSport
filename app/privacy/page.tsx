@@ -45,7 +45,7 @@ const accountData: Row[] = [
   },
   {
     what: 'Bodyweight',
-    why: 'Optional, and asked at the top of the screen on a day you play or train a lift. Strength and loaded-carry grades are measured against your bodyweight, so a lighter player is not graded against a heavier player\'s numbers. We store the weight you enter and the day you entered it, so an old lift stays graded against what you weighed then. Leave it blank and those events count as not met, which means no strength colour until you give one — your other nine domains and your overall colour are unaffected. Everyone is asked, including players under 17.',
+    why: 'Optional, and asked at the top of the screen on a day you play or train a lift. Strength and loaded-carry grades are measured against your bodyweight, so a lighter player is not graded against a heavier player\'s numbers. We store the weight you enter and the day you entered it, so an old lift stays graded against what you weighed then. Leave it blank and those events count as not met, which means no strength colour until you give one. Your other nine domains are unaffected, but your overall colour is the average of all ten, so a domain with no colour pulls it down. Everyone is asked, including players under 17.',
     who: 'Only you, your parent if you are under 18, and kaiwhakawā. Never shown to other players or anywhere on the site.',
   },
   {

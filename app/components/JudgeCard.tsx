@@ -9,8 +9,8 @@ import Link from 'next/link'
 import { EVENTS } from '@/lib/eventData'
 import { formatNZDate } from '@/lib/dates'
 import { gradeForRung } from '@/lib/grading'
-import { rankByColours } from '@/lib/colourBoard'
-import { GradeDot } from '@/components/GradesCard'
+import { rankByColours, displayOverall } from '@/lib/colourBoard'
+import { GradeDot } from '@/components/GradeDot'
 
 type Session = {
   id: string
@@ -480,7 +480,7 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
       division: (byId.get(r.playerId)?.division || '') as string,
       sessions: r.games,
       icon: (byId.get(r.playerId)?.icon ?? null) as string | null,
-      overall: r.overall,
+      overall: displayOverall(r),
       domainsHeld: r.domainsHeld,
     })))
     setPlayersLoading(false)
@@ -1248,7 +1248,7 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0, fontFamily: 'var(--font-label)', fontSize: '12px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: p.overall != null || p.domainsHeld > 0 ? '#fff' : '#444' }}>
                         {p.overall != null && <GradeDot grade={gradeForRung(p.overall)} size={10} />}
-                        {p.overall != null ? gradeForRung(p.overall).name : `${p.domainsHeld}/10`}
+                        {p.overall != null ? `${gradeForRung(p.overall).name}${p.domainsHeld < 10 ? ` · ${p.domainsHeld}/10` : ''}` : `${p.domainsHeld}/10`}
                       </div>
                       <span style={{ color: isExpanded ? '#4DB26E' : '#333', fontSize: '11px', flexShrink: 0 }}>
                         {isExpanded ? '▲' : '▼'}

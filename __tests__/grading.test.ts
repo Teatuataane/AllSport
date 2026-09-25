@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   GRADES, MA, TOP_RUNG, DOMAIN_COUNT, gradeForRung,
-  requiredForDomain, domainGrade, overallGrade, DOMAIN_REQUIRED_CAP,
+  requiredForDomain, domainGrade, overallGrade, overallRung, DOMAIN_REQUIRED_CAP,
   AGE_SHIFT, thresholdFor, rungForScore, ageBand,
   DRILL_CAP, MIN_RATED_GAMES, ratingRung, gameEventRung,
   BODYWEIGHT_BANDS, JUNIOR_BODYWEIGHT_KG, ratioThresholdsKg, bandMidpointKg, bodyweightOn,
@@ -239,16 +239,17 @@ describe('rule 2 — events nobody can be graded in', () => {
   })
 })
 
-describe('rule 3 — the overall grade is the lowest domain', () => {
+describe('rule 3 — the overall grade is the average domain, rounded down', () => {
   const domains = (rungs: number[]): DomainGradeResult[] =>
     rungs.map((rung, i) => ({
       domainNumber: i + 1, rung, availableCount: 12, required: 6,
       metAtRung: 6, nextRung: rung + 1, metAtNextRung: 0,
     }))
 
-  it('takes the minimum, not the average or the best', () => {
+  it('takes the average rounded down, not the minimum or the best', () => {
+    // 9 × 9 + 3 = 84, over ten = 8.4 -> Parahi (8).
     const r = overallGrade(domains([9, 9, 9, 9, 9, 9, 9, 9, 9, 3]))
-    expect(r.rung).toBe(3)
+    expect(r.rung).toBe(8)
     expect(r.weakest).toEqual([10])
   })
 
@@ -256,20 +257,27 @@ describe('rule 3 — the overall grade is the lowest domain', () => {
     expect(overallGrade(domains([5, 5, 8, 8, 8, 8, 8, 8, 8, 8])).weakest).toEqual([1, 2])
   })
 
-  it('withholds an overall grade while any domain is ungraded', () => {
-    // Null rather than Mā: "not graded in Flexibility yet" is progress,
-    // "you are Mā" is a verdict, and the difference matters to a player.
+  it('counts a Mā domain as zero, so a gap drags but never blocks', () => {
+    // 9 × 7 = 63 -> 6. Under the old rule this was no overall colour at all.
     const r = overallGrade(domains([7, 7, 7, 7, 7, 7, 7, 7, 7, 0]))
-    expect(r.rung).toBeNull()
+    expect(r.rung).toBe(6)
     expect(r.ungraded).toEqual([10])
   })
 
-  it('withholds an overall grade when fewer than ten domains are supplied', () => {
-    expect(overallGrade(domains([7, 7, 7])).rung).toBeNull()
+  it('always divides by ten, so a few strong domains do not carry the overall', () => {
+    expect(overallGrade(domains([12, 12, 12])).rung).toBe(3)
+    expect(overallRung([12])).toBe(1)
   })
 
-  it('grades a player whose every domain is graded', () => {
-    expect(overallGrade(domains(Array(DOMAIN_COUNT).fill(6))).rung).toBe(6)
+  it('raising any one domain can move it', () => {
+    expect(overallRung([5, 5, 5, 5, 5, 5, 5, 5, 5, 5])).toBe(5)
+    expect(overallRung([5, 5, 5, 5, 5, 5, 5, 5, 5, 15])).toBe(5) // clamped at Taniwha
+    expect(overallRung([6, 6, 6, 6, 6, 6, 6, 6, 6, 6])).toBe(6)
+  })
+
+  it('is Mā with nothing held', () => {
+    expect(overallGrade(domains(Array(DOMAIN_COUNT).fill(0))).rung).toBe(0)
+    expect(overallRung([])).toBe(0)
   })
 })
 
