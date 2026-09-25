@@ -1448,7 +1448,7 @@ not short. **`award_session_points`
 still awards effort points for events played and PRs**, and `/leaderboard` still ranks on
 season points — retiring points properly is a separate piece of work, not done here.
 
-### Training load (September 2026 session 39) — migration `20260918023038`, NOT YET APPLIED
+### Training load (September 2026 session 39) — migration `20260918023038`, APPLIED 2026-09-20 (with the customisation migrations; see below)
 
 Every workout can now carry **how long** (`workouts.duration_minutes`, 1–1440) and **how hard**
 (`workouts.effort_rating`, 1–10, Foster's session RPE). Minutes × rating is session training
@@ -2239,7 +2239,11 @@ auto-conferral switch-on.
 - **Guests are never asked and never graded** — a guest has no `player_id`. Their
   ratio rows are simply ungraded, as before.
 
-## HOME and COLOURS rework (September 2026)
+## HOME and COLOURS rework (September 2026) — v0.18.0.0, DEPLOYED 2026-09-25
+
+**Merged as PR #137 and live on allsport.nz 2026-09-25** (`/grades` serves the public
+guide, 200). **No migration.** `supabase migration list --linked` from `main` the same
+day showed every version matched local and remote, newest `20260922213125`.
 
 Settled in a `/grill-me` with Tāne on 2026-09-24; nine decisions in
 `docs/designs/home-colours-rework-spec.md` (gitignored like the other design records).
