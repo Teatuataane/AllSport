@@ -1352,6 +1352,25 @@ export default function SessionPage() {
     })
   }, [isJudge])
 
+  // ── When the game closes, refresh everyone's leaderboard numbers ───────────
+  // Skill and season points are written by the recheck route, which otherwise
+  // only runs when a player opens their own screens. A player who leaves
+  // without looking would sit on the board with last week's numbers, so the
+  // kaiwhakawā's screen asks for every registered player in the game. Once per
+  // game per device; best-effort, like every recheck.
+  const refreshedBoardFor = useRef<string | null>(null)
+  useEffect(() => {
+    if (!sessionEnded || !isJudge || refreshedBoardFor.current === sessionId) return
+    const ids = [...new Set(results.map(r => r.player_id).filter((id): id is string => !!id))]
+    if (ids.length === 0) return
+    refreshedBoardFor.current = sessionId
+    void (async () => {
+      for (let i = 0; i < ids.length; i += 5) {
+        await Promise.all(ids.slice(i, i + 5).map(id => recheckGrades({ playerId: id, force: true })))
+      }
+    })()
+  }, [sessionEnded, isJudge, results, sessionId])
+
   // ── Load season PRs for active player ─────────────────────────────────────
   useEffect(() => {
     if (!activePlayerId || !seasonPRsKey) return

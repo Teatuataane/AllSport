@@ -68,11 +68,11 @@ describe('the route', () => {
   it('reads through the caller, and elevates only to write', () => {
     // loadGradeState is handed the CALLER's client, so RLS is still the guard.
     expect(src).toMatch(/loadGradeState\(db,/)
-    // The admin client only ever WRITES: the awards, the withdrawal log and the
-    // watermark. It never reads a player's evidence, which is what keeps RLS the
+    // The admin client only ever WRITES: the awards, the withdrawal log, the
+    // watermark, and the two published leaderboard numbers. It never reads a player's evidence, which is what keeps RLS the
     // guard on everything the answer rests on.
     const adminTables = new Set([...src.matchAll(/admin\.from\('(\w+)'\)/g)].map(m => m[1]))
-    expect([...adminTables].sort()).toEqual(['grade_awards', 'grade_withdrawals', 'players'])
+    expect([...adminTables].sort()).toEqual(['grade_awards', 'grade_withdrawals', 'player_domain_colours', 'player_season_points', 'players'])
     expect(src).not.toMatch(/loadGradeState\(admin/)
   })
 
