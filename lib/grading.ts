@@ -26,7 +26,7 @@
 // anywhere, but the overall needs the games in the room behind it.
 //
 // Training units were a third gate on every domain colour until 26 September
-// 2026. They are gone from grading (lib/units.ts still counts them for display).
+// 2026, and were removed from the app entirely on 27 September 2026.
 //
 // ── Why SIX, and why "of the events available to you" ───────────────────────
 // Six is half of a twelve-event domain: enough that a colour is never won on a

@@ -8,7 +8,7 @@
 
 import { EVENTS, getEventByName, type EventData } from './eventData'
 import { STANDARDS } from './standards'
-import { isGameTier } from './units'
+import { isGameTier } from './eventKinds'
 import {
   ageBand, rungForScore, ratioThresholdsKg, ratingRung, gameEventRung,
   domainGrade, overallGrade, colourGate, DRILL_CAP, DOMAIN_COUNT,

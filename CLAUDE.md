@@ -2281,10 +2281,14 @@ production data (3 regulars at 5–11 events per domain; everyone else 1–3). *
   `unitsSinceConferral`, `gateBlocker` and `unitLine` are deleted; the "units" sentence is gone
   from 34 event rules texts. **Units are no longer shown anywhere either** (Tāne, 27 Sept): the
   live screen, personal-game screen, session-end screen, quick-entry sheet and /history lost
-  them, and `SubmitOutcome` no longer carries `units`. `lib/units.ts` survives because
-  `unitRule`/`metresIn`/`isGameTier` still classify events for natural formats and grading;
-  its unit-counting helpers (`unitsForPayload`, `recentUnitsByDomain`, `fmtUnits*`, the unit
-  sheet and `WORKOUT_UNITS_REVIEW.md`) are now unused and can be deleted in a cleanup pass.
+  them, and `SubmitOutcome` no longer carries `units`. **The units code is DELETED**:
+  `lib/units.ts`, `lib/unitSheet.ts`, `WORKOUT_UNITS_REVIEW.md`, `scripts/apply-units-sheet.mjs`,
+  `scripts/gen-units-sheet.ts`, `__tests__/units.test.ts`, `recentUnitsByDomain` and
+  `unitsForPayload`. The three helpers still needed live in **`lib/eventKinds.ts`**:
+  `isGameTier`, `metresIn`, and `isDistanceEvent`, a structural rule that picks out the same
+  seven distance events the reviewed sheet did (pinned by a test). Older sections of this file
+  that mention units are history. `workout_entries.count` and `volume_distance_m` are still
+  written (they record what was done) but nothing reads them for scoring.
 - **No one-at-a-time rule.** `colourGate` offers the whole computed colour when it beats the
   one held, so a domain can jump Whero → Kahurangi in one session; auto-conferral writes ONE
   row (the new top). `confer_grade` already allowed jumps. `eventsBehind(grades, domain)` now

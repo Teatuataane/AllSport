@@ -1,9 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { GAMES_REQUIRED, TOP_RUNG } from '@/lib/grading'
 import { colourGates, releasable, eventGrade, gameEvidence, type GradePlayer } from '@/lib/playerGrades'
-import { fmtUnits, fmtUnitsLabel } from '@/lib/units'
 import { normaliseActivity } from '@/lib/workouts'
-import { workoutEvidence, fitActivity, suggestEvents, allowedDays, addDays, recentUnitsByDomain, type WorkoutEntryRow } from '@/lib/workouts'
+import { workoutEvidence, fitActivity, suggestEvents, allowedDays, addDays, type WorkoutEntryRow } from '@/lib/workouts'
 import { getEventByName } from '@/lib/eventData'
 
 describe('the games ladder', () => {
@@ -27,10 +26,9 @@ describe('logged workouts as evidence', () => {
     event_slug: 'cycling', count: null, volume_distance_m: null, raw_score: null, weight_kg: null, difficulty_tier: null, workouts: w(false), ...e,
   })
 
-  it('turns a best split into a grading row, and the whole ride into units', () => {
-    const { rows, units } = workoutEvidence([entry({ raw_score: 29900, difficulty_tier: '1000m', volume_distance_m: 25000 })])
+  it('turns a best split into a grading row', () => {
+    const { rows } = workoutEvidence([entry({ raw_score: 29900, difficulty_tier: '1000m', volume_distance_m: 25000 })])
     expect(rows).toEqual([{ event_name: 'Cycling', raw_score: 29900, weight_kg: null, difficulty_tier: '1000m', source: 'solo' }])
-    expect(units).toEqual([{ domain: 6, units: 25, at: '2026-09-16T01:00:00Z', day: '2026-09-16' }])
   })
 
   it('marks a kaiwhakawā-logged entry as witnessed', () => {
@@ -39,7 +37,7 @@ describe('logged workouts as evidence', () => {
 
   it('gives volume without a score no grading row, and an unfitted entry nothing', () => {
     expect(workoutEvidence([entry({ volume_distance_m: 5000 })]).rows).toEqual([])
-    expect(workoutEvidence([entry({ event_slug: null, count: 4 })])).toEqual({ rows: [], units: [] })
+    expect(workoutEvidence([entry({ event_slug: null, count: 4 })])).toEqual({ rows: [] })
   })
 
   it('carries the source through to the event colour', () => {
@@ -51,15 +49,6 @@ describe('logged workouts as evidence', () => {
     ], player)
     expect(g.rung).toBeGreaterThan(0)
     expect(g.source).toBe('solo')
-  })
-
-  it('counts this week by the day trained', () => {
-    const now = new Date('2026-09-16T01:00:00Z')
-    const m = recentUnitsByDomain([
-      { domain: 6, units: 5, at: '2026-09-16T00:00:00Z', day: '2026-09-16' },
-      { domain: 6, units: 9, at: '2026-09-16T00:00:00Z', day: '2026-09-01' },
-    ], 7, now)
-    expect(m.get(6)).toBe(5)
   })
 })
 
@@ -106,21 +95,6 @@ describe('game results as evidence', () => {
     expect(g.rows).toHaveLength(1)
     expect(g.rows[0].source).toBe('game')
     expect(g.games).toBe(0)
-  })
-})
-
-describe('showing units', () => {
-  it('rounds down, so a player is never shown a unit they have not finished', () => {
-    expect(fmtUnits(2.95)).toBe('2.9')
-    expect(fmtUnits(3 - 1e-12)).toBe('3')
-    expect(fmtUnits(0.1 + 0.2 + 2.7)).toBe('3')
-  })
-
-  it('pluralises from the number shown, not the raw sum', () => {
-    expect(fmtUnitsLabel(1)).toBe('1 unit')
-    expect(fmtUnitsLabel(1.05)).toBe('1 unit')
-    expect(fmtUnitsLabel(2.5)).toBe('2.5 units')
-    expect(fmtUnitsLabel(0)).toBe('0 units')
   })
 })
 

@@ -6,7 +6,7 @@ import {
   entryPayload, volumeFor, isPersonalGame, isOpen, PLAN_MAX,
 } from '@/lib/personalGame'
 import { getEventBySlug, EVENTS } from '@/lib/eventData'
-import { unitsForVolume, unitsForResult } from '@/lib/units'
+import { metresIn } from '@/lib/eventKinds'
 import { EMPTY_VALS, type EntryVals } from '@/lib/scoring'
 
 const ev = (slug: string) => {
@@ -51,14 +51,12 @@ describe('one submission', () => {
     expect(entryPayload(ev('deadlift'), vals({}))).toBeNull()
   })
 
-  it('stores the rung distance on a distance event, so units match a game result exactly', () => {
+  it('stores the rung distance on a distance event', () => {
     const running = ev('running')
     const rung = (running.difficultyTiers ?? []).find(t => t.scoring !== 'sport')!
     const p = entryPayload(running, vals({ difficultyTier: rung.name, timeMins: '4', timeSecs: '0' }))!
-    expect(p.volume_distance_m).toBeGreaterThan(0)
+    expect(p.volume_distance_m).toBe(metresIn(rung.name))
     expect(p.count).toBeNull()
-    expect(unitsForVolume(running, { count: p.count, distanceM: p.volume_distance_m }))
-      .toBeCloseTo(unitsForResult(running, rung.name), 10)
   })
 
   it('never stores a score on a Game rung — the database refuses one — but still counts the volume', () => {

@@ -11,7 +11,7 @@
 import { EVENTS, getEventBySlug, type EventData } from './eventData'
 import { scoreColumns, type EntryVals } from './scoring'
 import { estimateFromSets, estimateFromDistance, takesSets, takesDistance } from './naturalFormats'
-import { isGameTier, metresIn, unitRule, unitsForVolume } from './units'
+import { isGameTier, metresIn, isDistanceEvent } from './eventKinds'
 import { nzDay } from './workouts'
 
 /** The database CHECK. A plan is a workout, not a programme. */
@@ -75,15 +75,13 @@ export type EntryPayload = {
 }
 
 /**
- * The VOLUME one completion earns, shaped so `unitsForVolume` returns exactly
- * what `unitsForResult` gives the same score at a game: a distance event stores
- * the rung's metres, everything else stores one completion.
+ * What one submission records as volume: a distance event stores the rung's
+ * metres, everything else stores one completion.
  */
 export function volumeFor(ev: EventData, tierName: string | null | undefined): Pick<EntryPayload, 'count' | 'volume_distance_m'> {
-  if (unitRule(ev).rule === 'distance' && !isGameTier(ev, tierName)) {
+  if (isDistanceEvent(ev) && !isGameTier(ev, tierName)) {
     const m = tierName ? metresIn(tierName) : null
-    // A distance ladder with an unreadable rung still earns its completion, the
-    // same fallback unitsForResult takes.
+    // A distance ladder with an unreadable rung still records a completion.
     return m ? { count: null, volume_distance_m: m } : { count: 1, volume_distance_m: null }
   }
   return { count: 1, volume_distance_m: null }
@@ -184,15 +182,6 @@ export function entryPayload(
     time_seconds: scored.time_seconds ?? null,
     distance_m: scored.distance_m ?? null,
   }
-}
-
-/**
- * The units one submission earns, read off the payload it stored — NOT off the
- * rung. A natural entry records the real work (five sets, 5000m), and reading
- * the rung instead would pay a 5km run the units of a 1000m.
- */
-export function unitsForPayload(ev: EventData, p: EntryPayload): number {
-  return unitsForVolume(ev, { count: p.count, distanceM: p.volume_distance_m })
 }
 
 // ─── Lifecycle ───────────────────────────────────────────────────────────────

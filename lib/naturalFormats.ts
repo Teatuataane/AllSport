@@ -19,7 +19,7 @@
 // Pure: no React, no Supabase.
 
 import { encodeDiffTime, isTimedEffort, type EventData } from './eventData'
-import { metresIn, unitRule } from './units'
+import { metresIn, isDistanceEvent } from './eventKinds'
 import { fmtTime } from './scoring'
 
 // ─── Strength: Brzycki ───────────────────────────────────────────────────────
@@ -94,7 +94,7 @@ export function distanceRungs(ev: EventData): { level: number; name: string; met
 
 /** Whether an event can take "distance + time" instead of a rung and a time. */
 export function takesDistance(ev: EventData): boolean {
-  return unitRule(ev).rule === 'distance' && isTimedEffort(ev.slug) && distanceRungs(ev).length > 0
+  return isDistanceEvent(ev) && distanceRungs(ev).length > 0
 }
 
 /** Whether an event can take sets of weight × reps instead of a single lift. */
