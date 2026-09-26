@@ -2288,8 +2288,15 @@ production data (3 regulars at 5–11 events per domain; everyone else 1–3). *
   `isGameTier`, `metresIn`, and `isDistanceEvent`, a structural rule that picks out the same
   seven distance events the reviewed sheet did (pinned by a test). Older sections of this file
   that mention units are history.
-- **`workout_entries.count` and `volume_distance_m` are dropped by `20260926181359`** (NOT YET
-  APPLIED). The app no longer selects or writes them. **DEPLOY CODE FIRST, THEN THE MIGRATION**:
+- **`workout_entries.count` and `volume_distance_m` are dropped by `20260926181359`**
+  (APPLIED AND VERIFIED IN PRODUCTION 2026-09-27, after PR #142 deployed: the served JS was
+  scanned and no chunk, including the two that read `workout_entries`, names either column;
+  no game running and nothing written in 30 minutes. Applied through `supabase db query
+  --linked -f` in one transaction with the ledger row, from the file byte-compared against
+  `origin/main`. Verified by object: both columns gone, 3 rows archived with RLS on and no
+  policies, the guard still SECURITY DEFINER with `search_path=public`, still wired by its one
+  trigger, keeping all five of its rules and naming neither column; as `anon` the archive and
+  `workout_entries` return 401; ledger local and remote match). The app no longer selects or writes them. **DEPLOY CODE FIRST, THEN THE MIGRATION**:
   an older bundle still selects them, and a missing column is 42703, which takes HOME's colours
   and the workout screen down. The migration archives the 3 rows holding a value
   (`workout_entries_volume_archive_20260926181359`, RLS on, no policies) and redefines
