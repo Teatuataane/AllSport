@@ -2,6 +2,21 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.20.0.0] - 2026-09-26
+
+### Changed
+- **The leaderboard is one board: the Season.** Every official event in every game you finish this year scores the colour your result reached, from Kiwikiwi (1 point) to Taniwha (12), so a game is worth up to 120. Higher scores earn more per game and every game you play adds more. It starts again each January. Because the colours already allow for age, sex and bodyweight, a Grandmaster, a junior and an Open player all score on the same scale, and All-Divisions is the board that opens first.
+- **Each player's card shows their place, their colour, their season points and games, and their best and worst domain with the colour they hold in each.**
+- **A new banner and no explainer text.** The page opens on a rainbow banner with the crest, then the season board. On a phone the podium and cards fit the screen with nothing hidden sideways.
+- **Playing the real game scores, not just the drills.** On an event topped by a game, a win scores Kahurangi (6), a draw 5 and a loss 4, and a player with a sport rating scores their rating colour when it is higher.
+- The privacy page says domain colours and season points are public, worked out the same way as colours.
+
+### Removed
+- The season medal table (1st, 2nd and 3rd finishes). Most divisions had one player on the day, so it mostly counted walkovers.
+
+### For contributors
+- Season points and domain colours are worked out on the server by the colours check (strength needs the private bodyweight) and published in two new read-only tables, `player_season_points` and `player_domain_colours` (migration `20260924213359`). When a game ends, the kaiwhakawā's screen refreshes every player in it. `scripts/refresh-leaderboard-scores.ts` fills the tables for everyone the first time.
+
 ## [0.19.0.0] - 2026-09-26
 
 ### Changed
