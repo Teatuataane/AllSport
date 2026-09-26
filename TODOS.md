@@ -163,6 +163,16 @@
 
 ## P1 — Do Next
 
+### Switch on the season leaderboard (v0.20.0.0) — before or straight after merging
+**Priority:** P1
+
+Until these run, `/leaderboard` shows "No 2026 games yet" to everyone.
+
+1. Apply `supabase/migrations/20260924213359_leaderboard_scores.sql` from a clean `main` worktree (two new public read-only tables). Verify by object: both tables have `relrowsecurity`, `anon` gets 200 on SELECT and 401 on INSERT.
+2. Dry run the backfill and read the numbers: `node --env-file=.env.local --import ./scripts/ts-loader.mjs scripts/refresh-leaderboard-scores.ts` (needs `SUPABASE_SERVICE_ROLE_KEY` in `.env.local`).
+3. Then `--apply`. The recheck route keeps both tables current after that.
+4. Tāne to confirm the Game-rung floor (win 6, draw 5, loss 4) in `lib/leaderboardScores.ts` `GAME_RESULT_RUNG`; it is the one number the standards do not decide.
+
 ### Switch on auto-conferral (v0.16.0.0) — in this order
 **What:** four migrations, a one-off history replay, then the service key.
 **Order matters.** The route confers the moment Vercel has the key, and the replay skips anyone already holding a colour, so the key goes to Vercel LAST:

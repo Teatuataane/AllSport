@@ -78,11 +78,10 @@ describe('the games cap is counted the same way on every surface', () => {
   // actually exclude the sessions HOME's gameEvidence does not count.
   const src = (p: string) => readFileSync(join(process.cwd(), p), 'utf8')
 
-  it('the leaderboard excludes voided sessions and the game still running', () => {
+  it('the leaderboard caps the overall colour by LIFETIME games, through the shared counter', () => {
     const s = src('app/leaderboard/page.tsx')
-    expect(s).toMatch(/from\('sessions'\)\.select\('id'\)\.not\('voided_at', 'is', null\)/)
-    expect(s).toMatch(/excluded\.add\(d\.active_session\.id\)/)
-    expect(s).toMatch(/countGames\(statsData\.results, notGames\)/)
+    expect(s).toMatch(/loadGameCounts\(supabase, null\)/)
+    expect(s).toMatch(/colourStanding\(held\.get\(p\.id\), gamesPlayed/)
   })
 
   it('the family chips and the kaiwhakawā list count games through the shared paged counter', () => {

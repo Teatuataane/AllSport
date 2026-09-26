@@ -32,6 +32,9 @@ const h = vi.hoisted(() => ({
   inserts: [] as unknown[],
   updates: [] as { table: string; values: Record<string, unknown>; col: string; val: unknown }[],
   loadTakesMs: 0,
+  scoresThrow: false,
+  scoreError: null as unknown,
+  scoreRows: [] as { table: string; row: unknown }[],
 }))
 
 vi.mock('@/lib/supabase-server', () => ({
@@ -43,15 +46,25 @@ vi.mock('@/lib/supabase-server', () => ({
     },
   }),
 }))
-vi.mock('@/lib/loadGrades', () => ({
-  loadGradeState: async (_db: unknown, id: string) => {
+vi.mock('@/lib/loadGrades', () => {
+  const load = (id: string) => {
     h.loadCalls.push(id)
     // Lets a test make the load take time, so "stamped before" and "stamped
     // after" the read are different instants.
     if (h.loadTakesMs) vi.setSystemTime(Date.now() + h.loadTakesMs)
-    return h.state
-  },
-}))
+  }
+  return {
+    loadGradeState: async (_db: unknown, id: string) => { load(id); return h.state },
+    // The conferral path reads inputs once and derives the state from them, so
+    // the leaderboard numbers ride on the same read.
+    loadGradeInputs: async (_db: unknown, id: string) => { load(id); return h.state && { inputs: true } },
+    gradeStateFrom: () => h.state,
+    leaderboardScoresFrom: () => {
+      if (h.scoresThrow) throw new Error('boom')
+      return { domainRungs: [4, 4, 4, 4, 4, 4, 4, 4, 5, 5], points: 88, games: 2 }
+    },
+  }
+})
 vi.mock('@/lib/autoConfer', () => ({
   awardsToConfer: () => h.pending,
   awardsToWithdraw: () => h.withdraw,
@@ -62,6 +75,12 @@ vi.mock('@/lib/supabase-admin', () => ({
   createSupabaseAdminClient: () => (h.adminCreated++, {
     from: (table: string) => ({
       upsert: (rows: unknown, opts: unknown) => ({
+        // Awaited directly (no select) by the leaderboard-score writes.
+        then: (resolve: (v: unknown) => void) => {
+          h.adminOps.push(`score:${table}`)
+          h.scoreRows.push({ table, row: rows })
+          resolve({ error: h.scoreError })
+        },
         select: async () => {
           h.adminOps.push(`upsert:${table}`)
           h.upsertArgs = { rows, opts }
@@ -110,6 +129,9 @@ beforeEach(() => {
   h.rpc = {}
   h.rpcCalls = []
   h.loadCalls = []
+  h.scoresThrow = false
+  h.scoreError = null
+  h.scoreRows = []
   h.state = { schemaReady: true }
   h.pending = []
   h.withdraw = []
@@ -191,8 +213,8 @@ describe('recheck route: writing', () => {
 
   it('writes no award when nothing is due, but still moves the watermark', async () => {
     const res = await post({ force: true })
-    expect(await res.json()).toEqual({ conferred: [], checked: true })
-    expect(h.adminOps).toEqual(['update:players'])
+    expect(await res.json()).toEqual({ conferred: [], checked: true, scored: true })
+    expect(h.adminOps).toEqual(['score:player_domain_colours', 'score:player_season_points', 'update:players'])
   })
 
   it('reports only the rows the upsert actually inserted', async () => {
@@ -200,7 +222,7 @@ describe('recheck route: writing', () => {
     h.upsertData = [{ domain_number: 2, rung: 3 }]
     const body = await (await post({ force: true })).json()
     expect(body.conferred).toEqual([{ domainNumber: 2, rung: 3, name: 'G3', events: 1 }])
-    expect(h.adminOps).toEqual(['upsert:grade_awards', 'update:players'])
+    expect(h.adminOps).toEqual(['upsert:grade_awards', 'score:player_domain_colours', 'score:player_season_points', 'update:players'])
   })
 
   it('500s on a failed write and leaves the watermark where it was', async () => {
@@ -208,6 +230,38 @@ describe('recheck route: writing', () => {
     h.upsertError = { message: 'boom' }
     expect((await post({ force: true })).status).toBe(500)
     expect(h.adminOps).not.toContain('update:players')
+  })
+})
+
+describe('recheck route: leaderboard numbers', () => {
+  it('publishes domain colours and this NZ season\'s points for the player checked', async () => {
+    await post({ force: true })
+    const domains = h.scoreRows.find(r => r.table === 'player_domain_colours')!.row as Record<string, unknown>
+    const season = h.scoreRows.find(r => r.table === 'player_season_points')!.row as Record<string, unknown>
+    expect(domains).toMatchObject({ player_id: 'me', domain_rungs: [4, 4, 4, 4, 4, 4, 4, 4, 5, 5] })
+    expect(season).toMatchObject({ player_id: 'me', points: 88, games: 2 })
+    expect(season.season_year).toBeGreaterThanOrEqual(2026)
+  })
+
+  it('never fails the recheck when the numbers cannot be written', async () => {
+    h.scoreError = { code: 'PGRST205' }
+    const res = await post({ force: true })
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ conferred: [], checked: true, scored: false })
+    expect(h.adminOps).toContain('update:players')
+  })
+
+  it('never fails the recheck when the scoring itself throws', async () => {
+    h.scoresThrow = true
+    const res = await post({ force: true })
+    expect(res.status).toBe(200)
+    expect((await res.json()).scored).toBe(false)
+  })
+
+  it('writes nothing for a player the cheap probe says is unchanged', async () => {
+    h.rpc.grades_need_recheck = { data: false, error: null }
+    await post()
+    expect(h.scoreRows).toEqual([])
   })
 })
 

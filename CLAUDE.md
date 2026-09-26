@@ -1587,7 +1587,7 @@ a `var(--font-*)` token; `/judge`'s header typo "Kaiwāwao" is Kaiwhakawā; "Wha
 is explained on `/grades` from `unitRulesSummary()` in `lib/units.ts` (shared with How To
 Play); the dashboard colours card asks for a bodyweight band when one is missing.
 
-## Season medal table (September 2026) — v0.10.0.0
+## Season medal table (September 2026) — v0.10.0.0 — RETIRED in v0.20.0.0 (see Season leaderboard)
 
 `/leaderboard` has two boards over the same division tabs: **Colours** (lifetime,
 never resets) and **Season {year}** (this calendar year's 1st/2nd/3rd finishes,
@@ -2265,9 +2265,14 @@ production data (3 regulars at 5–11 events per domain; everyone else 1–3). *
 - **The overall colour is the average of ten, CAPPED by official games** (`overallRung(rungs,
   games)`, `gamesCapRung`, `GAMES_REQUIRED` unchanged: 1/3/5/8/12/16/20/30/40/55/75/100).
   `games` is a REQUIRED argument so no surface can forget the cap. Every surface counts a
-  game the same way — finished, not voided, with a result: HOME via `gameEvidence`, the
-  leaderboard and family chips via `countGames` in `lib/colourBoard.ts` (excluding voided
-  sessions and the one running), the kaiwhakawā list via `session_player_summary`.
+  LIFETIME game the same way — finished, not voided, with a result: HOME via
+  `gameEvidence`, and the leaderboard, family chips and kaiwhakawā list via
+  `loadGameCounts` (`lib/gameCounts.ts`, over `countGames`). Not the season's games from
+  `player_season_points`: a colour is lifetime, so is its cap.
+- **`player_domain_colours` (the leaderboard's best/worst domain, v0.20.0.0) is computed by
+  the same `domainGrade`, so it moves to best-six too, but only as each player is rechecked.**
+  The rules-version force below republishes a player on their next HOME visit; for everyone
+  at once, run `scripts/refresh-leaderboard-scores.ts` after the deploy (needs the service key).
 - **Domain colours have NO games check** (Tāne, 26 Sept: "the games ladder shouldn't cap
   domain colours"). A solo-only player can show high domains; the overall holds them down.
 - **Training units are retired from grading.** `UNITS_REQUIRED`, `UNIT_MULTIPLIER`,
@@ -2391,6 +2396,44 @@ Settled in a `/grill-me` with Tāne on 2026-09-26. No migration.
   grade (`ProgressSegments` `fillFor`; Taniwha is white there, black vanishes).
   The personal-game screen keeps the old domain-coloured rows: `EventListRow`
   switches only when `gradeRung` is passed.
+
+## Season leaderboard (September 2026) — v0.20.0.0, migration NOT YET APPLIED
+
+Designed with Tāne on 2026-09-25. The board exists so players who could never
+play together (a Grandmaster woman, a U14 boy, a Men's player) compete anyway,
+so it prices every score on the COLOUR LADDER, which already shifts for age
+and sex and scales strength by bodyweight.
+
+- **One board, Season.** Every official event in every finished game this NZ
+  calendar year scores the rung its result reached (Kiwikiwi 1 … Taniwha 12),
+  best row per event per game, summed. Up to 120 a game. Ranked on points,
+  then games, ties shared (`rankBy`). Official events only: swaps, extras and
+  logged workouts never score here.
+- **A lifetime Skill board (average of the ten domain colours) was built and
+  removed the same day, at Tāne's call.** Do not bring it back without asking;
+  with the average overall-colour rule (v0.18.0.0) it duplicated the colour.
+- **Game-rung floor: win 6 (Kahurangi, `DRILL_CAP`), draw 5, loss 4**, or the
+  player's rating colour AS IT STOOD WHEN THAT GAME CLOSED if higher
+  (`GAME_RESULT_RUNG` in `lib/leaderboardScores.ts`). Without it, playing the
+  real sport scored 0 until ten rated games and a drill always paid better.
+  **Provisional**, awaiting Tāne's confirmation (TODOS.md P1).
+- **Cards show best and worst domain by the STANDARDS** (not conferred), ties
+  to the earliest domain. The colour pill is the CONFERRED overall
+  (`displayOverall(colourStanding(...))`), so it reads Mā until colours land.
+- **Computed on the server, never in the browser**, because strength rungs need
+  the private bodyweight. The recheck route (`writeScores`) publishes
+  `player_season_points (player_id, season_year, points, games)` and
+  `player_domain_colours (player_id, domain_rungs smallint[10])`, both public
+  read, no client write (`20260924213359`). A failed score write never fails
+  the recheck. The page reads a missing table as empty.
+- **Freshness depends on rechecks.** A player's numbers move when they open
+  HOME/COLOURS, at their session-end screen, and (new) when the kaiwhakawā's
+  live screen sees a game end: it force-rechecks every registered player in it.
+- **Backfill:** `scripts/refresh-leaderboard-scores.ts` (dry run by default,
+  `--apply`, `--year`). Needs `SUPABASE_SERVICE_ROLE_KEY`.
+- The medal table (`lib/medalTable.ts`) and the page's explainer text are gone.
+  `leaderboard_page()` is still called, for the live game, conferred colours
+  and its session heal; its `stats` bundle is no longer read.
 
 ## Security posture (August 2026) — read before touching RLS or players_public
 
@@ -2579,7 +2622,7 @@ update players set role = 'judge' where id = '[uuid]';
 | Events Index | /events | Complete | All 128 events grouped by domain, links to detail pages |
 | Event Detail | /events/[slug] | Complete | Template page: how to perform, rules, tiers, personal best |
 | Schedule | /schedule | Complete | Times correct (4:30pm Tue/Thu, 9am Sat), Championship 14 Mar 2027 |
-| Leaderboard | /leaderboard | Complete | Real data, All-Divisions tab, active session live banner |
+| Leaderboard | /leaderboard | Complete | **v0.20.0.0:** one Season board, All-Divisions first, banner with no body text. Cards: place, conferred colour, season points + games, best and worst domain with their colours. Live game strip when a game runs |
 | Koha | /koha | Complete | Tiers, IRD rebate |
 | Play | /play | Complete | Login/register landing, Google OAuth |
 | Register | /register | Complete | 3-step form, division, display prefs, junior parent fields |

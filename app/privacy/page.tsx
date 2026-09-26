@@ -84,7 +84,7 @@ const competitionData: Row[] = [
   {
     what: 'Your grades',
     why: 'A colour in each of the ten domains, earned by meeting a standard in your events. Worked out from your scores, your age group and, where it applies, your bodyweight on the day. Each new colour is recorded automatically the moment you meet it. If a kaiwhakawā removes a logged score that did not happen, a colour that rested on it is taken back, and a private note of that is kept for you, your parent and kaiwhakawā.',
-    who: 'Your colours are public. The bodyweight and age allowance behind them are not.',
+    who: 'Your colours are public, and so are the domain colours and season points on the leaderboard, worked out the same way. The bodyweight and age allowance behind them are not.',
   },
   {
     what: 'Your training log',
@@ -293,7 +293,7 @@ export default function PrivacyPolicy() {
           <h2 className="privacy-h2">IN PLAIN <span style={{ color: 'var(--green)' }}>WORDS</span></h2>
           <div className="privacy-grid-2" style={{ marginTop: '32px' }}>
             {[
-              ['Your scores are public', 'AllSport is a competition. Your display name, scores, placements and colour are visible to anyone — that is how a leaderboard works.'],
+              ['Your scores are public', 'AllSport is a competition. Your display name, scores, placements, colour, domain colours and season points are visible to anyone — that is how a leaderboard works.'],
               ['Your contact details are not', 'Your email, phone number, date of birth and bodyweight are never shown anywhere on the site. They are for kaiwhakawā to run sessions, keep you safe and grade you fairly.'],
               ['The wellbeing check-in is yours', 'Nobody at AllSport can read your individual answers. Kaiwhakawā only ever see group averages, and only when at least three people have answered.'],
               ['We do not sell or advertise', 'No advertising, no tracking pixels, no analytics, no data broker. We have never sold personal information and we will not.'],

@@ -27,6 +27,7 @@ import { workoutEvidence, GAME_MINUTES, type WorkoutEntryRow } from './workouts'
 import { rateGames, type SportRating } from './headToHead'
 import { disputedBySport, type MatchRow } from './matches'
 import { toNZDateString } from './dates'
+import { domainRungsOf, seasonPoints, type SeasonRow } from './leaderboardScores'
 
 /**
  * The Supabase client to read through. Passed in rather than created here, so
@@ -411,6 +412,70 @@ export function closedAt(r: ResultRow): string | null {
 }
 
 /**
+ * The bodyweight a row is graded against.
+ *
+ * Once 20260922213125 is applied, declarations are the only source. Before
+ * it, the stored bands stand in, which is exactly the behaviour that shipped
+ * with 20260921232726: the row's own band, else the first band the player
+ * ever set, else their current one.
+ */
+function kgResolver(inputs: GradeInputs, declared: readonly BodyweightDeclaration[]) {
+  return (day: string | null | undefined, legacyBand: string | null | undefined) =>
+    inputs.bodyweightsLive
+      ? bodyweightOn(declared, day)
+      : bandMidpointKg(legacyBand ?? inputs.firstBand ?? inputs.band)
+}
+
+/**
+ * The player's rows from official games, shaped for the season points in
+ * lib/leaderboardScores.ts: voided games dropped, each row's bodyweight of the
+ * day resolved exactly as the grades resolve it, and when its game closed (so
+ * a rating can be read as it stood then). Swaps and logged workouts are NOT
+ * here: season points are official events only.
+ */
+export function seasonRowsFrom(inputs: GradeInputs): (SeasonRow & { closedAt: string | null })[] {
+  const kgOn = kgResolver(inputs, inputs.bodyweights ?? [])
+  return countedRows(inputs.results, inputs.voids).map(r => {
+    const day = r.sessions?.session_date ?? toNZDateString(new Date(r.sessions?.started_at ?? r.created_at))
+    return {
+      session_id: r.session_id,
+      session_date: day,
+      event_name: r.session_events!.event_name,
+      raw_score: r.raw_score, weight_kg: r.weight_kg, difficulty_tier: r.difficulty_tier,
+      source: 'game' as const,
+      bodyweightKg: kgOn(day, r.bodyweight_band),
+      closed: !r.sessions || !r.sessions.is_active,
+      closedAt: closedAt(r),
+    }
+  })
+}
+
+/**
+ * Both leaderboard numbers for one player, from inputs and the state already
+ * computed from them. `year` is the season being scored.
+ */
+export function leaderboardScoresFrom(playerId: string, inputs: GradeInputs, state: GradeState, year: number) {
+  const rows = seasonRowsFrom(inputs)
+  const endOf = new Map(rows.map(r => [r.session_id, r.closedAt]))
+  const ratingCache = new Map<string, Map<string, SportRating>>()
+  const ratingAt = (sessionId: string) => {
+    let hit = ratingCache.get(sessionId)
+    if (!hit) {
+      const end = endOf.get(sessionId)
+      const endMs = end ? Date.parse(end) : Infinity
+      hit = ratingsFor(playerId, inputs.matches.filter(m => Date.parse(m.created_at) <= endMs))
+      ratingCache.set(sessionId, hit)
+    }
+    return hit
+  }
+  const player = { division: inputs.profile.division, ageYears: inputs.profile.age_years, gender: inputs.gender }
+  return {
+    domainRungs: domainRungsOf(state.grades.domains),
+    ...seasonPoints(rows, player, year, ratingAt),
+  }
+}
+
+/**
  * A player's grade state from inputs already fetched.
  *
  * With no options this is exactly what the app shows today. `asOf` answers the
@@ -441,18 +506,8 @@ export function gradeStateFrom(
   const all = inputs.bodyweights ?? []
   const declared = asOfMs == null ? all : all.filter(b => upTo(b.created_at ?? null))
 
-  /**
-   * The bodyweight a row is graded against.
-   *
-   * Once 20260922213125 is applied, declarations are the only source. Before
-   * it, the stored bands stand in, which is exactly the behaviour that shipped
-   * with 20260921232726: the row's own band, else the first band the player
-   * ever set, else their current one.
-   */
-  const kgOn = (day: string | null | undefined, legacyBand: string | null | undefined) =>
-    inputs.bodyweightsLive
-      ? bodyweightOn(declared, day)
-      : bandMidpointKg(legacyBand ?? inputs.firstBand ?? inputs.band)
+  // The bodyweight each row is graded against; see kgResolver.
+  const kgOn = kgResolver(inputs, declared)
 
   const results = inputs.results.filter(r => upTo(r.sessions?.started_at ?? r.created_at))
   const counted = countedRows(results, inputs.voids)
