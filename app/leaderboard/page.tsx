@@ -201,8 +201,12 @@ function Podium({ rows }: { rows: (BoardRow & { rank: number })[] }) {
             <div style={{ display: 'flex', justifyContent: 'center', margin: '-2px 0 10px' }}><ColourChip rung={p.overall} size="sm" /></div>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: place === 1 ? 32 : 26, color: '#fff', lineHeight: 1 }}>{p.points}<span style={{ fontSize: 13, color: '#666', marginLeft: 3 }}>PTS</span></div>
             <div className="lb-podium-domains">
-              <DomainStat kind="Best" index={bw.best} rung={p.domainRungs[bw.best]} compact />
-              <DomainStat kind="Worst" index={bw.worst} rung={p.domainRungs[bw.worst]} compact />
+              {p.domainRungs[bw.best] > 0 ? (
+                <>
+                  <DomainStat kind="Best" index={bw.best} rung={p.domainRungs[bw.best]} compact />
+                  <DomainStat kind="Worst" index={bw.worst} rung={p.domainRungs[bw.worst]} compact />
+                </>
+              ) : <span className="lb-nodomains">No domain colours yet</span>}
             </div>
           </div>
         )
@@ -226,8 +230,14 @@ function BoardList({ rows, showDivision }: { rows: (BoardRow & { rank: number })
                 {showDivision && p.division && <span className="lb-div">{SHORT_DIVISION[p.division] ?? p.division}</span>}
               </div>
               <div className="lb-domains">
-                <DomainStat kind="Best" index={best} rung={p.domainRungs[best]} />
-                <DomainStat kind="Worst" index={worst} rung={p.domainRungs[worst]} />
+                {/* With nothing held, best and worst would both name the first
+                    domain as "Not yet", which reads like a real result. */}
+                {p.domainRungs[best] > 0 ? (
+                  <>
+                    <DomainStat kind="Best" index={best} rung={p.domainRungs[best]} />
+                    <DomainStat kind="Worst" index={worst} rung={p.domainRungs[worst]} />
+                  </>
+                ) : <span className="lb-nodomains">No domain colours yet</span>}
               </div>
             </div>
             <div style={{ textAlign: 'right', alignSelf: 'start' }}>
@@ -396,6 +406,7 @@ export default function LeaderboardPage() {
         .lb-dstat-label { width: 38px; flex-shrink: 0; font-family: var(--font-label); font-weight: 700; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; }
         .lb-dstat-name { font-family: var(--font-label); font-weight: 700; font-size: 13px; color: #ccc; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .lb-dstat-grade { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-label); font-size: 12px; color: #777; }
+        .lb-nodomains { font-family: var(--font-label); font-size: 12px; letter-spacing: 0.06em; color: #555; }
         .lb-podium-domains { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid #1e1e1e; text-align: left; }
         .lb-dstat-compact .lb-dstat-label { width: auto; writing-mode: vertical-rl; transform: rotate(180deg); font-size: 8px; letter-spacing: 0.1em; }
         .lb-dstat-compact .lb-dstat-name { font-size: 11px; }
