@@ -1181,7 +1181,8 @@ should not have been.
   targeting anyone, then the 90th down to the 1st percentile. Grades own colour;
   domains keep name and icon only. **Never label grades `D1`–`D12`**, which
   already means difficulty tier.
-- **The rules:** a colour in each of the ten domains; a domain colour is the
+- **The rules — SUPERSEDED 26 Sept 2026, see "Best-six domain colours" below.** Was:
+  a colour in each of the ten domains; a domain colour is the
   highest grade met in at least HALF the domain's events; the overall grade is the
   AVERAGE of the ten, rounded down (was the lowest, until 24 Sept 2026 — see
   "HOME and COLOURS rework" below). Precisely:
@@ -1325,6 +1326,9 @@ Any workout can be logged at **`/log`** and fitted to one of the 120 events, the
 through the same framework as a game. Designed in a `/grill-me` session; the full record
 (17 decisions) is `docs/designs/workout-logging-spec.md` in worktree
 `frontend-keys-server-proxy-bd20f8`, gitignored like the other grading docs.
+
+**SUPERSEDED 26 Sept 2026: the games and training gates are gone from domain colours** (see
+"Best-six domain colours" below). What follows is the history.
 
 **Every domain colour now has THREE gates** (`colourGate` in `lib/grading.ts`):
 1. **Standards** — unchanged: met in half the domain's available events.
@@ -1803,6 +1807,10 @@ repoint fails there rather than in the gym.
 
 ### Domains are no longer even, and the threshold is CAPPED at six
 
+> **SUPERSEDED 26 Sept 2026.** `requiredForDomain` and `DOMAIN_REQUIRED_CAP` are deleted; a
+> domain now averages its best `DOMAIN_TOP_EVENTS` (6). The "six, not a growing half" decision
+> survives in that constant.
+
 `requiredForDomain` was `ceil(available × 0.5)`, read from the LIVE domain size. Flexibility
 going 12 → 16 would therefore have raised its bar from 6 events to **8**, retroactively, for
 everyone, on the domain that is already the second-least-played. Tāne accepted the bigger pool
@@ -2238,6 +2246,51 @@ auto-conferral switch-on.
 - **Staleness.** See carry-forward above.
 - **Guests are never asked and never graded** — a guest has no `player_id`. Their
   ratio rows are simply ungraded, as before.
+
+## Best-six domain colours, games cap the overall, units retired (September 2026)
+
+Settled with Tāne 2026-09-26, after comparing top-3 / top-4 / top-6 / top-8 against real
+production data (3 regulars at 5–11 events per domain; everyone else 1–3). **No migration.**
+
+- **A domain colour is the AVERAGE of the player's best six events there, rounded down**
+  (`domainGrade`, `DOMAIN_TOP_EVENTS = 6`). An unplayed slot counts as Mā, so a newcomer with
+  one Kahurangi reads Kiwikiwi — Tāne accepted that harshness on purpose: every new event
+  lifts the domain until six are on the board. Exemptions and ungradeable events leave the
+  domain, so a player with four available averages over four (`slotsForDomain`).
+  Replaces "the highest colour met in half the domain's events", which was in effect the
+  SIXTH-best event and read three Taniwha events plus a gap as Mā.
+- **At six a specialist and a generalist tie** (three Taniwha = eight Kahurangi = Kahurangi).
+  Tāne wanted wide to beat deep but chose plain top-6 over a breadth bonus. Don't add one
+  without asking.
+- **The overall colour is the average of ten, CAPPED by official games** (`overallRung(rungs,
+  games)`, `gamesCapRung`, `GAMES_REQUIRED` unchanged: 1/3/5/8/12/16/20/30/40/55/75/100).
+  `games` is a REQUIRED argument so no surface can forget the cap. Every surface counts a
+  game the same way — finished, not voided, with a result: HOME via `gameEvidence`, the
+  leaderboard and family chips via `countGames` in `lib/colourBoard.ts` (excluding voided
+  sessions and the one running), the kaiwhakawā list via `session_player_summary`.
+- **Domain colours have NO games check** (Tāne, 26 Sept: "the games ladder shouldn't cap
+  domain colours"). A solo-only player can show high domains; the overall holds them down.
+- **Training units are retired from grading.** `UNITS_REQUIRED`, `UNIT_MULTIPLIER`,
+  `unitsSinceConferral`, `gateBlocker` and `unitLine` are deleted; the "units" sentence is gone
+  from 34 event rules texts. Units are STILL shown on the live screen, the personal-game screen
+  and the session-end screen (`lib/units.ts`, `WORKOUT_UNITS_REVIEW.md`), now as display only.
+- **No one-at-a-time rule.** `colourGate` offers the whole computed colour when it beats the
+  one held, so a domain can jump Whero → Kahurangi in one session; auto-conferral writes ONE
+  row (the new top). `confer_grade` already allowed jumps. `eventsBehind(grades, domain)` now
+  returns the best-six slugs averaged (`DomainGradeResult.counted`).
+- **Under N = 6 the new domain colour is never below the old one** for a full domain (an
+  average of the top six ≥ the sixth best), so switching this on demotes nobody. Existing
+  awards stand; the first recheck confers upward.
+- **HOME** shows each domain as "Next Karaka: 3 steps to go · 4 of 6 events hold a colour"
+  (a step = one event up one colour; `nextDomainColour` in `lib/colourDisplay.ts`), and says
+  when the games cap is binding. `/grades` computes its worked examples with the engine.
+
+**Measured against production 2026-09-26 (read-only, `supabase db query --linked`):**
+Coach Tāne Kākāriki overall (41 games), RGFell Kōwhai (26), Zebe Whero (25), Salvador
+Kiwikiwi (25); most one-game players hold Kiwikiwi in 3–5 domains and are Mā overall.
+**Coordination and Aim & Precision are Mā for every player**: those events are mostly played
+as games, game rows never grade a drill, and rating colours need ten recorded games. That was
+already true under the old rule, and it costs every player up to two colours overall.
 
 ## HOME and COLOURS rework (September 2026) — v0.18.0.0, DEPLOYED 2026-09-25
 
