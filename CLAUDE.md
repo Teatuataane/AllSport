@@ -1973,7 +1973,9 @@ itself: `grade_awards` is public and feeds the leaderboard.
   anything**, or it would be an activity oracle for every player. It is
   conservative by construction: the route skips only on an explicit `false`.
 - **One colour per domain per run.** `colourGate` only ever offers `held + 1`, and
-  units restart at each conferral, so nothing chains.
+  units restart at each conferral, so nothing chains. **SUPERSEDED 26 Sept 2026:** units no
+  longer gate and a domain can jump several colours in one run, written as ONE row (see
+  "Best-six domain colours").
 - **`grade_awards.conferred_by` NULL means the server conferred it.**
 - **Awards are NO LONGER APPEND-ONLY.** A kaiwhakawā deleting a logged score from
   the audit panel re-judges that ONE domain and takes back what the remaining
@@ -2345,6 +2347,9 @@ Settled in a `/grill-me` with Tāne on 2026-09-24; nine decisions in
   `lib/colourDisplay.ts`, built from `unitRulesSummary` so it cannot drift), then ten
   domain rows naming the next colour's three checks ("Next Karaka: ✓ standard ·
   3/5 games · 2/3 units"). A row expands to Event · Your best · Colour.
+  **SUPERSEDED 26 Sept 2026 (v0.21.0.0):** `unitLine` and the three checks are gone; a
+  row now reads "Next Karaka: 3 steps to go · 4 of 6 events hold a colour". See
+  "Best-six domain colours" above.
 - **"Your best" is `EventGrade.best`**, the row that EARNED the event's colour (for a
   lift, the one reaching the highest rung against its own day's bodyweight, not the
   heaviest), else the best row. Display only; nothing grades on it.
@@ -2352,7 +2357,8 @@ Settled in a `/grill-me` with Tāne on 2026-09-24; nine decisions in
 - **`/grades` is a public SERVER component** ("Mā to Taniwha"): the ladder with its
   games/units tables, the three checks, the average rule with a worked example,
   units, age and bodyweight, game ratings. Every number is read from
-  `lib/grading.ts`, never typed. It no longer runs the recheck, so HOME is the
+  `lib/grading.ts`, never typed. (v0.21.0.0: the units table and the three checks are gone; it
+  now explains best six, the games cap on the overall, age, bodyweight and game ratings.) It no longer runs the recheck, so HOME is the
   player's page that confers.
 - **`gradeInk` lives in `lib/grading.ts`, not the component**: a server page cannot
   call a function exported from a `'use client'` file (Next throws at runtime), and
@@ -2628,7 +2634,7 @@ update players set role = 'judge' where id = '[uuid]';
 | Register | /register | Complete | 3-step form, division, display prefs, junior parent fields |
 | Login | /login | Complete | Email + Google OAuth |
 | Dashboard | /dashboard | Complete | **Stats page** (v0.6.2.0): identity + seasonal division rank, the taniwha card (pieces assembling, three point figures, and how many games the next piece costs), four numbers (Games · Events Won · Games Won · PRs), and a ten-spoke radar. **Since the HOME and COLOURS rework (Sept 2026):** a JOIN button to the running game (no code box), the full YOUR COLOURS section (overall colour, expandable domains with Event · Your best · Colour), and a colours radar with Best/Weakest domain by colour. **A player with zero games gets `FirstRunPanel` instead of the numbers and the radar.** The bento grid is gone — judge/koha/profile/PRs are nav destinations, play history and the taniwha picker live behind the card |
-| Colours guide | /grades | Complete | Public explainer, "Mā to Taniwha" (Sept 2026). No personal data: a player's colours live on HOME |
+| Colours guide | /grades | Complete | Public explainer, "Mā to Taniwha" (Sept 2026): best six per domain, the overall as the average of ten capped by games, worked examples computed by the engine. No personal data: a player's colours live on HOME |
 | My Taniwha | /taniwha | Complete | All twelve. Four counts (Taniwha · Pieces · Crowns · Points), then each taniwha as an expandable row revealing its eleven named pieces and what its crown still needs. States the field-of-three win rule |
 | Taniwha History | /taniwha/history | Complete | What the taniwha card opens: the choose/switch picker, pieces earned with the session each landed in (derived — see `limbCrossings`), the play-history timeline, and the colours era |
 | Judge Panel | /judge | Complete | Players tab opens with an **"Approaching a colour"** watchlist (sessions-away). Dedicated page — JudgeCard moved here. Create/end/void sessions, QR code, history, real-time player count, Event Votes panel (Kōwhiringa Tūāhuatanga). Judge bento card on dashboard links here. |
@@ -2829,7 +2835,10 @@ RLS: own + parent (family) + judge.
     replayColours.ts                # History replay (pure): confers each colour when it would have landed, through the live route's own path
     newColours.ts                   # Unseen colours and withdrawals against a per-player localStorage watermark (pure)
                                     #   bodyweightOn() lives in grading.ts: the declaration in force on a lift's own day
-    colourDisplay.ts                # How colours are SHOWN on HOME (pure): bestScoreLabel, unitLine, domainExtremesByColour, bestEventByColour
+    colourDisplay.ts                # How colours are SHOWN on HOME (pure): bestScoreLabel, nextDomainColour, shownDomainRungs, domainExtremesByColour, bestEventByColour
+    gameCounts.ts                   # loadGameCounts: lifetime official games per player, PAGED past PostgREST's 1000-row cap, over countGames.
+                                    #   The games cap on the overall colour reads it on the leaderboard, family chips and kaiwhakawā list. Null = unknown, never zero
+    leaderboardScores.ts            # Season points and best/worst domain for /leaderboard (pure): seasonPoints, eventRungInGame, GAME_RESULT_RUNG, rankBy
     scoreFormat.ts                  # formatPR, moved out of the 'use client' components/play/chrome.tsx (which re-exports it) so pure libs can call it
     useNewColours.ts                # The hook HOME uses (COLOURS did, until it became a public guide): runs the recheck and yields the moment for components/NewColourCard.tsx
     eventData.ts                    # Single source of truth for all events (128) + difficulty+time encode/decode helpers (encodeDiffTime/decodeDiffTime/isTimedEffort, TIMED_EFFORT_SLUGS).
