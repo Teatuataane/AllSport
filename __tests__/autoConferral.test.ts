@@ -524,6 +524,8 @@ describe('awardAfterWithdraw — a jump taken back must not overshoot', () => {
     expect(taken.map(a => a.id)).toEqual(['p'])
     const back = awardAfterWithdraw('p1', state, 3, new Set(taken.map(a => a.id)))
     expect(back).toMatchObject({ player_id: 'p1', domain_number: 3, rung: 5, grade_name: gradeForRung(5).name, conferred_by: null })
+    // Dated to the jump it replaces, so HOME never celebrates it as a new colour.
+    expect(back!.conferred_at).toBe('2026-09-01T00:00:00Z')
   })
 
   it('puts back nothing when an award left standing already covers it', () => {
@@ -543,6 +545,6 @@ describe('awardAfterWithdraw — a jump taken back must not overshoot', () => {
 
   it('is called by the route after a withdrawal', () => {
     const route = readFileSync(join(process.cwd(), 'app/api/grades/recheck/route.ts'), 'utf8')
-    expect(route).toMatch(/awardAfterWithdraw\(playerId, state, req\.domain, deleted\)/)
+    expect(route).toMatch(/awardAfterWithdraw\(playerId, \{ \.\.\.fresh, awards: state\.awards \}, req\.domain, deleted\)/)
   })
 })

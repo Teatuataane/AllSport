@@ -101,7 +101,7 @@ export function awardAfterWithdraw(
   state: GradeState,
   domainNumber: number,
   withdrawnIds: ReadonlySet<string>,
-): PendingAward | null {
+): (PendingAward & { conferred_at: string }) | null {
   if (!state.schemaReady) return null
   const d = state.grades.domains.find(x => x.domainNumber === domainNumber)
   if (!d || d.availableCount === 0 || d.rung <= 0) return null
@@ -109,7 +109,15 @@ export function awardAfterWithdraw(
     .filter(a => a.domain_number === domainNumber && !(a.id && withdrawnIds.has(a.id)))
     .reduce((m, a) => Math.max(m, a.rung), 0)
   if (d.rung <= left) return null
+  // Dated to the jump it replaces, never now: a fresh date would open HOME on a
+  // "New colour" celebration right beside the "taken back" notice, a demotion
+  // announced as a win. The player has held at least this colour since then.
+  const jump = state.awards
+    .filter(a => a.domain_number === domainNumber && a.id && withdrawnIds.has(a.id))
+    .sort((a, b) => b.rung - a.rung)[0]
+  if (!jump) return null
   return {
+    conferred_at: jump.conferred_at,
     player_id: playerId,
     domain_number: domainNumber,
     rung: d.rung,

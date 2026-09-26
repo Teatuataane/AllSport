@@ -273,6 +273,8 @@ describe('recheck route: withdrawal', () => {
     h.upsertData = [{ domain_number: 3, rung: 5 }]
     const body = await (await post({ playerId: 'me', withdraw: { domain: 3 } })).json()
     expect(body.reconferred).toBe('Kākāriki')
+    // Re-judged on a fresh read, in case another kaiwhakawā deleted more evidence meanwhile.
+    expect(h.loadCalls.length).toBe(2)
     expect(h.adminOps).toEqual(['delete:grade_awards', 'insert:grade_withdrawals', 'upsert:grade_awards'])
     expect(h.upsertArgs!.opts).toEqual({ onConflict: 'player_id,domain_number,rung', ignoreDuplicates: true })
   })

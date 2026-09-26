@@ -39,6 +39,13 @@ async function loadAccents(ids: string[]): Promise<Map<string, string>> {
     supabase.from('grade_awards').select('player_id, domain_number, rung').in('player_id', missing),
     loadGameCounts(supabase, missing),
   ])
+  // Unknown games: show the brand red for now and cache NOTHING, so the next
+  // mount retries the count rather than keeping a wrong chip all session.
+  if (!games) {
+    const out = new Map(accentCache)
+    for (const id of missing) out.set(id, FALLBACK_ACCENT)
+    return out
+  }
   const held = new Map<string, Map<number, number>>()
   for (const a of (awards.data ?? []) as { player_id: string; domain_number: number; rung: number }[]) {
     const m = held.get(a.player_id) ?? new Map<number, number>()
@@ -46,9 +53,7 @@ async function loadAccents(ids: string[]): Promise<Map<string, string>> {
     held.set(a.player_id, m)
   }
   for (const [id, m] of held) {
-    // An unreadable count is unknown, not zero: leave the colour uncapped
-    // rather than paint every chip Mā on a network blip.
-    const overall = overallRung(m.values(), games ? (games.get(id) ?? 0) : Number.MAX_SAFE_INTEGER)
+    const overall = overallRung(m.values(), games.get(id) ?? 0)
     if (overall === 0) continue
     const g = gradeForRung(overall)
     // A 6-digit hex, never a var(): it is suffixed with an alpha below. Taniwha

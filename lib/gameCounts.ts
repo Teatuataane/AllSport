@@ -35,14 +35,19 @@ export async function loadGameCounts(
   if (playerIds && playerIds.length === 0) return new Map()
 
   const rows: { player_id: string | null; session_id: string }[] = []
+  // KEYSET, not offset: a score written or deleted mid-scan (a live game)
+  // would shift an offset page and skip a row.
+  let after: string | null = null
   for (let page = 0; page < MAX_PAGES; page++) {
-    let q = db.from('results').select('player_id, session_id')
+    let q = db.from('results').select('id, player_id, session_id')
     if (playerIds) q = q.in('player_id', [...playerIds])
-    // Ordered, or two pages could overlap or skip rows.
-    const { data, error } = await q.order('id', { ascending: true }).range(page * PAGE, page * PAGE + PAGE - 1)
+    if (after) q = q.gt('id', after)
+    const { data, error } = await q.order('id', { ascending: true }).limit(PAGE)
     if (error) return null
-    rows.push(...((data ?? []) as typeof rows))
-    if (!data || data.length < PAGE) break
+    const got = (data ?? []) as (typeof rows[number] & { id: string })[]
+    rows.push(...got)
+    if (got.length < PAGE) break
+    after = got[got.length - 1].id
     if (page === MAX_PAGES - 1) return null
   }
 

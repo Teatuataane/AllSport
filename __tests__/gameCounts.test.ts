@@ -5,6 +5,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 // A fake client serving `results` in pages, the way PostgREST's max_rows does.
 function fakeDb(rows: { player_id: string | null; session_id: string }[], opts: { cap?: number; notGames?: string[]; fail?: 'results' | 'sessions' } = {}) {
   const cap = opts.cap ?? 1000
+  const keyed = rows.map((r, i) => ({ ...r, id: `r${String(i).padStart(6, '0')}` }))
   const calls: { from: number; to: number }[] = []
   const db = {
     from(table: string) {
@@ -12,15 +13,17 @@ function fakeDb(rows: { player_id: string | null; session_id: string }[], opts: 
         return { select: () => ({ or: async () => opts.fail === 'sessions' ? { data: null, error: { code: 'x' } } : { data: (opts.notGames ?? []).map(id => ({ id })), error: null } }) }
       }
       let ids: string[] | null = null
+      let after: string | null = null
       const q = {
         select: () => q,
         in: (_c: string, v: string[]) => { ids = v; return q },
+        gt: (_c: string, v: string) => { after = v; return q },
         order: () => q,
-        range: async (from: number, to: number) => {
-          calls.push({ from, to })
+        limit: async (n: number) => {
+          calls.push({ from: 0, to: n })
           if (opts.fail === 'results') return { data: null, error: { code: 'x' } }
-          const all = ids ? rows.filter(r => ids!.includes(r.player_id ?? '')) : rows
-          return { data: all.slice(from, Math.min(to + 1, from + cap)), error: null }
+          const all = keyed.filter(r => (!ids || ids.includes(r.player_id ?? '')) && (!after || r.id > after))
+          return { data: all.slice(0, Math.min(n, cap)), error: null }
         },
       }
       return q

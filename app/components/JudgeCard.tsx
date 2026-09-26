@@ -468,9 +468,11 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
       m.set(a.domain_number, Math.max(m.get(a.domain_number) ?? 0, a.rung))
       held.set(a.player_id, m)
     }
-    // Unknown (a failed read) is shown as 0 games here; the list is a kaiwhakawā
-    // view, and a reload retries.
-    const games: Record<string, number> = Object.fromEntries(counted ?? [])
+    // Null is UNKNOWN (lib/gameCounts.ts), never zero games: ranking on zero
+    // would cap everyone at Mā. Leave the cap off until a reload retries.
+    const games: Record<string, number> = counted
+      ? Object.fromEntries(counted)
+      : Object.fromEntries((playersRes.data || []).map(p => [p.id as string, Number.MAX_SAFE_INTEGER]))
 
     const byId = new Map((playersRes.data || []).map(p => [p.id as string, p]))
     const ranked = rankByColours((playersRes.data || []).map(p => ({
@@ -483,7 +485,7 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
       id: r.playerId,
       name: r.name,
       division: (byId.get(r.playerId)?.division || '') as string,
-      sessions: r.games,
+      sessions: counted ? r.games : 0,
       icon: (byId.get(r.playerId)?.icon ?? null) as string | null,
       overall: displayOverall(r),
       domainsHeld: r.domainsHeld,

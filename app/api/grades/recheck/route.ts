@@ -199,7 +199,13 @@ async function withdrawIn(
   // request (awardAfterWithdraw). Best-effort: a failure here is repaired by
   // the next forced recheck, and must not undo a withdrawal that landed.
   let reconferred: string | null = null
-  const replacement = taken.length > 0 ? awardAfterWithdraw(playerId, state, req.domain, deleted) : null
+  // Re-read first: another kaiwhakawā may have deleted evidence in this domain
+  // since `state` was loaded, and putting back a colour on stale evidence would
+  // leave the player above what remains, which no ordinary recheck takes away.
+  const fresh = taken.length > 0 ? await loadGradeState(db, playerId) : null
+  const replacement = fresh && fresh.complete !== false
+    ? awardAfterWithdraw(playerId, { ...fresh, awards: state.awards }, req.domain, deleted)
+    : null
   if (replacement) {
     // select(): report it only if THIS request inserted it, as the recheck does.
     const { data: put, error: upError } = await admin.from('grade_awards')
