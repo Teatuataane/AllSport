@@ -36,9 +36,11 @@ type Props = {
   locked?: boolean
   /** Shown when a kaiwhakawā is recording for somebody else. */
   forName?: string | null
+  /** Told the new weight once it saves, so the screen can re-colour its lifts. */
+  onSaved?: (kg: number) => void
 }
 
-export default function BodyweightField({ playerId, eventSlugs, day, locked, forName }: Props) {
+export default function BodyweightField({ playerId, eventSlugs, day, locked, forName, onSaved }: Props) {
   const [kg, setKg] = useState('')
   const [saved, setSaved] = useState<number | null>(null)
   const [carried, setCarried] = useState<{ kg: number; on: string } | null>(null)
@@ -88,6 +90,7 @@ export default function BodyweightField({ playerId, eventSlugs, day, locked, for
       return
     }
     setSaved(n); setCarried(null); setState('done'); setMsg('')
+    onSaved?.(n)
   }
 
   const dirty = saved === null || Number(kg) !== saved

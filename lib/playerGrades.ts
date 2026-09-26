@@ -49,6 +49,12 @@ export type GradeResultRow = {
    * entry re-price a whole domain, which is what the band on /profile allowed.
    */
   bodyweightKg?: number | null
+  /**
+   * The score as it was written at the time ("100kg × 5 · est. 1RM 112.5kg").
+   * Display only: HOME prefers it over re-formatting raw_score, because for a
+   * natural-format entry raw_score is a CONVERSION and must read as one.
+   */
+  score_label?: string | null
 }
 
 export type EventGrade = {
@@ -71,6 +77,14 @@ export type EventGrade = {
   played: boolean
   /** Where the result behind `rung` came from. Absent when nothing earns a colour, or the rows carry no source. */
   source?: EvidenceSource
+  /**
+   * The drill score shown beside the colour on HOME: the row that earned
+   * `rung`, or the best row when none earns anything. Display only — nothing
+   * grades on it.
+   */
+  best?: Pick<GradeResultRow, 'raw_score' | 'weight_kg' | 'difficulty_tier' | 'score_label'>
+  /** The head-to-head rating, when the player has one in this sport. */
+  rating?: SportRating
 }
 
 export type PlayerGrades = {
@@ -111,10 +125,14 @@ export function eventGrade(
   const drillRows = rows.filter(r => r.raw_score != null && !isGameRow(ev, r))
   const played = rows.length > 0 || !!rating
 
-  if (!s) return { slug: ev.slug, rung: 0, gradeable: false, played }
+  const pick = (r: GradeResultRow | undefined) =>
+    r ? { best: { raw_score: r.raw_score, weight_kg: r.weight_kg, difficulty_tier: r.difficulty_tier, ...(r.score_label ? { score_label: r.score_label } : {}) } } : {}
+  const topRow = maxBy(drillRows, r => r.raw_score!)
+  const withRating = rating ? { rating } : {}
+  if (!s) return { slug: ev.slug, rung: 0, gradeable: false, played, ...pick(topRow), ...withRating }
   // Wrestling: no fair solo drill, so its only colours are rating colours,
   // and a rating only comes from matches recorded in official sessions.
-  if (s.kind === 'rating') return { slug: ev.slug, rung: rated, gradeable: true, played, ...(rated ? { source: 'game' as const } : {}) }
+  if (s.kind === 'rating') return { slug: ev.slug, rung: rated, gradeable: true, played, ...withRating, ...(rated ? { source: 'game' as const } : {}) }
 
   const ladder = s.all ?? s[ladderFor(p)] ?? []
   let drill = 0
@@ -148,7 +166,7 @@ export function eventGrade(
     // brand new player their strength domain is waiting on a number when it is
     // waiting on them turning up.
     if (!anyBw && drillRows.length > 0) {
-      return { slug: ev.slug, rung: 0, gradeable: true, bodyweightBlocked: true, played }
+      return { slug: ev.slug, rung: 0, gradeable: true, bodyweightBlocked: true, played, ...pick(topRow) }
     }
   } else if (drillRows.length) {
     bestRow = maxBy(drillRows, r => r.raw_score!)
@@ -158,7 +176,12 @@ export function eventGrade(
   const rung = s.game ? gameEventRung(drill, rated) : drill
   // The rating comes from recorded matches, which only official sessions hold.
   const source = rung === 0 ? undefined : s.game && rated >= rung && rated > Math.min(drill, DRILL_CAP) ? 'game' : bestRow?.source
-  return { slug: ev.slug, rung, gradeable: true, played, ...(source ? { source } : {}) }
+  // A lift's best is the row that reached the highest rung, not the heaviest,
+  // since each is graded against its own bodyweight. With no rung, the best
+  // raw_score, the same order /prs sorts on: the heaviest LOAD is not the best
+  // estimated 1RM once natural formats convert sets (100kg × 1 vs 90kg × 8).
+  const shown = bestRow ?? topRow
+  return { slug: ev.slug, rung, gradeable: true, played, ...pick(shown), ...withRating, ...(source ? { source } : {}) }
 }
 
 /** The row with the highest key; the earliest on a tie. */
@@ -305,6 +328,8 @@ export type GameResultRow = {
   raw_score: number | null
   weight_kg: number | null
   difficulty_tier: string | null
+  /** As written at the time. Display only. */
+  score_label?: string | null
   /** When it counts for the training gate: the session's start. */
   at: string
   /** The player's declared bodyweight on this game's day. See GradeResultRow. */
@@ -328,6 +353,7 @@ export function gameEvidence(rows: readonly GameResultRow[]): { rows: GradeResul
     out.push({
       event_name: r.event_name, raw_score: r.raw_score, weight_kg: r.weight_kg,
       difficulty_tier: r.difficulty_tier, source: 'game', bodyweightKg: r.bodyweightKg,
+      ...(r.score_label ? { score_label: r.score_label } : {}),
     })
     if (!r.closed) continue
     games.add(r.session_id)

@@ -3,7 +3,7 @@ import { EVENTS } from '@/lib/eventData'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import {
-  playList, addChoice, removeChoice, swapChoices, domainsCovered, type OfficialEvent,
+  playList, domainGroups, addChoices, removeChoice, domainChoices, domainsCovered, type OfficialEvent,
 } from '@/lib/gameSwaps'
 import { getEventBySlug } from '@/lib/eventData'
 
@@ -18,32 +18,32 @@ const official = (slug: string, id = slug): OfficialEvent => {
 const ten: OfficialEvent[] = [official('deadlift'), official('flag'), official('tennis')]
 
 describe('the play list', () => {
-  it('is the official events when nothing has been swapped', () => {
+  it('is the official events when nothing has been added', () => {
     const list = playList(ten, [])
     expect(list).toHaveLength(3)
     expect(list.every(s => s.kind === 'official')).toBe(true)
   })
 
-  it('puts a swap under the event it stands in for', () => {
-    const list = playList(ten, ['pause-bench'])
-    expect(list.map(s => s.kind)).toEqual(['official', 'swap', 'official', 'official'])
-    expect(list[1].se.event_name).toBe('Pause Bench')
-    expect(list[1].replaces?.event_name).toBe('Deadlift')
+  it('puts an added event under its own domain, whatever order it was picked in', () => {
+    const list = playList(ten, ['badminton', 'pause-bench'])
+    expect(list.map(s => s.se.event_slug)).toEqual(['deadlift', 'pause-bench', 'flag', 'tennis', 'badminton'])
+    expect(list.map(s => s.kind)).toEqual(['official', 'added', 'official', 'official', 'added'])
   })
 
-  it('calls the second event in a domain an extra, not a second swap', () => {
-    const list = playList(ten, ['pause-bench', 'pause-row'])
-    expect(list.map(s => s.kind)).toEqual(['official', 'swap', 'extra', 'official', 'official'])
-    expect(list[2].replaces).toBeUndefined()
+  it('keeps several added in one domain in the order picked', () => {
+    const list = playList(ten, ['pause-row', 'pause-bench'])
+    expect(list.map(s => s.se.event_slug)).toEqual(['deadlift', 'pause-row', 'pause-bench', 'flag', 'tennis'])
   })
 
   it('drops a choice that IS the official event, so one score cannot go in two places', () => {
     expect(playList(ten, ['deadlift'])).toHaveLength(3)
   })
 
-  it('keeps an extra from a domain the game has no event for', () => {
-    const list = playList([official('deadlift')], ['tennis'])
-    expect(list.map(s => s.kind)).toEqual(['official', 'extra'])
+  it('gives a domain the game has no event for a group of its own', () => {
+    const groups = domainGroups([official('deadlift')], ['tennis'])
+    expect(groups).toHaveLength(2)
+    expect(groups[1].official).toBeNull()
+    expect(groups[1].added.map(s => s.se.event_slug)).toEqual(['tennis'])
   })
 
   it('ignores a slug the roster no longer has', () => {
@@ -53,7 +53,7 @@ describe('the play list', () => {
 
 describe('choosing', () => {
   it('offers the rest of the domain, minus what is already in play', () => {
-    const choices = swapChoices(1, ['deadlift'])
+    const choices = domainChoices(1, ['deadlift'])
     // Domain 1 holds 14 events since Sept 2026, so this is the whole domain
     // minus the one already in play. Derived, not a literal, because the pool
     // is now expected to keep growing.
@@ -61,19 +61,19 @@ describe('choosing', () => {
     expect(choices.some(e => e.slug === 'deadlift')).toBe(false)
   })
 
-  it('adds once, in the order picked', () => {
-    expect(addChoice(['pause-bench'], 'pause-row')).toEqual(['pause-bench', 'pause-row'])
-    expect(addChoice(['pause-bench'], 'pause-bench')).toEqual(['pause-bench'])
+  it('adds several at once, each once, in the order picked', () => {
+    expect(addChoices(['pause-bench'], ['pause-row', 'pause-bench', 'arthur-lift']))
+      .toEqual(['pause-bench', 'pause-row', 'arthur-lift'])
   })
 
-  it('will not remove a swap that has already been scored', () => {
+  it('will not remove an added event that has already been scored', () => {
     expect(removeChoice(['pause-bench'], 'pause-bench', new Set())).toEqual([])
     expect(removeChoice(['pause-bench'], 'pause-bench', new Set(['pause-bench']))).toEqual(['pause-bench'])
   })
 })
 
 describe('progress', () => {
-  it('counts a swapped domain as covered, because it is the player’s workout', () => {
+  it('counts a domain covered by an added event, because it is the player’s workout', () => {
     const covered = domainsCovered(ten, new Set(['tennis']), new Set(['pause-bench']))
     // Coordination from the official Tennis, Maximal Strength from the swap.
     expect([...covered].sort((a, b) => a - b)).toEqual([1, 9])

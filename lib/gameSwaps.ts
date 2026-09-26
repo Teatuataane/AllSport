@@ -1,15 +1,17 @@
-// ─── Swaps and extras at an official game ────────────────────────────────────
+// ─── Added events at an official game ────────────────────────────────────────
 // A player who is injured, or simply not interested in today's Deadlift, can
-// swap it for another Maximal Strength event, or add extra events on top. Both
-// count toward their colours and their training; neither counts toward the
-// placement, because the medal table compares the SAME ten events for everyone.
+// add other Maximal Strength events on top, from the + on Deadlift's button.
+// They count toward colours and training; never toward the placement, because
+// the medal table compares the SAME ten events for everyone.
 //
-// A swapped event is ranked exactly as a missed one: last in that event. That
-// is the rule the sport already had, so nothing in the placement code changes.
+// An official event left unplayed is ranked exactly as a missed one: last in
+// that event. That is the rule the sport already had, so nothing in the
+// placement code changes.
 //
-// Storage: the swapped and extra events live in a WORKOUT linked to the game
-// (workouts.session_id), so nothing that ranks ever sees them. This module is
-// the pure half — what the play list looks like once a player has swapped.
+// Storage: the added events live in a WORKOUT linked to the game
+// (workouts.session_id), so nothing that ranks ever sees them. Code and tables
+// still say "swap" (useGameSwaps, the migration), from when a first pick in a
+// domain was called one. This module is the pure half: what the screen lists.
 
 import { getEventBySlug, type EventData } from './eventData'
 import { EVENTS } from './eventData'
@@ -29,23 +31,30 @@ export type OfficialEvent = {
  * A row on the play list.
  *
  *   official — one of the ten. Scoring it is what places you.
- *   swap     — chosen instead of the official event in that domain.
- *   extra    — chosen on top, in a domain that already has its event covered.
+ *   added    — chosen on top, in the same domain. Counts toward colours and
+ *              training, never toward the placement.
  *
- * A swap and an extra are the same thing to the database; the difference is
- * what the screen says, and a swap is what the player reaches for when they
- * cannot do the official event.
+ * There used to be a third kind, a "swap", for the first event chosen in a
+ * domain. Players never needed the difference (Tāne, 26 Sept 2026): an
+ * official event not played is ranked last either way, so every choice is
+ * simply added.
  */
-export type SlotKind = 'official' | 'swap' | 'extra'
+export type SlotKind = 'official' | 'added'
 
 export type PlaySlot = {
   kind: SlotKind
   se: PlayEvent
-  /** For a swap: the official event it stands in for. */
-  replaces?: OfficialEvent
 }
 
-/** The play-screen shape of a rostered event. A swap's id is its slug. */
+/** One domain on the play screen: its official event, then what was added. */
+export type DomainGroup = {
+  domainNumber: number
+  domainName: string
+  official: PlaySlot | null
+  added: PlaySlot[]
+}
+
+/** The play-screen shape of a rostered event. An added event's id is its slug. */
 export function slotEvent(ev: EventData): PlayEvent {
   return {
     id: ev.slug,
@@ -57,52 +66,55 @@ export function slotEvent(ev: EventData): PlayEvent {
   }
 }
 
-/** The other events of a domain — what a swap can choose from (decision 4). */
-export function swapChoices(domainNumber: number, exclude: readonly string[]): EventData[] {
+/** The other events of a domain: what the + on its official event offers. */
+export function domainChoices(domainNumber: number, exclude: readonly string[]): EventData[] {
   return EVENTS.filter(e => e.domainNumber === domainNumber && !exclude.includes(e.slug))
 }
 
 /**
- * The list a player sees: the ten official events, each followed by whatever
- * they chose in its place, then anything chosen in a domain the roster no
- * longer has.
+ * The screen, domain by domain: each official event with whatever the player
+ * added in its domain beneath it, in the order they were picked. The order
+ * never changes as events are scored, so nothing moves under a player's thumb.
  *
- * The FIRST chosen event in a domain is that domain's swap; any further one is
- * an extra. A chosen event that IS the official event is dropped — scoring it
- * is what the official row already does, and showing it twice would let a
- * player put the same score in two places.
+ * A chosen event that IS the official event is dropped — scoring it is what the
+ * official row already does, and showing it twice would let a player put the
+ * same score in two places. A choice in a domain the game has no event for
+ * (never today, since every game draws all ten) gets a group of its own.
  */
-export function playList(official: readonly OfficialEvent[], chosen: readonly string[]): PlaySlot[] {
+export function domainGroups(official: readonly OfficialEvent[], chosen: readonly string[]): DomainGroup[] {
   const officialSlugs = new Set(official.map(o => o.event_slug))
-  const used = new Set<string>()
-  const out: PlaySlot[] = []
-
-  for (const o of official) {
-    out.push({ kind: 'official', se: { ...o } })
-    let first = true
-    for (const slug of chosen) {
-      if (used.has(slug) || officialSlugs.has(slug)) continue
-      const ev = getEventBySlug(slug)
-      if (!ev || ev.domainNumber !== o.domain_number) continue
-      used.add(slug)
-      out.push({ kind: first ? 'swap' : 'extra', se: slotEvent(ev), ...(first ? { replaces: o } : {}) })
-      first = false
-    }
-  }
-
-  // Anything left: a domain the game has no event for (never today, since every
-  // game draws all ten), or an event the roster dropped.
+  const groups: DomainGroup[] = official.map(o => ({
+    domainNumber: o.domain_number,
+    domainName: o.domain_name,
+    official: { kind: 'official', se: { ...o } },
+    added: [],
+  }))
+  const seen = new Set<string>()
   for (const slug of chosen) {
-    if (used.has(slug) || officialSlugs.has(slug)) continue
+    if (seen.has(slug) || officialSlugs.has(slug)) continue
     const ev = getEventBySlug(slug)
-    if (ev) out.push({ kind: 'extra', se: slotEvent(ev) })
+    if (!ev) continue
+    seen.add(slug)
+    let g = groups.find(x => x.domainNumber === ev.domainNumber)
+    if (!g) {
+      g = { domainNumber: ev.domainNumber, domainName: ev.domain, official: null, added: [] }
+      groups.push(g)
+    }
+    g.added.push({ kind: 'added', se: slotEvent(ev) })
   }
-  return out
+  return groups
 }
 
-/** Add a chosen event, keeping the order the player picked them in. */
-export function addChoice(chosen: readonly string[], slug: string): string[] {
-  return chosen.includes(slug) ? [...chosen] : [...chosen, slug]
+/** Every row on the screen, in screen order. */
+export function playList(official: readonly OfficialEvent[], chosen: readonly string[]): PlaySlot[] {
+  return domainGroups(official, chosen).flatMap(g => [...(g.official ? [g.official] : []), ...g.added])
+}
+
+/** Add chosen events, once each, keeping the order the player picked them in. */
+export function addChoices(chosen: readonly string[], slugs: readonly string[]): string[] {
+  const out = [...chosen]
+  for (const s of slugs) if (!out.includes(s)) out.push(s)
+  return out
 }
 
 /**
@@ -115,9 +127,9 @@ export function removeChoice(chosen: readonly string[], slug: string, scoredSlug
 }
 
 /**
- * How many of the ten domains the player has covered, official or swapped.
- * The progress bar counts a swap, because it is their workout; the placement
- * banner does not, because a swapped event is ranked last.
+ * How many of the ten domains the player has covered, official or added.
+ * The progress bar counts an added event, because it is their workout; the
+ * placement banner does not, because an unplayed official event is ranked last.
  */
 export function domainsCovered(
   official: readonly OfficialEvent[],

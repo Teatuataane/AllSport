@@ -10,21 +10,22 @@
 //      published standards, not points.
 //   2. Your colour in a domain is the highest grade whose standard you have met
 //      in at least HALF of that domain's events.
-//   3. Your overall grade is your LOWEST domain colour.
+//   3. Your overall grade is the AVERAGE of your ten domain colours, rounded
+//      down (overallRung). It was the LOWEST domain until 24 September 2026.
 //
-// Rule 3 is the whole point: AllSport is "one sport, every sport", so a grade
-// set by your weakest domain says structurally that you are only as good as the
-// thing you avoid. Average and maximum both reward specialists, which is the
-// opposite of the sport. It also makes your worst domain the only thing worth
-// training, which is a self-correcting coaching system.
+// Rule 3 still says "one sport, every sport": the average is always over TEN,
+// so a domain on Mā counts zero and drags it. But under "lowest", work in nine
+// domains counted for nothing while the tenth lagged; Tāne changed it so that
+// raising ANY domain moves the overall and players are rewarded for bringing up
+// several things, not only the one they avoid.
 //
 // ── Why HALF the events, and why "of the events available to you" ───────────
 // Requiring half a domain rather than one event is what stops a grade being
 // won on a single favourable movement. But applied to every event in the pool
 // it would exclude the people the charity exists for: most of Maximal
 // Strength's events load the shoulder, so a player whose shoulder will never
-// press has only a few available and could never reach six — and under rule 3
-// that caps their overall grade forever.
+// press has only a few available and could never reach six — and that domain
+// would drag their overall grade forever.
 //
 // And the ask never exceeds SIX (DOMAIN_REQUIRED_CAP), however big a pool
 // grows. Domains stopped being even in Sept 2026 — Flexibility holds sixteen —
@@ -108,6 +109,14 @@ export const GRADES: GradeRung[] = [
 export const TOP_RUNG = 12
 export const DOMAIN_COUNT = 10
 
+/**
+ * A colour's ink on a dark page: Taniwha is black, so it reads as white, and
+ * Mā reads as a muted grey. Pure, so server pages (the colours guide) can call it.
+ */
+export function gradeInk(g: GradeRung): string {
+  return g.rung === 0 ? '#777' : g.inverted ? '#ffffff' : g.hex
+}
+
 /** Mā for 0, otherwise the rung. Out-of-range input is clamped, never thrown. */
 export function gradeForRung(rung: number): GradeRung {
   if (rung <= 0) return MA
@@ -184,8 +193,11 @@ export type DomainGradeResult = {
    * The domain has no colour AND at least one of its events is a strength
    * standard this player has not declared a bodyweight for.
    *
-   * It exists so overallGrade can tell "not graded here yet" from "cannot be
-   * graded here until a number is declared". Maximal Strength holds 12 ratio
+   * Display only since 24 September 2026: the overall colour became an
+   * average, and a blocked domain now counts 0 like any other. It still tells
+   * "not graded here yet" from "cannot be graded here until a number is
+   * declared", which is worth saying to the player. The history below is why
+   * it existed: Maximal Strength holds 12 ratio
    * events against 14, so an undeclared player can reach at most 2 of the 6
    * required and the domain is not merely hard, it is unreachable — and an
    * ungraded domain used to veto the overall colour outright, so a player
@@ -275,44 +287,44 @@ export function domainGrade(input: DomainGradeInput): DomainGradeResult {
 
 // ─── Rule 3: the overall grade ───────────────────────────────────────────────
 
+/**
+ * The overall colour: the AVERAGE of the ten domain colours, rounded down
+ * (Tāne, 24 September 2026 — was the lowest domain, null until all ten held one).
+ *
+ * An average so that raising ANY domain moves it: under "lowest", work in nine
+ * domains counted for nothing while the tenth lagged. A domain on Mā counts 0,
+ * so a gap still drags. Always over DOMAIN_COUNT, never over the domains held,
+ * or holding one Taniwha domain would make a player Taniwha overall.
+ *
+ * The bodyweight exception went with the old rule. It existed because under
+ * "lowest" an undeclared bodyweight made an overall colour impossible; under an
+ * average it only drags a little, and the leaderboard (which reads conferred
+ * colours only) cannot see who is blocked, so keeping it would make HOME and
+ * BOARD disagree. Defined ONCE, here: lib/colourBoard.ts and the family chips
+ * call it.
+ */
+export function overallRung(rungs: Iterable<number>): number {
+  let sum = 0
+  for (const r of rungs) sum += Math.max(0, Math.min(TOP_RUNG, r))
+  return Math.floor(sum / DOMAIN_COUNT + 1e-9)
+}
+
 export type OverallGradeResult = {
-  /** null until every domain holds a colour — see below. */
-  rung: number | null
-  /** Domains still on Mā. These are what the overall grade is waiting on. */
+  /** The average domain colour, rounded down. 0 = Mā. */
+  rung: number
+  /** Domains still on Mā. Each one drags the average. */
   ungraded: number[]
   /** The domains sitting at the minimum — what to train next. */
   weakest: number[]
 }
 
-/**
- * The lowest domain colour, once there is one in every domain.
- *
- * Null rather than Mā while any domain is ungraded, because the two mean
- * different things to a player: "you have not been graded in Flexibility yet"
- * is progress, "you are Mā" is a verdict. The UI leads with the ten domain
- * colours and only shows an overall grade once all ten exist.
- */
 export function overallGrade(domains: readonly DomainGradeResult[]): OverallGradeResult {
-  // A domain blocked ONLY by a missing bodyweight does not veto the overall
-  // colour (Tāne, 23 September 2026). Strength is genuinely gated on declaring
-  // a number, but 12 of Maximal Strength's 14 events are ratio standards, so
-  // treating it as merely "ungraded" would take the overall colour off every
-  // undeclared player however well they did in the other nine domains.
-  //
-  // The blocked domain contributes no rung, so it cannot be the weakest, and
-  // declaring later can LOWER the overall. That is correct and safe: only
-  // domain colours are conferred into grade_awards, the overall is derived for
-  // display, so nothing is taken back.
-  const ungraded = domains.filter((d) => d.rung === 0 && !d.blockedByBodyweight).map((d) => d.domainNumber)
-  const graded = domains.filter((d) => d.rung > 0)
-  if (domains.length < DOMAIN_COUNT || ungraded.length > 0 || graded.length === 0) {
-    return { rung: null, ungraded, weakest: [] }
-  }
-  const min = Math.min(...graded.map((d) => d.rung))
+  const rungs = domains.map((d) => d.rung)
+  const min = rungs.length ? Math.min(...rungs) : 0
   return {
-    rung: min,
-    ungraded: [],
-    weakest: graded.filter((d) => d.rung === min).map((d) => d.domainNumber),
+    rung: overallRung(rungs),
+    ungraded: domains.filter((d) => d.rung === 0).map((d) => d.domainNumber),
+    weakest: domains.filter((d) => d.rung === min).map((d) => d.domainNumber),
   }
 }
 

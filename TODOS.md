@@ -2,6 +2,8 @@
 
 ## ✅ Done
 
+- **Game screen by domain, + to add events, buttons coloured by grade** (v0.19.0.0, 2026-09-26). Designed in a `/grill-me`. Ten plain domain titles in a fixed order (no Still to play / Scored split); a + on each official event opens that domain's events as a multi-select sheet; added events sit under it with a ✕ until scored; "Swap this event" and "+ Add an event" removed. A scored button takes the colour `eventGrade` gives today's rows (`lib/scoreColour.ts`, fed by `lib/useGradeProfile.ts`). The kaiwhakawā tab keeps its existing add capability via the same +. No migration. **Not yet seen on a live game with a real login** — the visual check ran on a throwaway page with sample data. Check a colour against HOME at the next session.
+- **HOME and COLOURS rework** (v0.18.0.0, 2026-09-25). Designed in a `/grill-me` (nine decisions, `docs/designs/home-colours-rework-spec.md`, gitignored). The overall colour is the AVERAGE of the ten domains, rounded down (was the lowest); HOME carries YOUR COLOURS in full (expandable domains with Event · Your best · Colour); the radar shows held colours on twelve rings; `/grades` is a public guide; the join block is one JOIN button with no code box (the QR `?code=` still joins). No migration.
 - **Workout customisation shipped in four parts and applied to production** (v0.10.0.0 → v0.14.0.0, 2026-09-19/20). Designed in a `/grill-me` (21 decisions, `docs/designs/workout-customisation-spec.md`, gitignored).
   - **Season medal table** on `/leaderboard`: this year's 1st/2nd/3rd per division, Olympic order. Read from `results.placement` in the payload the page already loads, so no migration. Walkovers count — 64 of 103 division-games in 2026 had one player — which Tāne chose knowingly.
   - **Personal games replace `/log`**: one setup picker and one play screen for a workout and an official game. `components/play/` is the shared scoring UI, and the sheet no longer writes to a table, which is what lets `results` and `workout_entries` share it.
@@ -388,6 +390,7 @@ from `main` and this is a review branch.
 **What restricting would cost:** /leaderboard and /schedule both read `sessions` publicly, so hiding just `session_code` means either a `sessions_public` view (the `players_public` pattern) or column-level grants — and column grants are the brittle option, because a table-level SELECT grant overrides them and any new column silently becomes unreadable.
 **Noticed:** OWASP audit, 2026-08-16; wildcard fixed v0.5.8.1, 2026-08-21
 **Effort:** XS to close as won't-fix; M to actually restrict
+**Update 2026-09-25 (v0.18.0.0):** HOME no longer has a box to type a code into; the code survives only inside the kaiwhakawā's QR link. That makes won't-fix easier to justify.
 
 ### Update unit tests for new event data
 **What:** `__tests__/eventData.test.ts` has tests referencing old event slugs (30-15-test, sprint-repeats) and old getBonusTargets spec (3 targets, points 15). These now reflect the new single-task spec.

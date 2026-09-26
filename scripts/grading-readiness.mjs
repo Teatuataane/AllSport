@@ -4,8 +4,8 @@
 // Answers one question: how close is the club to being gradeable?
 //
 // Grading needs the standard met in HALF of a domain's gradeable events, and
-// the overall grade is the LOWEST domain — so a single domain that cannot offer
-// enough gradeable events blocks every player. This report tracks the two
+// the overall grade is the AVERAGE of the ten domains — so a domain that cannot
+// offer enough gradeable events drags every player's overall down. This report tracks the two
 // things that gate the launch:
 //
 //   1. ROSTER READINESS — can each domain offer enough gradeable events?
@@ -118,7 +118,7 @@ console.log(
       '  Before the September 2026 overhaul, eight of ten domains were blocked —\n' +
       '  Coordination and Aim & Precision could not be graded at all.'
     : `\n  ${blocked} of 10 domains cannot be graded. Grading cannot ship: the overall\n` +
-      '  grade is the lowest domain, so one blocked domain caps every player.'
+      '  grade is the average of ten domains, so a blocked domain drags every player down.'
 )
 
 // ── 2. Player readiness ─────────────────────────────────────────────────────

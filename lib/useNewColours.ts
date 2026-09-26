@@ -1,8 +1,9 @@
 'use client'
 
 // ─── The recheck, and the moment it produces ─────────────────────────────────
-// One hook for both screens that show a player's colours, so HOME and COLOURS
-// cannot drift on when they ask the server or on what counts as news.
+// HOME runs it. COLOURS (/grades) did too until it became a public guide with
+// no personal data (home colours rework, September 2026); keep it one hook so
+// any future screen that shows a player's colours asks the server the same way.
 //
 // The pure half is lib/newColours.ts — same split as activePlayer/useActivePlayer
 // and for the same reason: a module that calls localStorage at the wrong moment

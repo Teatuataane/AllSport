@@ -15,13 +15,15 @@ import {
 // The play screen's shared pieces. A personal game (app/workout/[id]) draws
 // with exactly these, so scoring keeps ONE code path.
 import QuickEntrySheet, { type SubmitOutcome } from '@/components/play/QuickEntrySheet'
-import SwapPicker from '@/components/play/SwapPicker'
-import { playList, domainsCovered, type PlaySlot } from '@/lib/gameSwaps'
+import AddEventsSheet from '@/components/play/AddEventsSheet'
+import GameEventList from '@/components/play/GameEventList'
+import { playList, domainsCovered, type PlaySlot, type DomainGroup } from '@/lib/gameSwaps'
+import { scoreRung, rungSegment } from '@/lib/scoreColour'
+import { useGradeProfile } from '@/lib/useGradeProfile'
 import { recheckGrades, type ConferredColour } from '@/lib/recheckGrades'
 import { gradeForRung } from '@/lib/grading'
-import { GradeDot } from '@/components/GradesCard'
+import { GradeDot } from '@/components/GradeDot'
 import { useGameSwaps } from '@/lib/useGameSwaps'
-import EventListRow from '@/components/play/EventListRow'
 import {
   formatPR, sportWDL, sectionLabel, ProgressSegments, INP, QES_LBL as SHEET_LBL,
 } from '@/components/play/chrome'
@@ -1026,7 +1028,7 @@ function SessionEndTakeover({
             </>
           )}
 
-          <a href="/grades" style={{
+          <a href="/dashboard" style={{
             display: 'block', marginTop: '18px', background: '#161616', border: '1px solid #1e1e1e',
             borderRadius: '14px', padding: '14px 16px', color: '#fff', textDecoration: 'none',
           }}>
@@ -1153,8 +1155,8 @@ export default function SessionPage() {
     userId: authUserId,
     sessionOpen: !sessionEnded,
   })
-  const [swapFor, setSwapFor] = useState<SessionEvent | null>(null)
-  const [addingExtra, setAddingExtra] = useState(false)
+  // The domain whose + was tapped: its sheet of events to add is open.
+  const [addingDomain, setAddingDomain] = useState<DomainGroup | null>(null)
 
   // The NZ day this game belongs to, for resolving a bodyweight declaration.
   // sessions.session_date is trigger-derived from started_at at
@@ -1165,6 +1167,10 @@ export default function SessionPage() {
     const d = session?.session_date
     return typeof d === 'string' && d ? d : toNZDateString(new Date())
   }, [session])
+
+  // What colouring a score needs for whoever's tab is open: division, age and
+  // the day's bodyweight. Same player as the swaps store, so a guest gets none.
+  const gradeProfile = useGradeProfile(swapPlayerId, sessionDay)
 
   // Every roster row's scored-event set, computed once per results change
   const rosterScored = useMemo(
@@ -1674,7 +1680,6 @@ export default function SessionPage() {
         const myResults = results.filter(r => r.player_id === pid)
         const totalUnits = unitsFor(myResults, events) + swaps.units
         const scoredIds = new Set(events.filter(ev => myResults.some(r => r.event_id === ev.id)).map(ev => ev.id))
-        const todoEvents = events.filter(ev => !scoredIds.has(ev.id))
         const doneEvents = events.filter(ev => scoredIds.has(ev.id))
         // The ten, plus whatever this player swapped in or added on top.
         const slots: PlaySlot[] = playList(events, swaps.chosen)
@@ -1688,6 +1693,11 @@ export default function SessionPage() {
         const barScored = new Set(events.filter(ev => covered.has(ev.domain_number)).map(ev => ev.id))
         const sheetSlot = sheetEventId ? slots.find(sl => sl.se.id === sheetEventId) : undefined
         const sheetEvent = sheetSlot?.kind === 'official' ? events.find(e => e.id === sheetEventId) : undefined
+        const eventDataFor = (slot: PlaySlot) => slot.kind === 'official' ? getEventByName(slot.se.event_name) : getEventBySlug(slot.se.event_slug)
+        const rungFor = (slot: PlaySlot) => scoreRung(eventDataFor(slot), slotRows(slot), gradeProfile.player, gradeProfile.bodyweightKg)
+        // A domain's segment takes the best colour reached anywhere in it.
+        const domainFill = (ev: { domain_number: number }) =>
+          rungSegment(Math.max(0, ...slots.filter(sl => sl.se.domain_number === ev.domain_number).map(rungFor))) ?? '#666'
 
         return (
           <div key={pid} style={{ padding: '16px' }}>
@@ -1708,6 +1718,7 @@ export default function SessionPage() {
               eventSlugs={[...events.map(e => e.event_slug), ...swaps.chosen]}
               day={sessionDay}
               locked={sessionEnded}
+              onSaved={gradeProfile.setBodyweightKg}
             />
 
             {/* Session progress */}
@@ -1724,7 +1735,7 @@ export default function SessionPage() {
                 </div>
               </div>
               <div style={{ position: 'relative' }}>
-                <ProgressSegments events={events} scoredIds={barScored} />
+                <ProgressSegments events={events} scoredIds={barScored} fillFor={domainFill} />
                 {fullHousePulseId === pid && (
                   <div style={{ position: 'absolute', inset: 0, borderRadius: '99px', overflow: 'hidden', pointerEvents: 'none' }}>
                     <div style={{
@@ -1737,68 +1748,23 @@ export default function SessionPage() {
               </div>
             </div>
 
-            {/* Still to play, then Scored. A swap sits under the event it
-                stands in for; scoring it never places you, so the row carries
-                the training it earns instead of a division rank. */}
-            {(['todo', 'done'] as const).map(section => {
-              const rows = slots.filter(s => (slotRows(s).length > 0) === (section === 'done'))
-              if (rows.length === 0) return null
-              return (
-                <div key={section}>
-                  {section === 'todo'
-                    ? sectionLabel(`Still to play — ${rows.length} event${rows.length === 1 ? '' : 's'}`)
-                    : sectionLabel('Scored')}
-                  {rows.map(slot => (
-                    <div key={slot.se.id} style={slot.kind === 'official' ? undefined : { marginLeft: 14 }}>
-                      {slot.kind !== 'official' && (
-                        <div style={{
-                          fontFamily: 'var(--font-label)', fontSize: 10.5, letterSpacing: '0.12em',
-                          textTransform: 'uppercase', color: '#777', margin: '2px 4px 4px',
-                        }}>
-                          {slot.kind === 'swap' ? `Swapped from ${slot.replaces?.event_name}` : 'Extra'}
-                          {swaps.available && !swaps.scoredSlugs.has(slot.se.id) && (
-                            <button onClick={() => swaps.remove(slot.se.id)} style={{
-                              background: 'none', border: 'none', color: '#2371BB', cursor: 'pointer',
-                              fontFamily: 'var(--font-label)', fontSize: 10.5, letterSpacing: '0.12em',
-                              textTransform: 'uppercase', minHeight: 44, padding: '0 10px',
-                            }}>Remove</button>
-                          )}
-                        </div>
-                      )}
-                      <EventListRow
-                        se={slot.se}
-                        eventData={slot.kind === 'official' ? getEventByName(slot.se.event_name) : getEventBySlug(slot.se.event_slug)}
-                        myResults={slotRows(slot)}
-                        note={slot.kind === 'official'
-                          ? eventDivisionRank(slot.se.id, results, playerInfoMap, pDivision,
-                              bestRaw(results.filter(r => r.event_id === slot.se.id && r.player_id === pid)))
-                          : { label: 'Training only', color: '#B87DB5' }}
-                        onOpen={() => setSheetEventId(slot.se.id)}
-                      />
-                      {slot.kind === 'official' && swaps.available && slotRows(slot).length === 0
-                        && !slots.some(o => o.kind === 'swap' && o.replaces?.id === slot.se.id) && (
-                        <button onClick={() => setSwapFor(slot.se as SessionEvent)} style={{
-                          background: 'none', border: 'none', cursor: 'pointer', color: '#777',
-                          fontFamily: 'var(--font-label)', fontSize: 11, letterSpacing: '0.12em',
-                          textTransform: 'uppercase', minHeight: 44, padding: '0 8px', margin: '-6px 0 6px 56px',
-                        }}>Swap this event</button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )
-            })}
+            {/* Domain by domain, in an order that never changes. */}
+            <GameEventList
+              events={events}
+              chosen={swaps.chosen}
+              eventDataFor={eventDataFor}
+              rowsFor={slotRows}
+              noteFor={slot => eventDivisionRank(slot.se.id, results, playerInfoMap, pDivision,
+                bestRaw(results.filter(r => r.event_id === slot.se.id && r.player_id === pid)))}
+              rungFor={rungFor}
+              canAdd={swaps.available}
+              scoredSlugs={swaps.scoredSlugs}
+              onOpen={setSheetEventId}
+              onAdd={setAddingDomain}
+              onRemove={slug => { void swaps.remove(slug) }}
+            />
 
-            {/* Extras — anything on top of the ten */}
-            {swaps.available && (
-              <button onClick={() => setAddingExtra(true)} style={{
-                width: '100%', minHeight: 48, marginTop: 12, borderRadius: 999, cursor: 'pointer',
-                background: 'none', border: '1px dashed #2a2a2a', color: '#777',
-                fontFamily: 'var(--font-label)', fontSize: 12, letterSpacing: '0.12em', textTransform: 'uppercase',
-              }}>+ Add an event</button>
-            )}
-
-            {/* A swapped or extra event: the same sheet, the other store. */}
+            {/* An added event: the same sheet, the other store. */}
             {sheetSlot && sheetSlot.kind !== 'official' && (
               <QuickEntrySheet
                 key={`swap-${sheetSlot.se.id}`}
@@ -1823,23 +1789,14 @@ export default function SessionPage() {
               />
             )}
 
-            {/* Picking a swap, or an extra */}
-            {swapFor && (
-              <SwapPicker
-                title={`Instead of ${swapFor.event_name}`}
-                domainNumber={swapFor.domain_number}
+            {/* The + on an official event: add more from its domain */}
+            {addingDomain && (
+              <AddEventsSheet
+                domainName={addingDomain.domainName}
+                domainNumber={addingDomain.domainNumber}
                 exclude={[...events.map(e => e.event_slug), ...swaps.chosen]}
-                onPick={async slug => { setSwapFor(null); await swaps.add(slug) }}
-                onClose={() => setSwapFor(null)}
-              />
-            )}
-            {addingExtra && (
-              <SwapPicker
-                title="Add an event"
-                domainNumber={null}
-                exclude={[...events.map(e => e.event_slug), ...swaps.chosen]}
-                onPick={async slug => { setAddingExtra(false); await swaps.add(slug) }}
-                onClose={() => setAddingExtra(false)}
+                onAdd={async slugs => { setAddingDomain(null); await swaps.add(slugs) }}
+                onClose={() => setAddingDomain(null)}
               />
             )}
 
@@ -1931,7 +1888,6 @@ export default function SessionPage() {
         const targetDivision = target?.id ? (playerInfoMap[target.id]?.division ?? null) : null
         const totalUnits = unitsFor(targetResults, events) + swaps.units
         const scoredIds = scoredEventIds(targetResults, events.map(ev => ev.id))
-        const todoEvents = events.filter(ev => !scoredIds.has(ev.id))
         const doneEvents = events.filter(ev => scoredIds.has(ev.id))
         const judgeSlots: PlaySlot[] = playList(events, swaps.chosen)
         const judgeSlotRows = (slot: PlaySlot) => slot.kind === 'official'
@@ -1940,6 +1896,12 @@ export default function SessionPage() {
         const judgeSheetSlot = sheetEventId ? judgeSlots.find(sl => sl.se.id === sheetEventId) : undefined
         const sheetEvent = judgeSheetSlot?.kind === 'official' ? events.find(e => e.id === sheetEventId) : undefined
         const judgeCovered = domainsCovered(events, scoredIds, swaps.scoredSlugs)
+        const judgeEventDataFor = (slot: PlaySlot) => slot.kind === 'official' ? getEventByName(slot.se.event_name) : getEventBySlug(slot.se.event_slug)
+        // A guest is never graded: no player, so every rung is 0.
+        const judgeRungFor = (slot: PlaySlot) => target?.isGuest ? 0
+          : scoreRung(judgeEventDataFor(slot), judgeSlotRows(slot), gradeProfile.player, gradeProfile.bodyweightKg)
+        const judgeDomainFill = (ev: { domain_number: number }) =>
+          rungSegment(Math.max(0, ...judgeSlots.filter(sl => sl.se.domain_number === ev.domain_number).map(judgeRungFor))) ?? '#666'
         const unlistedPlayers = sessionPlayers.filter(sp => !judgeRoster.registeredIds.has(sp.id))
         const canPickMore = unlistedPlayers.length > 0
         const guestDraft = judgeGuestDraft.trim()
@@ -2067,6 +2029,7 @@ export default function SessionPage() {
                   day={sessionDay}
                   locked={sessionEnded}
                   forName={target.name}
+                  onSaved={gradeProfile.setBodyweightKg}
                 />
 
                 {/* Session progress */}
@@ -2082,69 +2045,27 @@ export default function SessionPage() {
                       {fmtUnitsLabel(totalUnits)} toward colours
                     </div>
                   </div>
-                  <ProgressSegments events={events} scoredIds={new Set(events.filter(ev => judgeCovered.has(ev.domain_number)).map(ev => ev.id))} />
+                  <ProgressSegments events={events} scoredIds={new Set(events.filter(ev => judgeCovered.has(ev.domain_number)).map(ev => ev.id))} fillFor={judgeDomainFill} />
                 </div>
 
-                {/* The same list a player sees, including their swaps. A guest
-                    has no swaps: a workout needs an owner. */}
-                {(['todo', 'done'] as const).map(section => {
-                  const rows = judgeSlots.filter(sl => (judgeSlotRows(sl).length > 0) === (section === 'done'))
-                  if (rows.length === 0) return null
-                  return (
-                    <div key={section}>
-                      {section === 'todo'
-                        ? sectionLabel(`Still to play — ${rows.length} event${rows.length === 1 ? '' : 's'}`)
-                        : sectionLabel('Scored')}
-                      {rows.map(slot => (
-                        <div key={slot.se.id} style={slot.kind === 'official' ? undefined : { marginLeft: 14 }}>
-                          {slot.kind !== 'official' && (
-                            <div style={{
-                              fontFamily: 'var(--font-label)', fontSize: 10.5, letterSpacing: '0.12em',
-                              textTransform: 'uppercase', color: '#777', margin: '2px 4px 4px',
-                            }}>
-                              {slot.kind === 'swap' ? `Swapped from ${slot.replaces?.event_name}` : 'Extra'}
-                              {swaps.available && !swaps.scoredSlugs.has(slot.se.id) && (
-                                <button onClick={() => swaps.remove(slot.se.id)} style={{
-                                  background: 'none', border: 'none', color: '#2371BB', cursor: 'pointer',
-                                  fontFamily: 'var(--font-label)', fontSize: 10.5, letterSpacing: '0.12em',
-                                  textTransform: 'uppercase', minHeight: 44, padding: '0 10px',
-                                }}>Remove</button>
-                              )}
-                            </div>
-                          )}
-                          <EventListRow
-                            se={slot.se}
-                            eventData={slot.kind === 'official' ? getEventByName(slot.se.event_name) : getEventBySlug(slot.se.event_slug)}
-                            myResults={judgeSlotRows(slot)}
-                            note={slot.kind === 'official'
-                              ? eventDivisionRank(slot.se.id, results, playerInfoMap, targetDivision,
-                                  bestRaw(targetResults.filter(r => r.event_id === slot.se.id)))
-                              : { label: 'Training only', color: '#B87DB5' }}
-                            onOpen={() => setSheetEventId(slot.se.id)}
-                          />
-                          {slot.kind === 'official' && swaps.available && judgeSlotRows(slot).length === 0
-                            && !judgeSlots.some(o => o.kind === 'swap' && o.replaces?.id === slot.se.id) && (
-                            <button onClick={() => setSwapFor(slot.se as SessionEvent)} style={{
-                              background: 'none', border: 'none', cursor: 'pointer', color: '#777',
-                              fontFamily: 'var(--font-label)', fontSize: 11, letterSpacing: '0.12em',
-                              textTransform: 'uppercase', minHeight: 44, padding: '0 8px', margin: '-6px 0 6px 56px',
-                            }}>Swap this event</button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )
-                })}
+                {/* The same list a player sees, including what they added. A
+                    guest cannot add: a workout needs an owner. */}
+                <GameEventList
+                  events={events}
+                  chosen={swaps.chosen}
+                  eventDataFor={judgeEventDataFor}
+                  rowsFor={judgeSlotRows}
+                  noteFor={slot => eventDivisionRank(slot.se.id, results, playerInfoMap, targetDivision,
+                    bestRaw(targetResults.filter(r => r.event_id === slot.se.id)))}
+                  rungFor={judgeRungFor}
+                  canAdd={swaps.available}
+                  scoredSlugs={swaps.scoredSlugs}
+                  onOpen={setSheetEventId}
+                  onAdd={setAddingDomain}
+                  onRemove={slug => { void swaps.remove(slug) }}
+                />
 
-                {swaps.available && (
-                  <button onClick={() => setAddingExtra(true)} style={{
-                    width: '100%', minHeight: 48, marginTop: 12, borderRadius: 999, cursor: 'pointer',
-                    background: 'none', border: '1px dashed #2a2a2a', color: '#777',
-                    fontFamily: 'var(--font-label)', fontSize: 12, letterSpacing: '0.12em', textTransform: 'uppercase',
-                  }}>+ Add an event</button>
-                )}
-
-                {/* A swapped or extra event, scored by the kaiwhakawā. */}
+                {/* An added event, scored by the kaiwhakawā. */}
                 {judgeSheetSlot && judgeSheetSlot.kind !== 'official' && (
                   <QuickEntrySheet
                     key={`judge-swap-${target?.id ?? 'none'}-${judgeSheetSlot.se.id}`}
@@ -2169,22 +2090,13 @@ export default function SessionPage() {
                   />
                 )}
 
-                {swapFor && (
-                  <SwapPicker
-                    title={`Instead of ${swapFor.event_name}`}
-                    domainNumber={swapFor.domain_number}
+                {addingDomain && (
+                  <AddEventsSheet
+                    domainName={addingDomain.domainName}
+                    domainNumber={addingDomain.domainNumber}
                     exclude={[...events.map(e => e.event_slug), ...swaps.chosen]}
-                    onPick={async slug => { setSwapFor(null); await swaps.add(slug) }}
-                    onClose={() => setSwapFor(null)}
-                  />
-                )}
-                {addingExtra && (
-                  <SwapPicker
-                    title="Add an event"
-                    domainNumber={null}
-                    exclude={[...events.map(e => e.event_slug), ...swaps.chosen]}
-                    onPick={async slug => { setAddingExtra(false); await swaps.add(slug) }}
-                    onClose={() => setAddingExtra(false)}
+                    onAdd={async slugs => { setAddingDomain(null); await swaps.add(slugs) }}
+                    onClose={() => setAddingDomain(null)}
                   />
                 )}
 

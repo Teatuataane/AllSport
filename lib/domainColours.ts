@@ -48,6 +48,8 @@ export function domainColor(domainNumber: number): string {
   return DOMAIN_COLORS[(domainNumber - 1 + 10) % 10] || '#888'
 }
 
+/** The brand gradient's stops, for SVG gradients that cannot take a CSS string. */
+export const RAINBOW_STOPS = ['#EA4742', '#F9B051', '#F397C0', '#B87DB5', '#2371BB', '#4DB26E'] as const
+
 /** The brand gradient. Uenuku, and Te Kāhui's accent. */
-export const RAINBOW =
-  'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)'
+export const RAINBOW = `linear-gradient(90deg, ${RAINBOW_STOPS.join(', ')})`

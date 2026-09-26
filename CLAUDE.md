@@ -1183,7 +1183,8 @@ should not have been.
   already means difficulty tier.
 - **The rules:** a colour in each of the ten domains; a domain colour is the
   highest grade met in at least HALF the domain's events; the overall grade is the
-  LOWEST domain, and `null` (not Mā) until all ten domains hold one. Precisely:
+  AVERAGE of the ten, rounded down (was the lowest, until 24 Sept 2026 — see
+  "HOME and COLOURS rework" below). Precisely:
   half of the events AVAILABLE to that player, rounded up (12 available needs 6,
   5 needs 3), where exemptions and events they cannot be graded in leave the
   count; and an event at a HIGHER colour counts toward every colour below it.
@@ -1281,7 +1282,8 @@ player id, and `lib/headToHead.ts` rates the games it collects.
   close, so correcting a result would half fix it). There is no third outcome: pick
   one record or leave it disputed. `p_true` null reopens. An edit by either player
   wipes the stamp, because `record_match` replaces the row. Players see "N disputed
-  games waiting for a kaiwhakawā" on /grades.
+  games waiting for a kaiwhakawā" under the event on HOME (was /grades until the
+  HOME and COLOURS rework).
 - **The rating** (`lib/headToHead.ts`): Elo per player per sport, start 1,000,
   K 40 for a player's first ten games then 20, games replayed in the order they
   were recorded. A team side is rated at the mean of its players, and each
@@ -1446,7 +1448,7 @@ not short. **`award_session_points`
 still awards effort points for events played and PRs**, and `/leaderboard` still ranks on
 season points — retiring points properly is a separate piece of work, not done here.
 
-### Training load (September 2026 session 39) — migration `20260918023038`, NOT YET APPLIED
+### Training load (September 2026 session 39) — migration `20260918023038`, APPLIED 2026-09-20 (with the customisation migrations; see below)
 
 Every workout can now carry **how long** (`workouts.duration_minutes`, 1–1440) and **how hard**
 (`workouts.effort_rating`, 1–10, Foster's session RPE). Minutes × rating is session training
@@ -1488,7 +1490,7 @@ system. No page shows a points total any more:
 - **The session-end screen** shows events played, training units and PRs instead of
   placement/effort/total points. **Play history** links to each game report instead of
   a points total. **How To Play**'s Points Formula card is now a colours card (the three
-  gates, overall = lowest of ten).
+  gates, overall = average of ten since 24 Sept 2026).
 - `totalPlacement` on the live leaderboard and game report was labelled "pts" but is the
   sum of ordinal placements; it now reads "N total".
 
@@ -1952,10 +1954,11 @@ There is nothing to forge. There is also no plpgsql copy of the rules, which is
 what Tāne rejected in September. Do NOT let the browser call a conferring RPC for
 itself: `grade_awards` is public and feeds the leaderboard.
 
-- **Triggers:** HOME, COLOURS, and the session-end takeover (`force: true`, so the
+- **Triggers:** HOME and the session-end takeover (COLOURS too, until it became a
+  public guide with no personal data in the HOME and COLOURS rework) (`force: true`, so the
   colour lands while the player is still in the room). The /judge Colours tab
   rechecks everyone with something due, which covers players who stopped opening
-  the app. All four go through the same route.
+  the app. All three go through the same route.
 - **Cheap path:** `grades_need_recheck(player)` compares a `players.grades_checked_at`
   watermark against new results, entries, exemptions, matches and closed or voided
   sessions. It is SECURITY DEFINER **and checks `can_log_for` before reading
@@ -2146,7 +2149,8 @@ being rewarded with the same treatment.
   It is one constant plus a decision about history — not a free change.
 - **No declaration means UNMET, not absent.** The event stays in its domain's
   denominator and scores 0. That is the whole fix.
-- **BUT a domain blocked only by a missing bodyweight does NOT veto the overall
+- **SUPERSEDED 24 Sept 2026 (overall is now the average of ten, so a blocked domain
+  simply counts 0):** a domain blocked only by a missing bodyweight does NOT veto the overall
   colour** (`blockedByBodyweight`, Tāne 23 Sept 2026). Without that second half the
   rule is not "harder", it is "impossible": an undeclared player reaches at most 2 of
   6 required, and `overallGrade()` returned null while ANY domain was ungraded — so a
@@ -2159,7 +2163,7 @@ being rewarded with the same treatment.
 - **Juniors declare too** (Tāne, 23 Sept 2026), reversing the September decision.
   `JUNIOR_BODYWEIGHT_KG` is no longer a grading input, kept as the reference weight
   the junior standards were calibrated against. A junior who declines is treated like
-  any undeclared player: strength unmet, overall unaffected.
+  any undeclared player: strength unmet, overall dragged by that domain.
 - **`record_bodyweight()` is the ONLY write path.** No INSERT/UPDATE/DELETE policy
   exists and the grants are revoked, because a PostgREST upsert is
   `INSERT ... ON CONFLICT DO UPDATE` and needs the UPDATE privilege the day-pin
@@ -2234,6 +2238,88 @@ auto-conferral switch-on.
 - **Staleness.** See carry-forward above.
 - **Guests are never asked and never graded** — a guest has no `player_id`. Their
   ratio rows are simply ungraded, as before.
+
+## HOME and COLOURS rework (September 2026) — v0.18.0.0, DEPLOYED 2026-09-25
+
+**Merged as PR #137 and live on allsport.nz 2026-09-25** (`/grades` serves the public
+guide, 200). **No migration.** `supabase migration list --linked` from `main` the same
+day showed every version matched local and remote, newest `20260922213125`.
+
+Settled in a `/grill-me` with Tāne on 2026-09-24; nine decisions in
+`docs/designs/home-colours-rework-spec.md` (gitignored like the other design records).
+
+- **The overall colour is the AVERAGE of the ten domain colours, rounded down**
+  (`overallRung` in `lib/grading.ts`), not the lowest. Raising any domain moves it;
+  a domain on Mā counts 0, so a gap still drags. It always has a value (0 = Mā), so
+  `OverallGradeResult.rung` and `BoardRow.overall` are numbers, never null. Always
+  divided by TEN, never by domains held, or one Taniwha domain would make a player
+  Taniwha overall. `lib/colourBoard.ts`, `components/PlayerTabs.tsx`, the dashboard
+  card and the guide all call the one function. The board and the kaiwhakawā list
+  still show "N of 10 domains" while the overall is Mā.
+- **The bodyweight exception is gone.** It only existed because under "lowest" a
+  missing bodyweight made an overall colour impossible. Under an average it drags a
+  little, and the board reads conferred colours only and cannot see who is blocked,
+  so keeping it would make HOME and BOARD disagree.
+- **Nothing stored changed.** `grade_awards` still holds domain colours only; the
+  overall is derived. No migration. Domain colours, their three gates and
+  auto-conferral are untouched.
+- **HOME holds a player's own colour detail; the COLOURS tab is a guide.**
+  `components/GradesCard.tsx` is YOUR COLOURS: overall colour on top, Log a workout
+  and Colours guide under it, one line defining a unit (`unitLine()` in
+  `lib/colourDisplay.ts`, built from `unitRulesSummary` so it cannot drift), then ten
+  domain rows naming the next colour's three checks ("Next Karaka: ✓ standard ·
+  3/5 games · 2/3 units"). A row expands to Event · Your best · Colour.
+- **"Your best" is `EventGrade.best`**, the row that EARNED the event's colour (for a
+  lift, the one reaching the highest rung against its own day's bodyweight, not the
+  heaviest), else the best row. Display only; nothing grades on it.
+  `bestScoreLabel` writes the tier name where `formatPR` writes "D3".
+- **`/grades` is a public SERVER component** ("Mā to Taniwha"): the ladder with its
+  games/units tables, the three checks, the average rule with a worked example,
+  units, age and bodyweight, game ratings. Every number is read from
+  `lib/grading.ts`, never typed. It no longer runs the recheck, so HOME is the
+  player's page that confers.
+- **`gradeInk` lives in `lib/grading.ts`, not the component**: a server page cannot
+  call a function exported from a `'use client'` file (Next throws at runtime), and
+  the guide needs it.
+- **The radar shows colours, not Top %.** Twelve tinted rings, Mā at the centre,
+  Taniwha the edge; each spoke reaches the colour HELD and is drawn in it. Best /
+  Weakest domain and the best-event line show colours; Top % only breaks ties,
+  unseen (`domainExtremesByColour`, `bestEventByColour`). Top % survives on /prs and
+  the leaderboard.
+- **The join block has no code box.** A running game gets one JOIN button; otherwise
+  it shows the next session and "Join opens here when the game starts". The QR
+  link's `?code=` still joins silently.
+
+## Game screen by domain, + to add, colour by grade (September 2026) — v0.19.0.0
+
+Settled in a `/grill-me` with Tāne on 2026-09-26. No migration.
+
+- **No more swaps, only adds.** A player adds events on top; an official event
+  they do not play is ranked last either way, so "swap" and "extra" were one idea
+  with two names. `PlaySlot.kind` is now `'official' | 'added'`. The hook, the
+  workout column and the migrations still say "swap" and were left alone.
+- **Ten domain titles in a fixed order** (`components/play/GameEventList.tsx`,
+  shared by the player and kaiwhakawā tabs). The Still to play / Scored split is
+  gone because rows jumped as they were scored. Domain titles are plain grey.
+- **A + on each official event** opens `AddEventsSheet`: that domain only,
+  multi-select, "Add N events". Shown for the whole game, scored or not; hidden
+  for guests and after the game. Added events sit under it with a ✕ until scored.
+  `useGameSwaps().add` now takes an array.
+- **The kaiwhakawā tab keeps its +.** It already let a kaiwhakawā swap and add
+  for the player they score; removing it would have been a regression. (An
+  earlier answer in the grill said it had no such feature. That was wrong.)
+- **A scored button takes the colour its score reaches** (`lib/scoreColour.ts`):
+  `scoreRung` is `eventGrade()` over today's rows, so it cannot disagree with
+  HOME. Game results, lifts with no bodyweight for the day, Wrestling without a
+  rating, and guests stay neutral. `lib/useGradeProfile.ts` loads division, age,
+  gender and the day's bodyweight, each failure falling back to no colour;
+  `BodyweightField.onSaved` re-colours lifts the moment a weight is entered.
+- **Colour means grade on that screen, so nothing else carries colour:** event
+  icons are tinted grey (`EventIcon` `tint`), an unscored row is grey not blue
+  (the blue read as Kahurangi), and progress segments take each domain's best
+  grade (`ProgressSegments` `fillFor`; Taniwha is white there, black vanishes).
+  The personal-game screen keeps the old domain-coloured rows: `EventListRow`
+  switches only when `gradeRung` is passed.
 
 ## Security posture (August 2026) — read before touching RLS or players_public
 
@@ -2427,13 +2513,14 @@ update players set role = 'judge' where id = '[uuid]';
 | Play | /play | Complete | Login/register landing, Google OAuth |
 | Register | /register | Complete | 3-step form, division, display prefs, junior parent fields |
 | Login | /login | Complete | Email + Google OAuth |
-| Dashboard | /dashboard | Complete | **Stats page** (v0.6.2.0): identity + seasonal division rank, the taniwha card (pieces assembling, three point figures, and how many games the next piece costs), four numbers (Games · Events Won · Games Won · PRs), and a ten-spoke skill radar driven by Top %. One conditional action strip at the top: live session > active vote > next-session countdown. **A player with zero games gets `FirstRunPanel` instead of the numbers and the radar.** The bento grid is gone — judge/koha/profile/PRs are nav destinations, play history and the taniwha picker live behind the card |
+| Dashboard | /dashboard | Complete | **Stats page** (v0.6.2.0): identity + seasonal division rank, the taniwha card (pieces assembling, three point figures, and how many games the next piece costs), four numbers (Games · Events Won · Games Won · PRs), and a ten-spoke radar. **Since the HOME and COLOURS rework (Sept 2026):** a JOIN button to the running game (no code box), the full YOUR COLOURS section (overall colour, expandable domains with Event · Your best · Colour), and a colours radar with Best/Weakest domain by colour. **A player with zero games gets `FirstRunPanel` instead of the numbers and the radar.** The bento grid is gone — judge/koha/profile/PRs are nav destinations, play history and the taniwha picker live behind the card |
+| Colours guide | /grades | Complete | Public explainer, "Mā to Taniwha" (Sept 2026). No personal data: a player's colours live on HOME |
 | My Taniwha | /taniwha | Complete | All twelve. Four counts (Taniwha · Pieces · Crowns · Points), then each taniwha as an expandable row revealing its eleven named pieces and what its crown still needs. States the field-of-three win rule |
 | Taniwha History | /taniwha/history | Complete | What the taniwha card opens: the choose/switch picker, pieces earned with the session each landed in (derived — see `limbCrossings`), the play-history timeline, and the colours era |
 | Judge Panel | /judge | Complete | Players tab opens with an **"Approaching a colour"** watchlist (sessions-away). Dedicated page — JudgeCard moved here. Create/end/void sessions, QR code, history, real-time player count, Event Votes panel (Kōwhiringa Tūāhuatanga). Judge bento card on dashboard links here. |
 | Player Profile | /profile | Complete | Icon picker (20 sport emojis), username/display name editing, leaderboard display prefs, family member management (add/remove), active profile switcher (localStorage). **The bodyweight band picker was removed in v0.17.0.0** — bodyweight is declared on the scoring screen on the day |
 | Scoring Setup | /scoring | Complete | One event per domain through the SHARED picker (v0.11.0.0), Draw for me, editable start time, create the game |
-| Live Session | /scoring/[sessionId] | Complete | Per-division leaderboard tabs, Kaiwhakawā mode (player picker + score/edit/delete for any player), difficulty tier selector, sport W/D/L display, missing scores = last place, post-game popup on session end. **(v0.12.0.0)** Swap an official event for another in its domain, or add extras — both stored as a game-linked workout, never in `results` |
+| Live Session | /scoring/[sessionId] | Complete | Per-division leaderboard tabs, Kaiwhakawā mode (player picker + score/edit/delete for any player), difficulty tier selector, sport W/D/L display, missing scores = last place, post-game popup on session end. **(v0.19.0.0)** Ten domain titles in a fixed order; a + on each official event adds more from its domain (stored as a game-linked workout, never in `results`); scored buttons coloured by the grade they reach |
 | My Events | /prs | Complete | Retitled from Personal Bests (v0.6.2.0). Ten domains ranked strongest to weakest by Top % above the list; collapsible domain sections below, each event row showing **PR, average placement and wins side by side** (no lens toggle). Honours the active player. Per-event history still expands |
 | Vote | /vote/[voteId] | Complete | Step-by-step voting flow, one domain per screen, partial save, review screen, locked on submit |
 | Vote Results | /vote/[voteId]/results | Complete | Spoiler-free until voted, bar chart per domain, counts only while open / percentages on close, judge full breakdown |
@@ -2628,7 +2715,9 @@ RLS: own + parent (family) + judge.
     replayColours.ts                # History replay (pure): confers each colour when it would have landed, through the live route's own path
     newColours.ts                   # Unseen colours and withdrawals against a per-player localStorage watermark (pure)
                                     #   bodyweightOn() lives in grading.ts: the declaration in force on a lift's own day
-    useNewColours.ts                # The hook HOME and COLOURS share: runs the recheck and yields the moment for components/NewColourCard.tsx
+    colourDisplay.ts                # How colours are SHOWN on HOME (pure): bestScoreLabel, unitLine, domainExtremesByColour, bestEventByColour
+    scoreFormat.ts                  # formatPR, moved out of the 'use client' components/play/chrome.tsx (which re-exports it) so pure libs can call it
+    useNewColours.ts                # The hook HOME uses (COLOURS did, until it became a public guide): runs the recheck and yields the moment for components/NewColourCard.tsx
     eventData.ts                    # Single source of truth for all events (128) + difficulty+time encode/decode helpers (encodeDiffTime/decodeDiffTime/isTimedEffort, TIMED_EFFORT_SLUGS).
                                     #   DifficultyTier carries `detail` (judge criteria) plus `scoring`/`records` — how a single rung is scored, declared on the tier so nothing matches on event name. COMPILED from EVENT_DIFFICULTY_REVIEW.md by scripts/apply-difficulty-sheet.mjs; do not hand-edit a ladder without updating the sheet.
     dates.ts                        # parseLocalDate / formatNZDate — parse DATE columns in local time (avoids off-by-one)
@@ -2693,7 +2782,9 @@ RLS: own + parent (family) + judge.
     EventIcon.tsx                   # Event pictogram tile — CSS-mask of /event-icons/{slug}.png in domain colour, emoji fallback
     BottomNav.tsx                   # Five-tab bottom bar (phones) + the MORE sheet (judge · my taniwha · profile · my koha · koha · schedule · how to play · supporters · sign out). Hidden >768px by .bottom-nav in globals.css
     PlayerTabs.tsx                  # Sticky family switcher + ViewingAsBanner. Renders null on a solo account
-    DomainRadar.tsx                 # Ten-spoke skill radar, one spoke per domain, driven by Top %
+    DomainRadar.tsx                 # Ten-spoke colours radar on twelve rings (Mā centre, Taniwha edge); each spoke reaches the colour HELD
+    GradesCard.tsx                  # YOUR COLOURS on HOME: overall colour, then ten expandable domain rows (Event · Your best · Colour)
+    GradeDot.tsx                    # A colour swatch. No 'use client', so the server-rendered /grades guide can draw it
     TaniwhaFigure.tsx               # The eleven pieces assembling. Real art via CSS mask where drawn, filler geometry where not
     TaniwhaCard.tsx                 # Dashboard taniwha card + TaniwhaPicker + TaniwhaTimeline
     TaniwhaWatchlist.tsx            # "Approaching a crown" panel — /judge, leads with the BLOCKER not sessions-away

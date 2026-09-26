@@ -24,11 +24,14 @@ export default function EventIcon({
   emoji,
   domainNumber,
   size = 46,
+  tint,
 }: {
   slug: string
   emoji?: string
   domainNumber: number
   size?: number
+  /** Overrides the domain colour, where colour on the screen means something else. */
+  tint?: string
 }) {
   // OPTIMISTIC: `!== false` rather than `=== true`, so an icon that has not been
   // probed yet renders its mask immediately instead of waiting.
@@ -58,7 +61,7 @@ export default function EventIcon({
     img.src = `/event-icons/${slug}.png`
   }, [slug])
 
-  const c = domainColor(domainNumber)
+  const c = tint ?? domainColor(domainNumber)
   const maskUrl = `url(/event-icons/${slug}.png)`
 
   return (

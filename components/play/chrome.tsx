@@ -10,8 +10,10 @@
 
 import type React from 'react'
 import EventIcon, { domainColor } from '@/components/EventIcon'
-import { fmtTime, tierScoring } from '@/lib/scoring'
-import { decodeDiffTime, isTimedEffort, type EventData } from '@/lib/eventData'
+import { type EventData } from '@/lib/eventData'
+// formatPR lives in lib/scoreFormat.ts so server code and pure libs can use it
+// without importing this client module. Re-exported for existing callers.
+export { formatPR } from '@/lib/scoreFormat'
 import { unitsIn, fmtUnitsLabel } from '@/lib/units'
 
 /**
@@ -48,47 +50,6 @@ export type EntryRow = {
   opponent_name: string | null
   match_score: string | null
   is_pr?: boolean
-}
-
-export function formatPR(rawScore: number, inputMode: string, slug?: string, eventData?: EventData): string {
-  switch (inputMode) {
-    case 'strength':   return slug === 'shoulder-dislocate' ? `${Math.abs(rawScore)}cm` : `${rawScore} kg`
-    case 'reps':       return `${rawScore} reps`
-    case 'time':
-    case 'sprint':     return fmtTime(Math.abs(rawScore))
-    case 'hold':       return fmtTime(rawScore)
-    case 'distance':   return rawScore >= 100 ? `${(rawScore / 100).toFixed(2)}m` : `${rawScore}cm`
-    case 'sport':      return rawScore === 2 ? 'Win' : rawScore === 1 ? 'Draw' : 'Loss'
-    case 'score':      return `${Math.abs(rawScore)} strokes`
-    case 'difficulty+time': {
-      const bandIdx = Math.floor(rawScore / 10000)
-      if (tierScoring(eventData, bandIdx) === 'sport') {
-        const term = rawScore % 10000
-        return `D${bandIdx + 1} · ${term === 2 ? 'Win' : term === 1 ? 'Draw' : 'Loss'}`
-      }
-      const { tierIdx, secs } = decodeDiffTime(rawScore, isTimedEffort(slug))
-      return `D${tierIdx + 1} · ${fmtTime(secs)}`
-    }
-    case 'difficulty+reps': {
-      const tierIdx = Math.floor(rawScore / 10000)
-      const term = rawScore % 10000
-      // The within-tier term is only reps on an ordinary rung.
-      const scoring = tierScoring(eventData, tierIdx)
-      if (scoring === 'weight') return `D${tierIdx + 1} · ${term / 100}kg`
-      if (scoring === 'sport') return `D${tierIdx + 1} · ${term === 2 ? 'Win' : term === 1 ? 'Draw' : 'Loss'}`
-      return `D${tierIdx + 1} · ${term} reps`
-    }
-    case 'difficulty+distance': {
-      const tierIdx = Math.floor(rawScore / 10000)
-      return `D${tierIdx + 1} · ${(rawScore % 10000) / 10}m`
-    }
-    case 'weight+time': {
-      const kg = Math.floor(rawScore / 10000) / 100
-      const secs = rawScore % 10000
-      return `${kg > 0 ? `${kg}kg` : 'Bodyweight'} · ${fmtTime(secs)}`
-    }
-    default: return String(rawScore)
-  }
 }
 
 export function sportWDL(results: readonly { raw_score: number }[]): string {
@@ -153,13 +114,19 @@ export function sectionLabel(text: string) {
   )
 }
 
-export function ProgressSegments({ events, scoredIds, height = 8 }: { events: readonly PlayEvent[]; scoredIds: ReadonlySet<string>; height?: number }) {
+export function ProgressSegments({ events, scoredIds, height = 8, fillFor }: {
+  events: readonly PlayEvent[]
+  scoredIds: ReadonlySet<string>
+  height?: number
+  /** A scored segment's fill. Defaults to the domain colour; the live game passes the grade. */
+  fillFor?: (ev: PlayEvent) => string
+}) {
   return (
     <div style={{ display: 'flex', gap: '3px' }}>
       {events.map(ev => (
         <div key={ev.id} style={{
           flex: 1, height: `${height}px`, borderRadius: '99px',
-          background: scoredIds.has(ev.id) ? domainColor(ev.domain_number) : '#1e1e1e',
+          background: scoredIds.has(ev.id) ? (fillFor ? fillFor(ev) : domainColor(ev.domain_number)) : '#1e1e1e',
           transition: 'background 0.3s',
         }} />
       ))}

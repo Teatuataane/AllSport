@@ -182,8 +182,8 @@ export default function BottomNav() {
 // guide, How to play, Supporters) that already live in the footer on every
 // page, logged in or not, and they crowded out the app.
 //
-// The event catalogue (/events) is reached from any event row — /grades,
-// /prs, the HOW TO button mid-session — which is where a player actually wants
+// The event catalogue (/events) is reached from any event row — HOME's
+// expanded colour domains, /prs, the HOW TO button mid-session — which is where a player actually wants
 // it, and from the footer.
 //
 // One component for both widths: a sheet above the bottom bar on phones, a

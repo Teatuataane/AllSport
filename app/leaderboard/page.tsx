@@ -22,8 +22,9 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase-browser'
 import { gradeForRung, DOMAIN_COUNT } from '@/lib/grading'
 import { rankBy, bestAndWorst } from '@/lib/leaderboardScores'
+import { colourStanding, displayOverall } from '@/lib/colourBoard'
 import { RAINBOW, DOMAIN_COLORS } from '@/lib/domainColours'
-import { GradeDot } from '@/components/GradesCard'
+import { GradeDot } from '@/components/GradeDot'
 import DomainIcon from '@/components/DomainIcon'
 
 // Literal, not derived from EVENTS: importing lib/eventData.ts would ship the
@@ -72,7 +73,7 @@ type BoardRow = {
   domainRungs: number[]
   points: number
   games: number
-  /** Overall CONFERRED colour (lowest of ten domains), or null until all ten are held. */
+  /** Overall CONFERRED colour (average of the ten domains, rounded down), or null while it is Mā. */
   overall: number | null
 }
 
@@ -332,8 +333,6 @@ export default function LeaderboardPage() {
     const all: BoardRow[] = roster.map(p => {
       const dc = domainColours.get(p.id)
       const sp = season.get(p.id)
-      const h = held.get(p.id)
-      const rungs = h ? [...h.values()].filter(r => r > 0) : []
       return {
         playerId: p.id,
         name: p.display_name || p.username || 'Anonymous',
@@ -341,7 +340,8 @@ export default function LeaderboardPage() {
         domainRungs: dc?.domain_rungs ?? Array(DOMAIN_COUNT).fill(0),
         points: sp?.points ?? 0,
         games: sp?.games ?? 0,
-        overall: rungs.length >= DOMAIN_COUNT ? Math.min(...rungs) : null,
+        // The average of the ten conferred domain colours, rounded down (lib/colourBoard.ts).
+        overall: displayOverall(colourStanding(held.get(p.id))),
       }
     }).filter(r => inTab(r.division, tab))
     return rankBy(all.filter(r => r.points > 0 || r.games > 0), r => [r.points, r.games])

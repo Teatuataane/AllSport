@@ -40,7 +40,7 @@ import { loadGradeState, loadMatches, type GradeState } from '@/lib/loadGrades'
 import { recheckGrades, withdrawColours } from '@/lib/recheckGrades'
 import { reconcileGames, type Game, type MatchRow } from '@/lib/matches'
 import { formatNZDate, toNZDateString } from '@/lib/dates'
-import { GradeDot } from '@/components/GradesCard'
+import { GradeDot } from '@/components/GradeDot'
 
 const supabase = createClient()
 const DOMAIN_NAMES = Array.from({ length: 10 }, (_, i) => EVENTS.find(e => e.domainNumber === i + 1)?.domain ?? '')
