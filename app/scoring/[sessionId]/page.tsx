@@ -1359,7 +1359,7 @@ export default function SessionPage() {
   }, [isJudge])
 
   // ── When the game closes, refresh everyone's leaderboard numbers ───────────
-  // Skill and season points are written by the recheck route, which otherwise
+  // Domain colours and season points are written by the recheck route, which otherwise
   // only runs when a player opens their own screens. A player who leaves
   // without looking would sit on the board with last week's numbers, so the
   // kaiwhakawā's screen asks for every registered player in the game. Once per

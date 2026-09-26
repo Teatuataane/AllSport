@@ -509,14 +509,7 @@ export function gradeStateFrom(
   const all = inputs.bodyweights ?? []
   const declared = asOfMs == null ? all : all.filter(b => upTo(b.created_at ?? null))
 
-  /**
-   * The bodyweight a row is graded against.
-   *
-   * Once 20260922213125 is applied, declarations are the only source. Before
-   * it, the stored bands stand in, which is exactly the behaviour that shipped
-   * with 20260921232726: the row's own band, else the first band the player
-   * ever set, else their current one.
-   */
+  // The bodyweight each row is graded against; see kgResolver.
   const kgOn = kgResolver(inputs, declared)
 
   const results = inputs.results.filter(r => upTo(r.sessions?.started_at ?? r.created_at))
