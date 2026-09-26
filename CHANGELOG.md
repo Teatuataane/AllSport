@@ -2,6 +2,21 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.21.0.0] - 2026-09-26
+
+### Changed
+- **A domain's colour is now the average of your best six events in it.** An event you have not played counts as Mā, so every new event you try lifts the domain until six are on the board; after that, a new event counts when it beats one of your six. It used to be the highest colour you had met in half the domain's events, which meant five great events and a gap read as nothing at all. If a kaiwhakawā has confirmed you cannot do some events, the domain averages over the ones you can.
+- **Your overall colour also needs games played in the room.** It is still the average of your ten domains, but it can go no higher than your official games allow: Kiwikiwi after 1 game, Kōwhai after 8, Kahurangi after 16, up to Taniwha after 100. Domain colours have no games requirement, so training on your own still builds them. HOME says when your games are what is holding your overall colour back.
+- **Training units no longer count toward colours.** A domain colour lands as soon as your scores reach it, and it can climb several colours at once. Units still show on the game and workout screens as a record of how much you did.
+- **HOME shows how far each domain is from its next colour** ("Next Karaka: 3 steps to go · 4 of 6 events hold a colour"), where a step is one event up one colour.
+- The Colours guide, How to Play, the homepage, the leaderboard and the privacy page explain the new rules, with worked examples worked out by the grading engine itself.
+
+### Fixed
+- **The new rules reach everyone straight away.** Each player's colours are rechecked in full the first time they open HOME under new rules, rather than waiting for their next game.
+- **Taking back a colour never drops a player too far.** If a kaiwhakawā deletes a score and the colour it supported is taken back, the colour the player's remaining scores still earn is put back in the same step, and it is not announced as a new colour.
+- **Games are counted the same way everywhere.** The leaderboard, the family switcher and the kaiwhakawā Players list now count every finished, unvoided game, including games from before May 2026 and beyond the first 1,000 score rows. The kaiwhakawā list used to miss older games.
+- Solo accounts no longer load family data they never show.
+
 ## [0.20.0.0] - 2026-09-26
 
 ### Changed
