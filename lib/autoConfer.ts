@@ -85,3 +85,36 @@ export function awardsToWithdraw(state: GradeState, domainNumber: number): Withd
     .filter((a): a is WithdrawnAward => a.domain_number === domainNumber && a.rung > d.rung && !!a.id)
     .sort((a, b) => b.rung - a.rung)
 }
+
+/**
+ * The colour to confer straight after a withdrawal, or null.
+ *
+ * A jump writes ONE row, the new top (Whero held, then Kahurangi conferred,
+ * with nothing in between). So withdrawing Kahurangi after the domain re-judges
+ * to Kākāriki would drop the player to Whero, below what their remaining
+ * evidence supports, and nothing would put Kākāriki back until the next forced
+ * recheck. This returns the colour the remaining evidence gives when it is
+ * above the highest award left standing.
+ */
+export function awardAfterWithdraw(
+  playerId: string,
+  state: GradeState,
+  domainNumber: number,
+  withdrawnIds: ReadonlySet<string>,
+): PendingAward | null {
+  if (!state.schemaReady) return null
+  const d = state.grades.domains.find(x => x.domainNumber === domainNumber)
+  if (!d || d.availableCount === 0 || d.rung <= 0) return null
+  const left = state.awards
+    .filter(a => a.domain_number === domainNumber && !(a.id && withdrawnIds.has(a.id)))
+    .reduce((m, a) => Math.max(m, a.rung), 0)
+  if (d.rung <= left) return null
+  return {
+    player_id: playerId,
+    domain_number: domainNumber,
+    rung: d.rung,
+    grade_name: gradeForRung(d.rung).name,
+    events: eventsBehind(state.grades, domainNumber),
+    conferred_by: null,
+  }
+}

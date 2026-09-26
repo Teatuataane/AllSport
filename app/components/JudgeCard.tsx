@@ -10,6 +10,7 @@ import { EVENTS } from '@/lib/eventData'
 import { formatNZDate } from '@/lib/dates'
 import { gradeForRung } from '@/lib/grading'
 import { rankByColours, displayOverall } from '@/lib/colourBoard'
+import { loadGameCounts } from '@/lib/gameCounts'
 import { GradeDot } from '@/components/GradeDot'
 
 type Session = {
@@ -453,10 +454,13 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
     setPlayersLoading(true)
     // Ordered by colours, the same rule as /leaderboard (lib/colourBoard.ts).
     // Points are retired, so nothing here reads rankings.
-    const [playersRes, gradesRes, gamesRes] = await Promise.all([
+    // Games cap the overall colour, so they are counted the way the board
+    // counts them (lib/gameCounts.ts). session_player_summary was the source
+    // here and misses every game closed before 20260514.
+    const [playersRes, gradesRes, counted] = await Promise.all([
       supabase.from('players').select('id, display_name, username, full_name, division, icon').eq('is_active', true).order('display_name', { ascending: true }),
       supabase.from('grade_awards').select('player_id, domain_number, rung'),
-      supabase.from('session_player_summary').select('player_id'),
+      loadGameCounts(supabase, null),
     ])
     const held = new Map<string, Map<number, number>>()
     for (const a of (gradesRes.data ?? []) as { player_id: string; domain_number: number; rung: number }[]) {
@@ -464,8 +468,9 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
       m.set(a.domain_number, Math.max(m.get(a.domain_number) ?? 0, a.rung))
       held.set(a.player_id, m)
     }
-    const games: Record<string, number> = {}
-    for (const r of (gamesRes.data ?? []) as { player_id: string }[]) games[r.player_id] = (games[r.player_id] ?? 0) + 1
+    // Unknown (a failed read) is shown as 0 games here; the list is a kaiwhakawā
+    // view, and a reload retries.
+    const games: Record<string, number> = Object.fromEntries(counted ?? [])
 
     const byId = new Map((playersRes.data || []).map(p => [p.id as string, p]))
     const ranked = rankByColours((playersRes.data || []).map(p => ({

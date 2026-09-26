@@ -17,7 +17,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase-browser'
 import { gradeForRung, overallRung } from '@/lib/grading'
-import { countGames } from '@/lib/colourBoard'
+import { loadGameCounts } from '@/lib/gameCounts'
 import {
   useActivePlayer, playerLabel, type ActivePlayerRow,
 } from '@/lib/useActivePlayer'
@@ -33,18 +33,12 @@ async function loadAccents(ids: string[]): Promise<Map<string, string>> {
   const missing = ids.filter(id => !accentCache.has(id))
   if (missing.length === 0) return new Map(accentCache)
 
-  // The games count caps the overall colour, so it is read here too, from the
-  // same public rows and by the same rule as the leaderboard (countGames).
-  const [awards, played, notGames] = await Promise.all([
+  // The games count caps the overall colour, so it is read here too, by the
+  // same rule as the leaderboard (lib/gameCounts.ts, paged past the row cap).
+  const [awards, games] = await Promise.all([
     supabase.from('grade_awards').select('player_id, domain_number, rung').in('player_id', missing),
-    // PostgREST caps a response at 1000 rows; lift it, as lib/loadGrades.ts does.
-    supabase.from('results').select('player_id, session_id').in('player_id', missing).range(0, 9999),
-    supabase.from('sessions').select('id').or('is_active.eq.true,voided_at.not.is.null'),
+    loadGameCounts(supabase, missing),
   ])
-  const games = countGames(
-    (played.data ?? []) as { player_id: string | null; session_id: string }[],
-    new Set(((notGames.error ? [] : notGames.data) ?? []).map(r => r.id as string)),
-  )
   const held = new Map<string, Map<number, number>>()
   for (const a of (awards.data ?? []) as { player_id: string; domain_number: number; rung: number }[]) {
     const m = held.get(a.player_id) ?? new Map<number, number>()
@@ -52,7 +46,9 @@ async function loadAccents(ids: string[]): Promise<Map<string, string>> {
     held.set(a.player_id, m)
   }
   for (const [id, m] of held) {
-    const overall = overallRung(m.values(), games.get(id) ?? 0)
+    // An unreadable count is unknown, not zero: leave the colour uncapped
+    // rather than paint every chip Mā on a network blip.
+    const overall = overallRung(m.values(), games ? (games.get(id) ?? 0) : Number.MAX_SAFE_INTEGER)
     if (overall === 0) continue
     const g = gradeForRung(overall)
     // A 6-digit hex, never a var(): it is suffixed with an alpha below. Taniwha

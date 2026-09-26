@@ -109,6 +109,17 @@ export const GRADES: GradeRung[] = [
 ]
 
 export const TOP_RUNG = 12
+
+/**
+ * Bumped whenever a rule here changes what colour the same evidence earns.
+ *
+ * A rules deploy writes no rows, so the recheck's cheap probe
+ * (grades_need_recheck) sees nothing new and skips everyone whose watermark is
+ * current: HOME would show the new computed colour while BOARD kept the old
+ * conferred one. HOME forces one full recheck per player when this differs
+ * from the version it last checked under (lib/useNewColours.ts).
+ */
+export const GRADING_RULES_VERSION = '2026-09-26-best-six'
 export const DOMAIN_COUNT = 10
 
 /**

@@ -66,9 +66,9 @@ describe('withdrawColours', () => {
 
   it('reports ok:false only when the question got no real answer', async () => {
     respond(200, { withdrawn: [w], logged: true })
-    expect(await withdrawColours('p', 3)).toEqual({ withdrawn: [w], writable: true, ok: true, logged: true })
+    expect(await withdrawColours('p', 3)).toEqual({ withdrawn: [w], writable: true, ok: true, logged: true, reconferred: null })
     respond(503)
-    expect(await withdrawColours('p', 3)).toEqual({ withdrawn: [], writable: false, ok: true, logged: true })
+    expect(await withdrawColours('p', 3)).toEqual({ withdrawn: [], writable: false, ok: true, logged: true, reconferred: null })
     respond(403)
     expect((await withdrawColours('p', 3)).ok).toBe(false)
     vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('offline') }))
@@ -84,6 +84,6 @@ describe('withdrawColours', () => {
 
   it('passes through a withdrawal whose notice could not be logged', async () => {
     respond(200, { withdrawn: [w], logged: false })
-    expect(await withdrawColours('p', 3)).toEqual({ withdrawn: [w], writable: true, ok: true, logged: false })
+    expect(await withdrawColours('p', 3)).toEqual({ withdrawn: [w], writable: true, ok: true, logged: false, reconferred: null })
   })
 })

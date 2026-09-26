@@ -85,10 +85,11 @@ describe('the games cap is counted the same way on every surface', () => {
     expect(s).toMatch(/countGames\(statsData\.results, notGames\)/)
   })
 
-  it('the family chips exclude voided and live sessions, and pass games to overallRung', () => {
-    const s = src('components/PlayerTabs.tsx')
-    expect(s).toMatch(/is_active\.eq\.true,voided_at\.not\.is\.null/)
-    expect(s).toMatch(/overallRung\(m\.values\(\), games\.get\(id\) \?\? 0\)/)
+  it('the family chips and the kaiwhakawā list count games through the shared paged counter', () => {
+    // The exclusion and paging rules themselves are tested in gameCounts.test.ts.
+    expect(src('components/PlayerTabs.tsx')).toMatch(/loadGameCounts\(supabase, missing\)/)
+    expect(src('app/components/JudgeCard.tsx')).toMatch(/loadGameCounts\(supabase, null\)/)
+    expect(src('app/components/JudgeCard.tsx')).not.toMatch(/from\('session_player_summary'\)\.select\('player_id'\)/)
   })
 })
 

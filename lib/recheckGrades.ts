@@ -60,14 +60,17 @@ export async function recheckGrades(opts: { playerId?: string; force?: boolean }
  */
 export async function withdrawColours(playerId: string, domain: number, reason?: string): Promise<{
   withdrawn: WithdrawnColour[]; writable: boolean; ok: boolean; logged: boolean
+  /** The colour the remaining evidence still gives, conferred straight back after a jump was taken. */
+  reconferred: string | null
 }> {
   const r = await post({ playerId, withdraw: { domain, reason } })
-  if (r?.status === 503) return { withdrawn: [], writable: false, ok: true, logged: true }
-  if (!ok2xx(r) || !Array.isArray(r.body.withdrawn)) return { withdrawn: [], writable: true, ok: false, logged: true }
+  if (r?.status === 503) return { withdrawn: [], writable: false, ok: true, logged: true, reconferred: null }
+  if (!ok2xx(r) || !Array.isArray(r.body.withdrawn)) return { withdrawn: [], writable: true, ok: false, logged: true, reconferred: null }
   return {
     withdrawn: r.body.withdrawn as WithdrawnColour[],
     writable: true,
     ok: true,
     logged: r.body.logged !== false,
+    reconferred: typeof r.body.reconferred === 'string' ? r.body.reconferred : null,
   }
 }

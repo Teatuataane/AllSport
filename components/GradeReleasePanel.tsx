@@ -263,7 +263,8 @@ export default function GradeReleasePanel() {
       !out.ok ? `The score is deleted, but ${player.display_name}'s ${DOMAIN_NAMES[domain - 1]} colours could not be re-checked yet.`
       : !out.writable ? 'The score is deleted. Colours cannot be taken back until the server has its service key.'
       : out.withdrawn.length > 0 ? `Taken back from ${player.display_name}: ${out.withdrawn.map(w => `${w.name} in ${DOMAIN_NAMES[w.domainNumber - 1]}`).join(', ')}. ${
-          out.logged ? 'They will be told.' : 'Their notice could not be recorded, so tell them yourself.'}`
+          out.logged ? 'They will be told.' : 'Their notice could not be recorded, so tell them yourself.'}${
+          out.reconferred ? ` Their other scores still give ${out.reconferred}, so that now stands.` : ''}`
       : `Deleted. ${player.display_name}'s colours still stand on their other scores.`)
     await refresh(player)
   }

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
-import { awardsToConfer, awardsToWithdraw } from '@/lib/autoConfer'
+import { awardsToConfer, awardsToWithdraw, awardAfterWithdraw } from '@/lib/autoConfer'
 import { eventsBehind } from '@/lib/playerGrades'
 import { SERVICE_KEY_ENV } from '@/lib/supabase-admin'
 import { colourGate, gradeForRung } from '@/lib/grading'
@@ -512,5 +512,37 @@ describe('found by the adversarial review', () => {
     const vercelStep = doc.indexOf('3. Key added to Vercel')
     expect(applyStep).toBeGreaterThan(-1)
     expect(vercelStep).toBeGreaterThan(applyStep)
+  })
+})
+
+describe('awardAfterWithdraw — a jump taken back must not overshoot', () => {
+  // Whero (3) held, then a jump to Poroporo (7) wrote ONE row. A deleted score
+  // re-judges the domain to Kākāriki (5): withdrawing 7 alone would leave 3.
+  it('puts back the colour the remaining evidence gives', () => {
+    const state = withAwards(5, [{ domain: 3, rung: 3, id: 'w' }, { domain: 3, rung: 7, id: 'p' }])
+    const taken = awardsToWithdraw(state, 3)
+    expect(taken.map(a => a.id)).toEqual(['p'])
+    const back = awardAfterWithdraw('p1', state, 3, new Set(taken.map(a => a.id)))
+    expect(back).toMatchObject({ player_id: 'p1', domain_number: 3, rung: 5, grade_name: gradeForRung(5).name, conferred_by: null })
+  })
+
+  it('puts back nothing when an award left standing already covers it', () => {
+    const state = withAwards(5, [{ domain: 3, rung: 5, id: 'k' }, { domain: 3, rung: 7, id: 'p' }])
+    expect(awardAfterWithdraw('p1', state, 3, new Set(['p']))).toBeNull()
+  })
+
+  it('puts back nothing when the evidence gives Mā, or nothing can be graded', () => {
+    expect(awardAfterWithdraw('p1', withAwards(0, [{ domain: 3, rung: 4, id: 'a' }]), 3, new Set(['a']))).toBeNull()
+    expect(awardAfterWithdraw('p1', withAwards(3, [{ domain: 3, rung: 4, id: 'a' }], 0), 3, new Set(['a']))).toBeNull()
+  })
+
+  it('writes nothing before the grading schema exists', () => {
+    const state = { ...withAwards(5, [{ domain: 3, rung: 7, id: 'p' }]), schemaReady: false }
+    expect(awardAfterWithdraw('p1', state, 3, new Set(['p']))).toBeNull()
+  })
+
+  it('is called by the route after a withdrawal', () => {
+    const route = readFileSync(join(process.cwd(), 'app/api/grades/recheck/route.ts'), 'utf8')
+    expect(route).toMatch(/awardAfterWithdraw\(playerId, state, req\.domain, deleted\)/)
   })
 })

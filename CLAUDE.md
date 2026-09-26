@@ -2278,9 +2278,27 @@ production data (3 regulars at 5–11 events per domain; everyone else 1–3). *
   one held, so a domain can jump Whero → Kahurangi in one session; auto-conferral writes ONE
   row (the new top). `confer_grade` already allowed jumps. `eventsBehind(grades, domain)` now
   returns the best-six slugs averaged (`DomainGradeResult.counted`).
-- **Under N = 6 the new domain colour is never below the old one** for a full domain (an
-  average of the top six ≥ the sixth best), so switching this on demotes nobody. Existing
-  awards stand; the first recheck confers upward.
+- **With 11 or more events available the new domain colour is never below the old one**
+  (an average of the top six ≥ the sixth best; pinned by a property test in
+  `__tests__/bestSixGaps.test.ts`). **With 10 or fewer it CAN be lower**: the old rule asked
+  for only min(ceil(n/2), 6) events, so 5 available at [5,5,5,0,0] was Kākāriki and is now
+  Karaka. Ordinary rechecks never withdraw, so held colours survive, but a kaiwhakawā
+  deleting any entry in such a domain re-judges it against the new rule. That lands on
+  exempted players; watch for it.
+- **A rules deploy writes no rows, so the cheap probe would skip everyone.**
+  `GRADING_RULES_VERSION` in `lib/grading.ts` makes HOME force one full recheck per player
+  per version (`lib/useNewColours.ts`). **Bump it whenever a rule changes what the same
+  evidence earns.** A kaiwhakawā opening the /judge Colours tab also rechecks everyone with
+  something pending, which covers players who never open HOME.
+- **A withdrawal can no longer overshoot a jump.** A jump writes one row, so withdrawing it
+  would drop a player below what their remaining scores give. `awardAfterWithdraw` in
+  `lib/autoConfer.ts` puts that colour straight back in the same request.
+- **Games are counted by `lib/gameCounts.ts` on the family chips and the kaiwhakawā list**,
+  PAGED, because PostgREST caps a response at 1000 rows and `.range()` cannot lift a
+  server cap (`results` held 1,383 rows in Sept 2026). The kaiwhakawā list used
+  `session_player_summary`, which misses every game closed before 20260514. A failed read
+  is null (unknown), never zero. `lib/loadGrades.ts` still reads one player in one request;
+  the heaviest player had 418 rows in Sept 2026, so it has room, but it will need paging.
 - **HOME** shows each domain as "Next Karaka: 3 steps to go · 4 of 6 events hold a colour"
   (a step = one event up one colour; `nextDomainColour` in `lib/colourDisplay.ts`), and says
   when the games cap is binding. `/grades` computes its worked examples with the engine.

@@ -13,6 +13,8 @@ const h = vi.hoisted(() => ({
   state: { schemaReady: true } as unknown,
   pending: [] as unknown[],
   withdraw: [] as unknown[],
+  /** What awardAfterWithdraw hands back; null means nothing to put back. */
+  after: null as unknown,
   hasKey: true,
   adminOps: [] as string[],
   adminCreated: 0,
@@ -53,6 +55,7 @@ vi.mock('@/lib/loadGrades', () => ({
 vi.mock('@/lib/autoConfer', () => ({
   awardsToConfer: () => h.pending,
   awardsToWithdraw: () => h.withdraw,
+  awardAfterWithdraw: () => h.after,
 }))
 vi.mock('@/lib/supabase-admin', () => ({
   hasServiceKey: () => h.hasKey,
@@ -110,6 +113,7 @@ beforeEach(() => {
   h.state = { schemaReady: true }
   h.pending = []
   h.withdraw = []
+  h.after = null
   h.hasKey = true
   h.adminOps = []
   h.adminCreated = 0
@@ -248,7 +252,7 @@ describe('recheck route: withdrawal', () => {
     h.withdraw = [{ id: 'a1', domain_number: 3, rung: 4, grade_name: 'Kōwhai', conferred_at: 't' }]
     h.deleteData = []
     const body = await (await post({ withdraw: { domain: 3 } })).json()
-    expect(body).toEqual({ withdrawn: [], logged: true })
+    expect(body).toEqual({ withdrawn: [], logged: true, reconferred: null })
     expect(h.adminOps).not.toContain('insert:grade_withdrawals')
   })
 
@@ -256,10 +260,21 @@ describe('recheck route: withdrawal', () => {
     h.rpc.is_judge = { data: true, error: null }
     h.withdraw = [{ id: 'a1', domain_number: 3, rung: 4, grade_name: 'Kōwhai', conferred_at: 't' }]
     const body = await (await post({ playerId: 'me', withdraw: { domain: 3, reason: 'bad' } })).json()
-    expect(body).toEqual({ withdrawn: [{ domainNumber: 3, rung: 4, name: 'Kōwhai' }], logged: true })
+    expect(body).toEqual({ withdrawn: [{ domainNumber: 3, rung: 4, name: 'Kōwhai' }], logged: true, reconferred: null })
     // No watermark: a withdrawal ran no conferral pass, so it has not examined
     // anything in the other nine domains.
     expect(h.adminOps).toEqual(['delete:grade_awards', 'insert:grade_withdrawals'])
+  })
+
+  it('puts back the colour the remaining evidence still gives, after the log', async () => {
+    h.rpc.is_judge = { data: true, error: null }
+    h.withdraw = [{ id: 'a1', domain_number: 3, rung: 7, grade_name: 'Poroporo', conferred_at: 't' }]
+    h.after = { player_id: 'me', domain_number: 3, rung: 5, grade_name: 'Kākāriki', events: [], conferred_by: null }
+    h.upsertData = [{ domain_number: 3, rung: 5 }]
+    const body = await (await post({ playerId: 'me', withdraw: { domain: 3 } })).json()
+    expect(body.reconferred).toBe('Kākāriki')
+    expect(h.adminOps).toEqual(['delete:grade_awards', 'insert:grade_withdrawals', 'upsert:grade_awards'])
+    expect(h.upsertArgs!.opts).toEqual({ onConflict: 'player_id,domain_number,rung', ignoreDuplicates: true })
   })
 
   it('says so when the award went but the log did not', async () => {

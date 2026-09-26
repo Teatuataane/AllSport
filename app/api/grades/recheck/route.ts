@@ -15,7 +15,7 @@ import { NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { createSupabaseAdminClient, hasServiceKey } from '@/lib/supabase-admin'
 import { loadGradeState } from '@/lib/loadGrades'
-import { awardsToConfer, awardsToWithdraw, type PendingAward, type WithdrawnAward } from '@/lib/autoConfer'
+import { awardsToConfer, awardsToWithdraw, awardAfterWithdraw, type PendingAward, type WithdrawnAward } from '@/lib/autoConfer'
 
 export const dynamic = 'force-dynamic'
 
@@ -194,9 +194,23 @@ async function withdrawIn(
     logged = !logError
   }
 
+  // A jump writes one row, so taking it back can leave the player below what
+  // their remaining evidence still gives. Put that colour back in the same
+  // request (awardAfterWithdraw). Best-effort: a failure here is repaired by
+  // the next forced recheck, and must not undo a withdrawal that landed.
+  let reconferred: string | null = null
+  const replacement = taken.length > 0 ? awardAfterWithdraw(playerId, state, req.domain, deleted) : null
+  if (replacement) {
+    // select(): report it only if THIS request inserted it, as the recheck does.
+    const { data: put, error: upError } = await admin.from('grade_awards')
+      .upsert([replacement], { onConflict: 'player_id,domain_number,rung', ignoreDuplicates: true })
+      .select('domain_number, rung')
+    if (!upError && (put ?? []).length > 0) reconferred = replacement.grade_name
+  }
+
   // The watermark is NOT moved here. This path re-judged one domain and ran no
   // conferral pass, so stamping it would mark evidence in every other domain
   // as examined when nothing looked at it, and the next ordinary recheck would
   // skip a colour the player had earned.
-  return json({ withdrawn: taken.map(summariseWithdrawn), logged })
+  return json({ withdrawn: taken.map(summariseWithdrawn), logged, reconferred })
 }
