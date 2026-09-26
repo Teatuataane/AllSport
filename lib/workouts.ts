@@ -12,8 +12,6 @@ import type { GradeResultRow } from './playerGrades'
 /** A workout_entries row as the grades loader reads it, with its workout. */
 export type WorkoutEntryRow = {
   event_slug: string | null
-  count: number | null
-  volume_distance_m: number | null
   raw_score: number | null
   weight_kg: number | null
   difficulty_tier: string | null

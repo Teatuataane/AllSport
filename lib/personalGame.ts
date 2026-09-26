@@ -11,7 +11,7 @@
 import { EVENTS, getEventBySlug, type EventData } from './eventData'
 import { scoreColumns, type EntryVals } from './scoring'
 import { estimateFromSets, estimateFromDistance, takesSets, takesDistance } from './naturalFormats'
-import { isGameTier, metresIn, isDistanceEvent } from './eventKinds'
+import { isGameTier } from './eventKinds'
 import { nzDay } from './workouts'
 
 /** The database CHECK. A plan is a workout, not a programme. */
@@ -62,8 +62,6 @@ export function planEvents(plan: readonly string[]): EventData[] {
 export type EntryPayload = {
   activity: string
   event_slug: string
-  count: number | null
-  volume_distance_m: number | null
   raw_score?: number
   score_label?: string
   difficulty_tier?: string | null
@@ -72,19 +70,6 @@ export type EntryPayload = {
   reps?: number | null
   time_seconds?: number | null
   distance_m?: number | null
-}
-
-/**
- * What one submission records as volume: a distance event stores the rung's
- * metres, everything else stores one completion.
- */
-export function volumeFor(ev: EventData, tierName: string | null | undefined): Pick<EntryPayload, 'count' | 'volume_distance_m'> {
-  if (isDistanceEvent(ev) && !isGameTier(ev, tierName)) {
-    const m = tierName ? metresIn(tierName) : null
-    // A distance ladder with an unreadable rung still records a completion.
-    return m ? { count: null, volume_distance_m: m } : { count: 1, volume_distance_m: null }
-  }
-  return { count: 1, volume_distance_m: null }
 }
 
 /**
@@ -102,11 +87,7 @@ function validSets(v: EntryVals) {
  * weight × reps on a lift, or a distance and a time on a raced distance event.
  * The columns store what was actually done; `raw_score` carries the estimate it
  * converts to, and the label says so.
- *
- * Volume is the real work: five sets is five completions, and a 5km run is
- * 5000m — so a long run earns the units it deserves, not the units of the rung
- * it converts to.
- *
+ * *
  * Returns null when the event has no natural format, or nothing usable was
  * typed, so the caller falls through to the official fields.
  */
@@ -118,7 +99,6 @@ export function naturalPayload(ev: EventData, v: EntryVals): EntryPayload | null
     if (!est) return null
     return {
       activity: ev.name, event_slug: ev.slug,
-      count: sets.length, volume_distance_m: null,
       raw_score: est.raw_score, score_label: est.score_label,
       difficulty_tier: null, exercise_variation: null,
       weight_kg: est.weight_kg ?? null, reps: est.reps ?? null,
@@ -133,7 +113,6 @@ export function naturalPayload(ev: EventData, v: EntryVals): EntryPayload | null
     if (!est) return null
     return {
       activity: ev.name, event_slug: ev.slug,
-      count: null, volume_distance_m: metres,
       raw_score: est.raw_score, score_label: est.score_label,
       difficulty_tier: est.difficulty_tier ?? null, exercise_variation: null,
       weight_kg: null, reps: null,
@@ -169,7 +148,7 @@ export function entryPayload(
   const scored = scoreColumns(ev.inputMode, ev, v)
   if (!scored) return null
   const tier = v.difficultyTier || null
-  const base = { activity: ev.name, event_slug: ev.slug, ...volumeFor(ev, tier) }
+  const base = { activity: ev.name, event_slug: ev.slug }
   if (isGameTier(ev, tier) && !opts.allowGameScore) return base
   return {
     ...base,

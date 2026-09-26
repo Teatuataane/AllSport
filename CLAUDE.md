@@ -2287,8 +2287,18 @@ production data (3 regulars at 5–11 events per domain; everyone else 1–3). *
   `unitsForPayload`. The three helpers still needed live in **`lib/eventKinds.ts`**:
   `isGameTier`, `metresIn`, and `isDistanceEvent`, a structural rule that picks out the same
   seven distance events the reviewed sheet did (pinned by a test). Older sections of this file
-  that mention units are history. `workout_entries.count` and `volume_distance_m` are still
-  written (they record what was done) but nothing reads them for scoring.
+  that mention units are history.
+- **`workout_entries.count` and `volume_distance_m` are dropped by `20260926181359`** (NOT YET
+  APPLIED). The app no longer selects or writes them. **DEPLOY CODE FIRST, THEN THE MIGRATION**:
+  an older bundle still selects them, and a missing column is 42703, which takes HOME's colours
+  and the workout screen down. The migration archives the 3 rows holding a value
+  (`workout_entries_volume_archive_20260926181359`, RLS on, no policies) and redefines
+  `guard_workout_entries_write` whole from the LIVE prosrc minus the two lines naming the
+  columns (a plpgsql trigger naming a dropped column raises on every write);
+  `__tests__/dropEntryVolume.test.ts` pins that nothing else changed. Dry-run against
+  production 2026-09-27 in rolled-back transactions: 3 archived, both columns gone, a write
+  through the new guard succeeded, production unchanged afterwards. `duration_seconds` stays:
+  the activity report reads it.
 - **No one-at-a-time rule.** `colourGate` offers the whole computed colour when it beats the
   one held, so a domain can jump Whero → Kahurangi in one session; auto-conferral writes ONE
   row (the new top). `confer_grade` already allowed jumps. `eventsBehind(grades, domain)` now

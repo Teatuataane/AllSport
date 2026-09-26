@@ -239,7 +239,7 @@ function countedRows(rows: readonly ResultRow[], recorded: ReadonlySet<string> |
 async function loadWorkoutEntries(db: GradeDb, playerId: string) {
   // score_label has existed since the table did (20260915214702), so it adds
   // no new 42703 risk to this query. Display only; HOME shows it.
-  const base = 'event_slug, count, volume_distance_m, raw_score, weight_kg, difficulty_tier, score_label'
+  const base = 'event_slug, raw_score, weight_kg, difficulty_tier, score_label'
   const ask = (cols: string, workoutCols: string) => db.from('workout_entries')
     .select(`${cols}, workouts!inner(${workoutCols})`)
     .eq('workouts.player_id', playerId)

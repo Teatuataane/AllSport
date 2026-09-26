@@ -3,10 +3,9 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import {
   drawPlan, planFromEventNames, togglePlanned, sortPlan, planEvents,
-  entryPayload, volumeFor, isPersonalGame, isOpen, PLAN_MAX,
+  entryPayload, isPersonalGame, isOpen, PLAN_MAX,
 } from '@/lib/personalGame'
 import { getEventBySlug, EVENTS } from '@/lib/eventData'
-import { metresIn } from '@/lib/eventKinds'
 import { EMPTY_VALS, type EntryVals } from '@/lib/scoring'
 
 const ev = (slug: string) => {
@@ -41,9 +40,11 @@ describe('a plan', () => {
 })
 
 describe('one submission', () => {
-  it('stores the score and one completion for a set event', () => {
+  it('stores the score for a set event', () => {
     const p = entryPayload(ev('deadlift'), vals({ weightKg: '100', repCount: '3' }))
-    expect(p).toMatchObject({ event_slug: 'deadlift', count: 1, volume_distance_m: null, weight_kg: 100 })
+    expect(p).toMatchObject({ event_slug: 'deadlift', weight_kg: 100 })
+    expect(p).not.toHaveProperty('count')
+    expect(p).not.toHaveProperty('volume_distance_m')
     expect(p!.raw_score).toBe(100)
   })
 
@@ -51,24 +52,12 @@ describe('one submission', () => {
     expect(entryPayload(ev('deadlift'), vals({}))).toBeNull()
   })
 
-  it('stores the rung distance on a distance event', () => {
-    const running = ev('running')
-    const rung = (running.difficultyTiers ?? []).find(t => t.scoring !== 'sport')!
-    const p = entryPayload(running, vals({ difficultyTier: rung.name, timeMins: '4', timeSecs: '0' }))!
-    expect(p.volume_distance_m).toBe(metresIn(rung.name))
-    expect(p.count).toBeNull()
-  })
-
-  it('never stores a score on a Game rung — the database refuses one — but still counts the volume', () => {
+  it('never stores a score on a Game rung — the database refuses one', () => {
     const gameEvent = EVENTS.find(e => (e.difficultyTiers ?? []).some(t => t.scoring === 'sport'))!
     const rung = gameEvent.difficultyTiers!.find(t => t.scoring === 'sport')!
     const p = entryPayload(gameEvent, vals({ difficultyTier: rung.name, sportResult: 'win' }))!
     expect(p.raw_score).toBeUndefined()
-    expect(p.count).toBe(1)
-  })
-
-  it('counts one completion for a game on a pure sport event', () => {
-    expect(volumeFor(ev('wrestling'), null)).toEqual({ count: 1, volume_distance_m: null })
+    expect(p.event_slug).toBe(gameEvent.slug)
   })
 })
 

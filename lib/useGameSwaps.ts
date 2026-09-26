@@ -24,7 +24,7 @@ import type { EntryVals } from '@/lib/scoring'
 
 const supabase = createClient()
 
-export type SwapEntry = EntryRow & { event_slug: string | null; count: number | null; volume_distance_m: number | null }
+export type SwapEntry = EntryRow & { event_slug: string | null }
 
 type Loaded = {
   /** Who these belong to: the hook clears when the judge switches player. */
@@ -34,8 +34,7 @@ type Loaded = {
   entries: SwapEntry[]
 }
 
-// count and volume_distance_m are read so an edit starts from what was stored.
-const ENTRY_COLS = 'id, event_slug, count, volume_distance_m, raw_score, score_label, difficulty_tier, weight_kg, reps, time_seconds, distance_m, exercise_variation'
+const ENTRY_COLS = 'id, event_slug, raw_score, score_label, difficulty_tier, weight_kg, reps, time_seconds, distance_m, exercise_variation'
 
 export type GameSwaps = {
   /** Slugs the player added on top of the official ten. */

@@ -301,20 +301,20 @@ describe('fitting and suggesting activities', () => {
 describe('logged entries into grading, as PostgREST returns them', () => {
   const workout = { player_id: 'p', performed_on: '2026-09-16', witnessed: false, created_at: '2026-09-16T01:00:00Z' }
   const entry = (e: Partial<WorkoutEntryRow>): WorkoutEntryRow => ({
-    event_slug: 'cycling', count: null, volume_distance_m: null, raw_score: null, weight_kg: null, difficulty_tier: null, workouts: workout, ...e,
+    event_slug: 'cycling', raw_score: null, weight_kg: null, difficulty_tier: null, workouts: workout, ...e,
   })
 
   it('reads numeric columns that arrive as strings', () => {
     const { rows } = workoutEvidence([entry({
-      raw_score: '29900' as unknown as number, volume_distance_m: '5000' as unknown as number, difficulty_tier: '1000m',
+      raw_score: '29900' as unknown as number, difficulty_tier: '1000m',
     })])
     expect(rows[0].raw_score).toBe(29900)
-    const lift = workoutEvidence([entry({ event_slug: 'deadlift', raw_score: '100' as unknown as number, weight_kg: '100' as unknown as number, count: 3 })])
+    const lift = workoutEvidence([entry({ event_slug: 'deadlift', raw_score: '100' as unknown as number, weight_kg: '100' as unknown as number })])
     expect(lift.rows[0].weight_kg).toBe(100)
   })
 
   it('skips an entry whose workout it cannot read', () => {
-    expect(workoutEvidence([entry({ workouts: null, raw_score: 29900, volume_distance_m: 5000 })])).toEqual({ rows: [] })
+    expect(workoutEvidence([entry({ workouts: null, raw_score: 29900 })])).toEqual({ rows: [] })
   })
 
   it('never grades a score on an entry that is not fitted to an event', () => {

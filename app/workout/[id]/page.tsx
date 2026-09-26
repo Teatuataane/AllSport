@@ -30,7 +30,7 @@ import type { EntryVals } from '@/lib/scoring'
 
 const supabase = createClient()
 
-type Entry = EntryRow & { event_slug: string | null; count: number | null; volume_distance_m: number | null }
+type Entry = EntryRow & { event_slug: string | null }
 
 type Workout = {
   id: string
@@ -71,7 +71,7 @@ export default function PersonalGamePage() {
   const load = useCallback(async () => {
     const { data, error: e } = await supabase
       .from('workouts')
-      .select('id, player_id, performed_on, witnessed, finished_at, planned_events, notes, workout_entries(id, event_slug, count, volume_distance_m, raw_score, score_label, difficulty_tier, weight_kg, reps, time_seconds, distance_m, exercise_variation)')
+      .select('id, player_id, performed_on, witnessed, finished_at, planned_events, notes, workout_entries(id, event_slug, raw_score, score_label, difficulty_tier, weight_kg, reps, time_seconds, distance_m, exercise_variation)')
       .eq('id', id)
       .maybeSingle()
     if (e || !data) { setNotFound(true); return }

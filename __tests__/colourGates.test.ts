@@ -23,11 +23,11 @@ describe('what a domain has waiting', () => {
 describe('logged workouts as evidence', () => {
   const w = (witnessed: boolean) => ({ player_id: 'p', performed_on: '2026-09-16', witnessed, created_at: '2026-09-16T01:00:00Z' })
   const entry = (e: Partial<WorkoutEntryRow>): WorkoutEntryRow => ({
-    event_slug: 'cycling', count: null, volume_distance_m: null, raw_score: null, weight_kg: null, difficulty_tier: null, workouts: w(false), ...e,
+    event_slug: 'cycling', raw_score: null, weight_kg: null, difficulty_tier: null, workouts: w(false), ...e,
   })
 
   it('turns a best split into a grading row', () => {
-    const { rows } = workoutEvidence([entry({ raw_score: 29900, difficulty_tier: '1000m', volume_distance_m: 25000 })])
+    const { rows } = workoutEvidence([entry({ raw_score: 29900, difficulty_tier: '1000m' })])
     expect(rows).toEqual([{ event_name: 'Cycling', raw_score: 29900, weight_kg: null, difficulty_tier: '1000m', source: 'solo' }])
   })
 
@@ -35,9 +35,9 @@ describe('logged workouts as evidence', () => {
     expect(workoutEvidence([entry({ raw_score: 29900, workouts: w(true) })]).rows[0].source).toBe('witnessed')
   })
 
-  it('gives volume without a score no grading row, and an unfitted entry nothing', () => {
-    expect(workoutEvidence([entry({ volume_distance_m: 5000 })]).rows).toEqual([])
-    expect(workoutEvidence([entry({ event_slug: null, count: 4 })])).toEqual({ rows: [] })
+  it('gives an entry without a score no grading row, and an unfitted entry nothing', () => {
+    expect(workoutEvidence([entry({})]).rows).toEqual([])
+    expect(workoutEvidence([entry({ event_slug: null })])).toEqual({ rows: [] })
   })
 
   it('carries the source through to the event colour', () => {
