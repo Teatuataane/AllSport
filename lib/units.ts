@@ -1,21 +1,19 @@
 // ─── Effort units ────────────────────────────────────────────────────────────
-// The training currency inside colours (workout logging, September 2026).
-// Every domain colour needs three things: the standards met in six of the domain,
-// the games quota, and a number of effort units in THAT domain since the last
-// colour there (lib/grading.ts holds the numbers; this module says what one
-// unit IS).
+// How much training a submission represents (workout logging, September 2026).
+// DISPLAY ONLY since 26 September 2026: units gated every domain colour until
+// then, and no longer feed grading at all. They are shown on the live screen,
+// the personal-game screen and the session-end screen.
 //
-// Any completed unit counts. There is deliberately no intensity floor: the
-// standards gate tests intensity, the training gate measures time on the mat,
-// and an easy or injury-modified session still counts.
+// Any completed unit counts. There is deliberately no intensity floor, so an
+// easy or injury-modified session still counts.
 //
 // What a unit is, per event, is COMPILED from WORKOUT_UNITS_REVIEW.md into
 // lib/unitSheet.ts, the same way the standards are. Never hand-edit a unit
 // size here or in the generated file; change the sheet and re-run
 // scripts/apply-units-sheet.mjs.
 //
-// Pure: no React, no Supabase. Used by the grading engine, the logging page and
-// the live session screen, so all three count the same way.
+// Pure: no React, no Supabase. Used by the live session and personal-game
+// screens, so both count the same way.
 
 import { getEventBySlug, getEventByName, isTimedEffort, type EventData } from './eventData'
 import { UNIT_SHEET, type UnitRule } from './unitSheet'
@@ -129,9 +127,8 @@ export function unitsIn(ev: EventData | undefined, rows: readonly { difficulty_t
 
 /**
  * Rounded DOWN for display, so a player is never shown a unit they have not
- * finished: whole units, or one decimal under ten. The tolerance matches the
- * training gate's (lib/grading.ts UNIT_EPSILON), so a gate that is met never
- * reads as "2.9 of 3".
+ * finished: whole units, or one decimal under ten. The 1e-6 tolerance absorbs
+ * floating-point noise, so quarters summing to 2.9999… read as "3".
  */
 export function fmtUnits(u: number): string {
   if (u >= 10) return String(Math.floor(u + 1e-6))

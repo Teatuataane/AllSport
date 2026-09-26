@@ -7,7 +7,17 @@
 import { EVENTS, getEventBySlug, type EventData } from './eventData'
 import { toNZDateString } from './dates'
 import { unitsForEntryRow, isGameTier } from './units'
-import type { GradeResultRow, UnitEvent } from './playerGrades'
+import type { GradeResultRow } from './playerGrades'
+
+/** One thing that earned effort units. Display only since units left grading (26 September 2026). */
+export type UnitEvent = {
+  domain: number
+  units: number
+  /** When it counted: the log time for a workout. */
+  at: string
+  /** The NZ day it was trained (YYYY-MM-DD). */
+  day?: string
+}
 
 /** A workout_entries row as the grades loader reads it, with its workout. */
 export type WorkoutEntryRow = {

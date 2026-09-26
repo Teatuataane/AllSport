@@ -1,85 +1,23 @@
 import { describe, it, expect } from 'vitest'
-import { GAMES_REQUIRED, UNITS_REQUIRED, UNIT_MULTIPLIER, TOP_RUNG, colourGate } from '@/lib/grading'
-import { unitsSinceConferral, colourGates, releasable, gateBlocker, eventGrade, gameEvidence, type GradePlayer } from '@/lib/playerGrades'
+import { GAMES_REQUIRED, TOP_RUNG } from '@/lib/grading'
+import { colourGates, releasable, eventGrade, gameEvidence, type GradePlayer } from '@/lib/playerGrades'
 import { fmtUnits, fmtUnitsLabel } from '@/lib/units'
 import { normaliseActivity } from '@/lib/workouts'
 import { workoutEvidence, fitActivity, suggestEvents, allowedDays, addDays, recentUnitsByDomain, type WorkoutEntryRow } from '@/lib/workouts'
 import { getEventByName } from '@/lib/eventData'
 
-describe('the games and training ladders', () => {
+describe('the games ladder', () => {
   it('holds the games quota Tāne set, one per colour', () => {
     expect(GAMES_REQUIRED).toEqual([0, 1, 3, 5, 8, 12, 16, 20, 30, 40, 55, 75, 100])
     expect(GAMES_REQUIRED).toHaveLength(TOP_RUNG + 1)
   })
-
-  it('derives the training ladder from the games steps, calibrated at 1.5', () => {
-    expect(UNIT_MULTIPLIER).toBe(1.5)
-    expect(UNITS_REQUIRED).toEqual([0, 0, 3, 3, 5, 6, 6, 6, 15, 15, 23, 30, 38])
-  })
-
-  it('asks no training for Kiwikiwi, which anyone can reach', () => {
-    expect(UNITS_REQUIRED[1]).toBe(0)
-  })
 })
 
-describe('a colour needs all three gates', () => {
-  const base = { domainNumber: 3, standardsRung: 5, held: 2, games: 10, unitsSinceHeld: 10 }
-
-  it('releases the next colour, one at a time, when all three pass', () => {
-    const g = colourGate(base)
-    expect(g).toMatchObject({ next: 3, standardsMet: true, gamesMet: true, trainingMet: true, releasable: 3 })
-  })
-
-  it('holds it back on each gate alone', () => {
-    expect(colourGate({ ...base, standardsRung: 2 }).releasable).toBe(0)
-    expect(colourGate({ ...base, games: 4 }).releasable).toBe(0)
-    expect(colourGate({ ...base, unitsSinceHeld: 2 }).releasable).toBe(0)
-  })
-
-  it('does not let floating-point quarters fall short of a whole number', () => {
-    expect(colourGate({ ...base, unitsSinceHeld: 0.1 + 0.2 + 2.7 }).trainingMet).toBe(true)
-  })
-
-  it('offers nothing above Taniwha', () => {
-    expect(colourGate({ ...base, held: TOP_RUNG, standardsRung: TOP_RUNG }).next).toBeNull()
-  })
-
-  it('says what is missing, in words', () => {
-    expect(gateBlocker(colourGate({ ...base, games: 4, unitsSinceHeld: 1 }))).toBe('1 more game · 2 more units')
-    expect(gateBlocker(colourGate(base))).toBeNull()
-  })
-
-  it('releasable lists only the domains ready now', () => {
-    const domains = [1, 2].map(n => ({ domainNumber: n, rung: 3, availableCount: 12, required: 6, metAtRung: 6, nextRung: 4, metAtNextRung: 0 }))
-    const gates = colourGates(domains, new Map([[1, 0], [2, 0]]), 10, new Map([[1, 0], [2, 0]]))
-    expect(releasable(gates).map(g => [g.domainNumber, g.releasable])).toEqual([[1, 1], [2, 1]])
-  })
-})
-
-describe('units since the last colour', () => {
-  const conferred = '2026-09-20T05:00:00Z' // 5pm NZ, 20 September
-
-  it('counts everything before the first colour', () => {
-    const u = unitsSinceConferral([{ domain: 6, units: 25, at: '2026-01-01T00:00:00Z' }], [])
-    expect(u.get(6)).toBe(25)
-  })
-
-  it('starts again at each conferral, per domain', () => {
-    const u = unitsSinceConferral([
-      { domain: 6, units: 5, at: '2026-09-19T00:00:00Z' },
-      { domain: 6, units: 2, at: '2026-09-21T00:00:00Z' },
-      { domain: 2, units: 4, at: '2026-09-19T00:00:00Z' },
-    ], [{ domain_number: 6, conferred_at: conferred }])
-    expect(u.get(6)).toBe(2)
-    expect(u.get(2)).toBe(4)
-  })
-
-  it('refuses a workout trained before the conferral day, even when logged after it', () => {
-    const u = unitsSinceConferral([
-      { domain: 6, units: 10, at: '2026-09-21T00:00:00Z', day: '2026-09-15' },
-      { domain: 6, units: 3, at: '2026-09-21T00:00:00Z', day: '2026-09-20' },
-    ], [{ domain_number: 6, conferred_at: conferred }])
-    expect(u.get(6)).toBe(3)
+describe('what a domain has waiting', () => {
+  it('releasable lists only the domains whose standards are above the colour held', () => {
+    const domains = [1, 2, 3].map(n => ({ domainNumber: n, rung: 3, availableCount: 12, slots: 6, counted: [], average: 3, nextRung: 4, toNext: 6 }))
+    const gates = colourGates(domains, new Map([[1, 0], [2, 3], [3, 1]]))
+    expect(releasable(gates).map(g => [g.domainNumber, g.releasable])).toEqual([[1, 3], [3, 3]])
   })
 })
 
@@ -155,12 +93,12 @@ describe('the days a workout may carry', () => {
 
 describe('game results as evidence', () => {
   const row = (session_id: string, closed: boolean, event_name = 'Cycling', difficulty_tier: string | null = '1000m') =>
-    ({ session_id, event_name, raw_score: 29900, weight_kg: null, difficulty_tier, at: '2026-09-10T04:30:00Z', closed })
+    ({ session_id, event_name, raw_score: 29900, weight_kg: null, difficulty_tier, closed })
 
-  it('counts games and units only from sessions that have finished', () => {
+  it('counts games only from sessions that have finished', () => {
     const g = gameEvidence([row('a', true), row('a', true), row('b', true), row('live', false)])
     expect(g.games).toBe(2)
-    expect(g.units.map(u => u.units)).toEqual([1, 1, 1])
+    expect(g.rows).toHaveLength(4)
   })
 
   it('still grades the standards from a game in progress', () => {
@@ -168,10 +106,6 @@ describe('game results as evidence', () => {
     expect(g.rows).toHaveLength(1)
     expect(g.rows[0].source).toBe('game')
     expect(g.games).toBe(0)
-  })
-
-  it('earns nothing for a retired event', () => {
-    expect(gameEvidence([row('a', true, 'Walking', null)]).units).toEqual([])
   })
 })
 

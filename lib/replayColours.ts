@@ -1,15 +1,14 @@
 // ─── Replaying history ───────────────────────────────────────────────────────
 // Step 6 of docs/designs/auto-conferral-spec.md, decision 9.
 //
-// Nobody held a conferred colour when auto-conferral switched on. Because
-// training units only count AFTER a conferral, a naive first run would land
-// everyone on Kiwikiwi and make them earn Whero's units from scratch —
-// throwing away the training history of the most committed players.
+// Nobody held a conferred colour when auto-conferral switched on. This walks a
+// player's history in time order and confers each colour at the moment it
+// would have landed, had auto-conferral always existed, so a colour's date is
+// the day it was earned rather than the day the switch was thrown.
 //
-// So this walks a player's history in time order and confers each colour at
-// the moment it would have landed, had auto-conferral always existed. The units
-// clock then restarts where it really would have, and a veteran arrives where
-// they have actually earned.
+// It was essential while training units counted only AFTER a conferral (a
+// naive first run would have discarded everyone's training). Units left
+// grading on 26 September 2026, so today it only dates the awards.
 //
 // Pure. It computes through gradeStateFrom and awardsToConfer — the SAME path
 // the live route takes — so the backfill and the app cannot disagree about a
@@ -56,9 +55,8 @@ export function replayMoments(playerId: string, inputs: GradeInputs, now: string
  * dated when it would have landed.
  *
  * At each moment it keeps asking until nothing more is due, rather than asking
- * once: the only colour needing no units is Kiwikiwi, so in practice a moment
- * yields at most one per domain, but a loop that relied on that would break
- * silently the day the units ladder changes.
+ * once. Today one ask is enough (a domain confers its whole computed colour),
+ * but a loop that relied on that would break silently if a gate ever returns.
  */
 export function replayAwards(playerId: string, inputs: GradeInputs, now: string): PlannedAward[] {
   const planned: PlannedAward[] = []

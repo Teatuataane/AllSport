@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { bestScoreLabel, domainExtremesByColour, bestEventByColour, unitLine } from '@/lib/colourDisplay'
+import { bestScoreLabel, domainExtremesByColour, bestEventByColour, nextDomainColour } from '@/lib/colourDisplay'
 import { getEventByName } from '@/lib/eventData'
 
 const slug = (name: string) => getEventByName(name)!.slug
@@ -48,9 +48,18 @@ describe('bestEventByColour', () => {
   })
 })
 
-describe('unitLine', () => {
-  it('states what a unit is from the unit sheet', () => {
-    expect(unitLine()).toMatch(/^1 unit = one set, one hold, one game, \d+ throws or jumps, or [\d.]+km of distance work/)
+describe('nextDomainColour', () => {
+  it('counts the steps to the next colour across the six slots', () => {
+    // 28 over six is Kōwhai; Kākāriki needs 30.
+    expect(nextDomainColour({ slots: 6, average: 28 / 6 }, 0)).toEqual({ next: 5, steps: 2, progress: 4 / 6 })
+  })
+  it('aims above a colour already held, even when the scores sit below it', () => {
+    // Held Kahurangi (6), scores now average 4: the next is Poroporo (7), 42 - 24.
+    expect(nextDomainColour({ slots: 6, average: 4 }, 6)).toEqual({ next: 7, steps: 18, progress: 0 })
+  })
+  it('is null at the top, and when nothing can be graded', () => {
+    expect(nextDomainColour({ slots: 6, average: 12 }, 12)).toBeNull()
+    expect(nextDomainColour({ slots: 0, average: 0 }, 0)).toBeNull()
   })
 })
 

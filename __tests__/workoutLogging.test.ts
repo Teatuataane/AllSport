@@ -5,8 +5,8 @@ import { execFileSync } from 'node:child_process'
 import { compile, render } from '../scripts/apply-units-sheet.mjs'
 import { EVENTS, getEventByName, type EventData } from '@/lib/eventData'
 import { computeScoreVals, scoreColumns, tierScoring, EMPTY_VALS, type EntryVals } from '@/lib/scoring'
-import { colourGate, GAMES_REQUIRED, UNITS_REQUIRED, TOP_RUNG, MIN_RATED_GAMES } from '@/lib/grading'
-import { eventGrade, unitsSinceConferral, gateBlocker, type GradePlayer } from '@/lib/playerGrades'
+import { colourGate, TOP_RUNG, MIN_RATED_GAMES } from '@/lib/grading'
+import { eventGrade, type GradePlayer } from '@/lib/playerGrades'
 import {
   RULE_WORDS, defaultRule, unitRule, unitsForResult, unitsForVolume, unitsForResultRow, unitsForEntryRow,
   isGameTier, fmtUnits,
@@ -215,93 +215,25 @@ describe('the source behind an event colour', () => {
   })
 })
 
-// ─── The training count across several conferrals ────────────────────────────
-
-describe('units since the last colour, with several colours in one domain', () => {
-  const awards = [
-    { domain_number: 6, conferred_at: '2026-09-20T05:00:00Z' },
-    { domain_number: 6, conferred_at: '2026-09-25T05:00:00Z' }, // the latest, listed in the middle
-    { domain_number: 6, conferred_at: '2026-09-22T05:00:00Z' },
-    { domain_number: 2, conferred_at: '2026-09-30T05:00:00Z' },
-  ]
-
-  it('counts only from the LATEST conferral, whatever order the awards arrive in', () => {
-    const u = unitsSinceConferral([
-      { domain: 6, units: 7, at: '2026-09-23T00:00:00Z' },
-      { domain: 6, units: 2, at: '2026-09-26T00:00:00Z' },
-    ], awards)
-    expect(u.get(6)).toBe(2)
-  })
-
-  it('excludes something that happened at the very instant of the conferral', () => {
-    const u = unitsSinceConferral([{ domain: 6, units: 4, at: '2026-09-25T05:00:00Z' }], awards)
-    expect(u.get(6)).toBeUndefined()
-  })
-
-  it('never lets one domain\'s conferral reset another', () => {
-    const u = unitsSinceConferral([{ domain: 3, units: 5, at: '2026-09-01T00:00:00Z' }], awards)
-    expect(u.get(3)).toBe(5)
-  })
-
-  it('compares the trained day in NZ time: 1am on the 21st in NZ is still the 20th in UTC', () => {
-    const conferred = [{ domain_number: 6, conferred_at: '2026-09-20T13:00:00Z' }] // 21 Sept, 1am NZ
-    const u = unitsSinceConferral([
-      { domain: 6, units: 10, at: '2026-09-21T02:00:00Z', day: '2026-09-20' },
-      { domain: 6, units: 1, at: '2026-09-21T02:00:00Z', day: '2026-09-21' },
-    ], conferred)
-    expect(u.get(6)).toBe(1)
-  })
-
-  it('counts a game result with no trained day on its instant alone', () => {
-    const u = unitsSinceConferral([{ domain: 6, units: 0.25, at: '2026-09-26T00:00:00Z' }], awards)
-    expect(u.get(6)).toBe(0.25)
-  })
-})
-
 // ─── colourGate at its edges ─────────────────────────────────────────────────
+// No games or training check on a domain since 26 September 2026: a domain
+// confers whatever colour its standards give, when that is above the one held.
 
 describe('colourGate edges', () => {
-  const base = { domainNumber: 3, standardsRung: 5, held: 2, games: 10, unitsSinceHeld: 10 }
-
-  it('asks one game and no training for Kiwikiwi', () => {
-    const g = colourGate({ domainNumber: 1, standardsRung: 1, held: 0, games: 1, unitsSinceHeld: 0 })
-    expect(g).toMatchObject({ next: 1, gamesNeeded: 1, unitsNeeded: 0, releasable: 1 })
-    expect(colourGate({ domainNumber: 1, standardsRung: 1, held: 0, games: 0, unitsSinceHeld: 0 }).releasable).toBe(0)
+  it('confers Kiwikiwi on a first result, with no games needed', () => {
+    expect(colourGate({ domainNumber: 1, standardsRung: 1, held: 0 }).releasable).toBe(1)
   })
 
-  it('passes a gate met exactly', () => {
-    const g = colourGate({ ...base, games: GAMES_REQUIRED[3], unitsSinceHeld: UNITS_REQUIRED[3] })
-    expect(g.gamesMet && g.trainingMet).toBe(true)
-    expect(colourGate({ ...base, games: GAMES_REQUIRED[3] - 1 }).gamesMet).toBe(false)
+  it('confers Taniwha from the standards alone', () => {
+    expect(colourGate({ domainNumber: 3, standardsRung: TOP_RUNG, held: TOP_RUNG - 1 }).releasable).toBe(TOP_RUNG)
   })
 
-  it('absorbs floating-point noise but never rounds a real shortfall up', () => {
-    expect(colourGate({ ...base, unitsSinceHeld: 2.95 }).trainingMet).toBe(false)
-    expect(colourGate({ ...base, unitsSinceHeld: 3 - 1e-12 }).trainingMet).toBe(true)
-  })
-
-  it('asks the full top-rung quota for Taniwha', () => {
-    const g = colourGate({ ...base, held: TOP_RUNG - 1, standardsRung: TOP_RUNG, games: 99, unitsSinceHeld: 99 })
-    expect(g).toMatchObject({ next: TOP_RUNG, gamesNeeded: 100, unitsNeeded: 38, gamesMet: false, releasable: 0 })
-  })
-
-  it('at the top, releases nothing, asks for nothing and reports no blocker', () => {
-    const g = colourGate({ ...base, held: TOP_RUNG, standardsRung: TOP_RUNG })
-    expect(g).toMatchObject({ next: null, gamesNeeded: 0, unitsNeeded: 0, standardsMet: false, releasable: 0 })
-    expect(gateBlocker(g)).toBeNull()
+  it('at the top, releases nothing', () => {
+    expect(colourGate({ domainNumber: 3, standardsRung: TOP_RUNG, held: TOP_RUNG }).releasable).toBe(0)
   })
 
   it('does not release a colour when the standards today sit below one already held', () => {
-    expect(colourGate({ ...base, held: 5, standardsRung: 3 }).standardsMet).toBe(false)
-  })
-
-  it('names every blocker, in order, with the right plural', () => {
-    expect(gateBlocker(colourGate({ ...base, standardsRung: 2 }))).toBe('the standards')
-    expect(gateBlocker(colourGate({ ...base, standardsRung: 2, games: 3, unitsSinceHeld: 0 })))
-      .toBe('the standards · 2 more games · 3 more units')
-    expect(gateBlocker(colourGate({ ...base, unitsSinceHeld: 2 }))).toBe('1 more unit')
-    // A fraction short rounds UP: 0.8 of 3 still needs three more to be sure.
-    expect(gateBlocker(colourGate({ ...base, unitsSinceHeld: 0.8 }))).toBe('3 more units')
+    expect(colourGate({ domainNumber: 3, standardsRung: 3, held: 5 }).releasable).toBe(0)
   })
 })
 

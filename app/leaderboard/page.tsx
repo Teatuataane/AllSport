@@ -12,7 +12,7 @@ import {
   computePercentiles, strongestEvent, topDomain as pctTopDomain, eventPctLabel,
 } from '@/lib/percentile'
 import { gradeForRung, DOMAIN_COUNT, GRADES } from '@/lib/grading'
-import { rankByColours, displayOverall } from '@/lib/colourBoard'
+import { rankByColours, displayOverall, countGames } from '@/lib/colourBoard'
 import { seasonMedals, rankMedals, type MedalRow, type MedalCount } from '@/lib/medalTable'
 import { GradeDot } from '@/components/GradeDot'
 
@@ -20,7 +20,7 @@ import { GradeDot } from '@/components/GradeDot'
  * The colour cell, shared by the wide table and the narrow cards.
  *
  * It shows the overall colour CONFERRED: the average of the ten domain colours,
- * rounded down (overallRung). Conferred colours are public
+ * rounded down and capped by games played (overallRung). Conferred colours are public
  * (grade_awards). A player's live, computed colours are not, because computing
  * them needs their declared bodyweight and, for a junior, their sex. While the
  * overall is still Mā the cell counts the domains that hold a colour instead.
@@ -399,19 +399,16 @@ export default function Leaderboard() {
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null)
   const [sessionLeader, setSessionLeader] = useState<SessionLeader | null>(null)
   const [statsData, setStatsData] = useState<StatsBundle | null>(null)
+  // Sessions that are not games: every voided one, and the one still running.
+  // The games count caps the overall colour, so it must match HOME's.
+  const [notGames, setNotGames] = useState<Set<string>>(new Set())
 
   // Per-player games and wins + percentile-derived top domain/event. All
   // lifetime: colours never reset, so neither does the board.
   const playerStats = useMemo(() => {
     if (!statsData) return null
     const wins = sessionWins(statsData.results)
-    const games = new Map<string, Set<string>>()
-    for (const r of statsData.results) {
-      if (!r.player_id) continue
-      const g = games.get(r.player_id) ?? new Set<string>()
-      g.add(r.session_id)
-      games.set(r.player_id, g)
-    }
+    const games = countGames(statsData.results, notGames)
     const pct = computePercentiles(statsData.results, statsData.events, statsData.players)
     const out = new Map<string, { games: number; wins: number; topDomain: string; topDomainPct: string; topEvent: string; topEventPct: string }>()
     for (const p of statsData.players) {
@@ -419,7 +416,7 @@ export default function Leaderboard() {
       const td = pctTopDomain(mine, EVENT_DOMAIN, DOMAIN_NAMES)
       const te = strongestEvent(mine, EVENT_DOMAIN)
       out.set(p.id, {
-        games: games.get(p.id)?.size ?? 0,
+        games: games.get(p.id) ?? 0,
         wins: wins.get(p.id) ?? 0,
         topDomain: td?.domainName ?? '—',
         topDomainPct: td ? `Top ${td.topPct}%` : '',
@@ -428,7 +425,7 @@ export default function Leaderboard() {
       })
     }
     return out
-  }, [statsData])
+  }, [statsData, notGames])
 
   // ONE request for the whole page. This used to be four separate effects firing
   // seven concurrent PostgREST queries, which is what made the page slow: against
@@ -483,9 +480,12 @@ export default function Leaderboard() {
       // and the only public source of names. It used to arrive through the
       // seasonal `rankings` rows, which would have emptied the board every
       // January now that nothing about the board is seasonal.
-      const [{ data, error }, rosterRes] = await Promise.all([
+      const [{ data, error }, rosterRes, voidRes] = await Promise.all([
         supabase.rpc('leaderboard_page', { p_season: new Date().getFullYear() }),
         supabase.from('players_public').select('id, display_name, username, division, is_guest'),
+        // Its own query: a missing column (42703) must not take the board down.
+        // On any error nothing is excluded, which only ever over-counts games.
+        supabase.from('sessions').select('id').not('voided_at', 'is', null),
       ])
       if (cancelled) return
 
@@ -507,6 +507,9 @@ export default function Leaderboard() {
         held.set(a.player_id, m)
       }
       setGradesByPlayer(held)
+      const excluded = new Set(((voidRes.error ? [] : voidRes.data) ?? []).map(r => r.id as string))
+      if (d.active_session) excluded.add(d.active_session.id)
+      setNotGames(excluded)
       setStatsData(d.stats)
       setActiveSession(d.active_session ?? null)
       setSessionLeader(d.active_session ? computeLeader(d.active_session_results ?? []) : null)
@@ -760,8 +763,8 @@ export default function Leaderboard() {
         </h2>
         <div className="rainbow-line" style={{ width: '60px', marginBottom: '16px' }} />
         <p style={{ color: '#888888', fontSize: '15px', maxWidth: '620px', marginBottom: '10px', lineHeight: 1.7 }}>
-          Twelve colours, earned against published standards in every event. A domain&apos;s colour is the highest
-          one you meet in at least six of its events; your overall colour is the average of the ten.
+          Twelve colours, earned against published standards in every event. A domain&apos;s colour is the average
+          of your best six events in it; your overall colour is the average of the ten, capped by games played.
         </p>
         <p style={{ color: '#666666', fontSize: '14px', maxWidth: '620px', marginBottom: '40px', lineHeight: 1.7 }}>
           Each colour is a share of the general population, not of this club, so nobody loses a colour because

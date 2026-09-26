@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import {
   GRADES, MA, TOP_RUNG, DOMAIN_COUNT, gradeForRung,
-  requiredForDomain, domainGrade, overallGrade, overallRung, DOMAIN_REQUIRED_CAP,
+  slotsForDomain, domainGrade, overallGrade, overallRung, averageRung, gamesCapRung,
+  DOMAIN_TOP_EVENTS, GAMES_REQUIRED, colourGate,
   AGE_SHIFT, thresholdFor, rungForScore, ageBand,
   DRILL_CAP, MIN_RATED_GAMES, ratingRung, gameEventRung,
   BODYWEIGHT_BANDS, JUNIOR_BODYWEIGHT_KG, ratioThresholdsKg, bandMidpointKg, bodyweightOn,
@@ -49,170 +50,136 @@ describe('the ladder', () => {
   })
 })
 
-describe('rule 2 — the domain colour is the highest rung met in half your events', () => {
-  it('needs half the events, rounded up', () => {
-    expect(requiredForDomain(12)).toBe(6)
-    expect(requiredForDomain(5)).toBe(3)
-    expect(requiredForDomain(4)).toBe(2)
-    expect(requiredForDomain(1)).toBe(1)
+describe('rule 2 — the domain colour is the average of your best six events', () => {
+  const grade = (pairs: Record<string, number>, extra: Partial<Parameters<typeof domainGrade>[0]> = {}) =>
+    domainGrade({ domainNumber: 1, eventSlugs: TWELVE, rungByEvent: ladder(pairs), ...extra })
+
+  it('averages six slots, never more, however big the domain grows', () => {
+    // Tāne, 26 Sept 2026. Flexibility holds sixteen and still averages six.
+    expect(DOMAIN_TOP_EVENTS).toBe(6)
+    expect(slotsForDomain(12)).toBe(6)
+    expect(slotsForDomain(16)).toBe(6)
+    expect(slotsForDomain(5)).toBe(5)
+    expect(slotsForDomain(0)).toBe(0)
   })
 
-  it('caps the ask at six however big the domain grows', () => {
-    // Sept 2026: Flexibility went to sixteen and Tāne held the bar at six.
-    expect(DOMAIN_REQUIRED_CAP).toBe(6)
-    expect(requiredForDomain(16)).toBe(6)
-    expect(requiredForDomain(14)).toBe(6)
-    expect(requiredForDomain(13)).toBe(6)
-    expect(requiredForDomain(11)).toBe(6)
-    expect(requiredForDomain(100)).toBe(6)
+  it('counts an unplayed slot as Mā, so a newcomer reads low', () => {
+    // One Kahurangi event, five empty slots: 6 / 6 = 1, Kiwikiwi.
+    const r = grade({ e1: 6 })
+    expect(r.slots).toBe(6)
+    expect(r.rung).toBe(1)
+    expect(r.counted).toEqual(['e1'])
   })
 
-  it('never asks a player for more events than they have available', () => {
-    // The cap is a CAP, not a flat 6: exemptions shrink the pool, and a flat
-    // six would ask a five-event player for six of five.
-    for (let n = 1; n <= 20; n++) expect(requiredForDomain(n), `${n} available`).toBeLessThanOrEqual(n)
-  })
-
-  it('awards the colour on six of a sixteen-event domain, not eight', () => {
-    const SIXTEEN = Array.from({ length: 16 }, (_, i) => `f${i + 1}`)
-    const six = new Map(SIXTEEN.slice(0, 6).map((s) => [s, 5]))
-    const r = domainGrade({ domainNumber: 7, eventSlugs: SIXTEEN, rungByEvent: six })
-    expect(r.availableCount).toBe(16)
-    expect(r.required).toBe(6)
-    expect(r.rung).toBe(5)
-    const five = new Map(SIXTEEN.slice(0, 5).map((s) => [s, 5]))
-    expect(domainGrade({ domainNumber: 7, eventSlugs: SIXTEEN, rungByEvent: five }).rung).toBe(0)
-  })
-
-  it('awards the highest rung met widely enough, not the best single event', () => {
-    // Kōwhai (4) in six events, but Kahurangi (6) in only four.
-    const r = domainGrade({
-      domainNumber: 1,
-      eventSlugs: TWELVE,
-      rungByEvent: ladder({ e1: 6, e2: 6, e3: 6, e4: 6, e5: 4, e6: 4, e7: 0, e8: 0, e9: 0, e10: 0, e11: 0, e12: 0 }),
-    })
-    expect(r.required).toBe(6)
+  it('rounds the average down', () => {
+    // Kōura, Hiriwa, Kahurangi, Karaka and two empty: 28 / 6 = 4.67 -> Kōwhai.
+    const r = grade({ e1: 10, e2: 9, e3: 6, e4: 3 })
     expect(r.rung).toBe(4)
-    expect(r.metAtRung).toBe(6)
+    expect(r.average).toBeCloseTo(28 / 6)
   })
 
-  it('is Mā when too few events meet even the bottom rung', () => {
-    const r = domainGrade({ domainNumber: 1, eventSlugs: TWELVE, rungByEvent: allAt(5, 3) })
-    expect(r.rung).toBe(0)
-    expect(r.nextRung).toBe(1)
-    expect(r.metAtNextRung).toBe(3)
+  it('uses only the best six: a seventh event counts only when it beats one of them', () => {
+    const six = grade(Object.fromEntries(TWELVE.slice(0, 6).map((s) => [s, 5])))
+    expect(six.rung).toBe(5)
+    // A weaker seventh changes nothing.
+    expect(grade({ ...Object.fromEntries(TWELVE.slice(0, 6).map((s) => [s, 5])), e7: 2 }).rung).toBe(5)
+    // A stronger one replaces the weakest of the six.
+    const better = grade({ ...Object.fromEntries(TWELVE.slice(0, 6).map((s) => [s, 5])), e7: 11 })
+    expect(better.average).toBeCloseTo(36 / 6)
+    expect(better.rung).toBe(6)
+    expect(better.counted).toHaveLength(6)
+    expect(better.counted[0]).toBe('e7')
   })
 
-  it('reports progress toward the next rung', () => {
-    const r = domainGrade({
-      domainNumber: 1,
-      eventSlugs: TWELVE,
-      rungByEvent: ladder({ e1: 5, e2: 5, e3: 5, e4: 5, e5: 5, e6: 5, e7: 6, e8: 6, e9: 6, e10: 0, e11: 0, e12: 0 }),
-    })
-    expect(r.rung).toBe(5)
-    expect(r.nextRung).toBe(6)
-    expect(r.metAtNextRung).toBe(3) // three of the six needed for Kahurangi
+  it('ties a specialist with a generalist at six', () => {
+    // Three Taniwha events and nothing else, against eight at Kahurangi.
+    const specialist = grade({ e1: 12, e2: 12, e3: 12 })
+    const generalist = grade(Object.fromEntries(TWELVE.slice(0, 8).map((s) => [s, 6])))
+    expect(specialist.rung).toBe(6)
+    expect(generalist.rung).toBe(6)
   })
 
   it('never regresses when a player scores another event', () => {
     // Monotonicity matters: a player must never be demoted for competing more.
-    const before = domainGrade({ domainNumber: 1, eventSlugs: TWELVE, rungByEvent: allAt(7, 6) })
-    const after = domainGrade({
-      domainNumber: 1,
-      eventSlugs: TWELVE,
-      rungByEvent: ladder({ ...Object.fromEntries(TWELVE.slice(0, 6).map((s) => [s, 7])), e7: 1 }),
-    })
-    expect(before.rung).toBe(7)
-    expect(after.rung).toBeGreaterThanOrEqual(before.rung)
+    const base = { e1: 7, e2: 7, e3: 4 }
+    for (const add of [0, 1, 3, 7, 12]) {
+      expect(grade({ ...base, e4: add }).rung, `adding a rung-${add} event`).toBeGreaterThanOrEqual(grade(base).rung)
+    }
   })
 
   it('treats an unplayed event and a below-bottom-rung event alike', () => {
-    const unplayed = domainGrade({ domainNumber: 1, eventSlugs: TWELVE, rungByEvent: allAt(3, 6) })
-    const played0 = domainGrade({
-      domainNumber: 1,
-      eventSlugs: TWELVE,
-      rungByEvent: ladder({ ...Object.fromEntries(TWELVE.slice(0, 6).map((s) => [s, 3])), e7: 0, e8: 0 }),
-    })
-    expect(played0.rung).toBe(unplayed.rung)
+    expect(grade({ e1: 6, e2: 6, e3: 0, e4: 0 }).rung).toBe(grade({ e1: 6, e2: 6 }).rung)
   })
 
-  it('has the top rung reachable', () => {
-    expect(domainGrade({ domainNumber: 1, eventSlugs: TWELVE, rungByEvent: allAt(TOP_RUNG) }).rung).toBe(TOP_RUNG)
+  it('reports how many steps the next colour is away', () => {
+    // 28 across six slots; Kākāriki (5) needs 30, so two steps.
+    const r = grade({ e1: 10, e2: 9, e3: 6, e4: 3 })
+    expect(r.nextRung).toBe(5)
+    expect(r.toNext).toBe(2)
+  })
+
+  it('has the top rung reachable, and nothing beyond it', () => {
+    const top = grade(Object.fromEntries(TWELVE.slice(0, 6).map((s) => [s, TOP_RUNG])))
+    expect(top.rung).toBe(TOP_RUNG)
+    expect(top.nextRung).toBeNull()
+    expect(top.toNext).toBe(0)
+    // An out-of-range rung is clamped, so it cannot carry a weak slot.
+    expect(grade({ e1: 99, e2: 99, e3: 99, e4: 99, e5: 99, e6: 99 }).rung).toBe(TOP_RUNG)
   })
 })
 
 describe('rule 2 — coach-confirmed exemptions', () => {
-  // The real case: eight of Maximal Strength's twelve events load the shoulder,
-  // so a player who cannot press has four available. Without exemptions they
-  // could never reach six, and rule 3 would cap their overall grade forever.
-  it('shrinks the threshold with the available events', () => {
+  // The real case: most of Maximal Strength loads the shoulder, so a player who
+  // cannot press may have four available. They average over four, not six.
+  it('averages over what is available when fewer than six are', () => {
     const r = domainGrade({
       domainNumber: 1,
       eventSlugs: TWELVE,
-      rungByEvent: ladder({ e1: 6, e2: 6, e9: 0, e10: 0 }),
+      rungByEvent: ladder({ e1: 6, e2: 6, e9: 6, e10: 6 }),
       unavailable: new Set(['e3', 'e4', 'e5', 'e6', 'e7', 'e8', 'e11', 'e12']),
     })
     expect(r.availableCount).toBe(4)
-    expect(r.required).toBe(2)
-    expect(r.rung).toBe(6) // two of four is enough
+    expect(r.slots).toBe(4)
+    expect(r.rung).toBe(6)
   })
 
-  it('removes an exempt event from the numerator as well as the denominator', () => {
-    // Exempting an event you had already met must not count toward the grade.
+  it('removes an exempt event entirely, so it cannot carry the average', () => {
     const r = domainGrade({
       domainNumber: 1,
       eventSlugs: TWELVE,
-      rungByEvent: allAt(8, 4),
+      rungByEvent: ladder({ e1: 12, e2: 12, e3: 3 }),
       unavailable: new Set(['e1', 'e2']),
     })
     expect(r.availableCount).toBe(10)
-    expect(r.required).toBe(5)
-    expect(r.metAtRung).toBe(0)
-    expect(r.rung).toBe(0) // only e3, e4 remain at rung 8 — short of five
+    expect(r.counted).toEqual(['e3'])
+    expect(r.rung).toBe(0) // 3 / 6
   })
 
   it('cannot hand out a grade for a domain with nothing available', () => {
-    // Guard against the empty case: required would be 0 and every rung
-    // trivially "met", which would award Taniwha for an empty domain.
     const r = domainGrade({
       domainNumber: 1,
       eventSlugs: TWELVE,
-      rungByEvent: new Map(),
+      rungByEvent: ladder({ e1: 12 }),
       unavailable: new Set(TWELVE),
     })
     expect(r.availableCount).toBe(0)
+    expect(r.slots).toBe(0)
     expect(r.rung).toBe(0)
   })
 })
 
 describe('rule 2 — events nobody can be graded in', () => {
-  // The September 2026 difficulty overhaul rebuilt every ladder so a drill rung
-  // sits under the contest, taking pure `sport` events from 38 down to 11. Six
-  // of the survivors are in Speed.
-  const SPEED_SPORT = new Set(['e7', 'e8', 'e9', 'e10', 'e11', 'e12'])
+  const CONTESTS = new Set(['e7', 'e8', 'e9', 'e10', 'e11', 'e12'])
 
-  it('leaves the denominator, so half means half of what CAN be graded', () => {
+  it('leaves the domain, so a small gradeable pool averages over itself', () => {
     const r = domainGrade({
       domainNumber: 4,
       eventSlugs: TWELVE,
-      rungByEvent: ladder({ e1: 5, e2: 5, e3: 5, e4: 0, e5: 0, e6: 0 }),
-      ungradeable: SPEED_SPORT,
+      rungByEvent: ladder({ e1: 5, e2: 5, e3: 5, e4: 5 }),
+      ungradeable: new Set([...CONTESTS, 'e5', 'e6']),
     })
-    expect(r.availableCount).toBe(6)
-    expect(r.required).toBe(3) // NOT 6 — that would be 100% of the gradeable six
+    expect(r.availableCount).toBe(4)
     expect(r.rung).toBe(5)
-  })
-
-  it('would otherwise demand every gradeable event in Speed', () => {
-    // The same player, counting the six contests in the denominator: three of
-    // twelve falls short of six and the domain reads Ma.
-    const counted = domainGrade({
-      domainNumber: 4,
-      eventSlugs: TWELVE,
-      rungByEvent: ladder({ e1: 5, e2: 5, e3: 5, e4: 0, e5: 0, e6: 0 }),
-    })
-    expect(counted.required).toBe(6)
-    expect(counted.rung).toBe(0)
   })
 
   it('stacks with a player exemption without double-counting', () => {
@@ -220,64 +187,87 @@ describe('rule 2 — events nobody can be graded in', () => {
       domainNumber: 4,
       eventSlugs: TWELVE,
       rungByEvent: ladder({ e1: 8, e2: 8 }),
-      ungradeable: SPEED_SPORT,
+      ungradeable: CONTESTS,
       unavailable: new Set(['e6', 'e12']), // e12 is already ungradeable
     })
-    expect(r.availableCount).toBe(5) // 12 - 6 ungradeable - 1 further exemption
-    expect(r.required).toBe(3)
+    expect(r.availableCount).toBe(5)
+    expect(r.slots).toBe(5)
   })
 
   it('cannot grade a domain where nothing carries a standard', () => {
-    const r = domainGrade({
-      domainNumber: 4,
-      eventSlugs: TWELVE,
-      rungByEvent: new Map(),
-      ungradeable: new Set(TWELVE),
-    })
+    const r = domainGrade({ domainNumber: 4, eventSlugs: TWELVE, rungByEvent: new Map(), ungradeable: new Set(TWELVE) })
     expect(r.availableCount).toBe(0)
     expect(r.rung).toBe(0)
   })
 })
 
-describe('rule 3 — the overall grade is the average domain, rounded down', () => {
+describe('rule 3 — the overall grade is the average domain, capped by games', () => {
   const domains = (rungs: number[]): DomainGradeResult[] =>
     rungs.map((rung, i) => ({
-      domainNumber: i + 1, rung, availableCount: 12, required: 6,
-      metAtRung: 6, nextRung: rung + 1, metAtNextRung: 0,
+      domainNumber: i + 1, rung, availableCount: 12, slots: 6, counted: [],
+      average: rung, nextRung: rung + 1, toNext: 6,
     }))
+  const LOTS = 1000
 
   it('takes the average rounded down, not the minimum or the best', () => {
     // 9 × 9 + 3 = 84, over ten = 8.4 -> Parahi (8).
-    const r = overallGrade(domains([9, 9, 9, 9, 9, 9, 9, 9, 9, 3]))
+    const r = overallGrade(domains([9, 9, 9, 9, 9, 9, 9, 9, 9, 3]), LOTS)
     expect(r.rung).toBe(8)
     expect(r.weakest).toEqual([10])
   })
 
   it('names every domain sitting at the minimum', () => {
-    expect(overallGrade(domains([5, 5, 8, 8, 8, 8, 8, 8, 8, 8])).weakest).toEqual([1, 2])
+    expect(overallGrade(domains([5, 5, 8, 8, 8, 8, 8, 8, 8, 8]), LOTS).weakest).toEqual([1, 2])
   })
 
   it('counts a Mā domain as zero, so a gap drags but never blocks', () => {
-    // 9 × 7 = 63 -> 6. Under the old rule this was no overall colour at all.
-    const r = overallGrade(domains([7, 7, 7, 7, 7, 7, 7, 7, 7, 0]))
+    const r = overallGrade(domains([7, 7, 7, 7, 7, 7, 7, 7, 7, 0]), LOTS)
     expect(r.rung).toBe(6)
     expect(r.ungraded).toEqual([10])
   })
 
   it('always divides by ten, so a few strong domains do not carry the overall', () => {
-    expect(overallGrade(domains([12, 12, 12])).rung).toBe(3)
-    expect(overallRung([12])).toBe(1)
-  })
-
-  it('raising any one domain can move it', () => {
-    expect(overallRung([5, 5, 5, 5, 5, 5, 5, 5, 5, 5])).toBe(5)
-    expect(overallRung([5, 5, 5, 5, 5, 5, 5, 5, 5, 15])).toBe(5) // clamped at Taniwha
-    expect(overallRung([6, 6, 6, 6, 6, 6, 6, 6, 6, 6])).toBe(6)
+    expect(overallGrade(domains([12, 12, 12]), LOTS).rung).toBe(3)
+    expect(overallRung([12], LOTS)).toBe(1)
   })
 
   it('is Mā with nothing held', () => {
-    expect(overallGrade(domains(Array(DOMAIN_COUNT).fill(0))).rung).toBe(0)
-    expect(overallRung([])).toBe(0)
+    expect(overallGrade(domains(Array(DOMAIN_COUNT).fill(0)), LOTS).rung).toBe(0)
+    expect(overallRung([], LOTS)).toBe(0)
+  })
+
+  it('caps the overall by official games played', () => {
+    // Tāne, 26 Sept 2026: the games ladder moved from each domain to the overall.
+    expect(GAMES_REQUIRED).toEqual([0, 1, 3, 5, 8, 12, 16, 20, 30, 40, 55, 75, 100])
+    expect(gamesCapRung(0)).toBe(0)
+    expect(gamesCapRung(1)).toBe(1)
+    expect(gamesCapRung(7)).toBe(3)
+    expect(gamesCapRung(8)).toBe(4)
+    expect(gamesCapRung(52)).toBe(9)
+    expect(gamesCapRung(100)).toBe(12)
+    const tens = Array(10).fill(10)
+    expect(averageRung(tens)).toBe(10)
+    expect(overallRung(tens, 52)).toBe(9)
+    const r = overallGrade(domains(tens), 7)
+    expect(r.rung).toBe(3)
+    expect(r.average).toBe(10)
+  })
+
+  it('never lets the cap LIFT a player above their average', () => {
+    expect(overallRung(Array(10).fill(2), 100)).toBe(2)
+  })
+})
+
+describe('what confers', () => {
+  it('offers the colour the standards give whenever it is above the one held', () => {
+    // No one-at-a-time rule any more: Whero straight to Kahurangi.
+    expect(colourGate({ domainNumber: 1, standardsRung: 6, held: 2 }).releasable).toBe(6)
+    expect(colourGate({ domainNumber: 1, standardsRung: 1, held: 0 }).releasable).toBe(1)
+  })
+
+  it('offers nothing at or below the colour held', () => {
+    expect(colourGate({ domainNumber: 1, standardsRung: 4, held: 4 }).releasable).toBe(0)
+    expect(colourGate({ domainNumber: 1, standardsRung: 3, held: 5 }).releasable).toBe(0)
   })
 })
 

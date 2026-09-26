@@ -203,16 +203,16 @@ export default function Home() {
               </h2>
               <div className="lp-rainbow-line" style={{ width: '60px', marginBottom: '28px' }} />
               <p style={{ color: '#cccccc', fontSize: '16px', lineHeight: 1.8, marginBottom: '16px' }}>
-                Every event has a standard for every colour, from Kiwikiwi to Taniwha. Meet a colour in six
-                of a domain&apos;s events and you hold that domain at that colour.
+                Every event has a standard for every colour, from Kiwikiwi to Taniwha. A domain&apos;s colour
+                is the average of your best six events in it, and an event you have not played counts as Mā.
               </p>
               <p style={{ color: '#888', fontSize: '15px', lineHeight: 1.8, marginBottom: '16px' }}>
                 Your overall colour is the average of your ten domains, so every domain you raise lifts it and
                 every one you skip holds it back. That is the whole idea of AllSport: one sport, every sport.
               </p>
               <p style={{ color: '#888', fontSize: '15px', lineHeight: 1.8, marginBottom: '16px' }}>
-                Each new colour also asks for games played in the room and training in that domain, and you
-                climb one colour at a time. In the game events the top colours are won, not measured: they come
+                Your overall colour also asks for games played in the room, so it cannot be built on solo
+                training alone. In the game events the top colours are won, not measured: they come
                 from a head-to-head rating, after ten games recorded by both players. Juniors, Masters and Grandmasters meet every
                 standard with an allowance for age.
               </p>

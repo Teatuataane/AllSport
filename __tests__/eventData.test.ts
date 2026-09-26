@@ -278,9 +278,9 @@ describe('getEventsByDomain', () => {
 
   // Domains stopped being even in Sept 2026, when Tāne took Flexibility to
   // sixteen rather than trim four of his own additions. What still has to hold
-  // is that no domain is thinner than twelve: a colour asks for six events met,
-  // DOMAIN_REQUIRED_CAP caps that ask at six, and a domain that fell below
-  // twelve would start asking for a majority of a shrinking pool.
+  // is that no domain is thinner than twelve: a domain colour averages its best
+  // six events (DOMAIN_TOP_EVENTS), and a thin domain would leave a player few
+  // ways to fill those six.
   it('holds at least 12 events in every domain, and the expected count in each', () => {
     const map = getEventsByDomain()
     const expected: Record<string, number> = {

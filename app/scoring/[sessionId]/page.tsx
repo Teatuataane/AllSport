@@ -85,11 +85,10 @@ function ordinal(n: number): string {
 }
 
 // ─── Effort units ─────────────────────────────────────────────────────────────
-// Effort tasks and effort points were retired in September 2026. Effort now
-// counts as UNITS toward colours (lib/units.ts): every submission is one or
-// more completions, and each domain colour needs units in that domain. Units
-// are worked out from the row, never stored, so this screen and the grades
-// engine count the same way.
+// Effort tasks and effort points were retired in September 2026. Effort is
+// shown as UNITS (lib/units.ts): every submission is one or more completions.
+// Units are worked out from the row, never stored. They gated each domain
+// colour until 26 September 2026 and are display only now.
 
 function rowUnits(r: Result, events: SessionEvent[]): number {
   const se = events.find(e => e.id === r.event_id)
@@ -916,7 +915,7 @@ function SessionEndTakeover({
   }, [playerId])
 
   // Points are retired. What a game gives a player now is its placement,
-  // the events they played, and training units toward their colours.
+  // the events they played, and the training units they put in.
   const unitsEarned = unitsFor(myResults, events)
   const rank = summary?.overall_placement ?? divisionPlacement?.rank ?? null
   const eventsPlayed = new Set(myResults.map(r => r.event_id)).size

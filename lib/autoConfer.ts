@@ -4,8 +4,13 @@
 // should be written?
 //
 // The route does the I/O. This decides. Splitting them is what lets the rule
-// "one colour per domain, only when all three gates pass" be asserted directly
-// rather than inferred from what landed in a table.
+// "confer the colour the best-six average gives, when it beats the colour
+// held" be asserted directly rather than inferred from what landed in a table.
+//
+// Since 26 September 2026 a domain confers whatever colour its standards give
+// (the average of its best six events), with no games or training check and no
+// one-at-a-time rule. The games count caps the OVERALL colour only, which is
+// derived and never stored.
 
 import { releasable, eventsBehind } from './playerGrades'
 import { gradeForRung } from './grading'
@@ -25,9 +30,9 @@ export type PendingAward = {
  * The awards to write for a player right now. Empty when nothing is due, which
  * is the normal answer.
  *
- * At most ONE per domain, because `colourGate` only ever offers `held + 1` and
- * the training count restarts at each conferral — so a player cannot chain two
- * colours out of one run, however much evidence arrives at once.
+ * At most ONE row per domain: the colour the standards now give. A jump from
+ * Whero to Kahurangi writes Kahurangi alone, since what a player holds is the
+ * highest award in the domain (heldRungs).
  */
 export function awardsToConfer(playerId: string, state: GradeState): PendingAward[] {
   // Before the grading migration, nothing has been conferred and nothing can
@@ -40,7 +45,7 @@ export function awardsToConfer(playerId: string, state: GradeState): PendingAwar
     domain_number: g.domainNumber,
     rung: g.releasable,
     grade_name: gradeForRung(g.releasable).name,
-    events: eventsBehind(state.grades, g.domainNumber, g.releasable),
+    events: eventsBehind(state.grades, g.domainNumber),
     conferred_by: null,
   }))
 }

@@ -6,8 +6,7 @@
 import Link from 'next/link'
 import { RainbowText, SectionLabel } from '@/components/ui'
 import { EVENTS } from '@/lib/eventData'
-import { unitRulesSummary } from '@/lib/units'
-import { GRADES, GAMES_REQUIRED } from '@/lib/grading'
+import { GRADES, GAMES_REQUIRED, DOMAIN_TOP_EVENTS } from '@/lib/grading'
 import DomainAccordion from './DomainAccordion'
 
 const DOMAIN_META = [
@@ -125,11 +124,9 @@ const steps = [
   {
     number: '07',
     title: 'Earn Your Colours',
-    desc: 'Every event has a standard for each of twelve colours, from Kiwikiwi to Taniwha. Meet a colour in six of a domain’s events and you hold that domain at that colour; your overall colour is the average of your ten. Each new colour also needs games played in the room and training in that domain. It lands the moment all three are met, and a change to the standards never takes it away.',
+    desc: 'Every event has a standard for each of twelve colours, from Kiwikiwi to Taniwha. A domain’s colour is the average of your best six events in it, and an event you have not played counts as Mā, so trying new events lifts it until six are on the board. Your overall colour is the average of your ten domains, and it also needs games played in the room. Colours land by themselves, and a change to the standards never takes one away.',
   },
 ]
-
-const unitRules = unitRulesSummary()
 
 const divisions = [
   { name: "Men's", age: '17–39' },
@@ -281,39 +278,21 @@ export default function HowToPlay() {
             <div className="info-card">
               <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555555', marginBottom: '8px' }}>The Colours</div>
               <p style={{ color: 'var(--grey)', fontSize: '13px', lineHeight: 1.65, marginBottom: '16px' }}>
-                Twelve colours, climbed one at a time in each of the ten domains. Each new colour needs three things, and it lands the moment all three are met.
+                Twelve colours in each of the ten domains. They land by themselves the moment your scores reach them.
               </p>
               {[
-                { label: 'Standards', rule: 'Meet the colour in six of the domain’s events' },
-                { label: 'Games', rule: `Games played in the room: ${GAMES_REQUIRED[1]} for ${GRADES[0].name}, ${GAMES_REQUIRED[12]} for ${GRADES[11].name}` },
-                { label: 'Training', rule: 'Units in that domain since your last colour there' },
+                { label: 'Each event', rule: 'Its own colour, against twelve standards' },
+                { label: 'Each domain', rule: `The average of your best ${DOMAIN_TOP_EVENTS} events. Unplayed counts as Mā` },
+                { label: 'Overall', rule: `The average of your ten, capped by games played: ${GAMES_REQUIRED[1]} for ${GRADES[0].name}, ${GAMES_REQUIRED[12]} for ${GRADES[11].name}` },
               ].map(r => (
                 <div key={r.label} className="bonus-row">
                   <span style={{ fontFamily: 'var(--font-label)', fontWeight: 600, fontSize: '13px', color: 'var(--grey-light)' }}>{r.label}</span>
-                  <span style={{ fontFamily: 'var(--font-label)', fontSize: '12px', color: '#555', flexShrink: 0, marginLeft: '12px', textAlign: 'right' as const, maxWidth: '160px' }}>{r.rule}</span>
+                  <span style={{ fontFamily: 'var(--font-label)', fontSize: '12px', color: '#555', flexShrink: 0, marginLeft: '12px', textAlign: 'right' as const, maxWidth: '180px' }}>{r.rule}</span>
                 </div>
               ))}
               <div style={{ marginTop: '16px', padding: '12px', background: 'var(--dark)', border: '1px solid var(--border)', borderRadius: '8px' }}>
-                <div style={{ fontFamily: 'var(--font-label)', fontSize: '12px', color: '#555', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '4px' }}>Your overall colour</div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: '26px', color: 'var(--blue)', lineHeight: 1.1 }}>The average of your ten</div>
-              </div>
-            </div>
-
-            {/* Training units */}
-            <div className="info-card">
-              <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555555', marginBottom: '8px' }}>Training Units</div>
-              <p style={{ color: 'var(--grey)', fontSize: '13px', lineHeight: 1.65, marginBottom: '16px' }}>
-                Every new colour needs training in that domain since your last colour there. Game scores earn units, and so does anything you <Link href="/workout/new" style={{ color: 'var(--purple)' }}>log between games</Link>. Any effort counts.
-              </p>
-              {unitRules.map(r => (
-                <div key={r.label} className="bonus-row">
-                  <span style={{ fontFamily: 'var(--font-label)', fontWeight: 600, fontSize: '13px', color: 'var(--grey-light)' }}>{r.label}</span>
-                  <span style={{ fontFamily: 'var(--font-label)', fontSize: '12px', color: '#555', flexShrink: 0, marginLeft: '12px', textAlign: 'right' as const, maxWidth: '140px' }}>{r.rule}</span>
-                </div>
-              ))}
-              <div style={{ marginTop: '16px', padding: '12px', background: 'var(--dark)', border: '1px solid var(--border)', borderRadius: '8px' }}>
-                <div style={{ fontFamily: 'var(--font-label)', fontSize: '12px', color: '#555', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '4px' }}>Any effort counts</div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: '26px', color: 'var(--green)', lineHeight: 1.1 }}>No intensity floor</div>
+                <div style={{ fontFamily: 'var(--font-label)', fontSize: '12px', color: '#555', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '4px' }}>Go wide</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '26px', color: 'var(--blue)', lineHeight: 1.1 }}>Your best six count</div>
               </div>
             </div>
 
