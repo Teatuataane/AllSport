@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient, getSessionUser } from '@/lib/supabase-browser'
 import { getEventByName, getEventBySlug, DOMAIN_ORDER, type EventData } from '@/lib/eventData'
-import { unitsForResult, unitsForResultRow, unitsIn, fmtUnits, fmtUnitsLabel } from '@/lib/units'
 import { parseLocalDate, toNZDateString } from '@/lib/dates'
 import EventIcon, { domainColor } from '@/components/EventIcon'
 import { type EntryVals, scoreColumns } from '@/lib/scoring'
@@ -84,25 +83,9 @@ function ordinal(n: number): string {
   return n + (s[(v - 20) % 10] ?? s[v] ?? s[0])
 }
 
-// ─── Effort units ─────────────────────────────────────────────────────────────
-// Effort tasks and effort points were retired in September 2026. Effort is
-// shown as UNITS (lib/units.ts): every submission is one or more completions.
-// Units are worked out from the row, never stored. They gated each domain
-// colour until 26 September 2026 and are display only now.
-
-function rowUnits(r: Result, events: SessionEvent[]): number {
-  const se = events.find(e => e.id === r.event_id)
-  return se ? unitsForResultRow({ event_name: se.event_name, difficulty_tier: r.difficulty_tier })?.units ?? 0 : 0
-}
-
-function unitsFor(rows: Result[], events: SessionEvent[]): number {
-  return rows.reduce((sum, r) => sum + rowUnits(r, events), 0)
-}
-
-
-// Builds the results payload and inserts (or updates) it, including PR flag and
-// the units it earns. Returns { error } on failure; on success error is null and
-// isPR / units describe the submission so the caller can pick the right toast.
+// Builds the results payload and inserts (or updates) it, including the PR flag.
+// Returns { error } on failure; on success error is null and isPR describes the
+// submission so the caller can pick the right toast.
 async function submitEntry(args: {
   sessionId: string
   eventId: string
@@ -121,7 +104,7 @@ async function submitEntry(args: {
   const { sessionId, eventId, playerId, playerName, mode, eventData, v, myResults, seasonPRNum, editingResultId, matchOpponents } = args
   // One encoder for a game score and a logged best effort (lib/scoring.ts).
   const scored = scoreColumns(mode, eventData, v)
-  if (!scored) return { error: 'Enter a valid score first', isPR: false, units: 0 }
+  if (!scored) return { error: 'Enter a valid score first', isPR: false }
   try {
     const payload: Record<string, unknown> = {
       session_id: sessionId, event_id: eventId, player_id: playerId || null,
@@ -155,9 +138,9 @@ async function submitEntry(args: {
     // an error toast. Guests have no stable identity, so they are never matched.
     if (playerId && matchOpponents !== null) await recordMatch(resultId, matchOpponents)
     // An edit replaces a completion, it does not add one.
-    return { error: null, isPR: newIsPR, units: editingResultId || !eventData ? 0 : unitsForResult(eventData, v.difficultyTier || null) }
+    return { error: null, isPR: newIsPR }
   } catch (e: unknown) {
-    return { error: e instanceof Error ? e.message : 'Submission failed', isPR: false, units: 0 }
+    return { error: e instanceof Error ? e.message : 'Submission failed', isPR: false }
   }
 }
 
@@ -915,8 +898,7 @@ function SessionEndTakeover({
   }, [playerId])
 
   // Points are retired. What a game gives a player now is its placement,
-  // the events they played, and the training units they put in.
-  const unitsEarned = unitsFor(myResults, events)
+  // the events they played and the PRs they set.
   const rank = summary?.overall_placement ?? divisionPlacement?.rank ?? null
   const eventsPlayed = new Set(myResults.map(r => r.event_id)).size
   const prCount = new Set(myResults.filter(r => r.is_pr).map(r => r.event_id)).size
@@ -967,7 +949,6 @@ function SessionEndTakeover({
           <div style={{ display: 'flex', gap: '10px' }}>
             {[
               { label: 'Events played', value: `${eventsPlayed}/${events.length || 10}`, colour: '#4DB26E' },
-              { label: 'Training units', value: fmtUnits(unitsEarned), colour: '#B87DB5' },
               { label: 'PRs set', value: prCount, colour: '#F9B051' },
             ].map(s => (
               <div key={s.label} style={{ flex: 1, background: '#161616', border: '1px solid #1e1e1e', borderRadius: '14px', padding: '12px 10px', textAlign: 'center' }}>
@@ -976,11 +957,6 @@ function SessionEndTakeover({
               </div>
             ))}
           </div>
-          {unitsEarned > 0 && (
-            <div style={{ fontSize: '13px', color: '#B87DB5', marginTop: '10px', textAlign: 'center', fontFamily: 'var(--font-label)', letterSpacing: '0.06em' }}>
-              Every unit counts toward your next colour in that domain
-            </div>
-          )}
           {loaded && !summary && (
             <div style={{ fontSize: '11.5px', color: '#555', marginTop: '6px', textAlign: 'center' }}>
               Provisional placement — confirmed when the game is closed off
@@ -1095,7 +1071,7 @@ export default function SessionPage() {
   const [seasonPRsLoaded, setSeasonPRsLoaded] = useState<{ key: string; prs: Record<string, number | string | null> } | null>(null)
   const [activeTab, setActiveTab] = useState<string>('leaderboard')
   const [sheetEventId, setSheetEventId] = useState<string | null>(null)
-  const [toast, setToast] = useState<{ eventName: string; label: string; isPR: boolean; isNewEvent: boolean; units: number; playerName?: string } | null>(null)
+  const [toast, setToast] = useState<{ eventName: string; label: string; isPR: boolean; isNewEvent: boolean; playerName?: string } | null>(null)
   // All-time played event names, for "new event unlocked". Keyed by player, so a
   // switch reads as "not loaded yet" (null) until that player's set arrives.
   const [playedLoaded, setPlayedLoaded] = useState<{ id: string; names: Set<string> } | null>(null)
@@ -1677,7 +1653,6 @@ export default function SessionPage() {
         const pName = (p.display_name || p.username || p.full_name) as string
         const pDivision = (p.division as string | null) ?? null
         const myResults = results.filter(r => r.player_id === pid)
-        const totalUnits = unitsFor(myResults, events) + swaps.units
         const scoredIds = new Set(events.filter(ev => myResults.some(r => r.event_id === ev.id)).map(ev => ev.id))
         const doneEvents = events.filter(ev => scoredIds.has(ev.id))
         // The ten, plus whatever this player swapped in or added on top.
@@ -1729,9 +1704,6 @@ export default function SessionPage() {
                     <span style={{ color: '#4DB26E', fontWeight: 600 }}> — All {events.length} events played</span>
                   )}
                 </div>
-                <div style={{ fontFamily: 'var(--font-label)', fontSize: '11.5px', color: '#B87DB5', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 600 }}>
-                  {fmtUnitsLabel(totalUnits)} toward colours
-                </div>
               </div>
               <div style={{ position: 'relative' }}>
                 <ProgressSegments events={events} scoredIds={barScored} fillFor={domainFill} />
@@ -1779,9 +1751,9 @@ export default function SessionPage() {
                 onClose={() => setSheetEventId(null)}
                 onSubmit={(v, editingId, matchOpponents) => swaps.submit(sheetSlot.se.id, v, editingId, matchOpponents)}
                 onDelete={swaps.deleteEntry}
-                onSubmitted={(labelText, meta) => {
+                onSubmitted={(labelText) => {
                   setSheetEventId(null)
-                  setToast({ eventName: sheetSlot.se.event_name, label: labelText, isPR: false, isNewEvent: false, units: meta.units })
+                  setToast({ eventName: sheetSlot.se.event_name, label: labelText, isPR: false, isNewEvent: false })
                   setTimeout(() => setToast(null), 3000)
                 }}
                 onDeleted={() => { /* the store reloaded itself */ }}
@@ -1825,7 +1797,7 @@ export default function SessionPage() {
                   if (isNewEvent) setPlayedLoaded(prev => prev && prev.id === pid
                     ? { id: prev.id, names: new Set(prev.names).add(sheetEvent.event_name) }
                     : prev)
-                  setToast({ eventName: sheetEvent.event_name, label, isPR: meta.isPR, isNewEvent, units: meta.units })
+                  setToast({ eventName: sheetEvent.event_name, label, isPR: meta.isPR, isNewEvent })
                   setTimeout(() => setToast(null), meta.isPR || isNewEvent ? 4000 : 3000)
                   await loadResults()
                 }}
@@ -1873,9 +1845,6 @@ export default function SessionPage() {
               : toast.isNewEvent
                 ? <><span style={{ color: '#7ab4ff' }}>New event unlocked</span> — {toast.eventName}! <span style={{ color: '#aaa' }}>{toast.label}</span></>
                 : <>Score in — {toast.eventName} — {toast.label}</>}
-            {toast.units > 0 && (
-              <span style={{ color: '#B87DB5', marginLeft: '10px', fontSize: '15px' }}>+{fmtUnitsLabel(toast.units)}</span>
-            )}
           </div>
         </div>
       )}
@@ -1885,7 +1854,6 @@ export default function SessionPage() {
         const target = judgeTarget
         const targetResults = target ? resultsForTarget(results, target) : []
         const targetDivision = target?.id ? (playerInfoMap[target.id]?.division ?? null) : null
-        const totalUnits = unitsFor(targetResults, events) + swaps.units
         const scoredIds = scoredEventIds(targetResults, events.map(ev => ev.id))
         const doneEvents = events.filter(ev => scoredIds.has(ev.id))
         const judgeSlots: PlaySlot[] = playList(events, swaps.chosen)
@@ -2040,9 +2008,6 @@ export default function SessionPage() {
                         <span style={{ color: '#4DB26E', fontWeight: 600 }}> — All {events.length} events played</span>
                       )}
                     </div>
-                    <div style={{ fontFamily: 'var(--font-label)', fontSize: '11.5px', color: '#B87DB5', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 600 }}>
-                      {fmtUnitsLabel(totalUnits)} toward colours
-                    </div>
                   </div>
                   <ProgressSegments events={events} scoredIds={new Set(events.filter(ev => judgeCovered.has(ev.domain_number)).map(ev => ev.id))} fillFor={judgeDomainFill} />
                 </div>
@@ -2080,9 +2045,9 @@ export default function SessionPage() {
                     onClose={() => setSheetEventId(null)}
                     onSubmit={(v, editingId, matchOpponents) => swaps.submit(judgeSheetSlot.se.id, v, editingId, matchOpponents)}
                     onDelete={swaps.deleteEntry}
-                    onSubmitted={(labelText, meta) => {
+                    onSubmitted={(labelText) => {
                       setSheetEventId(null)
-                      setToast({ eventName: judgeSheetSlot.se.event_name, label: labelText, isPR: false, isNewEvent: false, units: meta.units, playerName: target?.name })
+                      setToast({ eventName: judgeSheetSlot.se.event_name, label: labelText, isPR: false, isNewEvent: false, playerName: target?.name })
                       setTimeout(() => setToast(null), 3000)
                     }}
                     onDeleted={() => { /* the store reloaded itself */ }}
@@ -2121,7 +2086,7 @@ export default function SessionPage() {
                     onClose={() => setSheetEventId(null)}
                     onSubmitted={async (label, meta) => {
                       setSheetEventId(null)
-                      setToast({ eventName: sheetEvent.event_name, label, isPR: meta.isPR, isNewEvent: false, units: meta.units, playerName: target.name })
+                      setToast({ eventName: sheetEvent.event_name, label, isPR: meta.isPR, isNewEvent: false, playerName: target.name })
                       setTimeout(() => setToast(null), meta.isPR ? 4000 : 3000)
                       await loadResults()
                     }}

@@ -2279,8 +2279,12 @@ production data (3 regulars at 5–11 events per domain; everyone else 1–3). *
   domain colours"). A solo-only player can show high domains; the overall holds them down.
 - **Training units are retired from grading.** `UNITS_REQUIRED`, `UNIT_MULTIPLIER`,
   `unitsSinceConferral`, `gateBlocker` and `unitLine` are deleted; the "units" sentence is gone
-  from 34 event rules texts. Units are STILL shown on the live screen, the personal-game screen
-  and the session-end screen (`lib/units.ts`, `WORKOUT_UNITS_REVIEW.md`), now as display only.
+  from 34 event rules texts. **Units are no longer shown anywhere either** (Tāne, 27 Sept): the
+  live screen, personal-game screen, session-end screen, quick-entry sheet and /history lost
+  them, and `SubmitOutcome` no longer carries `units`. `lib/units.ts` survives because
+  `unitRule`/`metresIn`/`isGameTier` still classify events for natural formats and grading;
+  its unit-counting helpers (`unitsForPayload`, `recentUnitsByDomain`, `fmtUnits*`, the unit
+  sheet and `WORKOUT_UNITS_REVIEW.md`) are now unused and can be deleted in a cleanup pass.
 - **No one-at-a-time rule.** `colourGate` offers the whole computed colour when it beats the
   one held, so a domain can jump Whero → Kahurangi in one session; auto-conferral writes ONE
   row (the new top). `confer_grade` already allowed jumps. `eventsBehind(grades, domain)` now

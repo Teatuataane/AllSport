@@ -16,10 +16,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase-browser'
 import { getEventBySlug } from '@/lib/eventData'
-import { entryPayload, unitsForPayload } from '@/lib/personalGame'
+import { entryPayload } from '@/lib/personalGame'
 import { addChoices, removeChoice } from '@/lib/gameSwaps'
 import { nzDay } from '@/lib/workouts'
-import { unitsForEntryRow } from '@/lib/units'
 import type { EntryRow } from '@/components/play/chrome'
 import type { EntryVals } from '@/lib/scoring'
 
@@ -35,9 +34,7 @@ type Loaded = {
   entries: SwapEntry[]
 }
 
-// count and volume_distance_m ride along because the units an entry earned are
-// read off the VOLUME it stored, not off its rung: a 5km run is five units, not
-// the one its converted rung would pay.
+// count and volume_distance_m are read so an edit starts from what was stored.
 const ENTRY_COLS = 'id, event_slug, count, volume_distance_m, raw_score, score_label, difficulty_tier, weight_kg, reps, time_seconds, distance_m, exercise_variation'
 
 export type GameSwaps = {
@@ -46,8 +43,6 @@ export type GameSwaps = {
   entriesFor: (slug: string) => SwapEntry[]
   /** Slugs that already carry a score. */
   scoredSlugs: Set<string>
-  /** Training units these swaps and extras have earned, for the header total. */
-  units: number
   /** False when the database has no session_id column yet: hide the controls. */
   available: boolean
   /** Several at once: the sheet lets a player tick more than one. */
@@ -59,7 +54,7 @@ export type GameSwaps = {
     editingId: string | null,
     /** Opponent player ids to record as a match, or null to leave matches alone. */
     matchOpponents?: string[] | null,
-  ) => Promise<{ error: string | null; isPR: boolean; units: number }>
+  ) => Promise<{ error: string | null; isPR: boolean }>
   deleteEntry: (id: string) => Promise<string | null>
 }
 
@@ -148,16 +143,9 @@ export function useGameSwaps(args: {
   const scoredSlugs = new Set(
     (state?.entries ?? []).map(e => e.event_slug).filter((s): s is string => !!s))
 
-  const units = (state?.entries ?? []).reduce(
-    (sum, e) => sum + (unitsForEntryRow({
-      event_slug: e.event_slug, count: e.count,
-      volume_distance_m: e.volume_distance_m == null ? null : Number(e.volume_distance_m),
-    })?.units ?? 0), 0)
-
   return {
     chosen: state?.chosen ?? [],
     scoredSlugs,
-    units,
     available: available && sessionOpen && !!playerId,
     entriesFor: (slug: string) => (state?.entries ?? []).filter(e => e.event_slug === slug),
 
@@ -166,13 +154,13 @@ export function useGameSwaps(args: {
 
     submit: async (slug, v, editingId, matchOpponents = null) => {
       const ev = getEventBySlug(slug)
-      if (!ev) return { error: 'That event is no longer on the roster', isPR: false, units: 0 }
+      if (!ev) return { error: 'That event is no longer on the roster', isPR: false }
       // A swap IS at a game, so a Game rung keeps its win, draw or loss here —
       // and only here (20260920053207).
       const payload = entryPayload(ev, v, { allowGameScore: true })
-      if (!payload) return { error: 'Enter a valid score first', isPR: false, units: 0 }
+      if (!payload) return { error: 'Enter a valid score first', isPR: false }
       const { id, error } = await ensureWorkout()
-      if (!id) return { error: error ?? 'Could not save', isPR: false, units: 0 }
+      if (!id) return { error: error ?? 'Could not save', isPR: false }
       const written = editingId
         ? await supabase.from('workout_entries').update(payload).eq('id', editingId).select('id').maybeSingle()
         : await supabase.from('workout_entries').insert({ ...payload, workout_id: id }).select('id').single()
@@ -182,7 +170,7 @@ export function useGameSwaps(args: {
           error: e.code === '23514' ? 'One of the numbers is out of range. Check the weight, time and distance.'
             : e.code === '42501' ? 'That game has finished, so it can no longer be scored.'
             : e.message,
-          isPR: false, units: 0,
+          isPR: false,
         }
       }
       // The score is the record; the match hangs off it. Best-effort, exactly
@@ -199,7 +187,7 @@ export function useGameSwaps(args: {
       await load()
       // A swap never sets a PR badge here: the badge on this screen means a
       // season best on an official event, and these are not ranked.
-      return { error: null, isPR: false, units: editingId ? 0 : unitsForPayload(ev, payload) }
+      return { error: null, isPR: false }
     },
 
     deleteEntry: async (id: string) => {
