@@ -2,6 +2,11 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.20.0.1] - 2026-09-26
+
+### Fixed
+- A player with no domain colour yet now reads "No domain colours yet" on the leaderboard, instead of "Best: Maximal Strength · Not yet" and "Worst: Maximal Strength · Not yet", which looked like a real result.
+
 ## [0.20.0.0] - 2026-09-26
 
 ### Changed

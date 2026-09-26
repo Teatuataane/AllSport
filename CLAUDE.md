@@ -2321,7 +2321,23 @@ Settled in a `/grill-me` with Tāne on 2026-09-26. No migration.
   The personal-game screen keeps the old domain-coloured rows: `EventListRow`
   switches only when `gradeRung` is passed.
 
-## Season leaderboard (September 2026) — v0.20.0.0, migration NOT YET APPLIED
+## Season leaderboard (September 2026) — v0.20.0.0, APPLIED AND VERIFIED 2026-09-26
+
+**`20260924213359` APPLIED 2026-09-26** after v0.20.0.0 deployed, with no game
+running, through `supabase db query --linked -f` in one transaction with the
+ledger row, after a rolled-back dry run. Verified by object: both tables
+`relrowsecurity`, `anon` SELECT yes, `authenticated` INSERT no,
+`service_role` INSERT yes; through PostgREST as `anon` reads return 200 and an
+insert returns 401 / `42501`. **Backfilled the same day**: 27 players written,
+0 failed. 2026 top three Tāne 1,499 / 42 games, RGFell 1,044 / 26, Zebe
+711 / 26; 20 players on the board. Only those three hold any domain colour.
+
+**Most players' lifts score 0**, because a ratio event needs a bodyweight of
+the day and almost nobody declared one before 2026-09-23. That is the grading
+rule working, not a bug, but it depresses everyone's season points except the
+one player who declared. Loco Chocko reads 4 points from 5 games: unexplained,
+worth a look.
+
 
 Designed with Tāne on 2026-09-25. The board exists so players who could never
 play together (a Grandmaster woman, a U14 boy, a Men's player) compete anyway,
