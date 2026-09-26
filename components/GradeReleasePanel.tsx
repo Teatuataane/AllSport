@@ -13,7 +13,7 @@
 //      score that did not happen re-judges that domain, and the colour it was
 //      propping up is taken back and the player told.
 //   3. EXEMPTIONS (decision 4), unchanged: events a player cannot do, which
-//      leave both sides of the half-the-domain rule.
+//      leave their domain, so it averages over fewer than six.
 //
 // The old "confirm" list survives as the FALLBACK. Until the server has its
 // service key the route cannot write, and a kaiwhakawā pressing Confirm
@@ -64,8 +64,8 @@ async function inBatches<T, R>(items: readonly T[], size: number, fn: (t: T) => 
   return out
 }
 
-// One colour per domain at a time, and only once standards, games and
-// training all pass (lib/grading.ts colourGate).
+// The colour a domain's standards give, when it is above the one held
+// (lib/grading.ts colourGate). A domain may jump several colours.
 const pending = (r: Row) => releasable(r.state.gates)
 
 /** Names and dates for the disputed-games list. Each its own query. */
@@ -263,7 +263,8 @@ export default function GradeReleasePanel() {
       !out.ok ? `The score is deleted, but ${player.display_name}'s ${DOMAIN_NAMES[domain - 1]} colours could not be re-checked yet.`
       : !out.writable ? 'The score is deleted. Colours cannot be taken back until the server has its service key.'
       : out.withdrawn.length > 0 ? `Taken back from ${player.display_name}: ${out.withdrawn.map(w => `${w.name} in ${DOMAIN_NAMES[w.domainNumber - 1]}`).join(', ')}. ${
-          out.logged ? 'They will be told.' : 'Their notice could not be recorded, so tell them yourself.'}`
+          out.logged ? 'They will be told.' : 'Their notice could not be recorded, so tell them yourself.'}${
+          out.reconferred ? ` Their other scores still give ${out.reconferred}, so that now stands.` : ''}`
       : `Deleted. ${player.display_name}'s colours still stand on their other scores.`)
     await refresh(player)
   }
@@ -273,7 +274,7 @@ export default function GradeReleasePanel() {
     setError('')
     // Shared with the auto-conferral route: both writers must record the same
     // evidence, or an award's events would disagree with the panel showing it.
-    const events = eventsBehind(r.state.grades, domain, rung)
+    const events = eventsBehind(r.state.grades, domain)
     const { error: e } = await supabase.rpc('confer_grade', {
       p_player_id: r.player.id, p_domain_number: domain, p_rung: rung, p_events: events,
     })
@@ -447,10 +448,9 @@ export default function GradeReleasePanel() {
                 const key = `${r.player.id}:${d.domainNumber}`
                 // What stands behind it. Every source counts; the kaiwhakawā
                 // moderates in person, so solo evidence is named, not hidden.
-                const behind = EVENTS
-                  .filter(e => e.domainNumber === d.domainNumber)
-                  .map(e => r.state.grades.events.get(e.slug))
-                  .filter(g => g && g.rung >= d.releasable)
+                const behind = eventsBehind(r.state.grades, d.domainNumber)
+                  .map(slug => r.state.grades.events.get(slug))
+                  .filter(Boolean)
                 const solo = behind.filter(g => g!.source === 'solo').length
                 const witnessed = behind.filter(g => g!.source === 'witnessed').length
                 return (
@@ -459,7 +459,7 @@ export default function GradeReleasePanel() {
                       {DOMAIN_NAMES[d.domainNumber - 1]}
                       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px', marginTop: '3px', fontSize: '12px', color: '#888' }}>
                         <GradeDot grade={from} size={9} /> {from.name} → <GradeDot grade={to} size={9} /> <span style={{ color: '#fff' }}>{to.name}</span>
-                        <span style={{ color: '#555' }}>· {behind.length} events · {d.games} games · {Math.floor(d.units)} units</span>
+                        <span style={{ color: '#555' }}>· {behind.length} of {r.state.grades.domains.find(x => x.domainNumber === d.domainNumber)?.slots ?? 6} best events hold a colour</span>
                       </div>
                       {(solo > 0 || witnessed > 0) && (
                         <div style={{ fontSize: '11.5px', marginTop: '2px', color: solo ? '#F9B051' : '#888' }}>

@@ -3,7 +3,7 @@ import { replayAwards, replayMoments } from '@/lib/replayColours'
 import { gradeStateFrom, type GradeInputs, type ResultRow } from '@/lib/loadGrades'
 import { awardsToConfer } from '@/lib/autoConfer'
 import { EVENTS } from '@/lib/eventData'
-import { GAMES_REQUIRED } from '@/lib/grading'
+import { TOP_RUNG, DOMAIN_TOP_EVENTS } from '@/lib/grading'
 
 // ─── The history replay ──────────────────────────────────────────────────────
 // Step 6. A mistake here misdates every colour anyone has, once, permanently,
@@ -13,13 +13,17 @@ import { GAMES_REQUIRED } from '@/lib/grading'
 const GAME_MS = 100 * 60 * 1000
 const domain1 = EVENTS.filter(e => e.domainNumber === 1)
 
-/** Weekly games, every Maximal Strength event maxed out in each. */
-function history(games: number): GradeInputs {
+/**
+ * Weekly games, Maximal Strength maxed out. By default every event in every
+ * game; with `spread`, one NEW event per game, so the domain climbs as the six
+ * slots fill (twelve per slot over six: two colours a game).
+ */
+function history(games: number, { spread = false } = {}): GradeInputs {
   const results: ResultRow[] = []
   for (let i = 0; i < games; i++) {
     const start = new Date(Date.UTC(2026, 0, 5 + 7 * i, 3)).toISOString()
     const end = new Date(Date.parse(start) + GAME_MS).toISOString()
-    for (const ev of domain1) {
+    for (const ev of spread ? [domain1[i % domain1.length]] : domain1) {
       results.push({
         raw_score: 9_999_999, weight_kg: 500, difficulty_tier: null,
         session_id: `s${i}`, points_earned: null, created_at: start,
@@ -50,32 +54,25 @@ describe('replayAwards', () => {
 
   it('confers the first colour when the first game closes, not before', () => {
     const [first] = replayAwards('p1', history(6), NOW)
-    expect(first.rung).toBe(1)
     expect(first.domain_number).toBe(1)
     expect(first.conferred_at).toBe(closeOf(0))
+    // Every event maxed in one game fills all six slots at once: Taniwha.
+    expect(first.rung).toBe(TOP_RUNG)
   })
 
-  it('climbs one colour at a time, in order, never two at once in a domain', () => {
-    const planned = replayAwards('p1', history(12), NOW).filter(a => a.domain_number === 1)
-    expect(planned.map(a => a.rung)).toEqual(planned.map((_, i) => i + 1))
-    const instants = planned.map(a => Date.parse(a.conferred_at))
-    expect(new Set(instants).size).toBe(instants.length)
-    expect([...instants].sort((a, b) => a - b)).toEqual(instants)
-  })
-
-  it('never dates a colour before the games quota was met', () => {
-    // The games gate is the binding one in this fixture, so each colour must
-    // land at the close of exactly the game that met its quota.
-    for (const a of replayAwards('p1', history(12), NOW)) {
-      expect(a.conferred_at).toBe(closeOf(GAMES_REQUIRED[a.rung] - 1))
-    }
+  it('dates each colour at the game that reached it, one row per jump', () => {
+    // One new maxed event a game: the average climbs 12/6 = 2 colours a game.
+    const planned = replayAwards('p1', history(8, { spread: true }), NOW).filter(a => a.domain_number === 1)
+    const step = TOP_RUNG / DOMAIN_TOP_EVENTS
+    expect(planned.map(a => a.rung)).toEqual(Array.from({ length: DOMAIN_TOP_EVENTS }, (_, i) => (i + 1) * step))
+    expect(planned.map(a => a.conferred_at)).toEqual(Array.from({ length: DOMAIN_TOP_EVENTS }, (_, i) => closeOf(i)))
   })
 
   it('leaves nothing for the live recheck to add', () => {
     // THE invariant. Run the replay, then ask the live path — gradeStateFrom
     // and awardsToConfer, exactly what the route does — whether anything is
     // still due. If the backfill and the app agree, the answer is nothing.
-    const inputs = history(12)
+    const inputs = history(12, { spread: true })
     const planned = replayAwards('p1', inputs, NOW)
     const live = gradeStateFrom('p1', inputs, { awards: planned })
     expect(awardsToConfer('p1', live)).toEqual([])
@@ -93,7 +90,7 @@ describe('replayAwards', () => {
   it('ignores evidence from after "now"', () => {
     // A game that has not closed yet by `now` cannot have earned anything.
     const early = new Date(Date.parse(closeOf(0)) + 1000).toISOString()
-    expect(replayAwards('p1', history(6), early).map(a => a.rung)).toEqual([1])
+    expect(replayAwards('p1', history(6, { spread: true }), early).map(a => a.rung)).toEqual([2])
   })
 
   it('confers nothing before the grading schema exists', () => {

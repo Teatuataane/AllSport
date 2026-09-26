@@ -5,9 +5,8 @@
 // tested rather than eyeballed in a login-gated page.
 
 import { getEventBySlug } from './eventData'
-import { unitFacts } from './units'
 import { formatPR } from './scoreFormat'
-import { DOMAIN_COUNT } from './grading'
+import { DOMAIN_COUNT, TOP_RUNG, type DomainGradeResult } from './grading'
 import type { GradeState } from './loadGrades'
 import type { EventGrade } from './playerGrades'
 
@@ -71,12 +70,29 @@ export function bestEventByColour(
 }
 
 /**
- * The one line at the top of YOUR COLOURS that says what a unit is. Its numbers
- * come from unitFacts, the same source How to Play and the guide use.
+ * The next colour a domain row points at, and how far away it is.
+ *
+ * Aimed above whatever is higher, the colour held or the colour the standards
+ * give: a colour already conferred never drops, so pointing below it would ask
+ * a player to earn something they have. `steps` counts one event up one
+ * colour (or an empty slot filled at Kiwikiwi) as one; `progress` is how far
+ * through the current colour the average sits, 0 to 1, for the row's bar.
+ * Null at the top of the ladder or when nothing here can be graded.
  */
-export function unitLine(): string {
-  const { rideKm, throws } = unitFacts()
-  return `1 unit = one set, one hold, one game, ${throws} throws or jumps, or ${rideKm}km of distance work, in that domain's events.`
+export function nextDomainColour(
+  d: Pick<DomainGradeResult, 'slots' | 'average'>,
+  held: number,
+): { next: number; steps: number; progress: number } | null {
+  if (d.slots === 0) return null
+  const sum = Math.round(d.average * d.slots)
+  const base = Math.max(held, Math.floor(sum / d.slots))
+  if (base >= TOP_RUNG) return null
+  const next = base + 1
+  return {
+    next,
+    steps: next * d.slots - sum,
+    progress: Math.max(0, Math.min(1, (sum - base * d.slots) / d.slots)),
+  }
 }
 
 /**

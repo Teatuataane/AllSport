@@ -1,19 +1,17 @@
 // ─── Workout logging: the pure half ──────────────────────────────────────────
 // Fitting what someone typed to an event, the dates a workout may carry, and
-// turning logged entries into grading rows and effort units. No React, no
+// turning logged entries into grading rows. No React, no
 // Supabase — the log page, the grades loader and the tests all share it.
 // (Same split as lib/activePlayer.ts and lib/useActivePlayer.ts.)
 
 import { EVENTS, getEventBySlug, type EventData } from './eventData'
 import { toNZDateString } from './dates'
-import { unitsForEntryRow, isGameTier } from './units'
-import type { GradeResultRow, UnitEvent } from './playerGrades'
+import { isGameTier } from './eventKinds'
+import type { GradeResultRow } from './playerGrades'
 
 /** A workout_entries row as the grades loader reads it, with its workout. */
 export type WorkoutEntryRow = {
   event_slug: string | null
-  count: number | null
-  volume_distance_m: number | null
   raw_score: number | null
   weight_kg: number | null
   difficulty_tier: string | null
@@ -107,14 +105,12 @@ export function allowedDays(now: Date = new Date()): string[] {
 // ─── Entries into grading ────────────────────────────────────────────────────
 
 /**
- * A logged entry's best effort as a grading row, and its volume as units.
- * Every logged workout counts toward the standards (decision 1), marked
- * witnessed or solo for the kaiwhakawā. Units need an event, so an entry that
- * is not fitted yet earns nothing until it is.
+ * A logged entry's best effort as a grading row. Every logged workout counts
+ * toward the standards (decision 1), marked witnessed or solo for the
+ * kaiwhakawā. An entry not fitted to an event grades nothing until it is.
  */
-export function workoutEvidence(entries: readonly WorkoutEntryRow[]): { rows: GradeResultRow[]; units: UnitEvent[] } {
+export function workoutEvidence(entries: readonly WorkoutEntryRow[]): { rows: GradeResultRow[] } {
   const rows: GradeResultRow[] = []
-  const units: UnitEvent[] = []
   for (const e of entries) {
     if (!e.workouts) continue
     const ev = e.event_slug ? getEventBySlug(e.event_slug) : undefined
@@ -135,25 +131,8 @@ export function workoutEvidence(entries: readonly WorkoutEntryRow[]): { rows: Gr
         ...(e.score_label ? { score_label: e.score_label } : {}),
       })
     }
-    const u = unitsForEntryRow({
-      event_slug: e.event_slug,
-      count: e.count,
-      volume_distance_m: e.volume_distance_m == null ? null : Number(e.volume_distance_m),
-    })
-    if (u && u.units > 0) units.push({ domain: u.domain, units: u.units, at: e.workouts.created_at, day: e.workouts.performed_on })
   }
-  return { rows, units }
-}
-
-/** Units per domain trained in the last `days` days, today included. For the log page's week view. */
-export function recentUnitsByDomain(units: readonly UnitEvent[], days: number, now: Date = new Date()): Map<number, number> {
-  const from = addDays(nzDay(now), -(days - 1))
-  const out = new Map<number, number>()
-  for (const u of units) {
-    if ((u.day ?? nzDay(u.at)) < from) continue
-    out.set(u.domain, (out.get(u.domain) ?? 0) + u.units)
-  }
-  return out
+  return { rows }
 }
 
 // ─── Logged bests on My Events ───────────────────────────────────────────────

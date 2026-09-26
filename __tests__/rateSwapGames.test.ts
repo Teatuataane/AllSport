@@ -19,11 +19,6 @@ describe('a Game rung on an entry', () => {
     expect(entryPayload(gameEvent, vals)!.raw_score).toBeUndefined()
     expect(entryPayload(gameEvent, vals, { allowGameScore: true })!.raw_score).toBeDefined()
   })
-
-  it('still counts as one completion either way', () => {
-    expect(entryPayload(gameEvent, vals)!.count).toBe(1)
-    expect(entryPayload(gameEvent, vals, { allowGameScore: true })!.count).toBe(1)
-  })
 })
 
 describe('the migration', () => {

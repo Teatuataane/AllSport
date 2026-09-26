@@ -4,8 +4,13 @@
 // should be written?
 //
 // The route does the I/O. This decides. Splitting them is what lets the rule
-// "one colour per domain, only when all three gates pass" be asserted directly
-// rather than inferred from what landed in a table.
+// "confer the colour the best-six average gives, when it beats the colour
+// held" be asserted directly rather than inferred from what landed in a table.
+//
+// Since 26 September 2026 a domain confers whatever colour its standards give
+// (the average of its best six events), with no games or training check and no
+// one-at-a-time rule. The games count caps the OVERALL colour only, which is
+// derived and never stored.
 
 import { releasable, eventsBehind } from './playerGrades'
 import { gradeForRung } from './grading'
@@ -25,9 +30,9 @@ export type PendingAward = {
  * The awards to write for a player right now. Empty when nothing is due, which
  * is the normal answer.
  *
- * At most ONE per domain, because `colourGate` only ever offers `held + 1` and
- * the training count restarts at each conferral — so a player cannot chain two
- * colours out of one run, however much evidence arrives at once.
+ * At most ONE row per domain: the colour the standards now give. A jump from
+ * Whero to Kahurangi writes Kahurangi alone, since what a player holds is the
+ * highest award in the domain (heldRungs).
  */
 export function awardsToConfer(playerId: string, state: GradeState): PendingAward[] {
   // Before the grading migration, nothing has been conferred and nothing can
@@ -40,7 +45,7 @@ export function awardsToConfer(playerId: string, state: GradeState): PendingAwar
     domain_number: g.domainNumber,
     rung: g.releasable,
     grade_name: gradeForRung(g.releasable).name,
-    events: eventsBehind(state.grades, g.domainNumber, g.releasable),
+    events: eventsBehind(state.grades, g.domainNumber),
     conferred_by: null,
   }))
 }
@@ -79,4 +84,45 @@ export function awardsToWithdraw(state: GradeState, domainNumber: number): Withd
   return state.awards
     .filter((a): a is WithdrawnAward => a.domain_number === domainNumber && a.rung > d.rung && !!a.id)
     .sort((a, b) => b.rung - a.rung)
+}
+
+/**
+ * The colour to confer straight after a withdrawal, or null.
+ *
+ * A jump writes ONE row, the new top (Whero held, then Kahurangi conferred,
+ * with nothing in between). So withdrawing Kahurangi after the domain re-judges
+ * to Kākāriki would drop the player to Whero, below what their remaining
+ * evidence supports, and nothing would put Kākāriki back until the next forced
+ * recheck. This returns the colour the remaining evidence gives when it is
+ * above the highest award left standing.
+ */
+export function awardAfterWithdraw(
+  playerId: string,
+  state: GradeState,
+  domainNumber: number,
+  withdrawnIds: ReadonlySet<string>,
+): (PendingAward & { conferred_at: string }) | null {
+  if (!state.schemaReady) return null
+  const d = state.grades.domains.find(x => x.domainNumber === domainNumber)
+  if (!d || d.availableCount === 0 || d.rung <= 0) return null
+  const left = state.awards
+    .filter(a => a.domain_number === domainNumber && !(a.id && withdrawnIds.has(a.id)))
+    .reduce((m, a) => Math.max(m, a.rung), 0)
+  if (d.rung <= left) return null
+  // Dated to the jump it replaces, never now: a fresh date would open HOME on a
+  // "New colour" celebration right beside the "taken back" notice, a demotion
+  // announced as a win. The player has held at least this colour since then.
+  const jump = state.awards
+    .filter(a => a.domain_number === domainNumber && a.id && withdrawnIds.has(a.id))
+    .sort((a, b) => b.rung - a.rung)[0]
+  if (!jump) return null
+  return {
+    conferred_at: jump.conferred_at,
+    player_id: playerId,
+    domain_number: domainNumber,
+    rung: d.rung,
+    grade_name: gradeForRung(d.rung).name,
+    events: eventsBehind(state.grades, domainNumber),
+    conferred_by: null,
+  }
 }

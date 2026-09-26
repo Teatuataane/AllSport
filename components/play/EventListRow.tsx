@@ -13,7 +13,6 @@
 
 import type { ReactNode } from 'react'
 import EventIcon from '@/components/EventIcon'
-import { unitsIn, fmtUnitsLabel } from '@/lib/units'
 import { rungPaint } from '@/lib/scoreColour'
 import { RAINBOW } from '@/lib/domainColours'
 import type { EventData } from '@/lib/eventData'
@@ -42,7 +41,6 @@ export default function EventListRow({
   const myBestResult = myResults.length > 0
     ? myResults.reduce((best, r) => r.raw_score > best.raw_score ? r : best, myResults[0])
     : undefined
-  const unitsHere = unitsIn(eventData, myResults)
   const todo = !myBestResult
   const graded = gradeRung !== undefined
   const paint = graded && !todo ? rungPaint(gradeRung) : null
@@ -66,14 +64,11 @@ export default function EventListRow({
           size={46} tint={graded ? '#bbbbbb' : undefined} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: '19px', letterSpacing: '0.03em', lineHeight: 1 }}>{se.event_name}</div>
-          {(showDomain || unitsHere > 0 || tag) && (
+          {(showDomain || tag) && (
             <div style={{ fontFamily: 'var(--font-label)', fontSize: '11px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               {showDomain && se.domain_name}
               {tag && (
                 <span style={{ fontSize: '10.5px', color: '#aaa', border: '1px solid #444', borderRadius: '999px', padding: '0 7px' }}>{tag}</span>
-              )}
-              {unitsHere > 0 && (
-                <span style={{ fontSize: '10.5px', color: '#B87DB5', border: '1px solid #B87DB566', borderRadius: '999px', padding: '0 7px' }}>{fmtUnitsLabel(unitsHere)}</span>
               )}
             </div>
           )}

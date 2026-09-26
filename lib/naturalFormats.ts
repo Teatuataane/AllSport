@@ -11,7 +11,7 @@
 // Both conversions are published formulas, used only inside the range they are
 // reliable in, and the result is always shown as an ESTIMATE beside what was
 // actually done: "100kg × 5 · est. 1RM 112.5kg". Outside the range the effort
-// still earns training units; it just does not touch the standards.
+// is still recorded; it just does not touch the standards.
 //
 // ONLY for swapped, extra and personal-game events. An official event keeps the
 // official format, so a prediction can never beat a measured result in a game.
@@ -19,7 +19,7 @@
 // Pure: no React, no Supabase.
 
 import { encodeDiffTime, isTimedEffort, type EventData } from './eventData'
-import { metresIn, unitRule } from './units'
+import { metresIn, isDistanceEvent } from './eventKinds'
 import { fmtTime } from './scoring'
 
 // ─── Strength: Brzycki ───────────────────────────────────────────────────────
@@ -94,7 +94,7 @@ export function distanceRungs(ev: EventData): { level: number; name: string; met
 
 /** Whether an event can take "distance + time" instead of a rung and a time. */
 export function takesDistance(ev: EventData): boolean {
-  return unitRule(ev).rule === 'distance' && isTimedEffort(ev.slug) && distanceRungs(ev).length > 0
+  return isDistanceEvent(ev) && distanceRungs(ev).length > 0
 }
 
 /** Whether an event can take sets of weight × reps instead of a single lift. */

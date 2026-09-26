@@ -1,18 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync } from 'node:fs'
-import { execFileSync } from 'node:child_process'
-// A plain .mjs script, imported for its pure compile and render.
-import { compile, render } from '../scripts/apply-units-sheet.mjs'
 import { EVENTS, getEventByName, type EventData } from '@/lib/eventData'
 import { computeScoreVals, scoreColumns, tierScoring, EMPTY_VALS, type EntryVals } from '@/lib/scoring'
-import { colourGate, GAMES_REQUIRED, UNITS_REQUIRED, TOP_RUNG, MIN_RATED_GAMES } from '@/lib/grading'
-import { eventGrade, unitsSinceConferral, gateBlocker, type GradePlayer } from '@/lib/playerGrades'
+import { colourGate, TOP_RUNG, MIN_RATED_GAMES } from '@/lib/grading'
+import { eventGrade, type GradePlayer } from '@/lib/playerGrades'
+import { isGameTier, isDistanceEvent, metresIn } from '@/lib/eventKinds'
 import {
-  RULE_WORDS, defaultRule, unitRule, unitsForResult, unitsForVolume, unitsForResultRow, unitsForEntryRow,
-  isGameTier, fmtUnits,
-} from '@/lib/units'
-import {
-  fitActivity, suggestEvents, workoutEvidence, recentUnitsByDomain, nzDay, addDays, allowedDays, BACKDATE_DAYS,
+  fitActivity, suggestEvents, workoutEvidence, nzDay, addDays, allowedDays, BACKDATE_DAYS,
   type WorkoutEntryRow,
 } from '@/lib/workouts'
 
@@ -215,174 +209,58 @@ describe('the source behind an event colour', () => {
   })
 })
 
-// ─── The training count across several conferrals ────────────────────────────
-
-describe('units since the last colour, with several colours in one domain', () => {
-  const awards = [
-    { domain_number: 6, conferred_at: '2026-09-20T05:00:00Z' },
-    { domain_number: 6, conferred_at: '2026-09-25T05:00:00Z' }, // the latest, listed in the middle
-    { domain_number: 6, conferred_at: '2026-09-22T05:00:00Z' },
-    { domain_number: 2, conferred_at: '2026-09-30T05:00:00Z' },
-  ]
-
-  it('counts only from the LATEST conferral, whatever order the awards arrive in', () => {
-    const u = unitsSinceConferral([
-      { domain: 6, units: 7, at: '2026-09-23T00:00:00Z' },
-      { domain: 6, units: 2, at: '2026-09-26T00:00:00Z' },
-    ], awards)
-    expect(u.get(6)).toBe(2)
-  })
-
-  it('excludes something that happened at the very instant of the conferral', () => {
-    const u = unitsSinceConferral([{ domain: 6, units: 4, at: '2026-09-25T05:00:00Z' }], awards)
-    expect(u.get(6)).toBeUndefined()
-  })
-
-  it('never lets one domain\'s conferral reset another', () => {
-    const u = unitsSinceConferral([{ domain: 3, units: 5, at: '2026-09-01T00:00:00Z' }], awards)
-    expect(u.get(3)).toBe(5)
-  })
-
-  it('compares the trained day in NZ time: 1am on the 21st in NZ is still the 20th in UTC', () => {
-    const conferred = [{ domain_number: 6, conferred_at: '2026-09-20T13:00:00Z' }] // 21 Sept, 1am NZ
-    const u = unitsSinceConferral([
-      { domain: 6, units: 10, at: '2026-09-21T02:00:00Z', day: '2026-09-20' },
-      { domain: 6, units: 1, at: '2026-09-21T02:00:00Z', day: '2026-09-21' },
-    ], conferred)
-    expect(u.get(6)).toBe(1)
-  })
-
-  it('counts a game result with no trained day on its instant alone', () => {
-    const u = unitsSinceConferral([{ domain: 6, units: 0.25, at: '2026-09-26T00:00:00Z' }], awards)
-    expect(u.get(6)).toBe(0.25)
-  })
-})
-
 // ─── colourGate at its edges ─────────────────────────────────────────────────
+// No games or training check on a domain since 26 September 2026: a domain
+// confers whatever colour its standards give, when that is above the one held.
 
 describe('colourGate edges', () => {
-  const base = { domainNumber: 3, standardsRung: 5, held: 2, games: 10, unitsSinceHeld: 10 }
-
-  it('asks one game and no training for Kiwikiwi', () => {
-    const g = colourGate({ domainNumber: 1, standardsRung: 1, held: 0, games: 1, unitsSinceHeld: 0 })
-    expect(g).toMatchObject({ next: 1, gamesNeeded: 1, unitsNeeded: 0, releasable: 1 })
-    expect(colourGate({ domainNumber: 1, standardsRung: 1, held: 0, games: 0, unitsSinceHeld: 0 }).releasable).toBe(0)
+  it('confers Kiwikiwi on a first result, with no games needed', () => {
+    expect(colourGate({ domainNumber: 1, standardsRung: 1, held: 0 }).releasable).toBe(1)
   })
 
-  it('passes a gate met exactly', () => {
-    const g = colourGate({ ...base, games: GAMES_REQUIRED[3], unitsSinceHeld: UNITS_REQUIRED[3] })
-    expect(g.gamesMet && g.trainingMet).toBe(true)
-    expect(colourGate({ ...base, games: GAMES_REQUIRED[3] - 1 }).gamesMet).toBe(false)
+  it('confers Taniwha from the standards alone', () => {
+    expect(colourGate({ domainNumber: 3, standardsRung: TOP_RUNG, held: TOP_RUNG - 1 }).releasable).toBe(TOP_RUNG)
   })
 
-  it('absorbs floating-point noise but never rounds a real shortfall up', () => {
-    expect(colourGate({ ...base, unitsSinceHeld: 2.95 }).trainingMet).toBe(false)
-    expect(colourGate({ ...base, unitsSinceHeld: 3 - 1e-12 }).trainingMet).toBe(true)
-  })
-
-  it('asks the full top-rung quota for Taniwha', () => {
-    const g = colourGate({ ...base, held: TOP_RUNG - 1, standardsRung: TOP_RUNG, games: 99, unitsSinceHeld: 99 })
-    expect(g).toMatchObject({ next: TOP_RUNG, gamesNeeded: 100, unitsNeeded: 38, gamesMet: false, releasable: 0 })
-  })
-
-  it('at the top, releases nothing, asks for nothing and reports no blocker', () => {
-    const g = colourGate({ ...base, held: TOP_RUNG, standardsRung: TOP_RUNG })
-    expect(g).toMatchObject({ next: null, gamesNeeded: 0, unitsNeeded: 0, standardsMet: false, releasable: 0 })
-    expect(gateBlocker(g)).toBeNull()
+  it('at the top, releases nothing', () => {
+    expect(colourGate({ domainNumber: 3, standardsRung: TOP_RUNG, held: TOP_RUNG }).releasable).toBe(0)
   })
 
   it('does not release a colour when the standards today sit below one already held', () => {
-    expect(colourGate({ ...base, held: 5, standardsRung: 3 }).standardsMet).toBe(false)
-  })
-
-  it('names every blocker, in order, with the right plural', () => {
-    expect(gateBlocker(colourGate({ ...base, standardsRung: 2 }))).toBe('the standards')
-    expect(gateBlocker(colourGate({ ...base, standardsRung: 2, games: 3, unitsSinceHeld: 0 })))
-      .toBe('the standards · 2 more games · 3 more units')
-    expect(gateBlocker(colourGate({ ...base, unitsSinceHeld: 2 }))).toBe('1 more unit')
-    // A fraction short rounds UP: 0.8 of 3 still needs three more to be sure.
-    expect(gateBlocker(colourGate({ ...base, unitsSinceHeld: 0.8 }))).toBe('3 more units')
+    expect(colourGate({ domainNumber: 3, standardsRung: 3, held: 5 }).releasable).toBe(0)
   })
 })
 
-// ─── Units on every rule ─────────────────────────────────────────────────────
+// ─── What kind of event this is ──────────────────────────────────────────────
 
-describe('units on every rule', () => {
-  it('has words for every rule', () => {
-    expect(Object.keys(RULE_WORDS).sort()).toEqual(['attempts', 'distance', 'game', 'hold', 'round', 'set'])
+describe('event kinds', () => {
+  it('picks out exactly the seven events raced over a ladder of distances', () => {
+    // The retired units sheet called these its 'distance' events; the natural
+    // "distance + time" entry format is offered on them and nowhere else.
+    expect(EVENTS.filter(isDistanceEvent).map(e => e.slug).sort()).toEqual(
+      ['animal-crawl', 'burpee-broad-jump', 'cycling', 'row-erg', 'running', 'scooting', 'ski-erg'])
   })
 
-  it('derives the default rule from each input mode', () => {
-    expect(defaultRule(ev('Wrestling'))).toEqual({ rule: 'game', per: 1 })
-    expect(defaultRule({ ...ev('Deadlift'), inputMode: 'score' } as EventData)).toEqual({ rule: 'round', per: 1 })
-    expect(defaultRule(ev('High Jump'))).toEqual({ rule: 'attempts', per: 3 })
-    expect(defaultRule(ev('Javelin'))).toEqual({ rule: 'attempts', per: 3 })
-    expect(defaultRule(ev('Wall Sit'))).toEqual({ rule: 'hold', per: 1 })
-    expect(defaultRule(ev('Leg Ext Hold'))).toEqual({ rule: 'hold', per: 1 })
-    expect(defaultRule(ev('Planche'))).toEqual({ rule: 'hold', per: 1 })
-    expect(defaultRule(ev('Deadlift'))).toEqual({ rule: 'set', per: 1 })
-    expect(defaultRule(ev('Pause Dips'))).toEqual({ rule: 'set', per: 1 })
-  })
-
-  it('takes the TOP distance rung as the unit on a timed effort, ignoring a Game rung', () => {
-    expect(defaultRule(ev('Running'))).toEqual({ rule: 'distance', per: 1000 })
-    const withGame = { ...ev('Running'), difficultyTiers: [...ev('Running').difficultyTiers!, { name: 'Game', scoring: 'sport' }] } as EventData
-    expect(defaultRule(withGame)).toEqual({ rule: 'distance', per: 1000 })
-  })
-
-  it('falls back to one effort when a timed effort\'s rungs are not all distances, or it has none', () => {
+  it('does not count a ladder of loads over one distance, or a ladder with an unreadable rung', () => {
+    expect(isDistanceEvent(ev('Sandbag Carry'))).toBe(false)
     const cycling = ev('Cycling')
-    expect(defaultRule({ ...cycling, difficultyTiers: [{ name: 'Easy' }, { name: '1000m' }] } as EventData)).toEqual({ rule: 'set', per: 1 })
-    expect(defaultRule({ ...cycling, difficultyTiers: [] } as EventData)).toEqual({ rule: 'set', per: 1 })
+    expect(isDistanceEvent({ ...cycling, difficultyTiers: [{ name: 'Easy' }, { name: '1000m' }] } as EventData)).toBe(false)
+    expect(isDistanceEvent({ ...cycling, difficultyTiers: [] } as EventData)).toBe(false)
   })
 
-  it('uses the default for an event the sheet has not caught up with', () => {
-    const fresh = { ...ev('Planche'), slug: 'not-on-the-sheet-yet' } as EventData
-    expect(unitRule(fresh)).toEqual(defaultRule(fresh))
+  it('reads metres out of rung names', () => {
+    expect(metresIn('250m')).toBe(250)
+    expect(metresIn('1.5km')).toBe(1500)
+    expect(metresIn('5kg — 200m')).toBe(200)
+    expect(metresIn('Easy')).toBeNull()
   })
 
-  it('credits a game result by its rule', () => {
-    expect(unitsForResult(ev('Wrestling'), null)).toBe(1)
-    expect(unitsForResult(ev('100m Sprint'), 'Game')).toBe(1)
-    expect(unitsForResult(ev('Planche'), null)).toBe(1)
-    expect(unitsForResult(ev('High Jump'), null)).toBeCloseTo(1 / 3)
-    expect(unitsForResult(ev('Animal Crawl'), '25m Duck Walk')).toBe(0.25)
-    expect(unitsForResult(ev('Burpee Broad Jump'), '50m')).toBe(0.25)
-  })
-
-  it('gives a whole unit on a distance rule when the rung carries no distance', () => {
-    expect(unitsForResult(ev('Cycling'), null)).toBe(1)
-    expect(unitsForResult(ev('Cycling'), 'Not a rung')).toBe(1)
-  })
-
-  it('is a Game rung only for sport mode or a rung marked sport', () => {
+  it('knows a Game rung from a drill', () => {
     expect(isGameTier(ev('Wrestling'), null)).toBe(true)
     expect(isGameTier(ev('Tennis'), 'Game')).toBe(true)
     expect(isGameTier(ev('Tennis'), ev('Tennis').difficultyTiers![0].name)).toBe(false)
     expect(isGameTier(ev('Tennis'), null)).toBe(false)
     expect(isGameTier(ev('Tennis'), 'No such rung')).toBe(false)
-  })
-
-  it('never counts a negative or missing volume', () => {
-    expect(unitsForVolume(ev('Deadlift'), { count: -4 })).toBe(0)
-    expect(unitsForVolume(ev('Deadlift'), {})).toBe(0)
-    expect(unitsForVolume(ev('Cycling'), { distanceM: -500 })).toBe(0)
-    expect(unitsForVolume(ev('Cycling'), { distanceM: null })).toBe(0)
-    expect(unitsForVolume(ev('High Jump'), { count: 1 })).toBeCloseTo(1 / 3)
-  })
-
-  it('resolves rows by name or slug, and gives a retired or unknown event nothing', () => {
-    expect(unitsForResultRow({ event_name: 'Deadlift', difficulty_tier: null })).toEqual({ domain: 1, units: 1 })
-    expect(unitsForResultRow({ event_name: 'Toe Squat', difficulty_tier: null })).toBeNull()
-    expect(unitsForEntryRow({ event_slug: 'ghost', count: 5, volume_distance_m: null })).toBeNull()
-    expect(unitsForEntryRow({ event_slug: 'cycling', count: null, volume_distance_m: 5000 })).toEqual({ domain: 6, units: 5 })
-  })
-
-  it('formats zero, a third and just under ten', () => {
-    expect(fmtUnits(0)).toBe('0')
-    expect(fmtUnits(1 / 3)).toBe('0.3')
-    expect(fmtUnits(9.99)).toBe('9.9')
-    expect(fmtUnits(10)).toBe('10')
   })
 })
 
@@ -423,23 +301,20 @@ describe('fitting and suggesting activities', () => {
 describe('logged entries into grading, as PostgREST returns them', () => {
   const workout = { player_id: 'p', performed_on: '2026-09-16', witnessed: false, created_at: '2026-09-16T01:00:00Z' }
   const entry = (e: Partial<WorkoutEntryRow>): WorkoutEntryRow => ({
-    event_slug: 'cycling', count: null, volume_distance_m: null, raw_score: null, weight_kg: null, difficulty_tier: null, workouts: workout, ...e,
+    event_slug: 'cycling', raw_score: null, weight_kg: null, difficulty_tier: null, workouts: workout, ...e,
   })
 
   it('reads numeric columns that arrive as strings', () => {
-    const { rows, units } = workoutEvidence([entry({
-      raw_score: '29900' as unknown as number, volume_distance_m: '5000' as unknown as number, difficulty_tier: '1000m',
+    const { rows } = workoutEvidence([entry({
+      raw_score: '29900' as unknown as number, difficulty_tier: '1000m',
     })])
     expect(rows[0].raw_score).toBe(29900)
-    expect(units[0].units).toBe(5)
-    const lift = workoutEvidence([entry({ event_slug: 'deadlift', raw_score: '100' as unknown as number, weight_kg: '100' as unknown as number, count: 3 })])
+    const lift = workoutEvidence([entry({ event_slug: 'deadlift', raw_score: '100' as unknown as number, weight_kg: '100' as unknown as number })])
     expect(lift.rows[0].weight_kg).toBe(100)
-    expect(lift.units[0].units).toBe(3)
   })
 
-  it('skips an entry whose workout it cannot read, and a zero volume', () => {
-    expect(workoutEvidence([entry({ workouts: null, raw_score: 29900, volume_distance_m: 5000 })])).toEqual({ rows: [], units: [] })
-    expect(workoutEvidence([entry({ event_slug: 'deadlift', count: 0 })]).units).toEqual([])
+  it('skips an entry whose workout it cannot read', () => {
+    expect(workoutEvidence([entry({ workouts: null, raw_score: 29900 })])).toEqual({ rows: [] })
   })
 
   it('never grades a score on an entry that is not fitted to an event', () => {
@@ -447,24 +322,8 @@ describe('logged entries into grading, as PostgREST returns them', () => {
   })
 })
 
-describe('the week view and NZ days', () => {
+describe('NZ days', () => {
   const now = new Date('2026-09-16T01:00:00Z') // 1pm 16 September NZ
-
-  it('counts a game result by the NZ day of its instant when it has no trained day', () => {
-    const m = recentUnitsByDomain([{ domain: 6, units: 1, at: '2026-09-15T12:30:00Z' }], 1, now) // 16th, 0:30 NZ
-    expect(m.get(6)).toBe(1)
-  })
-
-  it('includes the first day of the window and nothing before it, summing across domains', () => {
-    const m = recentUnitsByDomain([
-      { domain: 6, units: 2, at: 'x', day: '2026-09-10' },
-      { domain: 6, units: 9, at: 'x', day: '2026-09-09' },
-      { domain: 6, units: 1, at: 'x', day: '2026-09-16' },
-      { domain: 2, units: 4, at: 'x', day: '2026-09-12' },
-    ], 7, now)
-    expect(m.get(6)).toBe(3)
-    expect(m.get(2)).toBe(4)
-  })
 
   it('reads the NZ day across midnight, standard and daylight time', () => {
     expect(nzDay('2026-09-15T11:59:00Z')).toBe('2026-09-15') // 11:59pm NZST
@@ -482,45 +341,6 @@ describe('the week view and NZ days', () => {
     expect(d).toHaveLength(BACKDATE_DAYS + 1)
     expect(new Set(d).size).toBe(d.length)
     expect([...d].sort().reverse()).toEqual(d)
-  })
-})
-
-// ─── The units sheet compiler ────────────────────────────────────────────────
-
-describe('the units sheet compiler', () => {
-  const roster = "  slug: 'a',\n  slug: 'b',\n"
-  const line = (slug: string, rule: string, per: string) => `| \`${slug}\` | name | mode | ${rule} | ${per} |`
-
-  it('reports every problem at once: duplicates, strangers, bad rules, bad numbers, gaps', () => {
-    const sheet = ['| Slug | Name | Mode | Rule | Per |', line('a', 'set', '1'), line('a', 'set', '1'), line('z', 'nope', 'abc')].join('\n')
-    let msg = ''
-    try { compile(sheet, roster) } catch (e) { msg = (e as Error).message }
-    expect(msg).toContain('5 problem(s)')
-    for (const p of ['a: listed twice', 'z: not an event on the roster', 'z: rule "nope"', 'z: per "abc"', 'b: missing from the sheet']) expect(msg).toContain(p)
-  })
-
-  it('rejects zero and negative sizes', () => {
-    expect(() => compile([line('a', 'set', '0'), line('b', 'set', '-1')].join('\n'), roster)).toThrow(/a: per[\s\S]*b: per/)
-  })
-
-  it('reports the committed file as up to date through the real CLI, without writing', () => {
-    const out = execFileSync(process.execPath, ['scripts/apply-units-sheet.mjs', '--dry'], { encoding: 'utf8' })
-    expect(out).toContain(`${EVENTS.length} events compiled`)
-    expect(out).toContain('lib/unitSheet.ts is up to date')
-  })
-
-  it('lists every roster event once, in roster order, with its rule', () => {
-    const t = EVENTS.map(ev => ({ ev, ...unitRule(ev) }))
-    expect(t.map(r => r.ev.slug)).toEqual(EVENTS.map(e => e.slug))
-    for (const r of t) expect({ rule: r.rule, per: r.per }).toEqual(unitRule(r.ev))
-  })
-
-  it('sorts by slug and renders fractional sizes as numbers', () => {
-    const rows = compile([line('b', 'distance', '1000'), line('a', 'attempts', '1.5')].join('\n'), roster)
-    expect(rows.map((r: { slug: string }) => r.slug)).toEqual(['a', 'b'])
-    const ts = render(rows)
-    expect(ts).toContain("  'a': { rule: 'attempts', per: 1.5 },")
-    expect(render(compile([line('a', 'attempts', '1.5'), line('b', 'distance', '1000')].join('\n'), roster))).toBe(ts)
   })
 })
 

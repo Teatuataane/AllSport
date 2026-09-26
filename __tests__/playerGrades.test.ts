@@ -99,7 +99,7 @@ describe('an event\'s colour', () => {
 })
 
 describe('a player\'s grades', () => {
-  const none = { results: [], ratings: new Map(), exemptions: new Set<string>() }
+  const none = { results: [], ratings: new Map(), exemptions: new Set<string>(), games: 100 }
 
   it('grades all ten domains, and a player with nothing is Mā overall', () => {
     const g = computePlayerGrades({ player: openMan, ...none })
@@ -120,7 +120,7 @@ describe('a player\'s grades', () => {
     ]
     const strength = computePlayerGrades({ player: master, ...none, results: lifts }).domains[0]
     expect(strength.availableCount).toBe(inDomain1)
-    expect(strength.required).toBe(6)
+    expect(strength.slots).toBe(6)
     expect(strength.rung).toBe(0)
     expect(strength.blockedByBodyweight).toBe(true)
   })
@@ -136,10 +136,10 @@ describe('a player\'s grades', () => {
     // Under the average rule (24 Sept 2026) the bodyweight exception is gone:
     // a blocked domain counts 0 like any other, so it lowers the overall
     // rather than deleting it. 9 × 6 = 54 -> 5.
-    const blocked = { domainNumber: 1, rung: 0, availableCount: 14, required: 6, metAtRung: 0, nextRung: 1, metAtNextRung: 2, blockedByBodyweight: true }
-    const rest = [2, 3, 4, 5, 6, 7, 8, 9, 10].map(d => ({ domainNumber: d, rung: 6, availableCount: 12, required: 6, metAtRung: 6, nextRung: 7, metAtNextRung: 0 }))
-    expect(overallGrade([blocked, ...rest]).rung).toBe(5)
-    expect(overallGrade([{ ...blocked, blockedByBodyweight: false }, ...rest]).rung).toBe(5)
+    const blocked = { domainNumber: 1, rung: 0, availableCount: 14, slots: 6, counted: [], average: 0, nextRung: 1, toNext: 6, blockedByBodyweight: true }
+    const rest = [2, 3, 4, 5, 6, 7, 8, 9, 10].map(d => ({ domainNumber: d, rung: 6, availableCount: 12, slots: 6, counted: [], average: 6, nextRung: 7, toNext: 6 }))
+    expect(overallGrade([blocked, ...rest], 100).rung).toBe(5)
+    expect(overallGrade([{ ...blocked, blockedByBodyweight: false }, ...rest], 100).rung).toBe(5)
   })
 
   it('ignores rows from retired events', () => {
@@ -147,7 +147,14 @@ describe('a player\'s grades', () => {
     expect([...g.events.values()].every(e => !e.played)).toBe(true)
   })
 
-  it('removes an exempt event from both sides of the rule', () => {
+  it('caps the overall by the games passed in', () => {
+    // Twelve Pause Dips at the top rung would be nothing overall anyway, so
+    // assert the plumbing: zero games is always Mā overall.
+    const g = computePlayerGrades({ player: openMan, ...none, games: 0 })
+    expect(g.overall.rung).toBe(0)
+  })
+
+  it('removes an exempt event from the domain', () => {
     const slug = ev('Pause Dips').slug
     const g = computePlayerGrades({ player: openMan, ...none, exemptions: new Set([slug]) })
     expect(g.domains[0].availableCount).toBe(EVENTS.filter(e => e.domainNumber === 1).length - 1)
@@ -168,13 +175,11 @@ describe('voided sessions', () => {
 })
 
 describe('releasing colours', () => {
-  it('offers only domains where the standards give more than has been conferred, one colour at a time', () => {
+  it('offers only domains where the standards give more than has been conferred, the whole jump at once', () => {
     const held = heldRungs([{ domain_number: 1, rung: 3 }, { domain_number: 1, rung: 5 }, { domain_number: 2, rung: 2 }])
     expect(held.get(1)).toBe(5)
-    const domains = [1, 2, 3].map(d => ({ domainNumber: d, rung: 4, availableCount: 12, required: 6, metAtRung: 6, nextRung: 5, metAtNextRung: 0 }))
-    // Plenty of games and units: only the standards decide here.
-    const units = new Map([[1, 99], [2, 99], [3, 99]])
-    expect(releasable(colourGates(domains, held, 100, units)).map(g => [g.domainNumber, g.releasable])).toEqual([[2, 3], [3, 1]])
+    const domains = [1, 2, 3].map(d => ({ domainNumber: d, rung: 4, availableCount: 12, slots: 6, counted: [], average: 4, nextRung: 5, toNext: 6 }))
+    expect(releasable(colourGates(domains, held)).map(g => [g.domainNumber, g.releasable])).toEqual([[2, 4], [3, 4]])
   })
 
   it('never shows a conferred colour going down', () => {

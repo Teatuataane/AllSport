@@ -46,7 +46,8 @@ describe('useNewColours', () => {
     rerender({ s: state([]), r: () => {} })
     rerender({ s: state([award('2026-09-01T00:00:00Z')]), r: () => {} })
     await waitFor(() => expect(h.recheck).toHaveBeenCalledTimes(1))
-    expect(h.recheck).toHaveBeenCalledWith({ playerId: 'p1' })
+    // First visit under these rules: forced, because a rules deploy writes no rows.
+    expect(h.recheck).toHaveBeenCalledWith({ playerId: 'p1', force: true })
   })
 
   it('asks again for a different player (a family switch)', async () => {

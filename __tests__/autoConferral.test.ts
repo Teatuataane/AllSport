@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
-import { awardsToConfer, awardsToWithdraw } from '@/lib/autoConfer'
+import { awardsToConfer, awardsToWithdraw, awardAfterWithdraw } from '@/lib/autoConfer'
 import { eventsBehind } from '@/lib/playerGrades'
 import { SERVICE_KEY_ENV } from '@/lib/supabase-admin'
 import { colourGate, gradeForRung } from '@/lib/grading'
@@ -147,16 +147,20 @@ describe('the migration', () => {
 // ── What gets written ───────────────────────────────────────────────────────
 
 const gate = (domainNumber: number, held: number, standardsRung: number) =>
-  colourGate({ domainNumber, standardsRung, held, games: 999, unitsSinceHeld: 999 })
+  colourGate({ domainNumber, standardsRung, held })
+
+/** Domain 3's best six, as domainGrade would report them. */
+const DOMAIN_3_TOP = EVENTS.filter(e => e.domainNumber === 3).slice(0, 6).map(e => e.slug)
 
 const stateWith = (gates: ReturnType<typeof gate>[], schemaReady = true): GradeState => ({
   grades: {
     band: 'Open', ladder: 'M',
     events: new Map(EVENTS.map(e => [e.slug, { slug: e.slug, rung: 12, gradeable: true, played: true }])),
-    domains: [], overall: null,
+    domains: [{ domainNumber: 3, rung: 12, availableCount: 12, slots: 6, counted: DOMAIN_3_TOP, average: 12, nextRung: null, toNext: 0 }],
+    overall: null,
   },
   awards: [], held: new Map(), exemptions: new Set(), hasBand: true, schemaReady,
-  games: 999, unitsByDomain: new Map(), gates, workoutsReady: true, disputed: new Map(),
+  games: 999, gates, workoutsReady: true, disputed: new Map(),
 } as unknown as GradeState)
 
 describe('awardsToConfer', () => {
@@ -166,31 +170,28 @@ describe('awardsToConfer', () => {
     expect(awardsToConfer('p1', stateWith([gate(1, 0, 5)], false))).toEqual([])
   })
 
-  it('confers one colour per domain, never a chain', () => {
-    // The standards say rung 5, the player holds nothing: they get rung 1, and
-    // the next colour needs its own training units from that moment.
+  it('confers the colour the standards give, as one row per domain', () => {
+    // No one-at-a-time rule since 26 September 2026: Mā straight to rung 5.
     const out = awardsToConfer('p1', stateWith([gate(1, 0, 5), gate(2, 3, 9)]))
-    expect(out.map(a => [a.domain_number, a.rung])).toEqual([[1, 1], [2, 4]])
+    expect(out.map(a => [a.domain_number, a.rung])).toEqual([[1, 5], [2, 9]])
   })
 
-  it('confers nothing when a gate is unmet', () => {
-    const short = colourGate({ domainNumber: 1, standardsRung: 0, held: 0, games: 0, unitsSinceHeld: 0 })
-    expect(awardsToConfer('p1', stateWith([short]))).toEqual([])
+  it('confers nothing when the standards are not above the colour held', () => {
+    expect(awardsToConfer('p1', stateWith([gate(1, 0, 0), gate(2, 4, 4), gate(3, 6, 2)]))).toEqual([])
   })
 
   it('records nobody as the conferrer, and names the colour', () => {
     const [a] = awardsToConfer('p1', stateWith([gate(3, 0, 4)]))
     expect(a.conferred_by).toBeNull()
-    expect(a.grade_name).toBe(gradeForRung(1).name)
+    expect(a.grade_name).toBe(gradeForRung(4).name)
     expect(a.player_id).toBe('p1')
   })
 
-  it('records the same evidence the release panel shows', () => {
+  it('records the same evidence the release panel shows: the best six averaged', () => {
     const state = stateWith([gate(3, 0, 4)])
     const [a] = awardsToConfer('p1', state)
-    expect(a.events).toEqual(eventsBehind(state.grades, 3, 1))
-    // Domain 3 holds twelve events and this fixture grades them all.
-    expect(a.events).toHaveLength(EVENTS.filter(e => e.domainNumber === 3).length)
+    expect(a.events).toEqual(eventsBehind(state.grades, 3))
+    expect(a.events).toEqual(DOMAIN_3_TOP)
   })
 })
 
@@ -201,7 +202,7 @@ const withAwards = (standardsRung: number, awards: { rung: number; domain: numbe
   ...stateWith([]),
   grades: {
     ...stateWith([]).grades,
-    domains: [{ domainNumber: 3, rung: standardsRung, availableCount, required: 6, metAtNextRung: 0, nextRung: null }],
+    domains: [{ domainNumber: 3, rung: standardsRung, availableCount, slots: Math.min(availableCount, 6), counted: [], average: standardsRung, nextRung: null, toNext: 0 }],
   },
   awards: awards.map(a => ({ domain_number: a.domain, rung: a.rung, grade_name: `G${a.rung}`, conferred_at: '2026-09-01T00:00:00Z', id: a.id })),
 } as unknown as GradeState)
@@ -511,5 +512,39 @@ describe('found by the adversarial review', () => {
     const vercelStep = doc.indexOf('3. Key added to Vercel')
     expect(applyStep).toBeGreaterThan(-1)
     expect(vercelStep).toBeGreaterThan(applyStep)
+  })
+})
+
+describe('awardAfterWithdraw — a jump taken back must not overshoot', () => {
+  // Whero (3) held, then a jump to Poroporo (7) wrote ONE row. A deleted score
+  // re-judges the domain to Kākāriki (5): withdrawing 7 alone would leave 3.
+  it('puts back the colour the remaining evidence gives', () => {
+    const state = withAwards(5, [{ domain: 3, rung: 3, id: 'w' }, { domain: 3, rung: 7, id: 'p' }])
+    const taken = awardsToWithdraw(state, 3)
+    expect(taken.map(a => a.id)).toEqual(['p'])
+    const back = awardAfterWithdraw('p1', state, 3, new Set(taken.map(a => a.id)))
+    expect(back).toMatchObject({ player_id: 'p1', domain_number: 3, rung: 5, grade_name: gradeForRung(5).name, conferred_by: null })
+    // Dated to the jump it replaces, so HOME never celebrates it as a new colour.
+    expect(back!.conferred_at).toBe('2026-09-01T00:00:00Z')
+  })
+
+  it('puts back nothing when an award left standing already covers it', () => {
+    const state = withAwards(5, [{ domain: 3, rung: 5, id: 'k' }, { domain: 3, rung: 7, id: 'p' }])
+    expect(awardAfterWithdraw('p1', state, 3, new Set(['p']))).toBeNull()
+  })
+
+  it('puts back nothing when the evidence gives Mā, or nothing can be graded', () => {
+    expect(awardAfterWithdraw('p1', withAwards(0, [{ domain: 3, rung: 4, id: 'a' }]), 3, new Set(['a']))).toBeNull()
+    expect(awardAfterWithdraw('p1', withAwards(3, [{ domain: 3, rung: 4, id: 'a' }], 0), 3, new Set(['a']))).toBeNull()
+  })
+
+  it('writes nothing before the grading schema exists', () => {
+    const state = { ...withAwards(5, [{ domain: 3, rung: 7, id: 'p' }]), schemaReady: false }
+    expect(awardAfterWithdraw('p1', state, 3, new Set(['p']))).toBeNull()
+  })
+
+  it('is called by the route after a withdrawal', () => {
+    const route = readFileSync(join(process.cwd(), 'app/api/grades/recheck/route.ts'), 'utf8')
+    expect(route).toMatch(/awardAfterWithdraw\(playerId, \{ \.\.\.fresh, awards: state\.awards \}, req\.domain, deleted\)/)
   })
 })

@@ -6,8 +6,8 @@
 // achievement whoever earned it.
 //
 //   DOMAIN COLOURS — lifetime. The colour the STANDARDS give a player in each
-//   of the ten domains (the same half-of-the-domain rule as a colour), ignoring
-//   the games and training gates. Shown on each card as best and worst domain.
+//   of the ten domains (the same best-six average as a colour; domain colours
+//   have had no games or training gate since 26 September 2026). Shown on each card as best and worst domain.
 //   A lifetime Skill board ranked on their average and was removed the same
 //   day (Tāne, 2026-09-25): one board, Season.
 //

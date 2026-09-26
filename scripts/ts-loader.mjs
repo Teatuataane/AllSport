@@ -1,7 +1,7 @@
 // Lets a script import the app's TypeScript directly, with Node's built-in type
 // stripping (Node 22.18+ / 24):
 //
-//   node --import ./scripts/ts-loader.mjs scripts/gen-units-sheet.ts
+//   node --import ./scripts/ts-loader.mjs scripts/replay-colours.ts
 //
 // lib/ imports without extensions ('./eventData') and through the '@/' alias,
 // and a script outside the repo imports lib/ by absolute path; Node's ESM

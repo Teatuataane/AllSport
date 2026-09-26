@@ -64,10 +64,10 @@ export default function GameEventList({
                 se={slot.se}
                 eventData={eventDataFor(slot)}
                 myResults={rowsFor(slot)}
-                note={{ label: 'Training only', color: '#B87DB5' }}
+                note={{ label: 'Not placed', color: '#888' }}
                 gradeRung={rungFor(slot)}
                 showDomain={false}
-                tag={rowsFor(slot).length === 0 ? 'Added · training only' : 'Added'}
+                tag="Added"
                 onOpen={() => onOpen(slot.se.id)}
                 corner={canAdd && !scoredSlugs.has(slot.se.id)
                   ? <RowCorner variant="remove" label={`Remove ${slot.se.event_name}`} onClick={() => onRemove(slot.se.id)} />

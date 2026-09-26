@@ -58,7 +58,6 @@ describe('a non-finite logged score is never grading evidence', () => {
       { ...base, raw_score: 'NaN' as unknown as number },
     ])
     expect(out.rows).toEqual([])
-    expect(out.units).toHaveLength(2)
   })
 })
 

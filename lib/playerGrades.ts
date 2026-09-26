@@ -8,8 +8,7 @@
 
 import { EVENTS, getEventByName, type EventData } from './eventData'
 import { STANDARDS } from './standards'
-import { isGameTier, unitsForResultRow } from './units'
-import { toNZDateString } from './dates'
+import { isGameTier } from './eventKinds'
 import {
   ageBand, rungForScore, ratioThresholdsKg, ratingRung, gameEventRung,
   domainGrade, overallGrade, colourGate, DRILL_CAP, DOMAIN_COUNT,
@@ -196,14 +195,15 @@ function maxBy<T>(rows: readonly T[], key: (r: T) => number): T | undefined {
  *
  * `results` must be the player's own rows from sessions that count — see
  * voidedSessionIds. `ratings` is the player's rating per sport (event name).
- * `exemptions` are coach-confirmed event slugs, removed from both sides of the
- * half-the-domain rule.
+ * `exemptions` are coach-confirmed event slugs, which leave their domain.
+ * `games` is official games played, which caps the overall colour.
  */
 export function computePlayerGrades(input: {
   player: GradePlayer
   results: readonly GradeResultRow[]
   ratings: ReadonlyMap<string, SportRating>
   exemptions: ReadonlySet<string>
+  games: number
 }): PlayerGrades {
   const byEvent = new Map<string, GradeResultRow[]>()
   for (const r of input.results) {
@@ -250,7 +250,7 @@ export function computePlayerGrades(input: {
     ladder: ladderFor(input.player),
     events,
     domains,
-    overall: overallGrade(domains),
+    overall: overallGrade(domains, input.games),
   }
 }
 
@@ -297,29 +297,15 @@ export function heldRungs(awards: readonly { domain_number: number; rung: number
 }
 
 /**
- * Domains whose next colour passes all three gates — standards, games and
- * training — which is what auto-conferral writes (lib/autoConfer.ts), and what
- * the release panel offers as its fallback. ONE colour per domain at
- * a time: the training count restarts at each conferral, so the colour above
- * needs its own units first.
+ * Domains whose standards give a colour above the one held — what
+ * auto-conferral writes (lib/autoConfer.ts), and what the release panel offers
+ * as its fallback. A domain may jump several colours at once.
  */
 export function releasable(gates: readonly ColourGate[]): ColourGate[] {
   return gates.filter(g => g.releasable > 0)
 }
 
-// ─── The games and training gates ────────────────────────────────────────────
-
-/** One thing that earned effort units: a game result, or a logged workout entry. */
-export type UnitEvent = {
-  domain: number
-  units: number
-  /** When it counted: the session's start for a game result, the log time for a workout. */
-  at: string
-  /** For a workout, the NZ day it was trained (YYYY-MM-DD). */
-  day?: string
-}
-
-const nzDay = (iso: string) => toNZDateString(new Date(iso))
+// ─── Games ───────────────────────────────────────────────────────────────────
 
 /** A player's own result row from an official session, as the grades loader reads it. */
 export type GameResultRow = {
@@ -330,8 +316,6 @@ export type GameResultRow = {
   difficulty_tier: string | null
   /** As written at the time. Display only. */
   score_label?: string | null
-  /** When it counts for the training gate: the session's start. */
-  at: string
   /** The player's declared bodyweight on this game's day. See GradeResultRow. */
   bodyweightKg?: number | null
   /** The session has finished. A game still in progress is not yet a game. */
@@ -340,14 +324,14 @@ export type GameResultRow = {
 
 /**
  * What a player's game results give the grades: rows for the standards, and
- * the games and units for the two gates. The gates count only CLOSED
- * sessions: a colour released on a game still in progress could rest on a
- * session a kaiwhakawā later voids. Voided sessions are already filtered out
- * by the caller (voidedSessionIds).
+ * the games count that caps the overall colour. Games count only CLOSED
+ * sessions: an overall colour resting on a game still in progress could rest
+ * on a session a kaiwhakawā later voids. Voided sessions are already filtered
+ * out by the caller (voidedSessionIds). The standards read every row, so a
+ * score counts the moment it is entered.
  */
-export function gameEvidence(rows: readonly GameResultRow[]): { rows: GradeResultRow[]; units: UnitEvent[]; games: number } {
+export function gameEvidence(rows: readonly GameResultRow[]): { rows: GradeResultRow[]; games: number } {
   const out: GradeResultRow[] = []
-  const units: UnitEvent[] = []
   const games = new Set<string>()
   for (const r of rows) {
     out.push({
@@ -355,81 +339,34 @@ export function gameEvidence(rows: readonly GameResultRow[]): { rows: GradeResul
       difficulty_tier: r.difficulty_tier, source: 'game', bodyweightKg: r.bodyweightKg,
       ...(r.score_label ? { score_label: r.score_label } : {}),
     })
-    if (!r.closed) continue
-    games.add(r.session_id)
-    const u = unitsForResultRow({ event_name: r.event_name, difficulty_tier: r.difficulty_tier })
-    if (u) units.push({ domain: u.domain, units: u.units, at: r.at })
+    if (r.closed) games.add(r.session_id)
   }
-  return { rows: out, units, games: games.size }
+  return { rows: out, games: games.size }
 }
 
-/**
- * Units per domain since the last colour conferred there — the training gate's
- * count. A colour's units start again from its conferral: something counts
- * only if it happened after it. A workout must also be TRAINED on or after the
- * conferral day, so a week of logs saved up and entered after a conferral
- * cannot rush the next colour through (decision 17).
- */
-export function unitsSinceConferral(
-  events: readonly UnitEvent[],
-  awards: readonly { domain_number: number; conferred_at: string }[],
-): Map<number, number> {
-  const last = new Map<number, string>()
-  for (const a of awards) {
-    const cur = last.get(a.domain_number)
-    if (!cur || a.conferred_at > cur) last.set(a.domain_number, a.conferred_at)
-  }
-  const out = new Map<number, number>()
-  for (const e of events) {
-    const since = last.get(e.domain)
-    if (since) {
-      if (new Date(e.at).getTime() <= new Date(since).getTime()) continue
-      if (e.day && e.day < nzDay(since)) continue
-    }
-    out.set(e.domain, (out.get(e.domain) ?? 0) + e.units)
-  }
-  return out
-}
-
-/** The three gates on every domain's next colour. */
+/** What every domain has waiting to be conferred. */
 export function colourGates(
   domains: readonly DomainGradeResult[],
   held: ReadonlyMap<number, number>,
-  games: number,
-  unitsByDomain: ReadonlyMap<number, number>,
 ): ColourGate[] {
   return domains.map(d => colourGate({
     domainNumber: d.domainNumber,
     standardsRung: d.rung,
     held: held.get(d.domainNumber) ?? 0,
-    games,
-    unitsSinceHeld: unitsByDomain.get(d.domainNumber) ?? 0,
   }))
 }
 
 /**
- * The event slugs standing behind a colour in a domain: everything already at
- * that rung or above. Stored on the award as its evidence, and shown by the
- * release panel as what the colour rests on.
+ * The event slugs standing behind a domain's colour: the best six (or fewer)
+ * averaged into it that hold a colour. Stored on the award as its evidence, and
+ * shown by the release panel as what the colour rests on.
  *
  * Shared because BOTH writers must record the same thing — a kaiwhakawā
  * releasing by hand and the server conferring automatically — and an award
  * whose evidence disagreed with the panel would be impossible to audit.
  */
-export function eventsBehind(grades: PlayerGrades, domainNumber: number, rung: number): string[] {
-  return EVENTS
-    .filter(e => e.domainNumber === domainNumber && (grades.events.get(e.slug)?.rung ?? 0) >= rung)
-    .map(e => e.slug)
-}
-
-/** What is holding a domain's next colour back, in a few words. Null when it is ready, or at the top. */
-export function gateBlocker(g: ColourGate): string | null {
-  if (g.next == null || g.releasable) return null
-  const parts: string[] = []
-  if (!g.standardsMet) parts.push('the standards')
-  if (!g.gamesMet) { const n = g.gamesNeeded - g.games; parts.push(`${n} more game${n === 1 ? '' : 's'}`) }
-  if (!g.trainingMet) { const n = Math.ceil(g.unitsNeeded - g.units); parts.push(`${n} more unit${n === 1 ? '' : 's'}`) }
-  return parts.join(' · ')
+export function eventsBehind(grades: PlayerGrades, domainNumber: number): string[] {
+  return grades.domains.find(d => d.domainNumber === domainNumber)?.counted ?? []
 }
 
 /** The colour to show for a domain: conferred colours never drop. */

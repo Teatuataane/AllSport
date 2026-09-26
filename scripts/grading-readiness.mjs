@@ -3,9 +3,10 @@
 //
 // Answers one question: how close is the club to being gradeable?
 //
-// Grading needs the standard met in HALF of a domain's gradeable events, and
-// the overall grade is the AVERAGE of the ten domains — so a domain that cannot
-// offer enough gradeable events drags every player's overall down. This report tracks the two
+// A domain's colour is the AVERAGE of a player's best six gradeable events
+// there, with an unplayed slot counting as Mā, and the overall grade is the
+// AVERAGE of the ten domains — so a domain that cannot offer enough gradeable
+// events drags every player's overall down. This report tracks the two
 // things that gate the launch:
 //
 //   1. ROSTER READINESS — can each domain offer enough gradeable events?
@@ -13,8 +14,8 @@
 //      ladder has drill rungs beneath the contest, and since the grading
 //      ladders gave the pure contests drills too, Wrestling is the only pure
 //      `sport` event left. No domain is blocked.
-//   2. PLAYER READINESS — has each player played enough distinct GRADEABLE
-//      events per domain? One session gives one event per domain, drawn from
+//   2. PLAYER READINESS — has each player filled every slot, i.e. played
+//      enough distinct GRADEABLE events per domain? One session gives one event per domain, drawn from
 //      twelve, so this accrues over roughly ten to twelve sessions.
 //
 // Deliberately contains NO copy of the grade ladder. lib/grading.ts is the
@@ -82,11 +83,11 @@ function roster() {
 const DOMAINS = ['', 'Maximal Strength', 'Calisthenics', 'Power', 'Speed', 'Anaerobic Endurance',
   'Aerobic Endurance', 'Flexibility', 'Body Awareness', 'Coordination', 'Aim & Precision']
 // The rule is IMPORTED, not restated. This script used to keep its own copy of
-// the half-the-domain rule, and it drifted: when Flexibility went to sixteen
+// the (since retired) half-the-domain rule, and it drifted: when Flexibility went to sixteen
 // events the copy reported a threshold of 8 while the engine asked for 6.
 // lib/grading.ts imports nothing, so Node 24's built-in type stripping loads it
 // directly and the command stays `node scripts/grading-readiness.mjs`.
-const { requiredForDomain: needed, DOMAIN_REQUIRED_CAP } = await import('../lib/grading.ts')
+const { slotsForDomain: needed, DOMAIN_TOP_EVENTS } = await import('../lib/grading.ts')
 
 const events = roster()
 // Compared with the slugs the source declares, not a pinned count: a pinned 120
@@ -98,7 +99,7 @@ console.log(`\nRoster parsed: ${events.length} events` + (events.length === decl
 console.log('\n─── ROSTER READINESS ────────────────────────────────────────────────')
 console.log('A pure `sport` event can never carry a standard. Everything else can:')
 console.log('a ladder that tops out in a Game rung is graded on the drill rungs.\n')
-console.log('DOMAIN                  GRADEABLE  CONTESTS  NEEDED')
+console.log('DOMAIN                  GRADEABLE  CONTESTS   SLOTS')
 let blocked = 0
 const gradeableByDomain = {}
 for (let d = 1; d <= 10; d++) {
@@ -152,8 +153,8 @@ const rows = [...played.entries()].map(([pid, byDomain]) => {
 }).sort((a, b) => b.met - a.met || b.counts.reduce((x, y) => x + y, 0) - a.counts.reduce((x, y) => x + y, 0))
 
 console.log('\n─── PLAYER READINESS ────────────────────────────────────────────────')
-console.log('Distinct gradeable events played per domain, against each domain\'s own')
-console.log(`threshold (half its gradeable events, capped at ${DOMAIN_REQUIRED_CAP}).\n`)
+console.log('Distinct gradeable events played per domain, against the slots averaged')
+console.log(`into its colour (${DOMAIN_TOP_EVENTS}, or fewer in a smaller domain). A domain is MET when every slot is filled.\n`)
 console.log('PLAYER              ' + Array.from({ length: 10 }, (_, i) => String(i + 1).padStart(4)).join('') + '   DOMAINS MET')
 for (const r of rows) {
   console.log(r.name.slice(0, 18).padEnd(20) + r.counts.map((n) => String(n).padStart(4)).join('') + `      ${r.met}/10`)

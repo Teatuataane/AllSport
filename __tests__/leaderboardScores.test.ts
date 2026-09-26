@@ -15,7 +15,7 @@ const row = (over: Partial<SeasonRow>): SeasonRow => ({
 })
 
 const domain = (n: number, rung: number): DomainGradeResult => ({
-  domainNumber: n, rung, availableCount: 12, required: 6, metAtRung: 6, nextRung: rung + 1, metAtNextRung: 0,
+  domainNumber: n, rung, availableCount: 12, slots: 6, counted: [], average: rung, nextRung: rung + 1, toNext: 6,
 })
 
 describe('domain colours', () => {

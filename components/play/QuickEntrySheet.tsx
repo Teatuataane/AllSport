@@ -13,7 +13,6 @@ import EventIcon from '@/components/EventIcon'
 import { domainColor } from '@/components/EventIcon'
 import { isGameEntry } from '@/lib/matches'
 import { isTimedEffort, type EventData } from '@/lib/eventData'
-import { unitsIn, unitRule, fmtUnitsLabel, RULE_WORDS } from '@/lib/units'
 import { computeScoreVals, valsFromResult, valsFromRaw, EMPTY_VALS, type EntryVals } from '@/lib/scoring'
 import {
   takesSets, takesDistance, estimateFromSets, estimateFromDistance, paceLabel, MAX_ESTIMATED_REPS,
@@ -24,7 +23,7 @@ import {
 } from './chrome'
 
 /** What one submission did, so the screen can pick the right toast. */
-export type SubmitOutcome = { error: string | null; isPR: boolean; units: number }
+export type SubmitOutcome = { error: string | null; isPR: boolean }
 
 /** An opponent the sheet can offer. A guest has no id and is never matched. */
 export type OpponentPick = { id: string | null; name: string }
@@ -58,7 +57,7 @@ type QuickEntrySheetProps = {
   onClose: () => void
   onSubmit: (v: EntryVals, editingId: string | null, matchOpponents: string[] | null) => Promise<SubmitOutcome>
   onDelete: (id: string) => Promise<string | null>
-  onSubmitted: (label: string, meta: { isPR: boolean; units: number }) => void
+  onSubmitted: (label: string, meta: { isPR: boolean }) => void
   onDeleted: () => void
 }
 
@@ -82,8 +81,6 @@ export default function QuickEntrySheet({
   const myBestResult = myResults.length > 0
     ? myResults.reduce((best, r) => r.raw_score > best.raw_score ? r : best, myResults[0])
     : undefined
-  const unitsHere = unitsIn(eventData, myResults)
-  const unitWords = eventData ? RULE_WORDS[unitRule(eventData).rule] : RULE_WORDS.set
 
   const [v, setV] = useState<EntryVals>(() => {
     let init: EntryVals = { ...EMPTY_VALS }
@@ -174,7 +171,7 @@ export default function QuickEntrySheet({
     setSubmitting(false)
     if (outcome.error) { setError(outcome.error); return }
     setEditingResult(null)
-    onSubmitted(scored.score_label, { isPR: outcome.isPR, units: outcome.units })
+    onSubmitted(scored.score_label, { isPR: outcome.isPR })
   }
 
   async function handleSheetDelete(resultId: string) {
@@ -249,7 +246,7 @@ export default function QuickEntrySheet({
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '26px', lineHeight: 1, color: '#fff', letterSpacing: '0.03em' }}>{se.event_name}</div>
             <div style={{ fontFamily: 'var(--font-label)', fontSize: '11px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.12em', marginTop: '3px' }}>
-              {se.domain_name}{unitsHere > 0 ? ` · ${fmtUnitsLabel(unitsHere)}` : ''}
+              {se.domain_name}
             </div>
           </div>
           <button onClick={() => setShowHow(h => !h)} style={{
@@ -394,8 +391,8 @@ export default function QuickEntrySheet({
                         {estimate
                           ? `Best set — ${estimate.score_label}`
                           : sets.length > 0
-                            ? `Over ${MAX_ESTIMATED_REPS} reps a one-rep max cannot be estimated, so these count as training only.`
-                            : 'Each set is one unit of training.'}
+                            ? `Over ${MAX_ESTIMATED_REPS} reps a one-rep max cannot be estimated, so these sets are recorded but do not grade.`
+                            : 'Add each set you did. Your best set is what grades.'}
                       </div>
                     </>
                   )}
@@ -415,7 +412,7 @@ export default function QuickEntrySheet({
                       </div>
                       <div style={{ fontSize: 12.5, color: '#777', marginTop: 8, lineHeight: 1.5 }}>
                         {naturalMetres > 0 && naturalSecs > 0
-                          ? `${paceLabel(naturalMetres, naturalSecs)}${estimate ? ` · ${estimate.score_label}` : ' · too short to compare to a rung, so it counts as training only'}`
+                          ? `${paceLabel(naturalMetres, naturalSecs)}${estimate ? ` · ${estimate.score_label}` : ' · too short to compare to a rung, so it is recorded but does not grade'}`
                           : 'Everything you cover counts as training.'}
                       </div>
                     </>
@@ -608,14 +605,6 @@ export default function QuickEntrySheet({
                 </>
               )}
 
-              {/* Training units — what replaced effort tasks */}
-              <div style={{ ...QES_LBL, display: 'flex', justifyContent: 'space-between' }}>
-                <span>Training units</span>
-                <span style={{ color: '#B87DB5' }}>{fmtUnitsLabel(unitsHere)} this game</span>
-              </div>
-              <div style={{ fontSize: '13px', color: '#777', lineHeight: 1.5 }}>
-                Every {unitWords.one} counts toward your next colour in {se.domain_name}, at any effort. Submit each one.
-              </div>
             </div>
           )}
         </div>

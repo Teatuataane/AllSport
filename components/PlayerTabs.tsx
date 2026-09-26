@@ -17,6 +17,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase-browser'
 import { gradeForRung, overallRung } from '@/lib/grading'
+import { loadGameCounts } from '@/lib/gameCounts'
 import {
   useActivePlayer, playerLabel, type ActivePlayerRow,
 } from '@/lib/useActivePlayer'
@@ -32,10 +33,19 @@ async function loadAccents(ids: string[]): Promise<Map<string, string>> {
   const missing = ids.filter(id => !accentCache.has(id))
   if (missing.length === 0) return new Map(accentCache)
 
-  const awards = await supabase
-    .from('grade_awards')
-    .select('player_id, domain_number, rung')
-    .in('player_id', missing)
+  // The games count caps the overall colour, so it is read here too, by the
+  // same rule as the leaderboard (lib/gameCounts.ts, paged past the row cap).
+  const [awards, games] = await Promise.all([
+    supabase.from('grade_awards').select('player_id, domain_number, rung').in('player_id', missing),
+    loadGameCounts(supabase, missing),
+  ])
+  // Unknown games: show the brand red for now and cache NOTHING, so the next
+  // mount retries the count rather than keeping a wrong chip all session.
+  if (!games) {
+    const out = new Map(accentCache)
+    for (const id of missing) out.set(id, FALLBACK_ACCENT)
+    return out
+  }
   const held = new Map<string, Map<number, number>>()
   for (const a of (awards.data ?? []) as { player_id: string; domain_number: number; rung: number }[]) {
     const m = held.get(a.player_id) ?? new Map<number, number>()
@@ -43,7 +53,7 @@ async function loadAccents(ids: string[]): Promise<Map<string, string>> {
     held.set(a.player_id, m)
   }
   for (const [id, m] of held) {
-    const overall = overallRung(m.values())
+    const overall = overallRung(m.values(), games.get(id) ?? 0)
     if (overall === 0) continue
     const g = gradeForRung(overall)
     // A 6-digit hex, never a var(): it is suffixed with an alpha below. Taniwha
@@ -86,12 +96,13 @@ export default function PlayerTabs() {
   const roster: ActivePlayerRow[] = self ? [self, ...familyMembers] : familyMembers
 
   useEffect(() => {
-    if (roster.length === 0) return
+    // Solo accounts never render the chips, so they never pay for the queries.
+    if (roster.length === 0 || !hasFamily) return
     let cancelled = false
     loadAccents(roster.map(p => p.id)).then(m => { if (!cancelled) setAccents(m) })
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roster.map(p => p.id).join(',')])
+  }, [roster.map(p => p.id).join(','), hasFamily])
 
   // The whole point of the gate: most accounts never render this.
   if (!hasFamily) return null
@@ -173,13 +184,13 @@ export function ViewingAsBanner() {
   const [accent, setAccent] = useState(FALLBACK_ACCENT)
 
   useEffect(() => {
-    if (!activePlayer) return
+    if (!activePlayer || !hasFamily) return
     let cancelled = false
     loadAccents([activePlayer.id]).then(m => {
       if (!cancelled) setAccent(m.get(activePlayer.id) ?? FALLBACK_ACCENT)
     })
     return () => { cancelled = true }
-  }, [activePlayer?.id])
+  }, [activePlayer?.id, hasFamily])
 
   if (isViewingSelf || !hasFamily || !activePlayer) return null
 

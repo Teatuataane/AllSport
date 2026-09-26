@@ -3,8 +3,8 @@
 // can be tested, and so the ordering rule lives in exactly one place.
 //
 // The order, most important first:
-//   1. The overall colour (the average of the ten domains, rounded down;
-//      overallRung in lib/grading.ts).
+//   1. The overall colour (the average of the ten domains, rounded down and
+//      capped by games played; overallRung in lib/grading.ts).
 //   2. The sum of the ten domain colours held — progress toward the overall.
 //   3. Domains holding any colour.
 //   4. Games played. Nobody held a conferred colour at launch, so without this
@@ -20,25 +20,50 @@ export type BoardInput = {
   name: string
   /** Domain number -> highest conferred colour. */
   held: Map<number, number> | undefined
+  /**
+   * Official games: finished, unvoided sessions with a result. It CAPS the
+   * overall colour as well as breaking ties, so it must be counted the way
+   * HOME counts it (gameEvidence) — see countGames.
+   */
   games: number
 }
 
 export type BoardRow = BoardInput & {
   rank: number
-  /** The average domain colour, rounded down. 0 = Mā. */
+  /** The average domain colour, rounded down and capped by games. 0 = Mā. */
   overall: number
   domainsHeld: number
   colourSum: number
 }
 
-export function colourStanding(held: Map<number, number> | undefined) {
+export function colourStanding(held: Map<number, number> | undefined, games: number) {
   const rungs = held ? [...held.values()].filter(r => r > 0) : []
   const domainsHeld = rungs.length
   return {
     domainsHeld,
     colourSum: rungs.reduce((s, r) => s + r, 0),
-    overall: overallRung(rungs),
+    overall: overallRung(rungs, games),
   }
+}
+
+/**
+ * Official games per player from public result rows: distinct sessions, less
+ * the ones that do not count yet or ever — the game still running and every
+ * voided one. The same definition gameEvidence applies on HOME, so the games
+ * cap on the overall colour lands on the same colour everywhere.
+ */
+export function countGames(
+  rows: readonly { player_id: string | null; session_id: string }[],
+  excluded: ReadonlySet<string>,
+): Map<string, number> {
+  const seen = new Map<string, Set<string>>()
+  for (const r of rows) {
+    if (!r.player_id || excluded.has(r.session_id)) continue
+    const s = seen.get(r.player_id) ?? new Set<string>()
+    s.add(r.session_id)
+    seen.set(r.player_id, s)
+  }
+  return new Map([...seen].map(([id, s]) => [id, s.size]))
 }
 
 /**
@@ -57,7 +82,7 @@ export function displayOverall(r: Pick<BoardRow, 'overall'>): number | null {
 const keyOf = (r: BoardRow) => [r.overall, r.colourSum, r.domainsHeld, r.games]
 
 export function rankByColours(players: readonly BoardInput[]): BoardRow[] {
-  const rows: BoardRow[] = players.map(p => ({ ...p, rank: 0, ...colourStanding(p.held) }))
+  const rows: BoardRow[] = players.map(p => ({ ...p, rank: 0, ...colourStanding(p.held, p.games) }))
   rows.sort((a, b) => {
     const ka = keyOf(a), kb = keyOf(b)
     for (let i = 0; i < ka.length; i++) if (ka[i] !== kb[i]) return kb[i] - ka[i]

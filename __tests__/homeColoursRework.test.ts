@@ -19,34 +19,34 @@ const row = (event_name: string, raw_score: number, extra: Partial<GradeResultRo
 
 describe('overallRung edge cases', () => {
   it('clamps a negative or over-range rung rather than letting it skew the average', () => {
-    expect(overallRung([-5, 10, 10, 10, 10, 10, 10, 10, 10, 10])).toBe(9)
-    expect(overallRung(Array(10).fill(99))).toBe(12)
+    expect(overallRung([-5, 10, 10, 10, 10, 10, 10, 10, 10, 10], 100)).toBe(9)
+    expect(overallRung(Array(10).fill(99), 100)).toBe(12)
   })
   it('lands exactly on a whole colour despite float arithmetic', () => {
     // 7 × 10 = 70 / 10 = 7, never 6.999…
-    expect(overallRung(Array(10).fill(7))).toBe(7)
+    expect(overallRung(Array(10).fill(7), 100)).toBe(7)
   })
   it('accepts any iterable, as the family chips pass Map.values()', () => {
-    expect(overallRung(new Map(Array.from({ length: 10 }, (_, i) => [i, 4])).values())).toBe(4)
+    expect(overallRung(new Map(Array.from({ length: 10 }, (_, i) => [i, 4])).values(), 100)).toBe(4)
   })
 })
 
 describe('overallGrade weakest under the average rule', () => {
   const d = (rungs: number[]): DomainGradeResult[] =>
-    rungs.map((rung, i) => ({ domainNumber: i + 1, rung, availableCount: 12, required: 6, metAtRung: 0, nextRung: rung + 1, metAtNextRung: 0 }))
+    rungs.map((rung, i) => ({ domainNumber: i + 1, rung, availableCount: 12, slots: 6, counted: [], average: rung, nextRung: rung + 1, toNext: 6 }))
   it('names Mā domains as the weakest, since they now drag the average', () => {
-    const r = overallGrade(d([4, 4, 0, 4, 4, 4, 4, 4, 0, 4]))
+    const r = overallGrade(d([4, 4, 0, 4, 4, 4, 4, 4, 0, 4]), 100)
     expect(r.weakest).toEqual([3, 9])
     expect(r.ungraded).toEqual([3, 9])
   })
   it('an empty list is Mā with nothing weakest', () => {
-    expect(overallGrade([])).toEqual({ rung: 0, ungraded: [], weakest: [] })
+    expect(overallGrade([], 100)).toEqual({ rung: 0, average: 0, ungraded: [], weakest: [] })
   })
 })
 
 describe('colourStanding / rankByColours with the average', () => {
   it('a player with one domain held still has Mā overall', () => {
-    expect(colourStanding(new Map([[1, 9]])).overall).toBe(0)
+    expect(colourStanding(new Map([[1, 9]]), 100).overall).toBe(0)
   })
   it('ties share a rank when every key matches', () => {
     const held = new Map([[1, 3]])

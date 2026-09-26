@@ -17,6 +17,7 @@ import {
 import { recheckGrades } from './recheckGrades'
 import { createClient } from './supabase-browser'
 import type { GradeState } from './loadGrades'
+import { GRADING_RULES_VERSION } from './grading'
 
 /** localStorage throws in a private window and in some embedded views. */
 const read = (k: string): string | null => { try { return localStorage.getItem(k) } catch { return null } }
@@ -69,9 +70,17 @@ export function useNewColours(
   useEffect(() => {
     if (!playerId || !state || asked.current === playerId) return
     asked.current = playerId
+    // A rules change writes no rows, so the cheap probe would skip this player
+    // (GRADING_RULES_VERSION). Force one full run per player per rules version,
+    // and only record the version once the server actually answered.
+    const rulesKey = `allsport_grading_rules_${playerId}`
+    const force = read(rulesKey) !== GRADING_RULES_VERSION
     // Reload only when something landed: the usual answer is nothing, and the
     // colours on screen were already correct before we asked.
-    void recheckGrades({ playerId }).then(r => { if (r.conferred.length > 0) reload() })
+    void recheckGrades({ playerId, force }).then(r => {
+      if (r.ok && r.writable) write(rulesKey, GRADING_RULES_VERSION)
+      if (r.conferred.length > 0) reload()
+    })
   }, [playerId, state, reload])
 
   const dismiss = useCallback(() => {

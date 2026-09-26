@@ -8,35 +8,37 @@
 // ── The three rules ─────────────────────────────────────────────────────────
 //   1. A player holds a colour in each of the ten domains, earned against
 //      published standards, not points.
-//   2. Your colour in a domain is the highest grade whose standard you have met
-//      in at least HALF of that domain's events.
+//   2. Your colour in a domain is the AVERAGE of your best SIX events there,
+//      rounded down. An empty slot counts as Mā (Tāne, 26 September 2026 —
+//      was "the highest grade met in half the domain's events").
 //   3. Your overall grade is the AVERAGE of your ten domain colours, rounded
-//      down (overallRung). It was the LOWEST domain until 24 September 2026.
+//      down, and CAPPED by official games played (GAMES_REQUIRED). It was the
+//      LOWEST domain until 24 September 2026.
+//
+// Rule 2 is what makes going wide pay. Until you have six events on the
+// board, every new one lifts the average from nothing; after six, a new event
+// only counts if it beats one of the six. The half-the-domain rule it replaced
+// scored your SIXTH-best event, so five brilliant events and a gap read as Mā.
 //
 // Rule 3 still says "one sport, every sport": the average is always over TEN,
-// so a domain on Mā counts zero and drags it. But under "lowest", work in nine
-// domains counted for nothing while the tenth lagged; Tāne changed it so that
-// raising ANY domain moves the overall and players are rewarded for bringing up
-// several things, not only the one they avoid.
+// so a domain on Mā counts zero and drags it. The games cap is what stops a
+// colour being built on solo logging alone: domain colours can be earned
+// anywhere, but the overall needs the games in the room behind it.
 //
-// ── Why HALF the events, and why "of the events available to you" ───────────
-// Requiring half a domain rather than one event is what stops a grade being
-// won on a single favourable movement. But applied to every event in the pool
-// it would exclude the people the charity exists for: most of Maximal
-// Strength's events load the shoulder, so a player whose shoulder will never
-// press has only a few available and could never reach six — and that domain
-// would drag their overall grade forever.
+// Training units were a third gate on every domain colour until 26 September
+// 2026, and were removed from the app entirely on 27 September 2026.
 //
-// And the ask never exceeds SIX (DOMAIN_REQUIRED_CAP), however big a pool
-// grows. Domains stopped being even in Sept 2026 — Flexibility holds sixteen —
-// and an uncapped half would have made the biggest pools the hardest colours.
+// ── Why SIX, and why "of the events available to you" ───────────────────────
+// Six is half of a twelve-event domain: enough that a colour is never won on a
+// single favourable movement, and the point where three brilliant events and
+// eight solid ones score the same. It never grows with a pool — Flexibility
+// holds sixteen — because a pool is a menu, not a syllabus.
 //
-// So the denominator is the events AVAILABLE to that player. A kaiwhakawā marks
-// an event unavailable (injury, disability, permanent limitation) and the
-// threshold moves with it: four available means two needed, not six. This is
-// how a coach adapts a grading for an injured student, and it is the only way
-// rule 2 keeps the promise the design makes — one joint costs you options,
-// never a domain.
+// Six of the events AVAILABLE to that player. A kaiwhakawā marks an event
+// unavailable (injury, disability, permanent limitation) and it leaves the
+// domain; a player with four available events averages over four. This is how
+// a coach adapts a grading for an injured student: one joint costs you
+// options, never a domain.
 //
 // ── What this module deliberately does NOT contain ──────────────────────────
 // The standards themselves. They are numbers per event, sex and rung, compiled
@@ -107,6 +109,17 @@ export const GRADES: GradeRung[] = [
 ]
 
 export const TOP_RUNG = 12
+
+/**
+ * Bumped whenever a rule here changes what colour the same evidence earns.
+ *
+ * A rules deploy writes no rows, so the recheck's cheap probe
+ * (grades_need_recheck) sees nothing new and skips everyone whose watermark is
+ * current: HOME would show the new computed colour while BOARD kept the old
+ * conferred one. HOME forces one full recheck per player when this differs
+ * from the version it last checked under (lib/useNewColours.ts).
+ */
+export const GRADING_RULES_VERSION = '2026-09-26-best-six'
 export const DOMAIN_COUNT = 10
 
 /**
@@ -126,161 +139,120 @@ export function gradeForRung(rung: number): GradeRung {
 // ─── Rule 2: the domain colour ───────────────────────────────────────────────
 
 /**
- * The fraction of a domain's available events whose standard must be met.
- * Half, rounded up: 12 available needs 6, 5 available needs 3 — then capped
- * by DOMAIN_REQUIRED_CAP, so 16 available still needs 6, not 8.
+ * How many of a domain's events are averaged into its colour. Tāne, 26
+ * September 2026. Defined once; the guide and HOME read it from here.
  */
-export const DOMAIN_FRACTION = 0.5
+export const DOMAIN_TOP_EVENTS = 6
 
 export type DomainGradeInput = {
   domainNumber: number
   /** Every event slug in the domain, from the canonical roster. */
   eventSlugs: string[]
   /**
-   * Events in this domain that can never carry a standard, for everybody.
-   * After the September 2026 difficulty overhaul that is the eleven remaining
-   * pure `sport` events — a win, draw or loss says nothing about a population,
-   * so no percentile can be attached to one.
+   * Events in this domain that can never carry a standard, for everybody —
+   * after the September 2026 difficulty overhaul, Wrestling alone.
    *
-   * They must leave the DENOMINATOR, not merely fail to count. Speed holds six
-   * of the eleven, so counting them would ask a Speed player to meet the
-   * standard in all six of the events that can be graded — a 100% requirement
-   * where every other domain asks 50%. Half of what can be graded is the rule;
-   * half of the roster is an accident of which events happen to be contests.
+   * They leave the domain, not merely score 0: a win, draw or loss says
+   * nothing about a population, so no drill can ever lift one off Mā.
    */
   ungradeable?: ReadonlySet<string>
   /**
    * eventSlug → highest rung whose standard the player has met in that event
    * (lifetime best). Absent means never played; 0 means played but below the
-   * bottom rung. Both count as "not met" for every rung.
+   * bottom rung. Both fill a slot as Mā.
    */
   rungByEvent: ReadonlyMap<string, number>
   /**
-   * Coach-confirmed events this player cannot do. Removed from BOTH the
-   * numerator and the denominator, so exempting an event never helps or hurts
-   * beyond shrinking the domain.
+   * Coach-confirmed events this player cannot do. They leave the domain, so a
+   * player with fewer than six available averages over what they have.
    */
   unavailable?: ReadonlySet<string>
   /**
    * Strength events this player has declared no bodyweight for.
    *
-   * These stay in the denominator and score 0 — they are NOT subtracted the
-   * way `ungradeable` is. Passing them here only lets the result say WHY the
-   * domain has no colour, so a missing number does not silently cost the
-   * player their overall grade as well.
+   * These STAY in the domain and score 0 — they are NOT removed the way
+   * `ungradeable` is. Passing them here only lets the result say WHY the
+   * domain has no colour.
    */
   bodyweightBlocked?: ReadonlySet<string>
 }
 
 export type DomainGradeResult = {
   domainNumber: number
-  /** 0 = Mā. */
+  /** The average of the counted slots, rounded down. 0 = Mā. */
   rung: number
   /**
-   * Events counted — the domain's roster minus the events nobody can be graded
-   * in, minus this player's own exemptions.
+   * Events that count here — the domain's roster minus the events nobody can
+   * be graded in, minus this player's own exemptions.
    */
   availableCount: number
-  /** How many of those must meet a rung for it to be held. */
-  required: number
-  /** How many available events currently meet `rung`. */
-  metAtRung: number
+  /** How many slots are averaged: six, or fewer when fewer are available. */
+  slots: number
+  /** The events filling those slots with a colour, best first. At most `slots`. */
+  counted: string[]
+  /** The exact average before rounding, e.g. 2.33. 0 when nothing can be graded. */
+  average: number
   /** The rung above, or null at the top. */
   nextRung: number | null
-  /** How many available events already meet `nextRung` — progress. */
-  metAtNextRung: number
+  /**
+   * Colours still to add across the slots to reach `nextRung`: one event up
+   * one colour, or an empty slot filled at Kiwikiwi, is one. 0 at the top.
+   */
+  toNext: number
   /**
    * The domain has no colour AND at least one of its events is a strength
-   * standard this player has not declared a bodyweight for.
-   *
-   * Display only since 24 September 2026: the overall colour became an
-   * average, and a blocked domain now counts 0 like any other. It still tells
-   * "not graded here yet" from "cannot be graded here until a number is
-   * declared", which is worth saying to the player. The history below is why
-   * it existed: Maximal Strength holds 12 ratio
-   * events against 14, so an undeclared player can reach at most 2 of the 6
-   * required and the domain is not merely hard, it is unreachable — and an
-   * ungraded domain used to veto the overall colour outright, so a player
-   * could be Hiriwa in nine domains and display nothing at all.
-   *
-   * Optional so a caller building a DomainGradeResult by hand (tests, the
-   * release panel's projections) need not care; absent reads as false.
+   * standard this player has not declared a bodyweight for. Display only: it
+   * tells "not graded here yet" from "cannot be graded here until a number is
+   * declared". Optional so a caller building a result by hand need not care.
    */
   blockedByBodyweight?: boolean
 }
 
-/**
- * The most events a domain may ever ask for, however big its pool grows.
- *
- * Half of twelve. Tāne, Sept 2026, on taking Flexibility to sixteen events:
- * accept the bigger pool, "keep the threshold at any 6 events". A domain's
- * pool is a menu, not a syllabus — growing it should give a player more ways
- * to reach the colour, never a longer list to finish.
- *
- * The CAP rather than a flat 6, because `availableCount` is what is available
- * TO THAT PLAYER: exemptions and ungradeable events leave the count, so a
- * player with five available events must still be asked for three. A flat 6
- * would ask them for six of five, which nobody can ever meet.
- */
-export const DOMAIN_REQUIRED_CAP = 6
-
-/** How many of a player's available events must meet a rung to hold it. */
-export function requiredForDomain(availableCount: number): number {
-  return Math.min(Math.ceil(availableCount * DOMAIN_FRACTION), DOMAIN_REQUIRED_CAP)
+/** How many events are averaged for a player with `availableCount` available. */
+export function slotsForDomain(availableCount: number): number {
+  return Math.max(0, Math.min(availableCount, DOMAIN_TOP_EVENTS))
 }
 
 export function domainGrade(input: DomainGradeInput): DomainGradeResult {
   const unavailable = input.unavailable ?? new Set<string>()
   const ungradeable = input.ungradeable ?? new Set<string>()
   // NOT subtracted from `available`: a strength event with no declared
-  // bodyweight stays in the denominator and scores 0. That is the whole fix —
-  // dropping it is what made skipping the question the winning move.
+  // bodyweight stays in the domain and scores 0. Dropping it is what made
+  // skipping the question the winning move.
   const blocked = input.bodyweightBlocked ?? new Set<string>()
   const available = input.eventSlugs.filter((s) => !unavailable.has(s) && !ungradeable.has(s))
-  const required = requiredForDomain(available.length)
+  const slots = slotsForDomain(available.length)
 
   // A domain with nothing gradeable and available cannot be graded. Without
-  // this guard `required` is 0 and every rung is trivially "met", which would
-  // hand out Taniwha for an empty domain.
-  if (available.length === 0) {
+  // this guard the average divides by zero.
+  if (slots === 0) {
     return {
-      domainNumber: input.domainNumber,
-      rung: 0,
-      availableCount: 0,
-      required: 0,
-      metAtRung: 0,
-      nextRung: 1,
-      metAtNextRung: 0,
-      blockedByBodyweight: false,
+      domainNumber: input.domainNumber, rung: 0, availableCount: 0, slots: 0,
+      counted: [], average: 0, nextRung: 1, toNext: 0, blockedByBodyweight: false,
     }
   }
 
-  const countAtLeast = (rung: number) =>
-    available.filter((s) => (input.rungByEvent.get(s) ?? 0) >= rung).length
-
-  // Walk DOWN from the top: the domain colour is the highest rung met widely
-  // enough. Counting up and stopping at the first failure would be wrong if the
-  // counts were ever non-monotonic; walking down is correct regardless.
-  let rung = 0
-  for (let r = TOP_RUNG; r >= 1; r--) {
-    if (countAtLeast(r) >= required) {
-      rung = r
-      break
-    }
-  }
-
+  // Best first; a tie keeps roster order, so `counted` is stable.
+  const ranked = available
+    .map((slug) => ({ slug, rung: Math.max(0, Math.min(TOP_RUNG, input.rungByEvent.get(slug) ?? 0)) }))
+    .sort((a, b) => b.rung - a.rung)
+    .slice(0, slots)
+  const sum = ranked.reduce((t, e) => t + e.rung, 0)
+  // Integer arithmetic, so no epsilon: 17 / 6 is 2 however it is rounded.
+  const rung = Math.floor(sum / slots)
   const nextRung = rung >= TOP_RUNG ? null : rung + 1
+
   return {
     domainNumber: input.domainNumber,
     rung,
     availableCount: available.length,
-    required,
-    metAtRung: rung === 0 ? 0 : countAtLeast(rung),
+    slots,
+    counted: ranked.filter((e) => e.rung > 0).map((e) => e.slug),
+    average: sum / slots,
     nextRung,
-    metAtNextRung: nextRung === null ? 0 : countAtLeast(nextRung),
+    toNext: nextRung === null ? 0 : nextRung * slots - sum,
     // Only when the domain has nothing at all: once a colour is held, a
-    // missing bodyweight is holding it back rather than blocking it, and the
-    // player already appears in the overall.
+    // missing bodyweight is holding it back rather than blocking it.
     blockedByBodyweight: rung === 0 && available.some((s) => blocked.has(s)),
   }
 }
@@ -288,127 +260,97 @@ export function domainGrade(input: DomainGradeInput): DomainGradeResult {
 // ─── Rule 3: the overall grade ───────────────────────────────────────────────
 
 /**
- * The overall colour: the AVERAGE of the ten domain colours, rounded down
- * (Tāne, 24 September 2026 — was the lowest domain, null until all ten held one).
+ * Cumulative OFFICIAL games needed to hold each OVERALL colour. Index = rung.
+ * Tāne, 16 September 2026, when it gated each domain colour; since 26
+ * September 2026 it caps the overall colour only.
  *
- * An average so that raising ANY domain moves it: under "lowest", work in nine
- * domains counted for nothing while the tenth lagged. A domain on Mā counts 0,
- * so a gap still drags. Always over DOMAIN_COUNT, never over the domains held,
- * or holding one Taniwha domain would make a player Taniwha overall.
- *
- * The bodyweight exception went with the old rule. It existed because under
- * "lowest" an undeclared bodyweight made an overall colour impossible; under an
- * average it only drags a little, and the leaderboard (which reads conferred
- * colours only) cannot see who is blocked, so keeping it would make HOME and
- * BOARD disagree. Defined ONCE, here: lib/colourBoard.ts and the family chips
- * call it.
+ * A game is a finished, unvoided official session with any result. A
+ * personal-training session run by a kaiwhakawā is witnessed evidence but NOT
+ * a game: the cap exists to bring people into the room.
  */
-export function overallRung(rungs: Iterable<number>): number {
+export const GAMES_REQUIRED: readonly number[] = [0, 1, 3, 5, 8, 12, 16, 20, 30, 40, 55, 75, 100]
+
+/** The highest overall colour `games` official games allow. */
+export function gamesCapRung(games: number): number {
+  let r = 0
+  while (r < TOP_RUNG && games >= GAMES_REQUIRED[r + 1]) r++
+  return r
+}
+
+/**
+ * The average of the ten domain colours, rounded down, BEFORE the games cap.
+ * Always over DOMAIN_COUNT, never over the domains held, or holding one
+ * Taniwha domain would make a player Taniwha overall.
+ */
+export function averageRung(rungs: Iterable<number>): number {
   let sum = 0
   for (const r of rungs) sum += Math.max(0, Math.min(TOP_RUNG, r))
   return Math.floor(sum / DOMAIN_COUNT + 1e-9)
 }
 
+/**
+ * The overall colour: the AVERAGE of the ten domain colours, rounded down,
+ * capped by official games played.
+ *
+ * An average so that raising ANY domain moves it (Tāne, 24 September 2026 —
+ * was the lowest). A domain on Mā counts 0, so a gap still drags. The cap
+ * (26 September 2026) is what stops a colour resting on solo logging alone.
+ *
+ * `games` is REQUIRED on purpose: every surface that shows an overall colour
+ * must apply the same cap, or HOME and BOARD disagree. Defined ONCE, here:
+ * lib/colourBoard.ts, HOME and the family chips call it.
+ */
+export function overallRung(rungs: Iterable<number>, games: number): number {
+  return Math.min(averageRung(rungs), gamesCapRung(games))
+}
+
 export type OverallGradeResult = {
-  /** The average domain colour, rounded down. 0 = Mā. */
+  /** The capped overall colour. 0 = Mā. */
   rung: number
+  /** The average before the games cap. Above `rung` only when the cap binds. */
+  average: number
   /** Domains still on Mā. Each one drags the average. */
   ungraded: number[]
   /** The domains sitting at the minimum — what to train next. */
   weakest: number[]
 }
 
-export function overallGrade(domains: readonly DomainGradeResult[]): OverallGradeResult {
+export function overallGrade(domains: readonly DomainGradeResult[], games: number): OverallGradeResult {
   const rungs = domains.map((d) => d.rung)
   const min = rungs.length ? Math.min(...rungs) : 0
   return {
-    rung: overallRung(rungs),
+    rung: overallRung(rungs, games),
+    average: averageRung(rungs),
     ungraded: domains.filter((d) => d.rung === 0).map((d) => d.domainNumber),
     weakest: domains.filter((d) => d.rung === min).map((d) => d.domainNumber),
   }
 }
 
-// ─── The two gates beside the standards ──────────────────────────────────────
-// Workout logging (September 2026) made every logged workout count toward the
-// standards, on trust. Two gates came with it, so a colour still needs the room
-// and still needs the work:
-//
-//   GAMES — cumulative OFFICIAL games. A kaiwhakawā moderates in person at
-//     games, so earning colours includes playing them. A personal-training
-//     session run by a kaiwhakawā is witnessed evidence but NOT a game: the
-//     quota exists to bring people into the room. One count for the player,
-//     not per domain, because every game draws an event from every domain.
-//
-//   TRAINING — effort units in THAT domain since the last colour there
-//     (lib/units.ts says what a unit is). The count starts again at each
-//     colour: a set amount of volume at every colour, the way a belt asks for
-//     time at grade. Official game results earn units too, so a player who only
-//     comes to games is never blocked, only slower.
-//
-// Colours move ONE at a time: the training count restarts at each conferral,
-// so the colour above needs its own units before it can follow.
-//
-// The units ladder is the games ladder's steps × UNIT_MULTIPLIER. Calibrated
-// on 16 September 2026 against every game on record: a game earns about 0.83
-// units per domain (one event per domain, 1.5 submissions each), so at 1.5 a
-// player who only plays games needs somewhat more than the quota's games to
-// clear the training gate, and any logged training closes the gap. At 1.0 the
-// gate barely binds; at 2.0 it held back 43% of the colours players had earned
-// on the standards. At 1.5 it holds back 35%.
-
-/** Cumulative official games needed to hold each colour. Index = rung. Tāne, 16 September 2026. */
-export const GAMES_REQUIRED: readonly number[] = [0, 1, 3, 5, 8, 12, 16, 20, 30, 40, 55, 75, 100]
-
-/** Training units per games-quota step. See above; one number to change. */
-export const UNIT_MULTIPLIER = 1.5
-
-/** Units needed in a domain, since its last colour, to hold each colour. Index = rung. Kiwikiwi needs none. */
-export const UNITS_REQUIRED: readonly number[] = GAMES_REQUIRED.map((g, r) =>
-  r <= 1 ? 0 : Math.round(UNIT_MULTIPLIER * (g - GAMES_REQUIRED[r - 1])))
-
-/** Absorbs floating-point noise in a unit sum, and nothing more. */
-export const UNIT_EPSILON = 1e-6
+// ─── What confers ────────────────────────────────────────────────────────────
+// A domain colour confers as soon as the standards give a colour above the one
+// held. There is no games or training check on a domain any more, and no
+// one-at-a-time rule: that rule only existed because the units count restarted
+// at each conferral. A domain can now jump several colours in one session.
 
 export type ColourGate = {
   domainNumber: number
   /** The colour held (conferred), 0 = Mā. */
   held: number
-  /** The colour above, or null at the top. */
-  next: number | null
-  standardsMet: boolean
-  gamesMet: boolean
-  trainingMet: boolean
-  games: number
-  gamesNeeded: number
-  units: number
-  unitsNeeded: number
-  /** `next` when all three gates pass, otherwise 0. */
+  /** The colour the standards give today (domainGrade's rung). */
+  standardsRung: number
+  /** `standardsRung` when it is above `held`, otherwise 0. */
   releasable: number
 }
 
-/** The three gates on a domain's next colour. */
-export function colourGate(input: {
-  domainNumber: number
-  /** The colour the standards give today (domainGrade's rung). */
-  standardsRung: number
-  held: number
-  games: number
-  /** Units in this domain since `held` was conferred. */
-  unitsSinceHeld: number
-}): ColourGate {
-  const next = input.held >= TOP_RUNG ? null : input.held + 1
-  const gamesNeeded = next == null ? 0 : GAMES_REQUIRED[next]
-  const unitsNeeded = next == null ? 0 : UNITS_REQUIRED[next]
-  const standardsMet = next != null && input.standardsRung >= next
-  const gamesMet = next != null && input.games >= gamesNeeded
-  // A tolerance, not rounding: floating-point quarters summing to 2.9999…
-  // are 3, but a real 2.95 is still short.
-  const trainingMet = next != null && input.unitsSinceHeld + UNIT_EPSILON >= unitsNeeded
+/** What a domain has waiting to be conferred. */
+export function colourGate(input: { domainNumber: number; standardsRung: number; held: number }): ColourGate {
+  // Clamp BEFORE comparing, or a rung above the ladder would re-offer a held Taniwha.
+  const rung = Math.min(input.standardsRung, TOP_RUNG)
   return {
-    domainNumber: input.domainNumber, held: input.held, next,
-    standardsMet, gamesMet, trainingMet,
-    games: input.games, gamesNeeded, units: input.unitsSinceHeld, unitsNeeded,
-    releasable: standardsMet && gamesMet && trainingMet ? next! : 0,
+    domainNumber: input.domainNumber,
+    held: input.held,
+    standardsRung: rung,
+    releasable: rung > input.held ? rung : 0,
   }
 }
 

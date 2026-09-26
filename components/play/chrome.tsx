@@ -14,7 +14,6 @@ import { type EventData } from '@/lib/eventData'
 // formatPR lives in lib/scoreFormat.ts so server code and pure libs can use it
 // without importing this client module. Re-exported for existing callers.
 export { formatPR } from '@/lib/scoreFormat'
-import { unitsIn, fmtUnitsLabel } from '@/lib/units'
 
 /**
  * An event as a play screen shows it. An official game's row IS a

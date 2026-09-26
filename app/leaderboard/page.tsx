@@ -23,6 +23,7 @@ import { createClient } from '@/lib/supabase-browser'
 import { gradeForRung, DOMAIN_COUNT } from '@/lib/grading'
 import { rankBy, bestAndWorst } from '@/lib/leaderboardScores'
 import { colourStanding, displayOverall } from '@/lib/colourBoard'
+import { loadGameCounts } from '@/lib/gameCounts'
 import { RAINBOW, DOMAIN_COLORS } from '@/lib/domainColours'
 import { GradeDot } from '@/components/GradeDot'
 import DomainIcon from '@/components/DomainIcon'
@@ -281,6 +282,8 @@ export default function LeaderboardPage() {
   const [domainColours, setDomainColours] = useState<Map<string, DomainColoursRow>>(new Map())
   const [season, setSeason] = useState<Map<string, SeasonPointsRow>>(new Map())
   const [held, setHeld] = useState<Map<string, Map<number, number>>>(new Map())
+  // Lifetime official games per player, which cap the overall colour. Null = unknown.
+  const [gamesPlayed, setGamesPlayed] = useState<Map<string, number> | null>(null)
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null)
   const [sessionLeader, setSessionLeader] = useState<SessionLeader | null>(null)
   const [seasonYear] = useState(nzYear)
@@ -294,11 +297,14 @@ export default function LeaderboardPage() {
     const supabase = createClient()
     let cancelled = false
     ;(async () => {
-      const [page, rosterRes, domainRes, seasonRes] = await Promise.all([
+      const [page, rosterRes, domainRes, seasonRes, lifetimeGames] = await Promise.all([
         supabase.rpc('leaderboard_page', { p_season: seasonYear }),
         supabase.from('players_public').select('id, display_name, username, division, is_guest, is_active'),
         supabase.from('player_domain_colours').select('player_id, domain_rungs'),
         supabase.from('player_season_points').select('player_id, points, games').eq('season_year', seasonYear),
+        // LIFETIME official games, which cap the overall colour (overallRung).
+        // Not the season's games: a colour is lifetime, so is its cap.
+        loadGameCounts(supabase, null),
       ])
       if (cancelled) return
 
@@ -316,6 +322,7 @@ export default function LeaderboardPage() {
       // A missing table (PGRST205, before 20260924213359) reads as empty.
       setDomainColours(new Map(((domainRes.data ?? []) as DomainColoursRow[]).map(r => [r.player_id, r])))
       setSeason(new Map(((seasonRes.data ?? []) as SeasonPointsRow[]).map(r => [r.player_id, r])))
+      setGamesPlayed(lifetimeGames)
       setLoading(false)
     })()
     return () => { cancelled = true }
@@ -350,12 +357,14 @@ export default function LeaderboardPage() {
         domainRungs: dc?.domain_rungs ?? Array(DOMAIN_COUNT).fill(0),
         points: sp?.points ?? 0,
         games: sp?.games ?? 0,
-        // The average of the ten conferred domain colours, rounded down (lib/colourBoard.ts).
-        overall: displayOverall(colourStanding(held.get(p.id))),
+        // The average of the ten conferred domain colours, rounded down and
+        // capped by lifetime games (lib/colourBoard.ts). An unreadable count is
+        // unknown, not zero, so the cap is left off rather than showing Mā.
+        overall: displayOverall(colourStanding(held.get(p.id), gamesPlayed ? (gamesPlayed.get(p.id) ?? 0) : Number.MAX_SAFE_INTEGER)),
       }
     }).filter(r => inTab(r.division, tab))
     return rankBy(all.filter(r => r.points > 0 || r.games > 0), r => [r.points, r.games])
-  }, [roster, domainColours, season, held, tab])
+  }, [roster, domainColours, season, held, gamesPlayed, tab])
 
   return (
     <>

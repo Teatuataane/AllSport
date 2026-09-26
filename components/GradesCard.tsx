@@ -5,10 +5,10 @@
 // docs/designs/home-colours-rework-spec.md) the ONLY place a player's own colour
 // detail lives: the COLOURS tab (/grades) is now a guide with no personal data.
 //
-// Top to bottom: the overall colour (the average of the ten, overallRung), the
-// two actions, one line saying what a unit is, then the ten domains. Each domain
-// row names its next colour's three checks in words and expands to show every
-// event as Event · Your best · Colour.
+// Top to bottom: the overall colour (the average of the ten, capped by games
+// played; overallRung), the two actions, one line saying how a domain colour
+// is worked out, then the ten domains. Each domain row says how far its next
+// colour is and expands to show every event as Event · Your best · Colour.
 //
 // Domain colours are what has been CONFERRED (automatically since
 // auto-conferral). Before the grading migration lands nothing can be conferred,
@@ -23,9 +23,10 @@ import { EVENTS } from '@/lib/eventData'
 import { STANDARDS } from '@/lib/standards'
 import { RAINBOW } from '@/lib/domainColours'
 import {
-  gradeForRung, gradeInk, overallRung, DOMAIN_REQUIRED_CAP, MIN_RATED_GAMES, type ColourGate,
+  gradeForRung, gradeInk, overallRung, averageRung, DOMAIN_TOP_EVENTS, GAMES_REQUIRED, MIN_RATED_GAMES,
+  type ColourGate,
 } from '@/lib/grading'
-import { bestScoreLabel, unitLine, shownDomainRungs } from '@/lib/colourDisplay'
+import { bestScoreLabel, nextDomainColour, shownDomainRungs } from '@/lib/colourDisplay'
 import { GradeDot } from '@/components/GradeDot'
 import type { GradeState } from '@/lib/loadGrades'
 
@@ -52,7 +53,9 @@ export default function GradesCard({ state, askBand = false }: { state: GradeSta
     const gate = gates.find(g => g.domainNumber === d.domainNumber)!
     return { d, gate, shown: shownRungs.get(d.domainNumber) ?? 0 }
   })
-  const overall = gradeForRung(overallRung(rows.map(r => r.shown)))
+  const overall = gradeForRung(overallRung(rows.map(r => r.shown), state.games))
+  // The average before the games cap. Above `overall` only when the cap binds.
+  const uncapped = averageRung(rows.map(r => r.shown))
   const graded = rows.filter(r => r.shown > 0).length
 
   return (
@@ -78,8 +81,15 @@ export default function GradesCard({ state, askBand = false }: { state: GradeSta
             {overall.name.toUpperCase()}
           </div>
           <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.45 }}>
-            The average of your ten domains · {graded} of 10 hold a colour
+            {uncapped > overall.rung ? 'The average of your ten domains, capped by games played' : 'The average of your ten domains'} · {graded} of 10 hold a colour
           </div>
+          {uncapped > overall.rung && (
+            // The games cap is binding: the domains already say more.
+            <div style={{ fontSize: 12.5, color: 'var(--amber)', marginTop: 3, lineHeight: 1.45 }}>
+              Your domains average {gradeForRung(uncapped).name}. {gradeForRung(overall.rung + 1).name} needs{' '}
+              {GAMES_REQUIRED[overall.rung + 1]} games, and you have played {state.games}.
+            </div>
+          )}
         </div>
       </div>
 
@@ -117,20 +127,22 @@ export default function GradesCard({ state, askBand = false }: { state: GradeSta
         </div>
       )}
 
-      {/* What each domain row counts. Said once, always visible, because
-          "2/3 units" is meaningless to anyone who has not read the guide. */}
+      {/* How a domain colour is worked out. Said once, always visible, because
+          "3 steps to go" is meaningless to anyone who has not read the guide. */}
       <div style={{ fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: 6 }}>
-        Each new colour needs <span style={{ color: 'var(--white)' }}>the standard</span> in half of
-        that domain&apos;s events (never more than {DOMAIN_REQUIRED_CAP}), <span style={{ color: 'var(--white)' }}>games</span> played in the room, and{' '}
-        <span style={{ color: 'var(--white)' }}>training units</span>. {unitLine()}
+        Each domain&apos;s colour is <span style={{ color: 'var(--white)' }}>the average of your best {DOMAIN_TOP_EVENTS} events</span> there,
+        and an event you have not played counts as Mā, so until six are on the board every new event lifts it. A step is one event
+        up one colour. Your overall colour also needs <span style={{ color: 'var(--white)' }}>games</span> played in the room.
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         {rows.map(({ d, gate, shown }) => {
           const g = gradeForRung(shown)
           const isOpen = open.has(d.domainNumber)
-          const next = gate.next ? gradeForRung(gate.next) : null
-          const showBar = schemaReady && !!next && gate.unitsNeeded > 0 && !gate.releasable
+          const ahead = nextDomainColour(d, shown)
+          const next = ahead ? gradeForRung(ahead.next) : null
+          // No bar while the colour held sits above the scores: it would read 0% and look broken.
+          const showBar = !!ahead && !gate.releasable && !d.blockedByBodyweight && shown <= d.rung
           return (
             <div key={d.domainNumber} style={{ borderTop: '1px solid #181818' }}>
               <button
@@ -149,12 +161,12 @@ export default function GradesCard({ state, askBand = false }: { state: GradeSta
                     {DOMAIN_NAMES[d.domainNumber - 1]}
                   </div>
                   <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2, lineHeight: 1.4 }}>
-                    <NextLine state={state} gate={gate} d={d} />
+                    <NextLine state={state} gate={gate} d={d} shown={shown} />
                   </div>
                   {showBar && (
                     <div aria-hidden style={{ height: 3, borderRadius: 99, background: '#1c1c1c', marginTop: 5, overflow: 'hidden' }}>
                       <div style={{
-                        height: '100%', borderRadius: 99, width: `${Math.min(100, (gate.units / gate.unitsNeeded) * 100)}%`,
+                        height: '100%', borderRadius: 99, width: `${Math.round(ahead!.progress * 100)}%`,
                         background: next!.rainbow ? RAINBOW : next!.inverted ? '#555' : next!.hex,
                       }} />
                     </div>
@@ -177,35 +189,26 @@ export default function GradesCard({ state, askBand = false }: { state: GradeSta
   )
 }
 
-/** "Next Karaka: ✓ standard · 3/5 games · 2/3 units", or why there is no next. */
-function NextLine({ state, gate, d }: {
+/** "Next Karaka: 3 steps to go · 4 of 6 events hold a colour", or why there is no next. */
+function NextLine({ state, gate, d, shown }: {
   state: GradeState
   gate: ColourGate
   d: GradeState['grades']['domains'][number]
+  shown: number
 }) {
   if (d.availableCount === 0) return <>Nothing here can be graded for you yet</>
   if (d.blockedByBodyweight) return <>Needs your bodyweight — you are asked when you next play or train a lift</>
-  if (!state.schemaReady) {
-    const n = d.nextRung ? gradeForRung(d.nextRung) : null
-    return <>{n ? `Next ${n.name}: ${d.metAtNextRung} of ${d.required} events at the standard` : 'The top of the ladder'}</>
+  // Earned, and the recheck has not written it yet.
+  if (state.schemaReady && gate.releasable) {
+    return <span style={{ color: 'var(--green)' }}>{gradeForRung(gate.releasable).name} earned</span>
   }
-  if (!gate.next) return <>The top of the ladder</>
-  const next = gradeForRung(gate.next)
-  if (gate.releasable) return <span style={{ color: 'var(--green)' }}>{next.name} earned</span>
-  const check = (ok: boolean, text: string) => (
-    <span style={{ color: ok ? 'var(--green)' : undefined, whiteSpace: 'nowrap' }}>{ok ? '✓ ' : ''}{text}</span>
-  )
+  const ahead = nextDomainColour(d, shown)
+  if (!ahead) return <>The top of the ladder</>
+  const next = gradeForRung(ahead.next)
   return (
     <>
       <span style={{ color: 'var(--white)' }}>Next {next.name}:</span>{' '}
-      {check(gate.standardsMet, gate.standardsMet ? 'standard' : `standard in ${d.metAtNextRung}/${d.required} events`)}
-      {' · '}
-      {check(gate.gamesMet, `${Math.min(gate.games, gate.gamesNeeded)}/${gate.gamesNeeded} games`)}
-      {/* Kiwikiwi asks for no units, so there is nothing to count. */}
-      {gate.unitsNeeded > 0 && <>
-        {' · '}
-        {check(gate.trainingMet, `${Math.min(Math.floor(gate.units + 1e-6), gate.unitsNeeded)}/${gate.unitsNeeded} units`)}
-      </>}
+      {ahead.steps} step{ahead.steps === 1 ? '' : 's'} to go · {d.counted.length} of {d.slots} events hold a colour
     </>
   )
 }

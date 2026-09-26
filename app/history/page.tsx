@@ -22,8 +22,6 @@ import { formatNZDate } from '@/lib/dates'
 import { colourByRung } from '@/lib/colours'
 import { useActivePlayer } from '@/lib/useActivePlayer'
 import { isPersonalGame, isOpen as workoutOpen, planEvents } from '@/lib/personalGame'
-import { fmtUnitsLabel, unitsForResult } from '@/lib/units'
-import { getEventBySlug } from '@/lib/eventData'
 import PlayerTabs, { ViewingAsBanner } from '@/components/PlayerTabs'
 
 const supabase = createClient()
@@ -201,10 +199,6 @@ export default function HistoryPage() {
             <Empty>No workouts logged yet.</Empty>
           ) : (
             myWorkouts.slice(0, 10).map(w => {
-              const units = w.workout_entries.reduce((sum, e) => {
-                const ev = e.event_slug ? getEventBySlug(e.event_slug) : undefined
-                return ev ? sum + unitsForResult(ev, e.difficulty_tier) : sum
-              }, 0)
               const open = isPersonalGame(w) && workoutOpen(w)
               const planned = planEvents(w.planned_events ?? []).length
               return (
@@ -213,7 +207,6 @@ export default function HistoryPage() {
                     <div style={{ fontSize: 14, fontWeight: 600 }}>{formatNZDate(w.performed_on)}</div>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
                       {planned > 0 ? `${w.workout_entries.filter(e => e.event_slug).length} of ${planned} scored` : `${w.workout_entries.length} entr${w.workout_entries.length === 1 ? 'y' : 'ies'}`}
-                      {units > 0 ? ` · ${fmtUnitsLabel(units)}` : ''}
                     </div>
                   </div>
                   {open ? (

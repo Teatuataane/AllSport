@@ -5,7 +5,8 @@
 // colour detail lives, and it is behind a login. These pin what it says:
 //   1. The overall colour is the AVERAGE of the ten (Mā when nothing is held).
 //   2. A domain row expands to Event · Your best · Colour.
-//   3. Kiwikiwi asks for no units, so a first colour shows no unit count.
+//   3. Each domain row says how many steps its next colour is, and the overall
+//      says when the games cap is holding it back.
 //   4. The provisional note and the bodyweight prompt appear only when due.
 // And that /grades is a plain server component carrying the whole ladder.
 
@@ -31,16 +32,15 @@ function state(opts: {
   hasBand?: boolean
   games?: number
 } = {}): GradeState {
+  const games = opts.games ?? 0
   const grades = computePlayerGrades({
-    player: master, results: opts.results ?? [], ratings: new Map(), exemptions: new Set(),
+    player: master, results: opts.results ?? [], ratings: new Map(), exemptions: new Set(), games,
   })
   const held = opts.held ?? new Map()
-  const unitsByDomain = new Map<number, number>()
-  const games = opts.games ?? 0
   return {
     grades, awards: [], held, exemptions: new Set(), hasBand: opts.hasBand ?? true,
-    schemaReady: opts.schemaReady ?? true, games, unitsByDomain,
-    gates: colourGates(grades.domains, held, games, unitsByDomain),
+    schemaReady: opts.schemaReady ?? true, games,
+    gates: colourGates(grades.domains, held),
     workoutsReady: true, disputed: new Map(), complete: true,
   }
 }
@@ -58,9 +58,18 @@ describe('GradesCard', () => {
   it('names the average of the ten domains, rounded down', () => {
     // 5 × 6 + 5 × 3 = 45 -> 4 (Kōwhai).
     const held = new Map(Array.from({ length: 10 }, (_, i) => [i + 1, i < 5 ? 6 : 3]))
-    render(<GradesCard state={state({ held })} />)
+    render(<GradesCard state={state({ held, games: 100 })} />)
     expect(screen.getByText(GRADES[3].name.toUpperCase())).toBeTruthy()
     expect(screen.getByText(/10 of 10 hold a colour/)).toBeTruthy()
+    expect(screen.queryByText(/Your domains average/)).toBeNull()
+  })
+
+  it('caps the overall by games, and says what the games would unlock', () => {
+    // Kōwhai (4) on the domains, but 7 games only allows Karaka (3).
+    const held = new Map(Array.from({ length: 10 }, (_, i) => [i + 1, 4]))
+    render(<GradesCard state={state({ held, games: 7 })} />)
+    expect(screen.getByText(GRADES[2].name.toUpperCase())).toBeTruthy()
+    expect(screen.getByText(/Your domains average Kōwhai\. Kōwhai needs 8 games, and you have played 7/)).toBeTruthy()
   })
 
   it('expands a domain row to Event · Your best · Colour with the tier name', () => {
@@ -90,12 +99,12 @@ describe('GradesCard', () => {
 
   it('shows the COMPUTED colours before grading is live, and the conferred ones after', () => {
     // Every domain computes to Kākāriki (5) and nothing has been conferred.
-    const pre = state({ schemaReady: false })
+    const pre = state({ schemaReady: false, games: 100 })
     pre.grades.domains.forEach(d => { d.rung = 5 })
     render(<GradesCard state={pre} />)
     expect(screen.getByText(GRADES[4].name.toUpperCase())).toBeTruthy()
     cleanup()
-    const live = state({ schemaReady: true })
+    const live = state({ schemaReady: true, games: 100 })
     live.grades.domains.forEach(d => { d.rung = 5 })
     render(<GradesCard state={live} />)
     expect(screen.getByText('MĀ')).toBeTruthy()
@@ -106,13 +115,16 @@ describe('GradesCard', () => {
     expect(screen.queryByText(/Provisional/)).toBeNull()
   })
 
-  it('asks no units for a first colour (Kiwikiwi), but counts them after', () => {
+  it('says how many steps the next colour is, and never mentions units', () => {
     const { unmount } = render(<GradesCard state={state()} />)
-    expect(screen.queryByText(/\d+\/\d+ units/)).toBeNull()
+    expect(screen.queryByText(/units/)).toBeNull()
+    // Nothing played: Kiwikiwi is six steps away in every six-slot domain.
     expect(screen.getAllByText(/Next Kiwikiwi:/).length).toBe(10)
+    expect(screen.getAllByText(/6 steps to go · 0 of 6 events hold a colour/).length).toBeGreaterThan(0)
     unmount()
+    // Held above the scores: the row aims at the colour above the one held.
     render(<GradesCard state={state({ held: new Map([[pushupDomain, 2]]) })} />)
-    expect(screen.getByText(/0\/\d+ units/)).toBeTruthy()
+    expect(screen.getByText(/Next Karaka:/)).toBeTruthy()
   })
 
   it('asks for a bodyweight only when askBand is set and none is declared', () => {
@@ -132,5 +144,7 @@ describe('the colours guide (/grades)', () => {
     const { container } = render(ColoursGuide())
     expect(container.textContent).toContain('MĀ TO TANIWHA')
     for (const g of GRADES) expect(container.textContent).toContain(g.name)
+    expect(container.textContent).toContain('the average of your best 6 events')
+    expect(container.textContent).not.toMatch(/training units|What is a unit/i)
   })
 })

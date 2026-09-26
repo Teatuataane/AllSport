@@ -19,7 +19,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import {
-  computePlayerGrades, heldRungs, voidedSessions, colourGates, unitsSinceConferral, gameEvidence,
+  computePlayerGrades, heldRungs, voidedSessions, colourGates, gameEvidence,
   type PlayerGrades,
 } from './playerGrades'
 import { bodyweightOn, bandMidpointKg, type ColourGate, type BodyweightDeclaration } from './grading'
@@ -75,11 +75,9 @@ export type GradeState = {
   hasBand: boolean
   /** False until the grading migration is applied: nothing can be conferred yet. */
   schemaReady: boolean
-  /** Official games played: sessions that finished and were not voided, with any result. */
+  /** Official games played: sessions that finished and were not voided, with any result. Caps the overall colour. */
   games: number
-  /** Effort units per domain since the last colour there. */
-  unitsByDomain: Map<number, number>
-  /** The three gates on every domain's next colour. */
+  /** What every domain has waiting to be conferred. */
   gates: ColourGate[]
   /** False until the workout migration is applied. */
   workoutsReady: boolean
@@ -241,7 +239,7 @@ function countedRows(rows: readonly ResultRow[], recorded: ReadonlySet<string> |
 async function loadWorkoutEntries(db: GradeDb, playerId: string) {
   // score_label has existed since the table did (20260915214702), so it adds
   // no new 42703 risk to this query. Display only; HOME shows it.
-  const base = 'event_slug, count, volume_distance_m, raw_score, weight_kg, difficulty_tier, score_label'
+  const base = 'event_slug, raw_score, weight_kg, difficulty_tier, score_label'
   const ask = (cols: string, workoutCols: string) => db.from('workout_entries')
     .select(`${cols}, workouts!inner(${workoutCols})`)
     .eq('workouts.player_id', playerId)
@@ -484,8 +482,7 @@ export function leaderboardScoresFrom(playerId: string, inputs: GradeInputs, sta
  * replay's question instead — what could this player have been graded on at
  * that moment? — by dropping every piece of evidence that did not exist yet,
  * and counting a game as finished only once it had actually closed. `awards`
- * substitutes the awards the replay has conferred so far for the stored ones,
- * which is what restarts the units clock at the right moments.
+ * substitutes the awards the replay has conferred so far for the stored ones.
  */
 export function gradeStateFrom(
   playerId: string,
@@ -519,7 +516,6 @@ export function gradeStateFrom(
     event_name: r.session_events!.event_name,
     raw_score: r.raw_score, weight_kg: r.weight_kg, difficulty_tier: r.difficulty_tier,
     score_label: r.score_label ?? null,
-    at: r.sessions?.started_at ?? r.created_at,
     // Live: whatever the session says now. Replay: closed only if it had
     // closed BY THEN — a game in progress is not yet a game (gameEvidence).
     closed: !r.sessions ? true : asOf ? (!r.sessions.is_active && upTo(closedAt(r))) : !r.sessions.is_active,
@@ -548,11 +544,11 @@ export function gradeStateFrom(
     results: [...game.rows, ...logged.rows],
     ratings: ratingsFor(playerId, matches),
     exemptions: exempt,
+    games: game.games,
   })
 
   const held = heldRungs(awardRows)
   const games = game.games
-  const unitsByDomain = unitsSinceConferral([...game.units, ...logged.units], awardRows)
 
   return {
     active: inputs.profile.is_active !== false,
@@ -560,8 +556,8 @@ export function gradeStateFrom(
     grades, awards: awardRows, held, exemptions: exempt,
     hasBand: inputs.bodyweightsLive ? (inputs.bodyweights ?? []).length > 0 : inputs.band != null,
     schemaReady: inputs.schemaReady,
-    games, unitsByDomain,
-    gates: colourGates(grades.domains, held, games, unitsByDomain),
+    games,
+    gates: colourGates(grades.domains, held),
     workoutsReady: inputs.workoutsReady,
     complete: inputs.complete,
     disputed: disputedBySport(matches, playerId),
