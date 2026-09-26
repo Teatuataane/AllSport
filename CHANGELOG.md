@@ -17,6 +17,11 @@ All notable changes to AllSport are documented here.
 - **Games are counted the same way everywhere.** The leaderboard, the family switcher and the kaiwhakawā Players list now count every finished, unvoided game, including games from before May 2026 and beyond the first 1,000 score rows. The kaiwhakawā list used to miss older games.
 - Solo accounts no longer load family data they never show.
 
+## [0.20.0.1] - 2026-09-26
+
+### Fixed
+- A player with no domain colour yet now reads "No domain colours yet" on the leaderboard, instead of "Best: Maximal Strength · Not yet" and "Worst: Maximal Strength · Not yet", which looked like a real result.
+
 ## [0.20.0.0] - 2026-09-26
 
 ### Changed
