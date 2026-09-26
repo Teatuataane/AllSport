@@ -14,7 +14,8 @@
 import { NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { createSupabaseAdminClient, hasServiceKey } from '@/lib/supabase-admin'
-import { loadGradeState } from '@/lib/loadGrades'
+import { loadGradeState, loadGradeInputs, gradeStateFrom, leaderboardScoresFrom, type GradeInputs, type GradeState } from '@/lib/loadGrades'
+import { toNZDateString } from '@/lib/dates'
 import { awardsToConfer, awardsToWithdraw, type PendingAward, type WithdrawnAward } from '@/lib/autoConfer'
 
 export const dynamic = 'force-dynamic'
@@ -66,8 +67,9 @@ export async function POST(req: Request) {
   // looked at". Stamping the time after the work would skip a score written
   // while the engine was running.
   const readFrom = new Date().toISOString()
-  const state = await loadGradeState(db, playerId)
-  if (!state) return json({ error: 'unknown player' }, 404)
+  const inputs = await loadGradeInputs(db, playerId)
+  if (!inputs) return json({ error: 'unknown player' }, 404)
+  const state = gradeStateFrom(playerId, inputs)
 
   // An erased or retired profile is never conferred a colour. Erasure nulls
   // the date of birth, and a junior with no age grades as U14, a colour easier
@@ -109,10 +111,48 @@ export async function POST(req: Request) {
     conferred = pending.filter(a => landed.has(`${a.domain_number}:${a.rung}`))
   }
 
+  // The leaderboard's numbers ride on the same full read. Never allowed to
+  // fail the recheck: a colour matters more than a board position, and a
+  // missing table (before 20260924213359) is a normal state.
+  const scored = await writeScores(admin, playerId, inputs, state)
+
   // Last, and only on success: the watermark must never move past work that did
   // not happen, or the colour is withheld until the next thing changes.
   const checked = await stampChecked(admin, playerId, readFrom)
-  return json({ conferred: conferred.map(summarise), checked })
+  return json({ conferred: conferred.map(summarise), checked, scored })
+}
+
+/**
+ * Publish the player's domain colours and this season's points (lib/leaderboardScores.ts).
+ * Computed here, never in the browser, because strength rungs need the private
+ * bodyweight; only the numbers are written. Reports whether both writes took.
+ */
+async function writeScores(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  playerId: string,
+  inputs: GradeInputs,
+  state: GradeState,
+): Promise<boolean> {
+  try {
+    // The NZ year, not UTC: a game on the morning of 1 January NZ is still
+    // 31 December in UTC, and would be scored into the season that just ended.
+    const year = Number(toNZDateString(new Date()).slice(0, 4))
+    const s = leaderboardScoresFrom(playerId, inputs, state, year)
+    const now = new Date().toISOString()
+    const [domains, season] = await Promise.all([
+      admin.from('player_domain_colours').upsert(
+        { player_id: playerId, domain_rungs: s.domainRungs, updated_at: now },
+        { onConflict: 'player_id' },
+      ),
+      admin.from('player_season_points').upsert(
+        { player_id: playerId, season_year: year, points: s.points, games: s.games, updated_at: now },
+        { onConflict: 'player_id,season_year' },
+      ),
+    ])
+    return !domains.error && !season.error
+  } catch {
+    return false
+  }
 }
 
 /** What the screen needs to say "New colour — Kākāriki in Power". */
