@@ -38,10 +38,13 @@ export default function DomainIcon({
   domainName,
   domainNumber,
   size = 44,
+  tint,
 }: {
   domainName: string
   domainNumber: number
   size?: number
+  /** Overrides the domain colour, where colour means grade (as EventIcon's). */
+  tint?: string
 }) {
   const slug = domainSlug(domainName)
   // Optimistic, mirroring EventIcon: an unprobed icon renders its mask straight
@@ -57,7 +60,7 @@ export default function DomainIcon({
     img.src = `/domain-icons/${slug}.png`
   }, [slug])
 
-  const c = domainColor(domainNumber)
+  const c = tint ?? domainColor(domainNumber)
   const maskUrl = `url(/domain-icons/${slug}.png)`
 
   return (

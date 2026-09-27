@@ -12,6 +12,7 @@
 import { useState } from 'react'
 import { domainChoices } from '@/lib/gameSwaps'
 import EventIcon from '@/components/EventIcon'
+import { NEUTRAL_ICON_TINT } from '@/lib/scoreColour'
 
 export default function AddEventsSheet({
   domainName, domainNumber, exclude, onAdd, onClose,
@@ -61,7 +62,7 @@ export default function AddEventsSheet({
                 minHeight: 56, padding: '8px 12px', borderRadius: 14, cursor: 'pointer',
                 background: on ? '#0f1a26' : '#111', border: `1px solid ${on ? '#2371BB' : '#1e1e1e'}`, color: '#fff',
               }}>
-                <EventIcon slug={e.slug} emoji={e.emoji} domainNumber={e.domainNumber} size={34} tint="#bbbbbb" />
+                <EventIcon slug={e.slug} emoji={e.emoji} domainNumber={e.domainNumber} size={34} tint={NEUTRAL_ICON_TINT} />
                 <span style={{ flex: 1, minWidth: 0, fontFamily: 'var(--font-display)', fontSize: 18, letterSpacing: '0.03em' }}>{e.name}</span>
                 <span aria-hidden="true" style={{
                   width: 22, height: 22, borderRadius: 6, flexShrink: 0, boxSizing: 'border-box',
