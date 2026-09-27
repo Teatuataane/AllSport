@@ -6,7 +6,7 @@
 
 import { getEventBySlug } from './eventData'
 import { formatPR } from './scoreFormat'
-import { DOMAIN_COUNT, TOP_RUNG, type DomainGradeResult } from './grading'
+import { DOMAIN_COUNT, gradeForRung, type DomainGradeResult } from './grading'
 import type { GradeState } from './loadGrades'
 import type { EventGrade } from './playerGrades'
 
@@ -70,32 +70,6 @@ export function bestEventByColour(
 }
 
 /**
- * The next colour a domain row points at, and how far away it is.
- *
- * Aimed above whatever is higher, the colour held or the colour the standards
- * give: a colour already conferred never drops, so pointing below it would ask
- * a player to earn something they have. `steps` counts one event up one
- * colour (or an empty slot filled at Kiwikiwi) as one; `progress` is how far
- * through the current colour the average sits, 0 to 1, for the row's bar.
- * Null at the top of the ladder or when nothing here can be graded.
- */
-export function nextDomainColour(
-  d: Pick<DomainGradeResult, 'slots' | 'average'>,
-  held: number,
-): { next: number; steps: number; progress: number } | null {
-  if (d.slots === 0) return null
-  const sum = Math.round(d.average * d.slots)
-  const base = Math.max(held, Math.floor(sum / d.slots))
-  if (base >= TOP_RUNG) return null
-  const next = base + 1
-  return {
-    next,
-    steps: next * d.slots - sum,
-    progress: Math.max(0, Math.min(1, (sum - base * d.slots) / d.slots)),
-  }
-}
-
-/**
  * The colour SHOWN for each domain: conferred colours once grading is live,
  * the computed ones before. One rule for the YOUR COLOURS list and the radar,
  * so the two can never disagree.
@@ -105,4 +79,55 @@ export function shownDomainRungs(state: Pick<GradeState, 'grades' | 'held' | 'sc
     d.domainNumber,
     state.schemaReady ? (state.held.get(d.domainNumber) ?? 0) : d.rung,
   ]))
+}
+
+/**
+ * What an overall colour MEANS: a punchy line and, from Whero up, how it
+ * compares with the general population. Lines settled with Tāne 2026-09-27.
+ *
+ * The stat is read off `populationTarget`, never typed, so a re-calibrated
+ * ladder cannot leave the line saying something the standards no longer do.
+ * It is exact for a domain colour and approximate for the overall (an average
+ * of ten); Tāne accepted that rather than hedging every line with "about".
+ */
+const COLOUR_LINES = [
+  'Everyone starts here',
+  'On the ladder',
+  'Past the beginner stage',
+  'Finding your feet',
+  'Building a real base',
+  'Nearly average across the board',
+  'Better than average',
+  'Above average everywhere',
+  'Genuinely athletic',
+  'Seriously well rounded',
+  'Elite all-rounder',
+  'Rare air',
+  'One in a hundred',
+] as const
+
+export function colourBlurb(rung: number): { line: string; stat: string | null } {
+  const g = gradeForRung(rung)
+  const line = COLOUR_LINES[g.rung]
+  const t = g.populationTarget
+  if (t == null) return { line, stat: null }
+  if (t <= 10) return { line, stat: `Top ${t}%` }
+  if (t === 50) return { line, stat: 'Better than half of people' }
+  const beaten = (100 - t) / 10
+  if (!Number.isInteger(beaten)) return { line, stat: `Better than ${100 - t}% of people` }
+  return { line, stat: `Better than ${beaten} in 10 people` }
+}
+
+/**
+ * The colours of the events a domain's colour averages: best first, padded
+ * with Mā up to the domain's slots. Read from `counted`, which the engine
+ * built, so the squares on a row are exactly what its colour is the average of.
+ */
+export function topSlotRungs(
+  d: Pick<DomainGradeResult, 'slots' | 'counted'>,
+  events: ReadonlyMap<string, Pick<EventGrade, 'rung'>>,
+): number[] {
+  const rungs = d.counted.map(slug => events.get(slug)?.rung ?? 0)
+  while (rungs.length < d.slots) rungs.push(0)
+  return rungs.slice(0, d.slots)
 }

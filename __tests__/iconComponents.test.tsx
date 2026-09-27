@@ -74,6 +74,17 @@ describe('DomainIcon', () => {
     )
     expect(maskLayer(container)!.style.maskImage).toContain('/domain-icons/aim-and-precision.png')
   })
+
+  it('paints in the domain colour by default, and in `tint` when given', () => {
+    const def = render(<DomainIcon domainName="Power" domainNumber={3} />)
+    const defBg = maskLayer(def.container)!.style.background
+    def.unmount()
+    const { container } = render(<DomainIcon domainName="Power" domainNumber={3} tint="#bbbbbb" />)
+    const tinted = maskLayer(container)!.style.background
+    expect(tinted).toBe('rgb(187, 187, 187)')
+    expect(defBg).not.toBe(tinted)
+    expect(defBg).not.toBe('')
+  })
 })
 
 // ── The probe's remaining job: demote to the fallback on a real load error ───

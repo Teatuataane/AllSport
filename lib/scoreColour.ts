@@ -81,3 +81,9 @@ export function rungSegment(rung: number): string | null {
   const g = gradeForRung(rung)
   return g.rainbow ? RAINBOW : g.inverted ? '#ffffff' : g.hex
 }
+
+/**
+ * The grey an icon takes where colour means grade, so the icon never reads as
+ * one. A hex, not a CSS var: the icons append alpha to it for their tile.
+ */
+export const NEUTRAL_ICON_TINT = '#bbbbbb'

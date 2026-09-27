@@ -310,6 +310,18 @@ now only reachable if Whānau's own art goes missing, and for Te Kāhui, which n
 
 ## P2 — Soon
 
+### Kahurangi text is hard to read on its own tint
+**What:** a painted row or game button writes the colour name in the colour's own hex (`rungPaint().ink`). Kahurangi #2371BB on its 12% tint is about 3.6:1, under the 4.5:1 small text needs. Fix it once in `lib/scoreColour.ts` (a lighter ink for Kahurangi, or white text) so HOME and the game screen both get it.
+**Noticed:** v0.21.1.0 design review
+
+### One way to draw a colour swatch
+**What:** `Swatch` in `components/GradesCard.tsx`, `GradeDot` and `rungSegment` each draw Mā and Taniwha differently (outline vs ring vs white fill). Fold them into one helper in `components/GradeDot.tsx`.
+**Noticed:** v0.21.1.0 maintainability review
+
+### HOME no longer shows a colour waiting to be confirmed
+**What:** the old per-domain line said "Karaka earned" when a colour was computed but not yet conferred. With the service key live this lasts seconds, but if the recheck route ever returns 503 the player sees nothing waiting. Only matters if auto-conferral goes down.
+**Noticed:** v0.21.1.0 adversarial review
+
 ### Show the band of the day in the kaiwhakawā audit, and record band changes
 **What:** a player can pick a lighter band before a game, lift, and switch back; the lift is graded light for good and nobody sees the switch. Show the band stamped on each lift beside it in the Colours tab, and keep a history of band changes so a sudden switch is visible. Decided 2026-09-22: moderate it in person, like solo logs, rather than block it.
 **Noticed:** v0.16.0.0 adversarial review

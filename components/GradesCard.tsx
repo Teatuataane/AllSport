@@ -5,10 +5,13 @@
 // docs/designs/home-colours-rework-spec.md) the ONLY place a player's own colour
 // detail lives: the COLOURS tab (/grades) is now a guide with no personal data.
 //
-// Top to bottom: the overall colour (the average of the ten, capped by games
-// played; overallRung), the two actions, one line saying how a domain colour
-// is worked out, then the ten domains. Each domain row says how far its next
-// colour is and expands to show every event as Event · Your best · Colour.
+// Top to bottom (layout settled with Tāne 2026-09-27): the thirteen-colour
+// ladder with the overall colour marked, the overall colour's name with what
+// it means (a punchy line and a population stat, colourBlurb), the two
+// actions, then the ten domains. Very little text on purpose: each domain row
+// is painted in its colour the way the game screen paints a scored button,
+// and six squares show the best-six events that colour is the average of.
+// A row expands to show every event as Event · Your best · Colour.
 //
 // Domain colours are what has been CONFERRED (automatically since
 // auto-conferral). Before the grading migration lands nothing can be conferred,
@@ -23,10 +26,10 @@ import { EVENTS } from '@/lib/eventData'
 import { STANDARDS } from '@/lib/standards'
 import { RAINBOW } from '@/lib/domainColours'
 import {
-  gradeForRung, gradeInk, overallRung, averageRung, DOMAIN_TOP_EVENTS, GAMES_REQUIRED, MIN_RATED_GAMES,
-  type ColourGate,
+  GRADES, MA, gradeForRung, gradeInk, overallRung, averageRung, GAMES_REQUIRED, MIN_RATED_GAMES,
 } from '@/lib/grading'
-import { bestScoreLabel, nextDomainColour, shownDomainRungs } from '@/lib/colourDisplay'
+import { bestScoreLabel, colourBlurb, shownDomainRungs, topSlotRungs } from '@/lib/colourDisplay'
+import { NEUTRAL_ICON_TINT, rungPaint } from '@/lib/scoreColour'
 import { GradeDot } from '@/components/GradeDot'
 import type { GradeState } from '@/lib/loadGrades'
 
@@ -44,53 +47,44 @@ const pill = {
 }
 
 export default function GradesCard({ state, askBand = false }: { state: GradeState; askBand?: boolean }) {
-  const { grades, schemaReady, gates } = state
+  const { grades, schemaReady } = state
   const [open, setOpen] = useState<Set<number>>(() => new Set())
   const toggle = (n: number) => setOpen(s => { const t = new Set(s); if (t.has(n)) t.delete(n); else t.add(n); return t })
 
   const shownRungs = shownDomainRungs(state)
-  const rows = grades.domains.map(d => {
-    const gate = gates.find(g => g.domainNumber === d.domainNumber)!
-    return { d, gate, shown: shownRungs.get(d.domainNumber) ?? 0 }
-  })
+  const rows = grades.domains.map(d => ({ d, shown: shownRungs.get(d.domainNumber) ?? 0 }))
   const overall = gradeForRung(overallRung(rows.map(r => r.shown), state.games))
   // The average before the games cap. Above `overall` only when the cap binds.
   const uncapped = averageRung(rows.map(r => r.shown))
-  const graded = rows.filter(r => r.shown > 0).length
+  const blurb = colourBlurb(overall.rung)
+  const unlock = gradeForRung(overall.rung + 1)
 
   return (
     <div style={{
       background: 'var(--surface)', border: '1px solid var(--border)',
-      borderRadius: 16, padding: '18px 16px 8px', marginBottom: 16,
+      borderRadius: 16, padding: '18px 16px 14px', marginBottom: 16,
     }}>
-      <span style={{ ...label, fontSize: 12, color: 'var(--text-muted)' }}>Your colours</span>
+      {/* ── The ladder, and where the overall colour sits on it ─────────── */}
+      <ColourLadder rung={overall.rung} />
 
-      {/* ── The overall colour ─────────────────────────────────────────── */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 14, margin: '12px 0 14px',
-        padding: '14px', borderRadius: 14, background: '#0b0b0b',
-        border: `1px solid ${overall.rung ? `${gradeInk(overall)}55` : 'var(--border)'}`,
-      }}>
-        <GradeDot grade={overall} size={46} />
-        <div style={{ minWidth: 0 }}>
-          <div style={{ ...label, fontSize: 10.5, color: 'var(--text-muted)' }}>Overall colour</div>
-          <div style={{
-            fontFamily: 'var(--font-display)', fontSize: 34, lineHeight: 1, letterSpacing: '0.04em',
-            color: overall.rung ? gradeInk(overall) : 'var(--white)', marginTop: 2,
-          }}>
-            {overall.name.toUpperCase()}
-          </div>
-          <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.45 }}>
-            {uncapped > overall.rung ? 'The average of your ten domains, capped by games played' : 'The average of your ten domains'} · {graded} of 10 hold a colour
-          </div>
-          {uncapped > overall.rung && (
-            // The games cap is binding: the domains already say more.
-            <div style={{ fontSize: 12.5, color: 'var(--amber)', marginTop: 3, lineHeight: 1.45 }}>
-              Your domains average {gradeForRung(uncapped).name}. {gradeForRung(overall.rung + 1).name} needs{' '}
-              {GAMES_REQUIRED[overall.rung + 1]} games, and you have played {state.games}.
-            </div>
-          )}
+      <div style={{ margin: '14px 0 16px' }}>
+        <div style={{ ...label, fontSize: 10.5, color: 'var(--text-muted)' }}>Overall colour</div>
+        <div style={{
+          fontFamily: 'var(--font-display)', fontSize: 38, lineHeight: 1, letterSpacing: '0.04em',
+          color: overall.rung ? gradeInk(overall) : 'var(--white)', marginTop: 2,
+        }}>
+          {overall.name.toUpperCase()}
         </div>
+        <div style={{ fontSize: 15, color: 'var(--white)', marginTop: 6, lineHeight: 1.35 }}>{blurb.line}</div>
+        {blurb.stat && (
+          <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 2 }}>{blurb.stat}</div>
+        )}
+        {uncapped > overall.rung && (
+          // The games cap is binding: the domains already say more.
+          <div style={{ fontSize: 12.5, color: 'var(--amber)', marginTop: 6 }}>
+            {unlock.name} unlocks at {GAMES_REQUIRED[overall.rung + 1]} {GAMES_REQUIRED[overall.rung + 1] === 1 ? 'game' : 'games'} · you&apos;ve played {state.games}
+          </div>
+        )}
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
@@ -107,12 +101,11 @@ export default function GradesCard({ state, askBand = false }: { state: GradeSta
           somewhere they can actually do it. */}
       {askBand && !state.hasBand && (
         <Link href="/workout/new" style={{
-          display: 'block', fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.5,
+          display: 'block', fontSize: 12.5, color: 'var(--text-muted)',
           background: '#0d0d0d', border: '1px solid var(--border)', borderRadius: 10,
           padding: '9px 11px', marginBottom: 12,
         }}>
-          <span style={{ color: 'var(--white)' }}>Lifts and loaded carries need your bodyweight.</span>{' '}
-          You are asked at the top of the screen next time you play or train.{' '}
+          <span style={{ color: 'var(--white)' }}>Lifts need your bodyweight</span> ·{' '}
           <span style={{ color: 'var(--blue)' }}>Start a workout →</span>
         </Link>
       )}
@@ -127,60 +120,65 @@ export default function GradesCard({ state, askBand = false }: { state: GradeSta
         </div>
       )}
 
-      {/* How a domain colour is worked out. Said once, always visible, because
-          "3 steps to go" is meaningless to anyone who has not read the guide. */}
-      <div style={{ fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: 6 }}>
-        Each domain&apos;s colour is <span style={{ color: 'var(--white)' }}>the average of your best {DOMAIN_TOP_EVENTS} events</span> there,
-        and an event you have not played counts as Mā, so until six are on the board every new event lifts it. A step is one event
-        up one colour. Your overall colour also needs <span style={{ color: 'var(--white)' }}>games</span> played in the room.
-      </div>
-
-      <div style={{ display: 'flex', flexDirection: 'column' }}>
-        {rows.map(({ d, gate, shown }) => {
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {rows.map(({ d, shown }) => {
           const g = gradeForRung(shown)
+          // Painted like a scored button on the game screen. Mā has no paint.
+          const paint = rungPaint(shown)
           const isOpen = open.has(d.domainNumber)
-          const ahead = nextDomainColour(d, shown)
-          const next = ahead ? gradeForRung(ahead.next) : null
-          // No bar while the colour held sits above the scores: it would read 0% and look broken.
-          const showBar = !!ahead && !gate.releasable && !d.blockedByBodyweight && shown <= d.rung
+          const slots = topSlotRungs(d, grades.events)
+          // A colour held from before outranks the notice: the row already
+          // has a colour, so it shows the squares instead.
+          const needsBodyweight = d.blockedByBodyweight && shown === 0
           return (
-            <div key={d.domainNumber} style={{ borderTop: '1px solid #181818' }}>
+            <div key={d.domainNumber} style={{
+              borderRadius: 12,
+              background: paint ? paint.background : '#0d0d0d',
+              border: paint ? paint.border : '1.5px solid var(--border)',
+            }}>
               <button
                 type="button"
                 onClick={() => toggle(d.domainNumber)}
                 aria-expanded={isOpen}
+                aria-label={`${DOMAIN_NAMES[d.domainNumber - 1]}, ${g.name}${needsBodyweight ? ', needs bodyweight' : slots.length === 0 ? ', nothing to grade' : ''}`}
                 style={{
-                  width: '100%', display: 'flex', alignItems: 'center', gap: 11, padding: '11px 0',
+                  width: '100%', display: 'flex', alignItems: 'center', gap: 11, padding: '10px 12px',
                   background: 'none', border: 'none', color: 'inherit', textAlign: 'left', cursor: 'pointer',
-                  minHeight: 44,
+                  minHeight: 52,
                 }}
               >
-                <DomainIcon domainName={DOMAIN_NAMES[d.domainNumber - 1]} domainNumber={d.domainNumber} size={30} />
+                <DomainIcon domainName={DOMAIN_NAMES[d.domainNumber - 1]} domainNumber={d.domainNumber} size={30} tint={NEUTRAL_ICON_TINT} />
                 <div style={{ flexGrow: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 14, color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {DOMAIN_NAMES[d.domainNumber - 1]}
                   </div>
-                  <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2, lineHeight: 1.4 }}>
-                    <NextLine state={state} gate={gate} d={d} shown={shown} />
-                  </div>
-                  {showBar && (
-                    <div aria-hidden style={{ height: 3, borderRadius: 99, background: '#1c1c1c', marginTop: 5, overflow: 'hidden' }}>
-                      <div style={{
-                        height: '100%', borderRadius: 99, width: `${Math.round(ahead!.progress * 100)}%`,
-                        background: next!.rainbow ? RAINBOW : next!.inverted ? '#555' : next!.hex,
-                      }} />
+                  {needsBodyweight ? (
+                    <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 3 }}>Needs bodyweight</div>
+                  ) : slots.length === 0 ? (
+                    <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 3 }}>Nothing to grade</div>
+                  ) : (
+                    // Your best six events as they stand today. The row's
+                    // colour is the one held, which never drops, so the two
+                    // can differ after a score is deleted. An empty square is
+                    // a slot still on Mā.
+                    <div aria-hidden style={{ display: 'flex', gap: 4, marginTop: 5 }}>
+                      {slots.map((r, i) => <Swatch key={i} rung={r} width={14} height={14} radius={3} />)}
                     </div>
                   )}
                 </div>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, flexShrink: 0, ...label, fontSize: 12, color: shown ? 'var(--white)' : 'var(--text-muted)' }}>
-                  <GradeDot grade={g} /> {g.name}
+                <span style={{ ...label, fontSize: 12.5, flexShrink: 0, color: paint ? paint.ink : 'var(--text-muted)' }}>
+                  {g.name}
                 </span>
                 <span aria-hidden style={{
-                  color: '#555', fontSize: 12, flexShrink: 0, width: 12, textAlign: 'center',
+                  color: 'var(--text-muted)', fontSize: 12, flexShrink: 0, width: 12, textAlign: 'center',
                   transform: isOpen ? 'rotate(90deg)' : 'none', transition: 'transform 150ms',
                 }}>›</span>
               </button>
-              {isOpen && <DomainEvents state={state} domainNumber={d.domainNumber} />}
+              {isOpen && (
+                <div style={{ padding: '0 12px' }}>
+                  <DomainEvents state={state} domainNumber={d.domainNumber} />
+                </div>
+              )}
             </div>
           )
         })}
@@ -189,27 +187,45 @@ export default function GradesCard({ state, askBand = false }: { state: GradeSta
   )
 }
 
-/** "Next Karaka: 3 steps to go · 4 of 6 events hold a colour", or why there is no next. */
-function NextLine({ state, gate, d, shown }: {
-  state: GradeState
-  gate: ColourGate
-  d: GradeState['grades']['domains'][number]
-  shown: number
+/**
+ * One colour as a filled shape. Mā is an empty outline when it stands for "no
+ * colour yet", and solid white on the ladder where it is a rung; Uenuku the
+ * rainbow; Taniwha black with a white rim so it does not vanish on the card.
+ */
+function Swatch({ rung, width, height, radius, ma = 'empty' }: {
+  rung: number; width: number | string; height: number; radius: number; ma?: 'empty' | 'white'
 }) {
-  if (d.availableCount === 0) return <>Nothing here can be graded for you yet</>
-  if (d.blockedByBodyweight) return <>Needs your bodyweight — you are asked when you next play or train a lift</>
-  // Earned, and the recheck has not written it yet.
-  if (state.schemaReady && gate.releasable) {
-    return <span style={{ color: 'var(--green)' }}>{gradeForRung(gate.releasable).name} earned</span>
-  }
-  const ahead = nextDomainColour(d, shown)
-  if (!ahead) return <>The top of the ladder</>
-  const next = gradeForRung(ahead.next)
+  const g = gradeForRung(rung)
+  const empty = g.rung === 0 && ma === 'empty'
   return (
-    <>
-      <span style={{ color: 'var(--white)' }}>Next {next.name}:</span>{' '}
-      {ahead.steps} step{ahead.steps === 1 ? '' : 's'} to go · {d.counted.length} of {d.slots} events hold a colour
-    </>
+    <span style={{
+      width, height, borderRadius: radius, flexShrink: 0, display: 'block', boxSizing: 'border-box',
+      background: empty ? 'transparent' : g.rainbow ? RAINBOW : g.hex,
+      border: empty ? '1.5px solid var(--grey)' : g.inverted ? '1.5px solid #fff' : 'none',
+    }} />
+  )
+}
+
+/** The whole ladder, Mā to Taniwha: reached colours solid, the rest dimmed, yours raised and marked. */
+function ColourLadder({ rung }: { rung: number }) {
+  const ladder = [MA, ...GRADES]
+  return (
+    <div role="img" aria-label={`Colour ${rung + 1} of ${ladder.length}: ${gradeForRung(rung).name}`}>
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3 }}>
+        {ladder.map(g => (
+          <div key={g.rung} style={{ flex: 1, minWidth: 0, opacity: g.rung <= rung ? 1 : 0.25 }}>
+            <Swatch rung={g.rung} width="100%" height={g.rung === rung ? 16 : 10} radius={3} ma="white" />
+          </div>
+        ))}
+      </div>
+      <div aria-hidden style={{ display: 'flex', gap: 3, marginTop: 3 }}>
+        {ladder.map(g => (
+          <div key={g.rung} style={{ flex: 1, textAlign: 'center', fontSize: 9, lineHeight: 1, color: 'var(--white)' }}>
+            {g.rung === rung ? '▲' : ''}
+          </div>
+        ))}
+      </div>
+    </div>
   )
 }
 

@@ -13,7 +13,7 @@
 
 import type { ReactNode } from 'react'
 import EventIcon from '@/components/EventIcon'
-import { rungPaint } from '@/lib/scoreColour'
+import { NEUTRAL_ICON_TINT, rungPaint } from '@/lib/scoreColour'
 import { RAINBOW } from '@/lib/domainColours'
 import type { EventData } from '@/lib/eventData'
 import { sportWDL, type PlayEvent, type EntryRow } from './chrome'
@@ -61,7 +61,7 @@ export default function EventListRow({
         background, border, color: '#fff', fontFamily: 'var(--font-body)',
       }}>
         <EventIcon slug={se.event_slug || eventData?.slug || ''} emoji={eventData?.emoji} domainNumber={se.domain_number}
-          size={46} tint={graded ? '#bbbbbb' : undefined} />
+          size={46} tint={graded ? NEUTRAL_ICON_TINT : undefined} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: '19px', letterSpacing: '0.03em', lineHeight: 1 }}>{se.event_name}</div>
           {(showDomain || tag) && (
