@@ -119,11 +119,16 @@ function DashboardInner() {
     if (!activePlayerId) return
     let cancelled = false
     setGradesEntry(null)
-    loadGradeState(supabase, activePlayerId).then(s => { if (!cancelled) setGradesEntry({ id: activePlayerId, state: s }) })
+    // A failed load settles as null, which hides the card rather than leaving
+    // it on "Loading…" for good.
+    loadGradeState(supabase, activePlayerId)
+      .then(s => { if (!cancelled) setGradesEntry({ id: activePlayerId, state: s }) })
+      .catch(() => { if (!cancelled) setGradesEntry({ id: activePlayerId, state: null }) })
     return () => { cancelled = true }
   }, [activePlayerId, gradesNonce])
 
-  const grades = gradesEntry && gradesEntry.id === activePlayerId ? gradesEntry.state : null
+  const gradesSettled = gradesEntry !== null && gradesEntry.id === activePlayerId
+  const grades = gradesSettled ? gradesEntry.state : null
   const newColours = useNewColours(activePlayerId, grades, reloadGrades)
 
   // ── Events won: the player_event_wins view, which /prs reads too. ──────────
@@ -262,7 +267,10 @@ function DashboardInner() {
         <ViewingAsBanner />
 
         {/* ── 0. A running game is the one action that outranks you ────────── */}
-        {game && <GameOnCard game={game} isJudge={isJudge} error={joinError} />}
+        {/* #join is where the PLAY tab lands when no game is on (useNavState). */}
+        <div id="join">
+          {game && <GameOnCard game={game} isJudge={isJudge} error={joinError} />}
+        </div>
 
         {/* ── 1. Identity ─────────────────────────────────────────────────── */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
@@ -310,7 +318,7 @@ function DashboardInner() {
 
         {/* ── 3. Colours ──────────────────────────────────────────────────── */}
         <NewColourCard awards={newColours.unseen} withdrawn={newColours.withdrawn} onDismiss={newColours.dismiss} />
-        {grades ? <GradesCard state={grades} bestEvent={bestEvent} /> : (
+        {grades ? <GradesCard state={grades} bestEvent={bestEvent} /> : !gradesSettled && (
           <div style={{
             background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16,
             height: 220, marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)',

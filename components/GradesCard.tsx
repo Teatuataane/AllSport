@@ -93,8 +93,10 @@ export default function GradesCard({ state, bestEvent = null }: {
           // non-ratio event (Pause Dips, Pause Chinup) grades, while every
           // other lift still scores nothing. The separate bodyweight note is
           // gone from HOME (2026-09-28), so this row is the only place it shows.
+          // An exempted lift has left the domain, so it never raises it.
           const needsBodyweight = d.blockedByBodyweight
-            || DOMAIN_EVENTS[d.domainNumber - 1].some(slug => grades.events.get(slug)?.bodyweightBlocked)
+            || DOMAIN_EVENTS[d.domainNumber - 1].some(slug =>
+              !state.exemptions.has(slug) && grades.events.get(slug)?.bodyweightBlocked)
           return (
             <div key={d.domainNumber} style={{ borderBottom: '1px solid var(--border)' }}>
               <button
@@ -240,10 +242,12 @@ function ColourLadder({ rung }: { rung: number }) {
           {ladder.map(g => (
             <div key={g.rung} data-rung={g.rung} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {g.rung === rung ? (
-                // 20px plus a 4px ring is 28px across: at 320px a column is
-                // about 20px wide, and the 12px neighbours still clear it.
+                // 18px plus a 4px ring is 26px across. At 320px the card's
+                // content is about 254px, so a column is about 19.5px and a
+                // 12px neighbour's edge sits 13.5px from this centre: clear.
+                
                 <span style={{ borderRadius: '50%', boxShadow: `0 0 0 2px var(--surface), 0 0 0 4px ${ring}` }}>
-                  <ColourCircle rung={g.rung} size={20} ma="white" />
+                  <ColourCircle rung={g.rung} size={18} ma="white" />
                 </span>
               ) : (
                 <ColourCircle rung={g.rung} size={12} reached={g.rung < rung} ma="white" />

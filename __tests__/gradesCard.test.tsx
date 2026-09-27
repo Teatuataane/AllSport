@@ -164,7 +164,7 @@ describe('GradesCard — the ladder and the domain rows', () => {
     expect(screen.getByRole('img', { name: `Colour 4 of 13: ${GRADES[2].name}` })).toBeTruthy()
     const c = ladderCircles()
     expect(c.length).toBe(13)
-    expect(c[3].style.width).toBe('20px')
+    expect(c[3].style.width).toBe('18px')
     expect(c[2].style.width).toBe('12px')
     expect(c[0].dataset.colour).toBe('reached')
     expect(c[2].dataset.colour).toBe('reached')
@@ -248,6 +248,15 @@ describe('GradesCard — the ladder and the domain rows', () => {
     render(<GradesCard state={st} />)
     const btn = screen.getByRole('button', { name: /^Maximal Strength,/ })
     expect(within(btn).getByText('Needs bodyweight')).toBeTruthy()
+  })
+
+  it('ignores a blocked lift the player is exempt from', () => {
+    const st = state()
+    const dl = getEventByName('Deadlift')!.slug
+    st.grades.events.get(dl)!.bodyweightBlocked = true
+    st.exemptions = new Set([dl])
+    render(<GradesCard state={st} />)
+    expect(screen.queryByText('Needs bodyweight')).toBeNull()
   })
 
   it('shows no bodyweight notice on a domain with no blocked lift', () => {
