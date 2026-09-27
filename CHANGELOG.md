@@ -2,6 +2,20 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.21.1.0] - 2026-09-27
+
+### Changed
+- **HOME's colours section is simpler and shows the whole ladder.** The "Your colours" title is gone. In its place is a bar of all thirteen colours from Mā to Taniwha: the ones you have reached are solid, the rest are faded, and yours stands taller with a marker under it.
+- **Your overall colour now says what it means.** A short line ("Past the beginner stage" for Whero, "Rare air" for Uenuku) and how it compares with everyone ("Better than 1 in 10 people", "Top 5%"). The comparison is exact for one domain and a close guide for the overall colour, which is an average of ten.
+- **Each domain row is painted in its colour**, the same way scored events are on the game screen, and shows six small squares for your best six events there. Tap a row to see every event.
+- **Much less text.** The explainer under Log a workout, the "average of ten" line and the per-domain "steps to go" lines are gone. What stays is one line when your games are holding your overall colour back, and one line when your lifts need a bodyweight.
+
+### Fixed
+- The games line reads "1 game", not "1 games".
+- A domain with nothing you can be graded in says "Nothing to grade" instead of showing an empty row.
+- A domain that already holds a colour no longer says "Needs bodyweight" on top of it.
+- Screen readers hear "needs bodyweight" on a blocked domain row.
+
 ## [0.21.0.0] - 2026-09-26
 
 ### Changed
