@@ -310,10 +310,6 @@ now only reachable if Whānau's own art goes missing, and for Te Kāhui, which n
 
 ## P2 — Soon
 
-### Kahurangi text is hard to read on its own tint
-**What:** a painted row or game button writes the colour name in the colour's own hex (`rungPaint().ink`). Kahurangi #2371BB on its 12% tint is about 3.6:1, under the 4.5:1 small text needs. Fix it once in `lib/scoreColour.ts` (a lighter ink for Kahurangi, or white text) so HOME and the game screen both get it.
-**Noticed:** v0.21.1.0 design review
-
 ### One way to draw a colour swatch
 **What:** `Swatch` in `components/GradesCard.tsx`, `GradeDot` and `rungSegment` each draw Mā and Taniwha differently (outline vs ring vs white fill). Fold them into one helper in `components/GradeDot.tsx`.
 **Noticed:** v0.21.1.0 maintainability review

@@ -2,6 +2,11 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.21.1.1] - 2026-09-27
+
+### Fixed
+- **Kahurangi and Whero names are easier to read.** On a painted row the colour name is written in a lighter shade of its own colour, so blue and red text now stand out from their tinted background (Kahurangi was about 3.4:1 and is now about 5.9:1). The fills, borders and swatches are unchanged. This applies on HOME, the game screen, the Colours guide and the radar.
+
 ## [0.21.1.0] - 2026-09-27
 
 ### Changed
