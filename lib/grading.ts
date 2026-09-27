@@ -136,6 +136,15 @@ export function gradeInk(g: GradeRung): string {
   return g.rung === 0 ? '#777' : g.inverted ? '#ffffff' : g.ink ?? g.hex
 }
 
+/**
+ * One solid colour to stand for a grade where a rainbow or black will not do:
+ * a ring, a track stop. Uenuku takes its pink, Taniwha white (black vanishes
+ * on the dark theme), everything else its readable ink.
+ */
+export function gradeAccent(g: GradeRung): string {
+  return g.rainbow ? '#F397C0' : gradeInk(g)
+}
+
 /** Mā for 0, otherwise the rung. Out-of-range input is clamped, never thrown. */
 export function gradeForRung(rung: number): GradeRung {
   if (rung <= 0) return MA

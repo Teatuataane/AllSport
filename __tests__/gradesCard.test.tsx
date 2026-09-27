@@ -164,8 +164,8 @@ describe('GradesCard — the ladder and the domain rows', () => {
     expect(screen.getByRole('img', { name: `Colour 4 of 13: ${GRADES[2].name}` })).toBeTruthy()
     const c = ladderCircles()
     expect(c.length).toBe(13)
-    expect(c[3].style.width).toBe('24px')
-    expect(c[2].style.width).toBe('15px')
+    expect(c[3].style.width).toBe('20px')
+    expect(c[2].style.width).toBe('12px')
     expect(c[0].dataset.colour).toBe('reached')
     expect(c[2].dataset.colour).toBe('reached')
     expect(c[4].dataset.colour).toBe('ahead')
@@ -207,35 +207,52 @@ describe('GradesCard — the ladder and the domain rows', () => {
     const d = st.grades.domains.find(x => x.domainNumber === pushupDomain)!
     render(<GradesCard state={st} />)
     const btn = screen.getByRole('button', { name: new RegExp(`^${domainName},`) })
-    const squares = btn.querySelector('[aria-hidden="true"]')!.children
-    expect(squares.length).toBe(d.slots)
-    const filled = Array.from(squares).filter(s => (s as HTMLElement).style.background !== 'transparent')
+    const circles = btn.querySelector('[aria-hidden="true"]')!.children
+    expect(circles.length).toBe(d.slots)
+    const filled = Array.from(circles).filter(s => (s as HTMLElement).style.background !== 'transparent')
     expect(filled.length).toBe(d.counted.length)
-    // Each square is the colour of its slot, best first.
+    // Each circle is the colour of its slot, best first.
     const rgb = (hex: string) => `rgb(${[1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`
     topSlotRungs(d, st.grades.events).forEach((r, i) => {
-      const bg = (squares[i] as HTMLElement).style.background
+      const bg = (circles[i] as HTMLElement).style.background
       if (r === 0) expect(bg).toBe('transparent')
       else expect(bg).toBe(rgb(gradeForRung(r).hex))
     })
   })
 
-  it('says "Needs bodyweight" on the row instead of circles when a lift is blocked', () => {
+  it('says "Needs bodyweight" on the row, beside its circles, when a lift is blocked', () => {
     const st = state()
     st.grades.domains[0].blockedByBodyweight = true
     render(<GradesCard state={st} />)
     const btn = screen.getByRole('button', { name: /^Maximal Strength,/ })
     expect(within(btn).getByText('Needs bodyweight')).toBeTruthy()
     expect(btn.getAttribute('aria-label')).toMatch(/, needs bodyweight$/)
-    expect(btn.querySelector('[aria-hidden="true"] > span')).toBeNull()
+    expect(btn.querySelector('[aria-hidden="true"] > span')).toBeTruthy()
   })
 
-  it('shows circles, not the bodyweight notice, on a row that already holds a colour', () => {
+  it('keeps the bodyweight notice on a row that already holds a colour', () => {
     const st = state({ held: new Map([[1, 2]]) })
     st.grades.domains[0].blockedByBodyweight = true
     render(<GradesCard state={st} />)
-    const btn = screen.getByRole('button', { name: 'Maximal Strength, Whero' })
-    expect(within(btn).queryByText('Needs bodyweight')).toBeNull()
+    const btn = screen.getByRole('button', { name: 'Maximal Strength, Whero, needs bodyweight' })
+    expect(within(btn).getByText('Needs bodyweight')).toBeTruthy()
+  })
+
+  it('says "Needs bodyweight" when one lift is blocked even though the domain grades', () => {
+    // One non-ratio event (Pause Dips) graded, so the domain is off Mā and
+    // blockedByBodyweight is false; a lift scored with no weight still counts.
+    const st = state()
+    const dl = getEventByName('Deadlift')!.slug
+    st.grades.events.get(dl)!.bodyweightBlocked = true
+    expect(st.grades.domains[0].blockedByBodyweight).toBeFalsy()
+    render(<GradesCard state={st} />)
+    const btn = screen.getByRole('button', { name: /^Maximal Strength,/ })
+    expect(within(btn).getByText('Needs bodyweight')).toBeTruthy()
+  })
+
+  it('shows no bodyweight notice on a domain with no blocked lift', () => {
+    render(<GradesCard state={state()} />)
+    expect(screen.queryByText('Needs bodyweight')).toBeNull()
   })
 
   it('says "Nothing to grade" on a domain with no gradeable event', () => {

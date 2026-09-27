@@ -23,23 +23,21 @@ import Link from 'next/link'
 import DomainIcon from '@/components/DomainIcon'
 import { EVENTS, getEventBySlug } from '@/lib/eventData'
 import { STANDARDS } from '@/lib/standards'
+import { RAINBOW_CONIC } from '@/lib/domainColours'
 import {
-  GRADES, MA, gradeForRung, gradeInk, averageRung, GAMES_REQUIRED, MIN_RATED_GAMES,
+  GRADES, MA, gradeForRung, gradeInk, gradeAccent, averageRung, GAMES_REQUIRED, MIN_RATED_GAMES,
 } from '@/lib/grading'
 import { bestScoreLabel, colourBlurb, shownDomainRungs, shownOverallRung, topSlotRungs } from '@/lib/colourDisplay'
 import { NEUTRAL_ICON_TINT } from '@/lib/scoreColour'
-import { GradeDot } from '@/components/GradeDot'
 import type { GradeState } from '@/lib/loadGrades'
 
 const DOMAIN_NAMES = Array.from({ length: 10 }, (_, i) => EVENTS.find(e => e.domainNumber === i + 1)?.domain ?? '')
+const DOMAIN_EVENTS = Array.from({ length: 10 }, (_, i) => EVENTS.filter(e => e.domainNumber === i + 1).map(e => e.slug))
 
 const label = {
   fontFamily: 'var(--font-label)', textTransform: 'uppercase' as const,
   letterSpacing: '0.1em', fontWeight: 600,
 }
-
-/** The one conic rainbow every Uenuku circle uses. */
-const RAINBOW_RING = 'conic-gradient(#EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E, #EA4742)'
 
 export default function GradesCard({ state, bestEvent = null }: {
   state: GradeState
@@ -90,11 +88,15 @@ export default function GradesCard({ state, bestEvent = null }: {
           const g = gradeForRung(shown)
           const isOpen = open.has(d.domainNumber)
           const slots = topSlotRungs(d, grades.events)
-          // A colour held from before outranks the notice: the row already
-          // has a colour, so it shows the circles instead.
-          const needsBodyweight = d.blockedByBodyweight && shown === 0
+          // Any lift in the domain scored with no bodyweight for its day.
+          // Not only d.blockedByBodyweight, which goes false the moment one
+          // non-ratio event (Pause Dips, Pause Chinup) grades, while every
+          // other lift still scores nothing. The separate bodyweight note is
+          // gone from HOME (2026-09-28), so this row is the only place it shows.
+          const needsBodyweight = d.blockedByBodyweight
+            || DOMAIN_EVENTS[d.domainNumber - 1].some(slug => grades.events.get(slug)?.bodyweightBlocked)
           return (
-            <div key={d.domainNumber} style={{ borderBottom: '1px solid #181818' }}>
+            <div key={d.domainNumber} style={{ borderBottom: '1px solid var(--border)' }}>
               <button
                 type="button"
                 onClick={() => toggle(d.domainNumber)}
@@ -111,19 +113,24 @@ export default function GradesCard({ state, bestEvent = null }: {
                   <div style={{ fontSize: 14.5, color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {DOMAIN_NAMES[d.domainNumber - 1]}
                   </div>
-                  {needsBodyweight ? (
-                    // Declared on the scoring screen on the day, so there is
-                    // nowhere on HOME to send them: the row just says so.
-                    <div style={{ fontSize: 12, color: 'var(--amber)', marginTop: 4 }}>Needs bodyweight</div>
-                  ) : slots.length === 0 ? (
+                  {slots.length === 0 && !needsBodyweight ? (
                     <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>Nothing to grade</div>
                   ) : (
-                    // Your best six events as they stand today. The row's
-                    // colour is the one held, which never drops, so the two
-                    // can differ after a score is deleted. An empty circle is
-                    // a slot still on Mā.
-                    <div aria-hidden style={{ display: 'flex', gap: 5, marginTop: 6 }}>
-                      {slots.map((r, i) => <ColourCircle key={i} rung={r} size={9} />)}
+                    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', columnGap: 10, rowGap: 4, marginTop: 6 }}>
+                      {/* Your best six events as they stand today. The row's
+                          colour is the one held, which never drops, so the two
+                          can differ after a score is deleted. An empty circle
+                          is a slot still on Mā. */}
+                      {slots.length > 0 && (
+                        <div aria-hidden style={{ display: 'flex', gap: 5 }}>
+                          {slots.map((r, i) => <ColourCircle key={i} rung={r} size={9} />)}
+                        </div>
+                      )}
+                      {needsBodyweight && (
+                        // Declared on the scoring screen on the day, so there is
+                        // nowhere on HOME to send them: the row just says so.
+                        <span style={{ fontSize: 12, color: 'var(--amber)', lineHeight: 1 }}>Needs bodyweight</span>
+                      )}
                     </div>
                   )}
                 </div>
@@ -167,11 +174,12 @@ export default function GradesCard({ state, bestEvent = null }: {
 /**
  * One colour as a circle. Reached: solid (Uenuku the rainbow, Taniwha black
  * with a white rim so it does not vanish on the card). Not reached: a ring in
- * its OWN colour, so the colours ahead stay readable rather than a dim grey.
+ * its OWN colour, in its readable ink and at full strength, so the colours
+ * ahead stay easy to see rather than a dim grey.
  * Mā standing for "no colour yet" is an empty grey outline; on the ladder,
  * where it is a rung, it is solid white.
  */
-export function ColourCircle({ rung, size, reached = true, ma = 'empty' }: {
+function ColourCircle({ rung, size, reached = true, ma = 'empty' }: {
   rung: number; size: number; reached?: boolean; ma?: 'empty' | 'white'
 }) {
   const g = gradeForRung(rung)
@@ -180,23 +188,23 @@ export function ColourCircle({ rung, size, reached = true, ma = 'empty' }: {
     display: 'block', boxSizing: 'border-box' as const,
   }
   if (g.rung === 0 && ma === 'empty') {
-    return <span data-colour="empty" style={{ ...base, background: 'transparent', border: '1.5px solid #555' }} />
+    return <span data-colour="empty" style={{ ...base, background: 'transparent', border: '1.5px solid var(--grey)' }} />
   }
   if (!reached) {
     if (g.rainbow) {
       return <span data-colour="ahead" style={{
-        ...base, opacity: 0.75,
-        background: `radial-gradient(circle, var(--surface) 52%, transparent 54%), ${RAINBOW_RING}`,
+        ...base,
+        background: `radial-gradient(circle, var(--surface) 52%, transparent 54%), ${RAINBOW_CONIC}`,
       }} />
     }
     if (g.inverted) {
       return <span data-colour="ahead" style={{ ...base, background: '#000', border: '1.5px dashed #9a9a9a' }} />
     }
-    return <span data-colour="ahead" style={{ ...base, opacity: 0.7, background: 'var(--surface)', border: `2px solid ${g.hex}` }} />
+    return <span data-colour="ahead" style={{ ...base, background: 'var(--surface)', border: `2px solid ${gradeInk(g)}` }} />
   }
   return <span data-colour="reached" style={{
     ...base,
-    background: g.rainbow ? RAINBOW_RING : g.hex,
+    background: g.rainbow ? RAINBOW_CONIC : g.hex,
     border: g.inverted ? '1.5px solid #fff' : 'none',
   }} />
 }
@@ -211,15 +219,15 @@ function ColourLadder({ rung }: { rung: number }) {
   const ladder = [MA, ...GRADES]
   const n = ladder.length
   const centre = (i: number) => `${((i + 0.5) / n) * 100}%`
-  const stops = ladder.slice(0, rung + 1).map(g => (g.rainbow ? '#F397C0' : g.inverted ? '#fff' : g.hex))
+  const stops = ladder.slice(0, rung + 1).map(g => (g.rung === 0 ? '#ffffff' : gradeAccent(g)))
   const current = gradeForRung(rung)
-  const ring = current.rainbow ? '#F397C0' : current.inverted ? '#fff' : current.hex
+  const ring = current.rung === 0 ? '#ffffff' : gradeAccent(current)
   return (
     <div role="img" aria-label={`Colour ${rung + 1} of ${n}: ${current.name}`} style={{ marginTop: 14 }}>
-      <div style={{ position: 'relative', height: 30 }}>
+      <div style={{ position: 'relative', height: 28 }}>
         <div style={{
           position: 'absolute', top: '50%', height: 3, transform: 'translateY(-50%)', borderRadius: 3,
-          left: centre(0), right: centre(0), background: '#262626',
+          left: centre(0), right: centre(0), background: 'var(--border-strong)',
         }} />
         {rung > 0 && (
           <div data-ladder-fill style={{
@@ -232,11 +240,13 @@ function ColourLadder({ rung }: { rung: number }) {
           {ladder.map(g => (
             <div key={g.rung} data-rung={g.rung} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {g.rung === rung ? (
-                <span style={{ borderRadius: '50%', boxShadow: `0 0 0 3px var(--surface), 0 0 0 5px ${ring}` }}>
-                  <ColourCircle rung={g.rung} size={24} ma="white" />
+                // 20px plus a 4px ring is 28px across: at 320px a column is
+                // about 20px wide, and the 12px neighbours still clear it.
+                <span style={{ borderRadius: '50%', boxShadow: `0 0 0 2px var(--surface), 0 0 0 4px ${ring}` }}>
+                  <ColourCircle rung={g.rung} size={20} ma="white" />
                 </span>
               ) : (
-                <ColourCircle rung={g.rung} size={15} reached={g.rung < rung} ma="white" />
+                <ColourCircle rung={g.rung} size={12} reached={g.rung < rung} ma="white" />
               )}
             </div>
           ))}
@@ -286,14 +296,14 @@ function DomainEvents({ state, domainNumber }: { state: GradeState; domainNumber
         return (
           <Link key={e.slug} href={`/events/${e.slug}`} style={{
             display: 'grid', gridTemplateColumns: COLS, gap: 10, alignItems: 'center',
-            padding: '8px 0', borderTop: '1px solid #151515', color: 'inherit', minHeight: 44,
+            padding: '8px 0', borderTop: '1px solid var(--border)', color: 'inherit', minHeight: 44,
           }}>
             <span style={{ fontSize: 13, color: eg.played ? 'var(--white)' : 'var(--text-muted)', minWidth: 0 }}>
               {e.name}
               {waiting > 0 && (
                 // A disputed game counts for nothing until settled, so a player
                 // stuck short of ten games can see why.
-                <span style={{ display: 'block', fontSize: 11, color: 'var(--amber)', marginTop: 1 }}>
+                <span style={{ display: 'block', fontSize: 12, color: 'var(--amber)', marginTop: 1 }}>
                   {waiting} disputed game{waiting > 1 ? 's' : ''} waiting for a kaiwhakawā
                 </span>
               )}
@@ -305,7 +315,7 @@ function DomainEvents({ state, domainNumber }: { state: GradeState; domainNumber
               <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>{why}</span>
             ) : (
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, ...label, fontSize: 11, color: eg.rung ? 'var(--white)' : 'var(--text-muted)' }}>
-                <GradeDot grade={colour} size={10} /> {colour.name}
+                <ColourCircle rung={colour.rung} size={10} /> {colour.name}
               </span>
             )}
           </Link>

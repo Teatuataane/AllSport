@@ -33,10 +33,11 @@ describe('ColourAvatar', () => {
     expect(avatar().style.color).toBe('var(--white)')
   })
 
-  it('rings a colour in its own hex and inks the initial in it', () => {
+  it('rings a colour in its readable ink, the same one the card names it in', () => {
     render(<ColourAvatar rung={2} icon={null} initial="R" />)
     expect(avatar().getAttribute('aria-label')).toBe('Your avatar, overall colour Whero')
-    expect(avatar().style.color).toMatch(/#EA4742|rgb\(234, 71, 66\)/i)
+    // Whero's ink (#EE625D), not its raw hex, as gradeInk gives the card title.
+    expect(avatar().style.color).toMatch(/#EE625D|rgb\(238, 98, 93\)/i)
   })
 
   it('shows the icon instead of the initial when there is one', () => {
@@ -52,11 +53,13 @@ describe('ColourAvatar', () => {
     // jsdom may drop a multi-layer background it cannot parse; when it keeps
     // it, it must be the conic rainbow.
     if (bg) expect(bg).toContain('conic-gradient')
+    expect(avatar().dataset.ring).toBe('rainbow')
     expect(avatar().style.color).toMatch(/#F397C0|rgb\(243, 151, 192\)/i)
   })
 
   it('paints Taniwha with a white ring', () => {
     render(<ColourAvatar rung={12} icon={null} initial="T" />)
+    expect(avatar().dataset.ring).toBe('inverted')
     expect(avatar().getAttribute('aria-label')).toBe('Your avatar, overall colour Taniwha')
     expect(avatar().style.color).toMatch(/#ffffff|rgb\(255, 255, 255\)/i)
   })

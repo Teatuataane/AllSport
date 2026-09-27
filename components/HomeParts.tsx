@@ -8,7 +8,8 @@
 
 import Link from 'next/link'
 import type { ReactNode } from 'react'
-import { gradeForRung } from '@/lib/grading'
+import { gradeForRung, gradeAccent } from '@/lib/grading'
+import { RAINBOW_CONIC } from '@/lib/domainColours'
 import type { nextScheduledSession } from '@/lib/schedule'
 
 function SectionLabel({ children }: { children: ReactNode }) {
@@ -29,11 +30,12 @@ function SectionLabel({ children }: { children: ReactNode }) {
  */
 export function ColourAvatar({ rung, icon, initial }: { rung: number | null; icon: string | null; initial: string }) {
   const g = gradeForRung(rung ?? 0)
-  const ring = rung == null || g.rung === 0 ? '#555' : g.rainbow ? '#F397C0' : g.inverted ? '#ffffff' : g.hex
+  const ring = rung == null || g.rung === 0 ? '#555555' : gradeAccent(g)
   const fill = g.inverted ? '#000' : `${ring}1a`
   return (
     <div
       role="img"
+      data-ring={g.rainbow ? 'rainbow' : g.inverted ? 'inverted' : 'solid'}
       aria-label={rung == null ? 'Your avatar' : `Your avatar, overall colour ${g.name}`}
       style={{
         width: 58, height: 58, borderRadius: '50%', flexShrink: 0, boxSizing: 'border-box',
@@ -42,8 +44,11 @@ export function ColourAvatar({ rung, icon, initial }: { rung: number | null; ico
         // A CSS border cannot take a gradient, so Uenuku paints its ring as a
         // border-box background under a padding-box fill.
         background: g.rainbow
-          ? `linear-gradient(#17121c, #17121c) padding-box, conic-gradient(#EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E, #EA4742) border-box`
-          : `linear-gradient(${fill}, ${fill}) padding-box, linear-gradient(${ring}, ${ring}) border-box`,
+          ? `linear-gradient(#17121c, #17121c) padding-box, ${RAINBOW_CONIC} border-box`
+          // The tint is translucent, so an opaque base sits under it inside the
+          // padding box; without it the solid ring layer shows through the
+          // whole avatar and hides the initial.
+          : `linear-gradient(${fill}, ${fill}) padding-box, linear-gradient(var(--dark), var(--dark)) padding-box, linear-gradient(${ring}, ${ring}) border-box`,
         boxShadow: `0 0 0 4px ${ring}1c`,
         fontSize: icon ? 26 : 28,
         fontFamily: icon ? undefined : 'var(--font-display)',
@@ -129,10 +134,10 @@ export function HomeLink({ href, children }: { href: string; children: ReactNode
   return (
     <Link href={href} style={{
       display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center',
-      minHeight: 46, padding: '0 6px', borderRadius: 999,
+      minHeight: 46, padding: '6px 8px', borderRadius: 999,
       border: '1px solid var(--border-strong)', color: 'var(--white)',
       fontFamily: 'var(--font-label)', textTransform: 'uppercase',
-      letterSpacing: '0.1em', fontWeight: 600, fontSize: 12,
+      letterSpacing: '0.1em', fontWeight: 600, fontSize: 12, lineHeight: 1.15,
     }}>
       {children}
     </Link>

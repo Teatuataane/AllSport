@@ -59,7 +59,10 @@ function DashboardInner() {
 
   const [household, setHousehold] = useState<HouseholdBundle | null>(null)
   const [stats, setStats] = useState<StatsBundle | null>(null)
-  const [grades, setGrades] = useState<GradeState | null>(null)
+  // Tagged with the player it belongs to, so for the one render between a
+  // family switch and the effect clearing it, the new player's name never
+  // sits in the previous player's colour.
+  const [gradesEntry, setGradesEntry] = useState<{ id: string; state: GradeState | null } | null>(null)
   const [eventsWon, setEventsWon] = useState<number | null>(null)
   const [activeSession, setActiveSession] = useState<any>(null)
   // Only the QR link's ?code= joins by code now; nobody types one.
@@ -115,11 +118,12 @@ function DashboardInner() {
   useEffect(() => {
     if (!activePlayerId) return
     let cancelled = false
-    setGrades(null)
-    loadGradeState(supabase, activePlayerId).then(s => { if (!cancelled) setGrades(s) })
+    setGradesEntry(null)
+    loadGradeState(supabase, activePlayerId).then(s => { if (!cancelled) setGradesEntry({ id: activePlayerId, state: s }) })
     return () => { cancelled = true }
   }, [activePlayerId, gradesNonce])
 
+  const grades = gradesEntry && gradesEntry.id === activePlayerId ? gradesEntry.state : null
   const newColours = useNewColours(activePlayerId, grades, reloadGrades)
 
   // ── Events won: the player_event_wins view, which /prs reads too. ──────────
@@ -281,10 +285,17 @@ function DashboardInner() {
             }}>
               {activePlayer.division ?? 'No division'}{isJudge && activePlayerId === userId ? ' · Kaiwhakawā' : ''}
             </div>
-            {householdLoaded && hasPlayed && (
-              <div style={{ fontSize: 12.5, color: 'var(--grey-light)', marginTop: 5, fontVariantNumeric: 'tabular-nums' }}>
-                <Num value={counts?.games} /> games · <Num value={eventsWon} /> events won
-                {' · '}<Num value={derived?.gamesWon} /> games won · <Num value={counts?.prs} /> PRs
+            {/* Not gated on the household loading: if that one RPC fails,
+                the numbers that DID load still show and the rest read "—". */}
+            {!firstRun && (
+              <div style={{
+                display: 'flex', flexWrap: 'wrap', columnGap: 6, rowGap: 2,
+                fontSize: 12.5, color: 'var(--grey-light)', marginTop: 5, fontVariantNumeric: 'tabular-nums',
+              }}>
+                <Stat value={counts?.games} label="games" />
+                <Stat value={eventsWon} label="events won" dot />
+                <Stat value={derived?.gamesWon} label="games won" dot />
+                <Stat value={counts?.prs} label="PRs" dot />
               </div>
             )}
           </div>
@@ -302,7 +313,7 @@ function DashboardInner() {
         {grades ? <GradesCard state={grades} bestEvent={bestEvent} /> : (
           <div style={{
             background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16,
-            height: 220, marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#444',
+            height: 220, marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)',
           }}>
             Loading…
           </div>
@@ -333,8 +344,8 @@ function DashboardInner() {
 // ── Small parts ──────────────────────────────────────────────────────────────
 
 /**
- * The zero-games dashboard. Says what will fill this page and what it costs to
- * fill it, instead of four zeros and an empty radar.
+ * Shown under YOUR COLOURS to a player with no games: says what will fill this
+ * page and what it costs to fill it, instead of a line of zeros.
  *
  * The event count is the only real number here on purpose — it is a fact about
  * the sport rather than about the player, so it is the one figure that is
@@ -390,9 +401,17 @@ function FirstRunPanel() {
   )
 }
 
-/** A number in the stats line: bold white, a dash while it loads. */
-function Num({ value }: { value: number | null | undefined }) {
-  return <b style={{ color: 'var(--white)', fontWeight: 600 }}>{value == null ? '—' : value}</b>
+/**
+ * One figure in the stats line: bold white, a dash while it loads. Never split
+ * from its label, so a narrow screen wraps between figures, not inside one.
+ */
+function Stat({ value, label, dot = false }: { value: number | null | undefined; label: string; dot?: boolean }) {
+  return (
+    <span style={{ whiteSpace: 'nowrap' }}>
+      {dot && '· '}
+      <b style={{ color: 'var(--white)', fontWeight: 600 }}>{value == null ? '—' : value}</b> {label}
+    </span>
+  )
 }
 
 export default function Dashboard() {

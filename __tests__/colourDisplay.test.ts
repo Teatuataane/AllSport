@@ -63,7 +63,7 @@ describe('colourBlurb — what an overall colour means', () => {
   })
 })
 
-describe('topSlotRungs — the six squares on a domain row', () => {
+describe('topSlotRungs — the six circles on a domain row', () => {
   it('is the counted events best first, padded with Mā to the slots', () => {
     const events = new Map([['a', { rung: 5 }], ['b', { rung: 3 }]])
     expect(topSlotRungs({ slots: 6, counted: ['a', 'b'] }, events)).toEqual([5, 3, 0, 0, 0, 0])

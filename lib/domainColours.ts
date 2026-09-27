@@ -53,3 +53,6 @@ export const RAINBOW_STOPS = ['#EA4742', '#F9B051', '#F397C0', '#B87DB5', '#2371
 
 /** The brand gradient. Uenuku, and Te Kāhui's accent. */
 export const RAINBOW = `linear-gradient(90deg, ${RAINBOW_STOPS.join(', ')})`
+
+/** The rainbow as a ring, for a round swatch: the stops closed back on the first. */
+export const RAINBOW_CONIC = `conic-gradient(${[...RAINBOW_STOPS, RAINBOW_STOPS[0]].join(', ')})`
