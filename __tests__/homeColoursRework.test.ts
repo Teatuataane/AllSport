@@ -5,7 +5,7 @@
 // screens that use these are behind a login, so this is what notices a slip.
 
 import { describe, it, expect } from 'vitest'
-import { overallRung, overallGrade, gradeInk, gradeForRung, MA, type DomainGradeResult } from '@/lib/grading'
+import { overallRung, overallGrade, gradeInk, gradeForRung, MA, GRADES, type DomainGradeResult } from '@/lib/grading'
 import { eventGrade, type GradePlayer, type GradeResultRow } from '@/lib/playerGrades'
 import { bestScoreLabel, domainExtremesByColour, bestEventByColour } from '@/lib/colourDisplay'
 import { colourStanding, rankByColours } from '@/lib/colourBoard'
@@ -63,6 +63,28 @@ describe('gradeInk', () => {
     expect(gradeInk(MA)).toBe('#777')
     expect(gradeInk(gradeForRung(12))).toBe('#ffffff')
     expect(gradeInk(gradeForRung(3))).toBe(gradeForRung(3).hex)
+  })
+
+  // A painted row writes the colour name in its ink on a 12% tint of the same
+  // colour, over a card (--surface #111). Small text needs 4.5:1 (WCAG AA).
+  it('every colour name is readable on its own painted row', () => {
+    const lum = (hex: string) => {
+      const c = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255)
+        .map(x => (x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4))
+      return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
+    }
+    const tint = (hex: string, bg: string, a: number) => '#' + [1, 3, 5].map(i =>
+      Math.round(parseInt(hex.slice(i, i + 2), 16) * a + parseInt(bg.slice(i, i + 2), 16) * (1 - a))
+        .toString(16).padStart(2, '0')).join('')
+    const ratio = (a: string, b: string) => {
+      const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x)
+      return (hi + 0.05) / (lo + 0.05)
+    }
+    for (const g of GRADES) {
+      if (g.rainbow || g.inverted) continue
+      const r = ratio(gradeInk(g), tint(g.hex, '#111111', 0x1f / 255))
+      expect(r, `${g.name} ${r.toFixed(2)}:1`).toBeGreaterThanOrEqual(4.5)
+    }
   })
 })
 

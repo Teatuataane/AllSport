@@ -65,6 +65,11 @@ export type GradeRung = {
   /** The display colour. */
   hex: string
   /**
+   * Text colour when the name is written on a dark page, where `hex` itself is
+   * too dark to read. Fills, borders and swatches keep `hex`.
+   */
+  ink?: string
+  /**
    * Percentile of the GENERAL population this rung targets: "better than X%
    * of people". Null for Kiwikiwi, which anyone can reach.
    *
@@ -95,11 +100,11 @@ export const MA: GradeRung = {
 // drawn as the rainbow and Taniwha as a black card, so their hex is the fallback.
 export const GRADES: GradeRung[] = [
   { rung: 1, name: 'Kiwikiwi', colour: 'grey', hex: '#888888', populationTarget: null },
-  { rung: 2, name: 'Whero', colour: 'red', hex: '#EA4742', populationTarget: 90 },
+  { rung: 2, name: 'Whero', colour: 'red', hex: '#EA4742', ink: '#EE625D', populationTarget: 90 },
   { rung: 3, name: 'Karaka', colour: 'orange', hex: '#F9B051', populationTarget: 80 },
   { rung: 4, name: 'Kōwhai', colour: 'yellow', hex: '#F9E051', populationTarget: 70 },
   { rung: 5, name: 'Kākāriki', colour: 'green', hex: '#4DB26E', populationTarget: 60 },
-  { rung: 6, name: 'Kahurangi', colour: 'blue', hex: '#2371BB', populationTarget: 50 },
+  { rung: 6, name: 'Kahurangi', colour: 'blue', hex: '#2371BB', ink: '#5A9BE0', populationTarget: 50 },
   { rung: 7, name: 'Poroporo', colour: 'purple', hex: '#B87DB5', populationTarget: 40 },
   { rung: 8, name: 'Parahi', colour: 'bronze', hex: '#CD7F32', populationTarget: 30 },
   { rung: 9, name: 'Hiriwa', colour: 'silver', hex: '#B8C0CC', populationTarget: 20 },
@@ -124,10 +129,11 @@ export const DOMAIN_COUNT = 10
 
 /**
  * A colour's ink on a dark page: Taniwha is black, so it reads as white, and
- * Mā reads as a muted grey. Pure, so server pages (the colours guide) can call it.
+ * Mā reads as a muted grey, and a colour too dark for small text on its own tint (Whero, Kahurangi)
+ * uses its lighter `ink`. Pure, so server pages (the colours guide) can call it.
  */
 export function gradeInk(g: GradeRung): string {
-  return g.rung === 0 ? '#777' : g.inverted ? '#ffffff' : g.hex
+  return g.rung === 0 ? '#777' : g.inverted ? '#ffffff' : g.ink ?? g.hex
 }
 
 /** Mā for 0, otherwise the rung. Out-of-range input is clamped, never thrown. */
