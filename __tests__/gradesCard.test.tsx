@@ -265,6 +265,38 @@ describe('GradesCard — the ladder and the domain rows', () => {
   })
 })
 
+describe('GradesCard — the ladder track and the colours ahead', () => {
+  const ladder = () => screen.getByRole('img', { name: /^Colour \d+ of 13/ })
+  const circle = (rung: number) =>
+    ladder().querySelector<HTMLElement>(`[data-rung="${rung}"] [data-colour]`)!
+
+  it('draws no filled track on Mā, and one on any colour above it', () => {
+    render(<GradesCard state={state()} />)
+    expect(ladder().querySelector('[data-ladder-fill]')).toBeNull()
+    cleanup()
+    const held = new Map(Array.from({ length: 10 }, (_, i) => [i + 1, 3]))
+    render(<GradesCard state={state({ held, games: 100 })} />)
+    expect(ladder().querySelector('[data-ladder-fill]')).toBeTruthy()
+  })
+
+  it('keeps Uenuku and Taniwha readable while they are still ahead', () => {
+    const held = new Map(Array.from({ length: 10 }, (_, i) => [i + 1, 3]))
+    render(<GradesCard state={state({ held, games: 100 })} />)
+    expect(circle(11).dataset.colour).toBe('ahead')
+    expect(circle(11).style.background).toContain('conic-gradient')
+    expect(circle(12).dataset.colour).toBe('ahead')
+    expect(circle(12).style.border).toMatch(/dashed/)
+  })
+
+  it('names no best event when there is none, or its slug is not on the roster', () => {
+    render(<GradesCard state={state()} bestEvent={null} />)
+    expect(screen.queryByText(/Best event/)).toBeNull()
+    cleanup()
+    render(<GradesCard state={state()} bestEvent={{ slug: 'no-such-event', rung: 4 }} />)
+    expect(screen.queryByText(/Best event/)).toBeNull()
+  })
+})
+
 describe('the colours guide (/grades)', () => {
   it('renders as a plain server component with the headline and all twelve colours', () => {
     const { container } = render(ColoursGuide())

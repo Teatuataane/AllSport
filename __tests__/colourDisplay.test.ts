@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { bestScoreLabel, bestEventByColour, colourBlurb, topSlotRungs, STAT_FROM_RUNG } from '@/lib/colourDisplay'
+import { bestScoreLabel, bestEventByColour, colourBlurb, topSlotRungs, STAT_FROM_RUNG, shownOverallRung } from '@/lib/colourDisplay'
 import { getEventByName } from '@/lib/eventData'
 import { GRADES } from '@/lib/grading'
 
@@ -87,5 +87,28 @@ describe('colourBlurb — every rung', () => {
       if (r >= 2) expect(b.line.startsWith(GRADES[r - 1].name), `rung ${r}`).toBe(true)
       expect(b.sub).toMatch(/^(\d+ colours? (climbed|to climb)|Top \d+%|Better than half of people|Better than [1-9] in 10 people)$/)
     }
+  })
+})
+
+describe('shownOverallRung — the one overall colour HOME shows', () => {
+  // Only the fields the function reads; the domains carry a computed rung.
+  const st = (opts: { computed: number; held: Map<number, number>; schemaReady: boolean; games: number }) => ({
+    grades: { domains: Array.from({ length: 10 }, (_, i) => ({ domainNumber: i + 1, rung: opts.computed })) },
+    held: opts.held, schemaReady: opts.schemaReady, games: opts.games,
+  }) as unknown as Parameters<typeof shownOverallRung>[0]
+
+  it('averages the CONFERRED colours once grading is live', () => {
+    const held = new Map(Array.from({ length: 10 }, (_, i) => [i + 1, i < 5 ? 6 : 3]))
+    expect(shownOverallRung(st({ computed: 1, held, schemaReady: true, games: 100 }))).toBe(4)
+  })
+
+  it('averages the COMPUTED colours on a database without grading', () => {
+    expect(shownOverallRung(st({ computed: 5, held: new Map(), schemaReady: false, games: 100 }))).toBe(5)
+  })
+
+  it('is capped by games played', () => {
+    const held = new Map(Array.from({ length: 10 }, (_, i) => [i + 1, 4]))
+    expect(shownOverallRung(st({ computed: 0, held, schemaReady: true, games: 7 }))).toBe(3)
+    expect(shownOverallRung(st({ computed: 0, held, schemaReady: true, games: 0 }))).toBe(0)
   })
 })
