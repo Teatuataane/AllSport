@@ -3,170 +3,135 @@
 // ─── YOUR COLOURS ────────────────────────────────────────────────────────────
 // HOME's colours section, and since the home colours rework (24 September 2026,
 // docs/designs/home-colours-rework-spec.md) the ONLY place a player's own colour
-// detail lives: the COLOURS tab (/grades) is now a guide with no personal data.
+// detail lives: the COLOURS tab (/grades) is a guide with no personal data.
 //
-// Top to bottom (layout settled with Tāne 2026-09-27): the thirteen-colour
-// ladder with the overall colour marked, the overall colour's name with what
-// it means (a punchy line and a population stat, colourBlurb), the two
-// actions, then the ten domains. Very little text on purpose: each domain row
-// is painted in its colour the way the game screen paints a scored button,
-// and six squares show the best-six events that colour is the average of.
+// Top to bottom (redesigned with Tāne 2026-09-28): the overall colour's name,
+// the thirteen-colour ladder as circles on a track under it, a proud headline
+// for that colour and a second line (the climb, or from Kahurangi up the
+// population stat), then the ten domains and the best event. Domain rows are
+// NOT painted: each carries its icon, six small circles for the best-six
+// events its colour averages, and a colour circle beside the colour's name.
 // A row expands to show every event as Event · Your best · Colour.
 //
 // Domain colours are what has been CONFERRED (automatically since
-// auto-conferral). Before the grading migration lands nothing can be conferred,
-// so the card shows the computed colours and says they are provisional. Event
+// auto-conferral), or the computed ones on a database without grading. Event
 // colours are always computed from the standards: they are how the player gets
 // to the next domain colour, not an award.
 
 import { useState } from 'react'
 import Link from 'next/link'
 import DomainIcon from '@/components/DomainIcon'
-import { EVENTS } from '@/lib/eventData'
+import { EVENTS, getEventBySlug } from '@/lib/eventData'
 import { STANDARDS } from '@/lib/standards'
-import { RAINBOW } from '@/lib/domainColours'
 import {
-  GRADES, MA, gradeForRung, gradeInk, overallRung, averageRung, GAMES_REQUIRED, MIN_RATED_GAMES,
+  GRADES, MA, gradeForRung, gradeInk, averageRung, GAMES_REQUIRED, MIN_RATED_GAMES,
 } from '@/lib/grading'
-import { bestScoreLabel, colourBlurb, shownDomainRungs, topSlotRungs } from '@/lib/colourDisplay'
-import { NEUTRAL_ICON_TINT, rungPaint } from '@/lib/scoreColour'
+import { bestScoreLabel, colourBlurb, shownDomainRungs, shownOverallRung, topSlotRungs } from '@/lib/colourDisplay'
+import { NEUTRAL_ICON_TINT } from '@/lib/scoreColour'
 import { GradeDot } from '@/components/GradeDot'
 import type { GradeState } from '@/lib/loadGrades'
 
 const DOMAIN_NAMES = Array.from({ length: 10 }, (_, i) => EVENTS.find(e => e.domainNumber === i + 1)?.domain ?? '')
-
 
 const label = {
   fontFamily: 'var(--font-label)', textTransform: 'uppercase' as const,
   letterSpacing: '0.1em', fontWeight: 600,
 }
 
-const pill = {
-  flex: 1, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
-  borderRadius: 999, ...label, fontSize: 12.5,
-}
+/** The one conic rainbow every Uenuku circle uses. */
+const RAINBOW_RING = 'conic-gradient(#EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E, #EA4742)'
 
-export default function GradesCard({ state, askBand = false }: { state: GradeState; askBand?: boolean }) {
-  const { grades, schemaReady } = state
+export default function GradesCard({ state, bestEvent = null }: {
+  state: GradeState
+  /** The event holding the highest colour, from bestEventByColour. */
+  bestEvent?: { slug: string; rung: number } | null
+}) {
+  const { grades } = state
   const [open, setOpen] = useState<Set<number>>(() => new Set())
   const toggle = (n: number) => setOpen(s => { const t = new Set(s); if (t.has(n)) t.delete(n); else t.add(n); return t })
 
   const shownRungs = shownDomainRungs(state)
   const rows = grades.domains.map(d => ({ d, shown: shownRungs.get(d.domainNumber) ?? 0 }))
-  const overall = gradeForRung(overallRung(rows.map(r => r.shown), state.games))
+  const overall = gradeForRung(shownOverallRung(state))
   // The average before the games cap. Above `overall` only when the cap binds.
   const uncapped = averageRung(rows.map(r => r.shown))
   const blurb = colourBlurb(overall.rung)
   const unlock = gradeForRung(overall.rung + 1)
+  const best = bestEvent ? getEventBySlug(bestEvent.slug) : null
 
   return (
     <div style={{
       background: 'var(--surface)', border: '1px solid var(--border)',
       borderRadius: 16, padding: '18px 16px 14px', marginBottom: 16,
     }}>
-      {/* ── The ladder, and where the overall colour sits on it ─────────── */}
+      <div style={{ ...label, fontSize: 10.5, color: 'var(--text-muted)' }}>Your colour</div>
+      <div style={{
+        fontFamily: 'var(--font-display)', fontSize: 46, lineHeight: 0.95, letterSpacing: '0.04em',
+        color: overall.rung ? gradeInk(overall) : 'var(--white)', marginTop: 2,
+      }}>
+        {overall.name.toUpperCase()}
+      </div>
+
       <ColourLadder rung={overall.rung} />
 
-      <div style={{ margin: '14px 0 16px' }}>
-        <div style={{ ...label, fontSize: 10.5, color: 'var(--text-muted)' }}>Overall colour</div>
-        <div style={{
-          fontFamily: 'var(--font-display)', fontSize: 38, lineHeight: 1, letterSpacing: '0.04em',
-          color: overall.rung ? gradeInk(overall) : 'var(--white)', marginTop: 2,
-        }}>
-          {overall.name.toUpperCase()}
-        </div>
-        <div style={{ fontSize: 15, color: 'var(--white)', marginTop: 6, lineHeight: 1.35 }}>{blurb.line}</div>
-        {blurb.stat && (
-          <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 2 }}>{blurb.stat}</div>
-        )}
-        {uncapped > overall.rung && (
-          // The games cap is binding: the domains already say more.
-          <div style={{ fontSize: 12.5, color: 'var(--amber)', marginTop: 6 }}>
-            {unlock.name} unlocks at {GAMES_REQUIRED[overall.rung + 1]} {GAMES_REQUIRED[overall.rung + 1] === 1 ? 'game' : 'games'} · you&apos;ve played {state.games}
-          </div>
-        )}
+      <div style={{ fontSize: 17, fontWeight: 600, color: 'var(--white)', marginTop: 12, lineHeight: 1.3 }}>
+        {blurb.line}
       </div>
-
-      <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-        <Link href="/workout/new" style={{ ...pill, background: 'var(--purple)', color: '#0a0a0a' }}>
-          + Log a workout
-        </Link>
-        <Link href="/grades" style={{ ...pill, border: '1px solid var(--border-strong)', color: 'var(--white)' }}>
-          Colours guide →
-        </Link>
-      </div>
-
-      {/* Strength is graded against a bodyweight nothing else asks for. It is
-          DECLARED on the scoring screen, not on /profile, so this points at
-          somewhere they can actually do it. */}
-      {askBand && !state.hasBand && (
-        <Link href="/workout/new" style={{
-          display: 'block', fontSize: 12.5, color: 'var(--text-muted)',
-          background: '#0d0d0d', border: '1px solid var(--border)', borderRadius: 10,
-          padding: '9px 11px', marginBottom: 12,
-        }}>
-          <span style={{ color: 'var(--white)' }}>Lifts need your bodyweight</span> ·{' '}
-          <span style={{ color: 'var(--blue)' }}>Start a workout →</span>
-        </Link>
-      )}
-
-      {!schemaReady && (
-        <div style={{
-          fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.5,
-          background: '#0d0d0d', border: '1px solid var(--border)', borderRadius: 10,
-          padding: '9px 11px', marginBottom: 12,
-        }}>
-          Provisional: worked out from your scores. Colours are recorded once grading goes live.
+      <div style={{ fontSize: 13, color: 'var(--grey-light)', marginTop: 4 }}>{blurb.sub}</div>
+      {uncapped > overall.rung && (
+        // The games cap is binding: the domains already say more.
+        <div style={{ fontSize: 12.5, color: 'var(--amber)', marginTop: 6 }}>
+          {unlock.name} unlocks at {GAMES_REQUIRED[overall.rung + 1]} {GAMES_REQUIRED[overall.rung + 1] === 1 ? 'game' : 'games'} · you&apos;ve played {state.games}
         </div>
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ marginTop: 18, borderTop: '1px solid var(--border)' }}>
         {rows.map(({ d, shown }) => {
           const g = gradeForRung(shown)
-          // Painted like a scored button on the game screen. Mā has no paint.
-          const paint = rungPaint(shown)
           const isOpen = open.has(d.domainNumber)
           const slots = topSlotRungs(d, grades.events)
           // A colour held from before outranks the notice: the row already
-          // has a colour, so it shows the squares instead.
+          // has a colour, so it shows the circles instead.
           const needsBodyweight = d.blockedByBodyweight && shown === 0
           return (
-            <div key={d.domainNumber} style={{
-              borderRadius: 12,
-              background: paint ? paint.background : '#0d0d0d',
-              border: paint ? paint.border : '1.5px solid var(--border)',
-            }}>
+            <div key={d.domainNumber} style={{ borderBottom: '1px solid #181818' }}>
               <button
                 type="button"
                 onClick={() => toggle(d.domainNumber)}
                 aria-expanded={isOpen}
                 aria-label={`${DOMAIN_NAMES[d.domainNumber - 1]}, ${g.name}${needsBodyweight ? ', needs bodyweight' : slots.length === 0 ? ', nothing to grade' : ''}`}
                 style={{
-                  width: '100%', display: 'flex', alignItems: 'center', gap: 11, padding: '10px 12px',
+                  width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '10px 2px',
                   background: 'none', border: 'none', color: 'inherit', textAlign: 'left', cursor: 'pointer',
-                  minHeight: 52,
+                  minHeight: 56,
                 }}
               >
-                <DomainIcon domainName={DOMAIN_NAMES[d.domainNumber - 1]} domainNumber={d.domainNumber} size={30} tint={NEUTRAL_ICON_TINT} />
+                <DomainIcon domainName={DOMAIN_NAMES[d.domainNumber - 1]} domainNumber={d.domainNumber} size={32} tint={NEUTRAL_ICON_TINT} />
                 <div style={{ flexGrow: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14, color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <div style={{ fontSize: 14.5, color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {DOMAIN_NAMES[d.domainNumber - 1]}
                   </div>
                   {needsBodyweight ? (
-                    <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 3 }}>Needs bodyweight</div>
+                    // Declared on the scoring screen on the day, so there is
+                    // nowhere on HOME to send them: the row just says so.
+                    <div style={{ fontSize: 12, color: 'var(--amber)', marginTop: 4 }}>Needs bodyweight</div>
                   ) : slots.length === 0 ? (
-                    <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 3 }}>Nothing to grade</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>Nothing to grade</div>
                   ) : (
                     // Your best six events as they stand today. The row's
                     // colour is the one held, which never drops, so the two
-                    // can differ after a score is deleted. An empty square is
+                    // can differ after a score is deleted. An empty circle is
                     // a slot still on Mā.
-                    <div aria-hidden style={{ display: 'flex', gap: 4, marginTop: 5 }}>
-                      {slots.map((r, i) => <Swatch key={i} rung={r} width={14} height={14} radius={3} />)}
+                    <div aria-hidden style={{ display: 'flex', gap: 5, marginTop: 6 }}>
+                      {slots.map((r, i) => <ColourCircle key={i} rung={r} size={9} />)}
                     </div>
                   )}
                 </div>
-                <span style={{ ...label, fontSize: 12.5, flexShrink: 0, color: paint ? paint.ink : 'var(--text-muted)' }}>
+                <span style={{
+                  ...label, fontSize: 12.5, flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 7,
+                  color: shown ? gradeInk(g) : 'var(--text-muted)',
+                }}>
+                  <ColourCircle rung={shown} size={14} />
                   {g.name}
                 </span>
                 <span aria-hidden style={{
@@ -175,7 +140,7 @@ export default function GradesCard({ state, askBand = false }: { state: GradeSta
                 }}>›</span>
               </button>
               {isOpen && (
-                <div style={{ padding: '0 12px' }}>
+                <div style={{ padding: '0 2px 0 44px' }}>
                   <DomainEvents state={state} domainNumber={d.domainNumber} />
                 </div>
               )}
@@ -183,47 +148,105 @@ export default function GradesCard({ state, askBand = false }: { state: GradeSta
           )
         })}
       </div>
+
+      {best && bestEvent && (
+        <div style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12,
+          marginTop: 12, fontSize: 12.5, color: 'var(--text-muted)',
+        }}>
+          <span>Best event: <span style={{ color: 'var(--white)' }}>{best.name}</span></span>
+          <span style={{ ...label, display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0, fontSize: 11.5, color: 'var(--white)' }}>
+            <ColourCircle rung={bestEvent.rung} size={10} /> {gradeForRung(bestEvent.rung).name}
+          </span>
+        </div>
+      )}
     </div>
   )
 }
 
 /**
- * One colour as a filled shape. Mā is an empty outline when it stands for "no
- * colour yet", and solid white on the ladder where it is a rung; Uenuku the
- * rainbow; Taniwha black with a white rim so it does not vanish on the card.
+ * One colour as a circle. Reached: solid (Uenuku the rainbow, Taniwha black
+ * with a white rim so it does not vanish on the card). Not reached: a ring in
+ * its OWN colour, so the colours ahead stay readable rather than a dim grey.
+ * Mā standing for "no colour yet" is an empty grey outline; on the ladder,
+ * where it is a rung, it is solid white.
  */
-function Swatch({ rung, width, height, radius, ma = 'empty' }: {
-  rung: number; width: number | string; height: number; radius: number; ma?: 'empty' | 'white'
+export function ColourCircle({ rung, size, reached = true, ma = 'empty' }: {
+  rung: number; size: number; reached?: boolean; ma?: 'empty' | 'white'
 }) {
   const g = gradeForRung(rung)
-  const empty = g.rung === 0 && ma === 'empty'
-  return (
-    <span style={{
-      width, height, borderRadius: radius, flexShrink: 0, display: 'block', boxSizing: 'border-box',
-      background: empty ? 'transparent' : g.rainbow ? RAINBOW : g.hex,
-      border: empty ? '1.5px solid var(--grey)' : g.inverted ? '1.5px solid #fff' : 'none',
-    }} />
-  )
+  const base = {
+    width: size, height: size, borderRadius: '50%', flexShrink: 0,
+    display: 'block', boxSizing: 'border-box' as const,
+  }
+  if (g.rung === 0 && ma === 'empty') {
+    return <span data-colour="empty" style={{ ...base, background: 'transparent', border: '1.5px solid #555' }} />
+  }
+  if (!reached) {
+    if (g.rainbow) {
+      return <span data-colour="ahead" style={{
+        ...base, opacity: 0.75,
+        background: `radial-gradient(circle, var(--surface) 52%, transparent 54%), ${RAINBOW_RING}`,
+      }} />
+    }
+    if (g.inverted) {
+      return <span data-colour="ahead" style={{ ...base, background: '#000', border: '1.5px dashed #9a9a9a' }} />
+    }
+    return <span data-colour="ahead" style={{ ...base, opacity: 0.7, background: 'var(--surface)', border: `2px solid ${g.hex}` }} />
+  }
+  return <span data-colour="reached" style={{
+    ...base,
+    background: g.rainbow ? RAINBOW_RING : g.hex,
+    border: g.inverted ? '1.5px solid #fff' : 'none',
+  }} />
 }
 
-/** The whole ladder, Mā to Taniwha: reached colours solid, the rest dimmed, yours raised and marked. */
+/**
+ * The whole ladder, Mā to Taniwha, as circles on a track: reached colours
+ * solid, the rest rings in their own colour, yours bigger and ringed. Thirteen
+ * equal columns, so each circle's centre sits at (i + 0.5) / 13 and the filled
+ * track can end exactly on the current colour.
+ */
 function ColourLadder({ rung }: { rung: number }) {
   const ladder = [MA, ...GRADES]
+  const n = ladder.length
+  const centre = (i: number) => `${((i + 0.5) / n) * 100}%`
+  const stops = ladder.slice(0, rung + 1).map(g => (g.rainbow ? '#F397C0' : g.inverted ? '#fff' : g.hex))
+  const current = gradeForRung(rung)
+  const ring = current.rainbow ? '#F397C0' : current.inverted ? '#fff' : current.hex
   return (
-    <div role="img" aria-label={`Colour ${rung + 1} of ${ladder.length}: ${gradeForRung(rung).name}`}>
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3 }}>
-        {ladder.map(g => (
-          <div key={g.rung} style={{ flex: 1, minWidth: 0, opacity: g.rung <= rung ? 1 : 0.25 }}>
-            <Swatch rung={g.rung} width="100%" height={g.rung === rung ? 16 : 10} radius={3} ma="white" />
-          </div>
-        ))}
+    <div role="img" aria-label={`Colour ${rung + 1} of ${n}: ${current.name}`} style={{ marginTop: 14 }}>
+      <div style={{ position: 'relative', height: 30 }}>
+        <div style={{
+          position: 'absolute', top: '50%', height: 3, transform: 'translateY(-50%)', borderRadius: 3,
+          left: centre(0), right: centre(0), background: '#262626',
+        }} />
+        {rung > 0 && (
+          <div data-ladder-fill style={{
+            position: 'absolute', top: '50%', height: 3, transform: 'translateY(-50%)', borderRadius: 3,
+            left: centre(0), width: `${(rung / n) * 100}%`,
+            background: `linear-gradient(90deg, ${stops.join(', ')})`,
+          }} />
+        )}
+        <div style={{ position: 'relative', display: 'grid', gridTemplateColumns: `repeat(${n}, 1fr)`, height: '100%' }}>
+          {ladder.map(g => (
+            <div key={g.rung} data-rung={g.rung} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {g.rung === rung ? (
+                <span style={{ borderRadius: '50%', boxShadow: `0 0 0 3px var(--surface), 0 0 0 5px ${ring}` }}>
+                  <ColourCircle rung={g.rung} size={24} ma="white" />
+                </span>
+              ) : (
+                <ColourCircle rung={g.rung} size={15} reached={g.rung < rung} ma="white" />
+              )}
+            </div>
+          ))}
+        </div>
       </div>
-      <div aria-hidden style={{ display: 'flex', gap: 3, marginTop: 3 }}>
-        {ladder.map(g => (
-          <div key={g.rung} style={{ flex: 1, textAlign: 'center', fontSize: 9, lineHeight: 1, color: 'var(--white)' }}>
-            {g.rung === rung ? '▲' : ''}
-          </div>
-        ))}
+      <div aria-hidden style={{
+        display: 'flex', justifyContent: 'space-between', marginTop: 6,
+        ...label, fontSize: 10, color: 'var(--text-muted)',
+      }}>
+        <span>{MA.name}</span><span>{GRADES[GRADES.length - 1].name}</span>
       </div>
     </div>
   )

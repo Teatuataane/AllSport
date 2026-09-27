@@ -1,21 +1,18 @@
 'use client'
 
-// ─── The stats page ──────────────────────────────────────────────────────────
-// Four blocks and one conditional strip. That is the whole page:
+// ─── HOME ────────────────────────────────────────────────────────────────────
+// Player first (redesigned with Tāne 2026-09-28). Top to bottom:
 //
-//   1  identity + seasonal division rank
-//   2  the grades card — a colour in each of the ten domains
-//   3  four numbers — games, events won, games won, PRs
-//   4  the colours radar across the ten domains
+//   0  a running game's JOIN card, only while one is on
+//   1  identity: the avatar ringed in your overall colour, name, division, and
+//      one line of numbers (games · events won · games won · PRs)
+//   2  the next session as one slim line, when no game is on
+//   3  YOUR COLOURS (components/GradesCard.tsx)
+//   4  one row of links: Log a workout · My events · Play history
 //
-// Everything the old bento grid carried is now either a nav destination (judge,
-// koha, profile, personal bests) or lives on /history (play history and the
-// colours era). The dashboard used to be an action hub with stats bolted on; it
-// is a stats page with one action on it.
-//
-// TWO CLOCKS, ON PURPOSE. Colours are lifetime; a standards change never takes one back. `rankings`
-// is still seasonal, so the division rank line is explicitly labelled with the
-// year — that is the only seasonal number on the page.
+// The colours radar and the four stat tiles are gone: the radar repeated the
+// domain list and the tiles became the line under your name. The Colours guide
+// is the COLOURS tab, so HOME does not link it.
 
 import { useCallback, useEffect, useMemo, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -25,28 +22,22 @@ import { EVENTS } from '@/lib/eventData'
 import { nextScheduledSession } from '@/lib/schedule'
 import { useActivePlayer, playerLabel } from '@/lib/useActivePlayer'
 import PlayerTabs, { ViewingAsBanner } from '@/components/PlayerTabs'
-import DomainRadar from '@/components/DomainRadar'
 import GradesCard from '@/components/GradesCard'
 import { loadGradeState, type GradeState } from '@/lib/loadGrades'
 import { useNewColours } from '@/lib/useNewColours'
 import NewColourCard from '@/components/NewColourCard'
 import VoteCard from '@/app/components/VoteCard'
 import WellbeingSurvey from '@/app/components/WellbeingSurvey'
-import { gradeForRung, gradeInk } from '@/lib/grading'
-import { GradeDot } from '@/components/GradeDot'
-import { domainExtremesByColour, bestEventByColour, shownDomainRungs } from '@/lib/colourDisplay'
+import { gradeForRung } from '@/lib/grading'
+import { bestEventByColour, shownOverallRung } from '@/lib/colourDisplay'
 import {
   sessionWins,
   type RatingResultRow, type RatingEventRow, type RatingSessionRow, type RatingPlayerRow,
 } from '@/lib/rating'
-import {
-  computePercentiles, domainPercentiles, type DomainPercentile,
-} from '@/lib/percentile'
+import { computePercentiles } from '@/lib/percentile'
 
 const supabase = createClient()
 
-const DOMAIN_NAMES = Array.from({ length: 10 }, (_, i) => EVENTS.find(e => e.domainNumber === i + 1)?.domain ?? '')
-const EVENT_DOMAIN = new Map(EVENTS.map(e => [e.name, e.domainNumber]))
 
 type StatsBundle = {
   results: (RatingResultRow & { placement: number | null })[]
@@ -211,32 +202,18 @@ function DashboardInner() {
     if (!stats || !activePlayerId) return null
     const allPct = computePercentiles(stats.results, stats.events, stats.players)
     const minePct = allPct.get(activePlayerId)
-    const domains: DomainPercentile[] = domainPercentiles(minePct, EVENT_DOMAIN)
     const myRows = stats.results.filter(r => r.player_id === activePlayerId)
     const eventPct = new Map<string, number | null>()
     for (const [name, ep] of minePct ?? []) eventPct.set(name, ep.topPct)
     return {
-      domains,
       eventPct,
       gamesWon: sessionWins(myRows).get(activePlayerId) ?? 0,
     }
   }, [stats, activePlayerId])
 
-  // A hex, not a CSS variable: it is suffixed with an alpha below, and
-  // 'var(--blue)1e' is not a colour. The old taniwha fallback had exactly that
-  // bug, so the tile rendered with no tint at all.
-  const accent = '#2371BB'
-
-  // The colour HELD per domain, which the radar and the two boxes under it
-  // draw. The same rule as the YOUR COLOURS list above, so the two agree:
-  // conferred colours once grading is live, computed ones before.
-  const heldRungs = useMemo(() => (grades ? shownDomainRungs(grades) : new Map<number, number>()), [grades])
-
-  // Best / weakest DOMAIN by colour; Top % only breaks a tie, unseen.
-  const domainExtremes = useMemo(() => {
-    const pct = new Map((derived?.domains ?? []).map(d => [d.domainNumber, d.topPct]))
-    return domainExtremesByColour(heldRungs, pct)
-  }, [heldRungs, derived])
+  // The overall colour, by the same rule the colours card uses, so the avatar
+  // ring and the card can never disagree. Null until grades load.
+  const overallRung = grades ? shownOverallRung(grades) : null
 
   const bestEvent = useMemo(
     () => (grades ? bestEventByColour(grades.grades.events, derived?.eventPct) : null),
@@ -271,6 +248,8 @@ function DashboardInner() {
   const hasPlayed = (counts?.games ?? 0) > 0
   const firstRun = householdLoaded && !hasPlayed
 
+  const game = activeSession ? { id: activeSession.id, location: activeSession.location ?? null } : null
+
   return (
     <>
       <PlayerTabs />
@@ -278,34 +257,19 @@ function DashboardInner() {
       <div style={{ maxWidth: 520, margin: '0 auto', padding: '14px 16px 40px', color: 'var(--white)' }}>
         <ViewingAsBanner />
 
-        {/* ── The one action on the page ──────────────────────────────────── */}
-        {!activeSession && userId && <VoteCard userId={userId} isJudge={isJudge} />}
-
-        <div id="join">
-          <JoinBlock
-            game={activeSession ? { id: activeSession.id, location: activeSession.location ?? null } : null}
-            isJudge={isJudge}
-            nextSession={nextSession}
-            highlight={firstRun}
-            error={joinError}
-          />
-        </div>
+        {/* ── 0. A running game is the one action that outranks you ────────── */}
+        {game && <GameOnCard game={game} isJudge={isJudge} error={joinError} />}
 
         {/* ── 1. Identity ─────────────────────────────────────────────────── */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
-          <div style={{
-            width: 54, height: 54, borderRadius: 15, flexShrink: 0,
-            background: `${accent}1e`, border: `1px solid ${accent}55`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: activePlayer.icon ? 26 : 24,
-            fontFamily: activePlayer.icon ? undefined : 'var(--font-display)',
-            color: accent,
-          }}>
-            {activePlayer.icon || playerLabel(activePlayer).charAt(0).toUpperCase()}
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <ColourAvatar
+            rung={overallRung}
+            icon={activePlayer.icon}
+            initial={playerLabel(activePlayer).charAt(0).toUpperCase()}
+          />
           <div style={{ flexGrow: 1, minWidth: 0 }}>
             <div style={{
-              fontFamily: 'var(--font-display)', fontSize: 30,
+              fontFamily: 'var(--font-display)', fontSize: 32,
               letterSpacing: '0.05em', lineHeight: 1,
             }}>
               {playerLabel(activePlayer).toUpperCase()}
@@ -317,114 +281,44 @@ function DashboardInner() {
             }}>
               {activePlayer.division ?? 'No division'}{isJudge && activePlayerId === userId ? ' · Kaiwhakawā' : ''}
             </div>
+            {householdLoaded && hasPlayed && (
+              <div style={{ fontSize: 12.5, color: 'var(--grey-light)', marginTop: 5, fontVariantNumeric: 'tabular-nums' }}>
+                <Num value={counts?.games} /> games · <Num value={eventsWon} /> events won
+                {' · '}<Num value={derived?.gamesWon} /> games won · <Num value={counts?.prs} /> PRs
+              </div>
+            )}
           </div>
         </div>
 
-        {/* ── 2. Colours ──────────────────────────────────────────────────── */}
-        <NewColourCard awards={newColours.unseen} withdrawn={newColours.withdrawn} onDismiss={newColours.dismiss} />
-        {/* Juniors are asked for a bodyweight too (Tāne, 23 September 2026), and
-            /grades no longer carries a personal prompt, so this is the only one. */}
-        {grades && <GradesCard state={grades} askBand />}
-        <Link href="/history" style={{
-          display: 'block', textAlign: 'right', margin: '-6px 2px 16px',
-          fontFamily: 'var(--font-label)', textTransform: 'uppercase',
-          letterSpacing: '0.1em', fontWeight: 600, fontSize: 11, color: 'var(--text-muted)',
-        }}>
-          Play history →
-        </Link>
-
-        {/* ── 3 + 4. Stats, or an honest empty state ──────────────────────
-            A player with no games has nothing to put in four stat tiles or a
-            radar: they get four zeros and a shape collapsed to a dot at the
-            centre, which reads as a broken page rather than a new one. The
-            first-run panel is design-canvas/FirstRun.dc.html. */}
-        {firstRun ? (
-          <FirstRunPanel />
-        ) : (
-        <>
-        <div style={{
-          display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
-          gap: 8, marginBottom: 16,
-        }}>
-          <Stat value={counts?.games ?? 0} label="Total games" />
-          <Stat value={eventsWon} label="Events won" colour="var(--amber)" />
-          <Stat value={derived?.gamesWon} label="Games won" colour="var(--amber)" />
-          <Stat value={counts?.prs ?? 0} label="Total PRs" colour="var(--green)" />
-        </div>
-
-        {/* ── 4. Colours across the domains ────────────────────────────────── */}
-        <div style={{
-          background: 'var(--surface)', border: '1px solid var(--border)',
-          borderRadius: 16, padding: '18px 16px 16px',
-        }}>
-          <div style={{
-            display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
-            marginBottom: 4,
-          }}>
-            <SectionLabel>Colours across the domains</SectionLabel>
-            <span style={{
-              fontFamily: 'var(--font-label)', textTransform: 'uppercase',
-              letterSpacing: '0.1em', fontWeight: 600, fontSize: 10, color: 'var(--text-muted)',
-            }}>
-              Edge = Taniwha
-            </span>
-          </div>
-
-          {grades ? (
-            <DomainRadar held={heldRungs} />
-          ) : (
-            <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#444' }}>
-              Loading…
-            </div>
-          )}
-
-          {domainExtremes ? (
-            <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-              <ExtremeBox
-                label="Best domain"
-                name={DOMAIN_NAMES[domainExtremes.best.domainNumber - 1]}
-                rung={domainExtremes.best.rung}
-              />
-              <ExtremeBox
-                label="Weakest domain"
-                name={DOMAIN_NAMES[domainExtremes.weakest.domainNumber - 1]}
-                rung={domainExtremes.weakest.rung}
-              />
-            </div>
-          ) : grades && (
-            <div style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '10px 0 2px', lineHeight: 1.5 }}>
-              Each spoke grows as that domain earns a colour. Taniwha is the edge.
-            </div>
-          )}
-
-          {bestEvent && (
-            <div style={{
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12,
-              marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--border)',
-              fontSize: 12.5, color: 'var(--text-muted)',
-            }}>
-              <span>Best event: <span style={{ color: 'var(--white)' }}>{EVENTS.find(e => e.slug === bestEvent.slug)?.name}</span></span>
-              <span style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0,
-                fontFamily: 'var(--font-label)', textTransform: 'uppercase', letterSpacing: '0.1em',
-                fontWeight: 600, fontSize: 11.5, color: 'var(--white)',
-              }}>
-                <GradeDot grade={gradeForRung(bestEvent.rung)} size={10} /> {gradeForRung(bestEvent.rung).name}
-              </span>
-            </div>
-          )}
-
-          <Link href="/prs" style={{
-            display: 'block', textAlign: 'center', paddingTop: 15, marginTop: 14,
-            borderTop: '1px solid var(--border)',
-            fontFamily: 'var(--font-label)', textTransform: 'uppercase',
-            letterSpacing: '0.1em', fontWeight: 600, fontSize: 12, color: 'var(--blue)',
-          }}>
-            My events →
-          </Link>
-        </div>
-        </>
+        {/* ── 2. When the next game is, when none is running ───────────────── */}
+        {game ? <div style={{ height: 18 }} /> : (
+          <NextSessionLine nextSession={nextSession} firstRun={firstRun} error={joinError} />
         )}
+
+        {!game && userId && <VoteCard userId={userId} isJudge={isJudge} />}
+
+        {/* ── 3. Colours ──────────────────────────────────────────────────── */}
+        <NewColourCard awards={newColours.unseen} withdrawn={newColours.withdrawn} onDismiss={newColours.dismiss} />
+        {grades ? <GradesCard state={grades} bestEvent={bestEvent} /> : (
+          <div style={{
+            background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16,
+            height: 220, marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#444',
+          }}>
+            Loading…
+          </div>
+        )}
+
+        {/* A player with no games gets what will fill the page, not zeros. */}
+        {firstRun && <FirstRunPanel />}
+
+        {/* ── 4. Everything else is one row of links, all alike ────────────── */}
+        <nav aria-label="More from HOME" style={{
+          display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8,
+        }}>
+          <HomeLink href="/workout/new">Log a workout</HomeLink>
+          <HomeLink href="/prs">My events</HomeLink>
+          <HomeLink href="/history">Play history</HomeLink>
+        </nav>
 
         {userId && activePlayerId && (
           <div style={{ marginTop: 16 }}>
@@ -507,121 +401,125 @@ function FirstRunPanel() {
   )
 }
 
-function Stat({ value, label, colour = 'var(--white)' }: {
-  value: number | null | undefined
-  label: string
-  colour?: string
-}) {
-  return (
-    <div style={{
-      background: 'var(--surface)', border: '1px solid var(--border)',
-      borderRadius: 16, padding: '13px 6px', textAlign: 'center',
-    }}>
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: 26, color: colour, lineHeight: 1 }}>
-        {value == null ? '—' : value}
-      </div>
-      <div style={{
-        fontFamily: 'var(--font-label)', textTransform: 'uppercase',
-        letterSpacing: '0.1em', fontWeight: 600, fontSize: 10,
-        color: 'var(--text-muted)', marginTop: 3,
-      }}>
-        {label}
-      </div>
-    </div>
-  )
+/** A number in the stats line: bold white, a dash while it loads. */
+function Num({ value }: { value: number | null | undefined }) {
+  return <b style={{ color: 'var(--white)', fontWeight: 600 }}>{value == null ? '—' : value}</b>
 }
 
-function ExtremeBox({ label, name, rung }: { label: string; name: string; rung: number }) {
-  const g = gradeForRung(rung)
+/**
+ * The avatar, ringed in the player's overall colour so it doubles as their
+ * badge. Uenuku is a rainbow ring, Taniwha black with a white ring, Mā (and
+ * still loading) a plain grey ring.
+ */
+function ColourAvatar({ rung, icon, initial }: { rung: number | null; icon: string | null; initial: string }) {
+  const g = gradeForRung(rung ?? 0)
+  const ring = rung == null || g.rung === 0 ? '#555' : g.rainbow ? '#F397C0' : g.inverted ? '#ffffff' : g.hex
+  const fill = g.inverted ? '#000' : `${ring}1a`
   return (
-    <div style={{
-      flex: 1, background: '#0d0d0d', border: '1px solid #1a1a1a',
-      borderRadius: 10, padding: '11px 13px', minWidth: 0,
-    }}>
-      <div style={{
-        fontFamily: 'var(--font-label)', textTransform: 'uppercase',
-        letterSpacing: '0.1em', fontWeight: 600, fontSize: 10, color: 'var(--text-muted)',
-      }}>
-        {label}
-      </div>
-      <div style={{ fontSize: 13.5, color: 'var(--white)', fontWeight: 600, marginTop: 3 }}>{name}</div>
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 6, marginTop: 3,
-        fontFamily: 'var(--font-label)', textTransform: 'uppercase', letterSpacing: '0.08em',
-        fontWeight: 600, fontSize: 11.5, color: gradeInk(g),
-      }}>
-        <GradeDot grade={g} size={10} /> {g.name}
-      </div>
+    <div
+      role="img"
+      aria-label={rung == null ? 'Your avatar' : `Your avatar, overall colour ${g.name}`}
+      style={{
+        width: 58, height: 58, borderRadius: '50%', flexShrink: 0, boxSizing: 'border-box',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        border: '3px solid transparent',
+        // A CSS border cannot take a gradient, so Uenuku paints its ring as a
+        // border-box background under a padding-box fill.
+        background: g.rainbow
+          ? `linear-gradient(#17121c, #17121c) padding-box, conic-gradient(#EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E, #EA4742) border-box`
+          : `linear-gradient(${fill}, ${fill}) padding-box, linear-gradient(${ring}, ${ring}) border-box`,
+        boxShadow: `0 0 0 4px ${ring}1c`,
+        fontSize: icon ? 26 : 28,
+        fontFamily: icon ? undefined : 'var(--font-display)',
+        color: g.rung === 0 ? 'var(--white)' : ring,
+      }}
+    >
+      {icon || initial}
     </div>
   )
 }
 
 /**
- * The top of the page. A game running: one JOIN button straight into it. No
- * game: when and where the next one is. Nobody types a join code any more (home
- * colours rework, 24 September 2026); the QR link's ?code= still joins silently.
+ * A game running right now: one JOIN button straight into it, at the very top.
+ * Nobody types a join code any more (home colours rework, 24 September 2026);
+ * the QR link's ?code= still joins silently.
  */
-function JoinBlock({ game, isJudge, nextSession, highlight, error }: {
-  game: { id: string; location: string | null } | null
+function GameOnCard({ game, isJudge, error }: {
+  game: { id: string; location: string | null }
   isJudge: boolean
-  nextSession: ReturnType<typeof nextScheduledSession>
-  highlight: boolean
   error: string
 }) {
-  if (game) {
-    return (
-      <div style={{
-        background: 'linear-gradient(135deg,#061a0d,#0d2e1a)',
-        border: '1px solid #4DB26E55', borderRadius: 16, padding: 18, marginBottom: 16,
-        boxShadow: '0 8px 30px rgba(77,178,110,0.18)',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{
-            width: 8, height: 8, borderRadius: 999, background: 'var(--green)',
-            boxShadow: '0 0 0 4px #4DB26E2e', flexShrink: 0,
-          }} />
-          <SectionLabel>Game on now</SectionLabel>
-        </div>
-        <div style={{ fontSize: 13, color: '#9fc4ab', marginTop: 6 }}>
-          {game.location ?? 'AllSport HQ'}
-        </div>
-        {error && <div style={{ color: 'var(--red)', fontSize: 13, marginTop: 10 }}>{error}</div>}
-        <Link href={`/scoring/${game.id}`} style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 50,
-          marginTop: 14, borderRadius: 999, background: 'var(--green)', color: '#0a0a0a',
-          fontFamily: 'var(--font-label)', textTransform: 'uppercase',
-          letterSpacing: '0.1em', fontWeight: 700, fontSize: 16,
-        }}>
-          {isJudge ? 'Open the game →' : 'Join →'}
-        </Link>
-      </div>
-    )
-  }
   return (
     <div style={{
-      background: highlight ? 'linear-gradient(135deg,#0d2140,#061428)' : 'var(--surface)',
-      border: `1px solid ${highlight ? '#2371BB55' : 'var(--border)'}`,
-      borderRadius: 16, padding: 18, marginBottom: 16,
-      boxShadow: highlight ? '0 8px 30px rgba(35,113,187,0.22)' : undefined,
+      background: 'linear-gradient(135deg,#061a0d,#0d2e1a)',
+      border: '1px solid #4DB26E55', borderRadius: 16, padding: 18, marginBottom: 18,
+      boxShadow: '0 8px 30px rgba(77,178,110,0.18)',
     }}>
-      <SectionLabel>{highlight ? 'Your first game' : 'Next session'}</SectionLabel>
-      {nextSession && (
-        <>
-          <div style={{
-            fontFamily: 'var(--font-display)', fontSize: 26, marginTop: 6, letterSpacing: '0.04em',
-          }}>
-            {nextSession.label.toUpperCase()}
-          </div>
-          <div style={{ fontSize: 13, color: '#8fa9c4', marginTop: 5, lineHeight: 1.5 }}>
-            AllSport HQ · 26 Carbine Place, Sockburn<br />{nextSession.relative}
-          </div>
-        </>
-      )}
-      <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 10 }}>
-        Join opens here when the game starts.
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{
+          width: 8, height: 8, borderRadius: 999, background: 'var(--green)',
+          boxShadow: '0 0 0 4px #4DB26E2e', flexShrink: 0,
+        }} />
+        <SectionLabel>Game on now</SectionLabel>
+      </div>
+      <div style={{ fontSize: 13, color: '#9fc4ab', marginTop: 6 }}>
+        {game.location ?? 'AllSport HQ'}
       </div>
       {error && <div style={{ color: 'var(--red)', fontSize: 13, marginTop: 10 }}>{error}</div>}
+      <Link href={`/scoring/${game.id}`} style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 50,
+        marginTop: 14, borderRadius: 999, background: 'var(--green)', color: '#0a0a0a',
+        fontFamily: 'var(--font-label)', textTransform: 'uppercase',
+        letterSpacing: '0.1em', fontWeight: 700, fontSize: 16,
+      }}>
+        {isJudge ? 'Open the game →' : 'Join →'}
+      </Link>
     </div>
+  )
+}
+
+/** No game running: when the next one is, in one slim line. Nothing to tap. */
+function NextSessionLine({ nextSession, firstRun, error }: {
+  nextSession: ReturnType<typeof nextScheduledSession>
+  firstRun: boolean
+  error: string
+}) {
+  return (
+    <div style={{ margin: '16px 0 18px' }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
+        border: `1px solid ${firstRun ? '#2371BB55' : 'var(--border)'}`, borderRadius: 999,
+        fontSize: 13, color: 'var(--grey-light)',
+      }}>
+        <span aria-hidden style={{
+          width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
+          background: firstRun ? 'var(--blue)' : '#555',
+        }} />
+        <span style={{ minWidth: 0 }}>
+          {firstRun ? 'Your first game' : 'Next game'}{' '}
+          <b style={{ color: 'var(--white)', fontWeight: 600 }}>{nextSession.label}</b>
+        </span>
+        <span style={{ marginLeft: 'auto', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+          {nextSession.relative}
+        </span>
+      </div>
+      {error && <div style={{ color: 'var(--red)', fontSize: 13, marginTop: 8 }}>{error}</div>}
+    </div>
+  )
+}
+
+/** The three ways off HOME, all in one style. */
+function HomeLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <Link href={href} style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center',
+      minHeight: 46, padding: '0 6px', borderRadius: 999,
+      border: '1px solid var(--border-strong)', color: 'var(--white)',
+      fontFamily: 'var(--font-label)', textTransform: 'uppercase',
+      letterSpacing: '0.1em', fontWeight: 600, fontSize: 12,
+    }}>
+      {children}
+    </Link>
   )
 }
 

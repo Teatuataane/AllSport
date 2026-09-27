@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { bestScoreLabel, domainExtremesByColour, bestEventByColour, colourBlurb, topSlotRungs } from '@/lib/colourDisplay'
+import { bestScoreLabel, bestEventByColour, colourBlurb, topSlotRungs, STAT_FROM_RUNG } from '@/lib/colourDisplay'
 import { getEventByName } from '@/lib/eventData'
 import { GRADES } from '@/lib/grading'
 
@@ -18,21 +18,6 @@ describe('bestScoreLabel', () => {
   it('falls back to the rating, and to nothing', () => {
     expect(bestScoreLabel({ slug: slug('Wrestling'), rating: { rating: 1123.6, games: 11 } })).toBe('Rating 1124 · 11 games')
     expect(bestScoreLabel({ slug: slug('Deadlift') })).toBeNull()
-  })
-})
-
-describe('domainExtremesByColour', () => {
-  it('ranks by colour held, Top % only breaking a tie', () => {
-    const held = new Map([[1, 3], [2, 3], [3, 1]])
-    const pct = new Map<number, number | null>([[1, 40], [2, 10], [3, 1]])
-    const r = domainExtremesByColour(held, pct)!
-    expect(r.best).toMatchObject({ domainNumber: 2, rung: 3 })
-    // Domains with nothing held are the weakest, whatever their Top %.
-    expect(r.weakest.rung).toBe(0)
-  })
-
-  it('names nothing while no domain holds a colour', () => {
-    expect(domainExtremesByColour(new Map(), new Map())).toBeNull()
   })
 })
 
@@ -60,17 +45,21 @@ describe('bestScoreLabel prefers the label written at the time', () => {
 })
 
 describe('colourBlurb — what an overall colour means', () => {
-  it('reads the stat off the ladder: none below Whero, "N in 10", half, then Top %', () => {
-    expect(colourBlurb(0)).toEqual({ line: 'Everyone starts here', stat: null })
-    expect(colourBlurb(1).stat).toBeNull()
-    expect(colourBlurb(2)).toEqual({ line: 'Past the beginner stage', stat: 'Better than 1 in 10 people' })
-    expect(colourBlurb(6).stat).toBe('Better than half of people')
-    expect(colourBlurb(9).stat).toBe('Better than 8 in 10 people')
-    expect(colourBlurb(10).stat).toBe('Top 10%')
-    expect(colourBlurb(12)).toEqual({ line: 'One in a hundred', stat: 'Top 1%' })
+  it('counts the climb below Kahurangi, then reads the stat off the ladder', () => {
+    expect(colourBlurb(0)).toEqual({ line: 'Everyone starts here. Your climb begins with your first game.', sub: '12 colours to climb' })
+    expect(colourBlurb(1)).toEqual({ line: "You're on the ladder.", sub: '1 colour climbed' })
+    expect(colourBlurb(4)).toEqual({ line: 'Kōwhai earned. The work is showing.', sub: '4 colours climbed' })
+    expect(colourBlurb(5).sub).toBe('5 colours climbed')
+    expect(colourBlurb(6).sub).toBe('Better than half of people')
+    expect(colourBlurb(7).sub).toBe('Better than 6 in 10 people')
+    expect(colourBlurb(9).sub).toBe('Better than 8 in 10 people')
+    expect(colourBlurb(10).sub).toBe('Top 10%')
+    expect(colourBlurb(12)).toEqual({ line: 'Taniwha. The top of AllSport.', sub: 'Top 1%' })
   })
-  it('has a line for every rung', () => {
-    for (let r = 0; r <= 12; r++) expect(colourBlurb(r).line.length).toBeGreaterThan(0)
+  it('switches from the climb to the stat at Kahurangi', () => {
+    expect(STAT_FROM_RUNG).toBe(6)
+    expect(colourBlurb(STAT_FROM_RUNG - 1).sub).toMatch(/climbed$/)
+    expect(colourBlurb(STAT_FROM_RUNG).sub).not.toMatch(/climbed$/)
   })
 })
 
@@ -91,16 +80,12 @@ describe('topSlotRungs — edges', () => {
 })
 
 describe('colourBlurb — every rung', () => {
-  it('Kiwikiwi has a line and no stat; Uenuku reads Top 5%', () => {
-    expect(colourBlurb(1)).toEqual({ line: 'On the ladder', stat: null })
-    expect(colourBlurb(11)).toEqual({ line: 'Rare air', stat: 'Top 5%' })
-  })
-
-  it('has a line for every colour on the ladder, and a whole-number stat', () => {
+  it('has a headline naming the colour from Whero up, and a well-formed second line', () => {
     for (let r = 0; r <= GRADES.length; r++) {
       const b = colourBlurb(r)
       expect(b.line, `rung ${r}`).toBeTruthy()
-      if (b.stat) expect(b.stat).toMatch(/^(Top \d+%|Better than half of people|Better than [1-9] in 10 people)$/)
+      if (r >= 2) expect(b.line.startsWith(GRADES[r - 1].name), `rung ${r}`).toBe(true)
+      expect(b.sub).toMatch(/^(\d+ colours? (climbed|to climb)|Top \d+%|Better than half of people|Better than [1-9] in 10 people)$/)
     }
   })
 })
