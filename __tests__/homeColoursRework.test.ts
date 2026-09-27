@@ -7,7 +7,7 @@
 import { describe, it, expect } from 'vitest'
 import { overallRung, overallGrade, gradeInk, gradeForRung, MA, GRADES, type DomainGradeResult } from '@/lib/grading'
 import { eventGrade, type GradePlayer, type GradeResultRow } from '@/lib/playerGrades'
-import { bestScoreLabel, domainExtremesByColour, bestEventByColour } from '@/lib/colourDisplay'
+import { bestScoreLabel, bestEventByColour } from '@/lib/colourDisplay'
 import { colourStanding, rankByColours } from '@/lib/colourBoard'
 import { RAINBOW, RAINBOW_STOPS } from '@/lib/domainColours'
 import { getEventByName } from '@/lib/eventData'
@@ -141,19 +141,6 @@ describe('bestScoreLabel edge cases', () => {
   it('keeps formatPR\'s D-number when the row carries no tier name', () => {
     const label = bestScoreLabel({ slug: ev('Pushup Contest').slug, best: { raw_score: 30001, weight_kg: null, difficulty_tier: null } })
     expect(label).toMatch(/^D\d+ · /)
-  })
-})
-
-describe('domainExtremesByColour edge cases', () => {
-  it('an unrated domain loses a colour tie to a rated one', () => {
-    const r = domainExtremesByColour(new Map([[4, 2], [5, 2]]), new Map([[5, 50]]))!
-    expect(r.best.domainNumber).toBe(5)
-  })
-  it('the lowest domain number wins a full tie', () => {
-    const held = new Map(Array.from({ length: 10 }, (_, i) => [i + 1, 3]))
-    const r = domainExtremesByColour(held, new Map())!
-    expect(r.best.domainNumber).toBe(1)
-    expect(r.weakest.domainNumber).toBe(10)
   })
 })
 

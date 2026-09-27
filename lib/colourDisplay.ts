@@ -1,12 +1,12 @@
 // ─── How colours are SHOWN on HOME ───────────────────────────────────────────
-// The pure half of the YOUR COLOURS card and the colours radar (home colours
-// rework, 24 September 2026; docs/designs/home-colours-rework-spec.md). Pure so
-// the choices it makes — which domain is "best", what a score reads as — are
-// tested rather than eyeballed in a login-gated page.
+// The pure half of the YOUR COLOURS card on HOME (home colours rework, 24
+// September 2026; redesigned 28 September 2026). Pure so the choices it makes,
+// what a score reads as and what a colour says about you, are tested rather
+// than eyeballed in a login-gated page.
 
 import { getEventBySlug } from './eventData'
 import { formatPR } from './scoreFormat'
-import { DOMAIN_COUNT, gradeForRung, type DomainGradeResult } from './grading'
+import { gradeForRung, overallRung, TOP_RUNG, type DomainGradeResult } from './grading'
 import type { GradeState } from './loadGrades'
 import type { EventGrade } from './playerGrades'
 
@@ -31,27 +31,6 @@ export function bestScoreLabel(eg: Pick<EventGrade, 'slug' | 'best' | 'rating'>)
 }
 
 /**
- * Best and weakest domain by the colour HELD, with Top % (lower = stronger)
- * breaking a tie behind the scenes. Null when no domain holds a colour, so the
- * page says how to start rather than naming a "best" Mā.
- */
-export function domainExtremesByColour(
-  held: ReadonlyMap<number, number>,
-  topPct: ReadonlyMap<number, number | null>,
-): { best: { domainNumber: number; rung: number }; weakest: { domainNumber: number; rung: number } } | null {
-  const rows = Array.from({ length: DOMAIN_COUNT }, (_, i) => ({
-    domainNumber: i + 1,
-    rung: held.get(i + 1) ?? 0,
-    pct: topPct.get(i + 1) ?? null,
-  }))
-  if (!rows.some(r => r.rung > 0)) return null
-  // Unrated counts as the weakest standing within a colour.
-  const pct = (r: { pct: number | null }) => r.pct ?? 101
-  const sorted = [...rows].sort((a, b) => b.rung - a.rung || pct(a) - pct(b) || a.domainNumber - b.domainNumber)
-  return { best: sorted[0], weakest: sorted[sorted.length - 1] }
-}
-
-/**
  * The event holding the highest colour, Top % breaking a tie. Null when no
  * event has reached Kiwikiwi.
  */
@@ -71,7 +50,7 @@ export function bestEventByColour(
 
 /**
  * The colour SHOWN for each domain: conferred colours once grading is live,
- * the computed ones before. One rule for the YOUR COLOURS list and the radar,
+ * the computed ones before. One rule for the YOUR COLOURS list and the avatar ring,
  * so the two can never disagree.
  */
 export function shownDomainRungs(state: Pick<GradeState, 'grades' | 'held' | 'schemaReady'>): Map<number, number> {
@@ -82,46 +61,63 @@ export function shownDomainRungs(state: Pick<GradeState, 'grades' | 'held' | 'sc
 }
 
 /**
- * What an overall colour MEANS: a punchy line and, from Whero up, how it
- * compares with the general population. Lines settled with Tāne 2026-09-27.
- *
- * The stat is read off `populationTarget`, never typed, so a re-calibrated
- * ladder cannot leave the line saying something the standards no longer do.
- * It is exact for a domain colour and approximate for the overall (an average
- * of ten); Tāne accepted that rather than hedging every line with "about".
+ * The overall colour SHOWN on HOME: the average of the shown domain colours,
+ * capped by games. The colours card and the avatar ring both read it, so the
+ * two can never disagree.
  */
-const COLOUR_LINES = [
-  'Everyone starts here',
-  'On the ladder',
-  'Past the beginner stage',
-  'Finding your feet',
-  'Building a real base',
-  'Nearly average across the board',
-  'Better than average',
-  'Above average everywhere',
-  'Genuinely athletic',
-  'Seriously well rounded',
-  'Elite all-rounder',
-  'Rare air',
-  'One in a hundred',
+export function shownOverallRung(state: Pick<GradeState, 'grades' | 'held' | 'schemaReady' | 'games'>): number {
+  return overallRung([...shownDomainRungs(state).values()], state.games)
+}
+
+/**
+ * What an overall colour MEANS: a proud headline, then a second line.
+ * Headlines settled with Tāne 2026-09-28.
+ *
+ * Below Kahurangi the second line counts the climb, because "better than 1 in
+ * 10 people" reads as a small number rather than a win. From Kahurangi up the
+ * population stat is worth saying. It is read off `populationTarget`, never
+ * typed, so a re-calibrated ladder cannot leave it saying something the
+ * standards no longer do. It is approximate for the overall (an average of
+ * ten); Tāne accepted that rather than hedging every line with "about".
+ */
+const COLOUR_HEADLINES = [
+  'Everyone starts here. Your climb begins with your first game.',
+  "You're on the ladder.",
+  "Whero earned. You've made your start.",
+  'Karaka earned. The habit is forming.',
+  'Kōwhai earned. The work is showing.',
+  'Kākāriki earned. Strong all round.',
+  'Kahurangi. Better than most at most things.',
+  'Poroporo. Few people get this far.',
+  'Parahi. A genuine all-round athlete.',
+  'Hiriwa. Elite across the board.',
+  'Kōura. The gold standard.',
+  'Uenuku. The full spectrum.',
+  'Taniwha. The top of AllSport.',
 ] as const
 
-export function colourBlurb(rung: number): { line: string; stat: string | null } {
+/** The first colour whose second line is the population stat, not the climb. */
+export const STAT_FROM_RUNG = 6
+
+export function colourBlurb(rung: number): { line: string; sub: string } {
   const g = gradeForRung(rung)
-  const line = COLOUR_LINES[g.rung]
+  const line = COLOUR_HEADLINES[g.rung]
+  if (g.rung === 0) return { line, sub: `${TOP_RUNG} colours to climb` }
   const t = g.populationTarget
-  if (t == null) return { line, stat: null }
-  if (t <= 10) return { line, stat: `Top ${t}%` }
-  if (t === 50) return { line, stat: 'Better than half of people' }
+  if (g.rung < STAT_FROM_RUNG || t == null) {
+    return { line, sub: `${g.rung} ${g.rung === 1 ? 'colour' : 'colours'} climbed` }
+  }
+  if (t <= 10) return { line, sub: `Top ${t}%` }
+  if (t === 50) return { line, sub: 'Better than half of people' }
   const beaten = (100 - t) / 10
-  if (!Number.isInteger(beaten)) return { line, stat: `Better than ${100 - t}% of people` }
-  return { line, stat: `Better than ${beaten} in 10 people` }
+  if (!Number.isInteger(beaten)) return { line, sub: `Better than ${100 - t}% of people` }
+  return { line, sub: `Better than ${beaten} in 10 people` }
 }
 
 /**
  * The colours of the events a domain's colour averages: best first, padded
  * with Mā up to the domain's slots. Read from `counted`, which the engine
- * built, so the squares on a row are exactly what its colour is the average of.
+ * built, so the circles on a row are exactly what its colour is the average of.
  */
 export function topSlotRungs(
   d: Pick<DomainGradeResult, 'slots' | 'counted'>,

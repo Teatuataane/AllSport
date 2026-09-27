@@ -2,6 +2,7 @@
 
 ## ✅ Done
 
+- **HOME player first, circle ladder, plain domain rows** (v0.21.2.0, 2026-09-28). Designed with Tāne from a demo. Name, division and one stats line open the page; the avatar is ringed in the overall colour; the next session is one slim line; the ladder is circles under the colour name; each colour has a headline, with the climb below Kahurangi and the population stat from Kahurangi up; domain rows are unpainted with a colour circle by the name; the radar and stat tiles are gone; one row of three links. No migration. **Not yet seen with a real login**: the visual check ran on a throwaway page with sample data.
 - **Best-six domain colours, games cap the overall, units retired from grading** (v0.21.0.0, 2026-09-26). Settled with Tāne against real production data. A domain colour is the average of the best six events (unplayed = Mā); the overall is the average of ten, capped by lifetime official games (`GAMES_REQUIRED`, counted by `lib/gameCounts.ts`, paged past the 1000-row cap); units no longer gate any colour and a domain can jump several colours in one run. `GRADING_RULES_VERSION` forces one full recheck per player. No migration. Run `scripts/refresh-leaderboard-scores.ts` after deploy to move every leaderboard best/worst domain at once.
 - **Game screen by domain, + to add events, buttons coloured by grade** (v0.19.0.0, 2026-09-26). Designed in a `/grill-me`. Ten plain domain titles in a fixed order (no Still to play / Scored split); a + on each official event opens that domain's events as a multi-select sheet; added events sit under it with a ✕ until scored; "Swap this event" and "+ Add an event" removed. A scored button takes the colour `eventGrade` gives today's rows (`lib/scoreColour.ts`, fed by `lib/useGradeProfile.ts`). The kaiwhakawā tab keeps its existing add capability via the same +. No migration. **Not yet seen on a live game with a real login** — the visual check ran on a throwaway page with sample data. Check a colour against HOME at the next session.
 - **HOME and COLOURS rework** (v0.18.0.0, 2026-09-25). Designed in a `/grill-me` (nine decisions, `docs/designs/home-colours-rework-spec.md`, gitignored). The overall colour is the AVERAGE of the ten domains, rounded down (was the lowest); HOME carries YOUR COLOURS in full (expandable domains with Event · Your best · Colour); the radar shows held colours on twelve rings; `/grades` is a public guide; the join block is one JOIN button with no code box (the QR `?code=` still joins). No migration.
@@ -428,6 +429,10 @@ from `main` and this is a review branch.
 ---
 
 ## P3 — Later
+
+### HOME still loads the whole club's stats to show two numbers
+**What:** `stats_bundle` (every result, event, session and player) and `computePercentiles` still run on HOME, now only for games won and a hidden tie-break when two events share the top colour. Take games won from the player's own rows (a `games_won` count in `player_dashboard`) and break the tie on event order, then drop the bundle from HOME.
+**Noticed:** v0.21.2.0 performance review
 
 ### Throttle forced rechecks
 **What:** any signed-in user can POST `force: true` in a loop; each call skips the cheap probe and does about ten queries. Ignore `force` when that player was checked in the last 30 seconds. Decided 2026-09-22 to log rather than build.

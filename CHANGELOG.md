@@ -2,6 +2,27 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.21.2.0] - 2026-09-28
+
+### Changed
+- **HOME opens on you.** Your name and division come first, with one line of numbers under them (games, events won, games won, PRs). Your avatar is ringed in your overall colour, so it works as your badge.
+- **The next session is one slim line** when no game is running. When a game is on, the green JOIN card still sits at the very top.
+- **The colour ladder is now circles on a track, under your colour's name.** Colours you have reached are solid. The ones ahead are rings in their own colour, so you can see what is coming instead of faded grey squares.
+- **Every colour has its own headline**, from "You're on the ladder." to "Taniwha. The top of AllSport." Below Kahurangi the line under it counts your climb ("4 colours climbed"). From Kahurangi up it says how you compare ("Better than half of people", "Top 1%").
+- **Domain rows are no longer painted.** Each shows its icon, six small circles for your best six events, and a colour circle next to the colour's name.
+- **"Needs bodyweight" shows on the domain row** whenever a lift there was scored with no bodyweight for that day. It no longer disappears once the domain has a colour.
+- **One row of links at the bottom**, all alike: Log a workout, My events, Play history.
+
+### Removed
+- The colours radar and the four stat tiles. The radar repeated the domain list, and the tiles are now the line under your name. Best event stays as one line in the colours card.
+- The separate bodyweight note, the "Provisional" notice and the Colours guide button on HOME. The guide is still the COLOURS tab.
+
+### Fixed
+- Switching family members never shows the previous player's colour for a moment.
+- The numbers under your name still show if one of the loads behind them fails.
+- The colours card no longer sits on "Loading…" forever if loading fails.
+- A lift you are exempt from no longer asks for a bodyweight.
+
 ## [0.21.1.1] - 2026-09-27
 
 ### Fixed

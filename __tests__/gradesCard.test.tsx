@@ -5,9 +5,10 @@
 // colour detail lives, and it is behind a login. These pin what it says:
 //   1. The overall colour is the AVERAGE of the ten (Mā when nothing is held).
 //   2. A domain row expands to Event · Your best · Colour.
-//   3. The overall says what its colour means, and when the games cap is
-//      holding it back. Domain rows carry almost no text (2026-09-27).
-//   4. The provisional note and the bodyweight prompt appear only when due.
+//   3. The overall carries a proud headline and a second line, and says when
+//      the games cap is holding it back. Domain rows carry almost no text.
+//   4. No provisional note and no separate bodyweight prompt: grading is live,
+//      and a blocked lift says so on its own row (redesign, 2026-09-28).
 // And that /grades is a plain server component carrying the whole ladder.
 
 import { describe, it, expect, afterEach } from 'vitest'
@@ -16,7 +17,7 @@ import GradesCard from '@/components/GradesCard'
 import ColoursGuide from '@/app/grades/page'
 import { computePlayerGrades, colourGates, type GradePlayer, type GradeResultRow } from '@/lib/playerGrades'
 import { GRADES, gradeForRung } from '@/lib/grading'
-import { topSlotRungs } from '@/lib/colourDisplay'
+import { topSlotRungs, colourBlurb } from '@/lib/colourDisplay'
 import { getEventByName } from '@/lib/eventData'
 import type { GradeState } from '@/lib/loadGrades'
 
@@ -53,7 +54,8 @@ describe('GradesCard', () => {
   it('shows Mā overall, what it means, and the ladder marked at colour 1 of 13', () => {
     render(<GradesCard state={state()} />)
     expect(screen.getByText('MĀ')).toBeTruthy()
-    expect(screen.getByText('Everyone starts here')).toBeTruthy()
+    expect(screen.getByText(colourBlurb(0).line)).toBeTruthy()
+    expect(screen.getByText('12 colours to climb')).toBeTruthy()
     expect(screen.getByRole('img', { name: 'Colour 1 of 13: Mā' })).toBeTruthy()
     // The old title and explainer are gone.
     expect(screen.queryByText(/Your colours/i)).toBeNull()
@@ -65,8 +67,8 @@ describe('GradesCard', () => {
     const held = new Map(Array.from({ length: 10 }, (_, i) => [i + 1, i < 5 ? 6 : 3]))
     render(<GradesCard state={state({ held, games: 100 })} />)
     expect(screen.getByText(GRADES[3].name.toUpperCase())).toBeTruthy()
-    expect(screen.getByText('Building a real base')).toBeTruthy()
-    expect(screen.getByText('Better than 3 in 10 people')).toBeTruthy()
+    expect(screen.getByText('Kōwhai earned. The work is showing.')).toBeTruthy()
+    expect(screen.getByText('4 colours climbed')).toBeTruthy()
     expect(screen.queryByText(/unlocks at/)).toBeNull()
   })
 
@@ -103,10 +105,10 @@ describe('GradesCard', () => {
     expect(screen.queryByText('Your best')).toBeNull()
   })
 
-  it('says it is provisional before grading is live', () => {
+  it('never says it is provisional, even on a database without grading', () => {
     const results = [row('Pushup Contest', 30001, { difficulty_tier: '1 Arm Pushup' })]
     render(<GradesCard state={state({ results, schemaReady: false })} />)
-    expect(screen.getByText(/Provisional: worked out from your scores/)).toBeTruthy()
+    expect(screen.queryByText(/Provisional/)).toBeNull()
   })
 
   it('shows the COMPUTED colours before grading is live, and the conferred ones after', () => {
@@ -134,100 +136,132 @@ describe('GradesCard', () => {
     expect(screen.getByRole('button', { name: `${domainName}, Whero` })).toBeTruthy()
   })
 
-  it('asks for a bodyweight only when askBand is set and none is declared', () => {
-    const { unmount } = render(<GradesCard state={state({ hasBand: false })} askBand />)
-    expect(screen.getByText(/Lifts need your bodyweight/)).toBeTruthy()
-    unmount()
-    const r2 = render(<GradesCard state={state({ hasBand: true })} askBand />)
-    expect(within(r2.container).queryByText(/need your bodyweight/)).toBeNull()
-    r2.unmount()
+  it('has no separate bodyweight note, and no links of its own', () => {
     render(<GradesCard state={state({ hasBand: false })} />)
     expect(screen.queryByText(/need your bodyweight/)).toBeNull()
+    expect(screen.queryByText(/Colours guide|Log a workout/)).toBeNull()
+  })
+
+  it('names the best event with its colour when given one', () => {
+    const slug = getEventByName('Pushup Contest')!.slug
+    render(<GradesCard state={state()} bestEvent={{ slug, rung: 6 }} />)
+    expect(screen.getByText('Pushup Contest')).toBeTruthy()
+    expect(screen.getByText(/Best event/)).toBeTruthy()
   })
 })
 
 describe('GradesCard — the ladder and the domain rows', () => {
-  /** The thirteen ladder swatches, Mā first. */
-  const ladderSwatches = () => {
+  /** The thirteen ladder circles, Mā first. */
+  const ladderCircles = () => {
     const ladder = screen.getByRole('img', { name: /^Colour \d+ of 13/ })
-    return Array.from(ladder.firstElementChild!.children).map(c => ({
-      wrap: c as HTMLElement, swatch: c.firstElementChild as HTMLElement,
-    }))
+    return Array.from(ladder.querySelectorAll<HTMLElement>('[data-rung]'))
+      .map(c => c.querySelector<HTMLElement>('[data-colour]')!)
   }
 
-  it('marks the current colour raised, reached colours solid and the rest dimmed', () => {
+  it('marks the current colour big, reached colours solid and the rest as rings', () => {
     const held = new Map(Array.from({ length: 10 }, (_, i) => [i + 1, 3]))
     render(<GradesCard state={state({ held, games: 100 })} />)
     expect(screen.getByRole('img', { name: `Colour 4 of 13: ${GRADES[2].name}` })).toBeTruthy()
-    const sw = ladderSwatches()
-    expect(sw.length).toBe(13)
-    expect(sw[3].swatch.style.height).toBe('16px')
-    expect(sw[2].swatch.style.height).toBe('10px')
-    expect(sw[0].wrap.style.opacity).toBe('1')
-    expect(sw[3].wrap.style.opacity).toBe('1')
-    expect(sw[4].wrap.style.opacity).toBe('0.25')
+    const c = ladderCircles()
+    expect(c.length).toBe(13)
+    expect(c[3].style.width).toBe('18px')
+    expect(c[2].style.width).toBe('12px')
+    expect(c[0].dataset.colour).toBe('reached')
+    expect(c[2].dataset.colour).toBe('reached')
+    expect(c[4].dataset.colour).toBe('ahead')
+    // A colour ahead is a ring in its OWN colour, not a dimmed grey.
+    expect(c[4].style.border).toMatch(/2px solid (#F9E051|rgb\(249, 224, 81\))/i)
     // Mā is a solid white rung on the ladder, never the empty outline.
-    expect(sw[0].swatch.style.background).not.toBe('transparent')
-    expect(sw[0].swatch.style.border).not.toMatch(/#444|68, 68, 68/)
-    // Exactly one marker, under the current colour.
-    expect(screen.getAllByText('▲').length).toBe(1)
+    expect(c[0].style.background).not.toBe('transparent')
+    // Every circle is round.
+    expect(c.every(x => x.style.borderRadius === '50%')).toBe(true)
   })
 
   it('draws Uenuku as the rainbow and Taniwha black with a white rim', () => {
     const held = new Map(Array.from({ length: 10 }, (_, i) => [i + 1, 12]))
     render(<GradesCard state={state({ held, games: 100 })} />)
     expect(screen.getByRole('img', { name: 'Colour 13 of 13: Taniwha' })).toBeTruthy()
-    expect(screen.getByText('One in a hundred')).toBeTruthy()
+    expect(screen.getByText('Taniwha. The top of AllSport.')).toBeTruthy()
     expect(screen.getByText('Top 1%')).toBeTruthy()
-    const sw = ladderSwatches()
-    expect(sw[11].swatch.style.background).toContain('linear-gradient')
-    expect(sw[12].swatch.style.border).toMatch(/solid (#fff|rgb\(255, 255, 255\))/)
-    expect(sw.every(s => s.wrap.style.opacity === '1')).toBe(true)
+    const c = ladderCircles()
+    expect(c[11].style.background).toContain('conic-gradient')
+    expect(c[12].style.border).toMatch(/solid (#fff|rgb\(255, 255, 255\))/)
+    expect(c.every(x => x.dataset.colour === 'reached')).toBe(true)
   })
 
-  it('paints a row holding a colour and leaves a Mā row unpainted', () => {
+  it('never paints a row, and puts a colour circle beside the colour name', () => {
     render(<GradesCard state={state({ held: new Map([[pushupDomain, 2]]) })} />)
-    const painted = screen.getByRole('button', { name: `${domainName}, Whero` }).parentElement!
-    expect(painted.style.border).toMatch(/solid (#EA4742|rgb\(234, 71, 66\))/i)
-    const other = screen.getAllByRole('button').find(b => b.getAttribute('aria-label')?.endsWith(', Mā'))!
-    expect(other.parentElement!.style.border).toContain('var(--border)')
+    const btn = screen.getByRole('button', { name: `${domainName}, Whero` })
+    expect(btn.parentElement!.style.border).toBe('')
+    expect(btn.parentElement!.style.background).toBe('')
+    const name = within(btn).getByText('Whero')
+    const dot = name.querySelector<HTMLElement>('[data-colour="reached"]')!
+    expect(dot.style.background).toBe('rgb(234, 71, 66)')
+    const ma = screen.getAllByRole('button').find(b => b.getAttribute('aria-label')?.endsWith(', Mā'))!
+    expect(within(ma).getByText('Mā').querySelector('[data-colour="empty"]')).toBeTruthy()
   })
 
-  it('shows six squares per row, filled best first from the counted events', () => {
+  it('shows six circles per row, filled best first from the counted events', () => {
     const results = [row('Pushup Contest', 30001, { difficulty_tier: '1 Arm Pushup' })]
     const st = state({ results })
     const d = st.grades.domains.find(x => x.domainNumber === pushupDomain)!
     render(<GradesCard state={st} />)
     const btn = screen.getByRole('button', { name: new RegExp(`^${domainName},`) })
-    const squares = btn.querySelector('[aria-hidden="true"]')!.children
-    expect(squares.length).toBe(d.slots)
-    const filled = Array.from(squares).filter(s => (s as HTMLElement).style.background !== 'transparent')
+    const circles = btn.querySelector('[aria-hidden="true"]')!.children
+    expect(circles.length).toBe(d.slots)
+    const filled = Array.from(circles).filter(s => (s as HTMLElement).style.background !== 'transparent')
     expect(filled.length).toBe(d.counted.length)
-    // Each square is the colour of its slot, best first.
+    // Each circle is the colour of its slot, best first.
     const rgb = (hex: string) => `rgb(${[1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`
     topSlotRungs(d, st.grades.events).forEach((r, i) => {
-      const bg = (squares[i] as HTMLElement).style.background
+      const bg = (circles[i] as HTMLElement).style.background
       if (r === 0) expect(bg).toBe('transparent')
       else expect(bg).toBe(rgb(gradeForRung(r).hex))
     })
   })
 
-  it('says "Needs bodyweight" instead of squares when a lift is blocked', () => {
+  it('says "Needs bodyweight" on the row, beside its circles, when a lift is blocked', () => {
     const st = state()
     st.grades.domains[0].blockedByBodyweight = true
     render(<GradesCard state={st} />)
     const btn = screen.getByRole('button', { name: /^Maximal Strength,/ })
     expect(within(btn).getByText('Needs bodyweight')).toBeTruthy()
     expect(btn.getAttribute('aria-label')).toMatch(/, needs bodyweight$/)
-    expect(btn.querySelector('[aria-hidden="true"] > span')).toBeNull()
+    expect(btn.querySelector('[aria-hidden="true"] > span')).toBeTruthy()
   })
 
-  it('shows squares, not the bodyweight notice, on a row that already holds a colour', () => {
+  it('keeps the bodyweight notice on a row that already holds a colour', () => {
     const st = state({ held: new Map([[1, 2]]) })
     st.grades.domains[0].blockedByBodyweight = true
     render(<GradesCard state={st} />)
-    const btn = screen.getByRole('button', { name: 'Maximal Strength, Whero' })
-    expect(within(btn).queryByText('Needs bodyweight')).toBeNull()
+    const btn = screen.getByRole('button', { name: 'Maximal Strength, Whero, needs bodyweight' })
+    expect(within(btn).getByText('Needs bodyweight')).toBeTruthy()
+  })
+
+  it('says "Needs bodyweight" when one lift is blocked even though the domain grades', () => {
+    // One non-ratio event (Pause Dips) graded, so the domain is off Mā and
+    // blockedByBodyweight is false; a lift scored with no weight still counts.
+    const st = state()
+    const dl = getEventByName('Deadlift')!.slug
+    st.grades.events.get(dl)!.bodyweightBlocked = true
+    expect(st.grades.domains[0].blockedByBodyweight).toBeFalsy()
+    render(<GradesCard state={st} />)
+    const btn = screen.getByRole('button', { name: /^Maximal Strength,/ })
+    expect(within(btn).getByText('Needs bodyweight')).toBeTruthy()
+  })
+
+  it('ignores a blocked lift the player is exempt from', () => {
+    const st = state()
+    const dl = getEventByName('Deadlift')!.slug
+    st.grades.events.get(dl)!.bodyweightBlocked = true
+    st.exemptions = new Set([dl])
+    render(<GradesCard state={st} />)
+    expect(screen.queryByText('Needs bodyweight')).toBeNull()
+  })
+
+  it('shows no bodyweight notice on a domain with no blocked lift', () => {
+    render(<GradesCard state={state()} />)
+    expect(screen.queryByText('Needs bodyweight')).toBeNull()
   })
 
   it('says "Nothing to grade" on a domain with no gradeable event', () => {
@@ -238,7 +272,7 @@ describe('GradesCard — the ladder and the domain rows', () => {
     expect(within(btn).getByText('Nothing to grade')).toBeTruthy()
   })
 
-  it('draws no squares for a domain with nothing gradeable', () => {
+  it('draws no circles for a domain with nothing gradeable', () => {
     const st = state()
     st.grades.domains[1].slots = 0
     st.grades.domains[1].counted = []
@@ -254,6 +288,38 @@ describe('GradesCard — the ladder and the domain rows', () => {
     const masks = Array.from(container.querySelectorAll<HTMLElement>('[style*="mask-image"]'))
     expect(masks.length).toBe(10)
     for (const m of masks) expect(m.style.background).toBe('rgb(187, 187, 187)')
+  })
+})
+
+describe('GradesCard — the ladder track and the colours ahead', () => {
+  const ladder = () => screen.getByRole('img', { name: /^Colour \d+ of 13/ })
+  const circle = (rung: number) =>
+    ladder().querySelector<HTMLElement>(`[data-rung="${rung}"] [data-colour]`)!
+
+  it('draws no filled track on Mā, and one on any colour above it', () => {
+    render(<GradesCard state={state()} />)
+    expect(ladder().querySelector('[data-ladder-fill]')).toBeNull()
+    cleanup()
+    const held = new Map(Array.from({ length: 10 }, (_, i) => [i + 1, 3]))
+    render(<GradesCard state={state({ held, games: 100 })} />)
+    expect(ladder().querySelector('[data-ladder-fill]')).toBeTruthy()
+  })
+
+  it('keeps Uenuku and Taniwha readable while they are still ahead', () => {
+    const held = new Map(Array.from({ length: 10 }, (_, i) => [i + 1, 3]))
+    render(<GradesCard state={state({ held, games: 100 })} />)
+    expect(circle(11).dataset.colour).toBe('ahead')
+    expect(circle(11).style.background).toContain('conic-gradient')
+    expect(circle(12).dataset.colour).toBe('ahead')
+    expect(circle(12).style.border).toMatch(/dashed/)
+  })
+
+  it('names no best event when there is none, or its slug is not on the roster', () => {
+    render(<GradesCard state={state()} bestEvent={null} />)
+    expect(screen.queryByText(/Best event/)).toBeNull()
+    cleanup()
+    render(<GradesCard state={state()} bestEvent={{ slug: 'no-such-event', rung: 4 }} />)
+    expect(screen.queryByText(/Best event/)).toBeNull()
   })
 })
 
