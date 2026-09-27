@@ -3,7 +3,6 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { colourGate, domainGrade, TOP_RUNG } from '@/lib/grading'
 import { eventsBehind, type PlayerGrades } from '@/lib/playerGrades'
-import { nextDomainColour } from '@/lib/colourDisplay'
 import { EVENTS } from '@/lib/eventData'
 
 // Gaps the best-six / games-cap change left untested (26 September 2026).
@@ -29,41 +28,6 @@ describe('eventsBehind', () => {
     const grades = { domains: [], events: new Map() } as unknown as PlayerGrades
     expect(eventsBehind(grades, 3)).toEqual([])
   })
-})
-
-describe('nextDomainColour agrees with domainGrade', () => {
-  // HOME reads steps from nextDomainColour; the engine reports toNext. With
-  // nothing held they must say the same thing, including when fewer than six
-  // events are available and the average is not a whole number.
-  const slugs = (n: number) => Array.from({ length: n }, (_, i) => `e${i + 1}`)
-  const cases: [number, number[]][] = [
-    [12, [10, 9, 6, 3]],
-    [12, [1]],
-    [12, []],
-    [4, [7, 5, 2]],
-    [5, [12, 12, 11, 12, 12]],
-    [3, [2, 2, 1]],
-  ]
-  for (const [available, rungs] of cases) {
-    it(`${available} available, rungs ${JSON.stringify(rungs)}`, () => {
-      const eventSlugs = slugs(available)
-      const d = domainGrade({
-        domainNumber: 1,
-        eventSlugs,
-        rungByEvent: new Map(rungs.map((r, i) => [eventSlugs[i], r])),
-      })
-      const n = nextDomainColour(d, 0)
-      if (d.nextRung === null) {
-        expect(n).toBeNull()
-      } else {
-        expect(n).not.toBeNull()
-        expect(n!.next).toBe(d.nextRung)
-        expect(n!.steps).toBe(d.toNext)
-        expect(n!.progress).toBeGreaterThanOrEqual(0)
-        expect(n!.progress).toBeLessThan(1)
-      }
-    })
-  }
 })
 
 describe('training units are gone from grading copy', () => {
@@ -110,14 +74,5 @@ describe('switching to best-six demotes nobody on a full domain', () => {
         expect(now, rungs.join(',')).toBeGreaterThanOrEqual(oldRule(rungs))
       }
     }
-  })
-})
-
-describe('nextDomainColour when the colour held is above the scores', () => {
-  it('aims above the held colour with fewer than six slots and a fractional average', () => {
-    // Held Kahurangi (6); 17 over five slots is 3.4. Poroporo needs 35.
-    expect(nextDomainColour({ slots: 5, average: 17 / 5 }, 6)).toEqual({ next: 7, steps: 18, progress: 0 })
-    // Held Karaka (3); 11 over four is 2.75. Kōwhai needs 16.
-    expect(nextDomainColour({ slots: 4, average: 11 / 4 }, 3)).toEqual({ next: 4, steps: 5, progress: 0 })
   })
 })
