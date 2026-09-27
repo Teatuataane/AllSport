@@ -2334,6 +2334,9 @@ production data (3 regulars at 5–11 events per domain; everyone else 1–3). *
 - **HOME** shows each domain as "Next Karaka: 3 steps to go · 4 of 6 events hold a colour"
   (a step = one event up one colour; `nextDomainColour` in `lib/colourDisplay.ts`), and says
   when the games cap is binding. `/grades` computes its worked examples with the engine.
+  **SUPERSEDED 28 Sept 2026 (v0.21.2.0):** a domain row now shows six small circles for the
+  best six events and a colour circle by the colour name; `nextDomainColour` is gone. See
+  "HOME player first" below.
 
 **Measured against production 2026-09-26 (read-only, `supabase db query --linked`):**
 Coach Tāne Kākāriki overall (41 games), RGFell Kōwhai (26), Zebe Whero (25), Salvador
@@ -2388,6 +2391,8 @@ Settled in a `/grill-me` with Tāne on 2026-09-24; nine decisions in
 - **`gradeInk` lives in `lib/grading.ts`, not the component**: a server page cannot
   call a function exported from a `'use client'` file (Next throws at runtime), and
   the guide needs it.
+- **SUPERSEDED 28 Sept 2026 (v0.21.2.0): the radar and `domainExtremesByColour` are
+  deleted.** The best event line survives inside the colours card. History follows.
 - **The radar shows colours, not Top %.** Twelve tinted rings, Mā at the centre,
   Taniwha the edge; each spoke reaches the colour HELD and is drawn in it. Best /
   Weakest domain and the best-event line show colours; Top % only breaks ties,
@@ -2396,6 +2401,47 @@ Settled in a `/grill-me` with Tāne on 2026-09-24; nine decisions in
 - **The join block has no code box.** A running game gets one JOIN button; otherwise
   it shows the next session and "Join opens here when the game starts". The QR
   link's `?code=` still joins silently.
+
+## HOME player first (September 2026), v0.21.2.0
+
+Designed with Tāne from a demo on 2026-09-28. No migration. Supersedes the radar,
+the stat tiles and the painted domain rows of v0.18.0.0 and v0.21.1.0.
+
+- **The page opens on the player.** Name and division first, then one line of
+  numbers (games · events won · games won · PRs). The avatar is ringed in the
+  overall colour (`ColourAvatar` in `components/HomeParts.tsx`): Uenuku a rainbow
+  ring (`RAINBOW_CONIC` in `lib/domainColours.ts`), Taniwha black with a white
+  ring, Mā grey. Each number shows on its own, so one failed load reads "—" rather
+  than hiding the line.
+- **Order:** a running game's JOIN card (`GameOnCard`) at the very top; otherwise
+  one slim next session line (`NextSessionLine`); then YOUR COLOURS; then ONE row
+  of three identical links (`HomeLink`): Log a workout, My events, Play history.
+  The Colours guide button is gone from HOME; the guide is the COLOURS tab.
+- **`components/HomeParts.tsx` exists so these can be tested.** The dashboard page
+  calls Supabase at module scope and sits behind a login; the parts take props
+  only, and `__tests__/homeParts.test.tsx` pins them.
+- **The ladder is circles on a track, under the colour's name.** Reached colours
+  are solid; the ones ahead are rings in their own colour. `gradeAccent` in
+  `lib/grading.ts` gives one solid colour per grade for a ring (Uenuku pink,
+  Taniwha white, since black vanishes on the dark theme).
+- **Every colour has a headline** (`colourBlurb` in `lib/colourDisplay.ts`,
+  wording settled with Tāne). Below Kahurangi the second line counts the climb
+  ("4 colours climbed"); from `STAT_FROM_RUNG` (Kahurangi) up it states the
+  population target, read off `populationTarget`, never typed. It is approximate
+  for the overall, an average of ten, and Tāne accepted that.
+- **`shownOverallRung` is the one overall for HOME.** The avatar ring and the
+  colours card both read it, so they cannot disagree.
+- **Domain rows are unpainted:** icon, six small circles for the best six events
+  (`topSlotRungs`, read from the engine's `counted`), and a colour circle by the
+  colour name. "Needs bodyweight" now shows whenever a lift there was scored with
+  no bodyweight for the day, even once the domain holds a colour, and never for an
+  event the player is exempt from.
+- **Removed:** `components/DomainRadar.tsx`, `domainExtremesByColour`, the four
+  stat tiles, the separate bodyweight note and the "Provisional" notice.
+- **Still loads more than it shows** (TODOS.md P3): `stats_bundle` and
+  `computePercentiles` now run only for games won and a hidden tie break.
+- **Not yet seen with a real login.** The visual check ran on a throwaway page
+  with sample data.
 
 ## Game screen by domain, + to add, colour by grade (September 2026) — v0.19.0.0
 
@@ -2674,7 +2720,7 @@ update players set role = 'judge' where id = '[uuid]';
 | Play | /play | Complete | Login/register landing, Google OAuth |
 | Register | /register | Complete | 3-step form, division, display prefs, junior parent fields |
 | Login | /login | Complete | Email + Google OAuth |
-| Dashboard | /dashboard | Complete | **Stats page** (v0.6.2.0): identity + seasonal division rank, the taniwha card (pieces assembling, three point figures, and how many games the next piece costs), four numbers (Games · Events Won · Games Won · PRs), and a ten-spoke radar. **Since the HOME and COLOURS rework (Sept 2026):** a JOIN button to the running game (no code box), the full YOUR COLOURS section (overall colour, expandable domains with Event · Your best · Colour), and a colours radar with Best/Weakest domain by colour. **A player with zero games gets `FirstRunPanel` instead of the numbers and the radar.** The bento grid is gone — judge/koha/profile/PRs are nav destinations, play history and the taniwha picker live behind the card |
+| Dashboard | /dashboard | Complete | **Stats page** (v0.6.2.0): identity + seasonal division rank, the taniwha card (pieces assembling, three point figures, and how many games the next piece costs), four numbers (Games · Events Won · Games Won · PRs), and a ten-spoke radar. **Since the HOME and COLOURS rework (Sept 2026):** a JOIN button to the running game (no code box), the full YOUR COLOURS section (overall colour, expandable domains with Event · Your best · Colour), and a colours radar with Best/Weakest domain by colour. **Since v0.21.2.0 (28 Sept 2026):** name, division and one stats line open the page, the avatar ringed in the overall colour; the JOIN card or one slim next session line; YOUR COLOURS with the ladder as circles and a headline per colour; one row of three links. The radar and stat tiles are gone. **A player with zero games gets `FirstRunPanel` instead of the stats line.** The bento grid is gone — judge/koha/profile/PRs are nav destinations, play history and the taniwha picker live behind the card |
 | Colours guide | /grades | Complete | Public explainer, "Mā to Taniwha" (Sept 2026): best six per domain, the overall as the average of ten capped by games, worked examples computed by the engine. No personal data: a player's colours live on HOME |
 | My Taniwha | /taniwha | Complete | All twelve. Four counts (Taniwha · Pieces · Crowns · Points), then each taniwha as an expandable row revealing its eleven named pieces and what its crown still needs. States the field-of-three win rule |
 | Taniwha History | /taniwha/history | Complete | What the taniwha card opens: the choose/switch picker, pieces earned with the session each landed in (derived — see `limbCrossings`), the play-history timeline, and the colours era |
@@ -2876,7 +2922,8 @@ RLS: own + parent (family) + judge.
     replayColours.ts                # History replay (pure): confers each colour when it would have landed, through the live route's own path
     newColours.ts                   # Unseen colours and withdrawals against a per-player localStorage watermark (pure)
                                     #   bodyweightOn() lives in grading.ts: the declaration in force on a lift's own day
-    colourDisplay.ts                # How colours are SHOWN on HOME (pure): bestScoreLabel, nextDomainColour, shownDomainRungs, domainExtremesByColour, bestEventByColour
+    colourDisplay.ts                # How colours are SHOWN on HOME (pure): bestScoreLabel, bestEventByColour, shownDomainRungs, shownOverallRung,
+                                    #   colourBlurb + STAT_FROM_RUNG (the headline per colour), topSlotRungs (a domain row's six circles)
     gameCounts.ts                   # loadGameCounts: lifetime official games per player, PAGED past PostgREST's 1000-row cap, over countGames.
                                     #   The games cap on the overall colour reads it on the leaderboard, family chips and kaiwhakawā list. Null = unknown, never zero
     leaderboardScores.ts            # Season points and best/worst domain for /leaderboard (pure): seasonPoints, eventRungInGame, GAME_RESULT_RUNG, rankBy
@@ -2946,7 +2993,7 @@ RLS: own + parent (family) + judge.
     EventIcon.tsx                   # Event pictogram tile — CSS-mask of /event-icons/{slug}.png in domain colour, emoji fallback
     BottomNav.tsx                   # Five-tab bottom bar (phones) + the MORE sheet (judge · my taniwha · profile · my koha · koha · schedule · how to play · supporters · sign out). Hidden >768px by .bottom-nav in globals.css
     PlayerTabs.tsx                  # Sticky family switcher + ViewingAsBanner. Renders null on a solo account
-    DomainRadar.tsx                 # Ten-spoke colours radar on twelve rings (Mā centre, Taniwha edge); each spoke reaches the colour HELD
+    HomeParts.tsx                   # HOME's presentational parts, props only so they are testable: ColourAvatar, GameOnCard, NextSessionLine, HomeLink
     GradesCard.tsx                  # YOUR COLOURS on HOME: overall colour, then ten expandable domain rows (Event · Your best · Colour)
     GradeDot.tsx                    # A colour swatch. No 'use client', so the server-rendered /grades guide can draw it
     TaniwhaFigure.tsx               # The eleven pieces assembling. Real art via CSS mask where drawn, filler geometry where not
