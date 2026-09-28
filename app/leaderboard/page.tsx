@@ -3,18 +3,22 @@
 // ─── /leaderboard ────────────────────────────────────────────────────────────
 // The board exists so players who could never play together — a Grandmaster
 // woman, a U14 boy, a Men's player — can compete anyway. Settled with Tāne on
-// 2026-09-25. ONE board, SEASON: this calendar year, every official event in
-// every finished game scores the colour rung its result reached, summed. The
-// colour ladder already shifts for age and sex and scales strength by
-// bodyweight, so the points are comparable across every division.
+// 2026-09-25. ONE board, SEASON: this calendar year. In every finished game,
+// each player's official events score the colour rungs they reached, and
+// everyone in the game is ranked together on that total, whatever their
+// division: 1st scores 100, 2nd 99, 3rd 98 (Tāne, 2026-09-28). The colour
+// ladder already shifts for age and sex and scales strength by bodyweight, so
+// the totals are comparable across every division, and the one-point gap
+// makes turning up worth more than any finish.
 //
 // Each card also shows the player's conferred colour and their best and worst
 // domain by the standards. A lifetime Skill board (the average domain colour)
 // was built and removed the same day, at Tāne's call.
 //
-// Both numbers are computed on the server by the recheck route (strength rungs
+// The colours are computed on the server by the recheck route (strength rungs
 // need the private bodyweight) and published in player_domain_colours /
-// player_season_points. This page only reads and ranks them. All-Divisions
+// player_game_colours; the season_points view ranks each game. This page only
+// reads and ranks them. All-Divisions
 // opens first.
 
 import { useState, useEffect, useMemo } from 'react'
@@ -24,6 +28,7 @@ import { gradeForRung, DOMAIN_COUNT } from '@/lib/grading'
 import { rankBy, bestAndWorst } from '@/lib/leaderboardScores'
 import { colourStanding, displayOverall } from '@/lib/colourBoard'
 import { loadGameCounts } from '@/lib/gameCounts'
+import { loadSeasonPoints, type SeasonPointsRow } from '@/lib/leaderboardData'
 import { RAINBOW, DOMAIN_COLORS } from '@/lib/domainColours'
 import { GradeDot } from '@/components/GradeDot'
 import DomainIcon from '@/components/DomainIcon'
@@ -65,7 +70,6 @@ type RosterPlayer = {
 }
 
 type DomainColoursRow = { player_id: string; domain_rungs: number[] }
-type SeasonPointsRow = { player_id: string; points: number; games: number }
 
 type BoardRow = {
   playerId: string
@@ -301,7 +305,7 @@ export default function LeaderboardPage() {
         supabase.rpc('leaderboard_page', { p_season: seasonYear }),
         supabase.from('players_public').select('id, display_name, username, division, is_guest, is_active'),
         supabase.from('player_domain_colours').select('player_id, domain_rungs'),
-        supabase.from('player_season_points').select('player_id, points, games').eq('season_year', seasonYear),
+        loadSeasonPoints(supabase, seasonYear),
         // LIFETIME official games, which cap the overall colour (overallRung).
         // Not the season's games: a colour is lifetime, so is its cap.
         loadGameCounts(supabase, null),
@@ -321,7 +325,7 @@ export default function LeaderboardPage() {
       setRoster(((rosterRes.data ?? []) as RosterPlayer[]).filter(p => !p.is_guest && p.is_active !== false))
       // A missing table (PGRST205, before 20260924213359) reads as empty.
       setDomainColours(new Map(((domainRes.data ?? []) as DomainColoursRow[]).map(r => [r.player_id, r])))
-      setSeason(new Map(((seasonRes.data ?? []) as SeasonPointsRow[]).map(r => [r.player_id, r])))
+      setSeason(new Map(seasonRes.map(r => [r.player_id, r])))
       setGamesPlayed(lifetimeGames)
       setLoading(false)
     })()

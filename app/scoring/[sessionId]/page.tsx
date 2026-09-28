@@ -1334,9 +1334,10 @@ export default function SessionPage() {
   }, [isJudge])
 
   // ── When the game closes, refresh everyone's leaderboard numbers ───────────
-  // Domain colours and season points are written by the recheck route, which otherwise
-  // only runs when a player opens their own screens. A player who leaves
-  // without looking would sit on the board with last week's numbers, so the
+  // Domain colours and each player's colour total per game (which the
+  // season_points view ranks) are written by the recheck route, which otherwise
+  // only runs when a player opens their own screens. A missing total leaves a
+  // player out of the game's ranking and lifts everyone below them, so the
   // kaiwhakawā's screen asks for every registered player in the game. Once per
   // game per device; best-effort, like every recheck.
   const refreshedBoardFor = useRef<string | null>(null)

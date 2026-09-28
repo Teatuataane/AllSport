@@ -72,7 +72,9 @@ describe('the route', () => {
     // watermark, and the two published leaderboard numbers. It never reads a player's evidence, which is what keeps RLS the
     // guard on everything the answer rests on.
     const adminTables = new Set([...src.matchAll(/admin\.from\('(\w+)'\)/g)].map(m => m[1]))
-    expect([...adminTables].sort()).toEqual(['grade_awards', 'grade_withdrawals', 'player_domain_colours', 'player_season_points', 'players'])
+    expect([...adminTables].sort()).toEqual(['grade_awards', 'grade_withdrawals', 'players'])
+    // The leaderboard numbers are written through the shared publish, with the admin client.
+    expect(src).toMatch(/publishLeaderboardScores\(admin,/)
     expect(src).not.toMatch(/loadGradeState\(admin/)
   })
 
@@ -249,6 +251,11 @@ describe('withdrawal in the route', () => {
     // sheet reaches players through rechecks that can only confer.
     expect(ordinary).not.toMatch(/awardsToWithdraw\(/)
     expect(ordinary).not.toMatch(/\.delete\(/)
+    // The leaderboard publish deletes stale GAME rows, and nothing else.
+    const publish = readFileSync('lib/leaderboardData.ts', 'utf8')
+    const deletes = [...publish.matchAll(/\.delete\(\)/g)].length
+    expect(deletes).toBe(1)
+    expect(publish).toMatch(/from\('player_game_colours'\)\.delete\(\)/)
   })
 
   it('is for a kaiwhakawā only, asked as the caller', () => {

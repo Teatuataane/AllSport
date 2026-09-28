@@ -13,13 +13,14 @@
 //
 //   SEASON POINTS — this calendar year. Every official event in every finished
 //   game scores the rung that game's result reached (Kiwikiwi 1 … Taniwha 12),
-//   so one game is worth up to 120. High scores earn more per game; turning up
-//   earns more games. Resets each January by being keyed on the year.
+//   so a player's colour total in one game is up to 120. Everyone in the game
+//   is then ranked on that total and places pay 100, 99, 98 … (since
+//   2026-09-28; see "Season points" below). Resets each January.
 //
 // Pure, so it is tested, and so the route and the backfill script cannot
 // disagree about what a player scored. Computed on the SERVER only: strength
 // rungs need the player's declared bodyweight, which is private. Only the
-// resulting numbers are published (player_domain_colours, player_season_points).
+// resulting numbers are published (player_domain_colours, player_game_colours).
 
 import { getEventByName } from './eventData'
 import { STANDARDS } from './standards'
@@ -44,8 +45,8 @@ export const GAME_RESULT_RUNG: Record<0 | 1 | 2, number> = {
   0: DRILL_CAP - 2,
 }
 
-/** The most one game can be worth: the top colour in each of ten events. */
-export const MAX_GAME_POINTS = TOP_RUNG * DOMAIN_COUNT
+/** The highest colour total in one game: the top colour in each of ten events. */
+export const MAX_GAME_COLOUR_TOTAL = TOP_RUNG * DOMAIN_COUNT
 
 // ─── Domain colours ──────────────────────────────────────────────────────────
 
@@ -55,7 +56,7 @@ export function domainRungsOf(domains: readonly DomainGradeResult[]): number[] {
     domains.find(d => d.domainNumber === i + 1)?.rung ?? 0)
 }
 
-// ─── Season points ───────────────────────────────────────────────────────────
+// ─── Colour total in a game ─────────────────────────────────────────────────
 
 /** One of the player's own rows from an official game, bodyweight already resolved. */
 export type SeasonRow = GradeResultRow & {
@@ -91,35 +92,78 @@ export function eventRungInGame(
   return rung
 }
 
-export type SeasonPoints = { points: number; games: number }
+/** One player's colour total in one finished game: the rungs of its events, summed. */
+export type GameColours = { session_id: string; session_date: string; total: number }
 
 /**
- * A player's season points in `year`. `ratingAt` returns the player's ratings
- * as they stood at the end of one game; omit it to score game events on their
- * result alone.
+ * A player's colour total in every finished game they played, every year.
+ * `ratingAt` returns the player's ratings as they stood at the end of one
+ * game; omit it to score game events on their result alone.
  */
-export function seasonPoints(
+export function gameColourTotals(
   rows: readonly SeasonRow[],
   player: GradePlayer,
-  year: number,
   ratingAt?: (sessionId: string) => ReadonlyMap<string, SportRating>,
-): SeasonPoints {
-  const prefix = `${year}-`
-  const bySession = new Map<string, Map<string, GradeResultRow[]>>()
+): GameColours[] {
+  const bySession = new Map<string, { date: string; events: Map<string, GradeResultRow[]> }>()
   for (const r of rows) {
-    if (!r.closed || !r.session_date.startsWith(prefix)) continue
-    const events = bySession.get(r.session_id) ?? new Map<string, GradeResultRow[]>()
-    const list = events.get(r.event_name) ?? []
+    if (!r.closed) continue
+    const game = bySession.get(r.session_id) ?? { date: r.session_date, events: new Map<string, GradeResultRow[]>() }
+    const list = game.events.get(r.event_name) ?? []
     list.push(r)
-    events.set(r.event_name, list)
-    bySession.set(r.session_id, events)
+    game.events.set(r.event_name, list)
+    bySession.set(r.session_id, game)
   }
-  let points = 0
-  for (const [sessionId, events] of bySession) {
+  return [...bySession].map(([sessionId, { date, events }]) => {
     const ratings = ratingAt?.(sessionId)
-    for (const [name, list] of events) points += eventRungInGame(name, list, player, ratings?.get(name))
+    let total = 0
+    for (const [name, list] of events) total += eventRungInGame(name, list, player, ratings?.get(name))
+    return { session_id: sessionId, session_date: date, total }
+  })
+}
+
+// ─── Season points ───────────────────────────────────────────────────────────
+// Settled with Tāne on 2026-09-28. Everyone in a game is ranked together on
+// their colour total, whatever their division (the ladder already adjusts for
+// age, sex and bodyweight). 1st scores 100, 2nd 99, 3rd 98, and ties share
+// the higher place. The one-point gap is deliberate: the board rewards
+// turning up. In any game of 50 or fewer, one more game is worth more than
+// the whole gap between 1st and last.
+//
+// The database computes this (the season_points view, 20260928011813), because
+// a player's points move whenever anyone else in their games is rescored.
+// seasonPointsFromGames is the same rule in TypeScript, and the test pins the
+// two together.
+
+/** What 1st place in a game is worth. */
+export const WINNER_POINTS = 100
+
+/** Points for a place in one game: 100, 99, 98 …, never below 1. */
+export const placePoints = (place: number): number => Math.max(WINNER_POINTS + 1 - place, 1)
+
+export type GameTotalRow = { player_id: string; session_id: string; total: number }
+export type SeasonPoints = { points: number; games: number }
+
+/** Season points per player from every player's game totals for one season. */
+export function seasonPointsFromGames(rows: readonly GameTotalRow[]): Map<string, SeasonPoints> {
+  // One total per player per game, as the table's primary key guarantees.
+  const bySession = new Map<string, Map<string, number>>()
+  for (const r of rows) {
+    const game = bySession.get(r.session_id) ?? new Map<string, number>()
+    game.set(r.player_id, r.total)
+    bySession.set(r.session_id, game)
   }
-  return { points, games: bySession.size }
+  const out = new Map<string, SeasonPoints>()
+  for (const game of bySession.values()) {
+    const totals = [...game.values()]
+    for (const [playerId, total] of game) {
+      // RANK(): one more than the number who scored strictly higher.
+      const place = 1 + totals.filter(t => t > total).length
+      const s = out.get(playerId) ?? { points: 0, games: 0 }
+      out.set(playerId, { points: s.points + placePoints(place), games: s.games + 1 })
+    }
+  }
+  return out
 }
 
 // ─── A player's card ─────────────────────────────────────────────────────────
