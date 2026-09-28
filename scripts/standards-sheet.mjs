@@ -231,7 +231,7 @@ export function render({ standards }) {
   L.push("export type StandardKind = 'raw' | 'ratio' | 'rating'")
   L.push('')
   L.push('export type EventStandards = {')
-  L.push("  /** 'raw' compares with results.raw_score; 'ratio' with weight_kg ÷ bodyweight; 'rating' has none. */")
+  L.push("  /** 'raw' compares with results.raw_score; 'ratio' with the estimated 1RM (raw_score) ÷ bodyweight; 'rating' has none. */")
   L.push('  kind: StandardKind')
   L.push('  /** Topped by a Game rung: the drills stop at Kahurangi and the rating gives the rest. */')
   L.push('  game: boolean')

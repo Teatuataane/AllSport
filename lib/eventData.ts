@@ -73,7 +73,7 @@ export const EVENTS: EventData[] = [
     inputMode: 'strength',
     hasDifficultyTiers: false,
     howToPerform: "Stand tall with a dumbbell or kettlebell racked at one shoulder, feet shoulder-width apart. Brace your core, squeeze your glutes, and press the weight straight overhead until your arm is fully locked out with your biceps beside your ear. Lower under control back to the shoulder.",
-    rules: "Strict press only — no dip, bounce, or leg drive. Full lockout required at the top with a stable, motionless finish. Either arm allowed; the free hand may rest on your hip but not touch the working arm or the weight. Dumbbell or kettlebell allowed. Score is your heaviest successful press.",
+    rules: "Strict press only — no dip, bounce, or leg drive. Full lockout required at the top with a stable, motionless finish. Either arm allowed; the free hand may rest on your hip but not touch the working arm or the weight. Dumbbell or kettlebell allowed. Score is your estimated one-rep max: more reps at a weight score higher, counted up to 10 reps.",
 
     videoPlaceholder: true,
     emoji: '💪',
@@ -86,7 +86,7 @@ export const EVENTS: EventData[] = [
     inputMode: 'strength',
     hasDifficultyTiers: false,
     howToPerform: 'Stand with feet hip-width apart, barbell over mid-foot. Hinge at the hips, grip the bar just outside your legs. Brace your core, take a breath, and drive through the floor to stand tall. Lock out at the top with hips and knees fully extended. Lower under control.',
-    rules: 'Starting position must be a dead stop on the floor. Full lockout required at the top — hips and knees fully extended, standing tall. No hitching (using thighs as a ramp). Standard or sumo stance allowed. Any grip allowed. Belt and straps permitted.',
+    rules: 'Starting position must be a dead stop on the floor. Full lockout required at the top — hips and knees fully extended, standing tall. No hitching (using thighs as a ramp). Standard or sumo stance allowed. Any grip allowed. Belt and straps permitted. Score is your estimated one-rep max: more reps at a weight score higher, counted up to 10 reps.',
     videoPlaceholder: true,
     emoji: '🏋️',
   },
@@ -98,7 +98,7 @@ export const EVENTS: EventData[] = [
     inputMode: 'strength',
     hasDifficultyTiers: false,
     howToPerform: "Start with the barbell on the floor. Clean it to your shoulders in one motion, standing tall in the front rack. Reset your breath, brace, then strictly press the bar overhead until your arms are locked out and the bar is over mid-foot. Lower under control.",
-    rules: "The clean must reach the shoulders in one continuous motion. The press is strict — no dip, bounce, or leg drive after the bar leaves the shoulders. Full lockout at the top with head through and feet in line. Score is your heaviest successful clean and press.",
+    rules: "The clean must reach the shoulders in one continuous motion. The press is strict — no dip, bounce, or leg drive after the bar leaves the shoulders. Full lockout at the top with head through and feet in line. Score is your estimated one-rep max: more reps at a weight score higher, counted up to 10 reps.",
 
     videoPlaceholder: true,
     emoji: '🏋️',
@@ -151,7 +151,7 @@ export const EVENTS: EventData[] = [
     inputMode: 'strength',
     hasDifficultyTiers: false,
     howToPerform: "Set the barbell across your upper back. Stand, brace, and squat down until your hip crease is below your knee. Hold a dead pause in the bottom, then drive up to a full stand without bouncing.",
-    rules: "One-second dead pause at the bottom — no bounce out of the hole. Depth standard: hip crease below the top of the knee. Full lockout at the top, hips and knees extended. High-bar or low-bar allowed. Belt allowed. Score is your heaviest successful pause squat.",
+    rules: "One-second dead pause at the bottom — no bounce out of the hole. Depth standard: hip crease below the top of the knee. Full lockout at the top, hips and knees extended. High-bar or low-bar allowed. Belt allowed. Score is your estimated one-rep max: more reps at a weight score higher, counted up to 10 reps.",
 
     videoPlaceholder: true,
     emoji: '🏋️',
@@ -164,7 +164,7 @@ export const EVENTS: EventData[] = [
     inputMode: 'strength',
     hasDifficultyTiers: false,
     howToPerform: "Start with the barbell resting on the floor. Squat down, thread your arms under the bar, and cradle it in the crooks of your elbows with hands clasped. Brace hard, keep your chest up, and stand to full extension. Lower under control.",
-    rules: "The bar starts at a dead stop on the floor and must be held in the crooks of the elbows — no hands under the bar. Full lockout at the top, hips and knees extended, standing tall. A bar pad or towel is permitted. Score is your heaviest successful lift.",
+    rules: "The bar starts at a dead stop on the floor and must be held in the crooks of the elbows — no hands under the bar. Full lockout at the top, hips and knees extended, standing tall. A bar pad or towel is permitted. Score is your estimated one-rep max: more reps at a weight score higher, counted up to 10 reps.",
 
     videoPlaceholder: true,
     emoji: '🏋️',
@@ -177,7 +177,7 @@ export const EVENTS: EventData[] = [
     inputMode: 'strength',
     hasDifficultyTiers: false,
     howToPerform: "Lie on the bench with your feet flat on the floor and eyes under the bar. Unrack, lower the bar to your chest under control, hold a dead pause, then press to full lockout.",
-    rules: "One-second visible pause with the bar motionless on the chest — no sinking or bouncing. Full lockout at the top. Butt stays on the bench and feet stay on the floor throughout. Any grip width. Score is your heaviest successful pause bench.",
+    rules: "One-second visible pause with the bar motionless on the chest — no sinking or bouncing. Full lockout at the top. Butt stays on the bench and feet stay on the floor throughout. Any grip width. Score is your estimated one-rep max: more reps at a weight score higher, counted up to 10 reps.",
 
     videoPlaceholder: true,
     emoji: '🏋️',
@@ -190,7 +190,7 @@ export const EVENTS: EventData[] = [
     inputMode: 'strength',
     hasDifficultyTiers: false,
     howToPerform: "Lie on your back with a kettlebell or dumbbell locked out above one shoulder. Keeping the weight locked out and your eyes on it, work through the sequence — roll to the elbow, to the hand, sweep the leg, lunge — until you are standing tall with the weight overhead.",
-    rules: "The arm stays locked out and the weight under control for the entire movement — a bent elbow or dropped weight is a failed attempt. Finish standing fully upright, feet together or in a stable stance. Either arm allowed. Score is your heaviest completed get-up.",
+    rules: "The arm stays locked out and the weight under control for the entire movement — a bent elbow or dropped weight is a failed attempt. Finish standing fully upright, feet together or in a stable stance. Either arm allowed. Score is your estimated one-rep max: more reps at a weight score higher, counted up to 10 reps.",
 
     videoPlaceholder: true,
     emoji: '🏋️',
@@ -204,7 +204,7 @@ export const EVENTS: EventData[] = [
     inputMode: 'strength',
     hasDifficultyTiers: false,
     howToPerform: "The mirror of the clean and jerk, with the bar finishing overhead behind the body rather than in front. Clean the barbell to rest across the back of your shoulders, behind the neck, then dip and drive to jerk it overhead to full lockout.",
-    rules: "The bar is received and driven from behind the neck and finishes locked out overhead with the head through and feet in line. Press-outs or a soft, unstable lockout are failed attempts. Split or power jerk both allowed. Score is your heaviest successful lift.",
+    rules: "The bar is received and driven from behind the neck and finishes locked out overhead with the head through and feet in line. Press-outs or a soft, unstable lockout are failed attempts. Split or power jerk both allowed. Score is your estimated one-rep max: more reps at a weight score higher, counted up to 10 reps.",
     videoPlaceholder: true,
     emoji: '🏋️',
   },
@@ -216,7 +216,7 @@ export const EVENTS: EventData[] = [
     inputMode: 'strength',
     hasDifficultyTiers: false,
     howToPerform: "Hinge over with a flat back and the barbell hanging at arms length. Row the bar to your lower chest, hold a dead pause against the body, then lower under control to a full stretch.",
-    rules: "One-second pause with the bar held against the torso every rep, then a controlled lower to full arm extension. Torso angle stays fixed; no jerking or standing up to move the weight. Score is your heaviest successful pause row.",
+    rules: "One-second pause with the bar held against the torso every rep, then a controlled lower to full arm extension. Torso angle stays fixed; no jerking or standing up to move the weight. Score is your estimated one-rep max: more reps at a weight score higher, counted up to 10 reps.",
     videoPlaceholder: true,
     emoji: '🏋️',
   },
@@ -228,7 +228,7 @@ export const EVENTS: EventData[] = [
     inputMode: 'strength',
     hasDifficultyTiers: false,
     howToPerform: "Rack the barbell across the front of your shoulders with elbows high. Squat down until your hip crease is below the knee, hold a dead pause at the bottom, then drive back to standing.",
-    rules: "One-second visible pause at the bottom with the hips below parallel; no bouncing out of the hole. Elbows stay up and the bar stays racked. Full extension at the top. Score is your heaviest successful pause front squat.",
+    rules: "One-second visible pause at the bottom with the hips below parallel; no bouncing out of the hole. Elbows stay up and the bar stays racked. Full extension at the top. Score is your estimated one-rep max: more reps at a weight score higher, counted up to 10 reps.",
     videoPlaceholder: true,
     emoji: '🏋️',
   },
@@ -240,7 +240,7 @@ export const EVENTS: EventData[] = [
     inputMode: 'strength',
     hasDifficultyTiers: false,
     howToPerform: "Lie back with the barbell on the floor behind your head. Pull it over your face and down to your chest in one continuous movement, then press it to full lockout with your arms straight. Lower under control.",
-    rules: "The bar travels from behind the head to the chest in one pullover — no rolling it up the body in stages. The press is strict from the chest to full lockout. Barbell or dumbbells allowed; with two dumbbells, score their combined weight. Score is your heaviest successful pullover and press.",
+    rules: "The bar travels from behind the head to the chest in one pullover — no rolling it up the body in stages. The press is strict from the chest to full lockout. Barbell or dumbbells allowed; with two dumbbells, score their combined weight. Score is your estimated one-rep max: more reps at a weight score higher, counted up to 10 reps.",
     videoPlaceholder: true,
     emoji: '🏋️',
   },
@@ -255,7 +255,7 @@ export const EVENTS: EventData[] = [
     inputMode: 'strength',
     hasDifficultyTiers: false,
     howToPerform: "Take the load on your back, in the front rack, or in each hand. Step forward into a lunge until the back knee touches or nearly touches the floor and the front thigh is at least parallel. Drive back to standing under control, then change legs.",
-    rules: "Both legs must be lunged for the lift to count — one rep each side. The back knee comes to within a fist of the floor and the front shin stays roughly vertical. Barbell, dumbbells or kettlebells allowed; declare which before you lift, and with two implements score their combined weight. Score is your heaviest successful lunge.",
+    rules: "Both legs must be lunged for the lift to count — one rep each side. The back knee comes to within a fist of the floor and the front shin stays roughly vertical. Barbell, dumbbells or kettlebells allowed; declare which before you lift, and with two implements score their combined weight. Score is your estimated one-rep max: more reps at a weight score higher, counted up to 10 reps.",
     videoPlaceholder: true,
     emoji: '🏋️',
   },
@@ -567,10 +567,18 @@ export const EVENTS: EventData[] = [
     name: 'Tibialis Curl',
     domain: 'Anaerobic Endurance',
     domainNumber: 5,
-    inputMode: 'strength',
-    hasDifficultyTiers: false,
-    howToPerform: "Sit or stand with your heels planted and the weight loaded over your forefoot (tib bar or plate). Keeping your legs straight and heels down, pull your toes up toward your shins as high as possible, then lower under control.",
-    rules: "Heels stay planted throughout. Full range every rep — toes fully lifted at the top, controlled on the way down. Score is the heaviest weight lifted with good form.",
+    inputMode: 'difficulty+reps',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Bodyweight', detail: 'No added load, toes lifted against gravity only' },
+      { level: 2, name: '2.5kg' },
+      { level: 3, name: '5kg' },
+      { level: 4, name: '10kg' },
+      { level: 5, name: '15kg' },
+      { level: 6, name: '20kg' },
+    ],
+    howToPerform: "Declare your load, then sit or stand with your heels planted and the load over your forefoot (tib bar or plate, or nothing on Bodyweight). Keeping your legs straight and heels down, pull your toes up toward your shins as high as possible, then lower under control. Keep going for 2 minutes.",
+    rules: "Declare your load before you start and stay on it for the whole set. Heels stay planted throughout. Full range every rep: toes fully lifted at the top, controlled on the way down, or it does not count. You have 2 minutes. A heavier load always outranks a lighter one, and within a load the most reps wins.",
 
     videoPlaceholder: true,
     emoji: '🦵',
@@ -710,10 +718,12 @@ export const EVENTS: EventData[] = [
     name: 'Toe Lift',
     domain: 'Anaerobic Endurance',
     domainNumber: 5,
-    inputMode: 'strength',
+    // Changed Sept 2026 (Tāne): a hold, like Leg Ext Hold. The load is entered,
+    // heavier wins, the longest hold breaks the tie. Bodyweight is 0kg.
+    inputMode: 'weight+time',
     hasDifficultyTiers: false,
-    howToPerform: "Stand tall with your heels planted and the resistance set across your forefoot. Keeping your legs straight and heels glued to the floor, lift your toes and forefoot as high as you can toward your shins, then lower under control.",
-    rules: "Heels stay on the floor for the whole rep — no rocking back. Full range: toes as high as possible at the top, controlled lower. Score is the heaviest successful lift.",
+    howToPerform: "Stand tall with your heels planted and your chosen load set across your forefoot, or no load at all. Keeping your legs straight and heels glued to the floor, lift your toes and forefoot as high as you can toward your shins and hold them there for as long as you can.",
+    rules: "Record the load you used (0 for none). The timer starts when the toes reach the top and stops the moment they drop or a heel lifts. No rocking back. Heaviest load wins; within a load, the longest hold wins.",
 
     videoPlaceholder: true,
     emoji: '🦶',
@@ -1012,7 +1022,7 @@ export const EVENTS: EventData[] = [
     inputMode: 'strength',
     hasDifficultyTiers: false,
     howToPerform: "Start with a single dumbbell or kettlebell on the floor between your feet. In one explosive motion, drive through the floor and pull the weight overhead to a locked-out finish, catching it with a stable arm. Lower under control between attempts.",
-    rules: "One continuous motion from floor to overhead lockout — no pressing out from the shoulder. Finish standing tall with the arm locked and the weight stable. Either arm allowed. Score is your heaviest successful snatch.",
+    rules: "One continuous motion from floor to overhead lockout — no pressing out from the shoulder. Finish standing tall with the arm locked and the weight stable. Either arm allowed. Score is your estimated one-rep max: more reps at a weight score higher, counted up to 10 reps.",
 
     videoPlaceholder: true,
     emoji: '💥',
@@ -1025,7 +1035,7 @@ export const EVENTS: EventData[] = [
     inputMode: 'strength',
     hasDifficultyTiers: false,
     howToPerform: "Set a dumbbell or kettlebell on the floor between your feet. Hinge, grip, and in one explosive pull drive the weight all the way overhead, punching through to a locked-out catch. Stand tall to finish.",
-    rules: "Floor to overhead in one continuous motion — a pause at the shoulder or a press-out is a failed attempt. Full lockout with the weight under control to finish. Either arm allowed. Score is your heaviest successful snatch.",
+    rules: "Floor to overhead in one continuous motion — a pause at the shoulder or a press-out is a failed attempt. Full lockout with the weight under control to finish. Either arm allowed. Score is your estimated one-rep max: more reps at a weight score higher, counted up to 10 reps.",
 
     videoPlaceholder: true,
     emoji: '💥',
@@ -1107,7 +1117,7 @@ export const EVENTS: EventData[] = [
     inputMode: 'strength',
     hasDifficultyTiers: false,
     howToPerform: "Clean the barbell from the floor to your shoulders, standing tall in the front rack. Then dip and drive, jerking the bar overhead and catching it with locked arms — split or power jerk both allowed. Recover to standing with the bar overhead.",
-    rules: "Two parts: a clean to the shoulders, then a jerk to full overhead lockout. Press-outs are failed attempts. Finish standing tall, feet in line, bar stable overhead. Score is your heaviest successful clean and jerk.",
+    rules: "Two parts: a clean to the shoulders, then a jerk to full overhead lockout. Press-outs are failed attempts. Finish standing tall, feet in line, bar stable overhead. Score is your estimated one-rep max: more reps at a weight score higher, counted up to 10 reps.",
 
     videoPlaceholder: true,
     emoji: '🏋️',
@@ -1120,7 +1130,7 @@ export const EVENTS: EventData[] = [
     inputMode: 'strength',
     hasDifficultyTiers: false,
     howToPerform: "Take a wide grip on the barbell. In one explosive pull, drive the bar from the floor to overhead, catching it with locked arms — power or squat receive both allowed — and stand to finish.",
-    rules: "Floor to overhead in one continuous motion. No press-out — arms must lock as the bar is received. Finish standing tall with the bar stable overhead. Score is your heaviest successful snatch.",
+    rules: "Floor to overhead in one continuous motion. No press-out — arms must lock as the bar is received. Finish standing tall with the bar stable overhead. Score is your estimated one-rep max: more reps at a weight score higher, counted up to 10 reps.",
 
     videoPlaceholder: true,
     emoji: '🏋️',
@@ -2500,7 +2510,7 @@ export function getEventsByDomain(): Record<string, EventData[]> {
 // ─── getBonusTargets ─────────────────────────────────────────────────────────
 // Returns 3 effort-level bonus targets for a given event and season PR.
 // seasonPR is always numeric raw_score from get_player_season_pr:
-//   - strength      → best weight_kg
+//   - strength      → best estimated 1RM (raw_score)
 //   - time/sprint   → best raw_score (negative seconds; more negative = faster)
 //   - distance      → best distance in metres
 //   - difficulty+time  → tierIdx * 10000 + seconds  (0-based tierIdx)

@@ -9,7 +9,7 @@
 export type StandardKind = 'raw' | 'ratio' | 'rating'
 
 export type EventStandards = {
-  /** 'raw' compares with results.raw_score; 'ratio' with weight_kg ÷ bodyweight; 'rating' has none. */
+  /** 'raw' compares with results.raw_score; 'ratio' with the estimated 1RM (raw_score) ÷ bodyweight; 'rating' has none. */
   kind: StandardKind
   /** Topped by a Game rung: the drills stop at Kahurangi and the rating gives the rest. */
   game: boolean
@@ -133,8 +133,8 @@ export const STANDARDS: Readonly<Record<string, EventStandards>> = {
   'tag': { kind: 'raw', game: true, all: [1, 9960, 9966, 9971, 9975, 9978] },
   'tennis': { kind: 'raw', game: true, all: [5, 15, 10005, 10015, 20010, 30010] },
   'teqball': { kind: 'raw', game: true, all: [5, 15, 10005, 10015, 20005, 20015] },
-  'tibialis-curl': { kind: 'ratio', game: false, M: [0, 0.07, 0.09, 0.11, 0.13, 0.15, 0.17, 0.19, 0.2, 0.22, 0.25, 0.3], F: [0, 0.05, 0.06, 0.07, 0.09, 0.1, 0.11, 0.12, 0.14, 0.15, 0.17, 0.2] },
-  'toe-lift': { kind: 'ratio', game: false, M: [0, 0.07, 0.09, 0.11, 0.13, 0.15, 0.17, 0.19, 0.2, 0.22, 0.25, 0.3], F: [0, 0.05, 0.06, 0.07, 0.09, 0.1, 0.11, 0.12, 0.14, 0.15, 0.17, 0.2] },
+  'tibialis-curl': { kind: 'raw', game: false, all: [20, 40, 10020, 10040, 20020, 20040, 30020, 30035, 40020, 40035, 50020, 50035] },
+  'toe-lift': { kind: 'raw', game: false, all: [15, 30, 60, 1250030, 2500030, 2500060, 5000030, 5000060, 7500030, 10000030, 12500030, 15000030] },
   'touch-rugby': { kind: 'raw', game: true, all: [5, 15, 10005, 10015, 20010, 30010] },
   'trampolining': { kind: 'raw', game: true, all: [10, 10010, 20010, 30010, 40010, 50010] },
   'tug-of-war': { kind: 'raw', game: true, all: [1, 9980, 10001, 19975, 29960, 39940] },

@@ -13,7 +13,7 @@ import EventIcon from '@/components/EventIcon'
 import { domainColor } from '@/components/EventIcon'
 import { isGameEntry } from '@/lib/matches'
 import { isTimedEffort, type EventData } from '@/lib/eventData'
-import { computeScoreVals, valsFromResult, valsFromRaw, EMPTY_VALS, type EntryVals } from '@/lib/scoring'
+import { computeScoreVals, valsFromResult, valsFromRaw, EMPTY_VALS, estimatedOneRm, type EntryVals } from '@/lib/scoring'
 import {
   takesSets, takesDistance, estimateFromSets, estimateFromDistance, paceLabel, MAX_ESTIMATED_REPS,
 } from '@/lib/naturalFormats'
@@ -390,9 +390,7 @@ export default function QuickEntrySheet({
                       <div style={{ fontSize: 12.5, color: '#777', lineHeight: 1.5 }}>
                         {estimate
                           ? `Best set — ${estimate.score_label}`
-                          : sets.length > 0
-                            ? `Over ${MAX_ESTIMATED_REPS} reps a one-rep max cannot be estimated, so these sets are recorded but do not grade.`
-                            : 'Add each set you did. Your best set is what grades.'}
+                          : `Add each set you did. Your best set, by estimated 1RM, is what grades. Reps past ${MAX_ESTIMATED_REPS} count as ${MAX_ESTIMATED_REPS}.`}
                       </div>
                     </>
                   )}
@@ -439,6 +437,16 @@ export default function QuickEntrySheet({
                         <input type="number" inputMode="numeric" value={v.repCount} onChange={e => set({ repCount: e.target.value })} placeholder="0" style={QES_INP} />
                         <StepBtn onClick={() => bumpNum('repCount', 1)}>+</StepBtn>
                       </div>
+                      {mode === 'strength' && !isDislocate && (() => {
+                        const w = parseFloat(v.weightKg) || 0
+                        const r = parseInt(v.repCount) || 0
+                        return (
+                          <div style={{ fontSize: 12.5, color: '#777', lineHeight: 1.5, marginTop: 8 }}>
+                            {w > 0 && r > 1 && <span style={{ color: '#ccc' }}>Est. 1RM {estimatedOneRm(w, r)}kg. </span>}
+                            Your lift ranks on its estimated 1RM, so more reps score higher. Reps past {MAX_ESTIMATED_REPS} count as {MAX_ESTIMATED_REPS}.
+                          </div>
+                        )
+                      })()}
                     </>
                   )}
 

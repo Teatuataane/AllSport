@@ -1443,39 +1443,24 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 ### 53. Tibialis Curl
 
-*Scored by: heaviest weight lifted, as a ratio of bodyweight · 5 players have scored it*
+*Scored by: difficulty level, then most reps in 2 minutes · 5 players have scored it (as a heaviest lift, now archived)*
 
-> Drafted by hand. The approved bench ratios scaled for this lift: a small muscle: a fifth of a bench press. A ratio of bodyweight sits oddly on a lift this size.
+> Drafted by Claude 29 Sept 2026, UNREVIEWED. Tāne: Anaerobic Endurance is a 2-minute contest and tib curls are hard, so the load is the level and the colours ask for reps at light loads. 20 reps then 40 reps at bodyweight, then 20 and 40 at 2.5kg and 5kg, then 20 and 35 at 10, 15 and 20kg.
 
-**Men**
+**Everyone**
 
-- Kiwikiwi: empty bar
-- Whero: 0.07× BW
-- Karaka: 0.09× BW
-- Kōwhai: 0.11× BW
-- Kākāriki: 0.13× BW
-- Kahurangi: 0.15× BW
-- Poroporo: 0.17× BW
-- Parahi: 0.19× BW
-- Hiriwa: 0.2× BW
-- Kōura: 0.22× BW
-- Uenuku: 0.25× BW
-- Taniwha: 0.3× BW
-
-**Women**
-
-- Kiwikiwi: empty bar
-- Whero: 0.05× BW
-- Karaka: 0.06× BW
-- Kōwhai: 0.07× BW
-- Kākāriki: 0.09× BW
-- Kahurangi: 0.1× BW
-- Poroporo: 0.11× BW
-- Parahi: 0.12× BW
-- Hiriwa: 0.14× BW
-- Kōura: 0.15× BW
-- Uenuku: 0.17× BW
-- Taniwha: 0.2× BW
+- Kiwikiwi: D1 · 20
+- Whero: D1 · 40
+- Karaka: D2 · 20
+- Kōwhai: D2 · 40
+- Kākāriki: D3 · 20
+- Kahurangi: D3 · 40
+- Poroporo: D4 · 20
+- Parahi: D4 · 35
+- Hiriwa: D5 · 20
+- Kōura: D5 · 35
+- Uenuku: D6 · 20
+- Taniwha: D6 · 35
 
 ### 54. Finger Pushup
 
@@ -1626,39 +1611,24 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 ### 61. Toe Lift
 
-*Scored by: heaviest weight lifted, as a ratio of bodyweight · 2 players have scored it*
+*Scored by: heaviest load, then longest hold · 2 players have scored it (as a heaviest lift, now archived)*
 
-> Drafted by hand. The approved bench ratios scaled for this lift: a small muscle: a fifth of a bench press. The event itself was flagged as uncertain in July.
+> Drafted by Claude 29 Sept 2026, UNREVIEWED. Tāne: 5kg is HARD. Three bodyweight holds, then a 30-second hold at small plates, with 5kg for a minute at Parahi and 15kg at Taniwha.
 
-**Men**
+**Everyone**
 
-- Kiwikiwi: empty bar
-- Whero: 0.07× BW
-- Karaka: 0.09× BW
-- Kōwhai: 0.11× BW
-- Kākāriki: 0.13× BW
-- Kahurangi: 0.15× BW
-- Poroporo: 0.17× BW
-- Parahi: 0.19× BW
-- Hiriwa: 0.2× BW
-- Kōura: 0.22× BW
-- Uenuku: 0.25× BW
-- Taniwha: 0.3× BW
-
-**Women**
-
-- Kiwikiwi: empty bar
-- Whero: 0.05× BW
-- Karaka: 0.06× BW
-- Kōwhai: 0.07× BW
-- Kākāriki: 0.09× BW
-- Kahurangi: 0.1× BW
-- Poroporo: 0.11× BW
-- Parahi: 0.12× BW
-- Hiriwa: 0.14× BW
-- Kōura: 0.15× BW
-- Uenuku: 0.17× BW
-- Taniwha: 0.2× BW
+- Kiwikiwi: BW · 15s
+- Whero: BW · 30s
+- Karaka: BW · 60s
+- Kōwhai: 1.25kg · 30s
+- Kākāriki: 2.5kg · 30s
+- Kahurangi: 2.5kg · 60s
+- Poroporo: 5kg · 30s
+- Parahi: 5kg · 60s
+- Hiriwa: 7.5kg · 30s
+- Kōura: 10kg · 30s
+- Uenuku: 12.5kg · 30s
+- Taniwha: 15kg · 30s
 
 ### 62. Lunges
 

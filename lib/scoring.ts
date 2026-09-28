@@ -172,6 +172,42 @@ function weightTerm(weightKg: number): number | null {
   return Math.round(weightKg * 100)
 }
 
+// ─── Estimated 1RM ───────────────────────────────────────────────────────────
+// A lift ranks on its ESTIMATED one-rep max, not its load (Tāne, 29 Sept 2026:
+// "I want to encourage reps"). 35kg × 5 is a better lift than 38kg × 1, and
+// now it scores like one.
+//
+// Brzycki, 1RM = w × 36 / (37 − r). Chosen over Epley because between 2 and 10
+// reps it always gives the LOWER number, and a number that can only be wrong
+// should be wrong low. Past 10 reps it drifts badly, so reps past 10 are
+// COUNTED as 10: a set of 15 scores exactly what a set of 10 does. The player
+// is told so on the entry sheet.
+//
+// The SQL in 20260928201510_estimated_one_rep_max.sql re-encodes history with
+// the same formula and rounding; __tests__/estimatedOneRm.test.ts pins the two.
+
+/** Reps the estimate counts. More than this still counts, as this many. */
+export const MAX_ESTIMATED_REPS = 10
+
+/** The estimated 1RM of weightKg × reps, to 0.1kg. One rep (or none recorded) is the load itself. */
+export function estimatedOneRm(weightKg: number, reps: number | null | undefined): number {
+  const r = Math.min(Math.max(1, Math.floor(reps ?? 1) || 1), MAX_ESTIMATED_REPS)
+  if (r === 1) return weightKg
+  // Integer arithmetic on the load in hundredths, so a true .x5 rounds up here
+  // exactly as Postgres' numeric round() does in the migration. Float division
+  // (39.375 as 393.74999…) would disagree with the stored history by 0.1kg.
+  const hundredths = Math.round(weightKg * 100)
+  return Math.round((hundredths * 36) / (10 * (37 - r))) / 10
+}
+
+/** "35kg × 5 · est. 1RM 39.4kg", or "35kg" / "35kg × 1" when nothing is estimated. */
+export function liftLabel(weightKg: number, reps: number | null | undefined): string {
+  const r = Math.max(0, Math.floor(reps ?? 0) || 0)
+  if (r === 0) return `${weightKg}kg`
+  if (r === 1) return `${weightKg}kg × 1 rep`
+  return `${weightKg}kg × ${r} reps · est. 1RM ${estimatedOneRm(weightKg, r)}kg`
+}
+
 export function computeScoreVals(
   mode: string, eventData: EventData | undefined, v: EntryVals
 ): { raw_score: number; score_label: string } | null {
@@ -188,8 +224,7 @@ export function computeScoreVals(
       const label = r > 0 ? `${w}cm × ${r} rep${r !== 1 ? 's' : ''}` : `${w}cm`
       return { raw_score: -w, score_label: label }
     }
-    const label = r > 0 ? `${w}kg × ${r} rep${r !== 1 ? 's' : ''}` : `${w}kg`
-    return { raw_score: w, score_label: label }
+    return { raw_score: estimatedOneRm(w, r), score_label: liftLabel(w, r) }
   }
   if (mode === 'reps') {
     if (isWeightVariation) {

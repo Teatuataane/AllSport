@@ -45,7 +45,8 @@ describe('one submission', () => {
     expect(p).toMatchObject({ event_slug: 'deadlift', weight_kg: 100 })
     expect(p).not.toHaveProperty('count')
     expect(p).not.toHaveProperty('volume_distance_m')
-    expect(p!.raw_score).toBe(100)
+    // Ranks on the estimated 1RM: 100kg × 3 is 105.9kg (Brzycki).
+    expect(p!.raw_score).toBe(105.9)
   })
 
   it('returns null when the score is not complete', () => {

@@ -2479,6 +2479,41 @@ all-player standings, which are unchanged) and `/history`.
   moved into `lib/loadGrades.ts` so the board and the report share them.
 - **Not yet seen with a real login.** Checked on a throwaway page with sample data.
 
+## Lifts rank on estimated 1RM; Toe Lift and Tib Curl rebuilt (September 2026)
+
+Asked by Tāne 2026-09-29. **Migration `20260928201510` written, NOT applied.**
+DEPLOY CODE FIRST, then the migration with no game running, then
+`scripts/refresh-leaderboard-scores.ts --apply`.
+
+- **Every lift ranks on its ESTIMATED one-rep max** ("I want to encourage reps"),
+  so 35kg × 5 (39.4kg) beats 38kg × 1. `estimatedOneRm` in `lib/scoring.ts`:
+  Brzycki, **reps past 10 COUNT AS 10**, to 0.1kg, in integer hundredths so it
+  rounds exactly as Postgres numeric does. `raw_score` is the estimate;
+  `weight_kg`/`reps` stay what was lifted; the label reads
+  "35kg × 5 reps · est. 1RM 39.4kg". Shoulder Dislocate (cm) is untouched.
+  The entry sheet tells the player the rule and shows the estimate live.
+- **Ratio standards now read the estimate** (`liftKg` in `lib/playerGrades.ts`,
+  = `raw_score`), not `weight_kg`. The natural formats (sets on swaps and
+  personal games) use the same function, so they no longer drop sets past 10.
+- **Toe Lift is `weight+time`** (like Leg Ext Hold) and **Tibialis Curl
+  `difficulty+reps`** with load levels Bodyweight/2.5/5/10/15/20kg. Anaerobic
+  Endurance is a 2-minute contest (Tāne): reps in 2 minutes, a hold as long as
+  possible. Both standards are **drafted by Claude, unreviewed**, and far
+  easier (Tāne: "5kg on toe lift is HARD"). Domain 5 no longer asks a bodyweight.
+- **The migration** re-encodes lifts in `results` and `workout_entries` from
+  their source columns (idempotent, pre-images kept), archives then deletes every
+  Toe Lift and Tib Curl score (old loads decode as holds/reps that never
+  happened), and replays `compute_event_placements` for closed sessions.
+  `results.placement` is not replayed. `GRADING_RULES_VERSION` is bumped so HOME
+  rechecks everyone. `__tests__/estimatedOneRm.test.ts` pins the SQL to the TS.
+- **Play history names colours, never numbers.** Each game row and the trend
+  show the colour; the game report still shows the colour score.
+- **The live game screen shows "This game · [colour]"** beside the progress
+  count: official events' rungs summed ÷ 10 (`liveEventRung` in
+  `lib/scoreColour.ts`, over `eventRungInGame`), the same colour the report
+  shows. A rating colour above a game result's floor only lands at close, so
+  the live figure can only be low. Player tab only; not seen with a real login.
+
 ## Game screen by domain, + to add, colour by grade (September 2026) — v0.19.0.0
 
 Settled in a `/grill-me` with Tāne on 2026-09-26. No migration.

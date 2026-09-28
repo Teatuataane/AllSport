@@ -17,11 +17,13 @@ import QuickEntrySheet, { type SubmitOutcome } from '@/components/play/QuickEntr
 import AddEventsSheet from '@/components/play/AddEventsSheet'
 import GameEventList from '@/components/play/GameEventList'
 import { playList, domainsCovered, type PlaySlot, type DomainGroup } from '@/lib/gameSwaps'
-import { scoreRung, rungSegment } from '@/lib/scoreColour'
+import { scoreRung, rungSegment, liveEventRung } from '@/lib/scoreColour'
+import { GradeDot } from '@/components/GradeDot'
+import { gradeForRung } from '@/lib/grading'
 import { useGradeProfile } from '@/lib/useGradeProfile'
 import { recheckGrades, type ConferredColour } from '@/lib/recheckGrades'
 import { usePlayerGames } from '@/lib/usePlayerGames'
-import { averageBefore, awardsForGame, nextStep } from '@/lib/gameReport'
+import { averageBefore, awardsForGame, nextStep, gameColourRung } from '@/lib/gameReport'
 import { ColourScore, EarnedColours, NextTime, PlacementHeader } from '@/components/GameReportParts'
 import { loadGamePlace } from '@/lib/loadGamePlace'
 import type { GamePlace } from '@/lib/gameReport'
@@ -1695,6 +1697,14 @@ export default function SessionPage() {
         // A domain's segment takes the best colour reached anywhere in it.
         const domainFill = (ev: { domain_number: number }) =>
           rungSegment(Math.max(0, ...slots.filter(sl => sl.se.domain_number === ev.domain_number).map(rungFor))) ?? '#666'
+        // This game's colour so far: the official events' rungs summed and
+        // divided by ten, exactly as the game report and /history count it.
+        // Swapped and added events never count, as on the Season board.
+        const gameColour = gradeProfile.player
+          ? gradeForRung(gameColourRung(slots
+              .filter(sl => sl.kind === 'official')
+              .reduce((t, sl) => t + liveEventRung(eventDataFor(sl), slotRows(sl), gradeProfile.player, gradeProfile.bodyweightKg), 0)))
+          : null
 
         return (
           <div key={pid} style={{ padding: '16px' }}>
@@ -1727,6 +1737,16 @@ export default function SessionPage() {
                     <span style={{ color: '#4DB26E', fontWeight: 600 }}> — All {events.length} events played</span>
                   )}
                 </div>
+                {gameColour && (
+                  <div data-testid="game-colour" title="This game's colour so far" style={{
+                    display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
+                    fontFamily: 'var(--font-label)', fontSize: '11.5px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.12em',
+                  }}>
+                    This game
+                    <GradeDot grade={gameColour} size={10} />
+                    <span style={{ color: '#fff', fontWeight: 600 }}>{gameColour.name}</span>
+                  </div>
+                )}
               </div>
               <div style={{ position: 'relative' }}>
                 <ProgressSegments events={events} scoredIds={barScored} fillFor={domainFill} />

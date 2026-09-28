@@ -698,15 +698,15 @@ _No levels yet._
 
 ### 54. Tibialis Curl
 
-*Scored by: heaviest weight lifted*
+*Scored by: difficulty level, then most reps in 2 minutes*
 
-_No levels yet._
-
-- D1: 
-- D2: 
-- D3: 
-- D4: 
-- D5: 
+Changed 29 Sept 2026 (Tāne): Anaerobic Endurance is a 2-minute contest, so the load is the level and reps are the score.
+- D1: Bodyweight   (No added load, toes lifted against gravity only)
+- D2: 2.5kg
+- D3: 5kg
+- D4: 10kg
+- D5: 15kg
+- D6: 20kg
 
 ### 55. Finger Pushup
 
@@ -781,7 +781,9 @@ _No levels yet._
 
 ### 62. Toe Lift
 
-*Scored by: heaviest weight lifted*
+*Scored by: heaviest load, then longest hold*
+
+Changed 29 Sept 2026 (Tāne): weight and hold time, like Leg Ext Hold. No levels: the load is entered.
 
 _No levels yet._
 

@@ -25,7 +25,7 @@ import { getEventByName, isTimedEffort, DT_CAP, type EventData } from './eventDa
 import { STANDARDS } from './standards'
 import { tierScoring, fmtTime } from './scoring'
 import { eventRungInGame, placePoints, MAX_GAME_COLOUR_TOTAL } from './leaderboardScores'
-import { ladderFor, type PlayerGrades, type GradePlayer } from './playerGrades'
+import { ladderFor, liftKg, type PlayerGrades, type GradePlayer } from './playerGrades'
 import {
   ageBand, rungForScore, thresholdFor, ratioThresholdsKg, bodyweightOn, gradeForRung,
   AGE_SHIFT, DOMAIN_COUNT, DRILL_CAP, TOP_RUNG, type BodyweightDeclaration,
@@ -242,7 +242,7 @@ export function nextStep(
 
     let cur: number, from: number, to: number, bestVal: number, gap: string | null
     if (s.kind === 'ratio') {
-      const kg = eg.best.weight_kg
+      const kg = liftKg(eg.best)
       if (bw == null || kg == null || !(kg > 0)) continue
       const kgs = ratioThresholdsKg(ladder.map(r => r || null), bw)
       cur = rungForScore(kg, kgs, band)

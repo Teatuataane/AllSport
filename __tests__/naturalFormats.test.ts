@@ -27,8 +27,8 @@ describe('Brzycki', () => {
     expect(brzycki(100, 10)).toBeCloseTo(100 * (1 + 10 / 30), 1)
   })
 
-  it('refuses reps it cannot estimate from', () => {
-    expect(brzycki(100, 11)).toBeNull()
+  it('counts reps past the cap as the cap, and refuses a set that is not one', () => {
+    expect(brzycki(100, 11)).toBe(brzycki(100, MAX_ESTIMATED_REPS))
     expect(brzycki(100, 0)).toBeNull()
     expect(brzycki(0, 5)).toBeNull()
   })
@@ -66,7 +66,7 @@ describe('Riegel', () => {
 describe('what an entry becomes', () => {
   it('shows what was lifted first, then the estimate', () => {
     const e = estimateFromSets([{ weightKg: 100, reps: 5 }])!
-    expect(e.score_label).toBe('100kg × 5 · est. 1RM 112.5kg')
+    expect(e.score_label).toBe('100kg × 5 reps · est. 1RM 112.5kg')
     expect(e.raw_score).toBe(112.5)
     // What was actually done is what gets stored in the columns.
     expect(e.weight_kg).toBe(100)
@@ -74,7 +74,7 @@ describe('what an entry becomes', () => {
   })
 
   it('calls a single what it is, with no estimate', () => {
-    expect(estimateFromSets([{ weightKg: 100, reps: 1 }])!.score_label).toBe('100kg × 1')
+    expect(estimateFromSets([{ weightKg: 100, reps: 1 }])!.score_label).toBe('100kg × 1 rep')
   })
 
   it('converts a long run to the highest rung it covers', () => {

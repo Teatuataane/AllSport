@@ -112,6 +112,18 @@ export function ladderFor(p: Pick<GradePlayer, 'division' | 'gender'>): 'M' | 'F
 const isGameRow = (ev: EventData, row: GradeResultRow) => isGameTier(ev, row.difficulty_tier)
 
 /** The colour one player's rows earn in one event. */
+/**
+ * What a lift is worth against a ratio standard: its ESTIMATED 1RM, which is
+ * the row's raw_score (a strength row stores estimatedOneRm since 29 Sept 2026,
+ * and 20260928201510 re-encoded history). weight_kg is the load actually on the
+ * bar, kept for the record, and only a fallback for a row with no score.
+ */
+export function liftKg(r: { raw_score: number | null; weight_kg: number | null }): number {
+  const raw = r.raw_score
+  if (raw != null && Number.isFinite(raw) && raw > 0) return raw
+  return r.weight_kg ?? 0
+}
+
 export function eventGrade(
   ev: EventData,
   rows: readonly GradeResultRow[],
@@ -147,7 +159,7 @@ export function eventGrade(
       const bw = r.bodyweightKg
       if (bw == null || !(bw > 0)) continue
       anyBw = true
-      const kg = r.weight_kg ?? 0
+      const kg = liftKg(r)
       // The empty bar is Kiwikiwi, and it means a lift that happened: never a 0.
       if (kg <= 0) continue
       const rung = rungForScore(kg, ratioThresholdsKg(ratios, bw), band)
