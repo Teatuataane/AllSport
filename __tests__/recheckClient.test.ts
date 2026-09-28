@@ -43,21 +43,27 @@ describe('what the client sends', () => {
 describe('recheckGrades', () => {
   it('maps ok / 503 / 500 / a thrown fetch to what the screen needs', async () => {
     const c = { domainNumber: 1, rung: 2, name: 'Whero', events: 6 }
-    respond(200, { conferred: [c] })
-    expect(await recheckGrades({ playerId: 'p' })).toEqual({ conferred: [c], writable: true, ok: true })
+    respond(200, { conferred: [c], scored: true })
+    expect(await recheckGrades({ playerId: 'p' })).toEqual({ conferred: [c], writable: true, ok: true, scored: true })
+    // The probe skipped the run: nothing needed publishing.
+    respond(200, { conferred: [], checked: false })
+    expect(await recheckGrades()).toEqual({ conferred: [], writable: true, ok: true, scored: true })
+    // Colours checked, leaderboard numbers not published.
+    respond(200, { conferred: [], checked: false, scored: false })
+    expect(await recheckGrades()).toEqual({ conferred: [], writable: true, ok: true, scored: false })
     respond(503, { pending: [c] })
-    expect(await recheckGrades()).toEqual({ conferred: [], writable: false, ok: true })
+    expect(await recheckGrades()).toEqual({ conferred: [], writable: false, ok: true, scored: false })
     // A failure is reported as one, so the panel can say so; players' screens
     // simply ignore `ok`.
     respond(500)
-    expect(await recheckGrades()).toEqual({ conferred: [], writable: true, ok: false })
+    expect(await recheckGrades()).toEqual({ conferred: [], writable: true, ok: false, scored: false })
     vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('offline') }))
-    expect(await recheckGrades()).toEqual({ conferred: [], writable: true, ok: false })
+    expect(await recheckGrades()).toEqual({ conferred: [], writable: true, ok: false, scored: false })
   })
 
   it('survives a response that is not JSON', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response('<html>502</html>', { status: 502 })))
-    expect(await recheckGrades()).toEqual({ conferred: [], writable: true, ok: false })
+    expect(await recheckGrades()).toEqual({ conferred: [], writable: true, ok: false, scored: false })
   })
 })
 

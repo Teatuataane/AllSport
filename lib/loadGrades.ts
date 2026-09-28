@@ -27,7 +27,7 @@ import { workoutEvidence, GAME_MINUTES, type WorkoutEntryRow } from './workouts'
 import { rateGames, type SportRating } from './headToHead'
 import { disputedBySport, type MatchRow } from './matches'
 import { toNZDateString } from './dates'
-import { domainRungsOf, seasonPoints, type SeasonRow } from './leaderboardScores'
+import { domainRungsOf, gameColourTotals, type SeasonRow } from './leaderboardScores'
 
 /**
  * The Supabase client to read through. Passed in rather than created here, so
@@ -292,6 +292,9 @@ async function loadBand(db: GradeDb, playerId: string) {
   return db.from('players').select('bodyweight_band').eq('id', playerId).maybeSingle()
 }
 
+/** PostgREST returns at most this many rows per request, whatever `.range()` asks for. */
+const PAGE = 1000
+
 /**
  * The player's own result rows. `bodyweight_band` arrived after this query did
  * (20260921232726), so it is asked for and the query re-run without it when the
@@ -302,16 +305,30 @@ async function loadResults(db: GradeDb, playerId: string) {
   // score_label is an original results column (never dropped), display only.
   const base = 'raw_score, weight_kg, difficulty_tier, score_label, session_id, points_earned, created_at,'
     + ' session_events(event_name), sessions(is_active, points_awarded_at, started_at, ended_at, session_date)'
-  const ask = (cols: string) => db.from('results')
+  const page = (cols: string, from: number) => db.from('results')
     .select(cols)
     .eq('player_id', playerId)
     .not('raw_score', 'is', null)
-    // Well above any one player's lifetime rows; PostgREST caps a response at 1000.
-    .range(0, 4999)
+    // A stable order, or pages can overlap and skip rows.
+    .order('id')
+    .range(from, from + PAGE - 1)
 
-  const withBand = await ask(`${base}, bodyweight_band`)
+  // Paged, because a short read looks like games never played: the grades
+  // would lose evidence and the leaderboard publish would delete those games.
+  // A failed page fails the whole read, which marks the state incomplete.
+  const all = async (cols: string) => {
+    const rows: unknown[] = []
+    for (let from = 0; ; from += PAGE) {
+      const res = await page(cols, from)
+      if (res.error) return { data: null, error: res.error }
+      rows.push(...(res.data ?? []))
+      if ((res.data ?? []).length < PAGE) return { data: rows, error: null }
+    }
+  }
+
+  const withBand = await all(`${base}, bodyweight_band`)
   if (withBand.error?.code !== '42703') return withBand
-  return ask(base)
+  return all(base)
 }
 
 /**
@@ -427,11 +444,11 @@ function kgResolver(inputs: GradeInputs, declared: readonly BodyweightDeclaratio
 }
 
 /**
- * The player's rows from official games, shaped for the season points in
- * lib/leaderboardScores.ts: voided games dropped, each row's bodyweight of the
+ * The player's rows from official games, shaped for each game's colour total
+ * (gameColourTotals in lib/leaderboardScores.ts): voided games dropped, each row's bodyweight of the
  * day resolved exactly as the grades resolve it, and when its game closed (so
  * a rating can be read as it stood then). Swaps and logged workouts are NOT
- * here: season points are official events only.
+ * here: the leaderboard counts official events only.
  */
 export function seasonRowsFrom(inputs: GradeInputs): (SeasonRow & { closedAt: string | null })[] {
   const kgOn = kgResolver(inputs, inputs.bodyweights ?? [])
@@ -451,10 +468,11 @@ export function seasonRowsFrom(inputs: GradeInputs): (SeasonRow & { closedAt: st
 }
 
 /**
- * Both leaderboard numbers for one player, from inputs and the state already
- * computed from them. `year` is the season being scored.
+ * What the leaderboard publishes for one player, from inputs and the state
+ * already computed from them: their domain colours, and their colour total in
+ * every finished game (the database ranks each game on those totals).
  */
-export function leaderboardScoresFrom(playerId: string, inputs: GradeInputs, state: GradeState, year: number) {
+export function leaderboardScoresFrom(playerId: string, inputs: GradeInputs, state: GradeState) {
   const rows = seasonRowsFrom(inputs)
   const endOf = new Map(rows.map(r => [r.session_id, r.closedAt]))
   const ratingCache = new Map<string, Map<string, SportRating>>()
@@ -471,7 +489,7 @@ export function leaderboardScoresFrom(playerId: string, inputs: GradeInputs, sta
   const player = { division: inputs.profile.division, ageYears: inputs.profile.age_years, gender: inputs.gender }
   return {
     domainRungs: domainRungsOf(state.grades.domains),
-    ...seasonPoints(rows, player, year, ratingAt),
+    games: gameColourTotals(rows, player, ratingAt),
   }
 }
 

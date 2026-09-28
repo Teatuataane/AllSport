@@ -15,8 +15,8 @@ import { NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { createSupabaseAdminClient, hasServiceKey } from '@/lib/supabase-admin'
 import { loadGradeState, loadGradeInputs, gradeStateFrom, leaderboardScoresFrom, type GradeInputs, type GradeState } from '@/lib/loadGrades'
-import { toNZDateString } from '@/lib/dates'
 import { awardsToConfer, awardsToWithdraw, awardAfterWithdraw, type PendingAward, type WithdrawnAward } from '@/lib/autoConfer'
+import { publishLeaderboardScores } from '@/lib/leaderboardData'
 
 export const dynamic = 'force-dynamic'
 
@@ -112,44 +112,36 @@ export async function POST(req: Request) {
   }
 
   // The leaderboard's numbers ride on the same full read. Never allowed to
-  // fail the recheck: a colour matters more than a board position, and a
-  // missing table (before 20260924213359) is a normal state.
-  const scored = await writeScores(admin, playerId, inputs, state)
+  // fail the recheck: a colour matters more than a board position.
+  const scored = await writeScores(admin, playerId, inputs, state, readFrom)
 
   // Last, and only on success: the watermark must never move past work that did
-  // not happen, or the colour is withheld until the next thing changes.
-  const checked = await stampChecked(admin, playerId, readFrom)
+  // not happen, or the colour is withheld until the next thing changes. That
+  // includes the board: a failed publish leaves a game total missing, which
+  // takes the player out of that game's ranking, so the next visit retries it.
+  const checked = scored ? await stampChecked(admin, playerId, readFrom) : false
   return json({ conferred: conferred.map(summarise), checked, scored })
 }
 
 /**
- * Publish the player's domain colours and this season's points (lib/leaderboardScores.ts).
- * Computed here, never in the browser, because strength rungs need the private
- * bodyweight; only the numbers are written. Reports whether both writes took.
+ * Publish the player's domain colours and their colour total in every finished
+ * game (lib/leaderboardScores.ts). The season_points view ranks each game on
+ * those totals. Computed here, never in the browser, because strength rungs
+ * need the private bodyweight; only the numbers are written. Reports whether
+ * every write took.
  */
 async function writeScores(
   admin: ReturnType<typeof createSupabaseAdminClient>,
   playerId: string,
   inputs: GradeInputs,
   state: GradeState,
+  readFrom: string,
 ): Promise<boolean> {
   try {
-    // The NZ year, not UTC: a game on the morning of 1 January NZ is still
-    // 31 December in UTC, and would be scored into the season that just ended.
-    const year = Number(toNZDateString(new Date()).slice(0, 4))
-    const s = leaderboardScoresFrom(playerId, inputs, state, year)
-    const now = new Date().toISOString()
-    const [domains, season] = await Promise.all([
-      admin.from('player_domain_colours').upsert(
-        { player_id: playerId, domain_rungs: s.domainRungs, updated_at: now },
-        { onConflict: 'player_id' },
-      ),
-      admin.from('player_season_points').upsert(
-        { player_id: playerId, season_year: year, points: s.points, games: s.games, updated_at: now },
-        { onConflict: 'player_id,season_year' },
-      ),
-    ])
-    return !domains.error && !season.error
+    // Only reached on a complete read (checked above), which the publish
+    // relies on: a game missing from the scores is deleted.
+    const { error } = await publishLeaderboardScores(admin, playerId, leaderboardScoresFrom(playerId, inputs, state), readFrom)
+    return !error
   } catch {
     return false
   }

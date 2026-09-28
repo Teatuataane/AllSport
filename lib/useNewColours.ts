@@ -78,7 +78,7 @@ export function useNewColours(
     // Reload only when something landed: the usual answer is nothing, and the
     // colours on screen were already correct before we asked.
     void recheckGrades({ playerId, force }).then(r => {
-      if (r.ok && r.writable) write(rulesKey, GRADING_RULES_VERSION)
+      if (r.ok && r.writable && r.scored) write(rulesKey, GRADING_RULES_VERSION)
       if (r.conferred.length > 0) reload()
     })
   }, [playerId, state, reload])

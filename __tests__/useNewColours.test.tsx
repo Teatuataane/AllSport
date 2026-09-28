@@ -9,7 +9,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, waitFor, cleanup } from '@testing-library/react'
 
 const h = vi.hoisted(() => ({
-  recheck: vi.fn(async () => ({ conferred: [] as unknown[], writable: true })),
+  recheck: vi.fn(async (): Promise<{ conferred: unknown[]; writable: boolean; ok?: boolean; scored?: boolean }> => ({ conferred: [], writable: true })),
 }))
 
 vi.mock('@/lib/recheckGrades', () => ({ recheckGrades: h.recheck }))
@@ -48,6 +48,21 @@ describe('useNewColours', () => {
     await waitFor(() => expect(h.recheck).toHaveBeenCalledTimes(1))
     // First visit under these rules: forced, because a rules deploy writes no rows.
     expect(h.recheck).toHaveBeenCalledWith({ playerId: 'p1', force: true })
+  })
+
+  it('records the rules version only when the leaderboard numbers also published', async () => {
+    const s0 = state([]); const r0 = () => {}
+    h.recheck.mockResolvedValue({ conferred: [], writable: true, ok: true, scored: false })
+    renderHook(() => useNewColours('p1', s0, r0))
+    await waitFor(() => expect(h.recheck).toHaveBeenCalledTimes(1))
+    await new Promise(r => setTimeout(r, 0))
+    // Not recorded, so the next visit forces a full run again.
+    expect(localStorage.getItem('allsport_grading_rules_p1')).toBeNull()
+    cleanup()
+
+    h.recheck.mockResolvedValue({ conferred: [], writable: true, ok: true, scored: true })
+    renderHook(() => useNewColours('p1', s0, r0))
+    await waitFor(() => expect(localStorage.getItem('allsport_grading_rules_p1')).not.toBeNull())
   })
 
   it('asks again for a different player (a family switch)', async () => {
