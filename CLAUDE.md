@@ -2443,6 +2443,35 @@ the stat tiles and the painted domain rows of v0.18.0.0 and v0.21.1.0.
 - **Not yet seen with a real login.** The visual check ran on a throwaway page
   with sample data.
 
+## Game report by colour (September 2026)
+
+Settled with Tāne on 2026-09-28. No migration. A player's own game now reads:
+**placement, then colour score, then each event** with its colour and any PR.
+Same on the session-end screen, `/games/[sessionId]` ("Your game" above the
+all-player standings, which are unchanged) and `/history`.
+
+- **Colour score** = the sum of each official event's rung in that game, 0 to 120,
+  through `eventRungInGame`, so it is exactly what the game added to the Season
+  board. **The game's colour** is the score ÷ 10, rounded down (`gameColourRung`).
+- **Only the player's own.** Strength rungs need the private bodyweight, so no
+  other player's score is computed in the browser. Tāne's call.
+- **Game-rung results stay win 6 / draw 5 / loss 4** (`GAME_RESULT_RUNG`),
+  confirmed by Tāne 2026-09-28. No longer provisional.
+- **Next time** (`nextStep`): the event from this game closest to its next colour,
+  in its own units ("Deadlift: 10kg more for Poroporo"), from the lifetime best and,
+  for a lift, the latest bodyweight. Skips the top colour, drills at the Kahurangi
+  cap on a game event, and lifts with no bodyweight.
+- **Colours earned** (`awardsForGame`): awards conferred from the game's start to 12
+  hours after it closed, never past the next game's start. An approximation: a
+  colour conferred on a same-day HOME visit after a workout lands here too.
+- **Tags:** PR (`results.is_pr`), First time and Colour up (against earlier games only).
+- **`/history`** shows each game's score with its colour dot and a trend of the last
+  12 finished games.
+- `lib/gameReport.ts` is pure and tested; `lib/usePlayerGames.ts` loads through
+  `loadGradeInputs`, the same read HOME makes. `ratingsAtClose` and `gradePlayerOf`
+  moved into `lib/loadGrades.ts` so the board and the report share them.
+- **Not yet seen with a real login.** Checked on a throwaway page with sample data.
+
 ## Game screen by domain, + to add, colour by grade (September 2026) — v0.19.0.0
 
 Settled in a `/grill-me` with Tāne on 2026-09-26. No migration.
@@ -2509,7 +2538,7 @@ and sex and scales strength by bodyweight.
   player's rating colour AS IT STOOD WHEN THAT GAME CLOSED if higher
   (`GAME_RESULT_RUNG` in `lib/leaderboardScores.ts`). Without it, playing the
   real sport scored 0 until ten rated games and a drill always paid better.
-  **Provisional**, awaiting Tāne's confirmation (TODOS.md P1).
+  **Confirmed by Tāne 2026-09-28.**
 - **Cards show best and worst domain by the STANDARDS** (not conferred), ties
   to the earliest domain. The colour pill is the CONFERRED overall
   (`displayOverall(colourStanding(...))`), so it reads Mā until colours land.
