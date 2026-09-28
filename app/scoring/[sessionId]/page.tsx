@@ -1345,6 +1345,25 @@ export default function SessionPage() {
   // kaiwhakawā's screen asks for every registered player in the game. Once per
   // game per device; best-effort, like every recheck. Waits for serverClosed,
   // not sessionEnded: a recheck of a game still open scores nothing for it.
+  // The timer fires up to a second BEFORE the server's expiry, and sessions is
+  // not in the realtime publication, so nothing else would tell this screen
+  // the game closed. Ask until the row says so: every 5s for up to 5 minutes.
+  useEffect(() => {
+    if (!sessionEnded || serverClosed || !isJudge) return
+    let cancelled = false
+    let tries = 0
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const check = async () => {
+      await supabase.rpc('close_expired_sessions')
+      const { data } = await supabase.from('sessions').select('is_active').eq('id', sessionId).maybeSingle()
+      if (cancelled) return
+      if (data && data.is_active === false) { setServerClosed(true); return }
+      if (++tries < 60) timer = setTimeout(check, 5000)
+    }
+    void check()
+    return () => { cancelled = true; if (timer) clearTimeout(timer) }
+  }, [sessionEnded, serverClosed, isJudge, sessionId])
+
   const refreshedBoardFor = useRef<string | null>(null)
   useEffect(() => {
     if (!serverClosed || !isJudge || refreshedBoardFor.current === sessionId) return
@@ -1519,12 +1538,8 @@ export default function SessionPage() {
           // clock ran out, and otherwise stayed open forever awarding nobody
           // anything. close_expired_sessions() derives expiry from started_at
           // server-side, so it is safe for any viewer to call.
-          supabase.rpc('close_expired_sessions').then(async ({ error }) => {
-            if (error) { console.error('close_expired_sessions failed', error); return }
-            // Confirm from the row itself, not the RPC's list: a clock a few
-            // seconds ahead of the server's asks before the game has expired.
-            const { data } = await supabase.from('sessions').select('is_active').eq('id', sessionId).maybeSingle()
-            if (data && data.is_active === false) setServerClosed(true)
+          supabase.rpc('close_expired_sessions').then(({ error }) => {
+            if (error) console.error('close_expired_sessions failed', error)
           })
         }
       }

@@ -17,6 +17,12 @@ export type RecheckResult = {
   writable: boolean
   /** False when the question got no real answer. Players' screens ignore it; the panel does not. */
   ok: boolean
+  /**
+   * False when the colours were checked but the leaderboard numbers failed to
+   * publish. The watermark was left behind so the probe retries; a caller that
+   * records "done" on its own must not record it either.
+   */
+  scored: boolean
 }
 
 export type WithdrawnColour = { domainNumber: number; rung: number; name: string }
@@ -43,9 +49,15 @@ const ok2xx = (r: Posted): r is NonNullable<Posted> => !!r && r.status >= 200 &&
 export async function recheckGrades(opts: { playerId?: string; force?: boolean } = {}): Promise<RecheckResult> {
   const r = await post({ playerId: opts.playerId, force: opts.force === true })
   // 503 is the route saying the key is not set: nothing was written.
-  if (r?.status === 503) return { conferred: [], writable: false, ok: true }
-  if (!ok2xx(r)) return { conferred: [], writable: true, ok: false }
-  return { conferred: (r.body.conferred as ConferredColour[] | undefined) ?? [], writable: true, ok: true }
+  if (r?.status === 503) return { conferred: [], writable: false, ok: true, scored: false }
+  if (!ok2xx(r)) return { conferred: [], writable: true, ok: false, scored: false }
+  return {
+    conferred: (r.body.conferred as ConferredColour[] | undefined) ?? [],
+    writable: true,
+    ok: true,
+    // Absent when the probe skipped the run: nothing needed publishing.
+    scored: r.body.scored !== false,
+  }
 }
 
 /**
