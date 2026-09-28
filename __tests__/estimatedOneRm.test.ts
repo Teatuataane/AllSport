@@ -114,3 +114,12 @@ describe('Toe Lift and Tibialis Curl', () => {
     expect(ratio).toEqual([])
   })
 })
+
+describe('Anaerobic Endurance is a 2-minute contest', () => {
+  it('every rep event states the 2 minutes; holds run as long as possible', () => {
+    for (const e of EVENTS.filter(e => e.domainNumber === 5)) {
+      const isHold = e.inputMode === 'hold' || e.inputMode === 'weight+time'
+      if (!isHold) expect(e.rules, e.name).toMatch(/2 minutes|two minutes/i)
+    }
+  })
+})
