@@ -21,10 +21,16 @@ await sharp(SRC).resize({ height: 160 }).webp({ quality: 82, effort: 6 }).toFile
 
 // Favicons. Metadata icons are not run through any optimiser, so these need to
 // be correctly sized at rest. Palette quantisation roughly halves the 180px one.
-const transparent = { r: 0, g: 0, b: 0, alpha: 0 }
-await sharp(SRC).resize({ width: 32, height: 32, fit: 'contain', background: transparent })
+//
+// Tab icons use the colour swirl from the centre of the logo, cropped square
+// (Tāne, 28 Sept 2026). The whole wide logo squeezed into 16-32px was a grey
+// smudge; the swirl stays bright and legible at that size.
+const SWIRL = { left: 1330, top: 300, width: 1000, height: 1000 }
+const swirl = () => sharp(SRC).extract(SWIRL)
+await swirl().resize(32, 32)
   .png({ compressionLevel: 9, palette: true }).toFile('public/favicon-32.png')
-await sharp(SRC).resize({ width: 180, height: 180, fit: 'contain', background: transparent })
+// iOS paints a transparent home-screen icon black anyway, so flatten it on black.
+await swirl().resize(180, 180).flatten({ background: '#000000' })
   .png({ compressionLevel: 9, palette: true, quality: 90 }).toFile('public/apple-touch-icon.png')
 
 // app/favicon.ico. Browsers (Safari especially) request /favicon.ico whatever
@@ -32,7 +38,7 @@ await sharp(SRC).resize({ width: 180, height: 180, fit: 'contain', background: t
 // create-next-app default, which is the Vercel triangle. PNG-in-ICO, 16/32/48.
 const sizes = [16, 32, 48]
 const pngs = await Promise.all(sizes.map(s =>
-  sharp(SRC).resize({ width: s, height: s, fit: 'contain', background: transparent }).png().toBuffer()))
+  swirl().resize(s, s).png().toBuffer()))
 const header = Buffer.alloc(6 + 16 * sizes.length)
 header.writeUInt16LE(0, 0); header.writeUInt16LE(1, 2); header.writeUInt16LE(sizes.length, 4)
 let offset = header.length
