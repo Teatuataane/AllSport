@@ -2443,7 +2443,7 @@ the stat tiles and the painted domain rows of v0.18.0.0 and v0.21.1.0.
 - **Not yet seen with a real login.** The visual check ran on a throwaway page
   with sample data.
 
-## Game report by colour (September 2026)
+## Game report by colour (September 2026) — v0.23.0.0
 
 Settled with Tāne on 2026-09-28. No migration. A player's own game now reads:
 **placement, then colour score, then each event** with its colour and any PR.
@@ -2464,6 +2464,13 @@ all-player standings, which are unchanged) and `/history`.
 - **Colours earned** (`awardsForGame`): awards conferred from the game's start to 12
   hours after it closed, never past the next game's start. An approximation: a
   colour conferred on a same-day HOME visit after a workout lands here too.
+- **The placement that leads is the WHOLE-GAME place** (Tāne, 2026-09-28, after
+  v0.22.0.0 made it what earns season points), with its season points and the
+  division place under it (`PlacementHeader`). Read from `player_game_colours` by
+  `lib/loadGamePlace.ts`, ranked by `placeInGame` exactly as the `season_points`
+  view ranks. **Shown only when every registered player in the game has a
+  published total**; a partial field reads too high, so until then the division
+  place leads alone.
 - **Tags:** PR (`results.is_pr`), First time and Colour up (against earlier games only).
 - **`/history`** shows each game's score with its colour dot and a trend of the last
   12 finished games.
