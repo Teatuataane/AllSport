@@ -100,23 +100,15 @@ describe('publishLeaderboardScores', () => {
 })
 
 describe('loadSeasonPoints', () => {
-  const legacy = [{ player_id: 'a', points: 5, games: 1 }]
-
   it('reads the view', async () => {
     const view = [{ player_id: 'b', points: 199, games: 2 }]
-    const { db } = stub({ 'select:season_points': { data: view }, 'select:player_season_points': { data: legacy } })
+    const { db, calls } = stub({ 'select:season_points': { data: view } })
     expect(await loadSeasonPoints(db, 2026)).toEqual({ rows: view, failed: false })
+    expect(calls.map(c => c.table)).toEqual(['season_points'])
   })
 
-  it('falls back to the old table only while the view is missing', async () => {
-    for (const code of ['PGRST205', '42P01']) {
-      const { db } = stub({ 'select:season_points': { error: { code, message: 'missing' } }, 'select:player_season_points': { data: legacy } })
-      expect(await loadSeasonPoints(db, 2026)).toEqual({ rows: legacy, failed: false })
-    }
-  })
-
-  it('reports a failure rather than the old numbers on any other error', async () => {
-    const { db } = stub({ 'select:season_points': { error: { code: '42501', message: 'denied' } }, 'select:player_season_points': { data: legacy } })
+  it('reports a failure rather than an empty season', async () => {
+    const { db } = stub({ 'select:season_points': { error: { code: '42501', message: 'denied' } } })
     expect(await loadSeasonPoints(db, 2026)).toEqual({ rows: [], failed: true })
   })
 })
