@@ -165,6 +165,22 @@
 
 ## P1 — Do Next
 
+### Switch on season points by place (v0.22.0.0) — in this order
+**Priority:** P1
+**What:** everyone in a game ranked on their colour total, 100/99/98 …
+1. Apply `20260928011813` FIRST, before the code deploys (old code never reads
+   it; new code before it fails every per-game write). Dry-run against prod
+   twice on 2026-09-28 in rolled-back transactions: idempotent, anon reads it.
+2. Deploy v0.22.0.0.
+3. STRAIGHT AFTER, run `scripts/refresh-leaderboard-scores.ts --apply` (needs
+   the service key). Required: until every player has totals, a game ranks only
+   the players who have rows and their places read too high.
+4. Verify as `anon`: `season_points` returns rows for 2026 and the board shows them.
+5. Once live and confirmed, drop `player_season_points` (only the page's
+   fallback reads it).
+**Note:** the Game-rung floor question below now matters more, because a game
+total decides places for everyone in that game.
+
 ### ~~Switch on the season leaderboard (v0.20.0.0)~~ DONE 2026-09-26
 Migration applied and verified, backfill written (27 players). Still open:
 Tāne to confirm the Game-rung floor (win 6, draw 5, loss 4) in

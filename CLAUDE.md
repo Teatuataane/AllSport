@@ -2474,6 +2474,46 @@ Settled in a `/grill-me` with Tāne on 2026-09-26. No migration.
   The personal-game screen keeps the old domain-coloured rows: `EventListRow`
   switches only when `gradeRung` is passed.
 
+## Season points by place in the game (September 2026) — v0.22.0.0, migration NOT yet applied
+
+Settled with Tāne on 2026-09-28. **Supersedes the "Season points" rule below**
+(a sum of colour rungs). Everyone in a finished, unvoided game is ranked
+TOGETHER, whatever their division, on their colour total for that game (the
+same rung sum as before, up to 120), and places pay **100, 99, 98 …, never
+below 1**. Ties share the higher place (`RANK()`). **The one-point gap is
+deliberate: Tāne wants the board to reward attendance.** In any game of 50 or
+fewer, one more game is worth more than the whole gap between 1st and last.
+Colours, not division placement, because the ladder already adjusts for age,
+sex and bodyweight. So the game's actual winner (lowest total placement) can
+get 99 on the board. Tāne accepted that.
+
+- **A player's points now depend on everyone else in their games**, so they
+  cannot be stored per player. The recheck route publishes each player's colour
+  total per game to **`player_game_colours`** (public read, service-key write),
+  and the **`season_points` view** ranks and sums per NZ season year. Migration
+  `20260928011813`. `player_season_points` is left in place, no longer written,
+  and read only by the page's fallback while the view is missing.
+- **One write path, `publishLeaderboardScores` in `lib/leaderboardData.ts`**,
+  used by the route and `scripts/refresh-leaderboard-scores.ts`. It upserts,
+  then deletes the player's games no longer counted, by id, and only rows
+  written **before this request's read** (`updated_at < readFrom`): two
+  rechecks overlap at every game end, and an older read must not delete a
+  newer total. Only called on a COMPLETE read.
+- **`loadResults` in `lib/loadGrades.ts` now PAGES** (1000 rows, ordered by id).
+  A short read looks like games never played, and the publish would delete them.
+- **The watermark moves only when the publish succeeded**, and HOME records the
+  rules version only when `scored` is true, so a failed save is retried.
+- **The view drops erased profiles and guests** (joins `players_public`): the
+  board does not show them and nobody rechecks them to clear their rows.
+- **The kaiwhakawā's end-of-game refresh waits for `serverClosed`**: the timer
+  fires up to a second before the server's expiry, and **`sessions` is NOT in
+  the realtime publication** (only `session_events` and `results` are), so the
+  screen polls the row every 5s until it reads closed.
+- **DEPLOY: migration FIRST, then code, then the backfill STRAIGHT AFTER.** Until
+  every player has totals, a game ranks only the players who have rows.
+- `seasonPointsFromGames` in `lib/leaderboardScores.ts` is the same rule in
+  TypeScript; a test pins it to the SQL.
+
 ## Season leaderboard (September 2026) — v0.20.0.0, APPLIED AND VERIFIED 2026-09-26
 
 **`20260924213359` APPLIED 2026-09-26** after v0.20.0.0 deployed, with no game
@@ -2715,7 +2755,7 @@ update players set role = 'judge' where id = '[uuid]';
 | Events Index | /events | Complete | All 128 events grouped by domain, links to detail pages |
 | Event Detail | /events/[slug] | Complete | Template page: how to perform, rules, tiers, personal best |
 | Schedule | /schedule | Complete | Times correct (4:30pm Tue/Thu, 9am Sat), Championship 14 Mar 2027 |
-| Leaderboard | /leaderboard | Complete | **v0.20.0.0:** one Season board, All-Divisions first, banner with no body text. Cards: place, conferred colour, season points + games, best and worst domain with their colours. Live game strip when a game runs |
+| Leaderboard | /leaderboard | Complete | **v0.22.0.0:** season points by place in each game (100/99/98 …). **v0.20.0.0:** one Season board, All-Divisions first, banner with no body text. Cards: place, conferred colour, season points + games, best and worst domain with their colours. Live game strip when a game runs |
 | Koha | /koha | Complete | Tiers, IRD rebate |
 | Play | /play | Complete | Login/register landing, Google OAuth |
 | Register | /register | Complete | 3-step form, division, display prefs, junior parent fields |
@@ -2926,7 +2966,9 @@ RLS: own + parent (family) + judge.
                                     #   colourBlurb + STAT_FROM_RUNG (the headline per colour), topSlotRungs (a domain row's six circles)
     gameCounts.ts                   # loadGameCounts: lifetime official games per player, PAGED past PostgREST's 1000-row cap, over countGames.
                                     #   The games cap on the overall colour reads it on the leaderboard, family chips and kaiwhakawā list. Null = unknown, never zero
-    leaderboardScores.ts            # Season points and best/worst domain for /leaderboard (pure): seasonPoints, eventRungInGame, GAME_RESULT_RUNG, rankBy
+    leaderboardScores.ts            # Colour totals and best/worst domain for /leaderboard (pure): gameColourTotals, eventRungInGame,
+                                    #   GAME_RESULT_RUNG, placePoints/WINNER_POINTS, seasonPointsFromGames (mirrors the season_points view), rankBy
+    leaderboardData.ts              # publishLeaderboardScores (the one write path, service key) and loadSeasonPoints (the page's read)
     scoreFormat.ts                  # formatPR, moved out of the 'use client' components/play/chrome.tsx (which re-exports it) so pure libs can call it
     useNewColours.ts                # The hook HOME uses (COLOURS did, until it became a public guide): runs the recheck and yields the moment for components/NewColourCard.tsx
     eventData.ts                    # Single source of truth for all events (128) + difficulty+time encode/decode helpers (encodeDiffTime/decodeDiffTime/isTimedEffort, TIMED_EFFORT_SLUGS).
