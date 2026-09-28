@@ -27,4 +27,23 @@ await sharp(SRC).resize({ width: 32, height: 32, fit: 'contain', background: tra
 await sharp(SRC).resize({ width: 180, height: 180, fit: 'contain', background: transparent })
   .png({ compressionLevel: 9, palette: true, quality: 90 }).toFile('public/apple-touch-icon.png')
 
+// app/favicon.ico. Browsers (Safari especially) request /favicon.ico whatever
+// the metadata says, and Next serves app/favicon.ico there. It was still the
+// create-next-app default, which is the Vercel triangle. PNG-in-ICO, 16/32/48.
+const sizes = [16, 32, 48]
+const pngs = await Promise.all(sizes.map(s =>
+  sharp(SRC).resize({ width: s, height: s, fit: 'contain', background: transparent }).png().toBuffer()))
+const header = Buffer.alloc(6 + 16 * sizes.length)
+header.writeUInt16LE(0, 0); header.writeUInt16LE(1, 2); header.writeUInt16LE(sizes.length, 4)
+let offset = header.length
+sizes.forEach((s, i) => {
+  const e = 6 + 16 * i
+  header.writeUInt8(s, e); header.writeUInt8(s, e + 1)
+  header.writeUInt16LE(1, e + 4); header.writeUInt16LE(32, e + 6)
+  header.writeUInt32LE(pngs[i].length, e + 8); header.writeUInt32LE(offset, e + 12)
+  offset += pngs[i].length
+})
+const { writeFile } = await import('node:fs/promises')
+await writeFile('app/favicon.ico', Buffer.concat([header, ...pngs]))
+
 console.log('done')

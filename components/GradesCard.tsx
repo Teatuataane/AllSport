@@ -21,6 +21,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import DomainIcon from '@/components/DomainIcon'
+import EventIcon from '@/components/EventIcon'
 import { EVENTS, getEventBySlug } from '@/lib/eventData'
 import { STANDARDS } from '@/lib/standards'
 import { RAINBOW_CONIC } from '@/lib/domainColours'
@@ -267,7 +268,7 @@ function ColourLadder({ rung }: { rung: number }) {
 }
 
 /** Event · Your best · Colour. The best column wraps: tier names run long. */
-const COLS = 'minmax(0,1.15fr) minmax(0,1fr) 92px'
+const COLS = 'minmax(0,1.3fr) minmax(0,1fr) 92px'
 
 /** A domain, opened: every event as Event · Your best · Colour. */
 function DomainEvents({ state, domainNumber }: { state: GradeState; domainNumber: number }) {
@@ -302,7 +303,11 @@ function DomainEvents({ state, domainNumber }: { state: GradeState; domainNumber
             display: 'grid', gridTemplateColumns: COLS, gap: 10, alignItems: 'center',
             padding: '8px 0', borderTop: '1px solid var(--border)', color: 'inherit', minHeight: 44,
           }}>
-            <span style={{ fontSize: 13, color: eg.played ? 'var(--white)' : 'var(--text-muted)', minWidth: 0 }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: eg.played ? 'var(--white)' : 'var(--text-muted)', minWidth: 0 }}>
+              <span style={{ opacity: eg.played ? 1 : 0.4, display: 'inline-flex' }}>
+                <EventIcon slug={e.slug} emoji={e.emoji} domainNumber={e.domainNumber} size={26} tint={NEUTRAL_ICON_TINT} />
+              </span>
+              <span style={{ minWidth: 0 }}>
               {e.name}
               {waiting > 0 && (
                 // A disputed game counts for nothing until settled, so a player
@@ -311,6 +316,7 @@ function DomainEvents({ state, domainNumber }: { state: GradeState; domainNumber
                   {waiting} disputed game{waiting > 1 ? 's' : ''} waiting for a kaiwhakawā
                 </span>
               )}
+              </span>
             </span>
             <span style={{ fontSize: 12, color: best ? 'var(--grey-light)' : 'var(--text-muted)', textAlign: 'right', lineHeight: 1.35 }}>
               {best ?? '—'}
