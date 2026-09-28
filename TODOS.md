@@ -2,6 +2,7 @@
 
 ## ✅ Done
 
+- **Season points by place in the game** (v0.22.0.0 → v0.22.1.0, 2026-09-28). Everyone in a game ranked on their colour total, 100/99/98 …, ties share. Migration `20260928011813` applied and verified, backfill wrote 27 players (149 game rows, 46 games). `player_season_points` and the page's fallback removed in v0.22.1.0 (`20260928015753`). Still open below: the Game-rung floor, which now decides places for everyone in a game.
 - **HOME player first, circle ladder, plain domain rows** (v0.21.2.0, 2026-09-28). Designed with Tāne from a demo. Name, division and one stats line open the page; the avatar is ringed in the overall colour; the next session is one slim line; the ladder is circles under the colour name; each colour has a headline, with the climb below Kahurangi and the population stat from Kahurangi up; domain rows are unpainted with a colour circle by the name; the radar and stat tiles are gone; one row of three links. No migration. **Not yet seen with a real login**: the visual check ran on a throwaway page with sample data.
 - **Best-six domain colours, games cap the overall, units retired from grading** (v0.21.0.0, 2026-09-26). Settled with Tāne against real production data. A domain colour is the average of the best six events (unplayed = Mā); the overall is the average of ten, capped by lifetime official games (`GAMES_REQUIRED`, counted by `lib/gameCounts.ts`, paged past the 1000-row cap); units no longer gate any colour and a domain can jump several colours in one run. `GRADING_RULES_VERSION` forces one full recheck per player. No migration. Run `scripts/refresh-leaderboard-scores.ts` after deploy to move every leaderboard best/worst domain at once.
 - **Game screen by domain, + to add events, buttons coloured by grade** (v0.19.0.0, 2026-09-26). Designed in a `/grill-me`. Ten plain domain titles in a fixed order (no Still to play / Scored split); a + on each official event opens that domain's events as a multi-select sheet; added events sit under it with a ✕ until scored; "Swap this event" and "+ Add an event" removed. A scored button takes the colour `eventGrade` gives today's rows (`lib/scoreColour.ts`, fed by `lib/useGradeProfile.ts`). The kaiwhakawā tab keeps its existing add capability via the same +. No migration. **Not yet seen on a live game with a real login** — the visual check ran on a throwaway page with sample data. Check a colour against HOME at the next session.
@@ -165,26 +166,10 @@
 
 ## P1 — Do Next
 
-### Switch on season points by place (v0.22.0.0) — in this order
-**Priority:** P1
-**What:** everyone in a game ranked on their colour total, 100/99/98 …
-1. Apply `20260928011813` FIRST, before the code deploys (old code never reads
-   it; new code before it fails every per-game write). Dry-run against prod
-   twice on 2026-09-28 in rolled-back transactions: idempotent, anon reads it.
-2. Deploy v0.22.0.0.
-3. STRAIGHT AFTER, run `scripts/refresh-leaderboard-scores.ts --apply` (needs
-   the service key). Required: until every player has totals, a game ranks only
-   the players who have rows and their places read too high.
-4. Verify as `anon`: `season_points` returns rows for 2026 and the board shows them.
-5. Once live and confirmed, drop `player_season_points` (only the page's
-   fallback reads it).
-**Note:** the Game-rung floor question below now matters more, because a game
-total decides places for everyone in that game.
-
 ### ~~Switch on the season leaderboard (v0.20.0.0)~~ DONE 2026-09-26
 Migration applied and verified, backfill written (27 players). The Game-rung
-floor (win 6, draw 5, loss 4) was confirmed by Tāne 2026-09-28. Still open:
-check why Loco Chocko reads 4 points from 5 games.
+floor (win 6, draw 5, loss 4) was confirmed by Tāne 2026-09-28. (Loco Chocko's
+"4 points from 5 games" is gone under place scoring: 493 from 5.)
 
 ### Switch on auto-conferral (v0.16.0.0) — in this order
 **What:** four migrations, a one-off history replay, then the service key.

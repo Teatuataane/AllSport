@@ -16,6 +16,11 @@ All notable changes to AllSport are documented here.
 - The end-of-game screen leads with your placement and colour score instead of the events-played and PRs tiles.
 - A win, draw or loss in a game event scores 6, 5 or 4 towards the colour score. This is now confirmed rather than provisional.
 
+## [0.22.1.0] - 2026-09-28
+
+### Removed
+- **The old season points table is gone.** The leaderboard reads only the new place-based points now. The backup path that read the old numbers while the new ones were being set up is removed, so an error can never show last week's style of points by mistake. If the season cannot load, the board says so.
+
 ## [0.22.0.0] - 2026-09-28
 
 ### Changed

@@ -63,19 +63,13 @@ export type SeasonPointsRow = { player_id: string; points: number; games: number
 
 /**
  * This season's points, by place in each game (the season_points view,
- * 20260928011813). Before that migration the view is missing (PGRST205 or
- * 42P01), so the old rung-sum numbers stand in rather than an empty board.
- * Only then: afterwards the old table still holds rung sums, and a passing
- * error must not quietly swap them in. Any other error is reported, so the
- * page can say so rather than show an empty season.
+ * 20260928011813). An error is reported, so the page can say so rather than
+ * show an empty season.
  */
 export async function loadSeasonPoints(
   db: SupabaseClient,
   year: number,
 ): Promise<{ rows: SeasonPointsRow[]; failed: boolean }> {
-  const byPlace = await db.from('season_points').select('player_id, points, games').eq('season_year', year)
-  if (!byPlace.error) return { rows: (byPlace.data ?? []) as SeasonPointsRow[], failed: false }
-  if (byPlace.error.code !== 'PGRST205' && byPlace.error.code !== '42P01') return { rows: [], failed: true }
-  const legacy = await db.from('player_season_points').select('player_id, points, games').eq('season_year', year)
-  return { rows: (legacy.data ?? []) as SeasonPointsRow[], failed: !!legacy.error }
+  const { data, error } = await db.from('season_points').select('player_id, points, games').eq('season_year', year)
+  return { rows: (data ?? []) as SeasonPointsRow[], failed: !!error }
 }

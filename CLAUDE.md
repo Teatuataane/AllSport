@@ -2510,7 +2510,20 @@ Settled in a `/grill-me` with Tāne on 2026-09-26. No migration.
   The personal-game screen keeps the old domain-coloured rows: `EventListRow`
   switches only when `gradeRung` is passed.
 
-## Season points by place in the game (September 2026) — v0.22.0.0, migration NOT yet applied
+## Season points by place in the game (September 2026) — v0.22.0.0, APPLIED AND VERIFIED 2026-09-28
+
+**Live 2026-09-28.** The PR merged before the migration, so the code went
+first, the reverse of the planned order; the board was simply empty until the
+backfill, and the route left watermarks unstamped on the failed writes as
+designed. `20260928011813` applied through `supabase db query --linked -f` in
+one transaction with its ledger row, from `main`'s file. Verified by object:
+RLS on, anon reads the table and the view, no client role can write, the view
+is `security_invoker`, the ledger row exists; as `anon` an insert returns 401.
+Backfill: 27 players written, 0 failed, 149 game rows across 46 games, 20 on
+the 2026 board (Tāne 4,182 / 42 games, RGFell 2,581, Zebe 2,563, Salvador
+2,435). `player_season_points` is dropped by `20260928015753` (v0.22.1.0),
+with the page's fallback removed.
+
 
 Settled with Tāne on 2026-09-28. **Supersedes the "Season points" rule below**
 (a sum of colour rungs). Everyone in a finished, unvoided game is ranked
@@ -2527,8 +2540,8 @@ get 99 on the board. Tāne accepted that.
   cannot be stored per player. The recheck route publishes each player's colour
   total per game to **`player_game_colours`** (public read, service-key write),
   and the **`season_points` view** ranks and sums per NZ season year. Migration
-  `20260928011813`. `player_season_points` is left in place, no longer written,
-  and read only by the page's fallback while the view is missing.
+  `20260928011813`. The old `player_season_points` and the page's fallback to
+  it are gone (v0.22.1.0).
 - **One write path, `publishLeaderboardScores` in `lib/leaderboardData.ts`**,
   used by the route and `scripts/refresh-leaderboard-scores.ts`. It upserts,
   then deletes the player's games no longer counted, by id, and only rows
