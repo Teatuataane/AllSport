@@ -37,7 +37,7 @@ const h = vi.hoisted(() => ({
   scoreRows: [] as { table: string; row: unknown }[],
   games: [] as { session_id: string; session_date: string; total: number }[],
   /** Every call to publishLeaderboardScores: the client, the player, the scores. */
-  published: [] as { admin: unknown; player: string; scores: unknown }[],
+  published: [] as { admin: unknown; player: string; scores: unknown; readFrom: string }[],
   publishError: null as string | null,
 }))
 
@@ -70,9 +70,9 @@ vi.mock('@/lib/loadGrades', () => {
   }
 })
 vi.mock('@/lib/leaderboardData', () => ({
-  publishLeaderboardScores: async (admin: unknown, player: string, scores: unknown) => {
+  publishLeaderboardScores: async (admin: unknown, player: string, scores: unknown, readFrom: string) => {
     h.adminOps.push('score:publish')
-    h.published.push({ admin, player, scores })
+    h.published.push({ admin, player, scores, readFrom })
     return { error: h.publishError }
   },
 }))
@@ -257,13 +257,15 @@ describe('recheck route: leaderboard numbers', () => {
     expect(h.published[0].player).toBe('me')
     expect(h.published[0].admin).toBeTruthy()
     expect(h.published[0].scores).toEqual({ domainRungs: [4, 4, 4, 4, 4, 4, 4, 4, 5, 5], games: h.games })
+    // The read start, so an older overlapping recheck cannot delete newer totals.
+    expect(Date.parse(h.published[0].readFrom)).not.toBeNaN()
   })
 
-  it('reports scored:false when the publish fails, and still moves the watermark', async () => {
+  it('reports scored:false when the publish fails, and leaves the watermark so the next visit retries', async () => {
     h.publishError = 'boom'
     const body = await (await post({ force: true })).json()
-    expect(body.scored).toBe(false)
-    expect(h.adminOps).toContain('update:players')
+    expect(body).toMatchObject({ scored: false, checked: false })
+    expect(h.adminOps).not.toContain('update:players')
   })
 
   it('never publishes from a partial read, which would delete games it could not see', async () => {
@@ -276,8 +278,7 @@ describe('recheck route: leaderboard numbers', () => {
     h.publishError = 'relation does not exist'
     const res = await post({ force: true })
     expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({ conferred: [], checked: true, scored: false })
-    expect(h.adminOps).toContain('update:players')
+    expect(await res.json()).toEqual({ conferred: [], checked: false, scored: false })
   })
 
   it('never fails the recheck when the scoring itself throws', async () => {

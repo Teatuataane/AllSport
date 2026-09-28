@@ -138,6 +138,10 @@ describe('season points: by place in the game', () => {
     expect(sql).toMatch(/RANK\(\) OVER \(PARTITION BY g\.session_id ORDER BY g\.colour_total DESC\)/)
     expect(sql).toContain(`GREATEST(${WINNER_POINTS + 1} - place, 1)`)
     expect(sql).toMatch(/s\.is_active = false AND s\.voided_at IS NULL/)
+    // An erased or retired profile, or a guest, holds no place.
+    expect(sql).toMatch(/p\.is_active IS NOT FALSE AND p\.is_guest IS NOT TRUE/)
+    // DROP + CREATE, so a later change to the view's shape never aborts a push.
+    expect(sql).toMatch(/DROP VIEW IF EXISTS public\.season_points;\s*CREATE VIEW public\.season_points/)
     // The season is the NZ day of the game (session_date is trigger-derived at Pacific/Auckland).
     expect(sql).toMatch(/EXTRACT\(YEAR FROM s\.session_date\)::int AS season_year/)
     expect(sql).toMatch(/GROUP BY player_id, season_year/)

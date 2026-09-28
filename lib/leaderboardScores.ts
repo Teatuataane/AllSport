@@ -97,6 +97,10 @@ export type GameColours = { session_id: string; session_date: string; total: num
 
 /**
  * A player's colour total in every finished game they played, every year.
+ * Priced on the player's CURRENT division, age and bodyweight rules, like
+ * their colours, so crossing an age band re-prices past games, and with it
+ * the places of everyone they played. Accepted: it is the same ladder HOME
+ * shows them today.
  * `ratingAt` returns the player's ratings as they stood at the end of one
  * game; omit it to score game events on their result alone.
  */
@@ -118,7 +122,9 @@ export function gameColourTotals(
     const ratings = ratingAt?.(sessionId)
     let total = 0
     for (const [name, list] of events) total += eventRungInGame(name, list, player, ratings?.get(name))
-    return { session_id: sessionId, session_date: date, total }
+    // A game holds ten events (verified: no session has more). Capped anyway,
+    // because the stored CHECK would otherwise refuse every game in the batch.
+    return { session_id: sessionId, session_date: date, total: Math.min(total, MAX_GAME_COLOUR_TOTAL) }
   })
 }
 

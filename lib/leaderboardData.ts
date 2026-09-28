@@ -21,11 +21,17 @@ export type PublishedScores = { domainRungs: number[]; games: GameColours[] }
  * difference by id, rather than "everything not in this list": that list is
  * every game the player has ever played, and it would grow past what a URL
  * can carry.
+ *
+ * `readFrom` is when this request began reading the evidence. Only rows
+ * written before it are deleted: two rechecks of one player overlap at every
+ * game end (their own screen and the kaiwhakawā's), and an older read that
+ * never saw a game must not delete the total a newer one just wrote.
  */
 export async function publishLeaderboardScores(
   db: SupabaseClient,
   playerId: string,
   scores: PublishedScores,
+  readFrom: string,
 ): Promise<{ error: string | null }> {
   const now = new Date().toISOString()
   const [domains, games] = await Promise.all([
@@ -48,7 +54,8 @@ export async function publishLeaderboardScores(
   const stale = ((stored.data ?? []) as { session_id: string }[])
     .map(r => r.session_id).filter(id => !keep.has(id))
   if (stale.length === 0) return { error: null }
-  const removed = await db.from('player_game_colours').delete().eq('player_id', playerId).in('session_id', stale)
+  const removed = await db.from('player_game_colours').delete()
+    .eq('player_id', playerId).in('session_id', stale).lt('updated_at', readFrom)
   return { error: removed.error?.message ?? null }
 }
 
@@ -59,12 +66,16 @@ export type SeasonPointsRow = { player_id: string; points: number; games: number
  * 20260928011813). Before that migration the view is missing (PGRST205 or
  * 42P01), so the old rung-sum numbers stand in rather than an empty board.
  * Only then: afterwards the old table still holds rung sums, and a passing
- * error must not quietly swap them in.
+ * error must not quietly swap them in. Any other error is reported, so the
+ * page can say so rather than show an empty season.
  */
-export async function loadSeasonPoints(db: SupabaseClient, year: number): Promise<SeasonPointsRow[]> {
+export async function loadSeasonPoints(
+  db: SupabaseClient,
+  year: number,
+): Promise<{ rows: SeasonPointsRow[]; failed: boolean }> {
   const byPlace = await db.from('season_points').select('player_id, points, games').eq('season_year', year)
-  if (!byPlace.error) return (byPlace.data ?? []) as SeasonPointsRow[]
-  if (byPlace.error.code !== 'PGRST205' && byPlace.error.code !== '42P01') return []
+  if (!byPlace.error) return { rows: (byPlace.data ?? []) as SeasonPointsRow[], failed: false }
+  if (byPlace.error.code !== 'PGRST205' && byPlace.error.code !== '42P01') return { rows: [], failed: true }
   const legacy = await db.from('player_season_points').select('player_id, points, games').eq('season_year', year)
-  return (legacy.data ?? []) as SeasonPointsRow[]
+  return { rows: (legacy.data ?? []) as SeasonPointsRow[], failed: !!legacy.error }
 }

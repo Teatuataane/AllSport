@@ -51,6 +51,8 @@ const names = new Map(players.map(p => [p.id, String(p.display_name)]))
 const seasonTotals: GameTotalRow[] = []
 
 for (const p of players) {
+  // Taken before the read, as the route does: only rows older than it may be deleted.
+  const readFrom = new Date().toISOString()
   const inputs = await loadGradeInputs(db, p.id, matches)
   if (!inputs) continue
   if (!inputs.complete) { console.log(`  ${p.display_name}: SKIPPED, a read failed`); failed++; continue }
@@ -60,7 +62,7 @@ for (const p of players) {
   for (const g of season) seasonTotals.push({ player_id: p.id, session_id: g.session_id, total: g.total })
   console.log(`  ${String(p.display_name).padEnd(20)} [${s.domainRungs.join(' ')}]  ${season.length} games in ${year}, colour totals ${season.map(g => g.total).join(' ')}`)
   if (!apply) continue
-  const { error: err } = await publishLeaderboardScores(db, p.id, s)
+  const { error: err } = await publishLeaderboardScores(db, p.id, s, readFrom)
   if (err) { console.error(`    write failed: ${err}`); failed++ } else written++
 }
 

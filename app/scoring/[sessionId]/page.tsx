@@ -1081,6 +1081,10 @@ export default function SessionPage() {
   const [timeLeft, setTimeLeft] = useState<number | null>(null)
   const [preSessionSecsLeft, setPreSessionSecsLeft] = useState<number | null>(null)
   const [sessionEnded, setSessionEnded] = useState(false)
+  // The database has CONFIRMED the game is closed. sessionEnded flips the
+  // moment the clock runs out, before close_expired_sessions() has run, and a
+  // recheck made then skips the still-open game entirely.
+  const [serverClosed, setServerClosed] = useState(false)
   const [playerInfoMap, setPlayerInfoMap] = useState<Record<string, PlayerInfo>>({})
   const [isJudge, setIsJudge] = useState(false)
   const [judgeTargetId, setJudgeTargetId] = useState<string>('')
@@ -1292,7 +1296,7 @@ export default function SessionPage() {
 
       const s = sessionRes.data
       setSession(s as Record<string, unknown> | null)
-      if (s && !(s as Record<string, unknown>).is_active) setSessionEnded(true)
+      if (s && !(s as Record<string, unknown>).is_active) { setSessionEnded(true); setServerClosed(true) }
 
       setEvents((eventsRes.data ?? []) as SessionEvent[])
     }
@@ -1339,10 +1343,11 @@ export default function SessionPage() {
   // only runs when a player opens their own screens. A missing total leaves a
   // player out of the game's ranking and lifts everyone below them, so the
   // kaiwhakawā's screen asks for every registered player in the game. Once per
-  // game per device; best-effort, like every recheck.
+  // game per device; best-effort, like every recheck. Waits for serverClosed,
+  // not sessionEnded: a recheck of a game still open scores nothing for it.
   const refreshedBoardFor = useRef<string | null>(null)
   useEffect(() => {
-    if (!sessionEnded || !isJudge || refreshedBoardFor.current === sessionId) return
+    if (!serverClosed || !isJudge || refreshedBoardFor.current === sessionId) return
     const ids = [...new Set(results.map(r => r.player_id).filter((id): id is string => !!id))]
     if (ids.length === 0) return
     refreshedBoardFor.current = sessionId
@@ -1351,7 +1356,7 @@ export default function SessionPage() {
         await Promise.all(ids.slice(i, i + 5).map(id => recheckGrades({ playerId: id, force: true })))
       }
     })()
-  }, [sessionEnded, isJudge, results, sessionId])
+  }, [serverClosed, isJudge, results, sessionId])
 
   // ── Load season PRs for active player ─────────────────────────────────────
   useEffect(() => {
@@ -1424,7 +1429,7 @@ export default function SessionPage() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'results', filter: `session_id=eq.${sessionId}` }, () => loadResults())
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'sessions', filter: `id=eq.${sessionId}` }, p => {
         const updated = p.new as Record<string, unknown>
-        if (updated.is_active === false) setSessionEnded(true)
+        if (updated.is_active === false) { setSessionEnded(true); setServerClosed(true) }
       })
       .subscribe()
     return () => { supabase.removeChannel(ch) }
@@ -1514,8 +1519,12 @@ export default function SessionPage() {
           // clock ran out, and otherwise stayed open forever awarding nobody
           // anything. close_expired_sessions() derives expiry from started_at
           // server-side, so it is safe for any viewer to call.
-          supabase.rpc('close_expired_sessions').then(({ error }) => {
-            if (error) console.error('close_expired_sessions failed', error)
+          supabase.rpc('close_expired_sessions').then(async ({ error }) => {
+            if (error) { console.error('close_expired_sessions failed', error); return }
+            // Confirm from the row itself, not the RPC's list: a clock a few
+            // seconds ahead of the server's asks before the game has expired.
+            const { data } = await supabase.from('sessions').select('is_active').eq('id', sessionId).maybeSingle()
+            if (data && data.is_active === false) setServerClosed(true)
           })
         }
       }

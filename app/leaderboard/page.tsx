@@ -282,6 +282,7 @@ const nzYear = () => Number(new Intl.DateTimeFormat('en-NZ', { timeZone: 'Pacifi
 export default function LeaderboardPage() {
   const [activeTab, setActiveTab] = useState<typeof tabs[number]['key']>('all-divisions')
   const [loading, setLoading] = useState(true)
+  const [seasonFailed, setSeasonFailed] = useState(false)
   const [roster, setRoster] = useState<RosterPlayer[]>([])
   const [domainColours, setDomainColours] = useState<Map<string, DomainColoursRow>>(new Map())
   const [season, setSeason] = useState<Map<string, SeasonPointsRow>>(new Map())
@@ -325,7 +326,8 @@ export default function LeaderboardPage() {
       setRoster(((rosterRes.data ?? []) as RosterPlayer[]).filter(p => !p.is_guest && p.is_active !== false))
       // A missing table (PGRST205, before 20260924213359) reads as empty.
       setDomainColours(new Map(((domainRes.data ?? []) as DomainColoursRow[]).map(r => [r.player_id, r])))
-      setSeason(new Map(seasonRes.map(r => [r.player_id, r])))
+      setSeason(new Map(seasonRes.rows.map(r => [r.player_id, r])))
+      setSeasonFailed(seasonRes.failed)
       setGamesPlayed(lifetimeGames)
       setLoading(false)
     })()
@@ -458,7 +460,7 @@ export default function LeaderboardPage() {
             </div>
           ) : rows.length === 0 ? (
             <div style={{ padding: '72px 0', fontFamily: 'var(--font-display)', fontSize: 32, color: '#333' }}>
-              {`No ${seasonYear} games yet`}
+              {seasonFailed ? 'Could not load the season. Refresh to try again.' : `No ${seasonYear} games yet`}
             </div>
           ) : (
             <>

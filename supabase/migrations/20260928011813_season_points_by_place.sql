@@ -53,9 +53,12 @@ CREATE POLICY player_game_colours_select_all ON public.player_game_colours FOR S
 REVOKE ALL ON public.player_game_colours FROM anon, authenticated;
 GRANT SELECT ON public.player_game_colours TO anon, authenticated;
 
--- Invoker rights: both tables it reads are public, so nothing is widened.
+-- Invoker rights: everything it reads is public, so nothing is widened.
 -- Finished games only, and never a voided one, even if its totals were
--- written before the kaiwhakawā voided it.
+-- written before the kaiwhakawā voided it. An erased or retired profile
+-- holds no place: the board does not show them, and nobody rechecks them to
+-- clear their rows, so counting them would push real players down a place
+-- with nobody visible above.
 -- DROP + CREATE, never CREATE OR REPLACE: a later change to a column's name,
 -- order or type would abort the whole push (CLAUDE.md, Security posture 1),
 -- so this file lands whatever shape it finds and stays the one definition.
@@ -67,7 +70,9 @@ WITH placed AS (
          RANK() OVER (PARTITION BY g.session_id ORDER BY g.colour_total DESC) AS place
   FROM public.player_game_colours g
   JOIN public.sessions s ON s.id = g.session_id
+  JOIN public.players_public p ON p.id = g.player_id
   WHERE s.is_active = false AND s.voided_at IS NULL
+    AND p.is_active IS NOT FALSE AND p.is_guest IS NOT TRUE
 )
 SELECT player_id,
        season_year,
@@ -84,8 +89,11 @@ BEGIN
   IF NOT (SELECT relrowsecurity FROM pg_class WHERE oid = 'public.player_game_colours'::regclass) THEN
     RAISE EXCEPTION 'season points: RLS is not enabled';
   END IF;
-  IF has_table_privilege('authenticated', 'public.player_game_colours', 'INSERT')
-     OR has_table_privilege('anon', 'public.player_game_colours', 'UPDATE') THEN
+  IF has_table_privilege('anon', 'public.player_game_colours', 'INSERT, UPDATE, DELETE')
+     OR has_table_privilege('authenticated', 'public.player_game_colours', 'INSERT, UPDATE, DELETE') THEN
     RAISE EXCEPTION 'season points: a client role can write';
+  END IF;
+  IF NOT has_table_privilege('anon', 'public.season_points', 'SELECT') THEN
+    RAISE EXCEPTION 'season points: the public board cannot read the view';
   END IF;
 END $$;

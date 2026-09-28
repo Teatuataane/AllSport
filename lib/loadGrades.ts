@@ -292,29 +292,43 @@ async function loadBand(db: GradeDb, playerId: string) {
   return db.from('players').select('bodyweight_band').eq('id', playerId).maybeSingle()
 }
 
+/** PostgREST returns at most this many rows per request, whatever `.range()` asks for. */
+const PAGE = 1000
+
 /**
  * The player's own result rows. `bodyweight_band` arrived after this query did
  * (20260921232726), so it is asked for and the query re-run without it when the
  * database has not caught up — a missing COLUMN is 42703 and would otherwise
  * cost every score the player has.
  */
-/** PostgREST returns at most this many rows per request, whatever `.range()` asks for. */
-const POSTGREST_ROW_CAP = 1000
-
 async function loadResults(db: GradeDb, playerId: string) {
   // score_label is an original results column (never dropped), display only.
   const base = 'raw_score, weight_kg, difficulty_tier, score_label, session_id, points_earned, created_at,'
     + ' session_events(event_name), sessions(is_active, points_awarded_at, started_at, ended_at, session_date)'
-  const ask = (cols: string) => db.from('results')
+  const page = (cols: string, from: number) => db.from('results')
     .select(cols)
     .eq('player_id', playerId)
     .not('raw_score', 'is', null)
-    // Well above any one player's lifetime rows; PostgREST caps a response at 1000.
-    .range(0, 4999)
+    // A stable order, or pages can overlap and skip rows.
+    .order('id')
+    .range(from, from + PAGE - 1)
 
-  const withBand = await ask(`${base}, bodyweight_band`)
+  // Paged, because a short read looks like games never played: the grades
+  // would lose evidence and the leaderboard publish would delete those games.
+  // A failed page fails the whole read, which marks the state incomplete.
+  const all = async (cols: string) => {
+    const rows: unknown[] = []
+    for (let from = 0; ; from += PAGE) {
+      const res = await page(cols, from)
+      if (res.error) return { data: null, error: res.error }
+      rows.push(...(res.data ?? []))
+      if ((res.data ?? []).length < PAGE) return { data: rows, error: null }
+    }
+  }
+
+  const withBand = await all(`${base}, bodyweight_band`)
   if (withBand.error?.code !== '42703') return withBand
-  return ask(base)
+  return all(base)
 }
 
 /**
@@ -395,11 +409,7 @@ export async function loadGradeInputs(db: GradeDb, playerId: string, matches?: r
     voids: voids.set,
     schemaReady: !awards.error,
     workoutsReady: !workouts.error,
-    // A full page may be a cut-off one (PostgREST caps a response at 1000
-    // rows, whatever the range asks). Short evidence reads as games never
-    // played, and the leaderboard publish deletes a game it cannot see.
-    complete: !results.error && (results.data?.length ?? 0) < POSTGREST_ROW_CAP
-      && !allMatches.failed && !voids.failed && !bodyweights.failed
+    complete: !results.error && !allMatches.failed && !voids.failed && !bodyweights.failed
       && (!workouts.error || missing(workouts.error))
       && (!exemptions.error || missing(exemptions.error))
       && (!awards.error || missing(awards.error))
