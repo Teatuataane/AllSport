@@ -2541,7 +2541,9 @@ and sex and scales strength by bodyweight.
   calendar year scores the rung its result reached (Kiwikiwi 1 … Taniwha 12),
   best row per event per game, summed. Up to 120 a game. Ranked on points,
   then games, ties shared (`rankBy`). Official events only: swaps, extras and
-  logged workouts never score here.
+  logged workouts never score here. **SUPERSEDED in v0.22.0.0:** that sum is
+  now a player's colour total for the game, and points come from their place
+  among everyone in it (100, 99, 98 …). See "Season points by place" above.
 - **A lifetime Skill board (average of the ten domain colours) was built and
   removed the same day, at Tāne's call.** Do not bring it back without asking;
   with the average overall-colour rule (v0.18.0.0) it duplicated the colour.
@@ -2558,7 +2560,9 @@ and sex and scales strength by bodyweight.
   `player_season_points (player_id, season_year, points, games)` and
   `player_domain_colours (player_id, domain_rungs smallint[10])`, both public
   read, no client write (`20260924213359`). A failed score write never fails
-  the recheck. The page reads a missing table as empty.
+  the recheck. The page reads a missing table as empty. **Since v0.22.0.0**
+  it writes `player_game_colours` through `publishLeaderboardScores` instead
+  of `player_season_points`, and the board reads the `season_points` view.
 - **Freshness depends on rechecks.** A player's numbers move when they open
   HOME/COLOURS, at their session-end screen, and (new) when the kaiwhakawā's
   live screen sees a game end: it force-rechecks every registered player in it.
