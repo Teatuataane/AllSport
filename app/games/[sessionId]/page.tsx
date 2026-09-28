@@ -9,8 +9,10 @@ import { getEventBySlug } from '@/lib/eventData'
 import { usePlayerGames } from '@/lib/usePlayerGames'
 import { averageBefore, awardsForGame, eventFlags, nextStep } from '@/lib/gameReport'
 import {
-  ColourScore, EarnedColours, NextTime, ReportEventRow, ReportLabel, type ReportEventLine,
+  ColourScore, EarnedColours, NextTime, PlacementHeader, ReportEventRow, ReportLabel, type ReportEventLine,
 } from '@/components/GameReportParts'
+import { loadGamePlace } from '@/lib/loadGamePlace'
+import type { GamePlace } from '@/lib/gameReport'
 
 const supabase = createClient()
 
@@ -62,6 +64,24 @@ export default function GameReviewPage() {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const { activePlayerId } = useActivePlayer()
   const games = usePlayerGames(supabase, activePlayerId)
+  const [gamePlace, setGamePlace] = useState<{ key: string; place: GamePlace | null } | null>(null)
+
+  // The place among everyone in the game, once it has closed. Only trusted
+  // when every registered player in it has a published total: a partial field
+  // would read too high.
+  const closed = session ? !session.is_active : false
+  const registered = new Set(results.map(r => r.player_id).filter(Boolean)).size
+  useEffect(() => {
+    if (!activePlayerId || !closed) return
+    let cancelled = false
+    const key = `${sessionId}:${activePlayerId}`
+    loadGamePlace(supabase, sessionId, activePlayerId).then(place => {
+      if (!cancelled) setGamePlace({ key, place })
+    })
+    return () => { cancelled = true }
+  }, [sessionId, activePlayerId, closed])
+  const wholeGame = gamePlace?.key === `${sessionId}:${activePlayerId}` && gamePlace.place && gamePlace.place.of >= registered
+    ? gamePlace.place : null
 
   useEffect(() => {
     async function load() {
@@ -166,14 +186,8 @@ export default function GameReviewPage() {
       {mine && (
         <div style={{ marginBottom: '36px' }}>
           <ReportLabel>Your game</ReportLabel>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px', margin: '0 0 12px' }}>
-            <span style={{ fontFamily: 'var(--font-display)', fontSize: '56px', lineHeight: 1, color: '#fff' }}>
-              {ordinal(mine.standing.rank)}
-            </span>
-            <span style={{ fontFamily: 'var(--font-label)', fontSize: '13px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.12em' }}>
-              of {mine.participants} · {mine.division}
-            </span>
-          </div>
+          <PlacementHeader game={wholeGame}
+            division={{ rank: mine.standing.rank, of: mine.participants, name: mine.division }} />
           {myGame?.score && <ColourScore points={myGame.score.points} average={myGame.average} />}
           {myGame?.next && <NextTime step={myGame.next} />}
           {myGame && <EarnedColours colours={myGame.colours} />}

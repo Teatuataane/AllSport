@@ -22,7 +22,9 @@ import { useGradeProfile } from '@/lib/useGradeProfile'
 import { recheckGrades, type ConferredColour } from '@/lib/recheckGrades'
 import { usePlayerGames } from '@/lib/usePlayerGames'
 import { averageBefore, awardsForGame, nextStep } from '@/lib/gameReport'
-import { ColourScore, EarnedColours, NextTime } from '@/components/GameReportParts'
+import { ColourScore, EarnedColours, NextTime, PlacementHeader } from '@/components/GameReportParts'
+import { loadGamePlace } from '@/lib/loadGamePlace'
+import type { GamePlace } from '@/lib/gameReport'
 import { useGameSwaps } from '@/lib/useGameSwaps'
 import {
   formatPR, sportWDL, sectionLabel, ProgressSegments, INP, QES_LBL as SHEET_LBL,
@@ -845,12 +847,14 @@ const RAINBOW_G = 'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2
 type EndSummary = { overall_placement: number }
 
 function SessionEndTakeover({
-  sessionId, playerId, events, myResults, divisionPlacement, onDismiss,
+  sessionId, playerId, events, myResults, registeredPlayers, divisionPlacement, onDismiss,
 }: {
   sessionId: string
   playerId: string
   events: SessionEvent[]
   myResults: Result[]
+  /** Registered players with a result in this game, to tell a complete field from a partial one. */
+  registeredPlayers: number
   divisionPlacement: { rank: number; divisionName: string; playerCount: number } | null
   onDismiss: () => void
 }) {
@@ -862,6 +866,17 @@ function SessionEndTakeover({
   // awards the game's colour section reads.
   const [rechecked, setRechecked] = useState(0)
   const games = usePlayerGames(supabase, playerId, rechecked)
+  // Place among everyone in the game. The recheck publishes this player's
+  // total, so it is read after it answers; shown only once every registered
+  // player has a total, since a partial field reads too high.
+  const [gamePlace, setGamePlace] = useState<GamePlace | null>(null)
+  useEffect(() => {
+    if (rechecked === 0) return
+    let cancelled = false
+    loadGamePlace(supabase, sessionId, playerId).then(p => { if (!cancelled) setGamePlace(p) })
+    return () => { cancelled = true }
+  }, [sessionId, playerId, rechecked])
+  const wholeGame = gamePlace && gamePlace.of >= registeredPlayers ? gamePlace : null
 
   // Lock body scroll while the takeover is open (same pattern as the sheet)
   useEffect(() => {
@@ -953,15 +968,9 @@ function SessionEndTakeover({
         {/* Body */}
         <div style={{ overflowY: 'auto', padding: '0 18px 24px', flex: 1 }}>
 
-          {/* Final placement */}
-          <div style={{ textAlign: 'center', padding: '18px 0 22px' }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: '72px', lineHeight: 1, color: '#fff', letterSpacing: '0.02em' }}>
-              {rank !== null ? ordinal(rank) : '—'}
-            </div>
-            <div style={{ fontFamily: 'var(--font-label)', fontSize: '13px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.14em', marginTop: '6px' }}>
-              {divisionPlacement ? divisionPlacement.divisionName : 'This session'}
-            </div>
-          </div>
+          {/* Placement: the whole game first, the division under it */}
+          <PlacementHeader game={wholeGame}
+            division={rank !== null ? { rank, of: divisionPlacement?.playerCount ?? null, name: divisionPlacement?.divisionName ?? 'This game' } : null} />
 
           {/* The game's colour score */}
           {score ? <ColourScore points={score.points} average={average} /> : (
@@ -1830,6 +1839,7 @@ export default function SessionPage() {
           playerId={activePlayerId}
           events={events}
           myResults={results.filter(r => r.player_id === activePlayerId)}
+          registeredPlayers={new Set(results.map(r => r.player_id).filter(Boolean)).size}
           divisionPlacement={myDivisionPlacement}
           onDismiss={() => {
             localStorage.setItem(`allsport_postgame_${sessionId}_${activePlayerId}`, '1')

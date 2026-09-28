@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   gameColourRung, gameScores, gamesInOrder, eventFlags, averageBefore, awardsForGame,
-  describeRawGap, nextStep, nextStepLine, AWARD_WINDOW_MS,
+  describeRawGap, nextStep, nextStepLine, placeInGame, AWARD_WINDOW_MS,
 } from '@/lib/gameReport'
 import { gradeStateFrom, leaderboardScoresFrom, type GradeInputs, type ResultRow, type GradeAward } from '@/lib/loadGrades'
 import { getEventByName } from '@/lib/eventData'
@@ -147,5 +147,30 @@ describe('next time', () => {
     const step = nextStep(['Forward Fold', 'Bridge'], gradeStateFrom('p', i).grades, MEN, [], '2026-03-01')!
     expect(step.eventName).toBe('Forward Fold')
     expect(step.gap).toBe('1s longer')
+  })
+})
+
+describe('place in the whole game', () => {
+  const rows = [
+    { player_id: 'a', colour_total: 70 },
+    { player_id: 'b', colour_total: 64 },
+    { player_id: 'c', colour_total: 64 },
+    { player_id: 'd', colour_total: 50 },
+    { player_id: 'gone', colour_total: 90 },
+  ]
+  const all = (id: string) => id !== 'gone'
+
+  it('ranks on colour total with ties sharing the higher place, paying 100, 99, 98', () => {
+    expect(placeInGame(rows, all, 'a')).toEqual({ place: 1, of: 4, points: 100 })
+    expect(placeInGame(rows, all, 'c')).toEqual({ place: 2, of: 4, points: 99 })
+    expect(placeInGame(rows, all, 'd')).toEqual({ place: 4, of: 4, points: 97 })
+  })
+
+  it('gives an erased profile or guest no place, so nobody is pushed down by them', () => {
+    expect(placeInGame(rows, all, 'a')!.place).toBe(1)
+  })
+
+  it('is null for a player with no published total', () => {
+    expect(placeInGame(rows, all, 'z')).toBeNull()
   })
 })

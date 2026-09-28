@@ -24,7 +24,7 @@
 import { getEventByName, isTimedEffort, DT_CAP, type EventData } from './eventData'
 import { STANDARDS } from './standards'
 import { tierScoring, fmtTime } from './scoring'
-import { eventRungInGame, MAX_GAME_COLOUR_TOTAL } from './leaderboardScores'
+import { eventRungInGame, placePoints, MAX_GAME_COLOUR_TOTAL } from './leaderboardScores'
 import { ladderFor, type PlayerGrades, type GradePlayer } from './playerGrades'
 import {
   ageBand, rungForScore, thresholdFor, ratioThresholdsKg, bodyweightOn, gradeForRung,
@@ -273,4 +273,30 @@ export function nextStep(
 /** "Deadlift: 5kg more for Kākāriki". */
 export function nextStepLine(step: NextStep): string {
   return `${step.eventName}: ${step.gap} for ${gradeForRung(step.nextRung).name}`
+}
+
+// ─── Place in the whole game ─────────────────────────────────────────────────
+// Since v0.22.0.0 season points come from a player's place among EVERYONE in
+// the game, ranked on colour total (player_game_colours, ranked by the
+// season_points view). The report leads with that place and the points it
+// paid, with the division place under it (Tāne, 2026-09-28).
+
+export type GamePlace = { place: number; of: number; points: number }
+
+/**
+ * The player's place in one game from every published colour total, by the
+ * same rule as the season_points view: RANK() on the total, ties share the
+ * higher place, erased profiles and guests hold no place. Null when the
+ * player has no published total yet.
+ */
+export function placeInGame(
+  rows: readonly { player_id: string; colour_total: number }[],
+  eligible: (playerId: string) => boolean,
+  playerId: string,
+): GamePlace | null {
+  const field = rows.filter(r => eligible(r.player_id))
+  const mine = field.find(r => r.player_id === playerId)
+  if (!mine) return null
+  const place = 1 + field.filter(r => r.colour_total > mine.colour_total).length
+  return { place, of: field.length, points: placePoints(place) }
 }

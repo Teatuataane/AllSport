@@ -6,7 +6,7 @@
 
 import { describe, it, expect, afterEach } from 'vitest'
 import { render, cleanup, screen } from '@testing-library/react'
-import { ColourScore, NextTime, ReportEventRow, ScoreTrend, EarnedColours } from '@/components/GameReportParts'
+import { ColourScore, NextTime, ReportEventRow, ScoreTrend, EarnedColours, PlacementHeader } from '@/components/GameReportParts'
 
 afterEach(cleanup)
 
@@ -57,5 +57,22 @@ describe('the rest', () => {
   it('shows nothing when no colour was earned', () => {
     const { container } = render(<EarnedColours colours={[]} />)
     expect(container.textContent).toBe('')
+  })
+})
+
+describe('PlacementHeader', () => {
+  it('leads with the whole-game place and its points, the division place under it', () => {
+    render(<PlacementHeader game={{ place: 3, of: 14, points: 98 }} division={{ rank: 2, of: 6, name: "Men's" }} />)
+    const el = screen.getByTestId('placement')
+    expect(el.textContent).toContain('3rd')
+    expect(el.textContent).toContain('of 14 in the game · +98 season points')
+    expect(el.textContent).toContain("2nd of 6 · Men's")
+  })
+
+  it('falls back to the division place alone', () => {
+    render(<PlacementHeader game={null} division={{ rank: 2, of: 6, name: "Men's" }} />)
+    const el = screen.getByTestId('placement')
+    expect(el.textContent).toContain('2nd')
+    expect(el.textContent).not.toContain('season points')
   })
 })

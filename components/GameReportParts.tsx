@@ -14,7 +14,7 @@ import { gradeForRung, gradeInk, gradeAccent } from '@/lib/grading'
 import { DOMAIN_ORDER, getEventByName } from '@/lib/eventData'
 import { NEUTRAL_ICON_TINT } from '@/lib/scoreColour'
 import { MAX_GAME_COLOUR_TOTAL } from '@/lib/leaderboardScores'
-import { gameColourRung, nextStepLine, type NextStep } from '@/lib/gameReport'
+import { gameColourRung, nextStepLine, type NextStep, type GamePlace } from '@/lib/gameReport'
 
 export function ReportLabel({ children, colour = '#777' }: { children: ReactNode; colour?: string }) {
   return (
@@ -191,6 +191,34 @@ export function ScoreTrend({ points }: { points: number[] }) {
             fill={g.rung === 0 ? '#555' : gradeAccent(g)} />
         })}
       </svg>
+    </div>
+  )
+}
+
+/**
+ * The placement that leads the report. With a whole-game place: that place,
+ * out of everyone, and the season points it paid, with the division place
+ * under it. Without one (not published yet): the division place alone.
+ */
+export function PlacementHeader({ game, division }: {
+  game: GamePlace | null
+  division: { rank: number; of: number | null; name: string } | null
+}) {
+  const big = game ? game.place : division?.rank ?? null
+  const divLine = division
+    ? `${ord(division.rank)}${division.of ? ` of ${division.of}` : ''} · ${division.name}`
+    : null
+  return (
+    <div data-testid="placement" style={{ textAlign: 'center', padding: '14px 0 18px' }}>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 72, lineHeight: 1, color: '#fff', letterSpacing: '0.02em' }}>
+        {big != null ? ord(big) : '—'}
+      </div>
+      <div style={{ fontFamily: 'var(--font-label)', fontSize: 13, color: '#888', textTransform: 'uppercase', letterSpacing: '0.14em', marginTop: 6 }}>
+        {game ? `of ${game.of} in the game · +${game.points} season points` : divLine ?? 'This game'}
+      </div>
+      {game && divLine && (
+        <div style={{ fontSize: 13, color: '#666', marginTop: 4 }}>{divLine}</div>
+      )}
     </div>
   )
 }
