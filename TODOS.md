@@ -167,11 +167,9 @@
 ## P1 — Do Next
 
 ### ~~Switch on the season leaderboard (v0.20.0.0)~~ DONE 2026-09-26
-Migration applied and verified, backfill written (27 players). Still open:
-Tāne to confirm the Game-rung floor (win 6, draw 5, loss 4) in
-`lib/leaderboardScores.ts` `GAME_RESULT_RUNG`. It now matters more: a game's
-colour total decides places for everyone in it. (Loco Chocko's "4 points from
-5 games" is gone under place scoring: 493 from 5.)
+Migration applied and verified, backfill written (27 players). The Game-rung
+floor (win 6, draw 5, loss 4) was confirmed by Tāne 2026-09-28. (Loco Chocko's
+"4 points from 5 games" is gone under place scoring: 493 from 5.)
 
 ### Switch on auto-conferral (v0.16.0.0) — in this order
 **What:** four migrations, a one-off history replay, then the service key.

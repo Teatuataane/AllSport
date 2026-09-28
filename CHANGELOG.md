@@ -2,6 +2,20 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.23.0.0] - 2026-09-29
+
+### Added
+- **Your game report now scores the game on the colour ladder.** After a game you see your placement first, then your colour score (each event scores the colour it reached, up to 120) and the colour the game played at, then every event with its score, colour and placement.
+- **Your place in the whole game leads the report**, with the season points it earned ("3rd of 14 in the game · +98 season points") and your division place underneath. Until everyone in the game has been scored, it shows your division place.
+- **Events are tagged PR, First time or Colour up**, so the best moments of a game stand out.
+- **A "next time" line** names the event you are closest to moving up in, in its own terms, for example "Deadlift: 10kg more for Poroporo".
+- **Colours earned in the game** appear on the report as well as on the end-of-game screen.
+- **Play history shows each game's colour score** with its colour, and a chart of your last 12 games.
+
+### Changed
+- The end-of-game screen leads with your placement and colour score instead of the events-played and PRs tiles.
+- A win, draw or loss in a game event scores 6, 5 or 4 towards the colour score. This is now confirmed rather than provisional.
+
 ## [0.22.1.0] - 2026-09-28
 
 ### Removed

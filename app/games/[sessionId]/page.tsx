@@ -3,7 +3,16 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase-browser'
-import { formatNZDate } from '@/lib/dates'
+import { formatNZDate, toNZDateString } from '@/lib/dates'
+import { useActivePlayer } from '@/lib/useActivePlayer'
+import { getEventBySlug } from '@/lib/eventData'
+import { usePlayerGames } from '@/lib/usePlayerGames'
+import { averageBefore, awardsForGame, eventFlags, nextStep } from '@/lib/gameReport'
+import {
+  ColourScore, EarnedColours, NextTime, PlacementHeader, ReportEventRow, ReportLabel, type ReportEventLine,
+} from '@/components/GameReportParts'
+import { loadGamePlace } from '@/lib/loadGamePlace'
+import type { GamePlace } from '@/lib/gameReport'
 
 const supabase = createClient()
 
@@ -29,6 +38,7 @@ type ResultRow = {
   raw_score: number | null
   score_label: string | null
   difficulty_tier: string | null
+  is_pr: boolean | null
 }
 type PlayerRow = { id: string; display_name: string | null; username: string | null; full_name: string | null; division: string | null }
 
@@ -50,14 +60,35 @@ export default function GameReviewPage() {
   const [session, setSession] = useState<SessionRow | null>(null)
   const [events, setEvents] = useState<EventRow[]>([])
   const [report, setReport] = useState<DivisionReport[]>([])
+  const [results, setResults] = useState<ResultRow[]>([])
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
+  const { activePlayerId } = useActivePlayer()
+  const games = usePlayerGames(supabase, activePlayerId)
+  const [gamePlace, setGamePlace] = useState<{ key: string; place: GamePlace | null } | null>(null)
+
+  // The place among everyone in the game, once it has closed. Only trusted
+  // when every registered player in it has a published total: a partial field
+  // would read too high.
+  const closed = session ? !session.is_active : false
+  const registered = new Set(results.map(r => r.player_id).filter(Boolean)).size
+  useEffect(() => {
+    if (!activePlayerId || !closed) return
+    let cancelled = false
+    const key = `${sessionId}:${activePlayerId}`
+    loadGamePlace(supabase, sessionId, activePlayerId).then(place => {
+      if (!cancelled) setGamePlace({ key, place })
+    })
+    return () => { cancelled = true }
+  }, [sessionId, activePlayerId, closed])
+  const wholeGame = gamePlace?.key === `${sessionId}:${activePlayerId}` && gamePlace.place && gamePlace.place.of >= registered
+    ? gamePlace.place : null
 
   useEffect(() => {
     async function load() {
       const [sessRes, evRes, resRes] = await Promise.all([
         supabase.from('sessions').select('id, session_date, location, is_championship, is_active').eq('id', sessionId).single(),
         supabase.from('session_events').select('id, domain_number, domain_name, event_name').eq('session_id', sessionId).order('domain_number'),
-        supabase.from('results').select('player_id, player_name, event_id, raw_score, score_label, difficulty_tier').eq('session_id', sessionId).not('raw_score', 'is', null),
+        supabase.from('results').select('player_id, player_name, event_id, raw_score, score_label, difficulty_tier, is_pr').eq('session_id', sessionId).not('raw_score', 'is', null),
       ])
 
       const sess = (sessRes.data as SessionRow) ?? null
@@ -81,11 +112,48 @@ export default function GameReviewPage() {
 
       setSession(sess)
       setEvents(evs)
+      setResults(results)
       setReport(buildReport(evs, results, playerMap))
       setLoading(false)
     }
     if (sessionId) load()
   }, [sessionId])
+
+  // The viewer's own game: placement from the standings below, colour score
+  // and colours from their grade inputs. Nobody else's colour score is shown.
+  const mine = activePlayerId ? findStanding(report, activePlayerId) : null
+  const myGame = (() => {
+    if (!mine || !games) return null
+    const score = games.scores.get(sessionId)
+    const flags = eventFlags(games.scores, sessionId)
+    const lines: ReportEventLine[] = mine.standing.events.map(cell => ({
+      eventName: cell.eventName,
+      scoreLabel: cell.hasScore ? cell.scoreLabel ?? '' : null,
+      placement: cell.hasScore ? cell.placement : null,
+      rung: score?.rungs.get(cell.eventName) ?? 0,
+      isPR: results.some(r => r.player_id === activePlayerId && r.event_id === cell.eventId && r.is_pr),
+      firstTime: flags.get(cell.eventName)?.firstTime,
+      colourUp: flags.get(cell.eventName)?.colourUp,
+    }))
+    // Events added on top at this game: a workout linked to the session, never
+    // in the score or the placement.
+    const added = new Map<string, { label: string | null; raw: number }>()
+    for (const e of games.inputs.entries) {
+      if (e.workouts?.session_id !== sessionId || !e.event_slug || e.raw_score == null) continue
+      const prev = added.get(e.event_slug)
+      if (!prev || e.raw_score > prev.raw) added.set(e.event_slug, { label: e.score_label ?? null, raw: e.raw_score })
+    }
+    return {
+      score,
+      average: averageBefore(games.scores, sessionId),
+      lines,
+      added: [...added.entries()],
+      colours: awardsForGame(games.state.awards, games.scores, sessionId)
+        .map(a => ({ domainNumber: a.domain_number, rung: a.rung })),
+      next: nextStep(events.map(e => e.event_name), games.state.grades, games.player,
+        games.inputs.bodyweights ?? [], toNZDateString(new Date())),
+    }
+  })()
 
   if (loading) {
     return <Shell><div style={{ color: '#555', fontFamily: 'var(--font-body)' }}>Loading game…</div></Shell>
@@ -98,10 +166,10 @@ export default function GameReviewPage() {
     <Shell>
       <div style={{ marginBottom: '28px' }}>
         <Link href="/dashboard" style={{ color: '#2371BB', fontFamily: 'var(--font-label)', fontSize: '14px', textDecoration: 'none' }}>
-          ← Back to dashboard
+          ← Back
         </Link>
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '40px', margin: '12px 0 4px', color: '#fff', letterSpacing: '0.02em' }}>
-          Game Review
+          Game report
           {session.is_championship && (
             <span style={{ color: '#F9B051', fontSize: '14px', fontFamily: 'var(--font-label)', letterSpacing: '0.1em', marginLeft: '12px' }}>CHAMPIONSHIP</span>
           )}
@@ -113,9 +181,41 @@ export default function GameReviewPage() {
           {formatNZDate(session.session_date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
           {session.location ? ` · ${session.location}` : ''}
         </div>
-        <div style={{ color: '#555', fontFamily: 'var(--font-body)', fontSize: '13px', marginTop: '4px' }}>
-          {events.length} event{events.length !== 1 ? 's' : ''} · placements computed from submitted scores (lower total = better; a missed event = last in division)
+      </div>
+
+      {mine && (
+        <div style={{ marginBottom: '36px' }}>
+          <ReportLabel>Your game</ReportLabel>
+          <PlacementHeader game={wholeGame}
+            division={{ rank: mine.standing.rank, of: mine.participants, name: mine.division }} />
+          {myGame?.score && <ColourScore points={myGame.score.points} average={myGame.average} />}
+          {myGame?.next && <NextTime step={myGame.next} />}
+          {myGame && <EarnedColours colours={myGame.colours} />}
+
+          <ReportLabel>Your events</ReportLabel>
+          <div>
+            {(myGame?.lines ?? mine.standing.events.map(cell => ({
+              eventName: cell.eventName, scoreLabel: cell.hasScore ? cell.scoreLabel ?? '' : null,
+              placement: cell.hasScore ? cell.placement : null, rung: 0,
+            }))).map(line => <ReportEventRow key={line.eventName} line={line} />)}
+          </div>
+          {myGame && myGame.added.length > 0 && (
+            <>
+              <ReportLabel>Added · not in the score</ReportLabel>
+              {myGame.added.map(([slug, a]) => (
+                <div key={slug} style={{ display: 'flex', gap: '10px', padding: '8px 0', borderBottom: '1px solid #1a1a1a', fontSize: '14px' }}>
+                  <span style={{ flex: 1, color: '#ccc' }}>{getEventBySlug(slug)?.name ?? slug}</span>
+                  <span style={{ color: '#888', fontSize: '13px' }}>{a.label}</span>
+                </div>
+              ))}
+            </>
+          )}
         </div>
+      )}
+
+      <ReportLabel>Everyone</ReportLabel>
+      <div style={{ color: '#555', fontFamily: 'var(--font-body)', fontSize: '13px', marginBottom: '16px' }}>
+        {events.length} event{events.length !== 1 ? 's' : ''} · placements computed from submitted scores (lower total = better; a missed event = last in division)
       </div>
 
       {report.length === 0 && (
@@ -177,6 +277,15 @@ export default function GameReviewPage() {
       ))}
     </Shell>
   )
+}
+
+/** The player's place in whichever division they played in. */
+function findStanding(report: DivisionReport[], playerId: string) {
+  for (const div of report) {
+    const s = div.standings.find(x => x.playerKey === playerId)
+    if (s) return { division: div.division, participants: div.participants, standing: s }
+  }
+  return null
 }
 
 function Shell({ children }: { children: React.ReactNode }) {

@@ -36,7 +36,7 @@ import type { SportRating } from './headToHead'
  * floor, playing the actual sport scored 0 until a player had ten rated games,
  * and doing a drill instead would always pay better.
  *
- * A PROVISIONAL call, flagged to Tāne: it is the one number here the colour
+ * Confirmed by Tāne on 2026-09-28 (was provisional): it is the one number here the colour
  * standards do not already decide.
  */
 export const GAME_RESULT_RUNG: Record<0 | 1 | 2, number> = {

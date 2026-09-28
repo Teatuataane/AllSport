@@ -467,6 +467,34 @@ export function seasonRowsFrom(inputs: GradeInputs): (SeasonRow & { closedAt: st
   })
 }
 
+/** The grading player (division, age, gender) the inputs describe. */
+export function gradePlayerOf(inputs: GradeInputs) {
+  return { division: inputs.profile.division, ageYears: inputs.profile.age_years, gender: inputs.gender }
+}
+
+/**
+ * The player's ratings as they stood when each game closed, so a later run of
+ * wins never re-prices an old game. Cached per session.
+ */
+export function ratingsAtClose(
+  playerId: string,
+  inputs: GradeInputs,
+  rows: readonly { session_id: string; closedAt: string | null }[],
+): (sessionId: string) => Map<string, SportRating> {
+  const endOf = new Map(rows.map(r => [r.session_id, r.closedAt]))
+  const cache = new Map<string, Map<string, SportRating>>()
+  return (sessionId: string) => {
+    let hit = cache.get(sessionId)
+    if (!hit) {
+      const end = endOf.get(sessionId)
+      const endMs = end ? Date.parse(end) : Infinity
+      hit = ratingsFor(playerId, inputs.matches.filter(m => Date.parse(m.created_at) <= endMs))
+      cache.set(sessionId, hit)
+    }
+    return hit
+  }
+}
+
 /**
  * What the leaderboard publishes for one player, from inputs and the state
  * already computed from them: their domain colours, and their colour total in
@@ -474,22 +502,9 @@ export function seasonRowsFrom(inputs: GradeInputs): (SeasonRow & { closedAt: st
  */
 export function leaderboardScoresFrom(playerId: string, inputs: GradeInputs, state: GradeState) {
   const rows = seasonRowsFrom(inputs)
-  const endOf = new Map(rows.map(r => [r.session_id, r.closedAt]))
-  const ratingCache = new Map<string, Map<string, SportRating>>()
-  const ratingAt = (sessionId: string) => {
-    let hit = ratingCache.get(sessionId)
-    if (!hit) {
-      const end = endOf.get(sessionId)
-      const endMs = end ? Date.parse(end) : Infinity
-      hit = ratingsFor(playerId, inputs.matches.filter(m => Date.parse(m.created_at) <= endMs))
-      ratingCache.set(sessionId, hit)
-    }
-    return hit
-  }
-  const player = { division: inputs.profile.division, ageYears: inputs.profile.age_years, gender: inputs.gender }
   return {
     domainRungs: domainRungsOf(state.grades.domains),
-    games: gameColourTotals(rows, player, ratingAt),
+    games: gameColourTotals(rows, gradePlayerOf(inputs), ratingsAtClose(playerId, inputs, rows)),
   }
 }
 

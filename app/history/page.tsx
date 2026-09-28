@@ -23,6 +23,11 @@ import { colourByRung } from '@/lib/colours'
 import { useActivePlayer } from '@/lib/useActivePlayer'
 import { isPersonalGame, isOpen as workoutOpen, planEvents } from '@/lib/personalGame'
 import PlayerTabs, { ViewingAsBanner } from '@/components/PlayerTabs'
+import { usePlayerGames } from '@/lib/usePlayerGames'
+import { gameColourRung, gamesInOrder } from '@/lib/gameReport'
+import { gradeForRung } from '@/lib/grading'
+import { GradeDot } from '@/components/GradeDot'
+import { ScoreTrend } from '@/components/GameReportParts'
 
 const supabase = createClient()
 
@@ -69,6 +74,8 @@ type Bundle = {
 }
 
 const PAGE = 20
+/** Games drawn in the colour score trend. */
+const TREND_GAMES = 12
 
 export default function HistoryPage() {
   const router = useRouter()
@@ -118,6 +125,13 @@ export default function HistoryPage() {
     return () => { cancelled = true }
   }, [activePlayerId])
 
+  // Each game's colour score, for the trend and the rows. Own player only.
+  const games = usePlayerGames(supabase, activePlayerId)
+  const trend = useMemo(
+    () => (games ? gamesInOrder(games.scores).filter(g => g.closed).slice(-TREND_GAMES).map(g => g.points) : []),
+    [games],
+  )
+
   const myWorkouts = workouts ?? []
   const unfitted = myWorkouts.flatMap(w => w.workout_entries.filter(e => !e.event_slug).map(e => ({ w, e })))
 
@@ -144,6 +158,7 @@ export default function HistoryPage() {
         <ViewingAsBanner />
 
         <Section>Every game</Section>
+        {trend.length >= 2 && <div style={{ marginBottom: 10 }}><ScoreTrend points={trend} /></div>}
         <Panel>
           {!bundle ? (
             <Empty>Loading…</Empty>
@@ -169,6 +184,17 @@ export default function HistoryPage() {
                       {s.location ?? 'AllSport HQ'}
                     </div>
                   </Link>
+                  {(() => {
+                    const points = games?.scores.get(s.session_id)?.points
+                    if (points == null) return null
+                    const g = gradeForRung(gameColourRung(points))
+                    return (
+                      <div title={`Colour score ${points}, played at ${g.name}`} style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                        <GradeDot grade={g} size={10} />
+                        <span style={{ fontFamily: 'var(--font-display)', fontSize: 18 }}>{points}</span>
+                      </div>
+                    )
+                  })()}
                   <Link href={`/games/${s.session_id}`} aria-label="Game report" style={{
                     flexShrink: 0, color: 'var(--text-muted)', fontFamily: 'var(--font-label)',
                     textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: 11, fontWeight: 600,

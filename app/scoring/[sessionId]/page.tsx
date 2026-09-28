@@ -3,7 +3,7 @@ import { opponentPicks as pickOpponents } from '@/lib/matches'
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient, getSessionUser } from '@/lib/supabase-browser'
-import { getEventByName, getEventBySlug, DOMAIN_ORDER, type EventData } from '@/lib/eventData'
+import { getEventByName, getEventBySlug, type EventData } from '@/lib/eventData'
 import { parseLocalDate, toNZDateString } from '@/lib/dates'
 import EventIcon, { domainColor } from '@/components/EventIcon'
 import { type EntryVals, scoreColumns } from '@/lib/scoring'
@@ -20,8 +20,11 @@ import { playList, domainsCovered, type PlaySlot, type DomainGroup } from '@/lib
 import { scoreRung, rungSegment } from '@/lib/scoreColour'
 import { useGradeProfile } from '@/lib/useGradeProfile'
 import { recheckGrades, type ConferredColour } from '@/lib/recheckGrades'
-import { gradeForRung } from '@/lib/grading'
-import { GradeDot } from '@/components/GradeDot'
+import { usePlayerGames } from '@/lib/usePlayerGames'
+import { averageBefore, awardsForGame, nextStep } from '@/lib/gameReport'
+import { ColourScore, EarnedColours, NextTime, PlacementHeader } from '@/components/GameReportParts'
+import { loadGamePlace } from '@/lib/loadGamePlace'
+import type { GamePlace } from '@/lib/gameReport'
 import { useGameSwaps } from '@/lib/useGameSwaps'
 import {
   formatPR, sportWDL, sectionLabel, ProgressSegments, INP, QES_LBL as SHEET_LBL,
@@ -844,12 +847,14 @@ const RAINBOW_G = 'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2
 type EndSummary = { overall_placement: number }
 
 function SessionEndTakeover({
-  sessionId, playerId, events, myResults, divisionPlacement, onDismiss,
+  sessionId, playerId, events, myResults, registeredPlayers, divisionPlacement, onDismiss,
 }: {
   sessionId: string
   playerId: string
   events: SessionEvent[]
   myResults: Result[]
+  /** Registered players with a result in this game, to tell a complete field from a partial one. */
+  registeredPlayers: number
   divisionPlacement: { rank: number; divisionName: string; playerCount: number } | null
   onDismiss: () => void
 }) {
@@ -857,6 +862,21 @@ function SessionEndTakeover({
   const [sessionCount, setSessionCount] = useState<number | null>(null)
   const [loaded, setLoaded] = useState(false)
   const [newColours, setNewColours] = useState<ConferredColour[]>([])
+  // Bumped once the recheck answers, so the colours it conferred are in the
+  // awards the game's colour section reads.
+  const [rechecked, setRechecked] = useState(0)
+  const games = usePlayerGames(supabase, playerId, rechecked)
+  // Place among everyone in the game. The recheck publishes this player's
+  // total, so it is read after it answers; shown only once every registered
+  // player has a total, since a partial field reads too high.
+  const [gamePlace, setGamePlace] = useState<GamePlace | null>(null)
+  useEffect(() => {
+    if (rechecked === 0) return
+    let cancelled = false
+    loadGamePlace(supabase, sessionId, playerId).then(p => { if (!cancelled) setGamePlace(p) })
+    return () => { cancelled = true }
+  }, [sessionId, playerId, rechecked])
+  const wholeGame = gamePlace && gamePlace.of >= registeredPlayers ? gamePlace : null
 
   // Lock body scroll while the takeover is open (same pattern as the sheet)
   useEffect(() => {
@@ -893,15 +913,28 @@ function SessionEndTakeover({
   useEffect(() => {
     let cancelled = false
     void recheckGrades({ playerId, force: true })
-      .then(r => { if (!cancelled) setNewColours(r.conferred) })
+      .then(r => { if (!cancelled) { setNewColours(r.conferred); setRechecked(n => n + 1) } })
     return () => { cancelled = true }
   }, [playerId])
 
-  // Points are retired. What a game gives a player now is its placement,
-  // the events they played and the PRs they set.
+  // What a game gives a player: its placement, its colour score, the PRs set
+  // and any colour it earned (Tāne, 2026-09-28).
   const rank = summary?.overall_placement ?? divisionPlacement?.rank ?? null
-  const eventsPlayed = new Set(myResults.map(r => r.event_id)).size
-  const prCount = new Set(myResults.filter(r => r.is_pr).map(r => r.event_id)).size
+  const score = games?.scores.get(sessionId) ?? null
+  const average = games ? averageBefore(games.scores, sessionId) : null
+  const next = games
+    ? nextStep(events.map(e => e.event_name), games.state.grades, games.player, games.inputs.bodyweights ?? [], toNZDateString(new Date()))
+    : null
+  // The recheck here, plus anything the kaiwhakawā's screen conferred when the
+  // game ended a moment earlier. One row per domain colour.
+  const earned = new Map<string, { domainNumber: number; rung: number }>()
+  for (const c of newColours) earned.set(`${c.domainNumber}:${c.rung}`, c)
+  if (games) {
+    for (const a of awardsForGame(games.state.awards, games.scores, sessionId)) {
+      earned.set(`${a.domain_number}:${a.rung}`, { domainNumber: a.domain_number, rung: a.rung })
+    }
+  }
+  const colours = [...earned.values()].sort((a, b) => a.domainNumber - b.domainNumber)
 
   // Session-count milestone — summary row present means the count includes this session
   const sessionNumber = sessionCount === null ? null : (summary ? sessionCount : sessionCount + 1)
@@ -935,28 +968,15 @@ function SessionEndTakeover({
         {/* Body */}
         <div style={{ overflowY: 'auto', padding: '0 18px 24px', flex: 1 }}>
 
-          {/* Final placement */}
-          <div style={{ textAlign: 'center', padding: '18px 0 22px' }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: '72px', lineHeight: 1, color: '#fff', letterSpacing: '0.02em' }}>
-              {rank !== null ? ordinal(rank) : '—'}
-            </div>
-            <div style={{ fontFamily: 'var(--font-label)', fontSize: '13px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.14em', marginTop: '6px' }}>
-              {divisionPlacement ? divisionPlacement.divisionName : 'This session'}
-            </div>
-          </div>
+          {/* Placement: the whole game first, the division under it */}
+          <PlacementHeader game={wholeGame}
+            division={rank !== null ? { rank, of: divisionPlacement?.playerCount ?? null, name: divisionPlacement?.divisionName ?? 'This game' } : null} />
 
-          {/* What the game gave */}
-          <div style={{ display: 'flex', gap: '10px' }}>
-            {[
-              { label: 'Events played', value: `${eventsPlayed}/${events.length || 10}`, colour: '#4DB26E' },
-              { label: 'PRs set', value: prCount, colour: '#F9B051' },
-            ].map(s => (
-              <div key={s.label} style={{ flex: 1, background: '#161616', border: '1px solid #1e1e1e', borderRadius: '14px', padding: '12px 10px', textAlign: 'center' }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: '28px', color: s.colour, lineHeight: 1 }}>{loaded ? s.value : '…'}</div>
-                <div style={{ fontFamily: 'var(--font-label)', fontSize: '10.5px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '4px' }}>{s.label}</div>
-              </div>
-            ))}
-          </div>
+          {/* The game's colour score */}
+          {score ? <ColourScore points={score.points} average={average} /> : (
+            <div style={{ height: '76px', background: '#161616', border: '1px solid #1e1e1e', borderRadius: '14px' }} />
+          )}
+          {next && <NextTime step={next} />}
           {loaded && !summary && (
             <div style={{ fontSize: '11.5px', color: '#555', marginTop: '6px', textAlign: 'center' }}>
               Provisional placement — confirmed when the game is closed off
@@ -978,30 +998,8 @@ function SessionEndTakeover({
           )}
 
           {/* Colours earned today. Conferred by the server while this screen
-              was opening, so it is a fact by the time it is announced, not a
-              promise that a kaiwhakawā will get to it later. */}
-          {newColours.length > 0 && (
-            <>
-              <div style={{ ...SHEET_LBL, color: '#4DB26E' }}>
-                {newColours.length > 1 ? 'New colours' : 'New colour'}
-              </div>
-              {newColours.map(c => {
-                const g = gradeForRung(c.rung)
-                return (
-                  <div key={`${c.domainNumber}:${c.rung}`} style={{
-                    display: 'flex', alignItems: 'center', gap: '10px', background: '#161616',
-                    border: '1px solid #4DB26E33', borderRadius: '12px', padding: '10px 14px', marginBottom: '6px',
-                  }}>
-                    <GradeDot grade={g} size={14} />
-                    <span style={{ flex: 1, fontSize: '14px', color: '#fff' }}>{c.name}</span>
-                    <span style={{ fontSize: '13px', color: '#888' }}>
-                      {DOMAIN_ORDER[c.domainNumber - 1]}
-                    </span>
-                  </div>
-                )
-              })}
-            </>
-          )}
+              was opening, so it is a fact by the time it is announced. */}
+          <EarnedColours colours={colours} />
 
           <a href="/dashboard" style={{
             display: 'block', marginTop: '18px', background: '#161616', border: '1px solid #1e1e1e',
@@ -1841,6 +1839,7 @@ export default function SessionPage() {
           playerId={activePlayerId}
           events={events}
           myResults={results.filter(r => r.player_id === activePlayerId)}
+          registeredPlayers={new Set(results.map(r => r.player_id).filter(Boolean)).size}
           divisionPlacement={myDivisionPlacement}
           onDismiss={() => {
             localStorage.setItem(`allsport_postgame_${sessionId}_${activePlayerId}`, '1')
