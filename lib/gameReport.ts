@@ -6,8 +6,8 @@
 //
 //   COLOUR SCORE — every official event scores the rung its result reached
 //   (Kiwikiwi 1 … Taniwha 12), so a game is worth up to 120. The SAME function
-//   the Season board sums (eventRungInGame), so a game's score is always exactly
-//   what it added to the season. Game-rung results score win 6 / draw 5 /
+//   behind the colour total the leaderboard publishes (eventRungInGame), so the
+//   two always agree. Game-rung results score win 6 / draw 5 /
 //   loss 4, or the rating colour if higher (Tāne confirmed 6/5/4 the same day).
 //
 //   GAME COLOUR — the score divided by ten events, rounded down: 74 plays at
@@ -24,7 +24,7 @@
 import { getEventByName, isTimedEffort, DT_CAP, type EventData } from './eventData'
 import { STANDARDS } from './standards'
 import { tierScoring, fmtTime } from './scoring'
-import { eventRungInGame } from './leaderboardScores'
+import { eventRungInGame, MAX_GAME_COLOUR_TOTAL } from './leaderboardScores'
 import { ladderFor, type PlayerGrades, type GradePlayer } from './playerGrades'
 import {
   ageBand, rungForScore, thresholdFor, ratioThresholdsKg, bodyweightOn, gradeForRung,
@@ -54,7 +54,7 @@ export function gameColourRung(points: number): number {
 
 /**
  * Every official game the player has a result in, voided games dropped, scored
- * exactly as the Season board scores it. A game still in progress is included
+ * exactly as the leaderboard's colour total (gameColourTotals). A game still in progress is included
  * (the session-end screen opens before the database has closed it) and marked
  * `closed: false`.
  */
@@ -83,6 +83,7 @@ export function gameScores(playerId: string, inputs: GradeInputs): Map<string, G
       rungs.set(name, rung)
       points += rung
     }
+    points = Math.min(points, MAX_GAME_COLOUR_TOTAL)
     out.set(sessionId, { sessionId, date: g.date, closedAt: g.closedAt, closed: g.closed, points, rungs })
   }
   return out

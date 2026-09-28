@@ -13,7 +13,7 @@ import { GradeDot } from '@/components/GradeDot'
 import { gradeForRung, gradeInk, gradeAccent } from '@/lib/grading'
 import { DOMAIN_ORDER, getEventByName } from '@/lib/eventData'
 import { NEUTRAL_ICON_TINT } from '@/lib/scoreColour'
-import { MAX_GAME_POINTS } from '@/lib/leaderboardScores'
+import { MAX_GAME_COLOUR_TOTAL } from '@/lib/leaderboardScores'
 import { gameColourRung, nextStepLine, type NextStep } from '@/lib/gameReport'
 
 export function ReportLabel({ children, colour = '#777' }: { children: ReactNode; colour?: string }) {
@@ -55,7 +55,7 @@ export function ColourScore({ points, average }: { points: number; average: numb
       </div>
       <div style={{ textAlign: 'right' }}>
         <span style={{ fontFamily: 'var(--font-display)', fontSize: 38, lineHeight: 1, color: '#fff' }}>{points}</span>
-        <span style={{ fontFamily: 'var(--font-label)', fontSize: 13, color: '#666' }}> / {MAX_GAME_POINTS}</span>
+        <span style={{ fontFamily: 'var(--font-label)', fontSize: 13, color: '#666' }}> / {MAX_GAME_COLOUR_TOTAL}</span>
       </div>
     </div>
   )
@@ -171,7 +171,7 @@ export function ScoreTrend({ points }: { points: number[] }) {
   if (points.length < 2) return null
   const W = 300, H = 64, PAD = 6
   const x = (i: number) => PAD + (i * (W - 2 * PAD)) / (points.length - 1)
-  const y = (p: number) => H - PAD - (p / MAX_GAME_POINTS) * (H - 2 * PAD)
+  const y = (p: number) => H - PAD - (p / MAX_GAME_COLOUR_TOTAL) * (H - 2 * PAD)
   const last = points[points.length - 1]
   return (
     <div data-testid="score-trend" style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: 14, padding: '12px 14px' }}>

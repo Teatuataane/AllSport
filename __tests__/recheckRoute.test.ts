@@ -35,6 +35,10 @@ const h = vi.hoisted(() => ({
   scoresThrow: false,
   scoreError: null as unknown,
   scoreRows: [] as { table: string; row: unknown }[],
+  games: [] as { session_id: string; session_date: string; total: number }[],
+  /** Every call to publishLeaderboardScores: the client, the player, the scores. */
+  published: [] as { admin: unknown; player: string; scores: unknown; readFrom: string }[],
+  publishError: null as string | null,
 }))
 
 vi.mock('@/lib/supabase-server', () => ({
@@ -61,10 +65,17 @@ vi.mock('@/lib/loadGrades', () => {
     gradeStateFrom: () => h.state,
     leaderboardScoresFrom: () => {
       if (h.scoresThrow) throw new Error('boom')
-      return { domainRungs: [4, 4, 4, 4, 4, 4, 4, 4, 5, 5], points: 88, games: 2 }
+      return { domainRungs: [4, 4, 4, 4, 4, 4, 4, 4, 5, 5], games: h.games }
     },
   }
 })
+vi.mock('@/lib/leaderboardData', () => ({
+  publishLeaderboardScores: async (admin: unknown, player: string, scores: unknown, readFrom: string) => {
+    h.adminOps.push('score:publish')
+    h.published.push({ admin, player, scores, readFrom })
+    return { error: h.publishError }
+  },
+}))
 vi.mock('@/lib/autoConfer', () => ({
   awardsToConfer: () => h.pending,
   awardsToWithdraw: () => h.withdraw,
@@ -132,6 +143,12 @@ beforeEach(() => {
   h.scoresThrow = false
   h.scoreError = null
   h.scoreRows = []
+  h.games = [
+    { session_id: 'g1', session_date: '2026-05-02', total: 40 },
+    { session_id: 'g2', session_date: '2026-06-01', total: 48 },
+  ]
+  h.published = []
+  h.publishError = null
   h.state = { schemaReady: true }
   h.pending = []
   h.withdraw = []
@@ -214,7 +231,7 @@ describe('recheck route: writing', () => {
   it('writes no award when nothing is due, but still moves the watermark', async () => {
     const res = await post({ force: true })
     expect(await res.json()).toEqual({ conferred: [], checked: true, scored: true })
-    expect(h.adminOps).toEqual(['score:player_domain_colours', 'score:player_season_points', 'update:players'])
+    expect(h.adminOps).toEqual(['score:publish', 'update:players'])
   })
 
   it('reports only the rows the upsert actually inserted', async () => {
@@ -222,7 +239,7 @@ describe('recheck route: writing', () => {
     h.upsertData = [{ domain_number: 2, rung: 3 }]
     const body = await (await post({ force: true })).json()
     expect(body.conferred).toEqual([{ domainNumber: 2, rung: 3, name: 'G3', events: 1 }])
-    expect(h.adminOps).toEqual(['upsert:grade_awards', 'score:player_domain_colours', 'score:player_season_points', 'update:players'])
+    expect(h.adminOps).toEqual(['upsert:grade_awards', 'score:publish', 'update:players'])
   })
 
   it('500s on a failed write and leaves the watermark where it was', async () => {
@@ -234,21 +251,34 @@ describe('recheck route: writing', () => {
 })
 
 describe('recheck route: leaderboard numbers', () => {
-  it('publishes domain colours and this NZ season\'s points for the player checked', async () => {
+  it('publishes domain colours and a colour total per game, for the player checked, with the service client', async () => {
     await post({ force: true })
-    const domains = h.scoreRows.find(r => r.table === 'player_domain_colours')!.row as Record<string, unknown>
-    const season = h.scoreRows.find(r => r.table === 'player_season_points')!.row as Record<string, unknown>
-    expect(domains).toMatchObject({ player_id: 'me', domain_rungs: [4, 4, 4, 4, 4, 4, 4, 4, 5, 5] })
-    expect(season).toMatchObject({ player_id: 'me', points: 88, games: 2 })
-    expect(season.season_year).toBeGreaterThanOrEqual(2026)
+    expect(h.published).toHaveLength(1)
+    expect(h.published[0].player).toBe('me')
+    expect(h.published[0].admin).toBeTruthy()
+    expect(h.published[0].scores).toEqual({ domainRungs: [4, 4, 4, 4, 4, 4, 4, 4, 5, 5], games: h.games })
+    // The read start, so an older overlapping recheck cannot delete newer totals.
+    expect(Date.parse(h.published[0].readFrom)).not.toBeNaN()
+  })
+
+  it('reports scored:false when the publish fails, and leaves the watermark so the next visit retries', async () => {
+    h.publishError = 'boom'
+    const body = await (await post({ force: true })).json()
+    expect(body).toMatchObject({ scored: false, checked: false })
+    expect(h.adminOps).not.toContain('update:players')
+  })
+
+  it('never publishes from a partial read, which would delete games it could not see', async () => {
+    h.state = { schemaReady: true, complete: false }
+    expect((await post({ force: true })).status).toBe(500)
+    expect(h.published).toEqual([])
   })
 
   it('never fails the recheck when the numbers cannot be written', async () => {
-    h.scoreError = { code: 'PGRST205' }
+    h.publishError = 'relation does not exist'
     const res = await post({ force: true })
     expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({ conferred: [], checked: true, scored: false })
-    expect(h.adminOps).toContain('update:players')
+    expect(await res.json()).toEqual({ conferred: [], checked: false, scored: false })
   })
 
   it('never fails the recheck when the scoring itself throws', async () => {
@@ -261,7 +291,7 @@ describe('recheck route: leaderboard numbers', () => {
   it('writes nothing for a player the cheap probe says is unchanged', async () => {
     h.rpc.grades_need_recheck = { data: false, error: null }
     await post()
-    expect(h.scoreRows).toEqual([])
+    expect(h.published).toEqual([])
   })
 })
 

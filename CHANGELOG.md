@@ -2,6 +2,19 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.22.0.0] - 2026-09-28
+
+### Changed
+- **Season points now come from your place in each game.** Everyone in a game is ranked together on the colours their scores reached, whatever their division. 1st earns 100 points, 2nd 99, 3rd 98, and so on. Ties share the higher place. Every game you play counts, so turning up is the surest way up the board.
+- **How To Play explains the new points.** It no longer mentions a medal tally.
+- **Voided games, erased profiles and guests hold no place in a game**, so nobody is pushed down by someone the board does not show.
+
+### Fixed
+- **The board is refreshed once a game has really closed.** When the 100-minute timer ends a game, the kaiwhakawā's screen now waits until the database confirms it is closed, then updates everyone's numbers. Before, it could ask a moment too early and score nothing.
+- **A failed save is retried.** If a player's numbers fail to save, their next visit tries again instead of treating them as done.
+- **Players with a long history keep every result.** Their results are now read in pages. Before, one request could stop at 1,000 rows and quietly miss older games.
+- **The board says when it cannot load the season**, instead of showing an empty board.
+
 ## [0.21.2.0] - 2026-09-28
 
 ### Changed

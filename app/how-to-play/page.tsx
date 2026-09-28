@@ -119,7 +119,7 @@ const steps = [
   {
     number: '06',
     title: 'Get Placed',
-    desc: 'In each event, players are ranked by their result. Your placement in each event (1st, 2nd, 3rd...) is recorded, and the lowest total placement across all 10 events wins the game. Every score you set also counts toward your colours, and every 1st, 2nd and 3rd is tallied on the season board.',
+    desc: 'In each event, players are ranked by their result. Your placement in each event (1st, 2nd, 3rd...) is recorded, and the lowest total placement across all 10 events wins the game. Every score you set also counts toward your colours. For the season board, everyone in the game is ranked together on the colours their scores reached: 1st earns 100 points, 2nd 99, 3rd 98, and so on, so every game you play counts.',
   },
   {
     number: '07',

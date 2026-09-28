@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { loadGradeState, type GradeDb } from '@/lib/loadGrades'
+import { loadGradeState, loadGradeInputs, type GradeDb } from '@/lib/loadGrades'
 
 // ─── The grades loader runs anywhere ─────────────────────────────────────────
 // Step 2 of docs/designs/auto-conferral-spec.md: the engine has to run on a
@@ -289,5 +289,39 @@ describe('complete: whether the route may act on what was read', () => {
   it('treats a table that does not exist yet as a known empty, not a failure', async () => {
     const s = base(); s.workout_entries = [tableMissing]; s.grade_exemptions = [tableMissing]
     expect((await loadGradeState(fakeDb(s).db, 'p1'))!.complete).toBe(true)
+  })
+})
+
+describe('reading every result, past the 1000-row cap', () => {
+  // PostgREST returns at most 1000 rows whatever .range() asks for. A short
+  // read looks like games never played, so it must be paged, never truncated.
+  const row = (i: number) => ({
+    raw_score: 100, weight_kg: 100, difficulty_tier: null, session_id: `s${i}`,
+    points_earned: 10, created_at: '2026-09-01T00:00:00Z', bodyweight_band: '90 to 100kg',
+    session_events: { event_name: 'Deadlift' },
+    sessions: { is_active: false, points_awarded_at: '2026-09-01T02:00:00Z', started_at: '2026-09-01T00:00:00Z' },
+  })
+
+  it('keeps reading until a short page', async () => {
+    const script = base()
+    script.results = [ok(Array.from({ length: 1000 }, (_, i) => row(i))), ok([row(1000)])]
+    const inputs = await loadGradeInputs(fakeDb(script).db, 'p1')
+    expect(inputs!.results).toHaveLength(1001)
+    expect(inputs!.complete).toBe(true)
+  })
+
+  it('a player with exactly one full page is complete, not truncated', async () => {
+    const script = base()
+    script.results = [ok(Array.from({ length: 1000 }, (_, i) => row(i))), ok([])]
+    const inputs = await loadGradeInputs(fakeDb(script).db, 'p1')
+    expect(inputs!.results).toHaveLength(1000)
+    expect(inputs!.complete).toBe(true)
+  })
+
+  it('a failed later page fails the whole read', async () => {
+    const script = base()
+    script.results = [ok(Array.from({ length: 1000 }, (_, i) => row(i))), { data: null, error: { code: '57014' } }]
+    const inputs = await loadGradeInputs(fakeDb(script).db, 'p1')
+    expect(inputs!.complete).toBe(false)
   })
 })

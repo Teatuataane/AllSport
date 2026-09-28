@@ -41,15 +41,15 @@ const FEB = '2026-02-05T03:00:00.000Z'
 const MAR = '2026-03-05T03:00:00.000Z'
 
 describe('colour score', () => {
-  it('matches what the game adds to the Season board', () => {
+  it('matches the colour total the leaderboard publishes for each game', () => {
     const i = inputs([
       row('a', JAN, 'Forward Fold', 20030),
       row('b', FEB, 'Forward Fold', 30030),
       row('b', FEB, 'Deadlift', 100, { weight_kg: 100 }),
     ])
     const scores = gameScores('p', i)
-    const total = [...scores.values()].reduce((s, g) => s + g.points, 0)
-    expect(total).toBe(leaderboardScoresFrom('p', i, gradeStateFrom('p', i), 2026).points)
+    const published = leaderboardScoresFrom('p', i, gradeStateFrom('p', i)).games
+    expect(published.map(g => [g.session_id, g.total])).toEqual([...scores.values()].map(g => [g.sessionId, g.points]))
     expect(scores.get('a')!.points).toBe(6)
     expect(scores.get('b')!.rungs.get('Deadlift')).toBe(6)
   })
