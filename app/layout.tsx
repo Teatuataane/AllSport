@@ -54,8 +54,9 @@ export const metadata: Metadata = {
   title: 'AllSport — One Sport, Every Sport',
   description: 'One sport that makes you better at everything. AllSport tests strength, speed, flexibility, coordination and endurance — trained together, every session. Koha-based, Ōtautahi Aotearoa.',
   icons: {
-    icon: '/favicon-32.png',
-    apple: '/apple-touch-icon.png',
+    // ?v= busts browsers' favicon caches, which ignore normal HTTP caching.
+    icon: '/favicon-32.png?v=2',
+    apple: '/apple-touch-icon.png?v=2',
   },
 }
 
