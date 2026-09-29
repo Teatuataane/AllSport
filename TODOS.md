@@ -166,12 +166,8 @@
 
 ## P1 — Do Next
 
-### Apply `20260928201510_estimated_one_rep_max.sql` straight after v0.24.0.0 deploys
-**What:** re-scores every past lift on its estimated 1RM, archives the old-scale Toe Lift and Tib Curl scores, replays event placements for finished games, clears recheck watermarks, and creates the `enforce_lift_estimate` triggers.
-**Order:** code first, then this, with no game running, in ONE transaction with its ledger row (the file uses TEMP … ON COMMIT DROP). Then `scripts/refresh-leaderboard-scores.ts --apply` and hard-refresh every kaiwhakawā device.
-**Dry-run first** against production in a rolled-back transaction. It has NOT been run against a real database yet: this worktree is not CLI-linked.
-**Verify by object:** `enforce_lift_estimate` exists and both `trg_zz_lift_estimate_*` triggers are in `pg_trigger`; zero lift rows where `raw_score` differs from the estimate of `weight_kg`/`reps`; zero Toe Lift rows with no `time_seconds` and zero Tib Curl rows with no `difficulty_tier`; both archives and both pre-images return 401 as anon; read the NOTICE count of domain-5 colours citing the archived events.
-**Noticed:** v0.24.0.0
+### ~~Apply `20260928201510_estimated_one_rep_max.sql` straight after v0.24.0.0 deploys~~ DONE 2026-09-30
+Applied and verified by object (see CLAUDE.md), with `20260928015753` (never applied until now) just before it. Leaderboard refreshed: 27 written, 0 failed. **Still to do by hand:** hard-refresh every kaiwhakawā device.
 
 ### Review the drafted Toe Lift and Tibialis Curl standards
 **What:** both ladders are Claude's draft in `GRADING_STANDARDS_REVIEW.md` (Toe Lift: bodyweight holds, then 1.25–15kg for 30s; Tib Curl: 20/40 reps at bodyweight up to 35 reps at 20kg in 2 minutes). Hold colours are strict about time: 15kg for 29s misses every 30-second colour.

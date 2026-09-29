@@ -2485,11 +2485,22 @@ all-player standings, which are unchanged) and `/history`.
   moved into `lib/loadGrades.ts` so the board and the report share them.
 - **Not yet seen with a real login.** Checked on a throwaway page with sample data.
 
-## Lifts rank on estimated 1RM; Toe Lift and Tib Curl rebuilt (September 2026) — v0.24.0.0
+## Lifts rank on estimated 1RM; Toe Lift and Tib Curl rebuilt (September 2026) — v0.24.0.0, APPLIED AND VERIFIED 2026-09-30
 
-Asked by Tāne 2026-09-29. **Migration `20260928201510` written, NOT applied.**
-DEPLOY CODE FIRST, then the migration with no game running, then
-`scripts/refresh-leaderboard-scores.ts --apply`.
+Asked by Tāne 2026-09-29. **`20260928201510` APPLIED TO PRODUCTION 2026-09-30**, after
+v0.24.0.0 was confirmed live (the new Scoring Method label served on /events/deadlift)
+with no game running and nothing written since 25 Sept. Rolled-back dry run first
+(every assertion passed, production unchanged afterwards), then applied through
+`supabase db query --linked -f` in one transaction with its ledger row, from the file
+byte-compared against `origin/main`. **Verified by object:** 184 lifts re-encoded
+(pre-image kept), 25 old Toe Lift / Tib Curl results from 5 players archived (0 entries),
+0 lifts whose `raw_score` differs from the estimate, 0 old-format Toe/Tib rows left,
+both `trg_zz_lift_estimate_*` triggers present on `enforce_lift_estimate` (INVOKER,
+`search_path=public`), 0 double-placed player-events, winning rows 536 → 519, 19
+watermarks cleared; the four archive/pre-image tables return 401 as anon against a 200
+control. **2 existing Anaerobic Endurance colours cite the archived events**; they stand,
+because an ordinary recheck never withdraws. `refresh-leaderboard-scores.ts --apply`:
+27 written, 0 failed (standings moved by a point at most).
 
 - **Every lift ranks on its ESTIMATED one-rep max** ("I want to encourage reps"),
   so 35kg × 5 (39.4kg) beats 38kg × 1. `estimatedOneRm` in `lib/scoring.ts`:
@@ -2603,6 +2614,11 @@ Colours, not division placement, because the ladder already adjusts for age,
 sex and bodyweight. So the game's actual winner (lowest total placement) can
 get 99 on the board. Tāne accepted that.
 
+- **`20260928015753` (drop `player_season_points`) was NOT applied until
+  2026-09-30**, despite the lines above saying the table was dropped with v0.22.1.0.
+  `supabase migration list --linked` showed it pending and `to_regclass` found the
+  table. Applied that day, in its own transaction with its ledger row, before
+  `20260928201510`; verified the table is gone and `season_points` still answers.
 - **A player's points now depend on everyone else in their games**, so they
   cannot be stored per player. The recheck route publishes each player's colour
   total per game to **`player_game_colours`** (public read, service-key write),
