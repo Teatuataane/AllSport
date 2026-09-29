@@ -2,6 +2,24 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.24.0.0] - 2026-09-29
+
+### Added
+- **Lifts now rank on an estimated one-rep max, so reps count.** Enter 35kg × 5 and it scores as 39.4kg, beating 38kg × 1. The score reads "35kg × 5 reps · est. 1RM 39.4kg". Reps past 10 count as 10, and the entry sheet tells you so as you type. Colours for lifts are judged on the same estimate.
+- **The game screen shows the colour your game is at** ("This game · Karaka") next to your progress, once you have scored something. It is the same colour the game report shows afterwards.
+- **Every Anaerobic Endurance rep event states the 2-minute limit** in its rules. Holds still run as long as you can.
+
+### Changed
+- **Toe Lift is now a load and a hold time**, like Leg Ext Hold, with much easier colours: a 30-second bodyweight hold is Whero and 5kg for 30 seconds is Poroporo.
+- **Tibialis Curl is now reps in 2 minutes at a chosen load** (bodyweight, 2.5, 5, 10, 15 or 20kg). A heavier load always outranks a lighter one.
+- **A hold colour needs the load and the time.** On Toe Lift and Leg Ext Hold, 15kg held for one second no longer passes "5kg for 30 seconds". Game rankings still put the heaviest load first.
+- **Play history names each game's colour** instead of showing a number.
+- A season PR pre-fills the entry sheet as a single at your estimated 1RM, so you can never submit a set you did not do.
+
+### Fixed
+- **Past lifts are re-scored on the estimate** from the weight and reps already saved. Old Toe Lift and Tibialis Curl scores were saved as a heaviest weight, which cannot become a hold or a rep count, so they are archived, not lost.
+- **The database now works out every lift's score itself**, so a phone still running the old app cannot save a lift the old way. An old-style Toe Lift or Tibialis Curl entry is refused with a message to refresh the app.
+
 ## [0.23.0.0] - 2026-09-29
 
 ### Added
