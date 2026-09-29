@@ -67,6 +67,8 @@ describe('estimatedOneRm', () => {
   it('the database trigger uses the same formula and the same lift list', () => {
     const fn = MIGRATION.slice(MIGRATION.indexOf('CREATE OR REPLACE FUNCTION public.enforce_lift_estimate'))
     expect(fn).toContain('round(round(NEW.weight_kg, 2) * 36 / (37 - least(NEW.reps, 10)), 1)')
+    // Never mints a score on an unfitted entry (the guard's fitting-only exemption).
+    expect(fn).toContain('IF NEW.weight_kg > 0 AND NEW.raw_score IS NOT NULL THEN')
     const lifts = EVENTS.filter(e => e.inputMode === 'strength' && e.slug !== 'shoulder-dislocate')
     const list = (marker: string) => {
       const from = fn.indexOf(marker)

@@ -379,7 +379,7 @@ export type ScoreColumns = {
   difficulty_tier?: string
   exercise_variation?: string
   weight_kg?: number
-  reps?: number
+  reps?: number | null
   time_seconds?: number
   distance_m?: number
   opponent_name?: string
@@ -403,7 +403,10 @@ export function scoreColumns(mode: string, eventData: EventData | undefined, v: 
   if (v.exerciseVariation) c.exercise_variation = v.exerciseVariation
   if (mode === 'strength') {
     c.weight_kg = parseFloat(v.weightKg) || 0
-    if (v.repCount) c.reps = parseInt(v.repCount)
+    // Always written, null when cleared: an edit that empties the field must
+    // clear the stored reps, or the database trigger (enforce_lift_estimate)
+    // rebuilds raw_score from the stale count and disagrees with the label.
+    c.reps = v.repCount ? parseInt(v.repCount) : null
   }
   if (mode === 'reps') {
     if (isWeightVariation) c.weight_kg = parseFloat(v.weightKg) || 0

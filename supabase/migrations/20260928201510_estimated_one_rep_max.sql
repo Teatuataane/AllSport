@@ -210,7 +210,11 @@ BEGIN
       'pause-bench', 'turkish-get-up', 'arthur-lift', 'pause-row', 'pause-front-squat',
       'pullover-and-press', 'loaded-lunge', 'kelly-snatch', 'one-arm-snatch',
       'clean-and-jerk', 'snatch') THEN
-    IF NEW.weight_kg > 0 THEN
+    -- Only a row that already carries a score. An unfitted entry being fitted
+    -- to a lift passes the entries guard as "fitting only" because its
+    -- raw_score is unchanged (NULL); minting one here, after that check,
+    -- would turn the exemption into a way to score a closed game.
+    IF NEW.weight_kg > 0 AND NEW.raw_score IS NOT NULL THEN
       NEW.raw_score := CASE WHEN coalesce(NEW.reps, 1) > 1
         THEN round(round(NEW.weight_kg, 2) * 36 / (37 - least(NEW.reps, 10)), 1)
         ELSE NEW.weight_kg END;
