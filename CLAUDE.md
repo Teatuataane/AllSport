@@ -129,7 +129,7 @@ linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)
 - "T-Test" → **T-Race** (sport/win-loss input mode)
 - "Chin Lift" → **Chin Hang**
 - "Turkish" → **Turkish Get Up** (strength mode, no tiers)
-- "Toe Lift" → **Toe Lift** (strength mode, no tiers)
+- "Toe Lift" → **Toe Lift** (strength mode, no tiers; `weight+time` since v0.24.0.0, see "Lifts rank on estimated 1RM")
 - "Pause Dips" → **Pause Dips** (`difficulty+reps` D1–D5; D5 = Weighted RTO Dip, weight-scored)
 - "Pause Chin Up" → **Pause Chin Up** (`difficulty+reps` D1–D5; D5 = Weighted Chinup, weight-scored)
 - "Ham Curl" → **Ham Curl** (`difficulty+reps` D1–D5, was `strength`)
@@ -1701,7 +1701,9 @@ the workout-customisation plan, and the part that prompted it.
   10× the rung. `bestSet` ranks by estimated 1RM, not by load.
 - **On swapped, extra and personal-game events ONLY** (`natural` on the sheet).
   An official event keeps the official format, so a prediction can never beat a
-  measured result in a game.
+  measured result in a game. (Since v0.24.0.0 an official lift ALSO ranks on its
+  estimated 1RM, from the one set entered, so for lifts both paths score a set
+  identically. Sets are still offered only on these events.)
 - **No new columns, deliberately.** What was actually done stays in
   `weight_kg`/`reps` or `distance_m`/`time_seconds`, `raw_score` carries the
   converted score, and the label reads "100kg × 5 · est. 1RM 112.5kg". No
@@ -1854,7 +1856,8 @@ missing before this change.
   planted, toes lifted toward the shins, heaviest wins. Toe Lift's text was invented in session
   19 and flagged for review then. Tāne chose to add Calf Raises and KEEP Toe Lift, so the
   duplicate stands and domain 5 holds 13. Toe Lift's text is untouched: inventing a distinction
-  is what created this.
+  is what created this. (v0.24.0.0 changed how they SCORE, not the movements: Toe Lift is now a
+  load and a hold, Tibialis Curl reps in 2 minutes at a chosen load. Neither reads bodyweight.)
 - **Climbing's lowest three rungs are HANGS on a fastest-wins ladder**, so a longer hang scores
   worse. Raised in the last standards round, still unsettled, unchanged here.
 - **The /events "Scoring Method" label says "Difficulty tier + hold time" for every
@@ -2131,7 +2134,8 @@ declared player needed 6 of 14. Verified by running `domainGrade()` directly: an
 undeclared player who maxes both raw events scored **Taniwha** in Maximal Strength.
 Skipping the question was the winning move, and 26 of 27 players were on that path.
 Nobody noticed because no colour has ever been conferred. **Anaerobic Endurance has
-the same shape** (Toe Lift, Tibialis Curl), 11 available against 13.
+the same shape** (Toe Lift, Tibialis Curl), 11 available against 13. (No longer: since
+v0.24.0.0 both are `raw` standards, so Anaerobic Endurance asks no bodyweight.)
 
 **The exemption rule was being spent on a form field.** An exemption exists for a
 player who genuinely cannot do an event. A blank bodyweight is a choice, and it was
@@ -2473,14 +2477,15 @@ all-player standings, which are unchanged) and `/history`.
   published total**; a partial field reads too high, so until then the division
   place leads alone.
 - **Tags:** PR (`results.is_pr`), First time and Colour up (against earlier games only).
-- **`/history`** shows each game's score with its colour dot and a trend of the last
-  12 finished games.
+- **`/history`** shows each game's colour and a trend of the last 12 finished
+  games. Since v0.24.0.0 it names the colour rather than showing the score number;
+  the game report still shows the colour score.
 - `lib/gameReport.ts` is pure and tested; `lib/usePlayerGames.ts` loads through
   `loadGradeInputs`, the same read HOME makes. `ratingsAtClose` and `gradePlayerOf`
   moved into `lib/loadGrades.ts` so the board and the report share them.
 - **Not yet seen with a real login.** Checked on a throwaway page with sample data.
 
-## Lifts rank on estimated 1RM; Toe Lift and Tib Curl rebuilt (September 2026)
+## Lifts rank on estimated 1RM; Toe Lift and Tib Curl rebuilt (September 2026) — v0.24.0.0
 
 Asked by Tāne 2026-09-29. **Migration `20260928201510` written, NOT applied.**
 DEPLOY CODE FIRST, then the migration with no game running, then
@@ -2882,14 +2887,14 @@ update players set role = 'judge' where id = '[uuid]';
 | Judge Panel | /judge | Complete | Players tab opens with an **"Approaching a colour"** watchlist (sessions-away). Dedicated page — JudgeCard moved here. Create/end/void sessions, QR code, history, real-time player count, Event Votes panel (Kōwhiringa Tūāhuatanga). Judge bento card on dashboard links here. |
 | Player Profile | /profile | Complete | Icon picker (20 sport emojis), username/display name editing, leaderboard display prefs, family member management (add/remove), active profile switcher (localStorage). **The bodyweight band picker was removed in v0.17.0.0** — bodyweight is declared on the scoring screen on the day |
 | Scoring Setup | /scoring | Complete | One event per domain through the SHARED picker (v0.11.0.0), Draw for me, editable start time, create the game |
-| Live Session | /scoring/[sessionId] | Complete | Per-division leaderboard tabs, Kaiwhakawā mode (player picker + score/edit/delete for any player), difficulty tier selector, sport W/D/L display, missing scores = last place, post-game popup on session end. **(v0.19.0.0)** Ten domain titles in a fixed order; a + on each official event adds more from its domain (stored as a game-linked workout, never in `results`); scored buttons coloured by the grade they reach |
+| Live Session | /scoring/[sessionId] | Complete | Per-division leaderboard tabs, Kaiwhakawā mode (player picker + score/edit/delete for any player), difficulty tier selector, sport W/D/L display, missing scores = last place, post-game popup on session end. **(v0.19.0.0)** Ten domain titles in a fixed order; a + on each official event adds more from its domain (stored as a game-linked workout, never in `results`); scored buttons coloured by the grade they reach. **(v0.24.0.0)** "This game · [colour]" beside the progress count on the player tab; the entry sheet shows a lift's estimated 1RM live |
 | My Events | /prs | Complete | Retitled from Personal Bests (v0.6.2.0). Ten domains ranked strongest to weakest by Top % above the list; collapsible domain sections below, each event row showing **PR, average placement and wins side by side** (no lens toggle). Honours the active player. Per-event history still expands |
 | Vote | /vote/[voteId] | Complete | Step-by-step voting flow, one domain per screen, partial save, review screen, locked on submit |
 | Vote Results | /vote/[voteId]/results | Complete | Spoiler-free until voted, bar chart per domain, counts only while open / percentages on close, judge full breakdown |
 | Log a Workout | /log | **Retired (v0.11.0.0)** — a redirect to `/workout/new`. The route stays for old links |
 | New Workout | /workout/new | Complete (v0.11.0.0) | Plan a personal game with the SAME picker an official game uses: any number of events, Draw me ten, Copy today's game, a date chip row back 7 days, how hard and notes. ("How long" and "Something else" removed 2026-09-21) |
 | Personal Game | /workout/[id] | Complete (v0.11.0.0) | Playing a personal game on the official live screen: progress header, Still to play / Scored, the quick-entry sheet. Natural formats on (sets, distance + time). Open until Finish; the NZ day closes it |
-| Play History | /history | Complete | Every game, plus (v0.11.0.0) your workouts with a Continue link for an unfinished one, the never-fitted entries, and the points-ladder colours era |
+| Play History | /history | Complete | Every game, named by its colour with a trend of the last 12 (v0.24.0.0: colours, never score numbers), plus (v0.11.0.0) your workouts with a Continue link for an unfinished one, the never-fitted entries, and the points-ladder colours era |
 | Game Review | /games/[sessionId] | Complete | Full all-player game report — every division, every event with score + placement, division standings. Linked from dashboard session history. Any logged-in player. Placements computed live from raw_score |
 | Auth Callback | /auth/callback | Complete | Google OAuth handler |
 | Invite Landing | /join/[code] | Planned | Public page — introduces AllSport, shows inviter name, Register CTA with referral code pre-filled. **The referral system itself is BUILT** (`20260515000002`: `referrals`, `players.referral_code`, the qualifying trigger; `/my-koha` reads it) — an earlier version of this doc listed the whole feature as Planned. Only this landing page is missing. |
@@ -3042,7 +3047,7 @@ RLS: own + parent (family) + judge.
 - raw_score for time events is stored negative (faster = higher) so rankings sort correctly
 - Players who joined a session (have any result row) but have no score for a specific event are ranked last for that event
 - Missing score players display as "No score" in expanded event lists
-- Input modes: `strength` (weight+reps), `reps`, `time` (mm:ss), `hold` (mm:ss), `distance` (m/cm), `sport` (win/draw/loss + opponent), `sprint` (ss.cs), `difficulty+time` (tier + seconds), `difficulty+reps` (tier + reps), `difficulty+distance` (tier + metres), `weight+time` (load + hold), `score` (strokes over 4 holes, negative). **As of v0.7.0.0 no roster event uses `sprint` or `score`** — both branches survive because historical rows written under them still render.
+- Input modes: `strength` (weight+reps; `raw_score` is the estimated 1RM since v0.24.0.0, enforced by the `enforce_lift_estimate` trigger), `reps`, `time` (mm:ss), `hold` (mm:ss), `distance` (m/cm), `sport` (win/draw/loss + opponent), `sprint` (ss.cs), `difficulty+time` (tier + seconds), `difficulty+reps` (tier + reps), `difficulty+distance` (tier + metres), `weight+time` (load + hold), `score` (strokes over 4 holes, negative). **As of v0.7.0.0 no roster event uses `sprint` or `score`** — both branches survive because historical rows written under them still render.
 - `difficulty+time` has two semantics: HOLDS (longer time wins) and TIMED EFFORTS (faster time wins, `TIMED_EFFORT_SLUGS` in eventData.ts). Encoding inverts the within-tier term for timed efforts so `raw_score` DESC always means "better" — see difficulty+time encoding note above. Duck Walk excluded (mixed tiers, pending redesign)
 - Sprint mode: seconds + centiseconds (0–99), raw_score = -(secs*100 + cs). Used for 100m/50m/200m Sprint (T-Race now uses sport mode)
 - Score mode: stroke count for 4 holes, raw_score = -strokes (negative; fewer strokes = higher raw_score = better rank). Used for Golf and Disc Golf.
