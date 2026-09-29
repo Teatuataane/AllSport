@@ -21,11 +21,9 @@
 
 import { encodeDiffTime, isTimedEffort, type EventData } from './eventData'
 import { metresIn, isDistanceEvent } from './eventKinds'
-import { fmtTime, estimatedOneRm, liftLabel, MAX_ESTIMATED_REPS } from './scoring'
+import { fmtTime, estimatedOneRm, liftLabel } from './scoring'
 
 // ─── Strength: Brzycki ───────────────────────────────────────────────────────
-
-export { MAX_ESTIMATED_REPS }
 
 /**
  * Brzycki, the same estimate an official lift now ranks on (`estimatedOneRm`

@@ -10,7 +10,7 @@ import { EVENTS, getEventByName, type EventData } from './eventData'
 import { STANDARDS } from './standards'
 import { isGameTier } from './eventKinds'
 import {
-  ageBand, rungForScore, ratioThresholdsKg, ratingRung, gameEventRung,
+  ageBand, rungForScore, rungForLoadHold, ratioThresholdsKg, ratingRung, gameEventRung,
   domainGrade, overallGrade, colourGate, DRILL_CAP, DOMAIN_COUNT,
   type AgeBand, type DomainGradeResult, type OverallGradeResult, type ColourGate,
 } from './grading'
@@ -178,6 +178,14 @@ export function eventGrade(
     // waiting on them turning up.
     if (!anyBw && drillRows.length > 0) {
       return { slug: ev.slug, rung: 0, gradeable: true, bodyweightBlocked: true, played, ...pick(topRow) }
+    }
+  } else if (ev.inputMode === 'weight+time') {
+    // A colour needs its load AND its time (rungForLoadHold), so the heaviest
+    // hold is not necessarily the best one: rank rows by the rung they reach,
+    // earliest winning a tie, as for lifts.
+    for (const r of drillRows) {
+      const rung = rungForLoadHold(r.raw_score!, ladder, band)
+      if (rung > drill) { drill = rung; bestRow = r }
     }
   } else if (drillRows.length) {
     bestRow = maxBy(drillRows, r => r.raw_score!)

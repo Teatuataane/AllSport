@@ -1711,7 +1711,8 @@ the workout-customisation plan, and the part that prompted it.
   5km run is five — reading the converted rung instead would pay a 5km run the
   units of a 1000m. Both stores and both screens were switched to it.
 - An exact rung distance is not labelled an estimate; an effort shorter than the
-  shortest rung, or a set past 10 reps, earns training units only.
+  shortest rung earns training units only. (A set past 10 reps did too, until
+  29 Sept 2026: reps past 10 now COUNT AS 10. See "Lifts rank on estimated 1RM".)
 - **Not built: matches on workout entries.** Rating a game played as a swap or
   solo needs `matches.workout_entry_id` AND a change to the rule that refuses a
   logged Game-rung result. Its own piece of work.
@@ -2506,12 +2507,29 @@ DEPLOY CODE FIRST, then the migration with no game running, then
   happened), and replays `compute_event_placements` for closed sessions.
   `results.placement` is not replayed. `GRADING_RULES_VERSION` is bumped so HOME
   rechecks everyone. `__tests__/estimatedOneRm.test.ts` pins the SQL to the TS.
+- **A load-and-hold colour needs the load AND the time** (Tāne, 29 Sept 2026,
+  after the /ship red team found it): `rungForLoadHold` / `meetsLoadHold` in
+  `lib/grading.ts`, used by `eventGrade` for every `weight+time` event (Toe Lift
+  and Leg Ext Hold). Read as one number, "5kg · 30s" was passed by 15kg held for
+  a second. Strict: 15kg for 29s misses every 30-second colour. GAME RANKING is
+  unchanged (heaviest wins, the hold breaks the tie).
+- **Pre-fill from a season PR is a SINGLE at the estimate** (`valsFromRaw`), or
+  a PR of 100kg × 5 would pre-fill 112.5kg × 5, a lift nobody did. `formatPR`
+  writes a lift as "112.5 kg 1RM". `results.is_pr` is FROZEN at its old
+  load-based value; the migration does not recompute it.
+- **The migration skips voided games, archives only Toe Lift / Tib Curl rows
+  still on the old scale** (so a score entered between deploy and migration
+  survives), must run in ONE transaction (TEMP ON COMMIT DROP), clears
+  `grades_checked_at` for every player whose scores moved (the rules-version
+  bump fires at deploy, before the data changes), and prints a NOTICE counting
+  domain-5 colours that cite the archived events. Hard-refresh kaiwhakawā
+  devices afterwards.
 - **Play history names colours, never numbers.** Each game row and the trend
   show the colour; the game report still shows the colour score.
 - **The live game screen shows "This game · [colour]"** beside the progress
-  count: official events' rungs summed ÷ 10 (`liveEventRung` in
-  `lib/scoreColour.ts`, over `eventRungInGame`), the same colour the report
-  shows. A rating colour above a game result's floor only lands at close, so
+  count once something is scored: official events' rungs summed ÷ 10
+  (`liveGameColourRung` in `lib/scoreColour.ts`, over `eventRungInGame`), the
+  same colour the report shows. A rating colour above a game result's floor only lands at close, so
   the live figure can only be low. Player tab only; not seen with a real login.
 
 ## Game screen by domain, + to add, colour by grade (September 2026) — v0.19.0.0

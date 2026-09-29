@@ -9,7 +9,7 @@ import { decodeDiffTime, isTimedEffort, type EventData } from '@/lib/eventData'
 
 export function formatPR(rawScore: number, inputMode: string, slug?: string, eventData?: EventData): string {
   switch (inputMode) {
-    case 'strength':   return slug === 'shoulder-dislocate' ? `${Math.abs(rawScore)}cm` : `${rawScore} kg`
+    case 'strength':   return slug === 'shoulder-dislocate' ? `${Math.abs(rawScore)}cm` : `${rawScore} kg 1RM`
     case 'reps':       return `${rawScore} reps`
     case 'time':
     case 'sprint':     return fmtTime(Math.abs(rawScore))

@@ -19,10 +19,10 @@ function exactSql(weightKg: number, reps: number): number {
   const r = Math.min(reps, MAX_ESTIMATED_REPS)
   if (r <= 1) return weightKg
   // Exact rational in integers: hundredths × 36 / (37 − r), in hundredths.
-  const num = BigInt(Math.round(weightKg * 100)) * 36n * 10n
-  const den = BigInt(37 - r) * 100n
+  const num = BigInt(Math.round(weightKg * 100)) * BigInt(36) * BigInt(10)
+  const den = BigInt(37 - r) * BigInt(100)
   const q = num / den, rem = num % den
-  const tenths = rem * 2n >= den ? q + 1n : q
+  const tenths = rem * BigInt(2) >= den ? q + BigInt(1) : q
   return Number(tenths) / 10
 }
 
@@ -80,6 +80,34 @@ describe('the history migration', () => {
     }
     expect(MIGRATION).not.toContain('shoulder-dislocate')
     expect(MIGRATION).not.toContain("'Shoulder Dislocate'")
+  })
+
+  it('re-encodes nothing but the strength events', () => {
+    const lifts = EVENTS.filter(e => e.inputMode === 'strength' && e.slug !== 'shoulder-dislocate')
+    const listAfter = (marker: string) => {
+      const from = MIGRATION.indexOf(marker)
+      const body = MIGRATION.slice(MIGRATION.indexOf('IN (', from) + 4, MIGRATION.indexOf(')', MIGRATION.indexOf('IN (', from)))
+      return [...body.matchAll(/'((?:[^']|'')*)'/g)].map(m => m[1]).sort()
+    }
+    expect(listAfter('WHERE se.event_name IN (')).toEqual(lifts.map(e => e.name).sort())
+    expect(listAfter('WHERE e.event_slug IN (')).toEqual(lifts.map(e => e.slug).sort())
+  })
+
+  it('writes the same label liftLabel does', () => {
+    expect(MIGRATION).toContain("trim_scale(r.weight_kg)::text || 'kg × ' || r.reps || ' reps · est. 1RM '")
+    expect(liftLabel(37.5, 4)).toMatch(/^37\.5kg × 4 reps · est\. 1RM [\d.]+kg$/)
+  })
+
+  it('never places a voided game, and archives only rows still on the old scale', () => {
+    expect(MIGRATION).toContain('WHERE ss.is_active = false AND ss.voided_at IS NULL')
+    expect(MIGRATION).toContain("(se.event_name = 'Toe Lift' AND r.time_seconds IS NULL)")
+    expect(MIGRATION).toContain("(se.event_name = 'Tibialis Curl' AND r.difficulty_tier IS NULL)")
+    expect(MIGRATION).toContain("(e.event_slug = 'toe-lift' AND e.time_seconds IS NULL)")
+    expect(MIGRATION).toContain("(e.event_slug = 'tibialis-curl' AND e.difficulty_tier IS NULL)")
+  })
+
+  it('clears the recheck watermark of everyone whose scores moved', () => {
+    expect(MIGRATION).toMatch(/UPDATE players SET grades_checked_at = NULL\s+WHERE id IN \(SELECT player_id FROM touched_players/)
   })
 
   it('archives before it deletes, and locks the archives', () => {

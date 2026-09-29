@@ -22,7 +22,7 @@ const DOMAIN_COLOURS: Record<number, string> = {
 // Typed against InputMode so a new mode is a COMPILE error here rather than a
 // raw string like "weight+time" shown to a player on the public event guide.
 const INPUT_MODE_LABEL: Record<InputMode, string> = {
-  strength: 'Estimated one-rep max (kg): weight × reps, reps counted up to 10',
+  strength: 'Estimated one-rep max (kg), worked out from the weight and reps (reps count up to 10)',
   reps: 'Total repetitions',
   time: 'Time — lower is better',
   hold: 'Hold duration — longer is better',

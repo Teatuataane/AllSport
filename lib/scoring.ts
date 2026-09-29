@@ -200,7 +200,7 @@ export function estimatedOneRm(weightKg: number, reps: number | null | undefined
   return Math.round((hundredths * 36) / (10 * (37 - r))) / 10
 }
 
-/** "35kg × 5 · est. 1RM 39.4kg", or "35kg" / "35kg × 1" when nothing is estimated. */
+/** "35kg × 5 reps · est. 1RM 39.4kg", or "35kg" / "35kg × 1 rep" when nothing is estimated. */
 export function liftLabel(weightKg: number, reps: number | null | undefined): string {
   const r = Math.max(0, Math.floor(reps ?? 0) || 0)
   if (r === 0) return `${weightKg}kg`
@@ -486,6 +486,10 @@ export function valsFromRaw(mode: string, eventData: EventData | undefined, raw:
   const p: Partial<EntryVals> = {}
   if (mode === 'strength') {
     p.weightKg = String(Math.abs(raw))
+    // A lift's raw_score is its estimated 1RM, not a load anyone lifted for
+    // reps, so the prefill is that load as a SINGLE. Leaving reps as they were
+    // would record, say, 112.5kg × 5 from a PR of 100kg × 5.
+    if (eventData?.slug !== 'shoulder-dislocate') p.repCount = '1'
   } else if (mode === 'reps') {
     p.repCount = String(raw)
   } else if (mode === 'time' || mode === 'hold') {

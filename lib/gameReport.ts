@@ -27,7 +27,7 @@ import { tierScoring, fmtTime } from './scoring'
 import { eventRungInGame, placePoints, MAX_GAME_COLOUR_TOTAL } from './leaderboardScores'
 import { ladderFor, liftKg, type PlayerGrades, type GradePlayer } from './playerGrades'
 import {
-  ageBand, rungForScore, thresholdFor, ratioThresholdsKg, bodyweightOn, gradeForRung,
+  ageBand, rungForScore, rungForLoadHold, thresholdFor, ratioThresholdsKg, bodyweightOn, gradeForRung,
   AGE_SHIFT, DOMAIN_COUNT, DRILL_CAP, TOP_RUNG, type BodyweightDeclaration,
 } from './grading'
 import { seasonRowsFrom, ratingsAtClose, gradePlayerOf, type GradeInputs, type GradeAward } from './loadGrades'
@@ -184,6 +184,15 @@ const secsText = (s: number) => (s >= 60 ? fmtTime(Math.ceil(s)) : `${trim(s)}s`
  * units. Null for a mode this cannot put into words, which leaves the event out.
  */
 export function describeRawGap(ev: EventData, best: number, target: number): string | null {
+  if (ev.inputMode === 'weight+time') {
+    // A colour needs its load and its time (rungForLoadHold), so name both
+    // when the load has to go up, and only the time when it does not.
+    const kg = (x: number) => Math.floor(x / DT_CAP) / 100
+    const needKg = kg(target), needSecs = target % DT_CAP
+    if (needKg > kg(best)) return `${trim(needKg)}kg for ${secsText(needSecs)}`
+    const d = needSecs - (best % DT_CAP)
+    return d > 0 ? `${secsText(d)} longer` : null
+  }
   const diff = target - best
   if (!(diff > 0)) return null
   const tiered = ev.inputMode.startsWith('difficulty+') || (ev.inputMode === 'hold' && !!ev.difficultyTiers?.length)
@@ -250,20 +259,27 @@ export function nextStep(
       from = cur > 0 ? thresholdFor(kgs, cur - shift) : 0
       to = thresholdFor(kgs, cur + 1 - shift)
       bestVal = kg
-      gap = to > kg ? `${trim(to - kg)}kg more` : null
+      gap = to > kg ? `est. 1RM ${trim(to - kg)}kg higher` : null
     } else {
       const raw = eg.best.raw_score
       if (raw == null) continue
-      cur = rungForScore(raw, ladder, band, { cap })
+      cur = ev.inputMode === 'weight+time' ? rungForLoadHold(raw, ladder, band) : rungForScore(raw, ladder, band, { cap })
       if (cur + 1 > cap) continue
       to = thresholdFor(ladder, cur + 1 - shift)
       from = cur > 0 ? thresholdFor(ladder, cur - shift) : Math.min(raw, to)
       bestVal = raw
       gap = describeRawGap(ev, raw, to)
     }
-    if (!gap || !(to > bestVal)) continue
+    if (!gap) continue
+    // A load-and-hold score can sit ABOVE the threshold's number (a heavier
+    // load, held too briefly) and still miss the colour. Its progress is then
+    // the hold, not the number.
+    const heldShort = ev.inputMode === 'weight+time' && bestVal >= to
+    if (!heldShort && !(to > bestVal)) continue
     const span = to - from
-    const progress = span > 0 ? Math.max(0, Math.min(1, (bestVal - from) / span)) : 0
+    const progress = heldShort
+      ? Math.max(0, Math.min(1, (bestVal % DT_CAP) / Math.max(1, to % DT_CAP)))
+      : span > 0 ? Math.max(0, Math.min(1, (bestVal - from) / span)) : 0
     const step: NextStep = { eventName: ev.name, slug: ev.slug, nextRung: cur + 1, gap, progress }
     if (!pick || step.progress > pick.progress) pick = step
   }

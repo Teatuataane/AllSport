@@ -12,7 +12,8 @@
 --      same. A one-rep lift (or one with no reps recorded) is unchanged.
 --      __tests__/estimatedOneRm.test.ts pins this SQL to the TypeScript.
 --
---   2. ARCHIVES then DELETES every Toe Lift and Tibialis Curl score.
+--   2. ARCHIVES then DELETES every Toe Lift and Tibialis Curl score still on
+--      the old scale (a heaviest load).
 --      Toe Lift is now a weight + hold (like Leg Ext Hold) and Tibialis Curl a
 --      2-minute rep contest with load levels (like Sandbag to Shoulder). Their
 --      old rows hold a heaviest load in raw_score, which decodes on the new
@@ -34,7 +35,30 @@
 -- ⚠ DEPLOY THE CODE FIRST, THEN THIS, with no game running. Before the code,
 -- the old bundle writes Toe Lift and Tib Curl on the old scale and a load-only
 -- raw_score for lifts; after it, both are right. Code-first only means lifts
--- scored in the gap are re-encoded here with everything else.
+-- scored in the gap are re-encoded here with everything else, and a Toe Lift
+-- or Tib Curl scored in the gap is KEPT: only rows still on the old scale are
+-- archived (Toe Lift with no hold time, Tib Curl with no level).
+-- HARD-REFRESH every kaiwhakawā device afterwards: an old-bundle tab keeps
+-- writing a load-only raw_score, which nothing here can catch later.
+--
+-- ⚠ APPLY IN ONE TRANSACTION (`supabase db push`, `psql -1`, or `db query -f`
+-- over this file wrapped in BEGIN/COMMIT with its ledger row). touched_sessions
+-- is TEMP … ON COMMIT DROP: run statement by statement, the rewrite and the
+-- delete would commit and the replay would fail with nothing to replay.
+--
+-- ⚠ results.is_pr IS FROZEN. It was set at insert time against loads, and is
+-- not recomputed here, so an old multi-rep set that now beats an earlier heavy
+-- single stays unflagged. /prs sorts on raw_score and is right either way.
+--
+-- ⚠ A domain-5 colour already conferred on a Toe Lift or Tib Curl score keeps
+-- standing (an ordinary recheck never withdraws), but a kaiwhakawā deleting a
+-- domain-5 score later re-judges the domain without these rows. The NOTICE
+-- below counts those colours so it is known at apply time.
+--
+-- Every player with a re-encoded or archived row gets grades_checked_at
+-- cleared, so the next recheck runs in full on the new scores. The code's
+-- GRADING_RULES_VERSION bump fires at deploy, BEFORE this lands, so on its own
+-- it would recheck the old numbers and never again.
 
 -- ── Pre-image, before anything is rewritten ──────────────────────────────────
 CREATE TABLE public.results_one_rep_max_preimage_20260928201510 AS
@@ -69,7 +93,31 @@ SELECT DISTINCT r.session_id
 FROM results r
 JOIN session_events se ON se.id = r.event_id
 WHERE r.id IN (SELECT id FROM public.results_one_rep_max_preimage_20260928201510)
-   OR se.event_name IN ('Toe Lift', 'Tibialis Curl');
+   OR (se.event_name = 'Toe Lift' AND r.time_seconds IS NULL)
+   OR (se.event_name = 'Tibialis Curl' AND r.difficulty_tier IS NULL);
+
+-- Players whose scores move, for the watermark reset at the end.
+CREATE TEMP TABLE touched_players ON COMMIT DROP AS
+SELECT DISTINCT r.player_id FROM results r
+JOIN session_events se ON se.id = r.event_id
+WHERE r.player_id IS NOT NULL AND (
+     r.id IN (SELECT id FROM public.results_one_rep_max_preimage_20260928201510)
+  OR (se.event_name = 'Toe Lift' AND r.time_seconds IS NULL)
+  OR (se.event_name = 'Tibialis Curl' AND r.difficulty_tier IS NULL))
+UNION
+SELECT DISTINCT w.player_id FROM workout_entries e
+JOIN workouts w ON w.id = e.workout_id
+WHERE e.id IN (SELECT id FROM public.workout_entries_one_rep_max_preimage_20260928201510)
+   OR (e.event_slug = 'toe-lift' AND e.time_seconds IS NULL)
+   OR (e.event_slug = 'tibialis-curl' AND e.difficulty_tier IS NULL);
+
+DO $$
+DECLARE v_cited int;
+BEGIN
+  SELECT count(*) INTO v_cited FROM grade_awards
+  WHERE domain_number = 5 AND events && ARRAY['toe-lift', 'tibialis-curl'];
+  RAISE NOTICE 'one-rep max: % Anaerobic Endurance colours cite Toe Lift or Tibialis Curl', v_cited;
+END $$;
 
 -- ── 1. Re-encode lifts ───────────────────────────────────────────────────────
 UPDATE results r
@@ -91,14 +139,16 @@ CREATE TABLE public.results_toe_tib_archive_20260928201510 AS
 SELECT r.*, se.event_name AS archived_event_name, now() AS archived_at
 FROM results r
 JOIN session_events se ON se.id = r.event_id
-WHERE se.event_name IN ('Toe Lift', 'Tibialis Curl');
+WHERE (se.event_name = 'Toe Lift' AND r.time_seconds IS NULL)
+   OR (se.event_name = 'Tibialis Curl' AND r.difficulty_tier IS NULL);
 ALTER TABLE public.results_toe_tib_archive_20260928201510 ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.results_toe_tib_archive_20260928201510 FROM anon, authenticated;
 
 CREATE TABLE public.workout_entries_toe_tib_archive_20260928201510 AS
 SELECT e.*, now() AS archived_at
 FROM workout_entries e
-WHERE e.event_slug IN ('toe-lift', 'tibialis-curl');
+WHERE (e.event_slug = 'toe-lift' AND e.time_seconds IS NULL)
+   OR (e.event_slug = 'tibialis-curl' AND e.difficulty_tier IS NULL);
 ALTER TABLE public.workout_entries_toe_tib_archive_20260928201510 ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.workout_entries_toe_tib_archive_20260928201510 FROM anon, authenticated;
 
@@ -112,21 +162,30 @@ BEGIN
   FOR s IN
     SELECT t.session_id FROM touched_sessions t
     JOIN sessions ss ON ss.id = t.session_id
-    WHERE ss.is_active = false
+    -- A voided game must stay unplaced (20260910025855 and 20260915040534
+    -- both filter it the same way); placing it would mint wins nobody earned.
+    WHERE ss.is_active = false AND ss.voided_at IS NULL
   LOOP
     PERFORM public.compute_event_placements(s.session_id);
   END LOOP;
 END $$;
 
+-- ── A full recheck for everyone whose scores moved ───────────────────────────
+UPDATE players SET grades_checked_at = NULL
+WHERE id IN (SELECT player_id FROM touched_players WHERE player_id IS NOT NULL);
+
 -- ── Assertions. A rewrite that silently fails must not report success. ───────
 DO $$
-DECLARE v_left int; v_off int; v_dupes int;
+DECLARE v_left int; v_off int; v_dupes int; v_voided int;
 BEGIN
   SELECT count(*) INTO v_left
   FROM results r JOIN session_events se ON se.id = r.event_id
-  WHERE se.event_name IN ('Toe Lift', 'Tibialis Curl');
+  WHERE (se.event_name = 'Toe Lift' AND r.time_seconds IS NULL)
+     OR (se.event_name = 'Tibialis Curl' AND r.difficulty_tier IS NULL);
   SELECT v_left + count(*) INTO v_left
-  FROM workout_entries WHERE event_slug IN ('toe-lift', 'tibialis-curl');
+  FROM workout_entries
+  WHERE (event_slug = 'toe-lift' AND time_seconds IS NULL)
+     OR (event_slug = 'tibialis-curl' AND difficulty_tier IS NULL);
   IF v_left > 0 THEN
     RAISE EXCEPTION 'one-rep max: % Toe Lift / Tibialis Curl rows survived the delete', v_left;
   END IF;
@@ -141,6 +200,15 @@ BEGIN
     RAISE EXCEPTION 'one-rep max: % re-encoded results do not match the estimate', v_off;
   END IF;
 
+  SELECT count(*) INTO v_off
+  FROM workout_entries e
+  WHERE e.id IN (SELECT id FROM public.workout_entries_one_rep_max_preimage_20260928201510)
+    AND (e.raw_score IS DISTINCT FROM round(round(e.weight_kg, 2) * 36 / (37 - least(e.reps, 10)), 1)
+         OR e.raw_score < e.weight_kg);
+  IF v_off > 0 THEN
+    RAISE EXCEPTION 'one-rep max: % re-encoded workout entries do not match the estimate', v_off;
+  END IF;
+
   -- One placed row per player per event per session, the 20260828204652 invariant.
   SELECT count(*) INTO v_dupes FROM (
     SELECT session_id, event_id, player_id FROM results
@@ -148,5 +216,13 @@ BEGIN
     GROUP BY 1, 2, 3 HAVING count(*) > 1) d;
   IF v_dupes > 0 THEN
     RAISE EXCEPTION 'one-rep max: % player-events hold two placed rows after the replay', v_dupes;
+  END IF;
+
+  SELECT count(*) INTO v_voided
+  FROM results r JOIN sessions ss ON ss.id = r.session_id
+  WHERE ss.voided_at IS NOT NULL AND r.event_placement IS NOT NULL
+    AND r.session_id IN (SELECT session_id FROM touched_sessions);
+  IF v_voided > 0 THEN
+    RAISE EXCEPTION 'one-rep max: % rows in voided games carry a placement', v_voided;
   END IF;
 END $$;

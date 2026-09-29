@@ -191,7 +191,7 @@ export default function HistoryPage() {
                     return (
                       <div title={`Played at ${g.name}`} style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                         <GradeDot grade={g} size={10} />
-                        <span style={{ fontFamily: 'var(--font-display)', fontSize: 18 }}>{g.name}</span>
+                        <span style={{ fontFamily: 'var(--font-display)', fontSize: 15, letterSpacing: '0.04em' }}>{g.name}</span>
                       </div>
                     )
                   })()}

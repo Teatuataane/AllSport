@@ -13,9 +13,9 @@ import EventIcon from '@/components/EventIcon'
 import { domainColor } from '@/components/EventIcon'
 import { isGameEntry } from '@/lib/matches'
 import { isTimedEffort, type EventData } from '@/lib/eventData'
-import { computeScoreVals, valsFromResult, valsFromRaw, EMPTY_VALS, estimatedOneRm, type EntryVals } from '@/lib/scoring'
+import { computeScoreVals, valsFromResult, valsFromRaw, EMPTY_VALS, estimatedOneRm, MAX_ESTIMATED_REPS, type EntryVals } from '@/lib/scoring'
 import {
-  takesSets, takesDistance, estimateFromSets, estimateFromDistance, paceLabel, MAX_ESTIMATED_REPS,
+  takesSets, takesDistance, estimateFromSets, estimateFromDistance, paceLabel,
 } from '@/lib/naturalFormats'
 import {
   formatPR, sportWDL, StepBtn, INP, QES_LBL, QES_CHIP, QES_INP,
@@ -188,7 +188,7 @@ export default function QuickEntrySheet({
     if (seasonPRNum !== null) {
       quickPicks.push({ label: `PR · ${formatPR(seasonPRNum, mode, eventData?.slug, eventData)}`, patch: valsFromRaw(mode, eventData, seasonPRNum) })
       if (mode === 'strength' && !isDislocate) {
-        quickPicks.push({ label: `PR +2.5kg`, patch: { weightKg: String(seasonPRNum + 2.5) } })
+        quickPicks.push({ label: `PR +2.5kg`, patch: { weightKg: String(Math.round((seasonPRNum + 2.5) * 10) / 10), repCount: '1' } })
       }
     }
   }
@@ -441,7 +441,7 @@ export default function QuickEntrySheet({
                         const w = parseFloat(v.weightKg) || 0
                         const r = parseInt(v.repCount) || 0
                         return (
-                          <div style={{ fontSize: 12.5, color: '#777', lineHeight: 1.5, marginTop: 8 }}>
+                          <div style={{ fontSize: 12.5, color: '#888', lineHeight: 1.5, marginTop: 8 }}>
                             {w > 0 && r > 1 && <span style={{ color: '#ccc' }}>Est. 1RM {estimatedOneRm(w, r)}kg. </span>}
                             Your lift ranks on its estimated 1RM, so more reps score higher. Reps past {MAX_ESTIMATED_REPS} count as {MAX_ESTIMATED_REPS}.
                           </div>

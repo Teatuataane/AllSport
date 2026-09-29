@@ -194,8 +194,18 @@ describe('valsFromResult', () => {
 })
 
 describe('valsFromRaw (season PR prefill)', () => {
-  it('round-trips a strength PR', () => {
-    expect(valsFromRaw('strength', getEventBySlug('deadlift'), 140).weightKg).toBe('140')
+  it('prefills a strength PR as a single, since the PR is an estimated 1RM', () => {
+    const p = valsFromRaw('strength', getEventBySlug('deadlift'), 112.5)
+    expect(p.weightKg).toBe('112.5')
+    // Never "112.5kg × 5" from a PR of 100kg × 5: that lift never happened.
+    expect(p.repCount).toBe('1')
+    // Round-trips: a single at the estimate scores the estimate.
+    const back = computeScoreVals('strength', getEventBySlug('deadlift'), vals(p))!
+    expect(back.raw_score).toBe(112.5)
+  })
+
+  it('leaves Shoulder Dislocate (cm, not a lift) without a rep count', () => {
+    expect(valsFromRaw('strength', getEventBySlug('shoulder-dislocate'), -40).repCount).toBeUndefined()
   })
 
   it('decodes a timed-effort difficulty+time PR back to tier + seconds', () => {

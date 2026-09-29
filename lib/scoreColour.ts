@@ -18,6 +18,7 @@ import { eventGrade, type GradePlayer } from './playerGrades'
 import { GRADES, gradeForRung, gradeInk } from './grading'
 import { RAINBOW } from './domainColours'
 import { eventRungInGame } from './leaderboardScores'
+import { gameColourRung } from './gameReport'
 
 export type ScoreRow = {
   raw_score: number | null
@@ -110,4 +111,21 @@ export function liveEventRung(
     difficulty_tier: r.difficulty_tier,
     bodyweightKg,
   })), player)
+}
+
+/**
+ * This game's colour so far, as a rung: the official events' rungs summed and
+ * divided by ten (gameColourRung), exactly as the game report and /history
+ * count it. Added and swapped events never count, as on the Season board.
+ */
+export function liveGameColourRung(
+  slots: readonly { official: boolean; ev: EventData | undefined; rows: readonly ScoreRow[] }[],
+  player: GradePlayer | null,
+  bodyweightKg: number | null,
+): number {
+  if (!player) return 0
+  const total = slots
+    .filter(s => s.official)
+    .reduce((t, s) => t + liveEventRung(s.ev, s.rows, player, bodyweightKg), 0)
+  return gameColourRung(total)
 }

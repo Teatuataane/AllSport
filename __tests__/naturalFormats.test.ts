@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import {
   brzycki, bestSet, riegel, estimateFromSets, estimateFromDistance, paceLabel,
-  distanceRungs, takesDistance, takesSets, MAX_ESTIMATED_REPS, MAX_DISTANCE_RATIO,
+  distanceRungs, takesDistance, takesSets, MAX_DISTANCE_RATIO,
 } from '@/lib/naturalFormats'
 import { getEventBySlug, decodeDiffTime, isTimedEffort } from '@/lib/eventData'
+import { MAX_ESTIMATED_REPS } from '@/lib/scoring'
 
 const running = getEventBySlug('running')!
 const deadlift = getEventBySlug('deadlift')!

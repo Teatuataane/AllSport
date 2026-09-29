@@ -17,13 +17,13 @@ import QuickEntrySheet, { type SubmitOutcome } from '@/components/play/QuickEntr
 import AddEventsSheet from '@/components/play/AddEventsSheet'
 import GameEventList from '@/components/play/GameEventList'
 import { playList, domainsCovered, type PlaySlot, type DomainGroup } from '@/lib/gameSwaps'
-import { scoreRung, rungSegment, liveEventRung } from '@/lib/scoreColour'
+import { scoreRung, rungSegment, liveGameColourRung } from '@/lib/scoreColour'
 import { GradeDot } from '@/components/GradeDot'
 import { gradeForRung } from '@/lib/grading'
 import { useGradeProfile } from '@/lib/useGradeProfile'
 import { recheckGrades, type ConferredColour } from '@/lib/recheckGrades'
 import { usePlayerGames } from '@/lib/usePlayerGames'
-import { averageBefore, awardsForGame, nextStep, gameColourRung } from '@/lib/gameReport'
+import { averageBefore, awardsForGame, nextStep } from '@/lib/gameReport'
 import { ColourScore, EarnedColours, NextTime, PlacementHeader } from '@/components/GameReportParts'
 import { loadGamePlace } from '@/lib/loadGamePlace'
 import type { GamePlace } from '@/lib/gameReport'
@@ -1700,10 +1700,12 @@ export default function SessionPage() {
         // This game's colour so far: the official events' rungs summed and
         // divided by ten, exactly as the game report and /history count it.
         // Swapped and added events never count, as on the Season board.
-        const gameColour = gradeProfile.player
-          ? gradeForRung(gameColourRung(slots
-              .filter(sl => sl.kind === 'official')
-              .reduce((t, sl) => t + liveEventRung(eventDataFor(sl), slotRows(sl), gradeProfile.player, gradeProfile.bodyweightKg), 0)))
+        // Hidden until something is scored: "This game · Mā" beside
+        // "0 of 10 events scored" reads as a verdict, not an empty state.
+        const gameColour = gradeProfile.player && doneEvents.length > 0
+          ? gradeForRung(liveGameColourRung(
+              slots.map(sl => ({ official: sl.kind === 'official', ev: eventDataFor(sl), rows: slotRows(sl) })),
+              gradeProfile.player, gradeProfile.bodyweightKg))
           : null
 
         return (
@@ -1730,7 +1732,7 @@ export default function SessionPage() {
 
             {/* Session progress */}
             <div style={{ marginBottom: '4px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '6px' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'baseline', gap: '4px 12px', marginBottom: '6px' }}>
                 <div style={{ fontFamily: 'var(--font-label)', fontSize: '11.5px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.12em' }}>
                   <span style={{ color: '#fff', fontWeight: 600 }}>{doneEvents.length}</span> of {events.length} events scored
                   {doneEvents.length === events.length && events.length > 0 && (
