@@ -223,7 +223,7 @@ describe('natural formats in the sheet', () => {
 
     fireEvent.change(screen.getByLabelText('Set 1 weight'), { target: { value: '100' } })
     fireEvent.change(screen.getByLabelText('Set 1 reps'), { target: { value: '5' } })
-    expect(screen.getByText('Best set — 100kg × 5 · est. 1RM 112.5kg')).toBeTruthy()
+    expect(screen.getByText('Best set — 100kg × 5 reps · est. 1RM 112.5kg')).toBeTruthy()
 
     fireEvent.click(screen.getByText(/Submit — 100kg × 5/))
     await waitFor(() => expect(onSubmit).toHaveBeenCalled())

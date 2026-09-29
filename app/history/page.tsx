@@ -189,9 +189,9 @@ export default function HistoryPage() {
                     if (points == null) return null
                     const g = gradeForRung(gameColourRung(points))
                     return (
-                      <div title={`Colour score ${points}, played at ${g.name}`} style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                      <div title={`Played at ${g.name}`} style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                         <GradeDot grade={g} size={10} />
-                        <span style={{ fontFamily: 'var(--font-display)', fontSize: 18 }}>{points}</span>
+                        <span style={{ fontFamily: 'var(--font-display)', fontSize: 15, letterSpacing: '0.04em' }}>{g.name}</span>
                       </div>
                     )
                   })()}

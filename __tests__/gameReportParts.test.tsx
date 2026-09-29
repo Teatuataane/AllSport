@@ -7,6 +7,8 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { render, cleanup, screen } from '@testing-library/react'
 import { ColourScore, NextTime, ReportEventRow, ScoreTrend, EarnedColours, PlacementHeader } from '@/components/GameReportParts'
+import { gradeForRung } from '@/lib/grading'
+import { gameColourRung } from '@/lib/gameReport'
 
 afterEach(cleanup)
 
@@ -52,6 +54,13 @@ describe('the rest', () => {
     expect(container.textContent).toBe('')
     rerender(<ScoreTrend points={[40, 52, 61]} />)
     expect(screen.getByTestId('score-trend').querySelectorAll('circle')).toHaveLength(3)
+  })
+
+  it('names the latest colour in the trend, never a number', () => {
+    render(<ScoreTrend points={[40, 52, 61]} />)
+    const t = screen.getByTestId('score-trend').textContent ?? ''
+    expect(t).toContain(gradeForRung(gameColourRung(61)).name)
+    expect(t).not.toMatch(/\b61\b/)
   })
 
   it('shows nothing when no colour was earned', () => {

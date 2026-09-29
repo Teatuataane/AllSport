@@ -124,7 +124,7 @@ export const TOP_RUNG = 12
  * conferred one. HOME forces one full recheck per player when this differs
  * from the version it last checked under (lib/useNewColours.ts).
  */
-export const GRADING_RULES_VERSION = '2026-09-26-best-six'
+export const GRADING_RULES_VERSION = '2026-09-29-estimated-1rm'
 export const DOMAIN_COUNT = 10
 
 /**
@@ -429,6 +429,38 @@ export function rungForScore(
     if (score >= thresholdFor(thresholds, c - shift)) rung = c
   }
   return Math.min(rung, cap)
+}
+
+// ─── Load-and-hold events: both halves of the standard count ─────────────────
+// A weight+time score is `round(kg × 100) × 10000 + secs`, so a heavier load
+// outranks any lighter one whatever the time. That order is right for RANKING
+// a game (heaviest wins, the hold breaks the tie) and wrong for a COLOUR: read
+// as one number, "5kg · 30s" is passed by 15kg held for one second, and the
+// top of Toe Lift's ladder by 15.01kg for a second. Decided with Tāne 29 Sept
+// 2026: a colour asks for at least the load AND at least the time.
+
+const LOAD_HOLD_BAND = 10000
+
+/** Whether a load-and-hold score meets one threshold: load at least, and hold at least. */
+export function meetsLoadHold(score: number, threshold: number): boolean {
+  // Below the Open floor the ladder extends by its own first step, which is a
+  // bodyweight hold, so the extension is seconds alone (or nothing at all).
+  if (threshold <= 0) return score >= threshold
+  const kg = Math.floor(score / LOAD_HOLD_BAND), secs = score % LOAD_HOLD_BAND
+  const tKg = Math.floor(threshold / LOAD_HOLD_BAND), tSecs = threshold % LOAD_HOLD_BAND
+  return kg >= tKg && secs >= tSecs
+}
+
+/** rungForScore for a load-and-hold ladder: each colour checks its load and its time. */
+export function rungForLoadHold(score: number, thresholds: readonly number[], band: AgeBand): number {
+  if (thresholds.length === 0) return 0
+  const shift = AGE_SHIFT[band]
+  const top = Math.min(TOP_RUNG, thresholds.length + shift)
+  let rung = 0
+  for (let c = 1; c <= top; c++) {
+    if (meetsLoadHold(score, thresholdFor(thresholds, c - shift))) rung = c
+  }
+  return rung
 }
 
 // ─── Game-rung events: drills below, the rating above ────────────────────────

@@ -172,6 +172,55 @@ function weightTerm(weightKg: number): number | null {
   return Math.round(weightKg * 100)
 }
 
+// ─── Estimated 1RM ───────────────────────────────────────────────────────────
+// A lift ranks on its ESTIMATED one-rep max, not its load (Tāne, 29 Sept 2026:
+// "I want to encourage reps"). 35kg × 5 is a better lift than 38kg × 1, and
+// now it scores like one.
+//
+// Brzycki, 1RM = w × 36 / (37 − r). Chosen over Epley because between 2 and 10
+// reps it always gives the LOWER number, and a number that can only be wrong
+// should be wrong low. Past 10 reps it drifts badly, so reps past 10 are
+// COUNTED as 10: a set of 15 scores exactly what a set of 10 does. The player
+// is told so on the entry sheet.
+//
+// The SQL in 20260928201510_estimated_one_rep_max.sql re-encodes history with
+// the same formula and rounding; __tests__/estimatedOneRm.test.ts pins the two.
+
+/** Reps the estimate counts. More than this still counts, as this many. */
+export const MAX_ESTIMATED_REPS = 10
+
+/** The estimated 1RM of weightKg × reps, to 0.1kg. One rep (or none recorded) is the load itself. */
+export function estimatedOneRm(weightKg: number, reps: number | null | undefined): number {
+  const r = Math.min(Math.max(1, Math.floor(reps ?? 1) || 1), MAX_ESTIMATED_REPS)
+  if (r === 1) return weightKg
+  // Integer arithmetic on the load in hundredths, so a true .x5 rounds up here
+  // exactly as Postgres' numeric round() does in the migration and the
+  // trigger. Float arithmetic (39.375 × 100 as 3937.4999…) would disagree with
+  // the stored score by 0.1kg.
+  const hundredths = hundredthsOf(weightKg)
+  return Math.round((hundredths * 36) / (10 * (37 - r))) / 10
+}
+
+/**
+ * A load in whole hundredths, rounded half-up on its DECIMAL digits, which is
+ * what Postgres' round(numeric, 2) does to the same number sent as JSON.
+ * Math.round(kg * 100) rounds the binary float instead: 39.375 → 3937.
+ */
+function hundredthsOf(kg: number): number {
+  const [whole, frac = ''] = String(kg).split('.')
+  if (/e/i.test(String(kg))) return Math.round(kg * 100)
+  const digits = (frac + '000').slice(0, 3)
+  return Number(whole) * 100 + Number(digits.slice(0, 2)) + (Number(digits[2]) >= 5 ? 1 : 0)
+}
+
+/** "35kg × 5 reps · est. 1RM 39.4kg", or "35kg" / "35kg × 1 rep" when nothing is estimated. */
+export function liftLabel(weightKg: number, reps: number | null | undefined): string {
+  const r = Math.max(0, Math.floor(reps ?? 0) || 0)
+  if (r === 0) return `${weightKg}kg`
+  if (r === 1) return `${weightKg}kg × 1 rep`
+  return `${weightKg}kg × ${r} reps · est. 1RM ${estimatedOneRm(weightKg, r)}kg`
+}
+
 export function computeScoreVals(
   mode: string, eventData: EventData | undefined, v: EntryVals
 ): { raw_score: number; score_label: string } | null {
@@ -188,8 +237,7 @@ export function computeScoreVals(
       const label = r > 0 ? `${w}cm × ${r} rep${r !== 1 ? 's' : ''}` : `${w}cm`
       return { raw_score: -w, score_label: label }
     }
-    const label = r > 0 ? `${w}kg × ${r} rep${r !== 1 ? 's' : ''}` : `${w}kg`
-    return { raw_score: w, score_label: label }
+    return { raw_score: estimatedOneRm(w, r), score_label: liftLabel(w, r) }
   }
   if (mode === 'reps') {
     if (isWeightVariation) {
@@ -331,7 +379,7 @@ export type ScoreColumns = {
   difficulty_tier?: string
   exercise_variation?: string
   weight_kg?: number
-  reps?: number
+  reps?: number | null
   time_seconds?: number
   distance_m?: number
   opponent_name?: string
@@ -355,7 +403,10 @@ export function scoreColumns(mode: string, eventData: EventData | undefined, v: 
   if (v.exerciseVariation) c.exercise_variation = v.exerciseVariation
   if (mode === 'strength') {
     c.weight_kg = parseFloat(v.weightKg) || 0
-    if (v.repCount) c.reps = parseInt(v.repCount)
+    // Always written, null when cleared: an edit that empties the field must
+    // clear the stored reps, or the database trigger (enforce_lift_estimate)
+    // rebuilds raw_score from the stale count and disagrees with the label.
+    c.reps = v.repCount ? parseInt(v.repCount) : null
   }
   if (mode === 'reps') {
     if (isWeightVariation) c.weight_kg = parseFloat(v.weightKg) || 0
@@ -451,6 +502,10 @@ export function valsFromRaw(mode: string, eventData: EventData | undefined, raw:
   const p: Partial<EntryVals> = {}
   if (mode === 'strength') {
     p.weightKg = String(Math.abs(raw))
+    // A lift's raw_score is its estimated 1RM, not a load anyone lifted for
+    // reps, so the prefill is that load as a SINGLE. Leaving reps as they were
+    // would record, say, 112.5kg × 5 from a PR of 100kg × 5.
+    if (eventData?.slug !== 'shoulder-dislocate') p.repCount = '1'
   } else if (mode === 'reps') {
     p.repCount = String(raw)
   } else if (mode === 'time' || mode === 'hold') {

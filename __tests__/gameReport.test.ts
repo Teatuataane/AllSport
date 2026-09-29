@@ -133,7 +133,7 @@ describe('next time', () => {
     // 80kg: Kahurangi is 95kg, Poroporo 110kg, so a 100kg best is 10kg short.
     const i = inputs([row('a', JAN, 'Deadlift', 100, { weight_kg: 100 })])
     const step = nextStep(['Deadlift'], gradeStateFrom('p', i).grades, MEN, i.bodyweights!, '2026-03-01')!
-    expect(nextStepLine(step)).toBe('Deadlift: 10kg more for Poroporo')
+    expect(nextStepLine(step)).toBe('Deadlift: est. 1RM 10kg higher for Poroporo')
   })
 
   it('leaves a lift out when no bodyweight has been declared', () => {

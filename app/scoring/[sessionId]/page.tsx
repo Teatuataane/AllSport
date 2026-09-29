@@ -17,7 +17,9 @@ import QuickEntrySheet, { type SubmitOutcome } from '@/components/play/QuickEntr
 import AddEventsSheet from '@/components/play/AddEventsSheet'
 import GameEventList from '@/components/play/GameEventList'
 import { playList, domainsCovered, type PlaySlot, type DomainGroup } from '@/lib/gameSwaps'
-import { scoreRung, rungSegment } from '@/lib/scoreColour'
+import { scoreRung, rungSegment, liveGameColourRung } from '@/lib/scoreColour'
+import { GradeDot } from '@/components/GradeDot'
+import { gradeForRung } from '@/lib/grading'
 import { useGradeProfile } from '@/lib/useGradeProfile'
 import { recheckGrades, type ConferredColour } from '@/lib/recheckGrades'
 import { usePlayerGames } from '@/lib/usePlayerGames'
@@ -1695,6 +1697,16 @@ export default function SessionPage() {
         // A domain's segment takes the best colour reached anywhere in it.
         const domainFill = (ev: { domain_number: number }) =>
           rungSegment(Math.max(0, ...slots.filter(sl => sl.se.domain_number === ev.domain_number).map(rungFor))) ?? '#666'
+        // This game's colour so far: the official events' rungs summed and
+        // divided by ten, exactly as the game report and /history count it.
+        // Swapped and added events never count, as on the Season board.
+        // Hidden until something is scored: "This game · Mā" beside
+        // "0 of 10 events scored" reads as a verdict, not an empty state.
+        const gameColour = gradeProfile.player && doneEvents.length > 0
+          ? gradeForRung(liveGameColourRung(
+              slots.map(sl => ({ official: sl.kind === 'official', ev: eventDataFor(sl), rows: slotRows(sl) })),
+              gradeProfile.player, gradeProfile.bodyweightKg))
+          : null
 
         return (
           <div key={pid} style={{ padding: '16px' }}>
@@ -1720,13 +1732,23 @@ export default function SessionPage() {
 
             {/* Session progress */}
             <div style={{ marginBottom: '4px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '6px' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'baseline', gap: '4px 12px', marginBottom: '6px' }}>
                 <div style={{ fontFamily: 'var(--font-label)', fontSize: '11.5px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.12em' }}>
                   <span style={{ color: '#fff', fontWeight: 600 }}>{doneEvents.length}</span> of {events.length} events scored
                   {doneEvents.length === events.length && events.length > 0 && (
                     <span style={{ color: '#4DB26E', fontWeight: 600 }}> — All {events.length} events played</span>
                   )}
                 </div>
+                {gameColour && (
+                  <div data-testid="game-colour" title="This game's colour so far" style={{
+                    display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
+                    fontFamily: 'var(--font-label)', fontSize: '11.5px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.12em',
+                  }}>
+                    This game
+                    <GradeDot grade={gameColour} size={10} />
+                    <span style={{ color: '#fff', fontWeight: 600 }}>{gameColour.name}</span>
+                  </div>
+                )}
               </div>
               <div style={{ position: 'relative' }}>
                 <ProgressSegments events={events} scoredIds={barScored} fillFor={domainFill} />

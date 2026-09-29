@@ -11,8 +11,8 @@ describe('bestScoreLabel', () => {
     expect(label).toBe('1 Arm Pushup · 1 reps')
   })
 
-  it('shows a lift as its weight', () => {
-    expect(bestScoreLabel({ slug: slug('Deadlift'), best: { raw_score: 140, weight_kg: 140, difficulty_tier: null } })).toBe('140 kg')
+  it('shows a lift as its estimated 1RM', () => {
+    expect(bestScoreLabel({ slug: slug('Deadlift'), best: { raw_score: 140, weight_kg: 140, difficulty_tier: null } })).toBe('140 kg 1RM')
   })
 
   it('falls back to the rating, and to nothing', () => {

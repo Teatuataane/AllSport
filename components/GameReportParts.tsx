@@ -164,25 +164,28 @@ export function ReportEventRow({ line }: { line: ReportEventLine }) {
 }
 
 /**
- * Colour scores across recent games, oldest on the left, each dot in the
- * colour that game played at. Needs two games to draw a line.
+ * The colour of each recent game, oldest on the left, each dot in the colour
+ * that game played at and higher for a higher colour score. Names colours,
+ * never numbers (Tāne, 29 Sept 2026). Needs two games to draw a line.
  */
 export function ScoreTrend({ points }: { points: number[] }) {
   if (points.length < 2) return null
   const W = 300, H = 64, PAD = 6
   const x = (i: number) => PAD + (i * (W - 2 * PAD)) / (points.length - 1)
   const y = (p: number) => H - PAD - (p / MAX_GAME_COLOUR_TOTAL) * (H - 2 * PAD)
-  const last = points[points.length - 1]
+  const last = gradeForRung(gameColourRung(points[points.length - 1]))
   return (
     <div data-testid="score-trend" style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: 14, padding: '12px 14px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
         <span style={{ fontFamily: 'var(--font-label)', fontSize: 11, color: '#777', textTransform: 'uppercase', letterSpacing: '0.14em' }}>
-          Colour score · last {points.length} games
+          Colour · last {points.length} games
         </span>
-        <span style={{ fontFamily: 'var(--font-display)', fontSize: 20, color: '#fff' }}>{last}</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-display)', fontSize: 20, color: '#fff' }}>
+          <GradeDot grade={last} size={10} />{last.name}
+        </span>
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} role="img"
-        aria-label={`Colour scores for your last ${points.length} games: ${points.join(', ')}`}>
+        aria-label={`Colours for your last ${points.length} games: ${points.map(p => gradeForRung(gameColourRung(p)).name).join(', ')}`}>
         <polyline fill="none" stroke="#3a3a3a" strokeWidth={1.5}
           points={points.map((p, i) => `${x(i)},${y(p)}`).join(' ')} />
         {points.map((p, i) => {

@@ -23,9 +23,16 @@ function vals(patch: Partial<EntryVals>): EntryVals {
 // ─── computeScoreVals — raw_score encoding per input mode ─────────────────────
 
 describe('computeScoreVals: strength', () => {
-  it('encodes weight as raw_score with kg × reps label', () => {
+  it('ranks on the estimated 1RM, and says it is an estimate', () => {
     const r = computeScoreVals('strength', getEventBySlug('deadlift'), vals({ weightKg: '120', repCount: '3' }))
-    expect(r).toEqual({ raw_score: 120, score_label: '120kg × 3 reps' })
+    expect(r).toEqual({ raw_score: 127.1, score_label: '120kg × 3 reps · est. 1RM 127.1kg' })
+  })
+
+  it('lets reps beat a heavier single', () => {
+    const five = computeScoreVals('strength', getEventBySlug('deadlift'), vals({ weightKg: '35', repCount: '5' }))!
+    const single = computeScoreVals('strength', getEventBySlug('deadlift'), vals({ weightKg: '38', repCount: '1' }))!
+    expect(five.raw_score).toBe(39.4)
+    expect(five.raw_score).toBeGreaterThan(single.raw_score)
   })
 
   it('omits reps from the label when reps are empty', () => {
@@ -187,8 +194,18 @@ describe('valsFromResult', () => {
 })
 
 describe('valsFromRaw (season PR prefill)', () => {
-  it('round-trips a strength PR', () => {
-    expect(valsFromRaw('strength', getEventBySlug('deadlift'), 140).weightKg).toBe('140')
+  it('prefills a strength PR as a single, since the PR is an estimated 1RM', () => {
+    const p = valsFromRaw('strength', getEventBySlug('deadlift'), 112.5)
+    expect(p.weightKg).toBe('112.5')
+    // Never "112.5kg × 5" from a PR of 100kg × 5: that lift never happened.
+    expect(p.repCount).toBe('1')
+    // Round-trips: a single at the estimate scores the estimate.
+    const back = computeScoreVals('strength', getEventBySlug('deadlift'), vals(p))!
+    expect(back.raw_score).toBe(112.5)
+  })
+
+  it('leaves Shoulder Dislocate (cm, not a lift) without a rep count', () => {
+    expect(valsFromRaw('strength', getEventBySlug('shoulder-dislocate'), -40).repCount).toBeUndefined()
   })
 
   it('decodes a timed-effort difficulty+time PR back to tier + seconds', () => {

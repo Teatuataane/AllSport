@@ -17,6 +17,8 @@ import type { EventData } from './eventData'
 import { eventGrade, type GradePlayer } from './playerGrades'
 import { GRADES, gradeForRung, gradeInk } from './grading'
 import { RAINBOW } from './domainColours'
+import { eventRungInGame } from './leaderboardScores'
+import { gameColourRung } from './gameReport'
 
 export type ScoreRow = {
   raw_score: number | null
@@ -87,3 +89,43 @@ export function rungSegment(rung: number): string | null {
  * one. A hex, not a CSS var: the icons append alpha to it for their tile.
  */
 export const NEUTRAL_ICON_TINT = '#bbbbbb'
+
+/**
+ * What one official event adds to this game's colour, live: the same rung the
+ * game report and the Season board count (eventRungInGame), so the colour on
+ * the game screen is the one the report shows afterwards. A game result pays
+ * its floor (win 6, draw 5, loss 4); a rating colour above that is only known
+ * at close, so the live figure can only ever be low, never high.
+ */
+export function liveEventRung(
+  ev: EventData | undefined,
+  rows: readonly ScoreRow[],
+  player: GradePlayer | null,
+  bodyweightKg: number | null,
+): number {
+  if (!ev || !player || rows.length === 0) return 0
+  return eventRungInGame(ev.name, rows.map(r => ({
+    event_name: ev.name,
+    raw_score: r.raw_score,
+    weight_kg: r.weight_kg,
+    difficulty_tier: r.difficulty_tier,
+    bodyweightKg,
+  })), player)
+}
+
+/**
+ * This game's colour so far, as a rung: the official events' rungs summed and
+ * divided by ten (gameColourRung), exactly as the game report and /history
+ * count it. Added and swapped events never count, as on the Season board.
+ */
+export function liveGameColourRung(
+  slots: readonly { official: boolean; ev: EventData | undefined; rows: readonly ScoreRow[] }[],
+  player: GradePlayer | null,
+  bodyweightKg: number | null,
+): number {
+  if (!player) return 0
+  const total = slots
+    .filter(s => s.official)
+    .reduce((t, s) => t + liveEventRung(s.ev, s.rows, player, bodyweightKg), 0)
+  return gameColourRung(total)
+}

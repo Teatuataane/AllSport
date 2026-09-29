@@ -32,7 +32,9 @@ function legacyPayload(mode: string, eventData: EventData | undefined, v: EntryV
   if (v.exerciseVariation) payload.exercise_variation = v.exerciseVariation
   if (mode === 'strength') {
     payload.weight_kg = parseFloat(v.weightKg) || 0
-    if (v.repCount) payload.reps = parseInt(v.repCount)
+    // Deliberate change (29 Sept 2026): reps are always written, null when
+    // cleared, so an edit cannot leave a stale count for the DB trigger.
+    payload.reps = v.repCount ? parseInt(v.repCount) : null
   }
   if (mode === 'reps') {
     if (isWeightVariation) payload.weight_kg = parseFloat(v.weightKg) || 0
