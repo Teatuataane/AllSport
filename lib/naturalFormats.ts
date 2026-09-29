@@ -2,16 +2,17 @@
 // How people actually train, converted into the score AllSport ranks.
 //
 // Two families clash with the official formats, and only two (the September
-// 2026 research pass): strength, which people log as sets of weight × reps
-// while the official score is a heaviest single; and distance efforts, which
-// people log as "5km in 26:10" while the official score is a fixed rung.
+// 2026 research pass): strength, which people log as several sets of weight ×
+// reps while the official score is one estimated 1RM; and distance efforts,
+// which people log as "5km in 26:10" while the official score is a fixed rung.
 // Everything else — reps, holds, throws, games — is already logged the way it
 // is scored.
 //
-// Both conversions are published formulas, used only inside the range they are
-// reliable in, and the result is always shown as an ESTIMATE beside what was
-// actually done: "100kg × 5 · est. 1RM 112.5kg". Outside the range the effort
-// is still recorded; it just does not touch the standards.
+// Both conversions are published formulas, and the result is always shown as
+// an ESTIMATE beside what was actually done: "100kg × 5 reps · est. 1RM
+// 112.5kg". Strength counts reps past 10 as 10 (estimatedOneRm). A distance
+// effort outside Riegel's range is still recorded; it just does not touch the
+// standards.
 //
 // Sets are offered ONLY on swapped, extra and personal-game events. Since 29
 // Sept 2026 an official lift ALSO ranks on its estimated 1RM, from the one set
