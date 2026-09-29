@@ -194,10 +194,23 @@ export function estimatedOneRm(weightKg: number, reps: number | null | undefined
   const r = Math.min(Math.max(1, Math.floor(reps ?? 1) || 1), MAX_ESTIMATED_REPS)
   if (r === 1) return weightKg
   // Integer arithmetic on the load in hundredths, so a true .x5 rounds up here
-  // exactly as Postgres' numeric round() does in the migration. Float division
-  // (39.375 as 393.74999…) would disagree with the stored history by 0.1kg.
-  const hundredths = Math.round(weightKg * 100)
+  // exactly as Postgres' numeric round() does in the migration and the
+  // trigger. Float arithmetic (39.375 × 100 as 3937.4999…) would disagree with
+  // the stored score by 0.1kg.
+  const hundredths = hundredthsOf(weightKg)
   return Math.round((hundredths * 36) / (10 * (37 - r))) / 10
+}
+
+/**
+ * A load in whole hundredths, rounded half-up on its DECIMAL digits, which is
+ * what Postgres' round(numeric, 2) does to the same number sent as JSON.
+ * Math.round(kg * 100) rounds the binary float instead: 39.375 → 3937.
+ */
+function hundredthsOf(kg: number): number {
+  const [whole, frac = ''] = String(kg).split('.')
+  if (/e/i.test(String(kg))) return Math.round(kg * 100)
+  const digits = (frac + '000').slice(0, 3)
+  return Number(whole) * 100 + Number(digits.slice(0, 2)) + (Number(digits[2]) >= 5 ? 1 : 0)
 }
 
 /** "35kg × 5 reps · est. 1RM 39.4kg", or "35kg" / "35kg × 1 rep" when nothing is estimated. */

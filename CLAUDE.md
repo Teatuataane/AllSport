@@ -2524,6 +2524,15 @@ DEPLOY CODE FIRST, then the migration with no game running, then
   bump fires at deploy, before the data changes), and prints a NOTICE counting
   domain-5 colours that cite the archived events. Hard-refresh kaiwhakawā
   devices afterwards.
+- **The database owns the lift encoding** (`enforce_lift_estimate`, triggers
+  `trg_zz_lift_estimate_results` / `_entries`, created by the same migration;
+  Tāne, 29 Sept 2026): every write recomputes a lift's `raw_score` from
+  `weight_kg`/`reps`, and an old-format Toe Lift (no hold time) or Tib Curl (no
+  level) is refused with "refresh the app". Named `zz` so it fires after the
+  guard and band-stamp BEFORE triggers. A phone left on the old bundle can no
+  longer write a load-only lift. **Any future change to the lift list or the
+  formula must change this trigger too**; `__tests__/estimatedOneRm.test.ts`
+  pins both lists to `lib/eventData.ts`.
 - **Play history names colours, never numbers.** Each game row and the trend
   show the colour; the game report still shows the colour score.
 - **The live game screen shows "This game · [colour]"** beside the progress

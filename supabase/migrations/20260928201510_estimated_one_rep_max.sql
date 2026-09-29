@@ -50,6 +50,10 @@
 -- not recomputed here, so an old multi-rep set that now beats an earlier heavy
 -- single stays unflagged. /prs sorts on raw_score and is right either way.
 --
+-- ⚠ Past game reports compute placements live, so a closed game where only
+-- some players scored Toe Lift or Tib Curl now shows that event unscored.
+-- Stored placements and wins are unchanged. Same as the Leg Extension archive.
+--
 -- ⚠ A domain-5 colour already conferred on a Toe Lift or Tib Curl score keeps
 -- standing (an ordinary recheck never withdraws), but a kaiwhakawā deleting a
 -- domain-5 score later re-judges the domain without these rows. The NOTICE
@@ -115,8 +119,8 @@ DO $$
 DECLARE v_cited int;
 BEGIN
   SELECT count(*) INTO v_cited FROM grade_awards
-  WHERE domain_number = 5 AND events && ARRAY['toe-lift', 'tibialis-curl'];
-  RAISE NOTICE 'one-rep max: % Anaerobic Endurance colours cite Toe Lift or Tibialis Curl', v_cited;
+  WHERE domain_number = 5 AND events && ARRAY['toe-lift', 'tibialis-curl', 'leg-extension'];
+  RAISE NOTICE 'one-rep max: % Anaerobic Endurance colours cite Toe Lift, Tibialis Curl or Leg Ext Hold (now judged on load AND time)', v_cited;
 END $$;
 
 -- ── 1. Re-encode lifts ───────────────────────────────────────────────────────
@@ -169,6 +173,67 @@ BEGIN
     PERFORM public.compute_event_placements(s.session_id);
   END LOOP;
 END $$;
+
+-- ── The server owns the encoding from now on ─────────────────────────────────
+-- A phone still on the old bundle (players sit on the game screen for 100
+-- minutes) would keep writing a load-only raw_score for lifts and old-scale
+-- Toe Lift / Tib Curl rows, and nothing would ever correct them (Tāne, 29 Sept
+-- 2026: guard it). So every write recomputes a lift's raw_score from its source
+-- columns with the same expression as the re-encode above, and an old-format
+-- Toe Lift or Tib Curl is refused with a message to refresh.
+-- Named trg_zz_* so it fires AFTER the guard and band-stamp BEFORE triggers
+-- (Postgres fires same-timing triggers in name order): the entries guard's
+-- fitting-only check compares raw_score before this rewrites it.
+-- __tests__/estimatedOneRm.test.ts pins both lists to lib/eventData.ts.
+CREATE OR REPLACE FUNCTION public.enforce_lift_estimate()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
+DECLARE
+  v_name text;
+  v_slug text;
+BEGIN
+  IF TG_TABLE_NAME = 'results' THEN
+    SELECT event_name INTO v_name FROM session_events WHERE id = NEW.event_id;
+  ELSE
+    v_slug := NEW.event_slug;
+  END IF;
+
+  IF v_name IN (
+      '1A Press', 'Deadlift', 'Clean & Press', 'Pause Back Squat', 'Zercher Dead',
+      'Pause Bench', 'Turkish Getup', 'Arthur Lift', 'Pause Row', 'Pause Front Squat',
+      'Pullover & Press', 'Loaded Lunge', 'Kelly Snatch', '1A Snatch',
+      'Clean & Jerk', 'Snatch')
+     OR v_slug IN (
+      'one-arm-press', 'deadlift', 'clean-and-press', 'pause-squat', 'zercher-deadlift',
+      'pause-bench', 'turkish-get-up', 'arthur-lift', 'pause-row', 'pause-front-squat',
+      'pullover-and-press', 'loaded-lunge', 'kelly-snatch', 'one-arm-snatch',
+      'clean-and-jerk', 'snatch') THEN
+    IF NEW.weight_kg > 0 THEN
+      NEW.raw_score := CASE WHEN coalesce(NEW.reps, 1) > 1
+        THEN round(round(NEW.weight_kg, 2) * 36 / (37 - least(NEW.reps, 10)), 1)
+        ELSE NEW.weight_kg END;
+    END IF;
+  ELSIF (v_name = 'Toe Lift' OR v_slug = 'toe-lift') AND NEW.time_seconds IS NULL THEN
+    RAISE EXCEPTION 'Toe Lift is now a load and a hold time: refresh the app and enter it again'
+      USING ERRCODE = '22023';
+  ELSIF (v_name = 'Tibialis Curl' OR v_slug = 'tibialis-curl') AND NEW.difficulty_tier IS NULL THEN
+    RAISE EXCEPTION 'Tibialis Curl now has load levels: refresh the app and enter it again'
+      USING ERRCODE = '22023';
+  END IF;
+  RETURN NEW;
+END $$;
+
+DROP TRIGGER IF EXISTS trg_zz_lift_estimate_results ON public.results;
+CREATE TRIGGER trg_zz_lift_estimate_results
+  BEFORE INSERT OR UPDATE ON public.results
+  FOR EACH ROW EXECUTE FUNCTION public.enforce_lift_estimate();
+
+DROP TRIGGER IF EXISTS trg_zz_lift_estimate_entries ON public.workout_entries;
+CREATE TRIGGER trg_zz_lift_estimate_entries
+  BEFORE INSERT OR UPDATE ON public.workout_entries
+  FOR EACH ROW EXECUTE FUNCTION public.enforce_lift_estimate();
 
 -- ── A full recheck for everyone whose scores moved ───────────────────────────
 UPDATE players SET grades_checked_at = NULL

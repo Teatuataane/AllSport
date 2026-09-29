@@ -58,6 +58,28 @@ describe('estimatedOneRm', () => {
     }
   })
 
+  it('rounds a load past two decimals on its decimal digits, as Postgres does', () => {
+    // 39.375 × 100 is 3937.4999… in binary; round(39.375, 2) in SQL is 39.38.
+    expect(estimatedOneRm(39.375, 5)).toBe(Math.round(3938 * 36 / (10 * 32)) / 10)
+    expect(estimatedOneRm(1.005, 5)).toBe(Math.round(101 * 36 / (10 * 32)) / 10)
+  })
+
+  it('the database trigger uses the same formula and the same lift list', () => {
+    const fn = MIGRATION.slice(MIGRATION.indexOf('CREATE OR REPLACE FUNCTION public.enforce_lift_estimate'))
+    expect(fn).toContain('round(round(NEW.weight_kg, 2) * 36 / (37 - least(NEW.reps, 10)), 1)')
+    const lifts = EVENTS.filter(e => e.inputMode === 'strength' && e.slug !== 'shoulder-dislocate')
+    const list = (marker: string) => {
+      const from = fn.indexOf(marker)
+      const body = fn.slice(fn.indexOf('(', from) + 1, fn.indexOf(')', from))
+      return [...body.matchAll(/'((?:[^']|'')*)'/g)].map(m => m[1]).sort()
+    }
+    expect(list('IF v_name IN')).toEqual(lifts.map(e => e.name).sort())
+    expect(list('OR v_slug IN')).toEqual(lifts.map(e => e.slug).sort())
+    // Named to fire after the guard and band-stamp BEFORE triggers.
+    expect(MIGRATION).toContain('CREATE TRIGGER trg_zz_lift_estimate_results')
+    expect(MIGRATION).toContain('CREATE TRIGGER trg_zz_lift_estimate_entries')
+  })
+
   it('writes what was lifted, then the estimate', () => {
     expect(liftLabel(35, 5)).toBe('35kg × 5 reps · est. 1RM 39.4kg')
     expect(liftLabel(35, 1)).toBe('35kg × 1 rep')
