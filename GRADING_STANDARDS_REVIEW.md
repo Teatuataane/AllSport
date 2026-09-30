@@ -1433,6 +1433,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 *Scored by: difficulty level, then most reps · 13 players have scored it*
 
 > Approved in review, then carried onto the new levels 30 Sept 2026: Push Up is now D4 and 1 Arm Pushup D5, so those colours moved up a level with their reps unchanged.
+> Kākāriki moved 30 Sept 2026 (Tāne) from 30 knee pushups to Elevated Pushups (10, women 6), so the new level has a colour of its own.
 > Drafted by Claude, UNREVIEWED: Kōura, Uenuku and Taniwha. They were handstand pushups, which are gone, so they are now more one-arm pushups.
 
 **Men**
@@ -1441,7 +1442,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Whero: D1 · 20
 - Karaka: D2 · 10
 - Kōwhai: D2 · 20
-- Kākāriki: D2 · 30
+- Kākāriki: D3 · 10
 - Kahurangi: D4 · 10
 - Poroporo: D4 · 20
 - Parahi: D4 · 30
@@ -1456,7 +1457,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Whero: D1 · 20
 - Karaka: D2 · 10
 - Kōwhai: D2 · 20
-- Kākāriki: D2 · 30
+- Kākāriki: D3 · 6
 - Kahurangi: D4 · 6
 - Poroporo: D4 · 12
 - Parahi: D4 · 18

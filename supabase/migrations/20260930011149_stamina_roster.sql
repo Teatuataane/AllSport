@@ -24,6 +24,21 @@
 --                the precedent for every removal. Their activity aliases go.
 --   ADDED (3)    Back Extension, Hollow Hold (Stamina), Reverse Maltese
 --                (Calisthenics). All holds.
+--   GUARD        enforce_relevelled_ladders() refuses a write on the five
+--                re-levelled events whose level is not on the new ladder, and
+--                a new score on a removed event. See below.
+--
+-- ─── Colours and Season points resting on removed events ────────────────────
+--
+-- 11 conferred colours cite Ab Rollout or Shoulder Dislocate (10 Stamina, 1
+-- Flexibility, checked 2026-10-01). They stand: an ordinary recheck never
+-- withdraws, and lib/autoConfer.ts citesRemovedEvent() stops a kaiwhakawā's
+-- unrelated score deletion from re-judging them away (Tāne, 1 Oct 2026).
+--
+-- Season points DO move, accepted (Tāne, 1 Oct 2026): a removed event no
+-- longer has standards, so past games that drew Ab Rollout (4 draws, 7 results)
+-- or Shoulder Dislocate (5 draws, 3 results) score 0 for it once the board is
+-- refreshed, and places in those games can shift by a point.
 --
 -- Domains: 14/13/12/12/13/12/15/13/12/12, still at least 12 in every one.
 --
@@ -70,13 +85,17 @@
 BEGIN;
 
 -- ─── session_events: the four renames and the domain name ───────────────────
-UPDATE session_events SET event_name = 'Compression'
+-- The slug is set as well: one historical 'L-Sit Hold' draw carried a NULL
+-- event_slug (10 of 680 rows did, checked 2026-09-30), and every step below
+-- finds rows by slug. Setting it here is what makes the level shift, the
+-- invariant and the guard see that draw.
+UPDATE session_events SET event_name = 'Compression', event_slug = 'l-sit-hold'
  WHERE event_name = 'L-Sit Hold' OR event_slug = 'l-sit-hold';
-UPDATE session_events SET event_name = 'Pushups'
+UPDATE session_events SET event_name = 'Pushups', event_slug = 'push-up-contest'
  WHERE event_name = 'Pushup Contest' OR event_slug = 'push-up-contest';
-UPDATE session_events SET event_name = 'Internal Wrist Stretch'
+UPDATE session_events SET event_name = 'Internal Wrist Stretch', event_slug = 'wrist-stretch'
  WHERE event_name = 'Wrist Stretch' OR event_slug = 'wrist-stretch';
-UPDATE session_events SET event_name = 'External Wrist Stretch'
+UPDATE session_events SET event_name = 'External Wrist Stretch', event_slug = 'reverse-wrist-stretch'
  WHERE event_name = 'Reverse Wrist Stretch' OR event_slug = 'reverse-wrist-stretch';
 UPDATE session_events SET domain_name = 'Stamina'
  WHERE domain_name = 'Anaerobic Endurance' AND domain_number = 5;
@@ -89,7 +108,7 @@ INSERT INTO level_map VALUES
     ('l-sit-hold',      'Compression', 'Tuck Hold',             'Tuck Hold',                  2, 2),
     ('l-sit-hold',      'Compression', 'L-Sit',                 'L Sit',                      4, 3),
     ('l-sit-hold',      'Compression', 'V-Sit',                 'V Sit',                      5, 4),
-    ('push-up-contest', 'Pushups',     'Elevated Knee Push Up', 'Hands Elevated Knee Pushup', 0, 0),
+    ('push-up-contest', 'Pushups',     'Elevated Knee Push Up', 'Hands Up Knee Pushup', 0, 0),
     ('push-up-contest', 'Pushups',     'Knee Push Up',          'Knee Pushup',                1, 1),
     ('push-up-contest', 'Pushups',     'Push Up',               'Pushup',                     2, 3),
     ('push-up-contest', 'Pushups',     '1 Arm Pushup',          '1 Arm Pushup',               3, 4);
@@ -100,7 +119,7 @@ INSERT INTO new_levels VALUES
     ('l-sit-hold', 'Compression', 'Curl Up', 0), ('l-sit-hold', 'Compression', 'V Up', 1),
     ('l-sit-hold', 'Compression', 'Tuck Hold', 2), ('l-sit-hold', 'Compression', 'L Sit', 3),
     ('l-sit-hold', 'Compression', 'V Sit', 4),
-    ('push-up-contest', 'Pushups', 'Hands Elevated Knee Pushup', 0),
+    ('push-up-contest', 'Pushups', 'Hands Up Knee Pushup', 0),
     ('push-up-contest', 'Pushups', 'Knee Pushup', 1),
     ('push-up-contest', 'Pushups', 'Elevated Pushup', 2),
     ('push-up-contest', 'Pushups', 'Pushup', 3),
@@ -113,12 +132,12 @@ INSERT INTO new_levels VALUES
     ('wrist-stretch', 'Internal Wrist Stretch', 'Hand Forward', 1),
     ('wrist-stretch', 'Internal Wrist Stretch', 'Fingers Inwards', 2),
     ('wrist-stretch', 'Internal Wrist Stretch', 'Fingers Backwards', 3),
-    ('wrist-stretch', 'Internal Wrist Stretch', 'Fingers Backwards Plank', 4),
+    ('wrist-stretch', 'Internal Wrist Stretch', 'Plank · Backwards', 4),
     ('reverse-wrist-stretch', 'External Wrist Stretch', 'Hand Assisted', 0),
     ('reverse-wrist-stretch', 'External Wrist Stretch', 'Fingers Outwards', 1),
     ('reverse-wrist-stretch', 'External Wrist Stretch', 'Fingers Backwards', 2),
     ('reverse-wrist-stretch', 'External Wrist Stretch', 'Fingers Inwards', 3),
-    ('reverse-wrist-stretch', 'External Wrist Stretch', 'Fingers Inwards Plank', 4);
+    ('reverse-wrist-stretch', 'External Wrist Stretch', 'Plank · Inwards', 4);
 
 -- Every scored row on the five re-levelled events, with its event's slug.
 CREATE TEMP TABLE levelled_rows ON COMMIT DROP AS
@@ -208,6 +227,84 @@ BEGIN
     PERFORM public.compute_event_placements(s.session_id);
   END LOOP;
 END $$;
+
+
+-- ─── A server guard for the re-levelled ladders ──────────────────────────────
+-- The shift above runs once. A kaiwhakawā tab still on the old bundle could
+-- then save 'Push Up' or 'L-Sit' in its OLD band, which the new app reads as a
+-- different level (a Push Up as an Elevated Pushup), and nothing would move it
+-- again. So every write on the five re-levelled events must name a level of
+-- the new ladder and sit in that level's band, and a new score on a removed
+-- event is refused outright: the same approach as enforce_lift_estimate
+-- (20260928201510). Created AFTER the shift and the placement replay, so it
+-- never sees a row mid-repair. Named 'zz' to fire after the guards and the
+-- band stamps. ANY FUTURE CHANGE TO THESE FIVE LADDERS MUST CHANGE THIS LIST;
+-- __tests__/staminaRoster.test.ts pins it to lib/eventData.ts.
+CREATE OR REPLACE FUNCTION public.enforce_relevelled_ladders()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
+DECLARE
+  v_slug text;
+BEGIN
+  IF TG_TABLE_NAME = 'results' THEN
+    SELECT CASE
+             WHEN event_slug IS NOT NULL THEN event_slug
+             WHEN event_name IN ('L-Sit Hold', 'Compression') THEN 'l-sit-hold'
+             WHEN event_name IN ('Pushup Contest', 'Pushups') THEN 'push-up-contest'
+             WHEN event_name IN ('Wrist Stretch', 'Internal Wrist Stretch') THEN 'wrist-stretch'
+             WHEN event_name IN ('Reverse Wrist Stretch', 'External Wrist Stretch') THEN 'reverse-wrist-stretch'
+             WHEN event_name = 'Calf Raises' THEN 'calf-raises'
+             WHEN event_name = 'Lunges' THEN 'lunges'
+             WHEN event_name = 'Ab Rollout' THEN 'ab-wheel-rollout'
+             WHEN event_name = 'Shoulder Dislocate' THEN 'shoulder-dislocate'
+           END
+      INTO v_slug FROM session_events WHERE id = NEW.event_id;
+  ELSE
+    v_slug := NEW.event_slug;
+  END IF;
+
+  IF TG_OP = 'INSERT' AND v_slug IN ('lunges', 'ab-wheel-rollout', 'shoulder-dislocate') THEN
+    RAISE EXCEPTION 'That event has been removed: refresh the app'
+      USING ERRCODE = '22023';
+  END IF;
+
+  IF v_slug IN ('l-sit-hold', 'push-up-contest', 'calf-raises', 'wrist-stretch', 'reverse-wrist-stretch')
+     AND NEW.raw_score IS NOT NULL
+     AND NOT EXISTS (
+       SELECT 1 FROM (VALUES
+         ('l-sit-hold', 'Curl Up', 0), ('l-sit-hold', 'V Up', 1), ('l-sit-hold', 'Tuck Hold', 2),
+         ('l-sit-hold', 'L Sit', 3), ('l-sit-hold', 'V Sit', 4),
+         ('push-up-contest', 'Hands Up Knee Pushup', 0), ('push-up-contest', 'Knee Pushup', 1),
+         ('push-up-contest', 'Elevated Pushup', 2), ('push-up-contest', 'Pushup', 3),
+         ('push-up-contest', '1 Arm Pushup', 4),
+         ('calf-raises', 'Calf Raise', 0), ('calf-raises', 'Deficit Calf Raise', 1),
+         ('calf-raises', 'Toe Calf Raise', 2), ('calf-raises', 'Single Leg Toe Raise', 3),
+         ('wrist-stretch', 'Hand Assisted', 0), ('wrist-stretch', 'Hand Forward', 1),
+         ('wrist-stretch', 'Fingers Inwards', 2), ('wrist-stretch', 'Fingers Backwards', 3),
+         ('wrist-stretch', 'Plank · Backwards', 4),
+         ('reverse-wrist-stretch', 'Hand Assisted', 0), ('reverse-wrist-stretch', 'Fingers Outwards', 1),
+         ('reverse-wrist-stretch', 'Fingers Backwards', 2), ('reverse-wrist-stretch', 'Fingers Inwards', 3),
+         ('reverse-wrist-stretch', 'Plank · Inwards', 4)
+       ) AS lv(slug, tier, idx)
+       WHERE lv.slug = v_slug AND lv.tier = NEW.difficulty_tier
+         AND floor(NEW.raw_score / 10000) = lv.idx) THEN
+    RAISE EXCEPTION 'That level has changed: refresh the app and enter the score again'
+      USING ERRCODE = '22023';
+  END IF;
+  RETURN NEW;
+END $$;
+
+DROP TRIGGER IF EXISTS trg_zz_relevelled_ladders_results ON public.results;
+CREATE TRIGGER trg_zz_relevelled_ladders_results
+  BEFORE INSERT OR UPDATE ON public.results
+  FOR EACH ROW EXECUTE FUNCTION public.enforce_relevelled_ladders();
+
+DROP TRIGGER IF EXISTS trg_zz_relevelled_ladders_entries ON public.workout_entries;
+CREATE TRIGGER trg_zz_relevelled_ladders_entries
+  BEFORE INSERT OR UPDATE ON public.workout_entries
+  FOR EACH ROW EXECUTE FUNCTION public.enforce_relevelled_ladders();
 
 -- Every player whose evidence moved, or sat on a removed event, is rechecked.
 UPDATE players SET grades_checked_at = NULL
@@ -367,6 +464,12 @@ INSERT INTO event_domains (event_name, domain_number, slug) VALUES
 -- An alias matching no event does nothing at all, silently (see
 -- 20260920220344). Removed rather than repointed: a walking lunge is not a
 -- Loaded Lunge, and nothing else on the roster is an ab wheel or a dislocate.
+CREATE TABLE public.activity_aliases_archive_20260930011149 AS
+SELECT a.*, now() AS archived_at FROM activity_aliases a
+ WHERE a.event_slug IN ('lunges', 'ab-wheel-rollout', 'shoulder-dislocate');
+ALTER TABLE public.activity_aliases_archive_20260930011149 ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.activity_aliases_archive_20260930011149 FROM anon, authenticated;
+
 DELETE FROM activity_aliases WHERE event_slug IN ('lunges', 'ab-wheel-rollout', 'shoulder-dislocate');
 
 DO $$

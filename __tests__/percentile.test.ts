@@ -30,7 +30,7 @@ const EVENT_DOMAIN = new Map<string, number>([
   ['Deadlift', 1], ['1A Press', 1], ['Tennis', 9], ['Javelin', 3],
 ])
 const DOMAIN_NAMES = Array.from({ length: 10 }, (_, i) =>
-  ['Maximal Strength', 'Calisthenics', 'Power', 'Speed', 'Anaerobic Endurance',
+  ['Maximal Strength', 'Calisthenics', 'Power', 'Speed', 'Stamina',
    'Aerobic Endurance', 'Flexibility', 'Body Awareness', 'Coordination', 'Aim & Precision'][i])
 
 const results: PctResultRow[] = [

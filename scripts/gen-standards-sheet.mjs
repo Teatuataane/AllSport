@@ -103,10 +103,11 @@ const CARRY = ['D1 · ≤ 4:00', 'D1 · ≤ 2:30', 'D1 · ≤ 1:45', 'D2 · ≤ 
 const APPROVED = {
   'Pause Bench': { M: ratioLines(BENCH.M), F: ratioLines(BENCH.F) },
   // Approved as Pushup Contest; carried onto the Sept 2026 levels (Push Up is
-  // now D4, 1 Arm Pushup D5). The top three were handstand levels, now gone.
+  // now D4, 1 Arm Pushup D5). The top three were handstand levels, now gone,
+  // and Kākāriki moved onto the new Elevated Pushup level (Tāne, 30 Sept 2026).
   'Pushups': {
-    M: ['D1 · 10', 'D1 · 20', 'D2 · 10', 'D2 · 20', 'D2 · 30', 'D4 · 10', 'D4 · 20', 'D4 · 30', 'D5 · 5', 'D5 · 20', 'D5 · 30', 'D5 · 40'],
-    F: ['D1 · 10', 'D1 · 20', 'D2 · 10', 'D2 · 20', 'D2 · 30', 'D4 · 6', 'D4 · 12', 'D4 · 18', 'D5 · 3', 'D5 · 10', 'D5 · 15', 'D5 · 20'],
+    M: ['D1 · 10', 'D1 · 20', 'D2 · 10', 'D2 · 20', 'D3 · 10', 'D4 · 10', 'D4 · 20', 'D4 · 30', 'D5 · 5', 'D5 · 20', 'D5 · 30', 'D5 · 40'],
+    F: ['D1 · 10', 'D1 · 20', 'D2 · 10', 'D2 · 20', 'D3 · 6', 'D4 · 6', 'D4 · 12', 'D4 · 18', 'D5 · 3', 'D5 · 10', 'D5 · 15', 'D5 · 20'],
   },
   'Jump Rope': { E: ['D1 · 1', 'D1 · 10', 'D2 · 10', 'D3 · 10', 'D4 · 10', 'D5 · 10'] },
   'Bridge': { E: ['D1 · 10s', 'D1 · 60s', 'D2 · 15s', 'D2 · 45s', 'D3 · 10s', 'D3 · 30s', 'D4 · 10s', 'D4 · 30s', 'D5 · 10s', 'D5 · 30s', 'D6 · 15s', 'D6 · 60s'] },

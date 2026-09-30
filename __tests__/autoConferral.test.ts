@@ -200,13 +200,13 @@ describe('awardsToConfer', () => {
 // ─── Taking a colour back (step 5) ──────────────────────────────────────────
 
 
-const withAwards = (standardsRung: number, awards: { rung: number; domain: number; id?: string }[], availableCount = 12): GradeState => ({
+const withAwards = (standardsRung: number, awards: { rung: number; domain: number; id?: string; events?: string[] }[], availableCount = 12): GradeState => ({
   ...stateWith([]),
   grades: {
     ...stateWith([]).grades,
     domains: [{ domainNumber: 3, rung: standardsRung, availableCount, slots: Math.min(availableCount, 6), counted: [], average: standardsRung, nextRung: null, toNext: 0 }],
   },
-  awards: awards.map(a => ({ domain_number: a.domain, rung: a.rung, grade_name: `G${a.rung}`, conferred_at: '2026-09-01T00:00:00Z', id: a.id })),
+  awards: awards.map(a => ({ domain_number: a.domain, rung: a.rung, grade_name: `G${a.rung}`, conferred_at: '2026-09-01T00:00:00Z', id: a.id, events: a.events })),
 } as unknown as GradeState)
 
 describe('awardsToWithdraw', () => {
@@ -238,6 +238,19 @@ describe('awardsToWithdraw', () => {
 
   it('does nothing before the grading schema exists', () => {
     expect(awardsToWithdraw({ ...withAwards(0, [{ domain: 3, rung: 2, id: 'a' }]), schemaReady: false }, 3)).toEqual([])
+  })
+
+  // Value: protects=a colour that stood on an event since removed from the roster;
+  // fails_when=a kaiwhakawā deleting an unrelated score re-judges the domain without
+  // the removed event and takes the colour back; why_new=removal is new in Sept 2026
+  // (Ab Rollout, Shoulder Dislocate) and 11 conferred colours cite them; seam=none
+  it('never takes back a colour that cites a removed event', () => {
+    const out = awardsToWithdraw(withAwards(0, [
+      { domain: 3, rung: 3, id: 'removed', events: ['ab-wheel-rollout', 'wall-sit'] },
+      { domain: 3, rung: 2, id: 'current', events: ['wall-sit'] },
+      { domain: 3, rung: 1, id: 'none' },
+    ]), 3)
+    expect(out.map(a => a.id)).toEqual(['current', 'none'])
   })
 })
 

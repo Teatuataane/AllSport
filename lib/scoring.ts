@@ -226,7 +226,7 @@ export function computeScoreVals(
 ): { raw_score: number; score_label: string } | null {
   // All numeric inputs are typed as well as stepped, so every branch must
   // reject non-positive values — a negative here flips the raw_score sign and
-  // silently ranks first in faster/narrower-wins events.
+  // silently ranks first in faster-wins events.
   const totalSecs = (parseFloat(v.timeMins) || 0) * 60 + (parseFloat(v.timeSecs) || 0)
   const isWeightVariation = !!v.exerciseVariation && (eventData?.weightVariations?.includes(v.exerciseVariation) ?? false)
   if (mode === 'strength') {

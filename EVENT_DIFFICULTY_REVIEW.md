@@ -435,7 +435,7 @@ Renamed from L-Sit Hold and re-levelled 30 Sept 2026 (Tāne). Every level is a h
 
 NEW EVENT, 30 Sept 2026 (Tāne). A hold on the rings. Nobody has scored it.
 - D1: High Ring Lean
-- D2: 45 degree Lean
+- D2: 45° Lean
 - D3: Low Lean
 - D4: Feet Raised
 - D5: Tuck R Maltese
@@ -701,7 +701,7 @@ _No levels yet._
 *Scored by: difficulty level, then most reps*
 
 Renamed from Pushup Contest and re-levelled 30 Sept 2026 (Tāne). The two handstand levels are gone; elevated means the hands are raised on a box.
-- D1: Hands Elevated Knee Pushup   (On the knees, hands raised on a box or bench)
+- D1: Hands Up Knee Pushup   (On the knees, hands raised on a box or bench)
 - D2: Knee Pushup
 - D3: Elevated Pushup   (Full pushup with the hands raised on a box or bench)
 - D4: Pushup
@@ -1105,7 +1105,7 @@ Renamed from Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 - D2: Hand Forward   (Kneeling, palms flat on the floor, fingers pointing forward, arms straight)
 - D3: Fingers Inwards   (Palms flat, fingers pointing toward each other, arms straight)
 - D4: Fingers Backwards   (Palms flat, fingers pointing back toward the knees, arms straight)
-- D5: Fingers Backwards Plank   (Fingers pointing back, in a full plank with the weight over the hands)
+- D5: Plank · Backwards   (Fingers pointing back, in a full plank with the weight over the hands)
 
 ### 92. External Wrist Stretch
 
@@ -1116,7 +1116,7 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 - D2: Fingers Outwards   (Kneeling, backs of the hands flat on the floor, fingers pointing out to the sides, arms straight)
 - D3: Fingers Backwards   (Backs of the hands flat, fingers pointing back toward the knees, arms straight)
 - D4: Fingers Inwards   (Backs of the hands flat, fingers pointing toward each other, arms straight)
-- D5: Fingers Inwards Plank   (Fingers pointing toward each other, in a full plank with the weight over the backs of the hands)
+- D5: Plank · Inwards   (Fingers pointing toward each other, in a full plank with the weight over the backs of the hands)
 
 ## 8. Body Awareness
 

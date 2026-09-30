@@ -14,6 +14,7 @@
 
 import { releasable, eventsBehind } from './playerGrades'
 import { gradeForRung } from './grading'
+import { getEventBySlug } from './eventData'
 import type { GradeAward, GradeState } from './loadGrades'
 
 export type PendingAward = {
@@ -66,6 +67,18 @@ export function awardsToConfer(playerId: string, state: GradeState): PendingAwar
 // have. It is kaiwhakawā-initiated, scoped to one domain, and logged.
 
 
+/**
+ * Whether an award stood on an event that has since left the roster. Removing
+ * an event is a rules change, not a person removing evidence: the engine can no
+ * longer see those scores, so re-judging the domain would take the colour back
+ * for a deletion that had nothing to do with it. Such an award is left alone.
+ * (Sept 2026: Ab Rollout and Shoulder Dislocate were removed with 11 colours
+ * citing them.)
+ */
+export function citesRemovedEvent(award: Pick<GradeAward, 'events'>): boolean {
+  return (award.events ?? []).some(slug => !getEventBySlug(slug))
+}
+
 export type WithdrawnAward = Required<Pick<GradeAward, 'id'>> & GradeAward
 
 /**
@@ -82,7 +95,8 @@ export function awardsToWithdraw(state: GradeState, domainNumber: number): Withd
   const d = state.grades.domains.find(x => x.domainNumber === domainNumber)
   if (!d || d.availableCount === 0) return []
   return state.awards
-    .filter((a): a is WithdrawnAward => a.domain_number === domainNumber && a.rung > d.rung && !!a.id)
+    .filter((a): a is WithdrawnAward => a.domain_number === domainNumber && a.rung > d.rung && !!a.id
+      && !citesRemovedEvent(a))
     .sort((a, b) => b.rung - a.rung)
 }
 
