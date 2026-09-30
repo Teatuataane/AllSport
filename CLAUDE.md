@@ -102,20 +102,32 @@ linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)
 
 ### Domain Display Order
 
-128 events as of v0.15.0.0, and domains are no longer even (14 / 12 / 12 / 12 / 13 / 12 / 16 / 13 / 12 / 12). `lib/eventData.ts` is the source of truth; this table mirrors it.
+128 events as of the Stamina roster (30 Sept 2026), and domains are no longer even (14 / 13 / 12 / 12 / 13 / 12 / 15 / 13 / 12 / 12). `lib/eventData.ts` is the source of truth; this table mirrors it.
 
 | # | Domain | Events |
 |---|--------|--------|
 | 1 | Maximal Strength | 1A Press, Deadlift, Clean & Press, Pause Dips, Pause Chinup, Pause Back Squat, Zercher Dead, Pause Bench, Turkish Getup, Arthur Lift, Pause Row, Pause Front Squat, Pullover & Press, Loaded Lunge |
-| 2 | Calisthenics | 1 Leg Squat, Human Flag, Windshield Wipers, Planche, Back Lever, Iron Cross, Front Lever, Chin Hang, Skull Hang, Handstand, Headstand, L-Sit Hold |
+| 2 | Calisthenics | 1 Leg Squat, Human Flag, Windshield Wipers, Planche, Back Lever, Iron Cross, Front Lever, Chin Hang, Skull Hang, Handstand, Headstand, Compression, Reverse Maltese |
 | 3 | Power | Kelly Snatch, 1A Snatch, Javelin, Shotput, Australian Football, Vertical Jump, Clean & Jerk, Snatch, Standing Broad Jump, High Jump, Arm Wrestling, Tug of War |
 | 4 | Speed | 100m Sprint, Tag, T-Race, Beach Flags, 200m Sprint, Touch Rugby, Repeat High Jump, Rats & Rabbits, Speed Chess, American Football, Capture the Flag, Kabaddi |
-| 5 | Anaerobic Endurance | Chinup Contest, Pushup Contest, Tibialis Curl, Finger Pushup, GHD Situp, Leg Ext Hold, Ab Rollout, Hamstring Curl, Sandbag to Shoulder, Wall Sit, Toe Lift, Lunges, Calf Raises |
+| 5 | Stamina | Chinup Contest, Pushups, Tibialis Curl, Finger Pushup, GHD Situp, Leg Ext Hold, Hamstring Curl, Sandbag to Shoulder, Wall Sit, Toe Lift, Calf Raises, Back Extension, Hollow Hold |
 | 6 | Aerobic Endurance | Burpee Broad Jump, Running, Cycling, Ski Erg, Row Erg, Breath Hold, Sandbag Carry, Animal Crawl, Bronco, Scooting, Farmer Carry, Weighted Drag |
-| 7 | Flexibility | Rear Hand Clasp, Bridge, Forward Fold, Needle Pose, Forward Split, Middle Split, Standing Split, Foot Behind Head Pose, Shoulder Dislocate, Pancake, Side Bend, Full Bound Twist, Plie Squat, Seiza, Wrist Stretch, Reverse Wrist Stretch |
+| 7 | Flexibility | Rear Hand Clasp, Bridge, Forward Fold, Needle Pose, Forward Split, Middle Split, Standing Split, Foot Behind Head Pose, Pancake, Side Bend, Full Bound Twist, Plie Squat, Seiza, Internal Wrist Stretch, External Wrist Stretch |
 | 8 | Body Awareness | Climbing, Tae Kwon Do, Breakdancing, Trampolining, Jump Rope, Wrestling, Gymnastics, Balance Ball, SKATE, Fencing, Juggling, Foot Juggling, Slackline |
 | 9 | Coordination | Volleyball, Baseball, Teqball, Tennis, Cricket, Badminton, Basketball, Football, Hockey, Squash, Lacrosse, Ultimate Frisbee |
 | 10 | Aim & Precision | Netball, Bocce, Dodgeball, Carrom, Archery, Bowling, Darts, Disc Golf, Golf, Handball, Table Tennis, Kubb |
+
+### Stamina roster (30 Sept 2026) — migration `20260930011149`, NOT YET APPLIED
+Tāne's list of 30 Sept 2026. Still 128 events.
+- **Domain 5 renamed Anaerobic Endurance → Stamina.** Name only. `DomainIcon` maps both names to `stamina.png` because older `session_events.domain_name` rows and vote nominations keep the old name; the migration rewrites `session_events.domain_name` (all 68 rows are domain 5).
+- **Renamed, slugs kept:** L-Sit Hold → **Compression**, Pushup Contest → **Pushups**, Wrist Stretch → **Internal Wrist Stretch**, Reverse Wrist Stretch → **External Wrist Stretch**. The migration repoints `session_events.event_name`.
+- **Re-levelled:** Compression (Curl Up / V Up / Tuck Hold / L Sit / V Sit, all holds), Pushups (Hands Elevated Knee / Knee / Elevated / Pushup / 1 Arm; handstand levels gone), Calf Raises, both wrist stretches. 24 scored rows move level (L-Sit D5→D4, Push Up D3→D4, 1 Arm D4→D5, plus two relabels); order within each event is kept, so no placement changes. Pre-image kept.
+- **Removed:** Lunges, Ab Rollout, Shoulder Dislocate. Scores stay as orphan names; their 7 aliases are deleted, and one finished personal game's plan loses `shoulder-dislocate`. Shoulder Dislocate's cm special cases are gone from entry code; `formatPR` keeps one so old rows still render.
+- **Added (holds):** Back Extension, Hollow Hold (Stamina), Reverse Maltese (Calisthenics; level descriptions unreviewed).
+- **Standards:** Pushups keeps its approved numbers moved up a level, with Kōura/Uenuku/Taniwha redrafted (the handstand levels are gone). Everything else new or re-levelled is drafted and unreviewed. `GRADING_RULES_VERSION` bumped.
+- **33 conferred colours cite an affected event.** They stand; an ordinary recheck never withdraws.
+- **Dry-run against production 2026-09-30** in a rolled-back transaction: every assertion passed, production unchanged afterwards.
+- **DEPLOY: code first, then the migration straight after, with no game or workout running.** Then hard-refresh kaiwhakawā devices and run `scripts/refresh-leaderboard-scores.ts --apply`.
 
 ### Domain renames / reorder (June 2026)
 - "Relative Strength" (was #2) → **Calisthenics** (#2) — name change only
