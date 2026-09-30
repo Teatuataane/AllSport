@@ -17,13 +17,12 @@
 //
 // ONE bar (Tāne, 30 Sept 2026). Phones used to carry a fixed top bar AND a
 // fixed bottom tab bar; the bottom one sat over the scoring sheet's Submit
-// button. The tabs now live in the top bar on every width: `PhoneTabs` below
-// as icons under 769px, text links in Navbar above it. Both open `MoreMenu`.
+// button. The tabs now live in the top bar on every width: as icons under
+// 769px (`PhoneTabStrip`), as text links above it. Both open `MoreMenu`.
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
-import { useNavState } from '@/lib/useNavState'
+import { useRouter } from 'next/navigation'
 
 // Dynamic, not module scope. This bar renders on every route from the root
 // layout, so a static import put the Supabase client and its realtime stack
@@ -121,39 +120,10 @@ function Tab({ tab, label, colour, active, live, onClick, href }: {
 }
 
 /**
- * The five tabs as icons, for the top bar on phones. Rendered inside Navbar,
- * which shows it only under 769px (`.phone-nav` in globals.css). Not fixed and
- * not a bar of its own: there is one bar.
+ * The five tabs as icons, for the top bar on phones. Navbar renders it inside
+ * `.phone-nav` (shown under 769px) and owns the MORE state, so the menu opens
+ * OUTSIDE the bar. Props only, so it can be drawn without a signed-in player.
  */
-export function PhoneTabs() {
-  const pathname = usePathname()
-  const { userId, isJudge, liveSessionId, playHref, playLabel, playColour } = useNavState()
-  const [moreOpen, setMoreOpen] = useState(false)
-
-  useEffect(() => { setMoreOpen(false) }, [pathname])
-
-  // Logged out: the public nav still owns the page.
-  if (!userId) return null
-
-  const on = (p: string) => pathname === p || pathname.startsWith(`${p}/`)
-
-  return (
-    <>
-      <PhoneTabStrip
-        playHref={playHref} playLabel={playLabel} playColour={playColour} live={!!liveSessionId}
-        active={{
-          play: on('/scoring') || (isJudge && on('/judge')),
-          home: on('/dashboard'), colours: on('/grades'), board: on('/leaderboard'), more: moreOpen,
-        }}
-        onMore={() => setMoreOpen(o => !o)}
-      />
-
-      {moreOpen && <MoreMenu isJudge={isJudge} onClose={() => setMoreOpen(false)} />}
-    </>
-  )
-}
-
-/** The strip itself, props only, so it can be drawn without a signed-in player. */
 export function PhoneTabStrip({ playHref, playLabel, playColour, live, active, onMore }: {
   playHref: string
   playLabel: string

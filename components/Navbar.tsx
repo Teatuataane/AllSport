@@ -23,7 +23,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { hasAuthCookie } from '@/lib/authCookie'
 import { useNavState } from '@/lib/useNavState'
-import { MoreMenu, PhoneTabs } from '@/components/NavTabs'
+import { MoreMenu, PhoneTabStrip } from '@/components/NavTabs'
 
 // Dynamic, not module scope: the navbar is in the root layout, so a static
 // import shipped the Supabase client and its realtime stack on every route —
@@ -45,7 +45,7 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
   const pathname = usePathname()
-  const { isJudge, playHref, playLabel, playColour } = useNavState()
+  const { isJudge, liveSessionId, playHref, playLabel, playColour } = useNavState()
 
   // "No auth cookie" is knowable on the client with certainty and with no
   // network and no Supabase bundle — but NOT during prerender, where there is no
@@ -131,6 +131,7 @@ export default function Navbar() {
   ]
 
   const isLoggedIn = !authLoading && !!user
+  const onPath = (p: string) => pathname === p || pathname.startsWith(`${p}/`)
 
   const hamburgerBar = (transform: string, opacity = 1): React.CSSProperties => ({
     display: 'block', width: 22, height: 2,
@@ -193,7 +194,15 @@ export default function Navbar() {
 
         {isLoggedIn && (
           <div className="phone-nav" style={{ flex: 1, minWidth: 0, justifyContent: 'flex-end' }}>
-            <PhoneTabs />
+            <PhoneTabStrip
+              playHref={playHref} playLabel={playLabel} playColour={playColour} live={!!liveSessionId}
+              active={{
+                play: onPath('/scoring') || (isJudge && onPath('/judge')),
+                home: onPath('/dashboard'), colours: onPath('/grades'), board: onPath('/leaderboard'),
+                more: moreOpen,
+              }}
+              onMore={() => setMoreOpen(o => !o)}
+            />
           </div>
         )}
 
@@ -315,10 +324,13 @@ export default function Navbar() {
         </div>
       )}
 
+      {/* A sibling of <nav>, never inside it, on both widths. The nav's
+          backdrop-filter makes it the containing block for position:fixed
+          children, so a menu rendered in it gets a backdrop the size of the
+          bar: the page is not dimmed, a tap outside does not close it, and the
+          backdrop swallows taps on the tabs. */}
       {isLoggedIn && moreOpen && (
-        <div className="desktop-nav">
-          <MoreMenu isJudge={isJudge} onClose={() => setMoreOpen(false)} />
-        </div>
+        <MoreMenu isJudge={isJudge} onClose={() => setMoreOpen(false)} />
       )}
 
       {/* Spacer. Logged in this is 53px, against the old 65 — and nothing is
