@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import {
+  historyWorkouts, mergeHistory,
   drawPlan, planFromEventNames, togglePlanned, sortPlan, planEvents,
   entryPayload, isPersonalGame, isOpen, PLAN_MAX,
 } from '@/lib/personalGame'
@@ -101,5 +102,40 @@ describe('the migration', () => {
       'NEW.logged_by  := COALESCE(auth.uid(), NEW.logged_by)',
       'NEW.player_id  := OLD.player_id',
     ]) expect(sql).toContain(rule)
+  })
+})
+
+// Play history lists games and solo workouts as one list (30 Sept 2026).
+// Value: protects=which workouts get a history row and in what order; fails_when=game swaps get their own row, an abandoned empty workout shows, or order breaks; why_new=the page had no test; seam=none
+describe('play history rows', () => {
+  const now = new Date('2026-09-30T02:00:00Z') // 30 Sept, afternoon in NZ
+  const w = (over: Partial<{ id: string; performed_on: string; finished_at: string | null; planned_events: string[] | null; session_id: string | null; workout_entries: unknown[] }>) => ({
+    id: 'w', performed_on: '2026-09-30', finished_at: null, planned_events: ['deadlift'],
+    session_id: null, workout_entries: [{}], ...over,
+  })
+
+  it('keeps a workout with scores, and an open one with none yet', () => {
+    const rows = historyWorkouts([
+      w({ id: 'scored', finished_at: '2026-09-30T01:00:00Z' }),
+      w({ id: 'open-empty', workout_entries: [] }),
+    ], now)
+    expect(rows.map(r => r.id)).toEqual(['scored', 'open-empty'])
+  })
+
+  it('leaves out a game’s swaps and an abandoned empty workout', () => {
+    const rows = historyWorkouts([
+      w({ id: 'swaps', session_id: 's1' }),
+      w({ id: 'stale-empty', performed_on: '2026-09-20', workout_entries: [] }),
+      w({ id: 'finished-empty', finished_at: '2026-09-30T01:00:00Z', workout_entries: [] }),
+    ], now)
+    expect(rows).toEqual([])
+  })
+
+  it('merges newest first, a game above a workout on the same day', () => {
+    const merged = mergeHistory(
+      [{ date: '2026-09-28', item: 'g1' }, { date: '2026-09-30', item: 'g2' }],
+      [{ date: '2026-09-30', item: 'w1' }, { date: '2026-09-29', item: 'w2' }],
+    )
+    expect(merged.map(m => `${m.kind}:${m.item}`)).toEqual(['game:g2', 'workout:w1', 'workout:w2', 'game:g1'])
   })
 })

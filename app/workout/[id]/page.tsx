@@ -11,6 +11,9 @@
 //     training, never ranked, and a solo score never ranks anyone in public;
 //   · a Game rung records no win or loss (the database refuses a logged game
 //     result), so playing one is recorded as training;
+//   · it has a colour of its own (workoutColourRung): each event's best score
+//     graded as HOME grades it, averaged over the plan, a skipped event Mā.
+//     Every button is coloured by the grade it reaches, as on the game screen;
 //   · it is open until Finish, and the NZ day closes it. Entries stay editable
 //     for 7 days, which is the database's window.
 
@@ -26,6 +29,10 @@ import EventListRow from '@/components/play/EventListRow'
 import { sectionLabel, ProgressSegments, type PlayEvent, type EntryRow } from '@/components/play/chrome'
 import BodyweightField from '@/components/play/BodyweightField'
 import EventPlanPicker from '@/components/play/EventPlanPicker'
+import { GradeDot } from '@/components/GradeDot'
+import { useGradeProfile } from '@/lib/useGradeProfile'
+import { scoreRung, rungSegment, workoutColourRung, workoutSlugs } from '@/lib/scoreColour'
+import { gradeForRung } from '@/lib/grading'
 import type { EntryVals } from '@/lib/scoring'
 
 const supabase = createClient()
@@ -118,6 +125,24 @@ export default function PersonalGamePage() {
   const scoredSlugs = useMemo(
     () => new Set(entries.map(e => e.event_slug).filter((s): s is string => !!s)),
     [entries])
+  // What colours a score: the player's ladder and the bodyweight declared for
+  // the day the workout was trained. Any failure leaves the buttons neutral.
+  const gradeProfile = useGradeProfile(workout?.player_id ?? null, workout?.performed_on ?? '')
+  const rungFor = useCallback((slug: string) => scoreRung(
+    getEventBySlug(slug), entries.filter(e => e.event_slug === slug), gradeProfile.player, gradeProfile.bodyweightKg,
+  ), [entries, gradeProfile.player, gradeProfile.bodyweightKg])
+  // Hidden until something is scored, as on the game screen: "Mā" beside
+  // "0 of 4 scored" reads as a verdict, not an empty state.
+  const workoutColour = gradeProfile.player && entries.length > 0
+    ? gradeForRung(workoutColourRung(
+        // workoutSlugs, not the plan alone: a scored event taken off the plan
+        // still counts, exactly as play history counts it.
+        workoutSlugs(plan, entries.map(e => e.event_slug))
+          .map(slug => ({ ev: getEventBySlug(slug), rows: entriesFor(slug) })),
+        gradeProfile.player, gradeProfile.bodyweightKg))
+    : null
+  const segmentFill = (ev: PlayEvent) => rungSegment(rungFor(ev.id)) ?? '#666'
+
   const open = workout ? isOpen(workout) : false
   const locked = !open
 
@@ -200,12 +225,24 @@ export default function PersonalGamePage() {
           </div>
         </div>
         <div style={{ margin: '10px 0 8px' }}>
-          <ProgressSegments events={events} scoredIds={scoredSlugs} />
+          <ProgressSegments events={events} scoredIds={scoredSlugs} fillFor={segmentFill} />
         </div>
-        <div style={{ fontFamily: 'var(--font-label)', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+        <div style={{
+          display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'baseline', gap: '4px 12px',
+          fontFamily: 'var(--font-label)', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase',
+        }}>
           <span style={{ color: 'var(--text-muted)' }}>
             {done.length} of {events.length} event{events.length === 1 ? '' : 's'} scored
           </span>
+          {workoutColour && (
+            <span data-testid="workout-colour" title="This workout's colour: each event's colour, averaged" style={{
+              display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)',
+            }}>
+              This workout
+              <GradeDot grade={workoutColour} size={10} />
+              <span style={{ color: '#fff', fontWeight: 600 }}>{workoutColour.name}</span>
+            </span>
+          )}
         </div>
         {locked && (
           <div style={{ marginTop: 10, fontSize: 13, color: 'var(--text-muted)' }}>
@@ -223,6 +260,7 @@ export default function PersonalGamePage() {
         eventSlugs={events.map(e => e.event_slug)}
         day={workout.performed_on}
         locked={locked}
+        onSaved={gradeProfile.setBodyweightKg}
       />
 
       {/* Still to play */}
@@ -233,6 +271,7 @@ export default function PersonalGamePage() {
           se={ev}
           eventData={getEventBySlug(ev.event_slug)}
           myResults={entriesFor(ev.id)}
+          gradeRung={rungFor(ev.id)}
           onOpen={() => setSheetSlug(ev.id)}
         />
       ))}
@@ -248,6 +287,7 @@ export default function PersonalGamePage() {
             se={ev}
             eventData={evData}
             myResults={rows}
+            gradeRung={rungFor(ev.id)}
             onOpen={() => setSheetSlug(ev.id)}
           />
         )

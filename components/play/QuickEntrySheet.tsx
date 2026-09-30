@@ -228,8 +228,9 @@ export default function QuickEntrySheet({
   const contentMissing = !eventData || eventData.howToPerform === 'Content coming soon.'
   const myResultsSorted = [...myResults].sort((a, b) => b.raw_score - a.raw_score)
 
+  // zIndex above the top bar (1000–1010), so nothing ever sits over Submit.
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 100 }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 1100 }}>
       <style>{`@keyframes qesUp { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>
       <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(3px)' }} />
       <div style={{
@@ -262,7 +263,7 @@ export default function QuickEntrySheet({
         </div>
 
         {/* Body */}
-        <div style={{ overflowY: 'auto', padding: '0 16px 20px' }}>
+        <div style={{ overflowY: 'auto', padding: '0 16px calc(20px + env(safe-area-inset-bottom, 0px))' }}>
           {showHow ? (
             <div>
               <div style={{ ...QES_LBL, color: '#F9B051' }}>How to perform</div>
