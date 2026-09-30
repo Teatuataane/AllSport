@@ -1,5 +1,6 @@
 'use client'
 
+import PRBoardView from '@/components/play/PRBoardView'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -596,6 +597,20 @@ export default function PRsPage() {
                                   {sportWDL(event, eventResults)}
                                 </div>
                               )}
+                            </div>
+                            <div style={{ marginBottom: '12px' }}>
+                              <div style={{ fontFamily: 'var(--font-label)', fontSize: '11px', color: '#555', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '6px' }}>
+                                {event.hasDifficultyTiers ? 'Best at each level' : 'Top scores'}
+                              </div>
+                              <PRBoardView
+                                ev={event}
+                                colour={colour}
+                                rows={eventResults.map(r => ({
+                                  id: r.id, raw_score: r.raw_score, score_label: r.score_label,
+                                  difficulty_tier: r.difficulty_tier, date: r.session_date,
+                                  source: r.logged ? (r.witnessed ? 'witnessed' : 'logged') : 'game',
+                                }))}
+                              />
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                               {eventResults.map((r, i) => {

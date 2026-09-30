@@ -17,6 +17,8 @@
 //   · it is open until Finish, and the NZ day closes it. Entries stay editable
 //     for 7 days, which is the database's window.
 
+import { usePRRows } from '@/lib/usePRRows'
+import { isNewPR } from '@/lib/prBoard'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
@@ -68,7 +70,6 @@ export default function PersonalGamePage() {
 
   const [workout, setWorkout] = useState<Workout | null>(null)
   const [entries, setEntries] = useState<Entry[]>([])
-  const [prs, setPRs] = useState<Record<string, number>>({})
   const [sheetSlug, setSheetSlug] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
   const [toast, setToast] = useState<{ eventName: string; label: string } | null>(null)
@@ -95,32 +96,14 @@ export default function PersonalGamePage() {
 
   useEffect(() => { load() }, [load])
 
-  // Lifetime bests, so the sheet can pre-fill and show a PR hint. Its own
-  // query, and a failure only costs the hint.
-  useEffect(() => {
-    if (!workout?.player_id) return
-    let cancelled = false
-    supabase
-      .from('workout_entries')
-      .select('event_slug, raw_score, workouts!inner(player_id)')
-      .eq('workouts.player_id', workout.player_id)
-      .not('raw_score', 'is', null)
-      .then(({ data }) => {
-        if (cancelled) return
-        const best: Record<string, number> = {}
-        for (const r of (data ?? []) as { event_slug: string | null; raw_score: number }[]) {
-          if (!r.event_slug) continue
-          const v = Number(r.raw_score)
-          if (!Number.isFinite(v)) continue
-          if (best[r.event_slug] === undefined || v > best[r.event_slug]) best[r.event_slug] = v
-        }
-        setPRs(best)
-      })
-    return () => { cancelled = true }
-  }, [workout?.player_id])
-
   const plan = workout?.planned_events ?? []
   const events = useMemo(() => playEvents(plan), [plan])
+  const { rows: prRows, reload: reloadPRs } = usePRRows(workout?.player_id ?? null, events.map(e => e.id))
+  // Lifetime best per event, for the pre-fill and the "Your best" tile.
+  const bestRaw = (slug: string): number | null => {
+    const rs = prRows[slug] ?? []
+    return rs.length > 0 ? Math.max(...rs.map(r => r.raw_score)) : null
+  }
   const entriesFor = useCallback((slug: string) => entries.filter(e => e.event_slug === slug), [entries])
   const scoredSlugs = useMemo(
     () => new Set(entries.map(e => e.event_slug).filter((s): s is string => !!s)),
@@ -163,8 +146,7 @@ export default function PersonalGamePage() {
     if (!ev || !workout) return { error: 'That event is no longer on the roster', isPR: false }
     const payload = entryPayload(ev, v)
     if (!payload) return { error: 'Enter a valid score first', isPR: false }
-    const best = prs[slug]
-    const isPR = payload.raw_score !== undefined && (best === undefined || payload.raw_score > best)
+    const isPR = payload.raw_score !== undefined && isNewPR(ev, prRows[slug] ?? [], payload.raw_score, editingId ? `logged:${editingId}` : null)
     const { error: e } = editingId
       ? await supabase.from('workout_entries').update(payload).eq('id', editingId)
       : await supabase.from('workout_entries').insert({ ...payload, workout_id: workout.id })
@@ -174,8 +156,7 @@ export default function PersonalGamePage() {
         isPR: false,
       }
     }
-    if (isPR && payload.raw_score !== undefined) setPRs(p => ({ ...p, [slug]: payload.raw_score! }))
-    await load()
+    await Promise.all([load(), reloadPRs()])
     return { error: null, isPR }
   }
 
@@ -345,7 +326,8 @@ export default function PersonalGamePage() {
           eventData={getEventBySlug(sheetEvent.event_slug)}
           myResults={entriesFor(sheetEvent.id)}
           opponents={[]}
-          seasonPR={prs[sheetEvent.id] ?? null}
+          seasonPR={bestRaw(sheetEvent.id)}
+          prRows={prRows[sheetEvent.id] ?? []}
           locked={locked}
           bestLabel="Best today"
           prLabel="Your best"
