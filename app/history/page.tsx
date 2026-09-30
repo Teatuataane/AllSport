@@ -23,7 +23,7 @@ import { formatNZDate } from '@/lib/dates'
 // like. This page is its only consumer, by design.
 import { colourByRung } from '@/lib/colours'
 import { useActivePlayer } from '@/lib/useActivePlayer'
-import { isPersonalGame, isOpen as workoutOpen, planEvents } from '@/lib/personalGame'
+import { isPersonalGame, isOpen as workoutOpen, planEvents, historyWorkouts, mergeHistory } from '@/lib/personalGame'
 import PlayerTabs, { ViewingAsBanner } from '@/components/PlayerTabs'
 import { usePlayerGames } from '@/lib/usePlayerGames'
 import { gameColourRung, gamesInOrder } from '@/lib/gameReport'
@@ -78,9 +78,7 @@ type WorkoutRow = {
 }
 
 /** One row of the merged list. */
-type HistoryItem =
-  | { kind: 'game'; date: string; s: Summary }
-  | { kind: 'workout'; date: string; w: WorkoutRow }
+type HistoryItem = ReturnType<typeof mergeHistory<Summary, WorkoutRow>>[number]
 
 type Bundle = {
   summaries: Summary[]
@@ -95,7 +93,11 @@ export default function HistoryPage() {
   const router = useRouter()
   const { loading, userId, familyMembers, activePlayerId, activePlayer } = useActivePlayer()
   const [bundle, setBundle] = useState<Bundle | null>(null)
-  const [workouts, setWorkouts] = useState<WorkoutRow[] | null>(null)
+  // Keyed by player, like `paging`: after a family switch the previous
+  // player's workouts must never sit in the new player's list, graded against
+  // the new player's ladder, while the new query is in flight.
+  const [loadedWorkouts, setWorkouts] = useState<{ id: string; rows: WorkoutRow[] } | null>(null)
+  const workouts = loadedWorkouts && loadedWorkouts.id === activePlayerId ? loadedWorkouts.rows : null
   // Keyed by player, so switching players starts from the first page without
   // resetting state inside an effect.
   const [paging, setPaging] = useState<{ id: string | null; shown: number }>({ id: null, shown: PAGE })
@@ -134,7 +136,7 @@ export default function HistoryPage() {
       .limit(200)
       .then(({ data, error }) => {
         if (cancelled) return
-        setWorkouts(error ? [] : (data ?? []) as WorkoutRow[])
+        setWorkouts({ id: activePlayerId, rows: error ? [] : (data ?? []) as WorkoutRow[] })
       })
     return () => { cancelled = true }
   }, [activePlayerId])
@@ -147,11 +149,7 @@ export default function HistoryPage() {
   )
 
   const myWorkouts = workouts ?? []
-  // A game's swaps live in a workout linked to it; they belong to that game's
-  // report, not a row of their own. An empty workout that is closed trained
-  // nothing and is left out (Finish deletes one; an abandoned one lingers).
-  const soloWorkouts = useMemo(() => (workouts ?? []).filter(w =>
-    !w.session_id && (w.workout_entries.length > 0 || (isPersonalGame(w) && workoutOpen(w)))), [workouts])
+  const soloWorkouts = useMemo(() => historyWorkouts(workouts ?? []), [workouts])
   const unfitted = myWorkouts.flatMap(w => w.workout_entries.filter(e => !e.event_slug).map(e => ({ w, e })))
 
   const mySummaries = useMemo(
@@ -161,10 +159,10 @@ export default function HistoryPage() {
     [bundle, activePlayerId],
   )
 
-  const items = useMemo<HistoryItem[]>(() => [
-    ...mySummaries.map(s => ({ kind: 'game' as const, date: s.session_date, s })),
-    ...soloWorkouts.map(w => ({ kind: 'workout' as const, date: w.performed_on, w })),
-  ].sort((a, b) => b.date.localeCompare(a.date)), [mySummaries, soloWorkouts])
+  const items = useMemo<HistoryItem[]>(() => mergeHistory(
+    mySummaries.map(s => ({ date: s.session_date, item: s })),
+    soloWorkouts.map(w => ({ date: w.performed_on, item: w })),
+  ), [mySummaries, soloWorkouts])
 
   // Each workout's colour, graded as the workout screen grades it. Needs the
   // player's ladder and bodyweights, which the games load already carries.
@@ -206,7 +204,7 @@ export default function HistoryPage() {
             <Empty>No games or workouts yet.</Empty>
           ) : (
             items.slice(0, shown).map(item => item.kind === 'game' ? (() => {
-              const s = item.s
+              const s = item.item
               return (
                 <Row key={`g-${s.session_id}`}>
                   <div style={{
@@ -234,7 +232,7 @@ export default function HistoryPage() {
                 </Row>
               )
             })() : (() => {
-              const w = item.w
+              const w = item.item
               const open = isPersonalGame(w) && workoutOpen(w)
               const planned = planEvents(w.planned_events ?? []).length
               const scored = new Set(w.workout_entries.map(e => e.event_slug).filter(Boolean)).size

@@ -31,7 +31,7 @@ import BodyweightField from '@/components/play/BodyweightField'
 import EventPlanPicker from '@/components/play/EventPlanPicker'
 import { GradeDot } from '@/components/GradeDot'
 import { useGradeProfile } from '@/lib/useGradeProfile'
-import { scoreRung, rungSegment, workoutColourRung } from '@/lib/scoreColour'
+import { scoreRung, rungSegment, workoutColourRung, workoutSlugs } from '@/lib/scoreColour'
 import { gradeForRung } from '@/lib/grading'
 import type { EntryVals } from '@/lib/scoring'
 
@@ -135,7 +135,10 @@ export default function PersonalGamePage() {
   // "0 of 4 scored" reads as a verdict, not an empty state.
   const workoutColour = gradeProfile.player && entries.length > 0
     ? gradeForRung(workoutColourRung(
-        events.map(e => ({ ev: getEventBySlug(e.id), rows: entriesFor(e.id) })),
+        // workoutSlugs, not the plan alone: a scored event taken off the plan
+        // still counts, exactly as play history counts it.
+        workoutSlugs(plan, entries.map(e => e.event_slug))
+          .map(slug => ({ ev: getEventBySlug(slug), rows: entriesFor(slug) })),
         gradeProfile.player, gradeProfile.bodyweightKg))
     : null
   const segmentFill = (ev: PlayEvent) => rungSegment(rungFor(ev.id)) ?? '#666'

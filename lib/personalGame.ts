@@ -185,3 +185,32 @@ export function isPersonalGame(w: { planned_events?: string[] | null }): boolean
 export function isOpen(w: PersonalGame, now: Date = new Date()): boolean {
   return !w.finished_at && w.performed_on === nzDay(now)
 }
+
+/**
+ * The workouts that get a row of their own in play history. A game's swaps
+ * live in a workout linked to it (`session_id`) and belong to that game's
+ * report. An empty workout that is no longer open trained nothing and is left
+ * out: Finish deletes one, but an abandoned one lingers.
+ */
+export function historyWorkouts<W extends PersonalGame & {
+  planned_events?: string[] | null
+  session_id?: string | null
+  workout_entries: readonly unknown[]
+}>(workouts: readonly W[], now: Date = new Date()): W[] {
+  return workouts.filter(w =>
+    !w.session_id && (w.workout_entries.length > 0 || (isPersonalGame(w) && isOpen(w, now))))
+}
+
+/**
+ * Games and workouts as one list, newest first. On the same day a game sorts
+ * above a workout (the sort is stable and games go in first).
+ */
+export function mergeHistory<G, W>(
+  games: readonly { date: string; item: G }[],
+  workouts: readonly { date: string; item: W }[],
+): ({ kind: 'game'; date: string; item: G } | { kind: 'workout'; date: string; item: W })[] {
+  return [
+    ...games.map(g => ({ kind: 'game' as const, ...g })),
+    ...workouts.map(w => ({ kind: 'workout' as const, ...w })),
+  ].sort((a, b) => b.date.localeCompare(a.date))
+}
