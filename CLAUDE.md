@@ -653,6 +653,9 @@ switcher becomes global; a **five-tab bottom bar** replaces the hamburger. Desig
 settled over two `/grill-me` rounds and a design canvas; the spec with all 16
 locked decisions is `DASHBOARD_REDESIGN_PLAN.md`.
 
+> **The bottom bar is GONE since v0.25.0.0 (30 Sept 2026).** The five tabs now sit
+> in the top bar on phones too. See "One nav bar, coloured workouts" below.
+
 **SHIPPED (PR #91) AND VERIFIED IN PRODUCTION, 2026-08-26.** Checked by querying
 the objects with the public anon key, not by trusting the ledger: `event_domains`
 120 rows, `player_taniwha` 27 players, `player_event_wins` answering,
@@ -1074,7 +1077,7 @@ inside a 342px column at 390px, so four of eight columns sat off-screen behind a
 scroll with no scrollbar, no fade and no affordance — **including Season Pts,
 the column the board is sorted by**. Phones now get one card per player
 (`.lb-narrow`); the table survives unchanged above 769px (`.lb-wide`), the same
-boundary `.bottom-nav` uses in globals.css. Keep them in step. Measured before:
+boundary `.phone-nav` uses in globals.css (`.bottom-nav` until v0.25.0.0). Keep them in step. Measured before:
 one container 1037px wide in a 342px box. After: zero overflowing containers.
 
 **The Taniwha column leads with PIECES, not crowns, and that is deliberate.** A
@@ -1584,11 +1587,12 @@ summary rows, and appears in play history.
 For them it read JUDGE and pointed at /judge, the same place as the KAIWHAKAWĀ link
 beside it, so the bar showed one destination twice. The KAIWHAKAWĀ link now carries
 `playHref` (the live game while one runs, /judge otherwise), so nothing is lost. The
-phone bar has no such link, so its PLAY tab stays. MORE holds
+phone tabs have no such link, so their PLAY tab stays. MORE holds
 only the player's own things: (Kaiwhakawā) · Log a workout · My events · Play history ·
 Profile & family · My koha · Sign out. Schedule, Give koha, Event guide, How to play and
 Supporters moved to the footer, which renders on every page. **The desktop top bar opens
-the same `MoreMenu`** (exported from `components/BottomNav.tsx`); before this it had the
+the same `MoreMenu`** (exported from `components/NavTabs.tsx`, `components/BottomNav.tsx`
+until v0.25.0.0); before this it had the
 tabs but no overflow, so a signed-in player on a laptop could not sign out or reach their
 profile. Pinned by `__tests__/navMenu.test.tsx`.
 
@@ -2569,6 +2573,43 @@ because an ordinary recheck never withdraws. `refresh-leaderboard-scores.ts --ap
   same colour the report shows. A rating colour above a game result's floor only lands at close, so
   the live figure can only be low. Player tab only; not seen with a real login.
 
+## One nav bar, coloured workouts (September 2026), v0.25.0.0
+
+Asked by Tāne 2026-09-30. No migration.
+
+- **Phones have ONE bar.** The fixed bottom tab bar sat over the scoring sheet's
+  Submit button, on the workout screen and the game screen alike, so it is gone.
+  `components/BottomNav.tsx` is now **`components/NavTabs.tsx`**, exporting
+  `PhoneTabStrip` (the five tabs as icons) and `MoreMenu`. Navbar draws the strip
+  inside the top bar under 769px (`.phone-nav`), drops the wordmark there
+  (`.brand-word`) to make room, and owns the MORE state on both widths.
+- **`MoreMenu` renders as a SIBLING of `<nav>`, never inside it.** The nav's
+  `backdrop-filter` makes it the containing block for `position: fixed`
+  children, so a menu inside it got a backdrop the size of the bar: the page was
+  not dimmed, a tap outside did not close it, and the backdrop swallowed taps on
+  the tabs. **Any fixed overlay opened from the nav has the same trap.**
+- **Score sheets sit above the nav.** `QuickEntrySheet` is zIndex 1100 and
+  `AddEventsSheet` 1110, above the top bar and its menu (up to 1010).
+  `__tests__/navMenu.test.tsx` pins that every play sheet stacks above every
+  fixed layer of the bar, and that nothing is fixed to the bottom.
+- **Every personal workout has a colour.** `/workout/[id]` colours each event
+  by the grade its score reaches (`scoreRung`, as the game screen does) and
+  shows "This workout · [colour]" once something is scored. `workoutColourRung`
+  in `lib/scoreColour.ts`: each event's rung, a planned event not scored counts
+  as Mā, averaged over the workout's own event count and rounded down. The same
+  rule as a game's colour, except a workout divides by its events rather than
+  ten, because it can hold one event or thirty. `workoutSlugs` is the plan plus
+  any scored event taken off it, so editing a plan never hides a score.
+- **`/history` is one list.** Games and solo workouts merge newest first
+  (`historyWorkouts` / `mergeHistory` in `lib/personalGame.ts`; on the same day a
+  game sorts above a workout). A game-linked workout (swaps) stays with its
+  game's report, and an empty workout that is no longer open is left out. Each
+  workout row reads "Workout · 6 of 10 scored" with its colour, graded against
+  the bodyweight in force that day (`bodyweightOnDay` in `lib/loadGrades.ts`).
+  The workouts query now reads up to 200 rows, not 40.
+- **Workouts are keyed by player on `/history`**, so a family switch never
+  shows the previous player's workouts graded against the new player's ladder.
+
 ## Game screen by domain, + to add, colour by grade (September 2026) — v0.19.0.0
 
 Settled in a `/grill-me` with Tāne on 2026-09-26. No migration.
@@ -2921,8 +2962,8 @@ update players set role = 'judge' where id = '[uuid]';
 | Vote Results | /vote/[voteId]/results | Complete | Spoiler-free until voted, bar chart per domain, counts only while open / percentages on close, judge full breakdown |
 | Log a Workout | /log | **Retired (v0.11.0.0)** — a redirect to `/workout/new`. The route stays for old links |
 | New Workout | /workout/new | Complete (v0.11.0.0) | Plan a personal game with the SAME picker an official game uses: any number of events, Draw me ten, Copy today's game, a date chip row back 7 days, how hard and notes. ("How long" and "Something else" removed 2026-09-21) |
-| Personal Game | /workout/[id] | Complete (v0.11.0.0) | Playing a personal game on the official live screen: progress header, Still to play / Scored, the quick-entry sheet. Natural formats on (sets, distance + time). Open until Finish; the NZ day closes it |
-| Play History | /history | Complete | Every game, named by its colour with a trend of the last 12 (v0.24.0.0: colours, never score numbers), plus (v0.11.0.0) your workouts with a Continue link for an unfinished one, the never-fitted entries, and the points-ladder colours era |
+| Personal Game | /workout/[id] | Complete (v0.11.0.0) | Playing a personal game on the official live screen: progress header, Still to play / Scored, the quick-entry sheet. Natural formats on (sets, distance + time). Open until Finish; the NZ day closes it. **(v0.25.0.0)** Each event coloured by the grade it reaches, and "This workout · [colour]" once something is scored |
+| Play History | /history | Complete | Every game, named by its colour with a trend of the last 12 (v0.24.0.0: colours, never score numbers), plus (v0.11.0.0) your workouts with a Continue link for an unfinished one, the never-fitted entries, and the points-ladder colours era. **(v0.25.0.0)** Games and solo workouts are ONE list, newest first, each workout with its colour |
 | Game Review | /games/[sessionId] | Complete | Full all-player game report — every division, every event with score + placement, division standings. Linked from dashboard session history. Any logged-in player. Placements computed live from raw_score |
 | Auth Callback | /auth/callback | Complete | Google OAuth handler |
 | Invite Landing | /join/[code] | Planned | Public page — introduces AllSport, shows inviter name, Register CTA with referral code pre-filled. **The referral system itself is BUILT** (`20260515000002`: `referrals`, `players.referral_code`, the qualifying trigger; `/my-koha` reads it) — an earlier version of this doc listed the whole feature as Planned. Only this landing page is missing. |
@@ -3124,7 +3165,7 @@ RLS: own + parent (family) + judge.
     dates.ts                        # parseLocalDate / formatNZDate — parse DATE columns in local time (avoids off-by-one)
     activePlayer.ts                 # Pure half of the family switcher — resolveActiveId/playerLabel. No React, no Supabase, so it is testable
     useActivePlayer.ts              # The hook over allsport_active_player_id. Cross-component + cross-tab sync
-    useNavState.ts                  # Shared PLAY destination for BottomNav and the desktop top bar
+    useNavState.ts                  # Shared PLAY destination for the phone tabs (NavTabs) and the desktop top bar
     authCookie.ts                   # hasAuthCookie() — the cheap 'is anyone signed in?' probe. NO Supabase import, on purpose:
                                     #   it is what lets the shell decide without pulling the client + realtime into every page.
                                     #   FAILS OPEN (uncertain -> true). Safe only because httpOnly is off on the auth cookie
@@ -3181,7 +3222,8 @@ RLS: own + parent (family) + judge.
     Footer.tsx                      # Rainbow rule, HQ address + session times
     ui.tsx                          # Shared brand UI kit — Button, Card, Badge, Tag, Input, Select, Dialog, RainbowText, RainbowRule, SectionLabel, StatBlock
     EventIcon.tsx                   # Event pictogram tile — CSS-mask of /event-icons/{slug}.png in domain colour, emoji fallback
-    BottomNav.tsx                   # Five-tab bottom bar (phones) + the MORE sheet (judge · my taniwha · profile · my koha · koha · schedule · how to play · supporters · sign out). Hidden >768px by .bottom-nav in globals.css
+    NavTabs.tsx                     # Was BottomNav.tsx until v0.25.0.0. PhoneTabStrip (the five tabs as icons, drawn INSIDE the top bar
+                                    #   under 769px, .phone-nav in globals.css) + MoreMenu (the MORE sheet, both widths). There is no bottom bar
     PlayerTabs.tsx                  # Sticky family switcher + ViewingAsBanner. Renders null on a solo account
     HomeParts.tsx                   # HOME's presentational parts, props only so they are testable: ColourAvatar, GameOnCard, NextSessionLine, HomeLink
     GradesCard.tsx                  # YOUR COLOURS on HOME: overall colour, then ten expandable domain rows (Event · Your best · Colour)

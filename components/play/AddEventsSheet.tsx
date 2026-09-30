@@ -31,7 +31,7 @@ export default function AddEventsSheet({
   const n = picked.length
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 110 }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 1110 }}>
       <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(3px)' }} />
       <div role="dialog" aria-label={`Add ${domainName} events`} style={{
         position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)',

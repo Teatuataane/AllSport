@@ -1,6 +1,6 @@
 // ─── Cheap "is anyone signed in?" probe ──────────────────────────────────────
 // No Supabase import, on purpose. This module exists so the global shell
-// (Navbar, BottomNav, useNavState, useActivePlayer) can answer "is there a
+// (Navbar, NavTabs, useNavState, useActivePlayer) can answer "is there a
 // session?" WITHOUT statically importing @supabase/supabase-js.
 //
 // WHY IT MATTERS: createBrowserClient builds a full SupabaseClient, which

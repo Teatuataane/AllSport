@@ -2,6 +2,19 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.25.0.0] - 2026-09-30
+
+### Added
+- **Every workout now has a colour.** On a personal workout each scored event turns the colour its score reaches, and the header shows "This workout · Karaka" once something is scored. A workout's colour is the average of its events, with a skipped event counting as Mā, the same way a game's colour works.
+- **Play history lists games and workouts together**, newest first. Each workout row reads "Workout · 6 of 10 scored", shows its colour, and opens the workout. Before, workouts sat in a separate block below every game with no colour, and looked missing.
+
+### Changed
+- **Phones have one nav bar.** The five tabs (Play, Home, Colours, Board, More) now sit in the top bar, and the bottom bar is gone. More opens from the top.
+
+### Fixed
+- **The Submit button on the scoring sheet is never covered.** The bottom bar sat over it, on the workout screen and the game screen alike. Score sheets now open above everything.
+- Switching between family members on Play history no longer flashes the previous player's workouts.
+
 ## [0.24.0.0] - 2026-09-29
 
 ### Added

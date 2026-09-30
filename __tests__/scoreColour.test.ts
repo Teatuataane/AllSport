@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { getEventBySlug } from '@/lib/eventData'
-import { scoreRung, rungPaint, rungSegment } from '@/lib/scoreColour'
+import { scoreRung, rungPaint, rungSegment, workoutColourRung, workoutSlugs } from '@/lib/scoreColour'
 import { RAINBOW } from '@/lib/domainColours'
 
 // The live screen colours a scored button by the grade its score reaches.
@@ -65,5 +65,36 @@ describe('how a colour is drawn', () => {
   it('never fills a progress segment black, which would vanish on the dark theme', () => {
     expect(rungSegment(12)).toBe('#ffffff')
     expect(rungSegment(11)).toBe(RAINBOW)
+  })
+})
+
+// A personal workout has a colour of its own (Tāne, 30 Sept 2026). Each event
+// takes the colour its best score reaches, a planned event not scored counts
+// as Mā, and the workout is the average, rounded down: a game's rule, over the
+// workout's own event count.
+describe('a workout’s colour', () => {
+  const lunge = getEventBySlug('loaded-lunge')
+
+  it('is the event’s colour when it holds one event', () => {
+    expect(workoutColourRung([{ ev: deadlift, rows: [lift(140)] }], man, 100)).toBe(7)
+  })
+
+  it('averages over every planned event, a skipped one counting as Mā', () => {
+    // Poroporo (7) and nothing: 3.5, rounded down.
+    expect(workoutColourRung([
+      { ev: deadlift, rows: [lift(140)] },
+      { ev: lunge, rows: [] },
+    ], man, 100)).toBe(3)
+  })
+
+  it('is Mā for an unknown player or an empty plan', () => {
+    expect(workoutColourRung([{ ev: deadlift, rows: [lift(140)] }], null, 100)).toBe(0)
+    expect(workoutColourRung([], man, 100)).toBe(0)
+  })
+
+  it('counts a scored event dropped from the plan, and never counts one twice', () => {
+    expect(workoutSlugs(['deadlift'], ['deadlift', 'loaded-lunge', null, 'deadlift']))
+      .toEqual(['deadlift', 'loaded-lunge'])
+    expect(workoutSlugs(null, ['wall-sit'])).toEqual(['wall-sit'])
   })
 })

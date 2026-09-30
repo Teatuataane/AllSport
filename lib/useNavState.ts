@@ -8,7 +8,7 @@
 import { useEffect, useState } from 'react'
 import { useActivePlayer } from '@/lib/useActivePlayer'
 
-// Dynamic, not module scope: this hook is what Navbar and BottomNav call, so a
+// Dynamic, not module scope: this hook is what Navbar and NavTabs call, so a
 // static import would drag the Supabase client into every page's bundle. See
 // lib/authCookie.ts. The effect below already runs only for a signed-in user,
 // so the import happens exactly when there is a session to query for.

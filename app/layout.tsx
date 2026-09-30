@@ -2,7 +2,6 @@ import type { Metadata } from 'next'
 import { Bebas_Neue, Barlow, Barlow_Condensed } from 'next/font/google'
 import './globals.css'
 import Navbar from '@/components/Navbar'
-import BottomNav from '@/components/BottomNav'
 import Footer from '@/components/Footer'
 
 // Self-hosted via next/font. The brand fonts were previously fetched from Google
@@ -74,8 +73,6 @@ export default function RootLayout({
         <Navbar />
         <main>{children}</main>
         <Footer />
-        {/* Renders nothing when logged out, and is hidden by CSS above 768px. */}
-        <BottomNav />
       </body>
     </html>
   )
