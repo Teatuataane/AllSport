@@ -93,7 +93,7 @@ export function takesDistance(ev: EventData): boolean {
 
 /** Whether an event can take sets of weight × reps instead of a single lift. */
 export function takesSets(ev: EventData): boolean {
-  return ev.inputMode === 'strength' && ev.slug !== 'shoulder-dislocate'
+  return ev.inputMode === 'strength'
 }
 
 // ─── What one natural entry becomes ──────────────────────────────────────────

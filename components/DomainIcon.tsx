@@ -10,7 +10,9 @@ const DOMAIN_SLUGS: Record<string, string> = {
   'Calisthenics': 'calisthenics',
   'Power': 'power',
   'Speed': 'speed',
-  'Anaerobic Endurance': 'anaerobic-endurance',
+  'Stamina': 'stamina',
+  // Domain 5's name until Sept 2026. Stored on older session_events rows.
+  'Anaerobic Endurance': 'stamina',
   'Aerobic Endurance': 'aerobic-endurance',
   'Flexibility': 'flexibility',
   'Body Awareness': 'body-awareness',

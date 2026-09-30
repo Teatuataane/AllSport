@@ -31,9 +31,9 @@ const DOMAIN_META = [
     desc: 'React, accelerate, and leave them behind.',
   },
   {
-    name: 'Anaerobic Endurance',
+    name: 'Stamina',
     color: '#2371BB',
-    desc: 'Maximum reps, maximum effort. How far can you push before you break?',
+    desc: 'Most reps, longest holds. How far can you push before you break?',
   },
   {
     name: 'Aerobic Endurance',

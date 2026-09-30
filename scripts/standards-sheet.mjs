@@ -15,7 +15,6 @@
 //   weight+time          kg*100*10000 + secs
 //   strength             a RATIO of bodyweight (kind 'ratio'), compared with
 //                        weight_kg ÷ the bodyweight lib/grading.ts supplies
-//   Shoulder Dislocate   -centimetres, narrower wins (raw_score is negated)
 
 export const COLOURS = ['Kiwikiwi', 'Whero', 'Karaka', 'Kōwhai', 'Kākāriki', 'Kahurangi',
   'Poroporo', 'Parahi', 'Hiriwa', 'Kōura', 'Uenuku', 'Taniwha']
@@ -89,12 +88,6 @@ export function threshold(ev, value) {
   const v = value.trim()
 
   if (ev.mode === 'strength') {
-    if (ev.slug === 'shoulder-dislocate') {
-      if (v === 'any') return -(BAND - 1)
-      const m = v.match(/^≤ (\d+(?:\.\d+)?)cm$/)
-      if (!m) throw bad('expected "any" or "≤ 80cm"')
-      return -Number(m[1])
-    }
     if (v === 'empty bar') return 0
     const m = v.match(/^(\d+(?:\.\d+)?)× BW$/)
     if (!m) throw bad('expected "empty bar" or "1.1× BW"')
@@ -189,7 +182,7 @@ export function compile(sheetText, rosterSrc) {
     if (!s.lists.E && !(s.lists.M && s.lists.F)) { errors.push(`${ev.name}: needs both a Men and a Women list`); continue }
 
     const want = game ? DRILL_COLOURS : TOP
-    const entry = { slug: ev.slug, kind: ev.mode === 'strength' && ev.slug !== 'shoulder-dislocate' ? 'ratio' : 'raw', game }
+    const entry = { slug: ev.slug, kind: ev.mode === 'strength' ? 'ratio' : 'raw', game }
     for (const key of keys) {
       const label = { E: 'Everyone', M: 'Men', F: 'Women' }[key]
       let nums

@@ -124,7 +124,7 @@ export const TOP_RUNG = 12
  * conferred one. HOME forces one full recheck per player when this differs
  * from the version it last checked under (lib/useNewColours.ts).
  */
-export const GRADING_RULES_VERSION = '2026-09-29-estimated-1rm'
+export const GRADING_RULES_VERSION = '2026-09-30-stamina-roster'
 export const DOMAIN_COUNT = 10
 
 /**

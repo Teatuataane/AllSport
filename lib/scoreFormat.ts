@@ -9,6 +9,8 @@ import { decodeDiffTime, isTimedEffort, type EventData } from '@/lib/eventData'
 
 export function formatPR(rawScore: number, inputMode: string, slug?: string, eventData?: EventData): string {
   switch (inputMode) {
+    // Shoulder Dislocate (removed Sept 2026) stored a negated grip width in
+    // `strength` mode; its historical rows still render here.
     case 'strength':   return slug === 'shoulder-dislocate' ? `${Math.abs(rawScore)}cm` : `${rawScore} kg 1RM`
     case 'reps':       return `${rawScore} reps`
     case 'time':

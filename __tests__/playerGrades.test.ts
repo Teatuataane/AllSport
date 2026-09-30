@@ -37,21 +37,21 @@ describe('which ladder applies', () => {
 
 describe('an event\'s colour', () => {
   it('reproduces the review: one 1-arm push-up is Hiriwa for a Master', () => {
-    const g = eventGrade(ev('Pushup Contest'), [row('Pushup Contest', 30001, { difficulty_tier: '1 Arm Pushup' })], master)
+    const g = eventGrade(ev('Pushups'), [row('Pushups', 40001, { difficulty_tier: '1 Arm Pushup' })], master)
     expect(g).toEqual({
-      slug: ev('Pushup Contest').slug, rung: 9, gradeable: true, played: true,
-      best: { raw_score: 30001, weight_kg: null, difficulty_tier: '1 Arm Pushup' },
+      slug: ev('Pushups').slug, rung: 9, gradeable: true, played: true,
+      best: { raw_score: 40001, weight_kg: null, difficulty_tier: '1 Arm Pushup' },
     })
   })
 
   it('carries the score that earned the colour, for HOME to show', () => {
-    const rows = [row('Pushup Contest', 20010), row('Pushup Contest', 20049)]
-    expect(eventGrade(ev('Pushup Contest'), rows, openMan).best?.raw_score).toBe(20049)
+    const rows = [row('Pushups', 30010), row('Pushups', 30049)]
+    expect(eventGrade(ev('Pushups'), rows, openMan).best?.raw_score).toBe(30049)
   })
 
   it('takes the best row, not the latest', () => {
-    const rows = [row('Pushup Contest', 20049), row('Pushup Contest', 20010)]
-    expect(eventGrade(ev('Pushup Contest'), rows, openMan).rung).toBe(8)
+    const rows = [row('Pushups', 30049), row('Pushups', 30010)]
+    expect(eventGrade(ev('Pushups'), rows, openMan).rung).toBe(8)
   })
 
   it('never counts a Game-rung result as a drill', () => {

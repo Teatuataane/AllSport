@@ -233,10 +233,6 @@ export function computeScoreVals(
     const w = parseFloat(v.weightKg) || 0
     if (w <= 0) return null
     const r = Math.max(0, parseInt(v.repCount) || 0)
-    if (eventData?.slug === 'shoulder-dislocate') {
-      const label = r > 0 ? `${w}cm × ${r} rep${r !== 1 ? 's' : ''}` : `${w}cm`
-      return { raw_score: -w, score_label: label }
-    }
     return { raw_score: estimatedOneRm(w, r), score_label: liftLabel(w, r) }
   }
   if (mode === 'reps') {
@@ -505,7 +501,7 @@ export function valsFromRaw(mode: string, eventData: EventData | undefined, raw:
     // A lift's raw_score is its estimated 1RM, not a load anyone lifted for
     // reps, so the prefill is that load as a SINGLE. Leaving reps as they were
     // would record, say, 112.5kg × 5 from a PR of 100kg × 5.
-    if (eventData?.slug !== 'shoulder-dislocate') p.repCount = '1'
+    p.repCount = '1'
   } else if (mode === 'reps') {
     p.repCount = String(raw)
   } else if (mode === 'time' || mode === 'hold') {
