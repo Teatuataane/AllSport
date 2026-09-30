@@ -8,7 +8,7 @@
 //
 // LOGGED IN — 48px, and the ONLY bar (Tāne, 30 Sept 2026: a fixed bottom tab
 // bar used to sit over the scoring sheet's Submit button). On phones the five
-// tabs render here as icons (`PhoneTabs`) and the wordmark drops out; on
+// tabs render here as icons (`PhoneTabStrip`) and the wordmark drops out; on
 // desktop (≥769px) they render as text links. Both open the same MORE menu
 // (`MoreMenu`), and `useNavState` is shared so PLAY cannot point two different
 // ways on two different widths.
@@ -157,7 +157,7 @@ export default function Navbar() {
     </Link>
   )
 
-  // The same tabs PhoneTabs draws as icons, as text links. Only rendered ≥769px.
+  // The same tabs PhoneTabStrip draws as icons, as text links. Only rendered ≥769px.
   //
   // A kaiwhakawā does NOT get the PLAY tab here. For them it is labelled JUDGE
   // and points at /judge whenever nothing is live, which is the same place the

@@ -218,7 +218,7 @@ button { font-family: inherit; }
 }
 
 /* One bar on every width (30 Sept 2026). Under 769px the top bar carries the
-   five tabs as icons (PhoneTabs) and drops the wordmark to make room; above it
+   five tabs as icons (PhoneTabStrip) and drops the wordmark to make room; above it
    Navbar renders them as text links. Inline styles cannot express a media
    query, which is why these live here rather than on the component. */
 .phone-nav { display: flex; }
