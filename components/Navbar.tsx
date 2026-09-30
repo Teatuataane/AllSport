@@ -6,25 +6,24 @@
 // LOGGED OUT — unchanged: brand, the five public links on desktop, PLAY NOW, and
 // a hamburger on phones.
 //
-// LOGGED IN — slimmed from 60px to 48px and stripped to the logo. On phones the
-// bottom bar carries every destination. On desktop (≥769px) the bottom bar is
-// hidden by CSS, so the same tabs render here as text links AND the same MORE
-// menu opens from here (`MoreMenu` from BottomNav). Until September 2026 the
-// desktop bar had the tabs but no MORE, so a signed-in player on a laptop could
-// not sign out or reach their profile. `useNavState` is shared with BottomNav
-// so PLAY cannot point two different ways on two different widths.
+// LOGGED IN — 48px, and the ONLY bar (Tāne, 30 Sept 2026: a fixed bottom tab
+// bar used to sit over the scoring sheet's Submit button). On phones the five
+// tabs render here as icons (`PhoneTabs`) and the wordmark drops out; on
+// desktop (≥769px) they render as text links. Both open the same MORE menu
+// (`MoreMenu`), and `useNavState` is shared so PLAY cannot point two different
+// ways on two different widths.
 //
-// The one place the two bars deliberately differ: a kaiwhakawā gets no PLAY tab
-// here, because this bar also has room for a KAIWHAKAWĀ link and the two were
-// the same destination. That link carries `playHref`, so nothing is lost. The
-// bottom bar has no such link (the panel is a MORE row), so its PLAY tab stays.
+// The one place the widths deliberately differ: on desktop a kaiwhakawā gets no
+// PLAY tab, because there is room for a KAIWHAKAWĀ link and the two were the
+// same destination. That link carries `playHref`, so nothing is lost. The phone
+// tabs have no such link (the panel is a MORE row), so their PLAY tab stays.
 
 import { useState, useEffect, useRef, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { hasAuthCookie } from '@/lib/authCookie'
 import { useNavState } from '@/lib/useNavState'
-import { MoreMenu } from '@/components/BottomNav'
+import { MoreMenu, PhoneTabs } from '@/components/NavTabs'
 
 // Dynamic, not module scope: the navbar is in the root layout, so a static
 // import shipped the Supabase client and its realtime stack on every route —
@@ -147,7 +146,8 @@ export default function Navbar() {
     }}>
       <img src="/logo-mark.webp" alt="AllSport" width={50} height={30}
            style={{ height: 30, width: 'auto' }} />
-      <span style={{
+      {/* Signed in on a phone the tabs need the room, so the mark stands alone. */}
+      <span className={isLoggedIn ? 'brand-word' : undefined} style={{
         fontFamily: 'var(--font-display)', fontSize: 20,
         color: 'var(--white)', letterSpacing: '0.09em', lineHeight: 1,
       }}>
@@ -156,7 +156,7 @@ export default function Navbar() {
     </Link>
   )
 
-  // The bottom bar's tabs, in the same order. Only rendered ≥769px.
+  // The same tabs PhoneTabs draws as icons, as text links. Only rendered ≥769px.
   //
   // A kaiwhakawā does NOT get the PLAY tab here. For them it is labelled JUDGE
   // and points at /judge whenever nothing is live, which is the same place the
@@ -187,9 +187,15 @@ export default function Navbar() {
         padding: '0 16px',
         height: isLoggedIn ? TOP_BAR_HEIGHT : 60,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        gap: 24,
+        gap: isLoggedIn ? 12 : 24,
       }}>
         {brand}
+
+        {isLoggedIn && (
+          <div className="phone-nav" style={{ flex: 1, minWidth: 0, justifyContent: 'flex-end' }}>
+            <PhoneTabs />
+          </div>
+        )}
 
         {!authLoading && (isLoggedIn ? (
           <div className="desktop-nav" style={{ display: 'flex', alignItems: 'center', gap: 26 }}>
@@ -281,7 +287,7 @@ export default function Navbar() {
         ))}
       </nav>
 
-      {/* Logged-out phones only. The logged-in menu is the bottom bar's MORE sheet. */}
+      {/* Logged-out phones only. Signed in, MORE is one of the tabs. */}
       {menuOpen && !isLoggedIn && (
         <div style={{
           position: 'fixed', top: 65, left: 0, right: 0, zIndex: 999,
@@ -311,7 +317,7 @@ export default function Navbar() {
 
       {isLoggedIn && moreOpen && (
         <div className="desktop-nav">
-          <MoreMenu isJudge={isJudge} placement="top" onClose={() => setMoreOpen(false)} />
+          <MoreMenu isJudge={isJudge} onClose={() => setMoreOpen(false)} />
         </div>
       )}
 

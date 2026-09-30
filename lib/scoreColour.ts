@@ -129,3 +129,40 @@ export function liveGameColourRung(
     .reduce((t, s) => t + liveEventRung(s.ev, s.rows, player, bodyweightKg), 0)
   return gameColourRung(total)
 }
+
+/**
+ * The events a workout is scored over: every planned event, plus any scored
+ * event no longer in the plan (a plan edited after scoring must not hide a
+ * score). In plan order, then entry order. Game-linked workouts are never
+ * passed here: their events belong to the game.
+ */
+export function workoutSlugs(
+  planned: readonly string[] | null | undefined,
+  entrySlugs: readonly (string | null)[],
+): string[] {
+  const out = [...(planned ?? [])]
+  for (const s of entrySlugs) if (s && !out.includes(s)) out.push(s)
+  return out
+}
+
+/**
+ * A workout's colour (Tāne, 30 Sept 2026: "every input workout should be
+ * scored"). Each event takes the colour its best score reaches (scoreRung, the
+ * same grading HOME uses), an event planned but not scored counts as Mā, and
+ * the workout is the average, rounded down.
+ *
+ * The same rule a game follows: a game's colour is its ten events' rungs summed
+ * and divided by ten, a missed event counting nothing. So "played at Karaka"
+ * means the same thing on a game row and a workout row in play history. A
+ * workout divides by its own event count rather than ten, because it can hold
+ * one event or thirty.
+ */
+export function workoutColourRung(
+  slots: readonly { ev: EventData | undefined; rows: readonly ScoreRow[] }[],
+  player: GradePlayer | null,
+  bodyweightKg: number | null,
+): number {
+  if (!player || slots.length === 0) return 0
+  const total = slots.reduce((t, s) => t + scoreRung(s.ev, s.rows, player, bodyweightKg), 0)
+  return Math.max(0, Math.min(GRADES.length, Math.floor(total / slots.length)))
+}

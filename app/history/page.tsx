@@ -5,7 +5,9 @@
 // This lived on the taniwha history page until the taniwha retired with the
 // grading rebuild.
 //
-//   1  play history — the session timeline, newest first
+//   1  play history — every game AND every workout, one list, newest first,
+//      each with its colour (Tāne, 30 Sept 2026: solo work was a bare row in a
+//      separate block below every game, with no colour, and read as missing)
 //   2  the points ladder — colours really awarded under the retired points
 //      system, on the dates they were earned. Points themselves are retired, so
 //      no point totals are shown anywhere on this page.
@@ -25,7 +27,10 @@ import { isPersonalGame, isOpen as workoutOpen, planEvents } from '@/lib/persona
 import PlayerTabs, { ViewingAsBanner } from '@/components/PlayerTabs'
 import { usePlayerGames } from '@/lib/usePlayerGames'
 import { gameColourRung, gamesInOrder } from '@/lib/gameReport'
-import { gradeForRung } from '@/lib/grading'
+import { gradeForRung, type GradeRung } from '@/lib/grading'
+import { bodyweightOnDay } from '@/lib/loadGrades'
+import { workoutColourRung, workoutSlugs } from '@/lib/scoreColour'
+import { getEventBySlug } from '@/lib/eventData'
 import { GradeDot } from '@/components/GradeDot'
 import { ScoreTrend } from '@/components/GameReportParts'
 
@@ -60,13 +65,22 @@ type WorkoutRow = {
   performed_on: string
   finished_at: string | null
   planned_events: string[] | null
+  /** Set on a workout that holds a player's swaps at an official game. */
+  session_id?: string | null
   workout_entries: {
     id: string
     activity: string
     event_slug: string | null
     difficulty_tier: string | null
+    raw_score: number | null
+    weight_kg: number | null
   }[]
 }
+
+/** One row of the merged list. */
+type HistoryItem =
+  | { kind: 'game'; date: string; s: Summary }
+  | { kind: 'workout'; date: string; w: WorkoutRow }
 
 type Bundle = {
   summaries: Summary[]
@@ -114,10 +128,10 @@ export default function HistoryPage() {
     let cancelled = false
     supabase
       .from('workouts')
-      .select('id, player_id, performed_on, finished_at, planned_events, workout_entries(id, activity, event_slug, difficulty_tier)')
+      .select('id, player_id, performed_on, finished_at, planned_events, session_id, workout_entries(id, activity, event_slug, difficulty_tier, raw_score, weight_kg)')
       .eq('player_id', activePlayerId)
       .order('performed_on', { ascending: false })
-      .limit(40)
+      .limit(200)
       .then(({ data, error }) => {
         if (cancelled) return
         setWorkouts(error ? [] : (data ?? []) as WorkoutRow[])
@@ -133,6 +147,11 @@ export default function HistoryPage() {
   )
 
   const myWorkouts = workouts ?? []
+  // A game's swaps live in a workout linked to it; they belong to that game's
+  // report, not a row of their own. An empty workout that is closed trained
+  // nothing and is left out (Finish deletes one; an abandoned one lingers).
+  const soloWorkouts = useMemo(() => (workouts ?? []).filter(w =>
+    !w.session_id && (w.workout_entries.length > 0 || (isPersonalGame(w) && workoutOpen(w)))), [workouts])
   const unfitted = myWorkouts.flatMap(w => w.workout_entries.filter(e => !e.event_slug).map(e => ({ w, e })))
 
   const mySummaries = useMemo(
@@ -141,6 +160,27 @@ export default function HistoryPage() {
       .sort((a, b) => b.session_date.localeCompare(a.session_date)),
     [bundle, activePlayerId],
   )
+
+  const items = useMemo<HistoryItem[]>(() => [
+    ...mySummaries.map(s => ({ kind: 'game' as const, date: s.session_date, s })),
+    ...soloWorkouts.map(w => ({ kind: 'workout' as const, date: w.performed_on, w })),
+  ].sort((a, b) => b.date.localeCompare(a.date)), [mySummaries, soloWorkouts])
+
+  // Each workout's colour, graded as the workout screen grades it. Needs the
+  // player's ladder and bodyweights, which the games load already carries.
+  const workoutGrade = (w: WorkoutRow): GradeRung | null => {
+    if (!games) return null
+    const slugs = workoutSlugs(w.planned_events, w.workout_entries.map(e => e.event_slug))
+    if (slugs.length === 0 || !w.workout_entries.some(e => e.event_slug)) return null
+    const rung = workoutColourRung(
+      slugs.map(slug => ({
+        ev: getEventBySlug(slug),
+        rows: w.workout_entries.filter(e => e.event_slug === slug)
+          .map(e => ({ raw_score: e.raw_score == null ? null : Number(e.raw_score), weight_kg: e.weight_kg, difficulty_tier: e.difficulty_tier })),
+      })),
+      games.player, bodyweightOnDay(games.inputs, w.performed_on))
+    return gradeForRung(rung)
+  }
 
   const myAwards = useMemo(
     () => (bundle?.awards ?? []).filter(a => a.player_id === activePlayerId),
@@ -157,17 +197,18 @@ export default function HistoryPage() {
         <BackLink href="/dashboard">Play history</BackLink>
         <ViewingAsBanner />
 
-        <Section>Every game</Section>
+        <Section>Every game and workout</Section>
         {trend.length >= 2 && <div style={{ marginBottom: 10 }}><ScoreTrend points={trend} /></div>}
         <Panel>
-          {!bundle ? (
+          {!bundle || workouts === null ? (
             <Empty>Loading…</Empty>
-          ) : mySummaries.length === 0 ? (
-            <Empty>No games yet.</Empty>
+          ) : items.length === 0 ? (
+            <Empty>No games or workouts yet.</Empty>
           ) : (
-            mySummaries.slice(0, shown).map(s => {
+            items.slice(0, shown).map(item => item.kind === 'game' ? (() => {
+              const s = item.s
               return (
-                <Row key={s.session_id}>
+                <Row key={`g-${s.session_id}`}>
                   <div style={{
                     width: 38, height: 38, borderRadius: 11, flexShrink: 0,
                     background: s.overall_placement === 1 ? 'rgba(249,176,81,0.13)' : '#1a1a1a',
@@ -187,68 +228,53 @@ export default function HistoryPage() {
                   {(() => {
                     const points = games?.scores.get(s.session_id)?.points
                     if (points == null) return null
-                    const g = gradeForRung(gameColourRung(points))
-                    return (
-                      <div title={`Played at ${g.name}`} style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                        <GradeDot grade={g} size={10} />
-                        <span style={{ fontFamily: 'var(--font-display)', fontSize: 15, letterSpacing: '0.04em' }}>{g.name}</span>
-                      </div>
-                    )
+                    return <ColourTag grade={gradeForRung(gameColourRung(points))} />
                   })()}
-                  <Link href={`/games/${s.session_id}`} aria-label="Game report" style={{
-                    flexShrink: 0, color: 'var(--text-muted)', fontFamily: 'var(--font-label)',
-                    textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: 11, fontWeight: 600,
-                  }}>
-                    Report ›
-                  </Link>
+                  <RowLink href={`/games/${s.session_id}`}>Report ›</RowLink>
                 </Row>
               )
-            })
+            })() : (() => {
+              const w = item.w
+              const open = isPersonalGame(w) && workoutOpen(w)
+              const planned = planEvents(w.planned_events ?? []).length
+              const scored = new Set(w.workout_entries.map(e => e.event_slug).filter(Boolean)).size
+              const grade = workoutGrade(w)
+              return (
+                <Row key={`w-${w.id}`}>
+                  <div aria-hidden style={{
+                    width: 38, height: 38, borderRadius: 11, flexShrink: 0,
+                    background: 'rgba(184,125,181,0.10)', border: '1px solid rgba(184,125,181,0.30)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="var(--purple)" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 5v14" /><path d="M5 12h14" /><rect x="3" y="3" width="18" height="18" rx="4" />
+                    </svg>
+                  </div>
+                  <Link href={`/workout/${w.id}`} style={{ flexGrow: 1, minWidth: 0, color: 'inherit' }}>
+                    <div style={{ fontSize: 14, fontWeight: 600 }}>{formatNZDate(w.performed_on)}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                      Workout · {planned > 0
+                        ? `${scored} of ${planned} scored`
+                        : `${w.workout_entries.length} entr${w.workout_entries.length === 1 ? 'y' : 'ies'}`}
+                    </div>
+                  </Link>
+                  {grade && <ColourTag grade={grade} />}
+                  {open
+                    ? <RowLink href={`/workout/${w.id}`} colour="var(--green)">Continue ›</RowLink>
+                    : isPersonalGame(w) ? <RowLink href={`/workout/${w.id}`}>View ›</RowLink> : null}
+                </Row>
+              )
+            })())
           )}
-          {mySummaries.length > shown && (
+          {items.length > shown && (
             <button onClick={() => setPaging({ id: activePlayerId, shown: shown + PAGE })} style={{
               width: '100%', background: 'transparent', border: 'none', cursor: 'pointer',
               padding: '13px 0', color: 'var(--blue)',
               fontFamily: 'var(--font-label)', textTransform: 'uppercase',
               letterSpacing: '0.1em', fontWeight: 600, fontSize: 12,
             }}>
-              Show all {mySummaries.length} games
+              Show all {items.length}
             </button>
-          )}
-        </Panel>
-
-        <Section>Your workouts</Section>
-        <Panel>
-          {workouts === null ? (
-            <Empty>Loading…</Empty>
-          ) : myWorkouts.length === 0 ? (
-            <Empty>No workouts logged yet.</Empty>
-          ) : (
-            myWorkouts.slice(0, 10).map(w => {
-              const open = isPersonalGame(w) && workoutOpen(w)
-              const planned = planEvents(w.planned_events ?? []).length
-              return (
-                <Row key={w.id}>
-                  <div style={{ flexGrow: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600 }}>{formatNZDate(w.performed_on)}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-                      {planned > 0 ? `${w.workout_entries.filter(e => e.event_slug).length} of ${planned} scored` : `${w.workout_entries.length} entr${w.workout_entries.length === 1 ? 'y' : 'ies'}`}
-                    </div>
-                  </div>
-                  {open ? (
-                    <Link href={`/workout/${w.id}`} style={{
-                      flexShrink: 0, color: 'var(--green)', fontFamily: 'var(--font-label)',
-                      textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: 11, fontWeight: 600,
-                    }}>Continue ›</Link>
-                  ) : isPersonalGame(w) ? (
-                    <Link href={`/workout/${w.id}`} style={{
-                      flexShrink: 0, color: 'var(--text-muted)', fontFamily: 'var(--font-label)',
-                      textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: 11, fontWeight: 600,
-                    }}>View ›</Link>
-                  ) : null}
-                </Row>
-              )
-            })
           )}
           <div style={{ padding: '12px 14px', borderTop: '1px solid var(--border)' }}>
             <Link href="/workout/new" style={{
@@ -329,6 +355,26 @@ export default function HistoryPage() {
         </div>
       </div>
     </>
+  )
+}
+
+function ColourTag({ grade }: { grade: GradeRung }) {
+  return (
+    <div title={`Played at ${grade.name}`} style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+      <GradeDot grade={grade} size={10} />
+      <span style={{ fontFamily: 'var(--font-display)', fontSize: 15, letterSpacing: '0.04em' }}>{grade.name}</span>
+    </div>
+  )
+}
+
+function RowLink({ href, colour = 'var(--text-muted)', children }: { href: string; colour?: string; children: React.ReactNode }) {
+  return (
+    <Link href={href} style={{
+      flexShrink: 0, color: colour, fontFamily: 'var(--font-label)',
+      textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: 11, fontWeight: 600,
+    }}>
+      {children}
+    </Link>
   )
 }
 

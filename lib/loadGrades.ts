@@ -467,6 +467,15 @@ export function seasonRowsFrom(inputs: GradeInputs): (SeasonRow & { closedAt: st
   })
 }
 
+/**
+ * The bodyweight a lift on `day` is graded against, resolved exactly as the
+ * grades resolve it. For a workout row in play history, whose entries are read
+ * by the page rather than through these inputs.
+ */
+export function bodyweightOnDay(inputs: GradeInputs, day: string | null | undefined): number | null {
+  return kgResolver(inputs, inputs.bodyweights ?? [])(day, null)
+}
+
 /** The grading player (division, age, gender) the inputs describe. */
 export function gradePlayerOf(inputs: GradeInputs) {
   return { division: inputs.profile.division, ageYears: inputs.profile.age_years, gender: inputs.gender }

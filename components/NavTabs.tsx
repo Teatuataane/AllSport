@@ -1,13 +1,12 @@
 'use client'
 
-// ─── Bottom tab bar ──────────────────────────────────────────────────────────
-// Five destinations, thumb-reachable, on every logged-in page:
+// ─── The tabs, and the MORE menu ─────────────────────────────────────────────
+// Five destinations on every logged-in page:
 //
 //   PLAY · HOME · COLOURS · BOARD · MORE
 //
 // Colours is a tab because it is the sport: since September 2026 a colour is
-// the thing every player is working toward, and it sat two taps deep in a
-// sheet of twelve while a reference list of personal bests held a tab.
+// the thing every player is working toward.
 //
 // PLAY is the only context-aware tab:
 //
@@ -16,10 +15,10 @@
 //   player + live session     → /scoring/{id}        green, pulse dot
 //   player, nothing live      → /dashboard#join      grey
 //
-// Phones only. Above 768px `.bottom-nav` is display:none and the top bar
-// renders the same tabs AND the same MORE menu (`MoreMenu`, exported below).
-// It used to render only the tabs, which left a signed-in player on a laptop
-// with no way to sign out or reach their profile.
+// ONE bar (Tāne, 30 Sept 2026). Phones used to carry a fixed top bar AND a
+// fixed bottom tab bar; the bottom one sat over the scoring sheet's Submit
+// button. The tabs now live in the top bar on every width: `PhoneTabs` below
+// as icons under 769px, text links in Navbar above it. Both open `MoreMenu`.
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -32,8 +31,6 @@ import { useNavState } from '@/lib/useNavState'
 // that only a signed-in player can ever reach.
 const supabaseModule = () => import('@/lib/supabase-browser')
 
-const BAR_HEIGHT = 64
-
 type TabKey = 'play' | 'home' | 'colours' | 'board' | 'more'
 
 const RESTING = '#5c5c5c'
@@ -41,7 +38,7 @@ const ACTIVE = '#ffffff'
 
 function Icon({ tab, colour }: { tab: TabKey; colour: string }) {
   const common = {
-    width: 22, height: 22, viewBox: '0 0 24 24', fill: 'none',
+    width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none',
     stroke: colour, strokeWidth: 1.8, 'aria-hidden': true,
   } as const
   switch (tab) {
@@ -93,13 +90,14 @@ function Tab({ tab, label, colour, active, live, onClick, href }: {
       <Icon tab={tab} colour={colour} />
       <span style={{
         fontFamily: 'var(--font-label)', textTransform: 'uppercase',
-        letterSpacing: '0.1em', fontWeight: 600, fontSize: 10, color: colour, lineHeight: 1,
+        letterSpacing: '0.06em', fontWeight: 600, fontSize: 10, color: colour, lineHeight: 1,
+        whiteSpace: 'nowrap',
       }}>
         {label}
       </span>
       {live && (
         <span aria-hidden style={{
-          position: 'absolute', top: -1, right: '50%', marginRight: -16,
+          position: 'absolute', top: 3, right: '50%', marginRight: -15,
           width: 7, height: 7, borderRadius: 999,
           background: colour, boxShadow: `0 0 0 3px ${colour}33`,
         }} />
@@ -109,11 +107,9 @@ function Tab({ tab, label, colour, active, live, onClick, href }: {
   const style: React.CSSProperties = {
     position: 'relative',
     display: 'flex', flexDirection: 'column', alignItems: 'center',
-    justifyContent: 'flex-start', gap: 4,
-    // The icon-plus-label stack is only ~38px tall, which is under the 44px
-    // floor. The bar has the room, so the target fills it rather than floating
-    // in the middle of it — the padding is the hit area, not decoration.
-    minHeight: 44, paddingTop: 2, paddingBottom: 4, paddingLeft: 4, paddingRight: 4,
+    justifyContent: 'center', gap: 3,
+    // 44px is the touch floor; the bar is 48px, so the target fills it.
+    minHeight: 44, padding: '0 2px',
     background: 'transparent', border: 'none',
     cursor: 'pointer', textDecoration: 'none',
     WebkitTapHighlightColor: 'transparent',
@@ -124,7 +120,12 @@ function Tab({ tab, label, colour, active, live, onClick, href }: {
   return <button onClick={onClick} style={style} aria-current={active ? 'page' : undefined}>{inner}</button>
 }
 
-export default function BottomNav() {
+/**
+ * The five tabs as icons, for the top bar on phones. Rendered inside Navbar,
+ * which shows it only under 769px (`.phone-nav` in globals.css). Not fixed and
+ * not a bar of its own: there is one bar.
+ */
+export function PhoneTabs() {
   const pathname = usePathname()
   const { userId, isJudge, liveSessionId, playHref, playLabel, playColour } = useNavState()
   const [moreOpen, setMoreOpen] = useState(false)
@@ -138,43 +139,48 @@ export default function BottomNav() {
 
   return (
     <>
-      {/* Keeps the last card clear of the bar. Matches the bar's own height. */}
-      <div className="bottom-nav-spacer" aria-hidden
-           style={{ height: `calc(${BAR_HEIGHT}px + env(safe-area-inset-bottom, 0px))` }} />
-
-      <nav
-        className="bottom-nav"
-        aria-label="Main"
-        style={{
-          position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 950,
-          height: `calc(${BAR_HEIGHT}px + env(safe-area-inset-bottom, 0px))`,
-          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-          paddingTop: 9,
-          background: 'rgba(10,10,10,0.97)',
-          backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
-          borderTop: '1px solid var(--border)',
-          boxShadow: '0 -12px 28px rgba(0,0,0,0.65)',
-          gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
-          alignItems: 'start',
+      <PhoneTabStrip
+        playHref={playHref} playLabel={playLabel} playColour={playColour} live={!!liveSessionId}
+        active={{
+          play: on('/scoring') || (isJudge && on('/judge')),
+          home: on('/dashboard'), colours: on('/grades'), board: on('/leaderboard'), more: moreOpen,
         }}
-      >
-        <Tab tab="play" label={playLabel} colour={playColour}
-             active={on('/scoring') || (isJudge && on('/judge'))}
-             live={!!liveSessionId} href={playHref} />
-        <Tab tab="home" label="Home" colour={on('/dashboard') ? ACTIVE : RESTING}
-             active={on('/dashboard')} href="/dashboard" />
-        <Tab tab="colours" label="Colours" colour={on('/grades') ? ACTIVE : RESTING}
-             active={on('/grades')} href="/grades" />
-        <Tab tab="board" label="Board" colour={on('/leaderboard') ? ACTIVE : RESTING}
-             active={on('/leaderboard')} href="/leaderboard" />
-        <Tab tab="more" label="More" colour={moreOpen ? ACTIVE : RESTING}
-             active={moreOpen} onClick={() => setMoreOpen(o => !o)} />
-      </nav>
+        onMore={() => setMoreOpen(o => !o)}
+      />
 
-      {moreOpen && <MoreMenu isJudge={isJudge} placement="bottom" onClose={() => setMoreOpen(false)} />}
+      {moreOpen && <MoreMenu isJudge={isJudge} onClose={() => setMoreOpen(false)} />}
     </>
   )
 }
+
+/** The strip itself, props only, so it can be drawn without a signed-in player. */
+export function PhoneTabStrip({ playHref, playLabel, playColour, live, active, onMore }: {
+  playHref: string
+  playLabel: string
+  playColour: string
+  live: boolean
+  active: Record<TabKey, boolean>
+  onMore: () => void
+}) {
+  const ink = (on: boolean) => (on ? ACTIVE : RESTING)
+  return (
+    <div
+      role="navigation"
+      aria-label="Main"
+      style={{
+        display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
+        alignItems: 'center', flex: 1, minWidth: 0, maxWidth: 320,
+      }}
+    >
+      <Tab tab="play" label={playLabel} colour={playColour} active={active.play} live={live} href={playHref} />
+      <Tab tab="home" label="Home" colour={ink(active.home)} active={active.home} href="/dashboard" />
+      <Tab tab="colours" label="Colours" colour={ink(active.colours)} active={active.colours} href="/grades" />
+      <Tab tab="board" label="Board" colour={ink(active.board)} active={active.board} href="/leaderboard" />
+      <Tab tab="more" label="More" colour={ink(active.more)} active={active.more} onClick={onMore} />
+    </div>
+  )
+}
+
 
 // ── The MORE menu ────────────────────────────────────────────────────────────
 // The player's own things, and nothing else. It held twelve rows until
@@ -186,8 +192,7 @@ export default function BottomNav() {
 // expanded colour domains, /prs, the HOW TO button mid-session — which is where a player actually wants
 // it, and from the footer.
 //
-// One component for both widths: a sheet above the bottom bar on phones, a
-// dropdown under the top bar on desktop.
+// One component for both widths: a dropdown under the top bar.
 
 function SheetRow({ href, label, accent, children, onClick }: {
   href?: string
@@ -227,9 +232,8 @@ function SheetRow({ href, label, accent, children, onClick }: {
   return <button onClick={onClick} style={{ ...style, borderBottom: 'none' }}>{body}</button>
 }
 
-export function MoreMenu({ isJudge, placement, onClose }: {
+export function MoreMenu({ isJudge, onClose }: {
   isJudge: boolean
-  placement: 'bottom' | 'top'
   onClose: () => void
 }) {
   const router = useRouter()
@@ -270,16 +274,9 @@ export function MoreMenu({ isJudge, placement, onClose }: {
       <div
         role="dialog"
         aria-label="More"
-        style={placement === 'bottom' ? {
-          position: 'fixed', left: 0, right: 0, zIndex: 970,
-          bottom: `calc(${BAR_HEIGHT}px + env(safe-area-inset-bottom, 0px))`,
-          background: 'var(--surface)',
-          borderTop: '1px solid var(--border)',
-          borderRadius: '18px 18px 0 0',
-          overflow: 'hidden',
-          boxShadow: '0 -24px 60px rgba(0,0,0,0.6)',
-        } : {
-          position: 'fixed', right: 16, top: 60, zIndex: 1010, width: 300,
+        style={{
+          position: 'fixed', right: 16, top: 56, zIndex: 1010,
+          width: 'min(300px, calc(100vw - 32px))',
           background: 'var(--surface)',
           border: '1px solid var(--border)',
           borderRadius: 14,
@@ -287,11 +284,6 @@ export function MoreMenu({ isJudge, placement, onClose }: {
           boxShadow: '0 24px 60px rgba(0,0,0,0.6)',
         }}
       >
-        {placement === 'bottom' && (
-          <div style={{ padding: '12px 0 8px', display: 'flex', justifyContent: 'center' }}>
-            <div style={{ width: 38, height: 4, borderRadius: 999, background: 'var(--border-strong)' }} />
-          </div>
-        )}
 
         {isJudge && (
           <SheetRow href="/judge" label="Kaiwhakawā panel" accent="var(--red)">

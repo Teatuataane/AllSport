@@ -217,15 +217,16 @@ button { font-family: inherit; }
   .hamburger { display: flex !important; }
 }
 
-/* Bottom tab bar — phones only. Above 768px the same five destinations render
-   as text links in the top bar, so the bar itself would be a phone app sitting
-   in a browser window. Inline styles cannot express a media query, which is why
-   these two live here rather than on the component. */
-.bottom-nav { display: grid; }
-.bottom-nav-spacer { display: block; }
+/* One bar on every width (30 Sept 2026). Under 769px the top bar carries the
+   five tabs as icons (PhoneTabs) and drops the wordmark to make room; above it
+   Navbar renders them as text links. Inline styles cannot express a media
+   query, which is why these live here rather than on the component. */
+.phone-nav { display: flex; }
 @media (min-width: 769px) {
-  .bottom-nav { display: none !important; }
-  .bottom-nav-spacer { display: none !important; }
+  .phone-nav { display: none !important; }
+}
+@media (max-width: 768px) {
+  .brand-word { display: none; }
 }
 
 /* Keyboard focus, everywhere. Most controls in the app are inline-styled

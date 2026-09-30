@@ -38,21 +38,33 @@ afterEach(cleanup)
 const MENU_ROWS = ['Log a workout', 'My events', 'Play history', 'Profile & family', 'My koha', 'Sign out']
 const PUBLIC_PAGES = ['Schedule', 'Give koha', 'Event guide', 'How to play', 'Supporters']
 
-describe('bottom bar', () => {
+describe('phone tabs', () => {
   it('has five tabs, with Colours as one of them', async () => {
-    const BottomNav = (await import('@/components/BottomNav')).default
-    const { container } = render(<BottomNav />)
-    const tabs = [...container.querySelectorAll('nav[aria-label="Main"] > *')].map(t => t.textContent)
+    const { PhoneTabs } = await import('@/components/NavTabs')
+    const { container } = render(<PhoneTabs />)
+    const tabs = [...container.querySelectorAll('[aria-label="Main"] > *')].map(t => t.textContent)
     expect(tabs).toEqual(['Play', 'Home', 'Colours', 'Board', 'More'])
   })
 
   it('MORE holds the player’s own things and no public pages', async () => {
-    const BottomNav = (await import('@/components/BottomNav')).default
-    const { getByText, getByRole } = render(<BottomNav />)
+    const { PhoneTabs } = await import('@/components/NavTabs')
+    const { getByText, getByRole } = render(<PhoneTabs />)
     fireEvent.click(getByText('More'))
     const text = getByRole('dialog').textContent ?? ''
     for (const row of MENU_ROWS) expect(text).toContain(row)
     for (const page of PUBLIC_PAGES) expect(text).not.toContain(page)
+  })
+})
+
+describe('one bar', () => {
+  it('the phone tabs live inside the top bar, and nothing is fixed to the bottom', async () => {
+    const Navbar = (await import('@/components/Navbar')).default
+    const { container, findByText } = render(<Navbar />)
+    await findByText('MORE')
+    const phone = container.querySelector('.phone-nav')
+    expect(phone?.querySelector('[aria-label="Main"]')).toBeTruthy()
+    const layout = (await import('node:fs')).readFileSync('app/layout.tsx', 'utf8')
+    expect(layout).not.toMatch(/BottomNav/)
   })
 })
 
