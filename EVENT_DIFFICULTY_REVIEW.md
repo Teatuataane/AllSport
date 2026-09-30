@@ -1105,7 +1105,7 @@ Renamed from Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 - D2: Hand Forward   (Kneeling, palms flat on the floor, fingers pointing forward, arms straight)
 - D3: Fingers Inwards   (Palms flat, fingers pointing toward each other, arms straight)
 - D4: Fingers Backwards   (Palms flat, fingers pointing back toward the knees, arms straight)
-- D5: Plank · Backwards   (Fingers pointing back, in a full plank with the weight over the hands)
+- D5: Backwards Plank   (Fingers pointing back, in a full plank with the weight over the hands)
 
 ### 92. External Wrist Stretch
 
@@ -1116,7 +1116,7 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 - D2: Fingers Outwards   (Kneeling, backs of the hands flat on the floor, fingers pointing out to the sides, arms straight)
 - D3: Fingers Backwards   (Backs of the hands flat, fingers pointing back toward the knees, arms straight)
 - D4: Fingers Inwards   (Backs of the hands flat, fingers pointing toward each other, arms straight)
-- D5: Plank · Inwards   (Fingers pointing toward each other, in a full plank with the weight over the backs of the hands)
+- D5: Inwards Plank   (Fingers pointing toward each other, in a full plank with the weight over the backs of the hands)
 
 ## 8. Body Awareness
 

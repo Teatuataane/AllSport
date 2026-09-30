@@ -74,15 +74,18 @@ export async function withdrawColours(playerId: string, domain: number, reason?:
   withdrawn: WithdrawnColour[]; writable: boolean; ok: boolean; logged: boolean
   /** The colour the remaining evidence still gives, conferred straight back after a jump was taken. */
   reconferred: string | null
+  /** Colours left standing because they rest on a removed event: check them by hand. */
+  protectedColours: WithdrawnColour[]
 }> {
   const r = await post({ playerId, withdraw: { domain, reason } })
-  if (r?.status === 503) return { withdrawn: [], writable: false, ok: true, logged: true, reconferred: null }
-  if (!ok2xx(r) || !Array.isArray(r.body.withdrawn)) return { withdrawn: [], writable: true, ok: false, logged: true, reconferred: null }
+  if (r?.status === 503) return { withdrawn: [], writable: false, ok: true, logged: true, reconferred: null, protectedColours: [] }
+  if (!ok2xx(r) || !Array.isArray(r.body.withdrawn)) return { withdrawn: [], writable: true, ok: false, logged: true, reconferred: null, protectedColours: [] }
   return {
     withdrawn: r.body.withdrawn as WithdrawnColour[],
     writable: true,
     ok: true,
     logged: r.body.logged !== false,
     reconferred: typeof r.body.reconferred === 'string' ? r.body.reconferred : null,
+    protectedColours: Array.isArray(r.body.protected) ? r.body.protected as WithdrawnColour[] : [],
   }
 }

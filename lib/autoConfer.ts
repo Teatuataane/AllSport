@@ -68,12 +68,14 @@ export function awardsToConfer(playerId: string, state: GradeState): PendingAwar
 
 
 /**
- * Whether an award stood on an event that has since left the roster. Removing
+ * Whether an award stood on an event the current roster cannot resolve. Removing
  * an event is a rules change, not a person removing evidence: the engine can no
  * longer see those scores, so re-judging the domain would take the colour back
- * for a deletion that had nothing to do with it. Such an award is left alone.
+ * for a deletion that had nothing to do with it. Such an award is left alone,
+ * and so is everything below it (see protectedAwards).
  * (Sept 2026: Ab Rollout and Shoulder Dislocate were removed with 11 colours
- * citing them.)
+ * citing them.) A slug MOVED by a rename counts too, so a rename that changes
+ * slugs must repoint grade_awards.events or those colours become protected.
  */
 export function citesRemovedEvent(award: Pick<GradeAward, 'events'>): boolean {
   return (award.events ?? []).some(slug => !getEventBySlug(slug))
@@ -91,13 +93,37 @@ export type WithdrawnAward = Required<Pick<GradeAward, 'id'>> & GradeAward
  * colour alone.
  */
 export function awardsToWithdraw(state: GradeState, domainNumber: number): WithdrawnAward[] {
-  if (!state.schemaReady) return []
-  const d = state.grades.domains.find(x => x.domainNumber === domainNumber)
-  if (!d || d.availableCount === 0) return []
+  const d = judged(state, domainNumber)
+  if (!d) return []
+  // Nothing at or below a protected colour goes either: the player visibly
+  // holds the protected one, so a "taken back" notice for a colour beneath it
+  // would describe a loss they have not had.
+  const floor = protectedAwards(state, domainNumber).reduce((m, a) => Math.max(m, a.rung), 0)
+  return state.awards
+    .filter((a): a is WithdrawnAward => a.domain_number === domainNumber && a.rung > d.rung && a.rung > floor
+      && !!a.id && !citesRemovedEvent(a))
+    .sort((a, b) => b.rung - a.rung)
+}
+
+/**
+ * Awards the evidence no longer supports but that stand on a removed event, so
+ * are not taken back automatically. The kaiwhakawā is told, because a colour
+ * resting partly on a fake score they just deleted needs checking by hand
+ * (Tāne, 1 Oct 2026).
+ */
+export function protectedAwards(state: GradeState, domainNumber: number): WithdrawnAward[] {
+  const d = judged(state, domainNumber)
+  if (!d) return []
   return state.awards
     .filter((a): a is WithdrawnAward => a.domain_number === domainNumber && a.rung > d.rung && !!a.id
-      && !citesRemovedEvent(a))
+      && citesRemovedEvent(a))
     .sort((a, b) => b.rung - a.rung)
+}
+
+function judged(state: GradeState, domainNumber: number) {
+  if (!state.schemaReady) return null
+  const d = state.grades.domains.find(x => x.domainNumber === domainNumber)
+  return !d || d.availableCount === 0 ? null : d
 }
 
 /**

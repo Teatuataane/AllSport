@@ -77,6 +77,20 @@ describe('lib/loadGrades.ts is server-safe', () => {
     expect(state!.games).toBe(1)
   })
 
+  // Value: protects=the award's cited events reaching the withdrawal check;
+  // fails_when=`events` is dropped from the grade_awards select, so every award
+  // reads as citing nothing and the 11 colours resting on removed events can be
+  // withdrawn again; why_new=autoConferral builds awards by hand and the route
+  // test mocks awardsToWithdraw; seam=none
+  it('reads the events each award stood on', async () => {
+    const script = base()
+    script.grade_awards = [ok([{ id: 'a1', domain_number: 5, rung: 3, grade_name: 'Karaka', conferred_at: '2026-09-01T00:00:00Z', conferred_by: null, events: ['ab-wheel-rollout'] }])]
+    const { db, log } = fakeDb(script)
+    const state = await loadGradeState(db, 'p1')
+    expect(log.find(c => c.table === 'grade_awards')!.cols).toContain('events')
+    expect(state!.awards[0].events).toEqual(['ab-wheel-rollout'])
+  })
+
   it('returns null for a player it cannot find', async () => {
     const { db } = fakeDb({ ...base(), players_public: [ok(null)] })
     expect(await loadGradeState(db, 'nobody')).toBeNull()

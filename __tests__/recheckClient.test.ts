@@ -72,9 +72,9 @@ describe('withdrawColours', () => {
 
   it('reports ok:false only when the question got no real answer', async () => {
     respond(200, { withdrawn: [w], logged: true })
-    expect(await withdrawColours('p', 3)).toEqual({ withdrawn: [w], writable: true, ok: true, logged: true, reconferred: null })
+    expect(await withdrawColours('p', 3)).toEqual({ withdrawn: [w], writable: true, ok: true, logged: true, reconferred: null, protectedColours: [] })
     respond(503)
-    expect(await withdrawColours('p', 3)).toEqual({ withdrawn: [], writable: false, ok: true, logged: true, reconferred: null })
+    expect(await withdrawColours('p', 3)).toEqual({ withdrawn: [], writable: false, ok: true, logged: true, reconferred: null, protectedColours: [] })
     respond(403)
     expect((await withdrawColours('p', 3)).ok).toBe(false)
     vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('offline') }))
@@ -88,8 +88,13 @@ describe('withdrawColours', () => {
     expect((await withdrawColours('p', 3)).ok).toBe(false)
   })
 
+  it('passes through colours left standing on a removed event', async () => {
+    respond(200, { withdrawn: [], protected: [w] })
+    expect((await withdrawColours('p', 3)).protectedColours).toEqual([w])
+  })
+
   it('passes through a withdrawal whose notice could not be logged', async () => {
     respond(200, { withdrawn: [w], logged: false })
-    expect(await withdrawColours('p', 3)).toEqual({ withdrawn: [w], writable: true, ok: true, logged: false, reconferred: null })
+    expect(await withdrawColours('p', 3)).toEqual({ withdrawn: [w], writable: true, ok: true, logged: false, reconferred: null, protectedColours: [] })
   })
 })

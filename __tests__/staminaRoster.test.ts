@@ -3,7 +3,7 @@
 // drifts from the migration would leave the invariant at the end of the file
 // asserting against levels the app no longer offers.
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { getEventBySlug, getEventByName } from '@/lib/eventData'
 
 const sql = readFileSync('supabase/migrations/20260930011149_stamina_roster.sql', 'utf8')
@@ -72,12 +72,59 @@ describe('stamina roster migration', () => {
     }
   })
 
-  it('guards exactly the new ladders, created after the repair', () => {
-    const fn = section('CREATE OR REPLACE FUNCTION public.enforce_relevelled_ladders()', '$$;')
-    const guarded = [...fn.matchAll(/\('([a-z-]+)', '([^']+)', (\d+)\)/g)].map(m => `${m[1]}|${m[2]}|${m[3]}`).sort()
-    expect(guarded).toEqual(newLevels.map(l => `${l.slug}|${l.tier}|${l.idx}`).sort())
+  // The guard is redefined by whichever LATER migration changes one of these
+  // ladders, so its pins read the newest definition, never this frozen file.
+  const guardSql = (() => {
+    const dir = 'supabase/migrations'
+    const f = readdirSync(dir).sort().reverse()
+      .find(n => readFileSync(`${dir}/${n}`, 'utf8').includes('FUNCTION public.enforce_relevelled_ladders()'))!
+    const all = readFileSync(`${dir}/${f}`, 'utf8')
+    const from = all.indexOf('CREATE OR REPLACE FUNCTION public.enforce_relevelled_ladders()')
+    return all.slice(from, all.indexOf('$$;', from))
+  })()
+
+  it('guards exactly the current ladders of the five re-levelled events', () => {
+    const guarded = [...guardSql.matchAll(/\('([a-z-]+)', '([^']+)', (\d+)\)/g)].map(m => ({ slug: m[1], tier: m[2], idx: +m[3] }))
+    const slugs = [...new Set(guarded.map(g => g.slug))].sort()
+    for (const slug of slugs) {
+      const ev = getEventBySlug(slug)!
+      const rows = guarded.filter(g => g.slug === slug)
+      expect(rows.map(r => r.tier), slug).toEqual(ev.difficultyTiers!.map(t => t.name))
+      expect(rows.map(r => r.idx), slug).toEqual(ev.difficultyTiers!.map((_, i) => i))
+    }
+    // The gate lists exactly the guarded slugs: one missing is an unguarded event.
+    const gate = guardSql.match(/AND NEW\.raw_score IS NOT NULL/) && guardSql.match(/IF v_slug IN \(([^)]*)\)\s+AND NEW\.raw_score/)
+    expect(gate, 'gate list').toBeTruthy()
+    expect([...gate![1].matchAll(/'([^']+)'/g)].map(m => m[1]).sort()).toEqual(slugs)
+    // The band check is the whole point: without it an old 'Push Up' in its old band passes.
+    expect(guardSql).toContain('floor(NEW.raw_score / 10000) = lv.idx')
+  })
+
+  it('names every event it resolves by name correctly', () => {
+    const REMOVED: Record<string, string> = { Lunges: 'lunges', 'Ab Rollout': 'ab-wheel-rollout', 'Shoulder Dislocate': 'shoulder-dislocate' }
+    const OLD_NAMES: Record<string, string> = { 'L-Sit Hold': 'l-sit-hold', 'Pushup Contest': 'push-up-contest', 'Wrist Stretch': 'wrist-stretch', 'Reverse Wrist Stretch': 'reverse-wrist-stretch' }
+    const whens = [...guardSql.matchAll(/WHEN event_name (?:IN \(([^)]*)\)|= ('[^']*')) THEN '([^']+)'/g)]
+    expect(whens.length).toBeGreaterThan(0)
+    for (const w of whens) {
+      for (const n of [...(w[1] ?? w[2]).matchAll(/'([^']+)'/g)].map(m => m[1])) {
+        const slug = getEventByName(n)?.slug ?? REMOVED[n] ?? OLD_NAMES[n]
+        expect(slug, n).toBe(w[3])
+      }
+    }
+    expect(guardSql).toMatch(/TG_OP = 'INSERT' AND v_slug IN \('lunges', 'ab-wheel-rollout', 'shoulder-dislocate'\)/)
+  })
+
+  it('checks an UPDATE only when the score changes, so a game can always close', () => {
+    expect(guardSql).toMatch(/IF TG_OP = 'UPDATE' AND NEW\.raw_score IS NOT DISTINCT FROM OLD\.raw_score\s+AND NEW\.difficulty_tier IS NOT DISTINCT FROM OLD\.difficulty_tier THEN\s+RETURN NEW;/)
+  })
+
+  it('creates the guard after the repair it must not interrupt', () => {
     expect(sql.indexOf('CREATE TRIGGER trg_zz_relevelled_ladders_results'))
       .toBeGreaterThan(sql.indexOf('PERFORM public.compute_event_placements'))
-    expect(fn).toMatch(/TG_OP = 'INSERT' AND v_slug IN \('lunges', 'ab-wheel-rollout', 'shoulder-dislocate'\)/)
+  })
+
+  it('rebuilds the label of every row it moves', () => {
+    expect(sql).toMatch(/score_label = 'D' \|\| \(s\.new_idx \+ 1\) \|\| ' ' \|\| s\.new_tier/)
+    expect(sql.match(/score_label = 'D' \|\| \(s\.new_idx \+ 1\)/g)).toHaveLength(2)
   })
 })

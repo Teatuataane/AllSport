@@ -52,8 +52,7 @@
 --   Pushups      Push Up      D3 -> Pushup        D4
 --                1 Arm Pushup D4 -> 1 Arm Pushup  D5
 --
--- plus two pure relabels at the same level (Elevated Knee Push Up -> Hands
--- Elevated Knee Pushup, Knee Push Up -> Knee Pushup) and Tuck Hold, which
+-- plus two pure relabels at the same level (Elevated Knee Push Up -> Hands Up Knee Pushup, Knee Push Up -> Knee Pushup) and Tuck Hold, which
 -- stays D3 under the same name. Each is the same movement under a new label,
 -- so it is repointed, not deleted.
 --
@@ -97,6 +96,11 @@ UPDATE session_events SET event_name = 'Internal Wrist Stretch', event_slug = 'w
  WHERE event_name = 'Wrist Stretch' OR event_slug = 'wrist-stretch';
 UPDATE session_events SET event_name = 'External Wrist Stretch', event_slug = 'reverse-wrist-stretch'
  WHERE event_name = 'Reverse Wrist Stretch' OR event_slug = 'reverse-wrist-stretch';
+-- Calf Raises was not renamed, but a draw with a NULL slug would be invisible
+-- to the level shift below while the guard still finds it by name. None exists
+-- today; this keeps the two in agreement if one ever does.
+UPDATE session_events SET event_slug = 'calf-raises'
+ WHERE event_name = 'Calf Raises' AND event_slug IS NULL;
 UPDATE session_events SET domain_name = 'Stamina'
  WHERE domain_name = 'Anaerobic Endurance' AND domain_number = 5;
 
@@ -132,12 +136,12 @@ INSERT INTO new_levels VALUES
     ('wrist-stretch', 'Internal Wrist Stretch', 'Hand Forward', 1),
     ('wrist-stretch', 'Internal Wrist Stretch', 'Fingers Inwards', 2),
     ('wrist-stretch', 'Internal Wrist Stretch', 'Fingers Backwards', 3),
-    ('wrist-stretch', 'Internal Wrist Stretch', 'Plank · Backwards', 4),
+    ('wrist-stretch', 'Internal Wrist Stretch', 'Backwards Plank', 4),
     ('reverse-wrist-stretch', 'External Wrist Stretch', 'Hand Assisted', 0),
     ('reverse-wrist-stretch', 'External Wrist Stretch', 'Fingers Outwards', 1),
     ('reverse-wrist-stretch', 'External Wrist Stretch', 'Fingers Backwards', 2),
     ('reverse-wrist-stretch', 'External Wrist Stretch', 'Fingers Inwards', 3),
-    ('reverse-wrist-stretch', 'External Wrist Stretch', 'Plank · Inwards', 4);
+    ('reverse-wrist-stretch', 'External Wrist Stretch', 'Inwards Plank', 4);
 
 -- Every scored row on the five re-levelled events, with its event's slug.
 CREATE TEMP TABLE levelled_rows ON COMMIT DROP AS
@@ -151,7 +155,7 @@ WHERE e.event_slug IN (SELECT DISTINCT slug FROM new_levels) AND e.raw_score IS 
 
 -- Rows to shift: an old label (or a kept label) still in its OLD band.
 CREATE TEMP TABLE shifts ON COMMIT DROP AS
-SELECT l.src, l.id, l.session_id, l.player_id, m.new_tier, (m.new_idx - m.old_idx) * 10000 AS delta
+SELECT l.src, l.id, l.session_id, l.player_id, m.new_tier, m.new_idx, (m.new_idx - m.old_idx) * 10000 AS delta
 FROM levelled_rows l
 JOIN level_map m ON m.slug = l.slug AND m.old_tier = l.tier
 WHERE floor(l.raw_score / 10000) = m.old_idx
@@ -166,13 +170,13 @@ WHERE NOT EXISTS (SELECT 1 FROM level_map m WHERE m.slug = l.slug AND m.old_tier
                     AND floor(l.raw_score / 10000) = n.idx);
 
 CREATE TABLE public.results_stamina_roster_preimage_20260930011149 AS
-SELECT r.id, r.raw_score, r.difficulty_tier, now() AS captured_at
+SELECT r.id, r.raw_score, r.difficulty_tier, r.score_label, now() AS captured_at
 FROM results r WHERE r.id IN (SELECT id FROM shifts WHERE src = 'r');
 ALTER TABLE public.results_stamina_roster_preimage_20260930011149 ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.results_stamina_roster_preimage_20260930011149 FROM anon, authenticated;
 
 CREATE TABLE public.workout_entries_stamina_roster_preimage_20260930011149 AS
-SELECT e.id, e.raw_score, e.difficulty_tier, now() AS captured_at
+SELECT e.id, e.raw_score, e.difficulty_tier, e.score_label, now() AS captured_at
 FROM workout_entries e WHERE e.id IN (SELECT id FROM shifts WHERE src = 'e');
 ALTER TABLE public.workout_entries_stamina_roster_preimage_20260930011149 ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.workout_entries_stamina_roster_preimage_20260930011149 FROM anon, authenticated;
@@ -203,9 +207,17 @@ BEGIN
     v_shift, v_doomed, v_cited;
 END $$;
 
-UPDATE results r SET raw_score = r.raw_score + s.delta, difficulty_tier = s.new_tier
+-- The label is rebuilt too, the way 20260910025855 did: 'D3 Push Up · 20 reps'
+-- becomes 'D4 Pushup · 20 reps'. Game reports, /prs and the entry list show it.
+UPDATE results r SET raw_score = r.raw_score + s.delta, difficulty_tier = s.new_tier,
+       score_label = 'D' || (s.new_idx + 1) || ' ' || s.new_tier
+         || CASE WHEN position(' · ' in r.score_label) > 0
+                 THEN substring(r.score_label from position(' · ' in r.score_label)) ELSE '' END
   FROM shifts s WHERE s.src = 'r' AND s.id = r.id;
-UPDATE workout_entries e SET raw_score = e.raw_score + s.delta, difficulty_tier = s.new_tier
+UPDATE workout_entries e SET raw_score = e.raw_score + s.delta, difficulty_tier = s.new_tier,
+       score_label = 'D' || (s.new_idx + 1) || ' ' || s.new_tier
+         || CASE WHEN position(' · ' in e.score_label) > 0
+                 THEN substring(e.score_label from position(' · ' in e.score_label)) ELSE '' END
   FROM shifts s WHERE s.src = 'e' AND s.id = e.id;
 
 DELETE FROM results WHERE id IN (SELECT id FROM doomed WHERE src = 'r');
@@ -238,8 +250,9 @@ END $$;
 -- event is refused outright: the same approach as enforce_lift_estimate
 -- (20260928201510). Created AFTER the shift and the placement replay, so it
 -- never sees a row mid-repair. Named 'zz' to fire after the guards and the
--- band stamps. ANY FUTURE CHANGE TO THESE FIVE LADDERS MUST CHANGE THIS LIST;
--- __tests__/staminaRoster.test.ts pins it to lib/eventData.ts.
+-- band stamps. ANY FUTURE CHANGE TO THESE FIVE LADDERS MUST REDEFINE THIS
+-- FUNCTION IN A NEW MIGRATION; __tests__/staminaRoster.test.ts reads the newest
+-- definition and pins its list to lib/eventData.ts.
 CREATE OR REPLACE FUNCTION public.enforce_relevelled_ladders()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -266,8 +279,17 @@ BEGIN
   END IF;
 
   IF TG_OP = 'INSERT' AND v_slug IN ('lunges', 'ab-wheel-rollout', 'shoulder-dislocate') THEN
-    RAISE EXCEPTION 'That event has been removed: refresh the app'
+    RAISE EXCEPTION 'That event is no longer on the roster. If this game drew it, the kaiwhakawā should swap it; otherwise refresh the app'
       USING ERRCODE = '22023';
+  END IF;
+
+  -- On UPDATE only a change to the SCORE is checked. Placement writes at
+  -- session close, band stamps and erasure's name rewrite must never be
+  -- refused because of a row they did not change, or one bad row would stop a
+  -- whole game from closing.
+  IF TG_OP = 'UPDATE' AND NEW.raw_score IS NOT DISTINCT FROM OLD.raw_score
+     AND NEW.difficulty_tier IS NOT DISTINCT FROM OLD.difficulty_tier THEN
+    RETURN NEW;
   END IF;
 
   IF v_slug IN ('l-sit-hold', 'push-up-contest', 'calf-raises', 'wrist-stretch', 'reverse-wrist-stretch')
@@ -283,10 +305,10 @@ BEGIN
          ('calf-raises', 'Toe Calf Raise', 2), ('calf-raises', 'Single Leg Toe Raise', 3),
          ('wrist-stretch', 'Hand Assisted', 0), ('wrist-stretch', 'Hand Forward', 1),
          ('wrist-stretch', 'Fingers Inwards', 2), ('wrist-stretch', 'Fingers Backwards', 3),
-         ('wrist-stretch', 'Plank · Backwards', 4),
+         ('wrist-stretch', 'Backwards Plank', 4),
          ('reverse-wrist-stretch', 'Hand Assisted', 0), ('reverse-wrist-stretch', 'Fingers Outwards', 1),
          ('reverse-wrist-stretch', 'Fingers Backwards', 2), ('reverse-wrist-stretch', 'Fingers Inwards', 3),
-         ('reverse-wrist-stretch', 'Plank · Inwards', 4)
+         ('reverse-wrist-stretch', 'Inwards Plank', 4)
        ) AS lv(slug, tier, idx)
        WHERE lv.slug = v_slug AND lv.tier = NEW.difficulty_tier
          AND floor(NEW.raw_score / 10000) = lv.idx) THEN

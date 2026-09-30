@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
-import { awardsToConfer, awardsToWithdraw, awardAfterWithdraw } from '@/lib/autoConfer'
+import { awardsToConfer, awardsToWithdraw, awardAfterWithdraw, protectedAwards } from '@/lib/autoConfer'
 import { eventsBehind } from '@/lib/playerGrades'
 import { SERVICE_KEY_ENV } from '@/lib/supabase-admin'
 import { colourGate, gradeForRung } from '@/lib/grading'
@@ -244,13 +244,24 @@ describe('awardsToWithdraw', () => {
   // fails_when=a kaiwhakawā deleting an unrelated score re-judges the domain without
   // the removed event and takes the colour back; why_new=removal is new in Sept 2026
   // (Ab Rollout, Shoulder Dislocate) and 11 conferred colours cite them; seam=none
-  it('never takes back a colour that cites a removed event', () => {
-    const out = awardsToWithdraw(withAwards(0, [
+  it('never takes back a colour that cites a removed event, nor anything below it', () => {
+    const state = withAwards(0, [
+      { domain: 3, rung: 4, id: 'above', events: ['wall-sit'] },
       { domain: 3, rung: 3, id: 'removed', events: ['ab-wheel-rollout', 'wall-sit'] },
       { domain: 3, rung: 2, id: 'current', events: ['wall-sit'] },
       { domain: 3, rung: 1, id: 'none' },
-    ]), 3)
-    expect(out.map(a => a.id)).toEqual(['current', 'none'])
+    ])
+    // Only what sits ABOVE the protected colour goes; the player visibly holds
+    // rung 3, so a notice for rungs 1 and 2 would describe a loss they have not had.
+    expect(awardsToWithdraw(state, 3).map(a => a.id)).toEqual(['above'])
+    // The protected one is named, so the kaiwhakawā can check it by hand.
+    expect(protectedAwards(state, 3).map(a => a.id)).toEqual(['removed'])
+  })
+
+  it('protects nothing when no award cites a removed event', () => {
+    const state = withAwards(0, [{ domain: 3, rung: 2, id: 'a', events: ['wall-sit'] }])
+    expect(protectedAwards(state, 3)).toEqual([])
+    expect(awardsToWithdraw(state, 3).map(a => a.id)).toEqual(['a'])
   })
 })
 

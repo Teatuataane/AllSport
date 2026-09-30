@@ -13,6 +13,7 @@ const h = vi.hoisted(() => ({
   state: { schemaReady: true } as unknown,
   pending: [] as unknown[],
   withdraw: [] as unknown[],
+  protected: [] as unknown[],
   /** What awardAfterWithdraw hands back; null means nothing to put back. */
   after: null as unknown,
   hasKey: true,
@@ -79,6 +80,7 @@ vi.mock('@/lib/leaderboardData', () => ({
 vi.mock('@/lib/autoConfer', () => ({
   awardsToConfer: () => h.pending,
   awardsToWithdraw: () => h.withdraw,
+  protectedAwards: () => h.protected,
   awardAfterWithdraw: () => h.after,
 }))
 vi.mock('@/lib/supabase-admin', () => ({
@@ -152,6 +154,7 @@ beforeEach(() => {
   h.state = { schemaReady: true }
   h.pending = []
   h.withdraw = []
+  h.protected = []
   h.after = null
   h.hasKey = true
   h.adminOps = []
@@ -336,7 +339,7 @@ describe('recheck route: withdrawal', () => {
     h.withdraw = [{ id: 'a1', domain_number: 3, rung: 4, grade_name: 'Kōwhai', conferred_at: 't' }]
     h.deleteData = []
     const body = await (await post({ withdraw: { domain: 3 } })).json()
-    expect(body).toEqual({ withdrawn: [], logged: true, reconferred: null })
+    expect(body).toEqual({ withdrawn: [], logged: true, reconferred: null, protected: [] })
     expect(h.adminOps).not.toContain('insert:grade_withdrawals')
   })
 
@@ -344,7 +347,7 @@ describe('recheck route: withdrawal', () => {
     h.rpc.is_judge = { data: true, error: null }
     h.withdraw = [{ id: 'a1', domain_number: 3, rung: 4, grade_name: 'Kōwhai', conferred_at: 't' }]
     const body = await (await post({ playerId: 'me', withdraw: { domain: 3, reason: 'bad' } })).json()
-    expect(body).toEqual({ withdrawn: [{ domainNumber: 3, rung: 4, name: 'Kōwhai' }], logged: true, reconferred: null })
+    expect(body).toEqual({ withdrawn: [{ domainNumber: 3, rung: 4, name: 'Kōwhai' }], logged: true, reconferred: null, protected: [] })
     // No watermark: a withdrawal ran no conferral pass, so it has not examined
     // anything in the other nine domains.
     expect(h.adminOps).toEqual(['delete:grade_awards', 'insert:grade_withdrawals'])
@@ -410,11 +413,22 @@ describe('recheck route: second pass', () => {
     expect(h.adminOps).toEqual([])
   })
 
+  // Value: protects=the kaiwhakawā being told a colour was left standing on a
+  // removed event; fails_when=the route drops `protected` from its answer and the
+  // panel says the colours "still stand on their other scores"; why_new=protected
+  // colours are new with the Sept 2026 roster removals; seam=none
+  it('withdraw: names a colour it left standing on a removed event', async () => {
+    judged()
+    h.protected = [{ id: 'k1', domain_number: 5, rung: 7, grade_name: 'Kahurangi', conferred_at: 't', events: ['ab-wheel-rollout'] }]
+    const res = await post({ withdraw: { domain: 5 } })
+    expect(await res.json()).toEqual({ withdrawn: [], protected: [{ domainNumber: 5, rung: 7, name: 'Kahurangi' }] })
+  })
+
   it('withdraw: nothing to take back means no admin client and no writes', async () => {
     judged()
     const res = await post({ withdraw: { domain: 3 } })
     expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({ withdrawn: [] })
+    expect(await res.json()).toEqual({ withdrawn: [], protected: [] })
     expect(h.adminCreated).toBe(0)
     expect(h.adminOps).toEqual([])
   })
