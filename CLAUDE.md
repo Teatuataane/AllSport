@@ -2598,6 +2598,45 @@ Asked by Tāne 2026-09-30. No migration.
 - **Workouts are keyed by player on `/history`**, so a family switch never
   shows the previous player's workouts graded against the new player's ladder.
 
+## Personal training and records per level (October 2026) — v0.26.0.0
+
+Designed with Tāne in a `/grill-me` on 2026-10-01; the full record is
+`docs/designs/personal-training-spec.md` (gitignored, like the other design records).
+Replaces his Google Sheet for personal-training clients.
+
+- **A training session is a WITNESSED workout, with no new table or column.**
+  `guard_workouts_write` already stamps `witnessed` when a kaiwhakawā creates a workout for
+  someone else. **While it is open (not finished, and performed today in NZ) the player or
+  their parent may also write entries**, and all of them count as witnessed. It locks on
+  Finish or when the NZ day ends, enforced in the database itself (no timer, no sweep).
+  The plan, Finish and deleting the workout stay kaiwhakawā-only: `guard_workouts_write` is
+  deliberately NOT redefined, and the player's screen hides + Add an event and Finish.
+- **`20260930222237_training_sessions.sql`** redefines `guard_workout_entries_write` WHOLE
+  (every rule kept, pinned by `__tests__/trainingSessions.test.ts`) and adds two
+  `SECURITY INVOKER` delete guards. Both write guards fired on INSERT/UPDATE only, so a player
+  could previously DELETE the entries of a witnessed workout at any time. **The delete guards
+  test `current_user`, never `auth.uid()`**: `delete_my_account` is a definer, so there
+  `current_user` is the owner and erasure still works.
+- **Training tab on /judge** (`app/components/TrainingTab.tsx`, `lib/training.ts`): open
+  sessions as chips, search by name or username, recent clients (witnessed workouts this
+  kaiwhakawā logged in the last 30 days). Tapping a player opens their open session or starts
+  one, straight onto `/workout/[id]` with no setup screen. Repeat last session and + Add an
+  event live on that screen. **Not built yet: + New player and the email invite (PR 3).**
+- **HOME shows `TrainingOnCard`** (blue, same slot as the game's JOIN card, below it) while a
+  session is open for the viewed player, polled every 30s like the game check.
+- **Records per level (`lib/prBoard.ts`, pure, DERIVED on every read, never stored).** A tiered
+  event keeps a best PER LEVEL; an untiered one keeps the top five (lifts by estimated 1RM,
+  holds longest, throws furthest). A level is the BAND of `raw_score` (`floor(raw / 10000)`),
+  not a match on the tier's name, so a renamed rung cannot orphan a record. A pure sport event
+  (Wrestling) has none. Shown in the entry sheet on every game screen
+  (`components/play/PRBoardView.tsx`, tap to pre-fill) and expanded on /prs.
+- **The PR tag** is `isNewPR`: a tiered event tags a new best AT ITS LEVEL (including the first
+  score at a level once the event has been played), an untiered one only a new number one, and
+  a player's first-ever score on an event is never a PR. It replaces the old season-PR rule
+  on the live game, the kaiwhakawā tab and personal games. `lib/usePRRows.ts` loads game
+  results and logged entries lifetime. `results.is_pr` is still stored per row, now with the
+  new rule. Not wired yet: the PR tag on events ADDED to a game (`useGameSwaps` returns false).
+
 ## Game screen by domain, + to add, colour by grade (September 2026) — v0.19.0.0
 
 Settled in a `/grill-me` with Tāne on 2026-09-26. No migration.
@@ -3660,7 +3699,7 @@ real host is `evil.com`. `safeNext()` now rejects that plus the `//` and `/\` va
 
 ---
 
-*Last updated: September 2026 (session 40 — **workout customisation**, shipped as v0.10.0.0 → v0.14.0.0 and applied to production on 2026-09-20. Tāne asked for three things: one setup experience for a workout and a game, events a player can swap when the day does not suit them, and input formats that match how people actually train. A `/grill-me` settled 21 decisions (`docs/designs/workout-customisation-spec.md`, gitignored like the other design records) and it shipped in four parts plus two follow-ups.
+*Last updated: October 2026 (personal training sessions and records per level, v0.26.0.0, see its block above). Previously: September 2026 (session 40 — **workout customisation**, shipped as v0.10.0.0 → v0.14.0.0 and applied to production on 2026-09-20. Tāne asked for three things: one setup experience for a workout and a game, events a player can swap when the day does not suit them, and input formats that match how people actually train. A `/grill-me` settled 21 decisions (`docs/designs/workout-customisation-spec.md`, gitignored like the other design records) and it shipped in four parts plus two follow-ups.
 
 **"Season points" turned out to mean placements, not points.** Points were retired two days earlier, so the first question was what winning the official ten earns. The answer is a **season medal table** per division, Olympic order, read from `results.placement` in a payload `/leaderboard` already loads — no migration at all. It also surfaced something worth keeping: **64 of 103 division-games in 2026 had a single player**, so 64 of 106 golds are walkovers. Tāne was shown a "must beat someone" rule and a combined-pool alternative and chose to count every placement. Do not add a field-size rule without asking.
 
