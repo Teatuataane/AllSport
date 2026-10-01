@@ -19,6 +19,8 @@
 
 import { usePRRows } from '@/lib/usePRRows'
 import { isNewPR } from '@/lib/prBoard'
+import { useActivePlayer } from '@/lib/useActivePlayer'
+import { lastTrainingPlan } from '@/lib/training'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
@@ -74,6 +76,9 @@ export default function PersonalGamePage() {
   const [adding, setAdding] = useState(false)
   const [toast, setToast] = useState<{ eventName: string; label: string } | null>(null)
   const [error, setError] = useState('')
+  const { self } = useActivePlayer()
+  const [clientName, setClientName] = useState<string | null>(null)
+  const [lastPlan, setLastPlan] = useState<string[]>([])
   const [notFound, setNotFound] = useState(false)
 
   const load = useCallback(async () => {
@@ -128,6 +133,30 @@ export default function PersonalGamePage() {
 
   const open = workout ? isOpen(workout) : false
   const locked = !open
+  // A witnessed workout is a training session a kaiwhakawā runs. Both of them
+  // score in it while it is open; only the kaiwhakawā changes the plan or
+  // finishes it (the database enforces the same split).
+  const isJudge = self?.role === 'judge'
+  const coached = !!workout?.witnessed
+  const canRun = !coached || isJudge
+
+  // Who the session is for, so the kaiwhakawā running several can tell them apart.
+  useEffect(() => {
+    if (!coached || !isJudge || !workout) return
+    let cancelled = false
+    supabase.from('players_public').select('display_name').eq('id', workout.player_id).maybeSingle()
+      .then(({ data }) => { if (!cancelled) setClientName((data as { display_name: string } | null)?.display_name ?? null) })
+    return () => { cancelled = true }
+  }, [coached, isJudge, workout?.player_id])
+
+  // "Repeat last session": the previous session's events, offered on an empty one.
+  const planIsEmpty = (workout?.planned_events?.length ?? 0) === 0
+  useEffect(() => {
+    if (!coached || !isJudge || !planIsEmpty || !workout) return
+    let cancelled = false
+    lastTrainingPlan(supabase, workout.player_id, workout.id).then(p => { if (!cancelled) setLastPlan(p) })
+    return () => { cancelled = true }
+  }, [coached, isJudge, planIsEmpty, workout?.player_id, workout?.id])
 
 
   const todo = events.filter(e => !scoredSlugs.has(e.id))
@@ -172,12 +201,12 @@ export default function PersonalGamePage() {
     // An empty personal game is deleted rather than kept: nothing was trained.
     if (entries.length === 0) {
       await supabase.from('workouts').delete().eq('id', workout.id)
-      router.push('/workout/new')
+      router.push(coached ? '/judge' : '/workout/new')
       return
     }
     const { error: e } = await supabase.from('workouts').update({ finished_at: new Date().toISOString() }).eq('id', workout.id)
     if (e) { setError(e.message); return }
-    router.push('/history')
+    router.push(coached ? '/judge' : '/history')
   }
 
   if (notFound) {
@@ -199,7 +228,7 @@ export default function PersonalGamePage() {
       <div style={{ background: '#111', border: '1px solid var(--border)', borderRadius: 16, padding: 14, marginBottom: 14 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, letterSpacing: '0.03em', lineHeight: 1 }}>
-            MY WORKOUT
+            {coached ? (isJudge && clientName ? clientName.toUpperCase() : 'TRAINING SESSION') : 'MY WORKOUT'}
           </div>
           <div style={{ fontFamily: 'var(--font-label)', fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
             {formatNZDate(workout.performed_on)}
@@ -232,6 +261,12 @@ export default function PersonalGamePage() {
           </div>
         )}
       </div>
+
+      {coached && !isJudge && open && (
+        <div style={{ margin: '0 0 14px', fontSize: 13, color: 'var(--text-muted)' }}>
+          Your kaiwhakawā is running this session. Enter your scores here as you go.
+        </div>
+      )}
 
       {/* Strength is a ratio of bodyweight, so it is asked where the lifting
           happens rather than on a profile page nobody returns to. Renders
@@ -276,12 +311,21 @@ export default function PersonalGamePage() {
 
       {events.length === 0 && (
         <div style={{ color: 'var(--text-muted)', fontSize: 14, padding: '20px 4px' }}>
-          Nothing planned yet. Add an event below.
+          {canRun ? 'Nothing planned yet. Add an event below.' : 'Nothing planned yet. Your kaiwhakawā will add the events.'}
         </div>
       )}
 
+      {/* Repeat last session */}
+      {!locked && canRun && coached && lastPlan.length > 0 && planIsEmpty && (
+        <button type="button" onClick={() => setPlan(sortPlan(lastPlan).slice(0, PLAN_MAX))} style={{
+          width: '100%', minHeight: 48, marginTop: 16, borderRadius: 999, cursor: 'pointer',
+          background: '#0d1a2d', border: '1px solid #2371BB', color: '#fff',
+          fontFamily: 'var(--font-label)', fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase',
+        }}>Repeat last session ({lastPlan.length} event{lastPlan.length === 1 ? '' : 's'})</button>
+      )}
+
       {/* Add more */}
-      {!locked && (
+      {!locked && canRun && (
         <div style={{ marginTop: 16 }}>
           <button type="button" onClick={() => setAdding(a => !a)} style={{
             width: '100%', minHeight: 48, borderRadius: 999, cursor: 'pointer',
@@ -301,14 +345,14 @@ export default function PersonalGamePage() {
       )}
 
       {/* Finish */}
-      {!locked && (
+      {!locked && canRun && (
         <button onClick={finish} style={{
           width: '100%', minHeight: 56, marginTop: 20, borderRadius: 999, border: 'none', cursor: 'pointer',
           background: entries.length > 0 ? 'var(--rainbow)' : '#151515',
           color: entries.length > 0 ? '#0a0a0a' : 'var(--text-muted)',
           fontFamily: 'var(--font-label)', textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: 15, fontWeight: 600,
         }}>
-          {entries.length > 0 ? 'Finish workout' : 'Cancel workout'}
+          {entries.length > 0 ? (coached ? 'Finish session' : 'Finish workout') : (coached ? 'Cancel session' : 'Cancel workout')}
         </button>
       )}
 
