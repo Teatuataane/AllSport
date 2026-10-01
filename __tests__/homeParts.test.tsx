@@ -13,7 +13,7 @@
 
 import { describe, it, expect, afterEach } from 'vitest'
 import { render, cleanup, screen } from '@testing-library/react'
-import { ColourAvatar, GameOnCard, NextSessionLine, HomeLink } from '@/components/HomeParts'
+import { ColourAvatar, GameOnCard, TrainingOnCard, NextSessionLine, HomeLink } from '@/components/HomeParts'
 
 afterEach(cleanup)
 
@@ -119,5 +119,22 @@ describe('HomeLink', () => {
   it('is a link to where it says', () => {
     render(<HomeLink href="/prs">My events</HomeLink>)
     expect(screen.getByRole('link', { name: 'My events' }).getAttribute('href')).toBe('/prs')
+  })
+})
+
+describe('TrainingOnCard', () => {
+  it('is one button into the session, with the event count', () => {
+    render(<TrainingOnCard session={{ id: 'w1', events: 3 }} />)
+    expect(screen.getByText(/3 events so far/)).toBeTruthy()
+    expect(screen.getByRole('link').getAttribute('href')).toBe('/workout/w1')
+  })
+  it('says the kaiwhakawā is setting it up while nothing is planned', () => {
+    render(<TrainingOnCard session={{ id: 'w1', events: 0 }} />)
+    expect(screen.getByText(/setting it up/)).toBeTruthy()
+  })
+  it('names the child when a parent is viewing one', () => {
+    render(<TrainingOnCard session={{ id: 'w1', events: 1 }} who="Kiri" />)
+    expect(screen.getByText(/Kiri: training session/)).toBeTruthy()
+    expect(screen.getByText(/1 event so far/)).toBeTruthy()
   })
 })
