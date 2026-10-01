@@ -88,8 +88,10 @@ describe('withdrawColours', () => {
     expect((await withdrawColours('p', 3)).ok).toBe(false)
   })
 
-  it('passes through colours left standing on a removed event', async () => {
+  it('passes through colours left standing on a removed event, with or without a key', async () => {
     respond(200, { withdrawn: [], protected: [w] })
+    expect((await withdrawColours('p', 3)).protectedColours).toEqual([w])
+    respond(503, { withdrawn: [], protected: [w] })
     expect((await withdrawColours('p', 3)).protectedColours).toEqual([w])
   })
 

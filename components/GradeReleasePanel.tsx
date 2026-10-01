@@ -258,6 +258,7 @@ export default function GradeReleasePanel() {
   const rejudge = async (player: Player, domain: number, reason: string) => {
     const out = await withdrawColours(player.id, domain, reason)
     const failed = !out.ok || !out.writable
+    const kept = [...out.protectedColours].sort((x, y) => y.rung - x.rung)
     setPendingRejudge(failed ? { player, domain, reason } : null)
     setNotice((
       !out.ok ? `The score is deleted, but ${player.display_name}'s ${DOMAIN_NAMES[domain - 1]} colours could not be re-checked yet.`
@@ -265,9 +266,11 @@ export default function GradeReleasePanel() {
       : out.withdrawn.length > 0 ? `Taken back from ${player.display_name}: ${out.withdrawn.map(w => `${w.name} in ${DOMAIN_NAMES[w.domainNumber - 1]}`).join(', ')}. ${
           out.logged ? 'They will be told.' : 'Their notice could not be recorded, so tell them yourself.'}${
           out.reconferred ? ` Their other scores still give ${out.reconferred}, so that now stands.` : ''}`
+      : kept.length > 0 ? 'Deleted. Nothing was taken back automatically.'
       : `Deleted. ${player.display_name}'s colours still stand on their other scores.`)
-      + (out.ok && out.protectedColours.length > 0
-        ? ` ${out.protectedColours.map(c => `${c.name} in ${DOMAIN_NAMES[c.domainNumber - 1]}`).join(', ')} rests partly on an event that has been removed, so it was not taken back automatically. Check it by hand.`
+      + (out.ok && kept.length > 0
+        // Only the highest is named: everything below it is kept with it.
+        ? ` ${kept[0].name} in ${DOMAIN_NAMES[kept[0].domainNumber - 1]} rests partly on an event that has been removed, so the app cannot take it back. If it should go, it needs a manual change to the database.`
         : ''))
     await refresh(player)
   }

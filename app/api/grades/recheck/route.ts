@@ -202,7 +202,7 @@ async function withdrawIn(
   if (out.length === 0) return json({ withdrawn: [], protected: kept })
 
   if (!hasServiceKey()) {
-    return json({ withdrawn: [], pending: out.map(summariseWithdrawn), writable: false }, 503)
+    return json({ withdrawn: [], pending: out.map(summariseWithdrawn), writable: false, protected: kept }, 503)
   }
   const admin = createSupabaseAdminClient()
 

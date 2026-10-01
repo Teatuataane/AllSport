@@ -424,6 +424,18 @@ describe('recheck route: second pass', () => {
     expect(await res.json()).toEqual({ withdrawn: [], protected: [{ domainNumber: 5, rung: 7, name: 'Kahurangi' }] })
   })
 
+  it('withdraw: names a protected colour alongside what it took back, and without a key', async () => {
+    judged()
+    h.withdraw = [{ id: 'a1', domain_number: 5, rung: 9, grade_name: 'Hiriwa', conferred_at: 't' }]
+    h.protected = [{ id: 'k1', domain_number: 5, rung: 7, grade_name: 'Kahurangi', conferred_at: 't', events: ['ab-wheel-rollout'] }]
+    const kept = [{ domainNumber: 5, rung: 7, name: 'Kahurangi' }]
+    expect((await (await post({ withdraw: { domain: 5 } })).json()).protected).toEqual(kept)
+    h.hasKey = false
+    const res = await post({ withdraw: { domain: 5 } })
+    expect(res.status).toBe(503)
+    expect((await res.json()).protected).toEqual(kept)
+  })
+
   it('withdraw: nothing to take back means no admin client and no writes', async () => {
     judged()
     const res = await post({ withdraw: { domain: 3 } })

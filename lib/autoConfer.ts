@@ -85,7 +85,9 @@ export type WithdrawnAward = Required<Pick<GradeAward, 'id'>> & GradeAward
 
 /**
  * Awards in `domainNumber` the player's current evidence no longer supports:
- * everything above the rung the standards now give them there.
+ * everything above the rung the standards now give them there, EXCEPT a colour
+ * citing a removed event and everything at or below the highest such colour
+ * (see protectedAwards).
  *
  * Returns nothing when the domain cannot be graded for this player at all
  * (every event exempt or ungradeable). That is "we cannot tell", not "the
@@ -98,10 +100,11 @@ export function awardsToWithdraw(state: GradeState, domainNumber: number): Withd
   // Nothing at or below a protected colour goes either: the player visibly
   // holds the protected one, so a "taken back" notice for a colour beneath it
   // would describe a loss they have not had.
-  const floor = protectedAwards(state, domainNumber).reduce((m, a) => Math.max(m, a.rung), 0)
+  // protectedAwards is sorted highest first, so its head is the floor.
+  const floor = protectedAwards(state, domainNumber)[0]?.rung ?? 0
   return state.awards
     .filter((a): a is WithdrawnAward => a.domain_number === domainNumber && a.rung > d.rung && a.rung > floor
-      && !!a.id && !citesRemovedEvent(a))
+      && !!a.id)
     .sort((a, b) => b.rung - a.rung)
 }
 

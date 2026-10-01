@@ -261,6 +261,22 @@ AS $$
 DECLARE
   v_slug text;
 BEGIN
+  -- On UPDATE only a change to the SCORE or the EVENT is checked. Placement
+  -- writes at session close, band stamps and erasure's name rewrite must never
+  -- be refused because of a row they did not change, or one bad row would stop
+  -- a whole game from closing. Moving a row onto another event IS checked, or
+  -- an old-format score could be repointed onto a re-levelled event unseen.
+  -- (Separate IFs per table: a plpgsql expression naming NEW.event_id fails on
+  -- workout_entries, which has no such column, even in a branch not taken.)
+  IF TG_OP = 'UPDATE' AND NEW.raw_score IS NOT DISTINCT FROM OLD.raw_score
+     AND NEW.difficulty_tier IS NOT DISTINCT FROM OLD.difficulty_tier THEN
+    IF TG_TABLE_NAME = 'results' THEN
+      IF NEW.event_id IS NOT DISTINCT FROM OLD.event_id THEN RETURN NEW; END IF;
+    ELSIF NEW.event_slug IS NOT DISTINCT FROM OLD.event_slug THEN
+      RETURN NEW;
+    END IF;
+  END IF;
+
   IF TG_TABLE_NAME = 'results' THEN
     SELECT CASE
              WHEN event_slug IS NOT NULL THEN event_slug
@@ -283,14 +299,6 @@ BEGIN
       USING ERRCODE = '22023';
   END IF;
 
-  -- On UPDATE only a change to the SCORE is checked. Placement writes at
-  -- session close, band stamps and erasure's name rewrite must never be
-  -- refused because of a row they did not change, or one bad row would stop a
-  -- whole game from closing.
-  IF TG_OP = 'UPDATE' AND NEW.raw_score IS NOT DISTINCT FROM OLD.raw_score
-     AND NEW.difficulty_tier IS NOT DISTINCT FROM OLD.difficulty_tier THEN
-    RETURN NEW;
-  END IF;
 
   IF v_slug IN ('l-sit-hold', 'push-up-contest', 'calf-raises', 'wrist-stretch', 'reverse-wrist-stretch')
      AND NEW.raw_score IS NOT NULL

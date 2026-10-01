@@ -86,6 +86,8 @@ describe('stamina roster migration', () => {
   it('guards exactly the current ladders of the five re-levelled events', () => {
     const guarded = [...guardSql.matchAll(/\('([a-z-]+)', '([^']+)', (\d+)\)/g)].map(m => ({ slug: m[1], tier: m[2], idx: +m[3] }))
     const slugs = [...new Set(guarded.map(g => g.slug))].sort()
+    // Stated, not derived: dropping an event from both lists must still fail.
+    expect(slugs).toEqual(['calf-raises', 'l-sit-hold', 'push-up-contest', 'reverse-wrist-stretch', 'wrist-stretch'])
     for (const slug of slugs) {
       const ev = getEventBySlug(slug)!
       const rows = guarded.filter(g => g.slug === slug)
@@ -114,8 +116,13 @@ describe('stamina roster migration', () => {
     expect(guardSql).toMatch(/TG_OP = 'INSERT' AND v_slug IN \('lunges', 'ab-wheel-rollout', 'shoulder-dislocate'\)/)
   })
 
-  it('checks an UPDATE only when the score changes, so a game can always close', () => {
-    expect(guardSql).toMatch(/IF TG_OP = 'UPDATE' AND NEW\.raw_score IS NOT DISTINCT FROM OLD\.raw_score\s+AND NEW\.difficulty_tier IS NOT DISTINCT FROM OLD\.difficulty_tier THEN\s+RETURN NEW;/)
+  it('checks an UPDATE only when the score or the event changes, so a game can always close', () => {
+    expect(guardSql).toMatch(/IF TG_OP = 'UPDATE' AND NEW\.raw_score IS NOT DISTINCT FROM OLD\.raw_score\s+AND NEW\.difficulty_tier IS NOT DISTINCT FROM OLD\.difficulty_tier THEN/)
+    // Moving a row onto another event is checked, on both tables.
+    expect(guardSql).toContain('IF NEW.event_id IS NOT DISTINCT FROM OLD.event_id THEN RETURN NEW; END IF;')
+    expect(guardSql).toMatch(/ELSIF NEW\.event_slug IS NOT DISTINCT FROM OLD\.event_slug THEN\s+RETURN NEW;/)
+    // The skip comes before the lookup, so placement writes cost nothing.
+    expect(guardSql.indexOf("IF TG_OP = 'UPDATE'")).toBeLessThan(guardSql.indexOf('SELECT CASE'))
   })
 
   it('creates the guard after the repair it must not interrupt', () => {
@@ -123,8 +130,12 @@ describe('stamina roster migration', () => {
       .toBeGreaterThan(sql.indexOf('PERFORM public.compute_event_placements'))
   })
 
-  it('rebuilds the label of every row it moves', () => {
-    expect(sql).toMatch(/score_label = 'D' \|\| \(s\.new_idx \+ 1\) \|\| ' ' \|\| s\.new_tier/)
-    expect(sql.match(/score_label = 'D' \|\| \(s\.new_idx \+ 1\)/g)).toHaveLength(2)
+  it('rebuilds the label of every row it moves, keeping its score', () => {
+    for (const t of ['r', 'e']) {
+      const expr = `score_label = 'D' || (s.new_idx + 1) || ' ' || s.new_tier
+         || CASE WHEN position(' · ' in ${t}.score_label) > 0
+                 THEN substring(${t}.score_label from position(' · ' in ${t}.score_label)) ELSE '' END`
+      expect(sql, t).toContain(expr)
+    }
   })
 })

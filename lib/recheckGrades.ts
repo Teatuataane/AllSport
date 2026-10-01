@@ -78,7 +78,8 @@ export async function withdrawColours(playerId: string, domain: number, reason?:
   protectedColours: WithdrawnColour[]
 }> {
   const r = await post({ playerId, withdraw: { domain, reason } })
-  if (r?.status === 503) return { withdrawn: [], writable: false, ok: true, logged: true, reconferred: null, protectedColours: [] }
+  const protectedColours = Array.isArray(r?.body.protected) ? r!.body.protected as WithdrawnColour[] : []
+  if (r?.status === 503) return { withdrawn: [], writable: false, ok: true, logged: true, reconferred: null, protectedColours }
   if (!ok2xx(r) || !Array.isArray(r.body.withdrawn)) return { withdrawn: [], writable: true, ok: false, logged: true, reconferred: null, protectedColours: [] }
   return {
     withdrawn: r.body.withdrawn as WithdrawnColour[],
@@ -86,6 +87,6 @@ export async function withdrawColours(playerId: string, domain: number, reason?:
     ok: true,
     logged: r.body.logged !== false,
     reconferred: typeof r.body.reconferred === 'string' ? r.body.reconferred : null,
-    protectedColours: Array.isArray(r.body.protected) ? r.body.protected as WithdrawnColour[] : [],
+    protectedColours,
   }
 }
