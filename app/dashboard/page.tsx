@@ -23,7 +23,8 @@ import { nextScheduledSession } from '@/lib/schedule'
 import { useActivePlayer, playerLabel } from '@/lib/useActivePlayer'
 import PlayerTabs, { ViewingAsBanner } from '@/components/PlayerTabs'
 import GradesCard from '@/components/GradesCard'
-import { ColourAvatar, GameOnCard, NextSessionLine, HomeLink } from '@/components/HomeParts'
+import { ColourAvatar, GameOnCard, TrainingOnCard, NextSessionLine, HomeLink } from '@/components/HomeParts'
+import { loadOpenTraining } from '@/lib/training'
 import { loadGradeState, type GradeState } from '@/lib/loadGrades'
 import { useNewColours } from '@/lib/useNewColours'
 import NewColourCard from '@/components/NewColourCard'
@@ -181,6 +182,26 @@ function DashboardInner() {
     }
   }, [userId])
 
+  // ── A training session your kaiwhakawā has opened for the viewed player ─────
+  // Polled like the game check: a client who opened HOME before the session was
+  // started must see it appear. A failed read keeps the last answer.
+  const [training, setTraining] = useState<{ id: string; events: number } | null>(null)
+  useEffect(() => {
+    if (!activePlayerId) return
+    let cancelled = false
+    setTraining(null)
+    const check = () => loadOpenTraining(supabase, [activePlayerId]).then(rows => {
+      if (cancelled) return
+      const w = rows[0]
+      setTraining(w ? { id: w.id, events: w.planned_events?.length ?? 0 } : null)
+    }).catch(() => {})
+    check()
+    const timer = setInterval(() => { if (document.visibilityState === 'visible') check() }, 30_000)
+    const onVisible = () => { if (document.visibilityState === 'visible') check() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => { cancelled = true; clearInterval(timer); document.removeEventListener('visibilitychange', onVisible) }
+  }, [activePlayerId])
+
   // Silent auto-join from the QR code. The typed code box is gone (home
   // colours rework, 24 September 2026): a running game gets one JOIN button.
   useEffect(() => {
@@ -270,6 +291,12 @@ function DashboardInner() {
         {/* #join is where the PLAY tab lands when no game is on (useNavState). */}
         <div id="join">
           {game && <GameOnCard game={game} isJudge={isJudge} error={joinError} />}
+          {training && (
+            <TrainingOnCard
+              session={training}
+              who={activePlayerId !== userId ? (activePlayer?.display_name ?? null) : null}
+            />
+          )}
         </div>
 
         {/* ── 1. Identity ─────────────────────────────────────────────────── */}

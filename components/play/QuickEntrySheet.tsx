@@ -12,6 +12,8 @@ import { useEffect, useRef, useState } from 'react'
 import EventIcon from '@/components/EventIcon'
 import { domainColor } from '@/components/EventIcon'
 import { isGameEntry } from '@/lib/matches'
+import PRBoardView from '@/components/play/PRBoardView'
+import type { PRRow } from '@/lib/prBoard'
 import { isTimedEffort, type EventData } from '@/lib/eventData'
 import { computeScoreVals, valsFromResult, valsFromRaw, EMPTY_VALS, estimatedOneRm, MAX_ESTIMATED_REPS, type EntryVals } from '@/lib/scoring'
 import {
@@ -36,6 +38,8 @@ type QuickEntrySheetProps = {
   /** Who can be picked as an opponent. Empty in a personal game. */
   opponents: OpponentPick[]
   seasonPR: number | string | null
+  /** This player's lifetime scores on this event, for the records list. Empty hides it. */
+  prRows?: readonly PRRow[]
   /** Scoring is closed: the game ended, or the workout is finished. */
   locked: boolean
   /** Wording for the two hint tiles, which differ between a game and a workout. */
@@ -62,7 +66,7 @@ type QuickEntrySheetProps = {
 }
 
 export default function QuickEntrySheet({
-  se, eventData, myResults, opponents, seasonPR, locked,
+  se, eventData, myResults, opponents, seasonPR, prRows = [], locked,
   bestLabel = "Today's best", prLabel = 'Season PR', allowGames = true, natural = false,
   onClose, onSubmit, onDelete, onSubmitted, onDeleted,
 }: QuickEntrySheetProps) {
@@ -310,6 +314,23 @@ export default function QuickEntrySheet({
                   </div>
                 </div>
               </div>
+
+              {prRows.length > 0 && (
+                <>
+                  <div style={QES_LBL}>{eventData?.hasDifficultyTiers ? 'Your records by level' : 'Your top scores'}</div>
+                  <PRBoardView
+                    ev={eventData}
+                    rows={prRows}
+                    currentLevel={tiers.length > 0 && v.difficultyTier ? tiers.findIndex(t => t.name === v.difficultyTier) : null}
+                    colour={domainColor(se.domain_number)}
+                    onPick={locked ? undefined : row => {
+                      keepExistingMatch.current = false
+                      setEditingResult(null)
+                      setV({ ...EMPTY_VALS, ...valsFromRaw(mode, eventData, row.raw_score) })
+                    }}
+                  />
+                </>
+              )}
 
               {locked ? (
                 <div style={{ background: '#2e0d0d', border: '1px solid #EA4742', borderRadius: '10px', padding: '12px 14px', marginTop: '14px', color: '#EA4742', fontSize: '13px' }}>

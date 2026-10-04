@@ -66,7 +66,7 @@ export default function JudgePage() {
           </div>
         </div>
 
-        <JudgeCard playerRole={player.role} />
+        <JudgeCard playerRole={player.role} playerId={player.id} />
         <WellbeingReport />
         <ActivityReport />
       </div>

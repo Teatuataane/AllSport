@@ -2,6 +2,19 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.26.0.0] - 2026-10-01
+
+### Added
+- **Personal training, run by a kaiwhakawā.** A new Training tab on /judge finds a player by name or username, or lists the clients you trained in the last 30 days, and starts their session in one tap. There is no setup screen: it opens empty with Repeat last session and + Add an event. Several clients can be open at once, each as a chip.
+- **A training session shows up on the player's HOME** as a blue card with a Join button, under the game card if both are on. Joining opens the usual scoring screen, where you and the player both enter scores while it is open. Everything entered counts as witnessed. It locks when you Finish it or when the NZ day ends, and only a kaiwhakawā can change it after that.
+- **Your records on every event.** An event with levels now keeps your best at each level, with the date. An event without levels keeps your top five (estimated 1RM for lifts, the longest hold, the furthest throw). They show in the entry sheet on every game screen, where tapping one pre-fills it, and on My Events.
+
+### Changed
+- **The PR tag now means a new best at that level**, so working up the lower levels of an event earns PRs too. On an event without levels it fires only for a new number one, and a first-ever score is never a PR.
+
+### Fixed
+- **A player can no longer delete the scores of a witnessed workout.** Only inserts and edits were guarded before, so a witnessed score could be deleted at any time. Deleting is now limited to a kaiwhakawā once the session has closed.
+
 ## [0.25.0.0] - 2026-09-30
 
 ### Added

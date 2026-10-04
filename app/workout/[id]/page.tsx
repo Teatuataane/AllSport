@@ -17,6 +17,10 @@
 //   · it is open until Finish, and the NZ day closes it. Entries stay editable
 //     for 7 days, which is the database's window.
 
+import { usePRRows } from '@/lib/usePRRows'
+import { isNewPR } from '@/lib/prBoard'
+import { useActivePlayer } from '@/lib/useActivePlayer'
+import { lastTrainingPlan } from '@/lib/training'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
@@ -68,11 +72,13 @@ export default function PersonalGamePage() {
 
   const [workout, setWorkout] = useState<Workout | null>(null)
   const [entries, setEntries] = useState<Entry[]>([])
-  const [prs, setPRs] = useState<Record<string, number>>({})
   const [sheetSlug, setSheetSlug] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
   const [toast, setToast] = useState<{ eventName: string; label: string } | null>(null)
   const [error, setError] = useState('')
+  const { self } = useActivePlayer()
+  const [clientName, setClientName] = useState<string | null>(null)
+  const [lastPlan, setLastPlan] = useState<string[]>([])
   const [notFound, setNotFound] = useState(false)
 
   const load = useCallback(async () => {
@@ -95,32 +101,14 @@ export default function PersonalGamePage() {
 
   useEffect(() => { load() }, [load])
 
-  // Lifetime bests, so the sheet can pre-fill and show a PR hint. Its own
-  // query, and a failure only costs the hint.
-  useEffect(() => {
-    if (!workout?.player_id) return
-    let cancelled = false
-    supabase
-      .from('workout_entries')
-      .select('event_slug, raw_score, workouts!inner(player_id)')
-      .eq('workouts.player_id', workout.player_id)
-      .not('raw_score', 'is', null)
-      .then(({ data }) => {
-        if (cancelled) return
-        const best: Record<string, number> = {}
-        for (const r of (data ?? []) as { event_slug: string | null; raw_score: number }[]) {
-          if (!r.event_slug) continue
-          const v = Number(r.raw_score)
-          if (!Number.isFinite(v)) continue
-          if (best[r.event_slug] === undefined || v > best[r.event_slug]) best[r.event_slug] = v
-        }
-        setPRs(best)
-      })
-    return () => { cancelled = true }
-  }, [workout?.player_id])
-
   const plan = workout?.planned_events ?? []
   const events = useMemo(() => playEvents(plan), [plan])
+  const { rows: prRows, reload: reloadPRs } = usePRRows(workout?.player_id ?? null, events.map(e => e.id))
+  // Lifetime best per event, for the pre-fill and the "Your best" tile.
+  const bestRaw = (slug: string): number | null => {
+    const rs = prRows[slug] ?? []
+    return rs.length > 0 ? Math.max(...rs.map(r => r.raw_score)) : null
+  }
   const entriesFor = useCallback((slug: string) => entries.filter(e => e.event_slug === slug), [entries])
   const scoredSlugs = useMemo(
     () => new Set(entries.map(e => e.event_slug).filter((s): s is string => !!s)),
@@ -145,6 +133,30 @@ export default function PersonalGamePage() {
 
   const open = workout ? isOpen(workout) : false
   const locked = !open
+  // A witnessed workout is a training session a kaiwhakawā runs. Both of them
+  // score in it while it is open; only the kaiwhakawā changes the plan or
+  // finishes it (the database enforces the same split).
+  const isJudge = self?.role === 'judge'
+  const coached = !!workout?.witnessed
+  const canRun = !coached || isJudge
+
+  // Who the session is for, so the kaiwhakawā running several can tell them apart.
+  useEffect(() => {
+    if (!coached || !isJudge || !workout) return
+    let cancelled = false
+    supabase.from('players_public').select('display_name').eq('id', workout.player_id).maybeSingle()
+      .then(({ data }) => { if (!cancelled) setClientName((data as { display_name: string } | null)?.display_name ?? null) })
+    return () => { cancelled = true }
+  }, [coached, isJudge, workout?.player_id])
+
+  // "Repeat last session": the previous session's events, offered on an empty one.
+  const planIsEmpty = (workout?.planned_events?.length ?? 0) === 0
+  useEffect(() => {
+    if (!coached || !isJudge || !planIsEmpty || !workout) return
+    let cancelled = false
+    lastTrainingPlan(supabase, workout.player_id, workout.id).then(p => { if (!cancelled) setLastPlan(p) })
+    return () => { cancelled = true }
+  }, [coached, isJudge, planIsEmpty, workout?.player_id, workout?.id])
 
 
   const todo = events.filter(e => !scoredSlugs.has(e.id))
@@ -163,8 +175,7 @@ export default function PersonalGamePage() {
     if (!ev || !workout) return { error: 'That event is no longer on the roster', isPR: false }
     const payload = entryPayload(ev, v)
     if (!payload) return { error: 'Enter a valid score first', isPR: false }
-    const best = prs[slug]
-    const isPR = payload.raw_score !== undefined && (best === undefined || payload.raw_score > best)
+    const isPR = payload.raw_score !== undefined && isNewPR(ev, prRows[slug] ?? [], payload.raw_score, editingId ? `logged:${editingId}` : null)
     const { error: e } = editingId
       ? await supabase.from('workout_entries').update(payload).eq('id', editingId)
       : await supabase.from('workout_entries').insert({ ...payload, workout_id: workout.id })
@@ -174,8 +185,7 @@ export default function PersonalGamePage() {
         isPR: false,
       }
     }
-    if (isPR && payload.raw_score !== undefined) setPRs(p => ({ ...p, [slug]: payload.raw_score! }))
-    await load()
+    await Promise.all([load(), reloadPRs()])
     return { error: null, isPR }
   }
 
@@ -191,12 +201,12 @@ export default function PersonalGamePage() {
     // An empty personal game is deleted rather than kept: nothing was trained.
     if (entries.length === 0) {
       await supabase.from('workouts').delete().eq('id', workout.id)
-      router.push('/workout/new')
+      router.push(coached ? '/judge' : '/workout/new')
       return
     }
     const { error: e } = await supabase.from('workouts').update({ finished_at: new Date().toISOString() }).eq('id', workout.id)
     if (e) { setError(e.message); return }
-    router.push('/history')
+    router.push(coached ? '/judge' : '/history')
   }
 
   if (notFound) {
@@ -218,7 +228,7 @@ export default function PersonalGamePage() {
       <div style={{ background: '#111', border: '1px solid var(--border)', borderRadius: 16, padding: 14, marginBottom: 14 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, letterSpacing: '0.03em', lineHeight: 1 }}>
-            MY WORKOUT
+            {coached ? (isJudge && clientName ? clientName.toUpperCase() : 'TRAINING SESSION') : 'MY WORKOUT'}
           </div>
           <div style={{ fontFamily: 'var(--font-label)', fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
             {formatNZDate(workout.performed_on)}
@@ -251,6 +261,12 @@ export default function PersonalGamePage() {
           </div>
         )}
       </div>
+
+      {coached && !isJudge && open && (
+        <div style={{ margin: '0 0 14px', fontSize: 13, color: 'var(--text-muted)' }}>
+          Your kaiwhakawā is running this session. Enter your scores here as you go.
+        </div>
+      )}
 
       {/* Strength is a ratio of bodyweight, so it is asked where the lifting
           happens rather than on a profile page nobody returns to. Renders
@@ -295,12 +311,21 @@ export default function PersonalGamePage() {
 
       {events.length === 0 && (
         <div style={{ color: 'var(--text-muted)', fontSize: 14, padding: '20px 4px' }}>
-          Nothing planned yet. Add an event below.
+          {canRun ? 'Nothing planned yet. Add an event below.' : 'Nothing planned yet. Your kaiwhakawā will add the events.'}
         </div>
       )}
 
+      {/* Repeat last session */}
+      {!locked && canRun && coached && lastPlan.length > 0 && planIsEmpty && (
+        <button type="button" onClick={() => setPlan(sortPlan(lastPlan).slice(0, PLAN_MAX))} style={{
+          width: '100%', minHeight: 48, marginTop: 16, borderRadius: 999, cursor: 'pointer',
+          background: '#0d1a2d', border: '1px solid #2371BB', color: '#fff',
+          fontFamily: 'var(--font-label)', fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase',
+        }}>Repeat last session ({lastPlan.length} event{lastPlan.length === 1 ? '' : 's'})</button>
+      )}
+
       {/* Add more */}
-      {!locked && (
+      {!locked && canRun && (
         <div style={{ marginTop: 16 }}>
           <button type="button" onClick={() => setAdding(a => !a)} style={{
             width: '100%', minHeight: 48, borderRadius: 999, cursor: 'pointer',
@@ -320,14 +345,14 @@ export default function PersonalGamePage() {
       )}
 
       {/* Finish */}
-      {!locked && (
+      {!locked && canRun && (
         <button onClick={finish} style={{
           width: '100%', minHeight: 56, marginTop: 20, borderRadius: 999, border: 'none', cursor: 'pointer',
           background: entries.length > 0 ? 'var(--rainbow)' : '#151515',
           color: entries.length > 0 ? '#0a0a0a' : 'var(--text-muted)',
           fontFamily: 'var(--font-label)', textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: 15, fontWeight: 600,
         }}>
-          {entries.length > 0 ? 'Finish workout' : 'Cancel workout'}
+          {entries.length > 0 ? (coached ? 'Finish session' : 'Finish workout') : (coached ? 'Cancel session' : 'Cancel workout')}
         </button>
       )}
 
@@ -345,7 +370,8 @@ export default function PersonalGamePage() {
           eventData={getEventBySlug(sheetEvent.event_slug)}
           myResults={entriesFor(sheetEvent.id)}
           opponents={[]}
-          seasonPR={prs[sheetEvent.id] ?? null}
+          seasonPR={bestRaw(sheetEvent.id)}
+          prRows={prRows[sheetEvent.id] ?? []}
           locked={locked}
           bestLabel="Best today"
           prLabel="Your best"

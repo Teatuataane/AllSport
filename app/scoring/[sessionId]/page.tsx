@@ -23,6 +23,8 @@ import { gradeForRung } from '@/lib/grading'
 import { useGradeProfile } from '@/lib/useGradeProfile'
 import { recheckGrades, type ConferredColour } from '@/lib/recheckGrades'
 import { usePlayerGames } from '@/lib/usePlayerGames'
+import { usePRRows } from '@/lib/usePRRows'
+import { isNewPR, mergeRows, type PRRow } from '@/lib/prBoard'
 import { averageBefore, awardsForGame, nextStep } from '@/lib/gameReport'
 import { ColourScore, EarnedColours, NextTime, PlacementHeader } from '@/components/GameReportParts'
 import { loadGamePlace } from '@/lib/loadGamePlace'
@@ -100,13 +102,14 @@ async function submitEntry(args: {
   eventData: EventData | undefined
   v: EntryVals
   myResults: Result[]
-  seasonPRNum: number | null
+  /** This player's lifetime scores on the event (lib/usePRRows), for the PR rule. */
+  prRows: readonly PRRow[]
   editingResultId: string | null
   // Opponent player ids to record as a match, or null to leave matches alone.
   // Decided by the sheet, which knows whether an edit touched the opponent.
   matchOpponents: string[] | null
 }): Promise<SubmitOutcome> {
-  const { sessionId, eventId, playerId, playerName, mode, eventData, v, myResults, seasonPRNum, editingResultId, matchOpponents } = args
+  const { sessionId, eventId, playerId, playerName, mode, eventData, v, myResults, prRows, editingResultId, matchOpponents } = args
   // One encoder for a game score and a logged best effort (lib/scoring.ts).
   const scored = scoreColumns(mode, eventData, v)
   if (!scored) return { error: 'Enter a valid score first', isPR: false }
@@ -116,10 +119,15 @@ async function submitEntry(args: {
       player_name: playerName, ...scored,
     }
 
-    // When editing, judge the PR against the OTHER rows — including the row
-    // being edited would wipe its own PR flag.
-    const priorResults = editingResultId ? myResults.filter(r => r.id !== editingResultId) : myResults
-    const newIsPR = seasonPRNum !== null && scored.raw_score > seasonPRNum && !priorResults.some(r => r.is_pr)
+    // A PR is a new best at this level (or a new number one on an event with no
+    // levels): lib/prBoard.ts owns the rule. The loaded rows are as of page
+    // load, so this session's own scores are merged in, and the row being
+    // edited is left out of its own comparison.
+    const live: PRRow[] = myResults.map(r => ({
+      id: r.id, raw_score: r.raw_score, score_label: r.score_label,
+      difficulty_tier: r.difficulty_tier, date: new Date().toISOString().slice(0, 10), source: 'game',
+    }))
+    const newIsPR = playerId !== null && isNewPR(eventData, mergeRows(prRows, live), scored.raw_score, editingResultId)
     payload.is_pr = newIsPR
     // Effort tasks are retired, so effort_task_completions is no longer
     // written: a new row takes the column default (0), and an edit leaves a
@@ -1134,6 +1142,11 @@ export default function SessionPage() {
     userId: authUserId,
     sessionOpen: !sessionEnded,
   })
+  // Lifetime scores on the events in this game, for the records list and the PR
+  // rule: the viewed player's, and (on the kaiwhakawā tab) the scored player's.
+  const prSlugs = [...events.map(e => e.event_slug), ...swaps.chosen]
+  const { rows: playerPRRows, reload: reloadPlayerPRs } = usePRRows(activePlayerId, prSlugs)
+  const { rows: targetPRRows, reload: reloadTargetPRs } = usePRRows(isJudge ? (judgeTarget?.id ?? null) : null, prSlugs)
   // The domain whose + was tapped: its sheet of events to add is open.
   const [addingDomain, setAddingDomain] = useState<DomainGroup | null>(null)
 
@@ -1789,6 +1802,7 @@ export default function SessionPage() {
                 myResults={swaps.entriesFor(sheetSlot.se.id)}
                 opponents={pickOpponents(results, { id: pid, name: pName })}
                 seasonPR={null}
+                prRows={playerPRRows[sheetSlot.se.event_slug] ?? []}
                 locked={sessionEnded}
                 bestLabel="Best today"
                 prLabel="Training"
@@ -1825,13 +1839,14 @@ export default function SessionPage() {
                 myResults={results.filter(r => r.event_id === sheetEvent.id && r.player_id === pid)}
                 opponents={pickOpponents(results, { id: pid, name: pName })}
                 seasonPR={seasonPRs[sheetEvent.id] ?? null}
+                prRows={playerPRRows[sheetEvent.event_slug] ?? []}
                 locked={sessionEnded}
                 onSubmit={(v, editingId, matchOpponents) => submitEntry({
                   sessionId: sessionId as string, eventId: sheetEvent.id, playerId: pid, playerName: pName,
                   mode: getEventByName(sheetEvent.event_name)?.inputMode || sheetEvent.input_mode,
                   eventData: getEventByName(sheetEvent.event_name),
                   v, myResults: results.filter(r => r.event_id === sheetEvent.id && r.player_id === pid),
-                  seasonPRNum: typeof seasonPRs[sheetEvent.id] === 'number' ? (seasonPRs[sheetEvent.id] as number) : null,
+                  prRows: playerPRRows[sheetEvent.event_slug] ?? [],
                   editingResultId: editingId, matchOpponents,
                 })}
                 onDelete={deleteResult}
@@ -1845,8 +1860,9 @@ export default function SessionPage() {
                   setToast({ eventName: sheetEvent.event_name, label, isPR: meta.isPR, isNewEvent })
                   setTimeout(() => setToast(null), meta.isPR || isNewEvent ? 4000 : 3000)
                   await loadResults()
+                  reloadPlayerPRs()
                 }}
-                onDeleted={async () => { await loadResults() }}
+                onDeleted={async () => { await loadResults(); reloadPlayerPRs() }}
               />
             )}
           </div>
@@ -2084,6 +2100,7 @@ export default function SessionPage() {
                     myResults={swaps.entriesFor(judgeSheetSlot.se.id)}
                     opponents={pickOpponents(results, { id: target?.id ?? null, name: target?.name ?? '' })}
                     seasonPR={null}
+                    prRows={target.id ? (targetPRRows[judgeSheetSlot.se.event_slug] ?? []) : []}
                     locked={sessionEnded}
                     bestLabel="Best today"
                     prLabel="Training"
@@ -2119,13 +2136,14 @@ export default function SessionPage() {
                     myResults={targetResults.filter(r => r.event_id === sheetEvent.id)}
                     opponents={pickOpponents(results, { id: target.id, name: target.name })}
                     seasonPR={target.id ? (judgePRs[sheetEvent.id] ?? null) : null}
+                    prRows={target.id ? (targetPRRows[sheetEvent.event_slug] ?? []) : []}
                     locked={sessionEnded}
                     onSubmit={(v, editingId, matchOpponents) => submitEntry({
                       sessionId: sessionId as string, eventId: sheetEvent.id, playerId: target.id, playerName: target.name,
                       mode: getEventByName(sheetEvent.event_name)?.inputMode || sheetEvent.input_mode,
                       eventData: getEventByName(sheetEvent.event_name),
                       v, myResults: targetResults.filter(r => r.event_id === sheetEvent.id),
-                      seasonPRNum: target.id && typeof judgePRs[sheetEvent.id] === 'number' ? (judgePRs[sheetEvent.id] as number) : null,
+                      prRows: target.id ? (targetPRRows[sheetEvent.event_slug] ?? []) : [],
                       editingResultId: editingId, matchOpponents,
                     })}
                     onDelete={deleteResult}
@@ -2135,8 +2153,9 @@ export default function SessionPage() {
                       setToast({ eventName: sheetEvent.event_name, label, isPR: meta.isPR, isNewEvent: false, playerName: target.name })
                       setTimeout(() => setToast(null), meta.isPR ? 4000 : 3000)
                       await loadResults()
+                      reloadTargetPRs()
                     }}
-                    onDeleted={async () => { await loadResults() }}
+                    onDeleted={async () => { await loadResults(); reloadTargetPRs() }}
                   />
                 )}
               </div>

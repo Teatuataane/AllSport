@@ -12,6 +12,7 @@ import { gradeForRung } from '@/lib/grading'
 import { rankByColours, displayOverall } from '@/lib/colourBoard'
 import { loadGameCounts } from '@/lib/gameCounts'
 import { GradeDot } from '@/components/GradeDot'
+import TrainingTab from '@/app/components/TrainingTab'
 
 type Session = {
   id: string
@@ -41,6 +42,8 @@ type PastVote = {
 
 type JudgeCardProps = {
   playerRole: string
+  /** The signed-in kaiwhakawā, who the Training tab logs sessions under. */
+  playerId?: string
 }
 
 const DOMAINS = [
@@ -69,7 +72,7 @@ function formatCountdown(ms: number): string {
   return `${minutes}m ${seconds}s`
 }
 
-export default function JudgeCard({ playerRole }: JudgeCardProps) {
+export default function JudgeCard({ playerRole, playerId }: JudgeCardProps) {
   const router = useRouter()
   const supabase = createClient()
 
@@ -97,7 +100,7 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
   const [now, setNow] = useState(Date.now())
 
   // Tab + Players state
-  const [judgeTab, setJudgeTab] = useState<'sessions' | 'votes' | 'players' | 'grades'>('sessions')
+  const [judgeTab, setJudgeTab] = useState<'sessions' | 'votes' | 'players' | 'grades' | 'training'>('sessions')
   const [playersList, setPlayersList] = useState<{ id: string; name: string; division: string; sessions: number; icon: string | null; overall: number | null; domainsHeld: number }[]>([])
   const [playersLoading, setPlayersLoading] = useState(false)
   // Standing colour watchlist — who is close to their next colour, so a
@@ -541,8 +544,8 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
 
       {/* ─── TAB BAR ───────────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', gap: '4px', marginBottom: '12px' }}>
-        {(['sessions', 'votes', 'players', 'grades'] as const).map(tab => {
-          const labels: Record<string, string> = { sessions: 'Sessions', votes: 'Votes', players: 'Players', grades: 'Colours' }
+        {(['sessions', 'votes', 'players', 'training', 'grades'] as const).map(tab => {
+          const labels: Record<string, string> = { sessions: 'Sessions', votes: 'Votes', players: 'Players', training: 'Training', grades: 'Colours' }
           const active = judgeTab === tab
           return (
             <button
@@ -1173,6 +1176,7 @@ export default function JudgeCard({ playerRole }: JudgeCardProps) {
       </div>}
 
       {/* ─── COLOURS PANEL — confirming grades, and exemptions ──────────────── */}
+      {judgeTab === 'training' && playerId && <TrainingTab kaiwhakawaId={playerId} />}
       {judgeTab === 'grades' && <><GradeReleasePanel /><ActivityFitPanel /></>}
 
       {/* ─── PLAYERS PANEL ─────────────────────────────────────────────────── */}

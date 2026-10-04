@@ -99,6 +99,45 @@ export function GameOnCard({ game, isJudge, error }: {
   )
 }
 
+/**
+ * A training session your kaiwhakawā has opened for you. Same place and same
+ * single button as a game, in blue so the two are never mistaken. Shown while it
+ * is open; an official game, if one is running, sits above it.
+ */
+export function TrainingOnCard({ session, who }: {
+  session: { id: string; events: number }
+  /** Whose session it is, shown only when a parent is viewing a child. */
+  who?: string | null
+}) {
+  return (
+    <div style={{
+      background: 'linear-gradient(135deg,#06121f,#0d2038)',
+      border: '1px solid #2371BB66', borderRadius: 16, padding: 18, marginBottom: 18,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{
+          width: 8, height: 8, borderRadius: 999, background: 'var(--blue)',
+          boxShadow: '0 0 0 4px #2371BB2e', flexShrink: 0,
+        }} />
+        <SectionLabel>{who ? `${who}: training session` : 'Training session'}</SectionLabel>
+      </div>
+      <div style={{ fontSize: 13, color: '#9db8d6', marginTop: 6 }}>
+        {session.events > 0
+          ? `${session.events} event${session.events === 1 ? '' : 's'} so far, with your kaiwhakawā`
+          : 'Your kaiwhakawā is setting it up'}
+      </div>
+      <Link href={`/workout/${session.id}`} style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 50,
+        marginTop: 14, borderRadius: 999, background: 'var(--blue)', color: '#fff',
+        fontFamily: 'var(--font-label)', textTransform: 'uppercase',
+        letterSpacing: '0.1em', fontWeight: 700, fontSize: 16,
+      }}>
+        Join →
+      </Link>
+    </div>
+  )
+}
+
 /** No game running: when the next one is, in one slim line. Nothing to tap. */
 export function NextSessionLine({ nextSession, firstRun, error }: {
   nextSession: ReturnType<typeof nextScheduledSession>
