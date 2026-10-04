@@ -258,6 +258,19 @@ describe('awardsToWithdraw', () => {
     expect(protectedAwards(state, 3).map(a => a.id)).toEqual(['removed'])
   })
 
+  // Value: protects=the kaiwhakawā notice naming only colours the evidence no longer supports;
+  // fails_when=protectedAwards drops its `rung > standards` check and the panel tells the
+  // kaiwhakawā a colour still earned on current scores "needs a manual change to the database";
+  // why_new=the existing protection test grades the domain at Mā, so every award is above it; seam=none
+  it('does not flag a colour on a removed event that the current scores still give', () => {
+    const state = withAwards(3, [
+      { domain: 3, rung: 3, id: 'supported', events: ['ab-wheel-rollout'] },
+      { domain: 3, rung: 2, id: 'below', events: ['shoulder-dislocate'] },
+    ])
+    expect(protectedAwards(state, 3)).toEqual([])
+    expect(awardsToWithdraw(state, 3)).toEqual([])
+  })
+
   it('protects nothing when no award cites a removed event', () => {
     const state = withAwards(0, [{ domain: 3, rung: 2, id: 'a', events: ['wall-sit'] }])
     expect(protectedAwards(state, 3)).toEqual([])
