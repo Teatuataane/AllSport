@@ -31,13 +31,14 @@ describe('stamina roster migration', () => {
   const OLD: Record<string, string[]> = {
     'l-sit-hold': ['2 Feet Assisted Tuck', '1 Foot Assisted Tuck', 'Tuck Hold', '1 Leg L-Sit', 'L-Sit', 'V-Sit'],
     'push-up-contest': ['Elevated Knee Push Up', 'Knee Push Up', 'Push Up', '1 Arm Pushup', 'Handstand Pushup', 'Deficit Handstand'],
+    'calf-raises': ['Two-Leg Raise', 'Two-Leg Deficit', 'Single-Leg Raise', 'Single-Leg Deficit'],
   }
 
   it('maps each old level onto a level that exists, in the same order', () => {
     const map = [...section('INSERT INTO level_map VALUES', ';')
       .matchAll(/\('([^']+)',\s*'([^']+)',\s*'([^']+)',\s*'([^']+)',\s*(\d+),\s*(\d+)\)/g)]
       .map(m => ({ slug: m[1], name: m[2], oldTier: m[3], oldIdx: +m[5], newTier: m[4], newIdx: +m[6] }))
-    expect(map).toHaveLength(7)
+    expect(map).toHaveLength(9)
     for (const m of map) {
       const ev = getEventBySlug(m.slug)!
       expect(m.name, m.slug).toBe(ev.name)

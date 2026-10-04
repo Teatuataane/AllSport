@@ -30,8 +30,8 @@
 --
 -- ─── Colours and Season points resting on removed events ────────────────────
 --
--- 11 conferred colours cite Ab Rollout or Shoulder Dislocate (10 Stamina, 1
--- Flexibility, checked 2026-10-01). They stand: an ordinary recheck never
+-- 12 conferred colours cite Ab Rollout or Shoulder Dislocate (checked
+-- 2026-10-05; 11 on 2026-10-01). They stand: an ordinary recheck never
 -- withdraws, and lib/autoConfer.ts citesRemovedEvent() stops a kaiwhakawā's
 -- unrelated score deletion from re-judging them away (Tāne, 1 Oct 2026).
 --
@@ -53,8 +53,9 @@
 --                1 Arm Pushup D4 -> 1 Arm Pushup  D5
 --
 -- plus two pure relabels at the same level (Elevated Knee Push Up -> Hands Up Knee Pushup, Knee Push Up -> Knee Pushup) and Tuck Hold, which
--- stays D3 under the same name. Each is the same movement under a new label,
--- so it is repointed, not deleted.
+-- stays D3 under the same name, and Calf Raises' two two-leg levels (Two-Leg
+-- Raise -> Calf Raise, Two-Leg Deficit -> Deficit Calf Raise, same band). Each
+-- is the same movement under a new label, so it is repointed, not deleted.
 --
 -- A row is shifted only when its raw_score still sits in its OLD band. A row a
 -- new bundle wrote between the deploy and this migration already carries the
@@ -64,10 +65,11 @@
 --
 -- Anything left on those five events whose level no longer exists (the
 -- handstand pushups, the assisted tucks, every old wrist and calf level) is
--- archived then deleted, the Toe Lift precedent. Checked 2026-09-30: production
--- held NONE: Compression held 5 Tuck Hold + 3 L-Sit, Pushups 15 Push Up +
--- 3 Knee Push Up + 3 1 Arm Pushup, and nobody had scored Calf Raises or either
--- wrist stretch. The archive exists so a row written since cannot vanish.
+-- archived then deleted, the Toe Lift precedent. Checked 2026-10-05: production
+-- held NONE: Compression held 6 Tuck Hold + 3 L-Sit, Pushups 15 Push Up +
+-- 3 Knee Push Up + 3 1 Arm Pushup, Calf Raises 2 Two-Leg Deficit (scored
+-- 2 Oct, repointed above), and nobody had scored either wrist stretch. The
+-- archive exists so a row written since cannot vanish.
 --
 -- DEPLOY ORDER: CODE FIRST, THEN THIS MIGRATION STRAIGHT AFTER, WITH NO GAME
 -- OR WORKOUT RUNNING. event_domains is the WRITE GATE for workouts (see
@@ -115,7 +117,12 @@ INSERT INTO level_map VALUES
     ('push-up-contest', 'Pushups',     'Elevated Knee Push Up', 'Hands Up Knee Pushup', 0, 0),
     ('push-up-contest', 'Pushups',     'Knee Push Up',          'Knee Pushup',                1, 1),
     ('push-up-contest', 'Pushups',     'Push Up',               'Pushup',                     2, 3),
-    ('push-up-contest', 'Pushups',     '1 Arm Pushup',          '1 Arm Pushup',               3, 4);
+    ('push-up-contest', 'Pushups',     '1 Arm Pushup',          '1 Arm Pushup',               3, 4),
+    -- Calf Raises' two-leg levels are the same movements under new names. The
+    -- single-leg ones have no equivalent (the new top level is on the toe tips),
+    -- so any row on them is archived.
+    ('calf-raises',     'Calf Raises', 'Two-Leg Raise',         'Calf Raise',                 0, 0),
+    ('calf-raises',     'Calf Raises', 'Two-Leg Deficit',       'Deficit Calf Raise',         1, 1);
 
 -- The new ladders, for telling a row that is already right from one that is lost.
 CREATE TEMP TABLE new_levels (slug text, event_name text, tier text, idx int) ON COMMIT DROP;
@@ -295,7 +302,7 @@ BEGIN
   END IF;
 
   IF TG_OP = 'INSERT' AND v_slug IN ('lunges', 'ab-wheel-rollout', 'shoulder-dislocate') THEN
-    RAISE EXCEPTION 'That event is no longer on the roster. If this game drew it, the kaiwhakawā should swap it; otherwise refresh the app'
+    RAISE EXCEPTION 'That event is no longer on the roster, so it cannot be scored. Refresh the app'
       USING ERRCODE = '22023';
   END IF;
 
