@@ -87,7 +87,7 @@ describe('GradesCard', () => {
   })
 
   it('expands a domain row to Event · Your best · Colour with the tier name', () => {
-    const results = [row('Pushups', 30001, { difficulty_tier: '1 Arm Pushup' })]
+    const results = [row('Pushups', 40001, { difficulty_tier: '1 Arm Pushup' })]
     render(<GradesCard state={state({ results })} />)
     const btn = screen.getAllByRole('button').find(b => b.textContent?.includes(domainName))!
     expect(btn.getAttribute('aria-expanded')).toBe('false')
@@ -106,7 +106,7 @@ describe('GradesCard', () => {
   })
 
   it('never says it is provisional, even on a database without grading', () => {
-    const results = [row('Pushups', 30001, { difficulty_tier: '1 Arm Pushup' })]
+    const results = [row('Pushups', 40001, { difficulty_tier: '1 Arm Pushup' })]
     render(<GradesCard state={state({ results, schemaReady: false })} />)
     expect(screen.queryByText(/Provisional/)).toBeNull()
   })
@@ -202,7 +202,7 @@ describe('GradesCard — the ladder and the domain rows', () => {
   })
 
   it('shows six circles per row, filled best first from the counted events', () => {
-    const results = [row('Pushups', 30001, { difficulty_tier: '1 Arm Pushup' })]
+    const results = [row('Pushups', 40001, { difficulty_tier: '1 Arm Pushup' })]
     const st = state({ results })
     const d = st.grades.domains.find(x => x.domainNumber === pushupDomain)!
     render(<GradesCard state={st} />)

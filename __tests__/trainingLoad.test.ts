@@ -94,7 +94,7 @@ describe('training load migration', () => {
   for (const name of readdirSync(dir).sort()) {
     if (name <= '20260918023038_training_load.sql') continue
     const later = readFileSync(`${dir}/${name}`, 'utf8')
-    // A later migration can reach the table three ways. Each is replayed, and a
+    // A later migration can reach the table four ways. Each is replayed, and a
     // form this parser does not understand FAILS the test rather than being
     // skipped — skipping is exactly how an orphaned alias would get through.
     for (const ins of later.matchAll(/INSERT INTO (?:public\.)?activity_aliases[^;]*;/g)) {
@@ -103,13 +103,16 @@ describe('training load migration', () => {
     for (const u of later.matchAll(/UPDATE (?:public\.)?activity_aliases SET event_slug = '([^']+)'\s+WHERE alias (?:IN \(([^)]*)\)|= ('[^']*'))/g)) {
       for (const a of (u[2] ?? u[3]).matchAll(/'([^']+)'/g)) effective.set(a[1], u[1])
     }
-    for (const d of later.matchAll(/DELETE FROM (?:public\.)?activity_aliases WHERE alias IN \(([^)]*)\)/g)) {
-      for (const a of d[1].matchAll(/'([^']+)'/g)) effective.delete(a[1])
+    // A removed event takes its aliases with it (20260930011149).
+    for (const d of later.matchAll(/DELETE FROM (?:public\.)?activity_aliases WHERE event_slug IN \(([^)]*)\)/g)) {
+      const gone = new Set([...d[1].matchAll(/'([^']+)'/g)].map(m => m[1]))
+      for (const [alias, slug] of [...effective]) if (gone.has(slug)) effective.delete(alias)
     }
     const touches = (later.match(/(?:INSERT INTO|UPDATE|DELETE FROM) (?:public\.)?activity_aliases/g) ?? []).length
     const understood = (later.match(/INSERT INTO (?:public\.)?activity_aliases/g) ?? []).length
       + (later.match(/DELETE FROM (?:public\.)?activity_aliases WHERE alias IN \(/g) ?? []).length
       + (later.match(/UPDATE (?:public\.)?activity_aliases SET event_slug = '[^']+'\s+WHERE alias (?:IN \(|= ')/g) ?? []).length
+      + (later.match(/DELETE FROM (?:public\.)?activity_aliases WHERE event_slug IN \(/g) ?? []).length
     if (touches !== understood) throw new Error(`${name} changes activity_aliases in a form this test cannot replay`)
   }
   const pairs = [...effective.entries()]

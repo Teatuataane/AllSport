@@ -15,7 +15,7 @@ Drop one PNG per domain in this folder and it appears automatically on the Perso
 2. `calisthenics.png`
 3. `power.png`
 4. `speed.png`
-5. `anaerobic-endurance.png`
+5. `stamina.png`
 6. `aerobic-endurance.png`
 7. `flexibility.png`
 8. `body-awareness.png`

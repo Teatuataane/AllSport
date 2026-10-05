@@ -111,14 +111,19 @@ describe('the 5 Oct 2026 history migration agrees with the ladders', () => {
     expect(OCT).toContain('power(25.0 / x.metres, 1.06)')
   })
 
-  it('names the carries and the removed events as the roster now has them', () => {
+  it('names the carries as the roster now has them', () => {
     for (const m of valuesOf(OCT, 'carry').matchAll(/\('([^']+)', '([^']+)'\)/g)) {
       expect(getEventBySlug(m[2])!.inputMode, m[1]).toBe('weight+distance+time')
     }
-    for (const m of valuesOf(OCT, 'removed').matchAll(/\('([^']+)', '([^']+)'\)/g)) {
-      expect(getEventByName(m[1])).toBeUndefined()
-      expect(getEventBySlug(m[2])).toBeUndefined()
-    }
+  })
+
+  // 20260930011149 already removed Lunges, Ab Rollout and Shoulder Dislocate and
+  // kept their scores; this file must not touch them again.
+  it('leaves the events removed on 30 Sept alone', () => {
+    // The redefined guard still refuses new scores on them, so it is left out.
+    const g0 = OCT.indexOf('CREATE OR REPLACE FUNCTION public.enforce_relevelled_ladders()')
+    const outside = OCT.slice(0, g0) + OCT.slice(OCT.indexOf('$$;', g0))
+    expect(outside).not.toMatch(/'(lunges|ab-wheel-rollout|shoulder-dislocate)'/)
   })
 })
 

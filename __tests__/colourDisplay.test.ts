@@ -7,7 +7,7 @@ const slug = (name: string) => getEventByName(name)!.slug
 
 describe('bestScoreLabel', () => {
   it('writes the tier name where formatPR writes D-number', () => {
-    const label = bestScoreLabel({ slug: slug('Pushups'), best: { raw_score: 30001, weight_kg: null, difficulty_tier: '1 Arm Pushup' } })
+    const label = bestScoreLabel({ slug: slug('Pushups'), best: { raw_score: 40001, weight_kg: null, difficulty_tier: '1 Arm Pushup' } })
     expect(label).toBe('1 Arm Pushup · 1 reps')
   })
 

@@ -8,7 +8,7 @@ import { describe, it, expect } from 'vitest'
 import fs from 'node:fs'
 import path from 'node:path'
 import { estimatedOneRm, liftLabel, MAX_ESTIMATED_REPS } from '@/lib/scoring'
-import { EVENTS, getEventBySlug } from '@/lib/eventData'
+import { EVENTS, getEventBySlug, isTimedEffort } from '@/lib/eventData'
 import { STANDARDS } from '@/lib/standards'
 
 const MIGRATION = fs.readFileSync(
@@ -69,7 +69,7 @@ describe('estimatedOneRm', () => {
     expect(fn).toContain('round(round(NEW.weight_kg, 2) * 36 / (37 - least(NEW.reps, 10)), 1)')
     // Never mints a score on an unfitted entry (the guard's fitting-only exemption).
     expect(fn).toContain('IF NEW.weight_kg > 0 AND NEW.raw_score IS NOT NULL THEN')
-    const lifts = EVENTS.filter(e => e.inputMode === 'strength' && e.slug !== 'shoulder-dislocate')
+    const lifts = EVENTS.filter(e => e.inputMode === 'strength')
     const list = (marker: string) => {
       const from = fn.indexOf(marker)
       const body = fn.slice(fn.indexOf('(', from) + 1, fn.indexOf(')', from))
@@ -97,7 +97,7 @@ describe('the history migration', () => {
   })
 
   it('re-encodes exactly the strength events, and never Shoulder Dislocate', () => {
-    const lifts = EVENTS.filter(e => e.inputMode === 'strength' && e.slug !== 'shoulder-dislocate')
+    const lifts = EVENTS.filter(e => e.inputMode === 'strength')
     for (const e of lifts) {
       expect(MIGRATION).toContain(`'${e.name}'`)
       expect(MIGRATION).toContain(`'${e.slug}'`)
@@ -107,7 +107,7 @@ describe('the history migration', () => {
   })
 
   it('re-encodes nothing but the strength events', () => {
-    const lifts = EVENTS.filter(e => e.inputMode === 'strength' && e.slug !== 'shoulder-dislocate')
+    const lifts = EVENTS.filter(e => e.inputMode === 'strength')
     const listAfter = (marker: string) => {
       const from = MIGRATION.indexOf(marker)
       const body = MIGRATION.slice(MIGRATION.indexOf('IN (', from) + 4, MIGRATION.indexOf(')', MIGRATION.indexOf('IN (', from)))
@@ -162,17 +162,19 @@ describe('Toe Lift and Tibialis Curl', () => {
     expect(STANDARDS['tibialis-curl'].kind).toBe('raw')
   })
 
-  it('Anaerobic Endurance no longer needs a bodyweight', () => {
+  it('Stamina (was Anaerobic Endurance) no longer needs a bodyweight', () => {
     const ratio = EVENTS.filter(e => e.domainNumber === 5 && STANDARDS[e.slug]?.kind === 'ratio')
     expect(ratio).toEqual([])
   })
 })
 
-describe('Anaerobic Endurance is a 2-minute contest', () => {
+describe('Stamina is a 2-minute contest', () => {
   it('every rep event states the 2 minutes; holds run as long as possible', () => {
     for (const e of EVENTS.filter(e => e.domainNumber === 5)) {
       const isHold = e.inputMode === 'hold' || e.inputMode === 'weight+time'
-      if (!isHold) expect(e.rules, e.name).toMatch(/2 minutes|two minutes/i)
+        || (e.inputMode === 'difficulty+time' && !isTimedEffort(e.slug))
+      if (isHold) expect(e.rules, e.name).toMatch(/longest hold/i)
+      else expect(e.rules, e.name).toMatch(/2 minutes|two minutes/i)
     }
   })
 })

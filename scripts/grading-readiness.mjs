@@ -80,7 +80,7 @@ function roster() {
   return events
 }
 
-const DOMAINS = ['', 'Maximal Strength', 'Calisthenics', 'Power', 'Speed', 'Anaerobic Endurance',
+const DOMAINS = ['', 'Maximal Strength', 'Calisthenics', 'Power', 'Speed', 'Stamina',
   'Endurance', 'Flexibility', 'Body Awareness', 'Coordination', 'Aim & Precision']
 // The rule is IMPORTED, not restated. This script used to keep its own copy of
 // the (since retired) half-the-domain rule, and it drifted: when Flexibility went to sixteen

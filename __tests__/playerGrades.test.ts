@@ -37,20 +37,34 @@ describe('which ladder applies', () => {
 
 describe('an event\'s colour', () => {
   it('reproduces the review: one 1-arm push-up is Hiriwa for a Master', () => {
-    const g = eventGrade(ev('Pushups'), [row('Pushups', 30001, { difficulty_tier: '1 Arm Pushup' })], master)
+    const g = eventGrade(ev('Pushups'), [row('Pushups', 40001, { difficulty_tier: '1 Arm Pushup' })], master)
     expect(g).toEqual({
       slug: ev('Pushups').slug, rung: 9, gradeable: true, played: true,
-      best: { raw_score: 30001, weight_kg: null, difficulty_tier: '1 Arm Pushup' },
+      best: { raw_score: 40001, weight_kg: null, difficulty_tier: '1 Arm Pushup' },
     })
   })
 
+  // Value: protects=a row stored under an old level never grading as whatever
+  // level its band now means; fails_when=the stored-level check is dropped and an
+  // old 'L-Sit' (band 4) grades as the new 'V Sit' before its migration lands,
+  // conferring Taniwha for good; why_new=no test fed eventGrade a row whose level
+  // and band disagree; seam=none
+  it('ignores a level that is not the ladder\'s level at its band', () => {
+    const old = row('Compression', 40030, { difficulty_tier: 'L-Sit' })
+    expect(eventGrade(ev('Compression'), [old], openMan).rung).toBe(0)
+    const moved = row('Compression', 30030, { difficulty_tier: 'L Sit' })
+    expect(eventGrade(ev('Compression'), [old, moved], openMan).best?.raw_score).toBe(30030)
+    // A row with no stored level grades as before.
+    expect(eventGrade(ev('Compression'), [row('Compression', 30030)], openMan).rung).toBeGreaterThan(0)
+  })
+
   it('carries the score that earned the colour, for HOME to show', () => {
-    const rows = [row('Pushups', 20010), row('Pushups', 20049)]
-    expect(eventGrade(ev('Pushups'), rows, openMan).best?.raw_score).toBe(20049)
+    const rows = [row('Pushups', 30010), row('Pushups', 30049)]
+    expect(eventGrade(ev('Pushups'), rows, openMan).best?.raw_score).toBe(30049)
   })
 
   it('takes the best row, not the latest', () => {
-    const rows = [row('Pushups', 20049), row('Pushups', 20010)]
+    const rows = [row('Pushups', 30049), row('Pushups', 30010)]
     expect(eventGrade(ev('Pushups'), rows, openMan).rung).toBe(8)
   })
 
@@ -65,7 +79,8 @@ describe('an event\'s colour', () => {
 
   it('lets the rating lift a game event past the drill cap, after ten games', () => {
     const rope = ev('Jump Rope')
-    const drills = [row('Jump Rope', 4 * 10000 + 10, { difficulty_tier: 'Single Dutch' })]
+    // Double Dutch is D3 since 5 Oct 2026; 10 reps there is Kahurangi, the drill cap.
+    const drills = [row('Jump Rope', 2 * 10000 + 10, { difficulty_tier: 'Double Dutch' })]
     expect(eventGrade(rope, drills, openMan).rung).toBe(6)
     expect(eventGrade(rope, drills, openMan, { rating: 1215, games: 12 }).rung).toBe(8)
     expect(eventGrade(rope, drills, openMan, { rating: 1215, games: 9 }).rung).toBe(6)

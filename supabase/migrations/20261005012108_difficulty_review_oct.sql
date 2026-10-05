@@ -4,17 +4,20 @@
 -- (5 Oct 2026). The code half is lib/eventData.ts, compiled from that sheet.
 -- What this file does, all in one transaction:
 --
---   ROSTER (126 events, re-seeds event_domains IN FULL, which is the rule for
---   any migration that changes the roster; __tests__/sqlMirrors.test.ts reads the
+--   BUILT ON 20260930011149 (the Stamina roster, already applied), which
+--   removed Lunges, Ab Rollout and Shoulder Dislocate (scores KEPT as orphan
+--   names), renamed Pushups and re-levelled L-Sit Hold as Compression. None of
+--   that is redone here. The 5 Oct sheet was edited from an older copy and also
+--   asked for Lunges and Shoulder Dislocate to go and for a Floor Tuck Hold on
+--   L-Sit; the first is already done and the second is superseded by the
+--   Compression ladder.
+--
+--   ROSTER (still 128 events; re-seeds event_domains IN FULL, the rule for any
+--   migration that changes the roster; __tests__/sqlMirrors.test.ts reads the
 --   newest seed):
---     REMOVED  Lunges (Anaerobic Endurance) and Shoulder Dislocate (Flexibility).
---              Every score is archived then deleted; their draws in
---              session_events are KEPT (a draw is history, not a score).
---     RENAMED  Repeat High Jump -> Repeat Vault, Chinup Contest -> Chinups,
---              Pushup Contest -> Pushups. SLUGS DO NOT MOVE, so workout entries,
---              plans and exemptions are untouched; only session_events.event_name
---              (which results and PRs group by) is swept. The ladders are
---              unchanged, so history carries over.
+--     RENAMED  Repeat High Jump -> Repeat Vault, Chinup Contest -> Chinups.
+--              SLUGS DO NOT MOVE; only session_events.event_name (which
+--              results and PRs group by) is swept. Ladders unchanged.
 --     DOMAIN 6 Aerobic Endurance -> Endurance (session_events.domain_name).
 --
 --   LADDERS (same mode): 25 events renamed, reordered or lost rungs. A row on a
@@ -49,7 +52,12 @@
 --   FUNCTIONS: guard_workout_entries_write and record_entry_match list the
 --   pure contests by slug (they have no Game rung to name); the thirteen join
 --   Wrestling. enforce_lift_estimate refuses a Tibialis Curl that still names a
---   level, the old-bundle shape, instead of one that does not.
+--   level, the old-bundle shape, instead of one that does not. And
+--   enforce_relevelled_ladders (20260930011149) is redefined LAST, after the
+--   repair, to guard every ladder this file changes as well as its own five,
+--   and to refuse a level on any event that no longer has levels: a kaiwhakawā
+--   tab on the old bundle would otherwise keep writing old-band scores that
+--   nothing moves again.
 --
 --   Then placements are replayed for every closed, unvoided session touched,
 --   and every touched player's grades watermark is cleared.
@@ -92,12 +100,6 @@ INSERT INTO tier_map VALUES
   ('Iron Cross', 'Forearm Supported Iron Cross', 4, 'Forearm Iron Cross', 4),
   ('Iron Cross', 'Banded Iron Cross', 5, 'Banded Iron Cross', 5),
   ('Iron Cross', 'Iron Cross', 6, 'Iron Cross', 6),
-  ('L-Sit Hold', '2 Feet Assisted Tuck', 0, '2 Feet Assisted Tuck', 0),
-  ('L-Sit Hold', '1 Foot Assisted Tuck', 1, '1 Foot Assisted Tuck', 1),
-  ('L-Sit Hold', 'Tuck Hold', 2, 'Tuck Hold', 2),
-  ('L-Sit Hold', '1 Leg L-Sit', 3, '1 Leg L-Sit', 4),
-  ('L-Sit Hold', 'L-Sit', 4, 'L-Sit', 5),
-  ('L-Sit Hold', 'V-Sit', 5, 'V-Sit', 6),
   ('Finger Pushup', 'Elevated Knee', 0, 'Elevated Knee', 0),
   ('Finger Pushup', 'Knee Finger Pushup', 1, 'Knee Finger Pushup', 1),
   ('Finger Pushup', 'Finger Pushup', 2, 'Finger Pushup', 2),
@@ -278,9 +280,6 @@ CREATE TEMP TABLE carry (event_name text PRIMARY KEY, slug text NOT NULL) ON COM
 INSERT INTO carry VALUES
   ('Sandbag Carry', 'sandbag-carry'), ('Farmer Carry', 'farmer-carry'), ('Weighted Drag', 'weighted-drag');
 
-CREATE TEMP TABLE removed (event_name text PRIMARY KEY, slug text NOT NULL) ON COMMIT DROP;
-INSERT INTO removed VALUES ('Lunges', 'lunges'), ('Shoulder Dislocate', 'shoulder-dislocate');
-
 -- Every event whose rows this file may touch, by name and slug.
 CREATE TEMP TABLE affected (event_name text PRIMARY KEY, slug text) ON COMMIT DROP;
 INSERT INTO affected
@@ -289,7 +288,6 @@ UNION SELECT event_name, slug FROM contest
 UNION SELECT event_name, slug FROM effort
 UNION SELECT event_name, slug FROM throw_map
 UNION SELECT event_name, slug FROM carry
-UNION SELECT event_name, slug FROM removed
 UNION SELECT 'Animal Crawl', 'animal-crawl'
 UNION SELECT 'Tibialis Curl', 'tibialis-curl';
 
@@ -595,10 +593,8 @@ CREATE TEMP TABLE doomed_results ON COMMIT DROP AS
 SELECT r.id FROM results r
 JOIN session_events se ON se.id = r.event_id
 WHERE
-  -- a removed event
-  se.event_name IN (SELECT event_name FROM removed)
   -- a removed rung on a ladder that otherwise survives
-  OR EXISTS (SELECT 1 FROM tier_map tm WHERE tm.event_name = se.event_name
+  EXISTS (SELECT 1 FROM tier_map tm WHERE tm.event_name = se.event_name
              AND tm.old_tier = r.difficulty_tier AND tm.new_tier IS NULL)
   -- a contest drill (anything with a level other than the Game)
   OR (se.event_name IN (SELECT event_name FROM contest)
@@ -614,8 +610,7 @@ WHERE
 
 CREATE TEMP TABLE doomed_entries ON COMMIT DROP AS
 SELECT e.id FROM workout_entries e
-WHERE e.event_slug IN (SELECT slug FROM removed)
-  OR EXISTS (SELECT 1 FROM tier_map tm JOIN affected a ON a.event_name = tm.event_name
+WHERE EXISTS (SELECT 1 FROM tier_map tm JOIN affected a ON a.event_name = tm.event_name
              WHERE a.slug = e.event_slug AND tm.old_tier = e.difficulty_tier AND tm.new_tier IS NULL)
   OR (e.event_slug IN (SELECT slug FROM contest)
       AND e.difficulty_tier IS NOT NULL AND e.difficulty_tier <> 'Game')
@@ -817,10 +812,13 @@ WHERE e.event_slug = 'tibialis-curl'
 -- ─── 7. session_events: names, modes, the domain ─────────────────────────────
 -- Results and PRs group by session_events.event_name (CLAUDE.md §9), so a
 -- rename is swept here. The slugs do not change.
-UPDATE session_events SET event_name = 'Repeat Vault' WHERE event_name = 'Repeat High Jump';
-UPDATE session_events SET event_name = 'Chinups' WHERE event_name = 'Chinup Contest';
-UPDATE session_events SET event_name = 'Pushups' WHERE event_name = 'Pushup Contest';
-UPDATE session_events SET domain_name = 'Endurance' WHERE domain_name = 'Aerobic Endurance';
+-- The slug is set too, as 20260930011149 did: a draw with a NULL slug would be
+-- invisible to every step below that finds rows by slug.
+UPDATE session_events SET event_name = 'Repeat Vault', event_slug = 'repeat-high-jump'
+ WHERE event_name = 'Repeat High Jump' OR event_slug = 'repeat-high-jump';
+UPDATE session_events SET event_name = 'Chinups', event_slug = 'chin-up-contest'
+ WHERE event_name = 'Chinup Contest' OR event_slug = 'chin-up-contest';
+UPDATE session_events SET domain_name = 'Endurance' WHERE domain_name = 'Aerobic Endurance' AND domain_number = 6;
 
 -- input_mode is the fallback when a name cannot be resolved; keep it true.
 UPDATE session_events SET input_mode = 'sport' WHERE event_name IN (SELECT event_name FROM contest);
@@ -829,8 +827,9 @@ UPDATE session_events SET input_mode = 'distance+time' WHERE event_name IN (SELE
 UPDATE session_events SET input_mode = 'weight+distance+time' WHERE event_name IN (SELECT event_name FROM carry);
 UPDATE session_events SET input_mode = 'weight+reps' WHERE event_name = 'Tibialis Curl';
 
--- ─── 8. event_domains: the roster mirrored into SQL, 126 rows ───────────────
--- Per domain: 1: 14, 2: 12, 3: 12, 4: 12, 5: 12, 6: 12, 7: 15, 8: 13, 9: 12, 10: 12.
+-- ─── 8. event_domains: the roster mirrored into SQL, 128 rows ───────────────
+-- Per domain: 1: 14, 2: 13, 3: 12, 4: 12, 5: 13, 6: 12, 7: 15, 8: 13, 9: 12, 10: 12.
+-- Names and slugs only change for the two renames; re-seeded in full anyway.
 DELETE FROM event_domains;
 INSERT INTO event_domains (event_name, domain_number, slug) VALUES
   ('1A Press', 1, 'one-arm-press'),
@@ -850,13 +849,14 @@ INSERT INTO event_domains (event_name, domain_number, slug) VALUES
   ('1 Leg Squat', 2, '1-leg-squat'),
   ('Back Lever', 2, 'back-lever'),
   ('Chin Hang', 2, 'chin-hang'),
+  ('Compression', 2, 'l-sit-hold'),
   ('Front Lever', 2, 'front-lever'),
   ('Handstand', 2, 'hand-walk'),
   ('Headstand', 2, 'headstand'),
   ('Human Flag', 2, 'flag'),
   ('Iron Cross', 2, 'iron-cross'),
-  ('L-Sit Hold', 2, 'l-sit-hold'),
   ('Planche', 2, 'planche'),
+  ('Reverse Maltese', 2, 'reverse-maltese'),
   ('Skull Hang', 2, 'skull-hang'),
   ('Windshield Wipers', 2, 'windshield-wipers'),
   ('1A Snatch', 3, 'one-arm-snatch'),
@@ -883,12 +883,13 @@ INSERT INTO event_domains (event_name, domain_number, slug) VALUES
   ('T-Race', 4, 't-race'),
   ('Tag', 4, 'tag'),
   ('Touch Rugby', 4, 'touch-rugby'),
-  ('Ab Rollout', 5, 'ab-wheel-rollout'),
+  ('Back Extension', 5, 'back-extension'),
   ('Calf Raises', 5, 'calf-raises'),
   ('Chinups', 5, 'chin-up-contest'),
   ('Finger Pushup', 5, 'finger-push-up'),
   ('GHD Situp', 5, 'ghd-situp'),
   ('Hamstring Curl', 5, 'hamstring-curl'),
+  ('Hollow Hold', 5, 'hollow-hold'),
   ('Leg Ext Hold', 5, 'leg-extension'),
   ('Pushups', 5, 'push-up-contest'),
   ('Sandbag to Shoulder', 5, 'sandbag-to-shoulder'),
@@ -908,20 +909,20 @@ INSERT INTO event_domains (event_name, domain_number, slug) VALUES
   ('Ski Erg', 6, 'ski-erg'),
   ('Weighted Drag', 6, 'weighted-drag'),
   ('Bridge', 7, 'bridge'),
+  ('External Wrist Stretch', 7, 'reverse-wrist-stretch'),
   ('Foot Behind Head Pose', 7, 'foot-behind-head'),
   ('Forward Fold', 7, 'forward-fold'),
   ('Forward Split', 7, 'front-split'),
   ('Full Bound Twist', 7, 'full-bound-twist'),
+  ('Internal Wrist Stretch', 7, 'wrist-stretch'),
   ('Middle Split', 7, 'middle-split'),
   ('Needle Pose', 7, 'needle-pose'),
   ('Pancake', 7, 'pancake'),
   ('Plie Squat', 7, 'plie-squat'),
   ('Rear Hand Clasp', 7, 'rear-hand-clasp'),
-  ('Reverse Wrist Stretch', 7, 'reverse-wrist-stretch'),
   ('Seiza', 7, 'seiza'),
   ('Side Bend', 7, 'side-bend'),
   ('Standing Split', 7, 'standing-split'),
-  ('Wrist Stretch', 7, 'wrist-stretch'),
   ('Balance Ball', 8, 'balance-ball'),
   ('Breakdancing', 8, 'breakdancing'),
   ('Climbing', 8, 'rope-climb'),
@@ -960,22 +961,7 @@ INSERT INTO event_domains (event_name, domain_number, slug) VALUES
   ('Netball', 10, 'netball'),
   ('Table Tennis', 10, 'table-tennis');
 
--- ─── 9. Everything else that stores a slug ───────────────────────────────────
--- An alias matching no event does nothing at all (20260920220344), so the two
--- removed events' aliases are repointed or dropped. A bodyweight lunge is a
--- rung of 1 Leg Squat; a shoulder dislocate has no event left. Named alias by
--- alias, as seeded by 20260915214702 and 20260918023038, so
--- __tests__/trainingLoad.test.ts can replay them; the orphan assertion at the
--- end refuses the whole file if any other alias still points at either slug.
-UPDATE activity_aliases SET event_slug = '1-leg-squat' WHERE alias IN ('lunge', 'walking lunges');
-DELETE FROM activity_aliases WHERE alias IN ('shoulder dislocates', 'dislocates');
-
-UPDATE workouts SET planned_events = array_remove(array_remove(planned_events, 'lunges'), 'shoulder-dislocate')
-WHERE planned_events && ARRAY['lunges', 'shoulder-dislocate'];
-
-DELETE FROM grade_exemptions WHERE event_slug IN (SELECT slug FROM removed);
-
--- ─── 10. Replay event placements for closed sessions ─────────────────────────
+-- ─── 9. Replay event placements for closed sessions ─────────────────────────
 DO $$
 DECLARE s record;
 BEGIN
@@ -994,6 +980,130 @@ END $$;
 UPDATE players SET grades_checked_at = NULL
 WHERE id IN (SELECT player_id FROM touched_players WHERE player_id IS NOT NULL);
 
+-- ─── 10. Guard the new ladders against the old bundle ───────────────────────
+-- Redefines enforce_relevelled_ladders (20260930011149), whose header asks any
+-- later ladder change to do exactly this. Created AFTER the repair and the
+-- placement replay, so it never sees a row mid-move; its triggers already
+-- exist. __tests__/staminaRoster.test.ts reads the newest definition and pins
+-- its level list to lib/eventData.ts.
+CREATE OR REPLACE FUNCTION public.enforce_relevelled_ladders()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
+DECLARE
+  v_slug text;
+BEGIN
+  -- On UPDATE only a change to the SCORE or the EVENT is checked. Placement
+  -- writes at session close, band stamps and erasure's name rewrite must never
+  -- be refused because of a row they did not change, or one bad row would stop
+  -- a whole game from closing. Moving a row onto another event IS checked, or
+  -- an old-format score could be repointed onto a re-levelled event unseen.
+  -- (Separate IFs per table: a plpgsql expression naming NEW.event_id fails on
+  -- workout_entries, which has no such column, even in a branch not taken.)
+  IF TG_OP = 'UPDATE' AND NEW.raw_score IS NOT DISTINCT FROM OLD.raw_score
+     AND NEW.difficulty_tier IS NOT DISTINCT FROM OLD.difficulty_tier THEN
+    IF TG_TABLE_NAME = 'results' THEN
+      IF NEW.event_id IS NOT DISTINCT FROM OLD.event_id THEN RETURN NEW; END IF;
+    ELSIF NEW.event_slug IS NOT DISTINCT FROM OLD.event_slug THEN
+      RETURN NEW;
+    END IF;
+  END IF;
+
+  IF TG_TABLE_NAME = 'results' THEN
+    SELECT CASE
+             WHEN event_slug IS NOT NULL THEN event_slug
+             WHEN event_name IN ('L-Sit Hold', 'Compression') THEN 'l-sit-hold'
+             WHEN event_name IN ('Pushup Contest', 'Pushups') THEN 'push-up-contest'
+             WHEN event_name IN ('Wrist Stretch', 'Internal Wrist Stretch') THEN 'wrist-stretch'
+             WHEN event_name IN ('Reverse Wrist Stretch', 'External Wrist Stretch') THEN 'reverse-wrist-stretch'
+             WHEN event_name = 'Calf Raises' THEN 'calf-raises'
+             WHEN event_name = 'Lunges' THEN 'lunges'
+             WHEN event_name = 'Ab Rollout' THEN 'ab-wheel-rollout'
+             WHEN event_name = 'Shoulder Dislocate' THEN 'shoulder-dislocate'
+             -- ADDED 20261005012108: any other draw with no slug, by its name.
+             ELSE (SELECT ed.slug FROM event_domains ed WHERE ed.event_name = session_events.event_name LIMIT 1)
+           END
+      INTO v_slug FROM session_events WHERE id = NEW.event_id;
+  ELSE
+    v_slug := NEW.event_slug;
+  END IF;
+
+  IF TG_OP = 'INSERT' AND v_slug IN ('lunges', 'ab-wheel-rollout', 'shoulder-dislocate') THEN
+    RAISE EXCEPTION 'That event is no longer on the roster, so it cannot be scored. Refresh the app'
+      USING ERRCODE = '22023';
+  END IF;
+
+
+  -- ADDED 20261005012108: these events lost their levels on 5 Oct 2026, so any
+  -- score that still names one comes from the old bundle and would decode as a
+  -- number on the wrong scale (a Timed sprint as a result, a 1000m rung as a
+  -- predicted time). The thirteen contests must also be a bare 0, 1 or 2.
+  IF v_slug IN ('arm-wrestling', 'tug-of-war', '100m-sprint', 'tag', 't-race', 'beach-flags',
+       '200m-sprint', 'rats-and-rabbits', 'speed-chess', 'capture-the-flag', 'kabaddi',
+       'tae-kwon-do', 'fencing', 'javelin-throw', 'shot-put', 'running', 'cycling', 'ski-erg',
+       'row-erg', 'scooting', 'sandbag-carry', 'farmer-carry', 'weighted-drag',
+       'tibialis-curl')
+     AND NEW.raw_score IS NOT NULL AND NEW.difficulty_tier IS NOT NULL THEN
+    RAISE EXCEPTION 'That event no longer has levels: refresh the app and enter the score again'
+      USING ERRCODE = '22023';
+  END IF;
+  IF v_slug IN ('arm-wrestling', 'tug-of-war', '100m-sprint', 'tag', 't-race', 'beach-flags',
+       '200m-sprint', 'rats-and-rabbits', 'speed-chess', 'capture-the-flag', 'kabaddi',
+       'tae-kwon-do', 'fencing')
+     AND NEW.raw_score IS NOT NULL AND NEW.raw_score NOT IN (0, 1, 2) THEN
+    RAISE EXCEPTION 'That event is now a win, draw or loss: refresh the app and enter the result again'
+      USING ERRCODE = '22023';
+  END IF;
+
+  IF v_slug IN ('l-sit-hold', 'push-up-contest', 'calf-raises', 'wrist-stretch', 'reverse-wrist-stretch',
+       'iron-cross', 'finger-push-up', 'middle-split', 'pancake', 'touch-rugby',
+       'american-football', 'rope-climb', 'breakdancing', 'trampolining', 'jump-rope',
+       'gymnastics', 'skate', 'foot-juggling', 'slackline', 'volleyball', 'baseball',
+       'teqball', 'tennis', 'cricket', 'netball', 'darts', 'disc-golf', 'golf', 'table-tennis',
+       'animal-crawl')
+     AND NEW.raw_score IS NOT NULL
+     AND NOT EXISTS (
+       SELECT 1 FROM (VALUES
+         ('iron-cross', '2 Feet Top Hold', 0), ('iron-cross', 'Straight Bar Top Hold', 1), ('iron-cross', 'Ring Top Hold', 2), ('iron-cross', 'Elbow Iron Cross', 3), ('iron-cross', 'Forearm Iron Cross', 4), ('iron-cross', 'Banded Iron Cross', 5), ('iron-cross', 'Iron Cross', 6),
+         ('l-sit-hold', 'Curl Up', 0), ('l-sit-hold', 'V Up', 1), ('l-sit-hold', 'Tuck Hold', 2), ('l-sit-hold', 'L Sit', 3), ('l-sit-hold', 'V Sit', 4),
+         ('push-up-contest', 'Hands Up Knee Pushup', 0), ('push-up-contest', 'Knee Pushup', 1), ('push-up-contest', 'Elevated Pushup', 2), ('push-up-contest', 'Pushup', 3), ('push-up-contest', '1 Arm Pushup', 4),
+         ('finger-push-up', 'Elevated Knee', 0), ('finger-push-up', 'Knee Finger Pushup', 1), ('finger-push-up', 'Finger Pushup', 2), ('finger-push-up', '1 Arm Finger Pushup', 3),
+         ('calf-raises', 'Calf Raise', 0), ('calf-raises', 'Deficit Calf Raise', 1), ('calf-raises', 'Toe Calf Raise', 2), ('calf-raises', 'Single Leg Toe Raise', 3),
+         ('middle-split', '3 Blocks', 0), ('middle-split', '2 Blocks', 1), ('middle-split', '1.5 Blocks', 2), ('middle-split', '1 Block', 3), ('middle-split', '0.5 Blocks', 4), ('middle-split', 'Middle Split', 5),
+         ('pancake', '3 Blocks', 0), ('pancake', '2 Blocks', 1), ('pancake', '1.5 Blocks', 2), ('pancake', '1 Block', 3), ('pancake', '0.5 Blocks', 4), ('pancake', 'Elbows to Floor', 5), ('pancake', 'Head to Floor', 6),
+         ('wrist-stretch', 'Hand Assisted', 0), ('wrist-stretch', 'Hand Forward', 1), ('wrist-stretch', 'Fingers Inwards', 2), ('wrist-stretch', 'Fingers Backwards', 3), ('wrist-stretch', 'Backwards Plank', 4),
+         ('reverse-wrist-stretch', 'Hand Assisted', 0), ('reverse-wrist-stretch', 'Fingers Outwards', 1), ('reverse-wrist-stretch', 'Fingers Backwards', 2), ('reverse-wrist-stretch', 'Fingers Inwards', 3), ('reverse-wrist-stretch', 'Inwards Plank', 4),
+         ('animal-crawl', 'Crawl', 0), ('animal-crawl', 'Bear Crawl', 1), ('animal-crawl', 'Lizard Crawl', 2), ('animal-crawl', 'Duck Walk', 3),
+         ('touch-rugby', 'Passes', 0), ('touch-rugby', 'Pass (2m)', 1), ('touch-rugby', 'Pass (5m)', 2), ('touch-rugby', 'Pass (10m)', 3), ('touch-rugby', 'Game', 4),
+         ('american-football', 'Passes', 0), ('american-football', 'Pass (2m)', 1), ('american-football', 'Pass (5m)', 2), ('american-football', 'Pass (10m)', 3), ('american-football', 'Pass (20m)', 4), ('american-football', 'Game', 5),
+         ('rope-climb', 'Assisted Hang', 0), ('rope-climb', 'Hang', 1), ('rope-climb', 'No Feet Hang', 2), ('rope-climb', 'Feet Assisted Climb', 3), ('rope-climb', 'No Feet Climb', 4), ('rope-climb', 'Game', 5),
+         ('breakdancing', 'Top Rock', 0), ('breakdancing', 'Footwork', 1), ('breakdancing', 'Top Rock + Footwork', 2), ('breakdancing', 'Top Rock + Footwork + Freeze', 3), ('breakdancing', 'Game', 4),
+         ('trampolining', 'Basic Bounce', 0), ('trampolining', 'Bounce to Butt', 1), ('trampolining', '360 Spin', 2), ('trampolining', 'Forward Flip', 3), ('trampolining', 'Back Flip', 4), ('trampolining', 'Game', 5),
+         ('jump-rope', 'Basic Two-Foot Jump', 0), ('jump-rope', 'Single Dutch', 1), ('jump-rope', 'Double Dutch', 2), ('jump-rope', 'Game', 3),
+         ('gymnastics', 'Forward Roll', 0), ('gymnastics', 'Backward Roll', 1), ('gymnastics', 'Cartwheel', 2), ('gymnastics', 'Handspring', 3), ('gymnastics', 'Game', 4),
+         ('skate', 'Board Tilts', 0), ('skate', '360 Spin', 1), ('skate', 'Ollie', 2), ('skate', 'Pop Shove It', 3), ('skate', 'Game', 4),
+         ('foot-juggling', '2 Bounce', 0), ('foot-juggling', '1 Bounce', 1), ('foot-juggling', 'No Bounce', 2), ('foot-juggling', 'Game', 3),
+         ('slackline', 'Single Leg Balance', 0), ('slackline', 'Beam', 1), ('slackline', 'Slackline', 2), ('slackline', 'Game', 3),
+         ('volleyball', 'Dig Passes (2m)', 0), ('volleyball', 'Dig Passes (5m)', 1), ('volleyball', 'Partner Digs (10m)', 2), ('volleyball', 'Partner Digs (20m)', 3), ('volleyball', 'Game', 4),
+         ('baseball', 'Bat & Catch', 0), ('baseball', 'Bat & Catch (2m)', 1), ('baseball', 'Bat & Catch (5m)', 2), ('baseball', 'Bat & Catch (10m)', 3), ('baseball', 'Bat & Catch (20m)', 4), ('baseball', 'Game', 5),
+         ('teqball', 'Bounce Pass', 0), ('teqball', 'Bounce Pass (2m)', 1), ('teqball', 'Bounce Pass (5m)', 2), ('teqball', 'Game', 3),
+         ('tennis', 'Vertical Juggles', 0), ('tennis', 'Hits (2m)', 1), ('tennis', 'Hits (5m)', 2), ('tennis', 'Hits (10m)', 3), ('tennis', 'Game', 4),
+         ('cricket', 'Bat & Catch', 0), ('cricket', 'Bat & Catch (2m)', 1), ('cricket', 'Bat & Catch (5m)', 2), ('cricket', 'Bat & Catch (10m)', 3), ('cricket', 'Bat & Catch (20m)', 4), ('cricket', 'Game', 5),
+         ('netball', 'Shot Under Hoop', 0), ('netball', 'Shot (2m)', 1), ('netball', 'Shot (5m)', 2), ('netball', 'Game', 3),
+         ('darts', 'Hit the Board', 0), ('darts', 'Named Number', 1), ('darts', 'Game', 2),
+         ('disc-golf', 'Putt (2m)', 0), ('disc-golf', 'Putt (5m)', 1), ('disc-golf', 'Putt (10m)', 2), ('disc-golf', 'Game', 3),
+         ('golf', 'Putt (2m)', 0), ('golf', 'Putt (5m)', 1), ('golf', 'Chip (10m)', 2), ('golf', 'Game', 3),
+         ('table-tennis', 'Vertical Juggles', 0), ('table-tennis', 'Wall Juggles', 1), ('table-tennis', 'Game', 2)
+       ) AS lv(slug, tier, idx)
+       WHERE lv.slug = v_slug AND lv.tier = NEW.difficulty_tier
+         AND floor(NEW.raw_score / 10000) = lv.idx) THEN
+    RAISE EXCEPTION 'That level has changed: refresh the app and enter the score again'
+      USING ERRCODE = '22023';
+  END IF;
+  RETURN NEW;
+END $$;
+
 -- ─── Assertions. A rewrite that silently fails must not report success. ─────
 DO $$
 DECLARE
@@ -1002,29 +1112,21 @@ DECLARE
   v_ent_archived int;
   v_cited int;
 BEGIN
-  IF (SELECT count(*) FROM event_domains) <> 126 THEN
-    RAISE EXCEPTION 'difficulty review: event_domains holds % rows, expected 126', (SELECT count(*) FROM event_domains);
+  IF (SELECT count(*) FROM event_domains) <> 128 THEN
+    RAISE EXCEPTION 'difficulty review: event_domains holds % rows, expected 128', (SELECT count(*) FROM event_domains);
   END IF;
   IF EXISTS (SELECT 1 FROM event_domains GROUP BY slug HAVING count(*) > 1) THEN
     RAISE EXCEPTION 'difficulty review: a slug is seeded twice';
   END IF;
   IF EXISTS (
-    SELECT 1 FROM (VALUES (1,14),(2,12),(3,12),(4,12),(5,12),(6,12),(7,15),(8,13),(9,12),(10,12)) AS want(d, n)
+    SELECT 1 FROM (VALUES (1,14),(2,13),(3,12),(4,12),(5,13),(6,12),(7,15),(8,13),(9,12),(10,12)) AS want(d, n)
      WHERE n <> (SELECT count(*) FROM event_domains WHERE domain_number = want.d)
   ) THEN
-    RAISE EXCEPTION 'difficulty review: per-domain counts are not 14/12/12/12/12/12/15/13/12/12';
+    RAISE EXCEPTION 'difficulty review: per-domain counts are not 14/13/12/12/13/12/15/13/12/12';
   END IF;
 
-  -- Nothing may still store a removed slug or a retired name.
-  IF EXISTS (SELECT 1 FROM results r JOIN session_events se ON se.id = r.event_id
-              WHERE se.event_name IN (SELECT event_name FROM removed))
-     OR EXISTS (SELECT 1 FROM workout_entries WHERE event_slug IN (SELECT slug FROM removed))
-     OR EXISTS (SELECT 1 FROM workouts WHERE planned_events && ARRAY['lunges', 'shoulder-dislocate'])
-     OR EXISTS (SELECT 1 FROM grade_exemptions WHERE event_slug IN (SELECT slug FROM removed)) THEN
-    RAISE EXCEPTION 'difficulty review: a score, plan or exemption still names a removed event';
-  END IF;
   IF EXISTS (SELECT 1 FROM session_events
-              WHERE event_name IN ('Repeat High Jump', 'Chinup Contest', 'Pushup Contest')
+              WHERE event_name IN ('Repeat High Jump', 'Chinup Contest')
                  OR domain_name = 'Aerobic Endurance') THEN
     RAISE EXCEPTION 'difficulty review: a session_events row still carries a retired name';
   END IF;
@@ -1084,8 +1186,8 @@ BEGIN
 
   SELECT count(*) INTO v_res_archived FROM public.results_difficulty_archive_20261005012108;
   SELECT count(*) INTO v_ent_archived FROM public.workout_entries_difficulty_archive_20261005012108;
-  SELECT count(*) INTO v_cited FROM grade_awards WHERE events && ARRAY['lunges', 'shoulder-dislocate'];
-  RAISE NOTICE 'difficulty review: % results and % workout entries archived; % rows pre-imaged; % conferred colours cite a removed event (they stand)',
+  SELECT count(*) INTO v_cited FROM grade_awards WHERE events && ARRAY(SELECT slug FROM affected);
+  RAISE NOTICE 'difficulty review: % results and % workout entries archived; % rows pre-imaged; % conferred colours cite an event whose levels changed (they stand: a recheck never withdraws)',
     v_res_archived, v_ent_archived,
     (SELECT count(*) FROM public.results_difficulty_preimage_20261005012108)
       + (SELECT count(*) FROM public.workout_entries_difficulty_preimage_20261005012108),

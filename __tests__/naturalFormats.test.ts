@@ -3,7 +3,7 @@ import {
   brzycki, bestSet, riegel, estimateFromSets, estimateFromDistance, paceLabel,
   distanceRungs, takesDistance, takesSets, MAX_DISTANCE_RATIO,
 } from '@/lib/naturalFormats'
-import { getEventBySlug, decodeDiffTime, isTimedEffort } from '@/lib/eventData'
+import { EVENTS, getEventBySlug, decodeDiffTime, isTimedEffort } from '@/lib/eventData'
 import { MAX_ESTIMATED_REPS } from '@/lib/scoring'
 
 // Running takes a distance natively since 5 Oct 2026; Burpee Broad Jump is
@@ -115,6 +115,9 @@ describe('which events take which format', () => {
     expect(takesSets(running)).toBe(false)
     // A load and reps that is not a lift (Tibialis Curl, 5 Oct 2026).
     expect(takesSets(getEventBySlug('tibialis-curl')!)).toBe(false)
+    // Every `strength` event is a lift since Shoulder Dislocate (a grip width
+    // in cm) left the roster in Sept 2026.
+    expect(EVENTS.filter(e => e.inputMode === 'strength').every(takesSets)).toBe(true)
   })
 
   it('distance belongs to raced distance events', () => {

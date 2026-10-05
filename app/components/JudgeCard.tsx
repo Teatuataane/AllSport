@@ -51,7 +51,7 @@ const DOMAINS = [
   { number: 2, name: 'Calisthenics' },
   { number: 3, name: 'Power' },
   { number: 4, name: 'Speed' },
-  { number: 5, name: 'Anaerobic Endurance' },
+  { number: 5, name: 'Stamina' },
   { number: 6, name: 'Endurance' },
   { number: 7, name: 'Flexibility' },
   { number: 8, name: 'Body Awareness' },

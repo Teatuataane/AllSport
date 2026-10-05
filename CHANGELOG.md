@@ -2,10 +2,10 @@
 
 All notable changes to AllSport are documented here.
 
-## [0.27.0.0] - 2026-10-05
+## [0.28.0.0] - 2026-10-05
 
 ### Changed
-- **The 5 October difficulty review is in.** Every change on Tāne's sheet is built: new levels on 25 events, Shoulder Dislocate and Lunges removed (126 events), Repeat High Jump renamed Repeat Vault, Chinup Contest renamed Chinups and Pushup Contest renamed Pushups, and Aerobic Endurance renamed Endurance.
+- **The 5 October difficulty review is in.** New levels on 24 events, Repeat High Jump renamed Repeat Vault, Chinup Contest renamed Chinups, and Aerobic Endurance renamed Endurance. (Lunges and Shoulder Dislocate, also on the sheet, already went in 0.27.0.0, and L-Sit Hold's levels are the Compression ladder from that release.)
 - **Runs, rides, ski, row and scooting take any distance and time.** Your effort ranks on the 1000m time it predicts, so the best effort wins: a 4:00 kilometre beats a 15:00 3km (which predicts 4:41). Anything shorter than 1000m does not count. Animal Crawl works the same way over 25m, with the crawl style as the level.
 - **Sandbag Carry, Farmer Carry and Weighted Drag take any load, distance and time.** The heaviest load wins, then the furthest distance, then the fastest time.
 - **Tibialis Curl takes any load and reps.** A heavier load always wins, and reps break a tie.
@@ -15,6 +15,26 @@ All notable changes to AllSport are documented here.
 
 ### Removed
 - **Scores on levels that no longer exist are archived**, as the review asked ("remove historical scores that conflict"): for example Criss-Cross and Double Under on Jump Rope, the sprint drills, the lighter javelins and the 250m and 500m runs. They are kept in archive tables, not deleted outright.
+
+### Fixed
+- **An out-of-date app can no longer save a score in the old format** on any event changed here: the server refuses an old level, a level on an event that no longer has levels, or a contest score that is not a win, draw or loss, and asks you to refresh.
+
+## [0.27.0.0] - 2026-10-05
+
+### Added
+- **Three new holds.** Back Extension (Bird Dog to Straight Arm Ext) and Hollow Hold (Knee Plank to Dragon Flag) in Stamina, and Reverse Maltese (High Ring Lean to Tuck R Maltese) in Calisthenics. Longest hold at your level wins.
+
+### Changed
+- **Anaerobic Endurance is now Stamina.** Same domain, same events, same colour; old game reports show the new name too.
+- **Four events renamed, with all their history kept:** L-Sit Hold is Compression, Pushup Contest is Pushups, Wrist Stretch is Internal Wrist Stretch, and Reverse Wrist Stretch is External Wrist Stretch.
+- **New levels on five events.** Compression runs Curl Up, V Up, Tuck Hold, L Sit, V Sit, all holds. Pushups runs Hands Up Knee Pushup, Knee Pushup, Elevated Pushup (hands on a box), Pushup, 1 Arm Pushup. Calf Raises adds the en pointe Toe Calf Raise. Both wrist stretches start hand assisted and finish in a plank. Scores already on these events move to the matching new level, so nobody loses a score or a place.
+- **Pushups colours fit the new levels.** Kākāriki is now 10 Elevated Pushups (6 for women), so the new level has a colour of its own. The new and re-levelled events' colour standards are drafts, to be reviewed after a trial.
+
+### Removed
+- **Lunges, Ab Rollout and Shoulder Dislocate are off the roster.** Old scores stay in your history. A colour you earned partly on one of them is kept, and a kaiwhakawā deleting another score in that domain can't take it back; the Colours tab says it needs checking by hand.
+
+### Fixed
+- **A score saved from an out-of-date app can no longer land on the wrong level.** The server refuses a score on a re-levelled event whose level doesn't match the new ladder, or a new score on a removed event, and asks you to refresh. Colours also ignore any score whose stored level doesn't match its event's ladder, so an old score can never count as a harder level than the one you did.
 
 ## [0.26.0.0] - 2026-10-01
 

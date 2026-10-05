@@ -1,6 +1,6 @@
  # Difficulty Levels — Review
 
-All 126 AllSport events (Shoulder Dislocate and Lunges removed 5 Oct 2026). Go through them and set the difficulty levels for each one.
+All 128 AllSport events. Go through them and set the difficulty levels for each one.
 
 ## How to fill this in
 
@@ -414,25 +414,33 @@ _No levels yet._
 - D5: Wall Assisted   (Headstand with no hands, wall support allowed)
 - D6: Freestanding   (Freestanding headstand, no wall or hands)
 
-### 27. L-Sit Hold
+### 27. Compression
 
 *Scored by: difficulty level, then longest hold*
 
-> Changed 5 Oct 2026 (Tāne): Tuck Hold is on p-bars; Floor Tuck Hold added above it.
+Renamed from L-Sit Hold and re-levelled 30 Sept 2026 (Tāne). Every level is a hold.
+- D1: Curl Up   (Lying on the back, head and shoulders curled off the floor, hands reaching past the knees)
+- D2: V Up   (Seated on the floor, straight legs and torso lifted into a V, hands off the floor)
+- D3: Tuck Hold   (Supported on straight arms, hips off the floor, both knees pulled to the chest)
+- D4: L Sit   (Supported on straight arms, legs straight and level with the hips)
+- D5: V Sit   (Supported on straight arms, straight legs raised above level)
 
-- D1: 2 Feet Assisted Tuck
-- D2: 1 Foot Assisted Tuck
-- D3: Tuck Hold   (Both knees pulled to the chest, on p-bars)
-- D4: Floor Tuck Hold   (Both knees pulled to the chest, hands on the floor)
-- D5: 1 Leg L-Sit   (One leg extended)
-- D6: L-Sit
-- D7: V-Sit
+### 28. Reverse Maltese
+
+*Scored by: difficulty level, then longest hold*
+
+NEW EVENT, 30 Sept 2026 (Tāne). A hold on the rings. Nobody has scored it.
+- D1: High Ring Lean
+- D2: 45° Lean
+- D3: Low Lean
+- D4: Feet Raised
+- D5: Tuck R Maltese
 
 ---
 
 ## 3. Power
 
-### 28. Kelly Snatch
+### 29. Kelly Snatch
 
 *Scored by: heaviest weight lifted*
 
@@ -444,7 +452,7 @@ _No levels yet._
 - D4: 
 - D5: 
 
-### 29. 1A Snatch
+### 30. 1A Snatch
 
 *Scored by: heaviest weight lifted*
 
@@ -456,7 +464,7 @@ _No levels yet._
 - D4: 
 - D5: 
 
-### 30. Javelin
+### 31. Javelin
 
 *Scored by: furthest throw*
 
@@ -464,7 +472,7 @@ _No levels yet._
 
 **NONE**
 
-### 31. Shotput
+### 32. Shotput
 
 *Scored by: furthest throw*
 
@@ -472,7 +480,7 @@ _No levels yet._
 
 **NONE**
 
-### 32. Australian Football
+### 33. Australian Football
 
 *Scored by: win, draw or loss against another player*
 
@@ -484,7 +492,7 @@ _No levels yet._
 - D4: Drop Kick (20m)   (Drop kick to a partner)
 - D5: Game
 
-### 33. Vertical Jump
+### 34. Vertical Jump
 
 *Scored by: furthest or highest*
 
@@ -496,7 +504,7 @@ _No levels yet._
 - D4: 
 - D5: 
 
-### 34. Clean & Jerk
+### 35. Clean & Jerk
 
 *Scored by: heaviest weight lifted*
 
@@ -508,7 +516,7 @@ _No levels yet._
 - D4: 
 - D5: 
 
-### 35. Snatch
+### 36. Snatch
 
 *Scored by: heaviest weight lifted*
 
@@ -520,7 +528,7 @@ _No levels yet._
 - D4: 
 - D5: 
 
-### 36. Standing Broad Jump
+### 37. Standing Broad Jump
 
 *Scored by: furthest or highest*
 
@@ -532,7 +540,7 @@ _No levels yet._
 - D4: 
 - D5: 
 
-### 37. High Jump
+### 38. High Jump
 
 *Scored by: furthest or highest*
 
@@ -544,7 +552,7 @@ _No levels yet._
 - D4: 
 - D5: 
 
-### 38. Arm Wrestling
+### 39. Arm Wrestling
 
 *Scored by: win, draw or loss against another player*
 
@@ -552,7 +560,7 @@ _No levels yet._
 
 **NONE**
 
-### 39. Tug of War
+### 40. Tug of War
 
 *Scored by: win, draw or loss against another player*
 
@@ -564,7 +572,7 @@ _No levels yet._
 
 ## 4. Speed
 
-### 40. 100m Sprint
+### 41. 100m Sprint
 
 *Scored by: win, draw or loss against another player; the time is recorded alongside when one is taken*
 
@@ -572,7 +580,7 @@ _No levels yet._
 
 **NONE**
 
-### 41. Tag
+### 42. Tag
 
 *Scored by: win, draw or loss against another player; the time is recorded alongside when one is taken*
 
@@ -580,7 +588,7 @@ _No levels yet._
 
 **NONE**
 
-### 42. T-Race
+### 43. T-Race
 
 *Scored by: win, draw or loss against another player; the time is recorded alongside when one is taken*
 
@@ -588,7 +596,7 @@ _No levels yet._
 
 **NONE**
 
-### 43. Beach Flags
+### 44. Beach Flags
 
 *Scored by: win, draw or loss against another player; the time is recorded alongside when one is taken*
 
@@ -596,7 +604,7 @@ _No levels yet._
 
 **NONE**
 
-### 44. 200m Sprint
+### 45. 200m Sprint
 
 *Scored by: win, draw or loss against another player; the time is recorded alongside when one is taken*
 
@@ -604,7 +612,7 @@ _No levels yet._
 
 **NONE**
 
-### 45. Touch Rugby
+### 46. Touch Rugby
 
 *Scored by: win, draw or loss against another player*
 
@@ -616,7 +624,7 @@ _No levels yet._
 - D4: Pass (10m)   (Both players moving)
 - D5: Game
 
-### 46. Repeat Vault
+### 47. Repeat Vault
 
 *Scored by: difficulty level, then fastest time*
 
@@ -629,7 +637,7 @@ _No levels yet._
 - D5: Rib Height
 - D6: Shoulder height
 
-### 47. Rats & Rabbits
+### 48. Rats & Rabbits
 
 *Scored by: win, draw or loss against another player; the time is recorded alongside when one is taken*
 
@@ -637,7 +645,7 @@ _No levels yet._
 
 **NONE**
 
-### 48. Speed Chess
+### 49. Speed Chess
 
 *Scored by: win, draw or loss against another player*
 
@@ -645,7 +653,7 @@ _No levels yet._
 
 **NONE**
 
-### 49. American Football
+### 50. American Football
 
 *Scored by: win, draw or loss against another player*
 
@@ -658,7 +666,7 @@ _No levels yet._
 - D5: Pass (20m)
 - D6: Game
 
-### 50. Capture the Flag
+### 51. Capture the Flag
 
 *Scored by: win, draw or loss against another player; the time is recorded alongside when one is taken*
 
@@ -666,7 +674,7 @@ _No levels yet._
 
 **NONE**
 
-### 51. Kabaddi
+### 52. Kabaddi
 
 *Scored by: win, draw or loss against another player; the time is recorded alongside when one is taken*
 
@@ -676,9 +684,9 @@ _No levels yet._
 
 ---
 
-## 5. Anaerobic Endurance
+## 5. Stamina
 
-### 52. Chinups
+### 53. Chinups
 
 *Scored by: difficulty level, then most reps*
 
@@ -691,20 +699,18 @@ _No levels yet._
 - D5: Chin Up   (used 3 times)
 - D6: Muscle Up
 
-### 53. Pushups
+### 54. Pushups
 
 *Scored by: difficulty level, then most reps*
 
-> Changed 5 Oct 2026 (Tāne): Renamed from Pushup Contest. Ladder unchanged.
+Renamed from Pushup Contest and re-levelled 30 Sept 2026 (Tāne). The two handstand levels are gone; elevated means the hands are raised on a box.
+- D1: Hands Up Knee Pushup   (On the knees, hands raised on a box or bench)
+- D2: Knee Pushup
+- D3: Elevated Pushup   (Full pushup with the hands raised on a box or bench)
+- D4: Pushup
+- D5: 1 Arm Pushup
 
-- D1: Elevated Knee Push Up
-- D2: Knee Push Up   (used 3 times)
-- D3: Push Up   (used 15 times)
-- D4: 1 Arm Pushup   (used 3 times)
-- D5: Handstand Pushup
-- D6: Deficit Handstand   (Handstand push-up from parallettes or blocks, below floor level)
-
-### 54. Tibialis Curl
+### 55. Tibialis Curl
 
 *Scored by: heaviest load, then most reps in 2 minutes*
 
@@ -712,7 +718,7 @@ _No levels yet._
 
 **NONE**
 
-### 55. Finger Pushup
+### 56. Finger Pushup
 
 *Scored by: difficulty level, then most reps*
 
@@ -723,7 +729,7 @@ _No levels yet._
 - D3: Finger Pushup   (used 3 times)
 - D4: 1 Arm Finger Pushup
 
-### 56. GHD Situp
+### 57. GHD Situp
 
 *Scored by: difficulty level, then most reps*
 Weighted GHD requires weight and reps
@@ -733,23 +739,13 @@ Weighted GHD requires weight and reps
 - D4: GHD Situp   (used 5 times)
 - D5: Weighted GHD Situp
 
-### 57. Leg Ext Hold
+### 58. Leg Ext Hold
 
 *Scored by: difficulty level, then longest hold*
 
 > Changed 5 Oct 2026 (Tāne): Checked: it records the load and the hold time, heavier wins and the hold breaks a tie.
 
 This should be weight and time
-
-### 58. Ab Rollout
-
-*Scored by: difficulty level, then most reps*
-
-- D1: Elevated Hold   (Kneeling hold with the wheel elevated)
-- D2: Kneeling Rollout   (used 1 time)
-- D3: Elevated Kneeling   (Kneeling rollout with hands elevated)
-- D4: Banded Rollout   (Standing rollout with heavy band assistance)
-- D5: Full Rollout   (Standing ab rollout, no assistance)
 
 ### 59. Hamstring Curl
 
@@ -804,16 +800,37 @@ _No levels yet._
 
 *Scored by: difficulty level, then most reps*
 
-- D1: Two-Leg Raise   (Both feet flat on the floor, rising to the top of the toes)
-- D2: Two-Leg Deficit   (Both feet on a step, heels dropping below the toes each rep)
-- D3: Single-Leg Raise   (One foot on the floor, the other held clear)
-- D4: Single-Leg Deficit   (One foot on a step, heel dropping below the toes each rep)
+Re-levelled 30 Sept 2026 (Tāne). Toe Calf Raise rises until only the tips of the toes touch, like en pointe, with a full deficit.
+- D1: Calf Raise   (Both feet flat on the floor, rising onto the balls of the feet)
+- D2: Deficit Calf Raise   (Balls of both feet on a step, heels dropping below the step each rep)
+- D3: Toe Calf Raise   (On the step with a full deficit, rising until only the tips of the toes touch, like en pointe)
+- D4: Single Leg Toe Raise   (The toe calf raise on one leg, the other held clear)
 
-> NEW EVENT, Sept 2026 (Tāne). Nobody has scored it, so there is no usage to calibrate against.
+### 64. Back Extension
+
+*Scored by: difficulty level, then longest hold*
+
+NEW EVENT, 30 Sept 2026 (Tāne). A hold. Nobody has scored it.
+- D1: Bird Dog   (On hands and knees, one arm and the opposite leg held out straight and level)
+- D2: Superman   (Face down on the floor, arms, chest and legs lifted off the floor)
+- D3: Back Ext   (Hips on a back extension bench or GHD pad, body held straight and level, hands at the chest)
+- D4: Straight Arm Ext   (The back extension with the arms held straight overhead)
+
+### 65. Hollow Hold
+
+*Scored by: difficulty level, then longest hold*
+
+NEW EVENT, 30 Sept 2026 (Tāne). A hold. Nobody has scored it.
+- D1: Knee Plank   (Forearm plank on the knees, body straight from knees to shoulders)
+- D2: Plank   (Forearm plank on the toes, body in one straight line)
+- D3: Tuck Hollow   (On the back, lower back pressed to the floor, shoulders lifted, knees tucked to the chest)
+- D4: Hollow Hold   (Lower back pressed to the floor, arms overhead and straight legs, both held just off the floor)
+- D5: Tuck Dragon   (Lying on a bench gripping behind the head, hips and knees lifted off the bench in a tuck, weight on the shoulders)
+- D6: Dragon Flag   (The body held straight and rigid from the shoulders, off the bench)
 
 ## 6. Endurance
 
-### 64. Burpee Broad Jump
+### 66. Burpee Broad Jump
 
 *Scored by: difficulty level, then fastest time*
 
@@ -822,7 +839,7 @@ _No levels yet._
 - D3: 100m 
 - D4: 200m 
 
-### 65. Running
+### 67. Running
 
 *Scored by: best effort: any distance of at least 1000m and its time, ranked on the 1000m time it predicts*
 
@@ -830,7 +847,7 @@ _No levels yet._
 
 **NONE**
 
-### 66. Cycling
+### 68. Cycling
 
 *Scored by: best effort: any distance of at least 1000m and its time, ranked on the 1000m time it predicts*
 
@@ -838,7 +855,7 @@ _No levels yet._
 
 **NONE**
 
-### 67. Ski Erg
+### 69. Ski Erg
 
 *Scored by: best effort: any distance of at least 1000m and its time, ranked on the 1000m time it predicts*
 
@@ -846,7 +863,7 @@ _No levels yet._
 
 **NONE**
 
-### 68. Row Erg
+### 70. Row Erg
 
 *Scored by: best effort: any distance of at least 1000m and its time, ranked on the 1000m time it predicts*
 
@@ -854,7 +871,7 @@ _No levels yet._
 
 **NONE**
 
-### 69. Breath Hold
+### 71. Breath Hold
 
 *Scored by: longest hold*
 
@@ -866,7 +883,7 @@ _No levels yet._
 - D4: 
 - D5: 
 
-### 70. Sandbag Carry
+### 72. Sandbag Carry
 
 *Scored by: heaviest load, then furthest distance, then fastest time*
 
@@ -874,7 +891,7 @@ _No levels yet._
 
 **NONE**
 
-### 71. Animal Crawl
+### 73. Animal Crawl
 
 *Scored by: difficulty level, then best effort: any distance of at least 25m and its time, ranked on the 25m time it predicts*
 
@@ -885,7 +902,7 @@ _No levels yet._
 - D3: Lizard Crawl   (Chest low, elbows bent, hips down)
 - D4: Duck Walk   (Deep squat, hips below knees, stepping without standing up)
 
-### 72. Bronco
+### 74. Bronco
 
 *Scored by: difficulty level, then fastest time*
 
@@ -895,7 +912,7 @@ _No levels yet._
 - D4: 4 Laps
 - D5: 5 Laps   (used 2 times)
 
-### 73. Scooting
+### 75. Scooting
 
 *Scored by: best effort: any distance of at least 1000m and its time, ranked on the 1000m time it predicts*
 
@@ -903,7 +920,7 @@ _No levels yet._
 
 **NONE**
 
-### 74. Farmer Carry
+### 76. Farmer Carry
 
 *Scored by: heaviest load, then furthest distance, then fastest time*
 
@@ -911,7 +928,7 @@ _No levels yet._
 
 **NONE**
 
-### 75. Weighted Drag
+### 77. Weighted Drag
 
 *Scored by: heaviest load, then furthest distance, then fastest time*
 
@@ -925,7 +942,7 @@ _No levels yet._
 
 ## 7. Flexibility
 
-### 76. Rear Hand Clasp
+### 78. Rear Hand Clasp
 
 *Scored by: difficulty level, then longest hold*
 
@@ -937,7 +954,7 @@ _No levels yet._
 - D6: Palm Clasp
 - D7: Butterfly Clasp
 
-### 77. Bridge
+### 79. Bridge
 
 *Scored by: difficulty level, then longest hold*
 
@@ -948,7 +965,7 @@ _No levels yet._
 - D5: Straight Arm Bridge
 - D6: Rainbow Bridge   (used 3 times)
 
-### 78. Forward Fold
+### 80. Forward Fold
 
 *Scored by: difficulty level, then longest hold*
 
@@ -961,7 +978,7 @@ _No levels yet._
 - D7: Elbows to Toes   (Straight legs, elbows reach the toes)
 - D8: Head to Legs   (Full fold — head touching the legs)
 
-### 79. Needle Pose
+### 81. Needle Pose
 
 *Scored by: difficulty level, then longest hold*
 
@@ -972,7 +989,7 @@ _No levels yet._
 - D5: 2 Knee
 - D6: Full Needle Pose
 
-### 80. Forward Split
+### 82. Forward Split
 
 *Scored by: difficulty level, then longest hold*
 
@@ -983,7 +1000,7 @@ _No levels yet._
 - D5: Front Split
 - D6: Over Split
 
-### 81. Middle Split
+### 83. Middle Split
 
 *Scored by: difficulty level, then longest hold*
 
@@ -996,7 +1013,7 @@ _No levels yet._
 - D5: 0.5 Blocks   (Middle split supported on half a block)
 - D6: Middle Split
 
-### 82. Standing Split
+### 84. Standing Split
 
 *Scored by: difficulty level, then longest hold*
 
@@ -1008,7 +1025,7 @@ _No levels yet._
 - D6: Head Height
 - D7: Standing Split
 
-### 83. Foot Behind Head Pose
+### 85. Foot Behind Head Pose
 
 *Scored by: difficulty level, then longest hold*
 
@@ -1020,7 +1037,7 @@ _No levels yet._
 - D6: Foot Behind Head Pose
 - D7: Both Feet Behind Head
 
-### 84. Pancake
+### 86. Pancake
 
 *Scored by: difficulty level, then longest hold*
 
@@ -1034,7 +1051,7 @@ _No levels yet._
 - D6: Elbows to Floor   (Fold forward until the elbows rest flat on the floor)
 - D7: Head to Floor   (Fold forward until the head touches the floor)
 
-### 85. Side Bend
+### 87. Side Bend
 
 *Scored by: difficulty level, then longest hold*
 
@@ -1043,7 +1060,7 @@ _No levels yet._
 - D3: Seated Bend   (Parsva Upavistha — seated wide-legged, torso laid along one leg reaching the foot)
 - D4: Side-Split Lateral   (Wide or side-split stance, torso flat along one leg, chest open)
 
-### 86. Full Bound Twist
+### 88. Full Bound Twist
 
 *Scored by: difficulty level, then longest hold*
 
@@ -1054,7 +1071,7 @@ _No levels yet._
 
 ---
 
-### 87. Plie Squat
+### 89. Plie Squat
 
 *Scored by: difficulty level, then longest hold*
 
@@ -1065,7 +1082,7 @@ _No levels yet._
 
 > NEW EVENT, Sept 2026 (Tāne). Nobody has scored it, so there is no usage to calibrate against.
 
-### 88. Seiza
+### 90. Seiza
 
 *Scored by: difficulty level, then longest hold*
 
@@ -1076,32 +1093,31 @@ _No levels yet._
 
 > NEW EVENT, Sept 2026 (Tāne). Nobody has scored it, so there is no usage to calibrate against.
 
-### 89. Wrist Stretch
+### 91. Internal Wrist Stretch
 
 *Scored by: difficulty level, then longest hold*
 
-- D1: Fingers Forward   (Palms flat on the floor, fingers pointing away, elbows soft)
-- D2: Elbows Locked   (Palms flat, fingers pointing away, arms straight, weight over the hands)
-- D3: Fingers Turned In   (Palms flat, fingers pointing back toward the knees, arms straight)
-- D4: Fingers In · Loaded   (Fingers pointing back with the hips stacked over the hands)
+Renamed from Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
+- D1: Hand Assisted   (The other hand eases the fingers back toward the forearm)
+- D2: Hand Forward   (Kneeling, palms flat on the floor, fingers pointing forward, arms straight)
+- D3: Fingers Inwards   (Palms flat, fingers pointing toward each other, arms straight)
+- D4: Fingers Backwards   (Palms flat, fingers pointing back toward the knees, arms straight)
+- D5: Backwards Plank   (Fingers pointing back, in a full plank with the weight over the hands)
 
-> NEW EVENT, Sept 2026 (Tāne). Nobody has scored it, so there is no usage to calibrate against.
-
-### 90. Reverse Wrist Stretch
+### 92. External Wrist Stretch
 
 *Scored by: difficulty level, then longest hold*
 
-- D1: Backs Down · Bent   (Backs of the hands on the floor, fingers pointing back, elbows soft)
-- D2: Backs Down · Straight   (Backs of the hands flat, fingers pointing back, arms straight)
-- D3: Fingers Forward   (Backs of the hands flat, fingers pointing away from the knees, arms straight)
-- D4: Backs Down · Loaded   (Backs of the hands flat with the hips stacked over them)
-
-> NEW EVENT, Sept 2026 (Tāne). Nobody has scored it, so there is no usage to calibrate against.
-> Shorter range than Wrist Stretch at every rung: the wrist bends far less this way.
+Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
+- D1: Hand Assisted   (The other hand eases the back of the hand toward the forearm)
+- D2: Fingers Outwards   (Kneeling, backs of the hands flat on the floor, fingers pointing out to the sides, arms straight)
+- D3: Fingers Backwards   (Backs of the hands flat, fingers pointing back toward the knees, arms straight)
+- D4: Fingers Inwards   (Backs of the hands flat, fingers pointing toward each other, arms straight)
+- D5: Inwards Plank   (Fingers pointing toward each other, in a full plank with the weight over the backs of the hands)
 
 ## 8. Body Awareness
 
-### 91. Tae Kwon Do
+### 93. Tae Kwon Do
 
 *Scored by: win, draw or loss against another player*
 
@@ -1109,7 +1125,7 @@ _No levels yet._
 
 **NONE**
 
-### 92. Breakdancing
+### 94. Breakdancing
 
 *Scored by: difficulty level, then longest time*
 
@@ -1121,7 +1137,7 @@ _No levels yet._
 - D4: Top Rock + Footwork + Freeze
 - D5: Game
 
-### 93. Trampolining
+### 95. Trampolining
 
 *Scored by: difficulty level, then most reps*
 
@@ -1134,7 +1150,7 @@ _No levels yet._
 - D5: Back Flip   (used 1 time)
 - D6: Game
 
-### 94. Jump Rope
+### 96. Jump Rope
 
 *Scored by: difficulty level, then most reps*
 
@@ -1145,13 +1161,13 @@ _No levels yet._
 - D3: Double Dutch
 - D4: Game
 
-### 95. Wrestling
+### 97. Wrestling
 
 *Scored by: win, draw or loss against another player*
 
 **NONE**
 
-### 96. Gymnastics
+### 98. Gymnastics
 
 *Scored by: difficulty level, then most reps*
 
@@ -1163,7 +1179,7 @@ _No levels yet._
 - D4: Handspring   (Front or back handspring)
 - D5: Game
 
-### 97. Balance Ball
+### 99. Balance Ball
 
 *Scored by: difficulty level, then longest hold*
 
@@ -1174,7 +1190,7 @@ _No levels yet._
 - D5: Standing   (used 1 time)
 - D6: Game
 
-### 98. SKATE
+### 100. SKATE
 
 *Scored by: difficulty level, then most reps*
 
@@ -1186,7 +1202,7 @@ _No levels yet._
 - D4: Pop Shove It
 - D5: Game
 
-### 99. Fencing
+### 101. Fencing
 
 *Scored by: win, draw or loss against another player*
 
@@ -1194,7 +1210,7 @@ _No levels yet._
 
 **NONE**
 
-### 100. Juggling
+### 102. Juggling
 
 *Scored by: difficulty level, then longest hold*
 
@@ -1203,7 +1219,7 @@ _No levels yet._
 - D3: 3 Ball   (used 5 times)
 - D4: Game
 
-### 101. Foot Juggling
+### 103. Foot Juggling
 
 *Scored by: difficulty level, then most reps*
 
@@ -1214,7 +1230,7 @@ _No levels yet._
 - D3: No Bounce
 - D4: Game
 
-### 102. Slackline
+### 104. Slackline
 
 *Scored by: longest hold*
 
@@ -1229,7 +1245,7 @@ _No levels yet._
 
 ## 9. Coordination
 
-### 103. Volleyball
+### 105. Volleyball
 
 *Scored by: win, draw or loss against another player*
 
@@ -1241,7 +1257,7 @@ _No levels yet._
 - D4: Partner Digs (20m)
 - D5: Game
 
-### 104. Baseball
+### 106. Baseball
 
 *Scored by: win, draw or loss against another player*
 
@@ -1254,7 +1270,7 @@ _No levels yet._
 - D5: Bat & Catch (20m)
 - D6: Game
 
-### 105. Teqball
+### 107. Teqball
 
 *Scored by: win, draw or loss against another player*
 
@@ -1265,7 +1281,7 @@ _No levels yet._
 - D3: Bounce Pass (5m)
 - D4: Game
 
-### 106. Tennis
+### 108. Tennis
 
 *Scored by: win, draw or loss against another player*
 
@@ -1277,7 +1293,7 @@ _No levels yet._
 - D4: Hits (10m)
 - D5: Game
 
-### 107. Cricket
+### 109. Cricket
 
 *Scored by: win, draw or loss against another player*
 
@@ -1290,7 +1306,7 @@ _No levels yet._
 - D5: Bat & Catch (20m)
 - D6: Game
 
-### 108. Badminton
+### 110. Badminton
 
 *Scored by: win, draw or loss against another player*
 
@@ -1300,7 +1316,7 @@ _No levels yet._
 - D4: Partner Hits (10m)
 - D5: Game
 
-### 109. Basketball
+### 111. Basketball
 
 *Scored by: win, draw or loss against another player*
 
@@ -1310,7 +1326,7 @@ _No levels yet._
 - D4: 2 Ball Back & Forth
 - D5: Game
 
-### 110. Football
+### 112. Football
 
 *Scored by: win, draw or loss against another player*
 
@@ -1320,7 +1336,7 @@ _No levels yet._
 - D4: Partner Pass (10m)
 - D5: Game
 
-### 111. Hockey
+### 113. Hockey
 
 *Scored by: win, draw or loss against another player*
 
@@ -1330,7 +1346,7 @@ _No levels yet._
 - D4: Partner Pass (10m)
 - D5: Game
 
-### 112. Squash
+### 114. Squash
 
 *Scored by: win, draw or loss against another player*
 
@@ -1340,7 +1356,7 @@ _No levels yet._
 - D4: Partner Pass (10m)
 - D5: Game
 
-### 113. Lacrosse
+### 115. Lacrosse
 
 *Scored by: win, draw or loss against another player*
 
@@ -1350,7 +1366,7 @@ _No levels yet._
 - D4: Partner Pass (10m)
 - D5: Game
 
-### 114. Ultimate Frisbee
+### 116. Ultimate Frisbee
 
 *Scored by: win, draw or loss against another player*
 
@@ -1364,7 +1380,7 @@ _No levels yet._
 
 ## 10. Aim & Precision
 
-### 115. Netball
+### 117. Netball
 
 *Scored by: win, draw or loss against another player*
 
@@ -1375,7 +1391,7 @@ _No levels yet._
 - D3: Shot (5m)
 - D4: Game
 
-### 116. Bocce
+### 118. Bocce
 
 *Scored by: win, draw or loss against another player*
 
@@ -1385,7 +1401,7 @@ _No levels yet._
 - D4: Hit the Jack   (Strike the jack itself from the throwing line)
 - D5: Game
 
-### 117. Dodgeball
+### 119. Dodgeball
 
 *Scored by: win, draw or loss against another player*
 
@@ -1395,7 +1411,7 @@ _No levels yet._
 - D4: Throw & Catch (10m)
 - D5: Game
 
-### 118. Carrom
+### 120. Carrom
 
 *Scored by: win, draw or loss against another player*
 
@@ -1403,7 +1419,7 @@ _No levels yet._
 - D2: Pocket a Piece
 - D3: Game
 
-### 119. Archery
+### 121. Archery
 
 *Scored by: win, draw or loss against another player*
 
@@ -1413,7 +1429,7 @@ _No levels yet._
 - D4: Hit the Gold (20m)
 - D5: Game
 
-### 120. Bowling
+### 122. Bowling
 
 *Scored by: win, draw or loss against another player*
 
@@ -1423,7 +1439,7 @@ _No levels yet._
 - D4: Partner Bowl (20m)
 - D5: Game
 
-### 121. Darts
+### 123. Darts
 
 *Scored by: win, draw or loss against another player*
 
@@ -1433,7 +1449,7 @@ _No levels yet._
 - D2: Named Number   (Hit a number called before you throw)
 - D3: Game
 
-### 122. Disc Golf
+### 124. Disc Golf
 
 *Scored by: win, draw or loss against another player at the top level*
 
@@ -1444,7 +1460,7 @@ _No levels yet._
 - D3: Putt (10m)
 - D4: Game
 
-### 123. Golf
+### 125. Golf
 
 *Scored by: win, draw or loss against another player at the top level*
 
@@ -1455,7 +1471,7 @@ _No levels yet._
 - D3: Chip (10m)
 - D4: Game
 
-### 124. Handball
+### 126. Handball
 
 *Scored by: win, draw or loss against another player*
 
@@ -1464,7 +1480,7 @@ _No levels yet._
 - D3: Past a Keeper   (Score with a keeper in goal)
 - D4: Game
 
-### 125. Table Tennis
+### 127. Table Tennis
 
 *Scored by: win, draw or loss against another player*
 
@@ -1474,7 +1490,7 @@ _No levels yet._
 - D2: Wall Juggles
 - D3: Game
 
-### 126. Kubb
+### 128. Kubb
 
 *Scored by: win, draw or loss against another player*
 

@@ -166,22 +166,29 @@
 
 ## P1 — Do Next
 
-### Apply `20261005012108_difficulty_review_oct.sql` straight after v0.27.0.0 deploys
-**What:** deploy the code first, then `supabase db push` from a clean `main` checkout with no game or workout running, then `node --import ./scripts/ts-loader.mjs scripts/refresh-leaderboard-scores.ts --apply`, then hard-refresh every kaiwhakawā device. Verify by object: `event_domains` holds 126 rows; `guard_workout_entries_write` and `record_entry_match` list fourteen pure-contest slugs; `enforce_lift_estimate` refuses a Tibialis Curl that names a level.
-**Why it matters:** the migration was written without database access, so it quotes no row counts. It was run on a scratch Postgres 16 with a fixture covering every conversion, and its output matched what the app writes, but read the closing NOTICE (rows archived, colours citing a removed event) at apply time. Its assertions abort the whole file if anything is left in an old shape.
-**Noticed:** v0.27.0.0
+### Apply `20261005012108_difficulty_review_oct.sql` straight after v0.28.0.0 deploys
+**What:** deploy the code first, then `supabase db push` from a clean `main` checkout with no game or workout running, then `node --import ./scripts/ts-loader.mjs scripts/refresh-leaderboard-scores.ts --apply`, then hard-refresh every kaiwhakawā device. Verify by object: `event_domains` holds 128 rows; `guard_workout_entries_write` and `record_entry_match` list fourteen pure-contest slugs; `enforce_lift_estimate` refuses a Tibialis Curl that names a level; `enforce_relevelled_ladders` lists the 30 guarded ladders.
+**Why it matters:** the migration was written without database access, so it quotes no row counts. It was run on a scratch Postgres 16 in the state `20260930011149` leaves production in, with a fixture covering every conversion: its output matched what the app writes, the Stamina roster's rows were untouched, and the redefined guard refused every old-bundle shape. Read the closing NOTICE at apply time. Its assertions abort the whole file if anything is left in an old shape.
+**Noticed:** v0.28.0.0
 
 ### Review the standards redrafted for the 5 Oct 2026 difficulty review
-**What:** every event whose ladder or format changed has new standards in `GRADING_STANDARDS_REVIEW.md`, marked UNREVIEWED. The ones to read hardest are the carries (now absolute kilos, split men and women, a colour needs the load AND the distance), Javelin and Shotput (one implement, twelve distances), and the distance efforts (Kahurangi and up are the old 1000m-rung times; the five colours below are spaced from Kahurangi by rule).
-**Noticed:** v0.27.0.0
+**What:** every event whose ladder or format changed has new standards in `GRADING_STANDARDS_REVIEW.md`, marked UNREVIEWED. Read hardest: the carries (absolute kilos, split men and women, a colour needs the load AND the distance), Javelin and Shotput (one implement, twelve distances), and the distance efforts (Kahurangi and up are the old 1000m-rung times; the five below are spaced from Kahurangi by rule).
+**Noticed:** v0.28.0.0
 
 ### Loose ends from the 5 Oct 2026 difficulty review
-- **Repeat Vault's rules still describe two-foot jumps over the bar.** Only the name changed on the sheet. If a vault means hands on the bar, the how-to and rules need rewriting.
-- **Cricket's new ladder had no Game rung on the sheet;** Tāne confirmed adding one on top (5 Oct 2026). The sheet now shows it.
-- **A carry ranks heaviest first, whatever the distance,** as the sheet says ("weight then distance then time"). 61kg carried 2m outranks 60kg carried 200m in a game. Colours are safe (each asks for a distance too); only game ranking is affected. Consider a minimum distance if it gets gamed.
-- **Thirteen more events are win/draw/loss only,** so they can no longer be scored in a personal workout or training session (the same as Wrestling always was). Speed now has three events that can be logged solo.
-- **Climbing's hang rungs (D1–D3) are on a faster-wins ladder.** Unchanged by this review, but the renames made it visible: "Assisted Hang" scored by fastest time reads oddly.
-- Review items 12 (Table Tennis wall juggles vs partner hits), 13 (Bowling and Kubb distances) and 15 (L-Sit and Chinups replacement rungs) are still unanswered on the sheet.
+- **The sheet was edited from an older copy.** It asked for a Floor Tuck Hold on L-Sit Hold; that ladder is now Compression (v0.27.0.0), so the request was not applied. Confirm Compression is what you want.
+- **Repeat Vault's rules still describe two-foot jumps over the bar.** Only the name changed on the sheet.
+- **A carry ranks heaviest first, whatever the distance,** as the sheet says. 61kg carried 2m outranks 60kg carried 200m in a game. Colours are safe (each asks for a distance too).
+- **Thirteen more events are win/draw/loss only,** so they can no longer be scored in a personal workout or training session (the same as Wrestling always was).
+- **Climbing's hang rungs (D1–D3) are on a faster-wins ladder.** Unchanged by this review, but the renames made it visible.
+- Review items 12 (Table Tennis), 13 (Bowling and Kubb distances) and 15 (Chinups replacement rungs) are still unanswered on the sheet.
+**Noticed:** v0.28.0.0
+
+### ~~Apply `20260930011149_stamina_roster.sql` straight after v0.27.0.0 deploys~~ DONE 2026-10-05
+Applied and verified by object (see docs/PROJECT_HISTORY.md), with its ledger row in the same transaction. 26 rows shifted, 0 archived, every tiered row on its level. Leaderboard refreshed: 27 written, 0 failed. **Still to do by hand:** hard-refresh every kaiwhakawā device.
+
+### Review the drafted Stamina roster standards and Reverse Maltese levels
+**What:** Back Extension, Hollow Hold, Reverse Maltese, Compression, both wrist stretches and the top three Pushups colours are Claude's drafts in `GRADING_STANDARDS_REVIEW.md`. Reverse Maltese's levels have no judge details yet.
 **Noticed:** v0.27.0.0
 
 ### ~~Apply `20260928201510_estimated_one_rep_max.sql` straight after v0.24.0.0 deploys~~ DONE 2026-09-30
@@ -335,6 +342,15 @@ now only reachable if Whānau's own art goes missing, and for Te Kāhui, which n
 ---
 
 ## P2 — Soon
+
+### Freeze the level names of events added from now on
+**What:** `__tests__/levelNames.test.ts` only checks events already in `__tests__/fixtures/levelNames.json`, so a tiered event added later is not protected against a rename, and there is no script to regenerate the fixture. Add an assertion that every tiered event in `EVENTS` is in the fixture, and a small `scripts/freeze-level-names.ts`.
+**Why:** since v0.27.0.0 renaming a level un-grades its stored rows until they are repointed.
+**Noticed:** v0.27.0.0 review
+
+### Harden the re-levelled ladder guard and the withdrawal path
+**What:** four small follow-ups from the v0.27.0.0 adversarial review. (1) A withdrawal (`withdrawIn` in `app/api/grades/recheck/route.ts`) should refuse while any row in the domain fails `onCurrentLadder`, so a deletion before a ladder migration cannot take back a colour. (2) `enforce_relevelled_ladders()` refuses a removed event only on INSERT; also refuse an UPDATE that moves a row onto one. (3) The guard reads `session_events` with the writer's rights and skips every check if the row is hidden; refuse when no row comes back. (4) The migration's `doomed` set would also archive a row with a NULL score or level, and `array_remove` can leave an empty plan; neither exists in production.
+**Noticed:** v0.27.0.0 adversarial review
 
 ### One way to draw a colour swatch
 **What:** `Swatch` in `components/GradesCard.tsx`, `GradeDot` and `rungSegment` each draw Mā and Taniwha differently (outline vs ring vs white fill). Fold them into one helper in `components/GradeDot.tsx`.

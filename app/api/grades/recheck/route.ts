@@ -15,7 +15,7 @@ import { NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { createSupabaseAdminClient, hasServiceKey } from '@/lib/supabase-admin'
 import { loadGradeState, loadGradeInputs, gradeStateFrom, leaderboardScoresFrom, type GradeInputs, type GradeState } from '@/lib/loadGrades'
-import { awardsToConfer, awardsToWithdraw, awardAfterWithdraw, type PendingAward, type WithdrawnAward } from '@/lib/autoConfer'
+import { awardsToConfer, awardsToWithdraw, protectedAwards, awardAfterWithdraw, type PendingAward, type WithdrawnAward } from '@/lib/autoConfer'
 import { publishLeaderboardScores } from '@/lib/leaderboardData'
 
 export const dynamic = 'force-dynamic'
@@ -196,10 +196,13 @@ async function withdrawIn(
   // player told so.
   if (state.complete === false) return json({ error: 'could not read all of this player\'s evidence' }, 500)
   const out = awardsToWithdraw(state, req.domain)
-  if (out.length === 0) return json({ withdrawn: [] })
+  // Colours the evidence no longer supports but that stand on a removed event:
+  // left alone, and named so the kaiwhakawā can check them by hand.
+  const kept = protectedAwards(state, req.domain).map(summariseWithdrawn)
+  if (out.length === 0) return json({ withdrawn: [], protected: kept })
 
   if (!hasServiceKey()) {
-    return json({ withdrawn: [], pending: out.map(summariseWithdrawn), writable: false }, 503)
+    return json({ withdrawn: [], pending: out.map(summariseWithdrawn), writable: false, protected: kept }, 503)
   }
   const admin = createSupabaseAdminClient()
 
@@ -250,5 +253,5 @@ async function withdrawIn(
   // conferral pass, so stamping it would mark evidence in every other domain
   // as examined when nothing looked at it, and the next ordinary recheck would
   // skip a colour the player had earned.
-  return json({ withdrawn: taken.map(summariseWithdrawn), logged, reconferred })
+  return json({ withdrawn: taken.map(summariseWithdrawn), logged, reconferred, protected: kept })
 }

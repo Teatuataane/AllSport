@@ -19,7 +19,9 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { render, cleanup, waitFor } from '@testing-library/react'
 import EventIcon from '@/components/EventIcon'
-import DomainIcon from '@/components/DomainIcon'
+import DomainIcon, { domainSlug } from '@/components/DomainIcon'
+import { existsSync } from 'node:fs'
+import { DOMAIN_ORDER } from '@/lib/eventData'
 
 afterEach(cleanup)
 
@@ -151,5 +153,21 @@ describe('icon probe error path', () => {
     expect(maskLayer(container)).not.toBeNull()
     await waitFor(() => expect(container.textContent).toContain('7'))
     expect(maskLayer(container)).toBeNull()
+  })
+})
+
+// Value: protects=every domain name, current AND the retired 'Anaerobic Endurance' stored on
+// older session_events rows, resolving to a domain icon that exists on disk;
+// fails_when=the legacy alias is dropped (derived slug 'anaerobic-endurance' has no PNG since the
+// rename to stamina.png) or a domain is renamed without its icon; why_new=the existing tests only
+// check two current names render a mask URL, never that the file behind it exists; seam=none
+describe('domainSlug', () => {
+  it.each([...DOMAIN_ORDER, 'Anaerobic Endurance'])('%s resolves to an icon that exists', (name) => {
+    expect(existsSync(`public/domain-icons/${domainSlug(name)}.png`), domainSlug(name)).toBe(true)
+  })
+
+  it('maps the retired domain 5 name onto the Stamina icon', () => {
+    expect(domainSlug('Anaerobic Endurance')).toBe('stamina')
+    expect(domainSlug('Stamina')).toBe('stamina')
   })
 })

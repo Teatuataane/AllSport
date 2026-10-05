@@ -11,6 +11,8 @@ import {
   sportTermOf,
   sportRecord,
   valsFromRaw as _vfr,
+  estimatedOneRm,
+  liftLabel,
   EMPTY_VALS,
   type EntryVals,
 } from '@/lib/scoring'
@@ -51,7 +53,6 @@ describe('computeScoreVals: strength', () => {
   it('returns null without a weight', () => {
     expect(computeScoreVals('strength', getEventBySlug('deadlift'), vals({ repCount: '5' }))).toBeNull()
   })
-
 })
 
 describe('computeScoreVals: reps', () => {
@@ -648,5 +649,18 @@ describe('every input mode on the roster is actually handled', () => {
       if (!again || again.raw_score !== first.raw_score) dead.push(`${e.name} [${e.inputMode}] did not round-trip`)
     }
     expect(dead, dead.join('\n')).toEqual([])
+  })
+})
+
+// Value: protects=every `strength` event on the roster scoring and pre-filling as a lift now that the
+// Shoulder Dislocate cm branch is gone; fails_when=a per-slug special case returns (or a cm/metric
+// event is added in `strength` mode) and one event stops storing its estimated 1RM or gets a PR
+// prefill that is not a single; why_new=the strength tests only exercise Deadlift; seam=none
+describe('every strength event is a lift', () => {
+  const lifts = EVENTS.filter(e => e.inputMode === 'strength')
+  it.each(lifts.map(e => [e.name, e] as const))('%s stores its estimated 1RM', (_name, e) => {
+    expect(computeScoreVals('strength', e, vals({ weightKg: '100', repCount: '5' })))
+      .toEqual({ raw_score: estimatedOneRm(100, 5), score_label: liftLabel(100, 5) })
+    expect(valsFromRaw('strength', e, 112.5).repCount).toBe('1')
   })
 })

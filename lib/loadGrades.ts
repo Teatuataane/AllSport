@@ -51,6 +51,8 @@ export type GradeAward = {
   id?: string
   /** The kaiwhakawā who released it, or null when the server conferred it. */
   conferred_by?: string | null
+  /** The event slugs whose standards the colour stood on when it was conferred. */
+  events?: string[] | null
 }
 
 export type GradeState = {
@@ -386,7 +388,7 @@ export async function loadGradeInputs(db: GradeDb, playerId: string, matches?: r
     loadBodyweights(db, playerId),
     loadResults(db, playerId),
     db.from('grade_exemptions').select('event_slug, created_at').eq('player_id', playerId),
-    db.from('grade_awards').select('id, domain_number, rung, grade_name, conferred_at, conferred_by').eq('player_id', playerId),
+    db.from('grade_awards').select('id, domain_number, rung, grade_name, conferred_at, conferred_by, events').eq('player_id', playerId),
     loadWorkoutEntries(db, playerId),
     matches ? Promise.resolve({ rows: matches, failed: false }) : loadMatchesChecked(db),
     loadRecordedVoids(db),
