@@ -231,15 +231,28 @@ describe('natural formats in the sheet', () => {
     expect(vals.setRows[0]).toEqual({ weightKg: '100', reps: '5' })
   })
 
-  it('takes a distance and a time on a run, with the pace and the converted rung', () => {
-    render(<QuickEntrySheet {...sheetProps} natural se={asPlayEvent('running')} eventData={running}
+  // Since 5 Oct 2026 a run TAKES any distance and time ('distance+time'),
+  // official or not, ranked on the 1000m time it predicts.
+  it('takes any distance and time on a run, and ranks the predicted 1000m', () => {
+    render(<QuickEntrySheet {...sheetProps} se={asPlayEvent('running')} eventData={running}
       onSubmit={vi.fn(async () => ({ error: null, isPR: false, units: 5 }))} />)
 
-    fireEvent.change(screen.getByLabelText('Distance in kilometres'), { target: { value: '5' } })
-    fireEvent.change(screen.getByLabelText('Minutes'), { target: { value: '26' } })
-    fireEvent.change(screen.getByLabelText('Seconds'), { target: { value: '10' } })
-    // The pace line carries the estimate; the submit button restates it.
-    expect(screen.getByText(/5:14\/km · 5km · 26:10 · est\. 1000m/)).toBeTruthy()
-    expect(screen.getByText(/Submit — 5km · 26:10 · est\. 1000m/)).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('Distance'), { target: { value: '5' } })
+    fireEvent.click(screen.getByRole('button', { name: 'km' }))
+    const [mins, secs] = [screen.getByPlaceholderText('min'), screen.getByPlaceholderText('sec')]
+    fireEvent.change(mins, { target: { value: '26' } })
+    fireEvent.change(secs, { target: { value: '10' } })
+    // 1570s over 5km predicts 285s (4:45) over 1km.
+    expect(screen.getByText(/5:14\/km · ranks as 1km 4:45/)).toBeTruthy()
+    expect(screen.getByText(/Submit — 5km · 26:10 · est\. 1km 4:45/)).toBeTruthy()
+  })
+
+  it('refuses a run shorter than the 1000m it is compared over', () => {
+    render(<QuickEntrySheet {...sheetProps} se={asPlayEvent('running')} eventData={running}
+      onSubmit={vi.fn(async () => ({ error: null, isPR: false }))} />)
+    fireEvent.change(screen.getByLabelText('Distance'), { target: { value: '400' } })
+    fireEvent.change(screen.getByPlaceholderText('min'), { target: { value: '1' } })
+    expect(screen.getByText('At least 1km to count.')).toBeTruthy()
+    expect(screen.getByText('Enter your score')).toBeTruthy()
   })
 })

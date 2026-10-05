@@ -14,6 +14,9 @@ const DOMAIN_SLUGS: Record<string, string> = {
   // Domain 5's name until Sept 2026. event_vote_nominations keep it, and so do
   // session_events rows until migration 20260930011149 rewrites them.
   'Anaerobic Endurance': 'stamina',
+  // Renamed from Aerobic Endurance 5 Oct 2026; the icon file keeps its name.
+  // The old name stays mapped for vote nominations that still carry it.
+  'Endurance': 'aerobic-endurance',
   'Aerobic Endurance': 'aerobic-endurance',
   'Flexibility': 'flexibility',
   'Body Awareness': 'body-awareness',

@@ -79,7 +79,8 @@ describe('an event\'s colour', () => {
 
   it('lets the rating lift a game event past the drill cap, after ten games', () => {
     const rope = ev('Jump Rope')
-    const drills = [row('Jump Rope', 4 * 10000 + 10, { difficulty_tier: 'Single Dutch' })]
+    // Double Dutch is D3 since 5 Oct 2026; 10 reps there is Kahurangi, the drill cap.
+    const drills = [row('Jump Rope', 2 * 10000 + 10, { difficulty_tier: 'Double Dutch' })]
     expect(eventGrade(rope, drills, openMan).rung).toBe(6)
     expect(eventGrade(rope, drills, openMan, { rating: 1215, games: 12 }).rung).toBe(8)
     expect(eventGrade(rope, drills, openMan, { rating: 1215, games: 9 }).rung).toBe(6)

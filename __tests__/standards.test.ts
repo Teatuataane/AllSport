@@ -16,7 +16,7 @@ describe('scripts that read TIMED_EFFORT_SLUGS out of the source', () => {
     expect(naive.sort()).toEqual([...TIMED_EFFORT_SLUGS].sort())
   })
 })
-import { rungForScore, ratioThresholdsKg, DRILL_CAP, TOP_RUNG, JUNIOR_BODYWEIGHT_KG } from '@/lib/grading'
+import { rungForScore, rungForCarry, ratioThresholdsKg, DRILL_CAP, TOP_RUNG, JUNIOR_BODYWEIGHT_KG } from '@/lib/grading'
 
 // lib/standards.ts is COMPILED from GRADING_STANDARDS_REVIEW.md. These tests
 // prove the two agree, that every ladder is well formed, and that the numbers
@@ -43,12 +43,14 @@ describe('the compiled standards', () => {
     expect(Object.keys(STANDARDS).sort()).toEqual(EVENTS.map(e => e.slug).sort())
   })
 
-  it('mark exactly the Game-rung events as game, and only Wrestling as rating-only', () => {
+  it('mark exactly the Game-rung events as game, and only the pure contests as rating-only', () => {
     for (const e of EVENTS) {
       const game = e.inputMode === 'sport' || (e.difficultyTiers ?? []).some(t => t.scoring === 'sport')
       expect(STANDARDS[e.slug].game, e.name).toBe(game)
     }
-    expect(Object.entries(STANDARDS).filter(([, s]) => s.kind === 'rating').map(([slug]) => slug)).toEqual(['wrestling'])
+    // Wrestling, and since 5 Oct 2026 the thirteen contests that lost their drills.
+    expect(Object.entries(STANDARDS).filter(([, s]) => s.kind === 'rating').map(([slug]) => slug).sort())
+      .toEqual(EVENTS.filter(e => e.inputMode === 'sport').map(e => e.slug).sort())
   })
 
   it('give every ladder twelve colours, or six on a Game-rung event, Kabaddi excepted', () => {
@@ -103,24 +105,34 @@ describe('the standards approved in review come back out of the engine', () => {
     expect(rungForScore(3 * 10000 + 31, all, 'Masters')).toBe(9)
   })
 
-  // Approved in review as Weighted Carry; renamed Sandbag Carry in Sept 2026
-  // with its numbers untouched, which is what the shared ladder below checks.
-  it('Sandbag Carry: a bodyweight carry is Uenuku under 4:00 and Taniwha under 2:00', () => {
-    const all = std('Sandbag Carry').all!
-    const bodyweight = (secs: number) => 3 * 10000 + (10000 - secs)
-    expect(rungForScore(bodyweight(119), all, 'Open')).toBe(12)
-    expect(rungForScore(bodyweight(121), all, 'Open')).toBe(11)
-    expect(rungForScore(bodyweight(241), all, 'Open')).toBe(10)
-    for (const w of ['Farmer Carry', 'Weighted Drag']) expect(std(w).all).toEqual(all)
+  // 5 Oct 2026: the carries are an open load, distance and time. A colour asks
+  // for the load AND the distance (rungForCarry), whatever the time.
+  it('Sandbag Carry: a colour needs both its load and its distance', () => {
+    const m = std('Sandbag Carry').M!
+    const carry = (kg: number, metres: number, secs: number) => Math.round(kg * 10) * 1e9 + metres * 1e4 + (1e4 - secs)
+    expect(rungForCarry(carry(120, 100, 300), m, 'Open')).toBe(12)
+    expect(rungForCarry(carry(119, 100, 300), m, 'Open')).toBe(11)
+    // Every load, but 99m: only the colours that ask for 50m or less.
+    expect(rungForCarry(carry(120, 99, 30), m, 'Open')).toBe(2)
+    // A heavier load carried one metre is not a 100m carry.
+    expect(rungForCarry(carry(200, 1, 5), m, 'Open')).toBe(0)
+  })
+
+  it('Running: the colour reads the predicted 1000m time', () => {
+    const m = std('Running').M!
+    expect(rungForScore(10000 - 195, m, 'Open')).toBe(12)
+    expect(rungForScore(10000 - 196, m, 'Open')).toBe(11)
+    expect(rungForScore(10000 - 3600, m, 'Open')).toBe(1)
   })
 
   it('Climbing: the Game rung makes it a game event with six drill colours', () => {
     // Sept 2026: the Game rung on top means drills stop at Kahurangi and the
-    // head-to-head rating gives Poroporo and above. D9 carries no threshold.
+    // head-to-head rating gives Poroporo and above. D6 (D9 until 5 Oct 2026)
+    // carries no threshold.
     const s = std('Climbing')
     expect(s.game).toBe(true)
     expect(s.all).toHaveLength(DRILL_CAP)
-    expect(Math.max(...s.all!)).toBeLessThan(8 * 10000)
+    expect(Math.max(...s.all!)).toBeLessThan(5 * 10000)
   })
 
   it('Vertical Jump: Taniwha is 64cm for men and 50cm for women', () => {

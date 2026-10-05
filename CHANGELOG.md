@@ -2,6 +2,23 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.28.0.0] - 2026-10-05
+
+### Changed
+- **The 5 October difficulty review is in.** New levels on 24 events, Repeat High Jump renamed Repeat Vault, Chinup Contest renamed Chinups, and Aerobic Endurance renamed Endurance. (Lunges and Shoulder Dislocate, also on the sheet, already went in 0.27.0.0, and L-Sit Hold's levels are the Compression ladder from that release.)
+- **Runs, rides, ski, row and scooting take any distance and time.** Your effort ranks on the 1000m time it predicts, so the best effort wins: a 4:00 kilometre beats a 15:00 3km (which predicts 4:41). Anything shorter than 1000m does not count. Animal Crawl works the same way over 25m, with the crawl style as the level.
+- **Sandbag Carry, Farmer Carry and Weighted Drag take any load, distance and time.** The heaviest load wins, then the furthest distance, then the fastest time.
+- **Tibialis Curl takes any load and reps.** A heavier load always wins, and reps break a tie.
+- **Thirteen contests are win, draw or loss only:** Arm Wrestling, Tug of War, 100m Sprint, 200m Sprint, Tag, T-Race, Beach Flags, Rats & Rabbits, Capture the Flag, Kabaddi, Speed Chess, Tae Kwon Do and Fencing. Their colours come from head-to-head games. The races can record a time alongside the result, but it does not decide anything.
+- **Javelin and Shotput are one implement each,** and the furthest throw wins.
+- **New colour standards** for every event whose levels or format changed. They are drafts and need Tāne's review (see `GRADING_STANDARDS_REVIEW.md`).
+
+### Removed
+- **Scores on levels that no longer exist are archived**, as the review asked ("remove historical scores that conflict"): for example Criss-Cross and Double Under on Jump Rope, the sprint drills, the lighter javelins and the 250m and 500m runs. They are kept in archive tables, not deleted outright.
+
+### Fixed
+- **An out-of-date app can no longer save a score in the old format** on any event changed here: the server refuses an old level, a level on an event that no longer has levels, or a contest score that is not a win, draw or loss, and asks you to refresh.
+
 ## [0.27.0.0] - 2026-10-05
 
 ### Added

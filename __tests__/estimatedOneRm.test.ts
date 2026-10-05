@@ -153,10 +153,11 @@ describe('Toe Lift and Tibialis Curl', () => {
     expect(STANDARDS['toe-lift'].kind).toBe('raw')
   })
 
-  it('Tibialis Curl is a 2-minute rep contest with load levels', () => {
+  // 5 Oct 2026: the fixed loads went. Any load and reps, heavier wins.
+  it('Tibialis Curl is a 2-minute contest on any load and reps', () => {
     const ev = getEventBySlug('tibialis-curl')!
-    expect(ev.inputMode).toBe('difficulty+reps')
-    expect(ev.difficultyTiers?.map(t => t.name)).toEqual(['Bodyweight', '2.5kg', '5kg', '10kg', '15kg', '20kg'])
+    expect(ev.inputMode).toBe('weight+reps')
+    expect(ev.difficultyTiers).toBeUndefined()
     expect(ev.rules).toContain('2 minutes')
     expect(STANDARDS['tibialis-curl'].kind).toBe('raw')
   })

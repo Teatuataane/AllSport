@@ -74,12 +74,27 @@ function legacyPayload(mode: string, eventData: EventData | undefined, v: EntryV
     payload.result_type = v.sportResult
     if (v.opponentName) payload.opponent_name = v.opponentName
     if (v.sportScore) payload.match_score = v.sportScore
+    // Deliberate change (5 Oct 2026): a raced contest keeps its time.
+    if (eventData?.recordsTime && totalSecs > 0) payload.time_seconds = totalSecs
+  }
+  // Deliberate change (5 Oct 2026): the open modes write what was done; the
+  // raw_score holds the prediction or the packed keys.
+  if (mode === 'weight+reps') {
+    payload.weight_kg = parseFloat(v.weightKg) || 0
+    payload.reps = parseInt(v.repCount) || 0
+  }
+  if (mode === 'distance+time' || mode === 'weight+distance+time') {
+    const val = parseFloat(v.distanceVal) || 0
+    payload.distance_m = v.distanceUnit === 'km' ? val * 1000 : v.distanceUnit === 'cm' ? val / 100 : val
+    payload.time_seconds = totalSecs
+    if (mode === 'weight+distance+time') payload.weight_kg = parseFloat(v.weightKg) || 0
   }
   return payload
 }
 
 const MODES = ['strength', 'reps', 'time', 'hold', 'distance', 'sport', 'sprint',
-  'difficulty+time', 'difficulty+reps', 'difficulty+distance', 'weight+time', 'score']
+  'difficulty+time', 'difficulty+reps', 'difficulty+distance', 'weight+time', 'score',
+  'weight+reps', 'distance+time', 'weight+distance+time']
 
 // Input shapes that reach every branch: weight with and without reps, times,
 // sprints, both distance units, all three results, opponents and strokes.
@@ -92,6 +107,9 @@ const SHAPES: Partial<EntryVals>[] = [
   { timeSecs: '45' },
   { timeSecs: '11', sprintCs: '45' },
   { distanceVal: '250', distanceUnit: 'm' },
+  { distanceVal: '3', distanceUnit: 'km', timeMins: '15', timeSecs: '0' },
+  { distanceVal: '1000', distanceUnit: 'm', timeMins: '4', timeSecs: '0' },
+  { weightKg: '40', distanceVal: '100', distanceUnit: 'm', timeMins: '1', timeSecs: '5' },
   { distanceVal: '185', distanceUnit: 'cm' },
   { sportResult: 'win', opponentName: 'Mere', sportScore: '3-1' },
   { sportResult: 'loss', opponentName: '' },
@@ -236,18 +254,19 @@ describe('colourGate edges', () => {
 // ─── What kind of event this is ──────────────────────────────────────────────
 
 describe('event kinds', () => {
-  it('picks out exactly the seven events raced over a ladder of distances', () => {
-    // The retired units sheet called these its 'distance' events; the natural
-    // "distance + time" entry format is offered on them and nowhere else.
-    expect(EVENTS.filter(isDistanceEvent).map(e => e.slug).sort()).toEqual(
-      ['animal-crawl', 'burpee-broad-jump', 'cycling', 'row-erg', 'running', 'scooting', 'ski-erg'])
+  it('picks out the one event still raced over a ladder of distances', () => {
+    // The retired units sheet called seven events its 'distance' events. Since
+    // 5 Oct 2026 six of them TAKE a distance and a time natively
+    // ('distance+time'), so only Burpee Broad Jump still needs the natural
+    // "distance + time" entry format converted onto a rung.
+    expect(EVENTS.filter(isDistanceEvent).map(e => e.slug).sort()).toEqual(['burpee-broad-jump'])
   })
 
   it('does not count a ladder of loads over one distance, or a ladder with an unreadable rung', () => {
     expect(isDistanceEvent(ev('Sandbag Carry'))).toBe(false)
-    const cycling = ev('Cycling')
-    expect(isDistanceEvent({ ...cycling, difficultyTiers: [{ name: 'Easy' }, { name: '1000m' }] } as EventData)).toBe(false)
-    expect(isDistanceEvent({ ...cycling, difficultyTiers: [] } as EventData)).toBe(false)
+    const burpee = ev('Burpee Broad Jump')
+    expect(isDistanceEvent({ ...burpee, difficultyTiers: [{ name: 'Easy' }, { name: '1000m' }] } as EventData)).toBe(false)
+    expect(isDistanceEvent({ ...burpee, difficultyTiers: [] } as EventData)).toBe(false)
   })
 
   it('reads metres out of rung names', () => {

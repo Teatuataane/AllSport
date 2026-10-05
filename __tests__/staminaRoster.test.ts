@@ -84,11 +84,19 @@ describe('stamina roster migration', () => {
     return all.slice(from, all.indexOf('$$;', from))
   })()
 
-  it('guards exactly the current ladders of the five re-levelled events', () => {
-    const guarded = [...guardSql.matchAll(/\('([a-z-]+)', '([^']+)', (\d+)\)/g)].map(m => ({ slug: m[1], tier: m[2], idx: +m[3] }))
+  // 20261005012108 redefined the guard to cover every ladder it changed too.
+  it('guards exactly the current ladders of every re-levelled event', () => {
+    const guarded = [...guardSql.matchAll(/\('([a-z0-9-]+)', '((?:[^']|'')+)', (\d+)\)/g)]
+      .map(m => ({ slug: m[1], tier: m[2].replace(/''/g, "'"), idx: +m[3] }))
     const slugs = [...new Set(guarded.map(g => g.slug))].sort()
     // Stated, not derived: dropping an event from both lists must still fail.
-    expect(slugs).toEqual(['calf-raises', 'l-sit-hold', 'push-up-contest', 'reverse-wrist-stretch', 'wrist-stretch'])
+    expect(slugs).toEqual([
+      'american-football', 'animal-crawl', 'baseball', 'breakdancing', 'calf-raises', 'cricket', 'darts',
+      'disc-golf', 'finger-push-up', 'foot-juggling', 'golf', 'gymnastics', 'iron-cross', 'jump-rope',
+      'l-sit-hold', 'middle-split', 'netball', 'pancake', 'push-up-contest', 'reverse-wrist-stretch',
+      'rope-climb', 'skate', 'slackline', 'table-tennis', 'tennis', 'teqball', 'touch-rugby', 'trampolining',
+      'volleyball', 'wrist-stretch',
+    ])
     for (const slug of slugs) {
       const ev = getEventBySlug(slug)!
       const rows = guarded.filter(g => g.slug === slug)
@@ -96,7 +104,7 @@ describe('stamina roster migration', () => {
       expect(rows.map(r => r.idx), slug).toEqual(ev.difficultyTiers!.map((_, i) => i))
     }
     // The gate lists exactly the guarded slugs: one missing is an unguarded event.
-    const gate = guardSql.match(/AND NEW\.raw_score IS NOT NULL/) && guardSql.match(/IF v_slug IN \(([^)]*)\)\s+AND NEW\.raw_score/)
+    const gate = guardSql.match(/IF v_slug IN \(([^)]*)\)\s+AND NEW\.raw_score IS NOT NULL\s+AND NOT EXISTS/)
     expect(gate, 'gate list').toBeTruthy()
     expect([...gate![1].matchAll(/'([^']+)'/g)].map(m => m[1]).sort()).toEqual(slugs)
     // The band check is the whole point: without it an old 'Push Up' in its old band passes.

@@ -13,6 +13,11 @@
 //   distance             centimetres
 //   hold                 seconds
 //   weight+time          kg*100*10000 + secs
+//   weight+reps          kg*100*10000 + reps          ("BW · 20", "10kg · 20")
+//   distance+time        tierIdx*10000 + (10000 - secs), secs PREDICTED over
+//                        the event's reference distance ("≤ 4:05", "D2 · ≤ 30s")
+//   weight+distance+time kg*10*10^9 + metres*10^4     ("40kg · 100m"; a colour
+//                        asks for the load AND the distance, lib/grading.ts)
 //   strength             a RATIO of bodyweight (kind 'ratio'), compared with
 //                        weight_kg ÷ the bodyweight lib/grading.ts supplies
 
@@ -82,6 +87,15 @@ const secsOf = v => {
   return m[3] != null ? +m[3] : +m[1] * 60 + +m[2]
 }
 
+/** An open-distance effort: "finish", or "≤ 4:05" as the time predicted over the reference. */
+function effortThreshold(base, rest, bad) {
+  if (rest === 'finish') return base + 1
+  const m = rest.match(/^≤ (.+)$/)
+  const s = m && secsOf(m[1])
+  if (s == null) throw bad('an open distance effort: expected "finish" or "≤ 4:05"')
+  return base + (BAND - s)
+}
+
 /** One sheet value to its threshold. Throws with the event and value named. */
 export function threshold(ev, value) {
   const bad = why => new Error(`${ev.name}: "${value}" — ${why}`)
@@ -94,8 +108,9 @@ export function threshold(ev, value) {
     return Number(m[1])
   }
   if (ev.mode === 'distance') {
+    if (v === 'any') return 1
     const m = v.match(/^(\d+(?:\.\d+)?)(cm|m)$/)
-    if (!m) throw bad('expected "64cm" or "2.4m"')
+    if (!m) throw bad('expected "any", "64cm" or "2.4m"')
     return m[2] === 'm' ? Math.round(Number(m[1]) * 100) : Number(m[1])
   }
   if (ev.mode === 'hold') {
@@ -110,6 +125,18 @@ export function threshold(ev, value) {
     const kg = m[1] === 'BW' ? 0 : Number(m[1].slice(0, -2))
     return Math.round(kg * 100) * BAND + s
   }
+  if (ev.mode === 'weight+reps') {
+    const m = v.match(/^(BW|\d+(?:\.\d+)?kg) · (\d+)$/)
+    if (!m) throw bad('expected "BW · 20" or "10kg · 20"')
+    const kg = m[1] === 'BW' ? 0 : Number(m[1].slice(0, -2))
+    return Math.round(kg * 100) * BAND + Number(m[2])
+  }
+  if (ev.mode === 'weight+distance+time') {
+    const m = v.match(/^(\d+(?:\.\d+)?)kg · (\d+)m$/)
+    if (!m) throw bad('expected "40kg · 100m"')
+    return Math.round(Number(m[1]) * 10) * 1e9 + Number(m[2]) * BAND
+  }
+  if (ev.mode === 'distance+time' && ev.tiers.length === 0) return effortThreshold(0, v, bad)
 
   // Tiered: "D3 · …"
   const t = v.match(/^D(\d+) · (.+)$/)
@@ -136,6 +163,7 @@ export function threshold(ev, value) {
     if (!m) throw bad('expected "any" or "15m"')
     return base + Math.round(Number(m[1]) * 10)
   }
+  if (ev.mode === 'distance+time') return effortThreshold(base, rest, bad)
   if (ev.mode === 'difficulty+time') {
     if (ev.timed) {
       // Any completed time leaves a term of at least 1, so "finish" is base + 1.

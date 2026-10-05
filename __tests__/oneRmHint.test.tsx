@@ -58,6 +58,13 @@ describe('the est. 1RM hint', () => {
     expect(screen.queryByText(/Est\. 1RM \d/)).toBeNull()
   })
 
+  // Shoulder Dislocate, the one strength event that was not a lift, left the
+  // roster on 5 Oct 2026; Tibialis Curl takes a load and reps but is no lift.
+  it('never appears on Tibialis Curl, a load and reps that is not a lift', () => {
+    render(<QuickEntrySheet {...props('tibialis-curl')} />)
+    expect(screen.queryByText(/estimated 1RM/)).toBeNull()
+  })
+
   it('counts reps past ten as ten', () => {
     render(<QuickEntrySheet {...props('deadlift')} />)
     const [weight, reps] = screen.getAllByPlaceholderText('0')

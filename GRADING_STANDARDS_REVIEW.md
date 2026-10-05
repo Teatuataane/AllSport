@@ -873,75 +873,75 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 ### 30. Javelin
 
-*Scored by: difficulty level, then furthest throw · 4 players have scored it*
+*Scored by: furthest throw with the full javelin*
 
-> Drafted by hand. Four colours on each implement. A throw with a heavier implement always outranks a lighter one, as on every ladder.
+> Drafted by Claude 5 Oct 2026 for the new format, UNREVIEWED. One implement now; Hiriwa and up are the old long-javelin numbers.
 
 **Men**
 
-- Kiwikiwi: D1 · any
-- Whero: D1 · 10m
-- Karaka: D1 · 15m
-- Kōwhai: D1 · 20m
-- Kākāriki: D2 · 10m
-- Kahurangi: D2 · 15m
-- Poroporo: D2 · 20m
-- Parahi: D2 · 25m
-- Hiriwa: D3 · 15m
-- Kōura: D3 · 25m
-- Uenuku: D3 · 35m
-- Taniwha: D3 · 45m
+- Kiwikiwi: any
+- Whero: 6m
+- Karaka: 8m
+- Kōwhai: 10m
+- Kākāriki: 12m
+- Kahurangi: 14m
+- Poroporo: 17m
+- Parahi: 20m
+- Hiriwa: 25m
+- Kōura: 30m
+- Uenuku: 37m
+- Taniwha: 45m
 
 **Women**
 
-- Kiwikiwi: D1 · any
-- Whero: D1 · 8m
-- Karaka: D1 · 12m
-- Kōwhai: D1 · 16m
-- Kākāriki: D2 · 8m
-- Kahurangi: D2 · 12m
-- Poroporo: D2 · 16m
-- Parahi: D2 · 20m
-- Hiriwa: D3 · 10m
-- Kōura: D3 · 17m
-- Uenuku: D3 · 24m
-- Taniwha: D3 · 32m
+- Kiwikiwi: any
+- Whero: 4m
+- Karaka: 6m
+- Kōwhai: 8m
+- Kākāriki: 9m
+- Kahurangi: 10m
+- Poroporo: 12m
+- Parahi: 14m
+- Hiriwa: 17m
+- Kōura: 20m
+- Uenuku: 25m
+- Taniwha: 32m
 
 ### 31. Shotput
 
-*Scored by: difficulty level, then furthest throw · 5 players have scored it*
+*Scored by: furthest put with the full-weight shot*
 
-> Drafted by hand. Four colours on each implement. The tennis-ball rung is thrown, so its distances are far longer.
+> Drafted by Claude 5 Oct 2026 for the new format, UNREVIEWED. One implement now; Hiriwa and up are the old full-weight numbers.
 
 **Men**
 
-- Kiwikiwi: D1 · any
-- Whero: D1 · 15m
-- Karaka: D1 · 25m
-- Kōwhai: D1 · 35m
-- Kākāriki: D2 · 4m
-- Kahurangi: D2 · 6m
-- Poroporo: D2 · 8m
-- Parahi: D2 · 10m
-- Hiriwa: D3 · 5m
-- Kōura: D3 · 7m
-- Uenuku: D3 · 9m
-- Taniwha: D3 · 11m
+- Kiwikiwi: any
+- Whero: 2.5m
+- Karaka: 3m
+- Kōwhai: 3.5m
+- Kākāriki: 4m
+- Kahurangi: 4.5m
+- Poroporo: 5m
+- Parahi: 6m
+- Hiriwa: 7m
+- Kōura: 8m
+- Uenuku: 9m
+- Taniwha: 11m
 
 **Women**
 
-- Kiwikiwi: D1 · any
-- Whero: D1 · 10m
-- Karaka: D1 · 18m
-- Kōwhai: D1 · 25m
-- Kākāriki: D2 · 3m
-- Kahurangi: D2 · 5m
-- Poroporo: D2 · 7m
-- Parahi: D2 · 9m
-- Hiriwa: D3 · 4m
-- Kōura: D3 · 6m
-- Uenuku: D3 · 8m
-- Taniwha: D3 · 10m
+- Kiwikiwi: any
+- Whero: 2m
+- Karaka: 2.5m
+- Kōwhai: 3m
+- Kākāriki: 3.5m
+- Kahurangi: 4m
+- Poroporo: 4.5m
+- Parahi: 5m
+- Hiriwa: 6m
+- Kōura: 7m
+- Uenuku: 8m
+- Taniwha: 10m
 
 ### 32. Australian Football
 
@@ -1142,37 +1142,15 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 ### 38. Arm Wrestling
 
-*Scored by: difficulty level, then longest hold · 2 players have scored it*
+*Scored by: win, draw or loss against another player*
 
-> Drafted by rule. Six drill colours spread over the drill rungs, extras on the lowest. Reach a rung, then own it.
-
-**Everyone**
-
-- Kiwikiwi: D1 · 10s
-- Whero: D1 · 30s
-- Karaka: D2 · 10s
-- Kōwhai: D2 · 30s
-- Kākāriki: D3 · 30s
-- Kahurangi: D4 · 30s
-
-*Poroporo and above: the head-to-head rating.*
+**Rating only.** No fair solo drill exists, so every colour comes from the head-to-head rating.
 
 ### 39. Tug of War
 
-*Scored by: difficulty level, then fastest time · 0 players have scored it*
+*Scored by: win, draw or loss against another player*
 
-> Drafted by hand. A 10m hand-over-hand sled pull at each load.
-
-**Everyone**
-
-- Kiwikiwi: D1 · finish
-- Whero: D1 · ≤ 20s
-- Karaka: D2 · finish
-- Kōwhai: D2 · ≤ 25s
-- Kākāriki: D3 · ≤ 40s
-- Kahurangi: D4 · ≤ 1:00
-
-*Poroporo and above: the head-to-head rating.*
+**Rating only.** No fair solo drill exists, so every colour comes from the head-to-head rating.
 
 ---
 
@@ -1180,106 +1158,33 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 ### 40. 100m Sprint
 
-*Scored by: difficulty level, then fastest time · 11 players have scored it*
+*Scored by: win, draw or loss against another player*
 
-> Drafted by hand. Three colours walking, three sprinting. The median adult man sprints 100m in about 15.5 seconds.
-
-**Men**
-
-- Kiwikiwi: D1 · finish
-- Whero: D1 · ≤ 1:15
-- Karaka: D1 · ≤ 1:00
-- Kōwhai: D2 · ≤ 19s
-- Kākāriki: D2 · ≤ 17s
-- Kahurangi: D2 · ≤ 15.5s
-
-**Women**
-
-- Kiwikiwi: D1 · finish
-- Whero: D1 · ≤ 1:15
-- Karaka: D1 · ≤ 1:00
-- Kōwhai: D2 · ≤ 22s
-- Kākāriki: D2 · ≤ 19.5s
-- Kahurangi: D2 · ≤ 17.5s
-
-*Poroporo and above: the head-to-head rating.*
+**Rating only.** No fair solo drill exists, so every colour comes from the head-to-head rating.
 
 ### 41. Tag
 
-*Scored by: difficulty level, then fastest time · 4 players have scored it*
+*Scored by: win, draw or loss against another player*
 
-> Drafted by hand. Six calls in a 10m grid. A new drill, so these times are the roughest on the sheet.
-
-**Everyone**
-
-- Kiwikiwi: D1 · finish
-- Whero: D1 · ≤ 40s
-- Karaka: D1 · ≤ 34s
-- Kōwhai: D1 · ≤ 29s
-- Kākāriki: D1 · ≤ 25s
-- Kahurangi: D1 · ≤ 22s
-
-*Poroporo and above: the head-to-head rating.*
+**Rating only.** No fair solo drill exists, so every colour comes from the head-to-head rating.
 
 ### 42. T-Race
 
-*Scored by: difficulty level, then fastest time · 4 players have scored it*
+*Scored by: win, draw or loss against another player*
 
-> Drafted by hand. The T agility test: the median adult runs it in about 11 to 12 seconds.
-
-**Everyone**
-
-- Kiwikiwi: D1 · finish
-- Whero: D1 · ≤ 25s
-- Karaka: D1 · ≤ 20s
-- Kōwhai: D2 · ≤ 14s
-- Kākāriki: D2 · ≤ 12.5s
-- Kahurangi: D2 · ≤ 11.5s
-
-*Poroporo and above: the head-to-head rating.*
+**Rating only.** No fair solo drill exists, so every colour comes from the head-to-head rating.
 
 ### 43. Beach Flags
 
-*Scored by: difficulty level, then fastest time · 7 players have scored it*
+*Scored by: win, draw or loss against another player*
 
-> Drafted by hand. From face down to a flag 15m away.
-
-**Everyone**
-
-- Kiwikiwi: D1 · finish
-- Whero: D1 · ≤ 5.5s
-- Karaka: D1 · ≤ 4.8s
-- Kōwhai: D1 · ≤ 4.3s
-- Kākāriki: D1 · ≤ 3.9s
-- Kahurangi: D1 · ≤ 3.6s
-
-*Poroporo and above: the head-to-head rating.*
+**Rating only.** No fair solo drill exists, so every colour comes from the head-to-head rating.
 
 ### 44. 200m Sprint
 
-*Scored by: difficulty level, then fastest time · 3 players have scored it*
+*Scored by: win, draw or loss against another player*
 
-> Drafted by hand. As the 100m.
-
-**Men**
-
-- Kiwikiwi: D1 · finish
-- Whero: D1 · ≤ 2:30
-- Karaka: D1 · ≤ 2:05
-- Kōwhai: D2 · ≤ 40s
-- Kākāriki: D2 · ≤ 35s
-- Kahurangi: D2 · ≤ 32s
-
-**Women**
-
-- Kiwikiwi: D1 · finish
-- Whero: D1 · ≤ 2:30
-- Karaka: D1 · ≤ 2:05
-- Kōwhai: D2 · ≤ 46s
-- Kākāriki: D2 · ≤ 40s
-- Kahurangi: D2 · ≤ 37s
-
-*Poroporo and above: the head-to-head rating.*
+**Rating only.** No fair solo drill exists, so every colour comes from the head-to-head rating.
 
 ### 45. Touch Rugby
 
@@ -1298,9 +1203,11 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 *Poroporo and above: the head-to-head rating.*
 
-### 46. Repeat High Jump
+### 46. Repeat Vault
 
 *Scored by: difficulty level, then fastest time · 5 players have scored it*
+
+> Renamed from Repeat High Jump, 5 Oct 2026. Standards unchanged.
 
 > Drafted by hand. Two colours a height: complete the set, then complete it inside 30 seconds. The number of jumps is set by the kaiwhakawā, so the time assumes it never changes.
 
@@ -1321,95 +1228,54 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 ### 47. Rats & Rabbits
 
-*Scored by: difficulty level, then fastest time · 3 players have scored it*
+*Scored by: win, draw or loss against another player*
 
-> Drafted by hand. Timed from the call to the line, 10m away. A new drill.
-
-**Everyone**
-
-- Kiwikiwi: D1 · finish
-- Whero: D1 · ≤ 3.5s
-- Karaka: D1 · ≤ 3s
-- Kōwhai: D1 · ≤ 2.7s
-- Kākāriki: D1 · ≤ 2.5s
-- Kahurangi: D1 · ≤ 2.3s
-
-*Poroporo and above: the head-to-head rating.*
+**Rating only.** No fair solo drill exists, so every colour comes from the head-to-head rating.
 
 ### 48. Speed Chess
 
-*Scored by: difficulty level, then most reps · 3 players have scored it*
+*Scored by: win, draw or loss against another player*
 
-> Drafted by rule. Six drill colours spread over the drill rungs, extras on the lowest. Reach a rung, then own it.
-
-**Everyone**
-
-- Kiwikiwi: D1 · 3
-- Whero: D1 · 8
-- Karaka: D2 · 3
-- Kōwhai: D2 · 8
-- Kākāriki: D3 · 3
-- Kahurangi: D3 · 8
-
-*Poroporo and above: the head-to-head rating.*
+**Rating only.** No fair solo drill exists, so every colour comes from the head-to-head rating.
 
 ### 49. American Football
 
-*Scored by: difficulty level, then most reps · 0 players have scored it*
+*Scored by: difficulty level, then most reps*
 
-> Drafted by rule. Six drill colours spread over the drill rungs, extras on the lowest. Reach a rung, then own it.
+> Redrafted by rule 5 Oct 2026 for the new ladder, UNREVIEWED. Colours spread over the drill rungs, extras on the lowest. Reach a rung, then own it.
 
 **Everyone**
 
 - Kiwikiwi: D1 · 5
 - Whero: D1 · 15
-- Karaka: D2 · 5
-- Kōwhai: D2 · 15
-- Kākāriki: D3 · 10
-- Kahurangi: D4 · 10
+- Karaka: D2 · 10
+- Kōwhai: D3 · 10
+- Kākāriki: D4 · 10
+- Kahurangi: D5 · 10
 
 *Poroporo and above: the head-to-head rating.*
 
 ### 50. Capture the Flag
 
-*Scored by: difficulty level, then fastest time · 0 players have scored it*
+*Scored by: win, draw or loss against another player*
 
-> Drafted by hand. About 30m with a pickup. A new drill.
-
-**Everyone**
-
-- Kiwikiwi: D1 · finish
-- Whero: D1 · ≤ 10s
-- Karaka: D1 · ≤ 8.5s
-- Kōwhai: D1 · ≤ 7.5s
-- Kākāriki: D1 · ≤ 6.8s
-- Kahurangi: D1 · ≤ 6.2s
-
-*Poroporo and above: the head-to-head rating.*
+**Rating only.** No fair solo drill exists, so every colour comes from the head-to-head rating.
 
 ### 51. Kabaddi
 
-*Scored by: difficulty level, then most reps · 2 players have scored it*
+*Scored by: win, draw or loss against another player*
 
-> Drafted by hand. Five cones make five colours, so the drill stops at Kākāriki and Kahurangi comes only from the rating. Add cones to the drill if the drill should reach Kahurangi.
-
-**Everyone**
-
-- Kiwikiwi: D1 · 1
-- Whero: D1 · 2
-- Karaka: D1 · 3
-- Kōwhai: D1 · 4
-- Kākāriki: D1 · 5
-
-*Poroporo and above: the head-to-head rating.*
+**Rating only.** No fair solo drill exists, so every colour comes from the head-to-head rating.
 
 ---
 
 ## 5. Stamina
 
-### 52. Chinup Contest
+### 52. Chinups
 
 *Scored by: difficulty level, then most reps · 4 players have scored it*
+
+> Renamed from Chinup Contest, 5 Oct 2026. Standards unchanged.
 
 > Drafted by rule. Twelve colours spread over the rungs, extras on the lowest. Reach a rung, then own it.
 
@@ -1468,45 +1334,45 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 ### 54. Tibialis Curl
 
-*Scored by: difficulty level, then most reps in 2 minutes · 5 players have scored it (as a heaviest lift, now archived)*
+*Scored by: heaviest load, then most reps in 2 minutes*
 
-> Drafted by Claude 29 Sept 2026, UNREVIEWED. Tāne: Anaerobic Endurance is a 2-minute contest and tib curls are hard, so the load is the level and the colours ask for reps at light loads. 20 reps then 40 reps at bodyweight, then 20 and 40 at 2.5kg and 5kg, then 20 and 35 at 10, 15 and 20kg.
+> Drafted by Claude 5 Oct 2026 for the new format, UNREVIEWED. The same numbers as the 29 Sept draft, written as a load: a colour asks for at least the load AND at least the reps.
 
 **Everyone**
 
-- Kiwikiwi: D1 · 20
-- Whero: D1 · 40
-- Karaka: D2 · 20
-- Kōwhai: D2 · 40
-- Kākāriki: D3 · 20
-- Kahurangi: D3 · 40
-- Poroporo: D4 · 20
-- Parahi: D4 · 35
-- Hiriwa: D5 · 20
-- Kōura: D5 · 35
-- Uenuku: D6 · 20
-- Taniwha: D6 · 35
+- Kiwikiwi: BW · 20
+- Whero: BW · 40
+- Karaka: 2.5kg · 20
+- Kōwhai: 2.5kg · 40
+- Kākāriki: 5kg · 20
+- Kahurangi: 5kg · 40
+- Poroporo: 10kg · 20
+- Parahi: 10kg · 35
+- Hiriwa: 15kg · 20
+- Kōura: 15kg · 35
+- Uenuku: 20kg · 20
+- Taniwha: 20kg · 35
 
 ### 55. Finger Pushup
 
-*Scored by: difficulty level, then most reps · 3 players have scored it*
+*Scored by: difficulty level, then most reps*
 
-> Drafted by rule. Twelve colours spread over the rungs, extras on the lowest. Reach a rung, then own it.
+> Redrafted by rule 5 Oct 2026 for the new ladder, UNREVIEWED. Colours spread over the drill rungs, extras on the lowest. Reach a rung, then own it.
 
 **Everyone**
 
 - Kiwikiwi: D1 · 5
-- Whero: D1 · 15
-- Karaka: D2 · 5
-- Kōwhai: D2 · 15
-- Kākāriki: D3 · 5
-- Kahurangi: D3 · 15
-- Poroporo: D4 · 5
-- Parahi: D4 · 15
-- Hiriwa: D5 · 5
-- Kōura: D5 · 15
-- Uenuku: D6 · 10
-- Taniwha: D7 · 10
+- Whero: D1 · 10
+- Karaka: D1 · 20
+- Kōwhai: D2 · 5
+- Kākāriki: D2 · 10
+- Kahurangi: D2 · 20
+- Poroporo: D3 · 5
+- Parahi: D3 · 10
+- Hiriwa: D3 · 20
+- Kōura: D4 · 1
+- Uenuku: D4 · 5
+- Taniwha: D4 · 10
 
 ### 56. GHD Situp
 
@@ -1703,7 +1569,7 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: D6 · 10s
 - Taniwha: D6 · 20s
 
-## 6. Aerobic Endurance
+## 6. Endurance
 
 ### 65. Burpee Broad Jump
 
@@ -1728,147 +1594,147 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 ### 66. Running
 
-*Scored by: difficulty level, then fastest time · 3 players have scored it*
+*Scored by: best effort over any distance of at least 1000m, as its predicted 1000m time*
 
-> Drafted by hand. Anyone can finish 1000m, so finishing cannot be a high colour: most colours are times on the longest rung. Women's times are the men's plus 12%.
+> Drafted by Claude 5 Oct 2026 for the new format, UNREVIEWED. Kahurangi and up are the old 1000m-rung times, unchanged; the five below are spaced from Kahurangi. Women's times are the men's plus 12%.
 
 **Men**
 
-- Kiwikiwi: D1 · finish
-- Whero: D1 · ≤ 1:10
-- Karaka: D2 · finish
-- Kōwhai: D2 · ≤ 2:30
-- Kākāriki: D2 · ≤ 2:05
-- Kahurangi: D3 · ≤ 6:00
-- Poroporo: D3 · ≤ 5:00
-- Parahi: D3 · ≤ 4:30
-- Hiriwa: D3 · ≤ 4:05
-- Kōura: D3 · ≤ 3:45
-- Uenuku: D3 · ≤ 3:30
-- Taniwha: D3 · ≤ 3:15
+- Kiwikiwi: finish
+- Whero: ≤ 10:00
+- Karaka: ≤ 9:00
+- Kōwhai: ≤ 8:00
+- Kākāriki: ≤ 7:00
+- Kahurangi: ≤ 6:00
+- Poroporo: ≤ 5:00
+- Parahi: ≤ 4:30
+- Hiriwa: ≤ 4:05
+- Kōura: ≤ 3:45
+- Uenuku: ≤ 3:30
+- Taniwha: ≤ 3:15
 
 **Women**
 
-- Kiwikiwi: D1 · finish
-- Whero: D1 · ≤ 1:20
-- Karaka: D2 · finish
-- Kōwhai: D2 · ≤ 2:50
-- Kākāriki: D2 · ≤ 2:20
-- Kahurangi: D3 · ≤ 6:45
-- Poroporo: D3 · ≤ 5:35
-- Parahi: D3 · ≤ 5:00
-- Hiriwa: D3 · ≤ 4:35
-- Kōura: D3 · ≤ 4:10
-- Uenuku: D3 · ≤ 3:55
-- Taniwha: D3 · ≤ 3:40
+- Kiwikiwi: finish
+- Whero: ≤ 11:15
+- Karaka: ≤ 10:10
+- Kōwhai: ≤ 9:00
+- Kākāriki: ≤ 7:55
+- Kahurangi: ≤ 6:45
+- Poroporo: ≤ 5:35
+- Parahi: ≤ 5:00
+- Hiriwa: ≤ 4:35
+- Kōura: ≤ 4:10
+- Uenuku: ≤ 3:55
+- Taniwha: ≤ 3:40
 
 ### 67. Cycling
 
-*Scored by: difficulty level, then fastest time · 4 players have scored it*
+*Scored by: best effort over any distance of at least 1000m, as its predicted 1000m time*
 
-> Drafted by hand. As Running. These assume a stationary bike; the bike used changes every time.
+> Drafted by Claude 5 Oct 2026 for the new format, UNREVIEWED. Kahurangi and up are the old 1000m-rung times, unchanged; the five below are spaced from Kahurangi.
 
 **Men**
 
-- Kiwikiwi: D1 · finish
-- Whero: D1 · ≤ 0:35
-- Karaka: D2 · finish
-- Kōwhai: D2 · ≤ 1:05
-- Kākāriki: D2 · ≤ 0:55
-- Kahurangi: D3 · ≤ 2:00
-- Poroporo: D3 · ≤ 1:45
-- Parahi: D3 · ≤ 1:35
-- Hiriwa: D3 · ≤ 1:28
-- Kōura: D3 · ≤ 1:22
-- Uenuku: D3 · ≤ 1:17
-- Taniwha: D3 · ≤ 1:12
+- Kiwikiwi: finish
+- Whero: ≤ 3:20
+- Karaka: ≤ 3:00
+- Kōwhai: ≤ 2:40
+- Kākāriki: ≤ 2:20
+- Kahurangi: ≤ 2:00
+- Poroporo: ≤ 1:45
+- Parahi: ≤ 1:35
+- Hiriwa: ≤ 1:28
+- Kōura: ≤ 1:22
+- Uenuku: ≤ 1:17
+- Taniwha: ≤ 1:12
 
 **Women**
 
-- Kiwikiwi: D1 · finish
-- Whero: D1 · ≤ 39.2s
-- Karaka: D2 · finish
-- Kōwhai: D2 · ≤ 1:15
-- Kākāriki: D2 · ≤ 1:00
-- Kahurangi: D3 · ≤ 2:15
-- Poroporo: D3 · ≤ 2:00
-- Parahi: D3 · ≤ 1:45
-- Hiriwa: D3 · ≤ 1:40
-- Kōura: D3 · ≤ 1:30
-- Uenuku: D3 · ≤ 1:25
-- Taniwha: D3 · ≤ 1:20
+- Kiwikiwi: finish
+- Whero: ≤ 3:45
+- Karaka: ≤ 3:25
+- Kōwhai: ≤ 3:00
+- Kākāriki: ≤ 2:40
+- Kahurangi: ≤ 2:15
+- Poroporo: ≤ 2:00
+- Parahi: ≤ 1:45
+- Hiriwa: ≤ 1:40
+- Kōura: ≤ 1:30
+- Uenuku: ≤ 1:25
+- Taniwha: ≤ 1:20
 
 ### 68. Ski Erg
 
-*Scored by: difficulty level, then fastest time · 4 players have scored it*
+*Scored by: best effort over any distance of at least 1000m, as its predicted 1000m time*
 
-> Drafted by hand. As Running. The median adult skis 1000m in about 5:00.
+> Drafted by Claude 5 Oct 2026 for the new format, UNREVIEWED. Kahurangi and up are the old 1000m-rung times, unchanged; the five below are spaced from Kahurangi.
 
 **Men**
 
-- Kiwikiwi: D1 · finish
-- Whero: D1 · ≤ 1:05
-- Karaka: D2 · finish
-- Kōwhai: D2 · ≤ 2:20
-- Kākāriki: D2 · ≤ 2:05
-- Kahurangi: D3 · ≤ 5:00
-- Poroporo: D3 · ≤ 4:35
-- Parahi: D3 · ≤ 4:15
-- Hiriwa: D3 · ≤ 4:00
-- Kōura: D3 · ≤ 3:45
-- Uenuku: D3 · ≤ 3:35
-- Taniwha: D3 · ≤ 3:25
+- Kiwikiwi: finish
+- Whero: ≤ 8:20
+- Karaka: ≤ 7:30
+- Kōwhai: ≤ 6:40
+- Kākāriki: ≤ 5:50
+- Kahurangi: ≤ 5:00
+- Poroporo: ≤ 4:35
+- Parahi: ≤ 4:15
+- Hiriwa: ≤ 4:00
+- Kōura: ≤ 3:45
+- Uenuku: ≤ 3:35
+- Taniwha: ≤ 3:25
 
 **Women**
 
-- Kiwikiwi: D1 · finish
-- Whero: D1 · ≤ 1:15
-- Karaka: D2 · finish
-- Kōwhai: D2 · ≤ 2:35
-- Kākāriki: D2 · ≤ 2:20
-- Kahurangi: D3 · ≤ 5:35
-- Poroporo: D3 · ≤ 5:10
-- Parahi: D3 · ≤ 4:45
-- Hiriwa: D3 · ≤ 4:30
-- Kōura: D3 · ≤ 4:10
-- Uenuku: D3 · ≤ 4:00
-- Taniwha: D3 · ≤ 3:50
+- Kiwikiwi: finish
+- Whero: ≤ 9:20
+- Karaka: ≤ 8:25
+- Kōwhai: ≤ 7:25
+- Kākāriki: ≤ 6:30
+- Kahurangi: ≤ 5:35
+- Poroporo: ≤ 5:10
+- Parahi: ≤ 4:45
+- Hiriwa: ≤ 4:30
+- Kōura: ≤ 4:10
+- Uenuku: ≤ 4:00
+- Taniwha: ≤ 3:50
 
 ### 69. Row Erg
 
-*Scored by: difficulty level, then fastest time · 4 players have scored it*
+*Scored by: best effort over any distance of at least 1000m, as its predicted 1000m time*
 
-> Drafted by hand. As Running. The median adult rows 1000m in about 4:45.
+> Drafted by Claude 5 Oct 2026 for the new format, UNREVIEWED. Kahurangi and up are the old 1000m-rung times, unchanged; the five below are spaced from Kahurangi.
 
 **Men**
 
-- Kiwikiwi: D1 · finish
-- Whero: D1 · ≤ 1:05
-- Karaka: D2 · finish
-- Kōwhai: D2 · ≤ 2:15
-- Kākāriki: D2 · ≤ 1:55
-- Kahurangi: D3 · ≤ 4:45
-- Poroporo: D3 · ≤ 4:15
-- Parahi: D3 · ≤ 3:55
-- Hiriwa: D3 · ≤ 3:40
-- Kōura: D3 · ≤ 3:28
-- Uenuku: D3 · ≤ 3:18
-- Taniwha: D3 · ≤ 3:10
+- Kiwikiwi: finish
+- Whero: ≤ 7:55
+- Karaka: ≤ 7:10
+- Kōwhai: ≤ 6:20
+- Kākāriki: ≤ 5:35
+- Kahurangi: ≤ 4:45
+- Poroporo: ≤ 4:15
+- Parahi: ≤ 3:55
+- Hiriwa: ≤ 3:40
+- Kōura: ≤ 3:28
+- Uenuku: ≤ 3:18
+- Taniwha: ≤ 3:10
 
 **Women**
 
-- Kiwikiwi: D1 · finish
-- Whero: D1 · ≤ 1:15
-- Karaka: D2 · finish
-- Kōwhai: D2 · ≤ 2:30
-- Kākāriki: D2 · ≤ 2:10
-- Kahurangi: D3 · ≤ 5:20
-- Poroporo: D3 · ≤ 4:45
-- Parahi: D3 · ≤ 4:25
-- Hiriwa: D3 · ≤ 4:05
-- Kōura: D3 · ≤ 3:55
-- Uenuku: D3 · ≤ 3:40
-- Taniwha: D3 · ≤ 3:35
+- Kiwikiwi: finish
+- Whero: ≤ 8:55
+- Karaka: ≤ 8:00
+- Kōwhai: ≤ 7:05
+- Kākāriki: ≤ 6:15
+- Kahurangi: ≤ 5:20
+- Poroporo: ≤ 4:45
+- Parahi: ≤ 4:25
+- Hiriwa: ≤ 4:05
+- Kōura: ≤ 3:55
+- Uenuku: ≤ 3:40
+- Taniwha: ≤ 3:35
 
 ### 70. Breath Hold
 
@@ -1893,30 +1759,45 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 ### 71. Sandbag Carry
 
-*Scored by: difficulty level, then fastest time · 12 players have scored it*
+*Scored by: heaviest load, then furthest distance, then fastest time*
 
-> Approved in review as Weighted Carry; renamed Sept 2026, standards unchanged.
+> Drafted by Claude 5 Oct 2026 for the new format, UNREVIEWED. Loads are now kilos, not a fraction of bodyweight, so men and women are split. A colour asks for at least the load AND at least the distance.
 
-**Everyone**
+**Men**
 
-- Kiwikiwi: D1 · ≤ 4:00
-- Whero: D1 · ≤ 2:30
-- Karaka: D1 · ≤ 1:45
-- Kōwhai: D2 · ≤ 4:00
-- Kākāriki: D2 · ≤ 2:45
-- Kahurangi: D2 · ≤ 2:00
-- Poroporo: D3 · ≤ 4:00
-- Parahi: D3 · ≤ 3:00
-- Hiriwa: D3 · ≤ 2:15
-- Kōura: D3 · ≤ 1:45
-- Uenuku: D4 · ≤ 4:00
-- Taniwha: D4 · ≤ 2:00
+- Kiwikiwi: 10kg · 20m
+- Whero: 20kg · 50m
+- Karaka: 20kg · 100m
+- Kōwhai: 30kg · 100m
+- Kākāriki: 40kg · 100m
+- Kahurangi: 50kg · 100m
+- Poroporo: 60kg · 100m
+- Parahi: 70kg · 100m
+- Hiriwa: 80kg · 100m
+- Kōura: 90kg · 100m
+- Uenuku: 100kg · 100m
+- Taniwha: 120kg · 100m
+
+**Women**
+
+- Kiwikiwi: 5kg · 20m
+- Whero: 10kg · 50m
+- Karaka: 15kg · 100m
+- Kōwhai: 20kg · 100m
+- Kākāriki: 25kg · 100m
+- Kahurangi: 30kg · 100m
+- Poroporo: 40kg · 100m
+- Parahi: 45kg · 100m
+- Hiriwa: 50kg · 100m
+- Kōura: 60kg · 100m
+- Uenuku: 70kg · 100m
+- Taniwha: 80kg · 100m
 
 ### 72. Animal Crawl
 
-*Scored by: difficulty level, then fastest time · 0 players have scored it*
+*Scored by: difficulty level, then best effort over any distance of at least 25m, as its predicted 25m time*
 
-> Drafted by hand. Three colours on each of the easy crawls, two on the hard ones.
+> Drafted by Claude 5 Oct 2026 for the new format, UNREVIEWED. The old 25m-rung times by crawl; the old 100m Duck Walk colours become fast 25m Duck Walks.
 
 **Everyone**
 
@@ -1929,9 +1810,9 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Poroporo: D3 · ≤ 45s
 - Parahi: D3 · ≤ 30s
 - Hiriwa: D4 · ≤ 40s
-- Kōura: D4 · ≤ 25s
-- Uenuku: D5 · ≤ 2:30
-- Taniwha: D5 · ≤ 1:45
+- Kōura: D4 · ≤ 30s
+- Uenuku: D4 · ≤ 25s
+- Taniwha: D4 · ≤ 20s
 
 ### 73. Bronco
 
@@ -1956,66 +1837,96 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 ### 74. Scooting
 
-*Scored by: difficulty level, then fastest time · 0 players have scored it*
+*Scored by: best effort over any distance of at least 1000m, as its predicted 1000m time*
 
-> Drafted by hand. As Running, one ladder for everyone.
+> Drafted by Claude 5 Oct 2026 for the new format, UNREVIEWED. Kahurangi and up are the old 1000m-rung times, unchanged; the five below are spaced from Kahurangi.
 
 **Everyone**
 
-- Kiwikiwi: D1 · finish
-- Whero: D1 · ≤ 1:00
-- Karaka: D2 · finish
-- Kōwhai: D2 · ≤ 2:00
-- Kākāriki: D2 · ≤ 1:45
-- Kahurangi: D3 · ≤ 4:00
-- Poroporo: D3 · ≤ 3:30
-- Parahi: D3 · ≤ 3:10
-- Hiriwa: D3 · ≤ 2:55
-- Kōura: D3 · ≤ 2:45
-- Uenuku: D3 · ≤ 2:35
-- Taniwha: D3 · ≤ 2:25
+- Kiwikiwi: finish
+- Whero: ≤ 6:40
+- Karaka: ≤ 6:00
+- Kōwhai: ≤ 5:20
+- Kākāriki: ≤ 4:40
+- Kahurangi: ≤ 4:00
+- Poroporo: ≤ 3:30
+- Parahi: ≤ 3:10
+- Hiriwa: ≤ 2:55
+- Kōura: ≤ 2:45
+- Uenuku: ≤ 2:35
+- Taniwha: ≤ 2:25
 
 ### 75. Farmer Carry
 
-*Scored by: difficulty level, then fastest time · 0 players have scored it*
+*Scored by: heaviest load, then furthest distance, then fastest time*
 
-> Renamed from Wheelbarrow Push, Sept 2026. Standards unchanged.
+> Drafted by Claude 5 Oct 2026 for the new format, UNREVIEWED. The load is BOTH hands combined. A colour asks for at least the load AND at least the distance.
 
-**Everyone**
+**Men**
 
-- Kiwikiwi: D1 · ≤ 4:00
-- Whero: D1 · ≤ 2:30
-- Karaka: D1 · ≤ 1:45
-- Kōwhai: D2 · ≤ 4:00
-- Kākāriki: D2 · ≤ 2:45
-- Kahurangi: D2 · ≤ 2:00
-- Poroporo: D3 · ≤ 4:00
-- Parahi: D3 · ≤ 3:00
-- Hiriwa: D3 · ≤ 2:15
-- Kōura: D3 · ≤ 1:45
-- Uenuku: D4 · ≤ 4:00
-- Taniwha: D4 · ≤ 2:00
+- Kiwikiwi: 20kg · 20m
+- Whero: 30kg · 50m
+- Karaka: 40kg · 100m
+- Kōwhai: 50kg · 100m
+- Kākāriki: 60kg · 100m
+- Kahurangi: 70kg · 100m
+- Poroporo: 80kg · 100m
+- Parahi: 100kg · 100m
+- Hiriwa: 120kg · 100m
+- Kōura: 140kg · 100m
+- Uenuku: 160kg · 100m
+- Taniwha: 180kg · 100m
+
+**Women**
+
+- Kiwikiwi: 10kg · 20m
+- Whero: 20kg · 50m
+- Karaka: 25kg · 100m
+- Kōwhai: 30kg · 100m
+- Kākāriki: 40kg · 100m
+- Kahurangi: 45kg · 100m
+- Poroporo: 50kg · 100m
+- Parahi: 60kg · 100m
+- Hiriwa: 70kg · 100m
+- Kōura: 80kg · 100m
+- Uenuku: 100kg · 100m
+- Taniwha: 120kg · 100m
 
 ### 76. Weighted Drag
 
-*Scored by: difficulty level, then fastest time · 0 players have scored it*
+*Scored by: heaviest load, then furthest distance, then fastest time*
 
-> Renamed from Wheelbarrow Pull, Sept 2026. Standards unchanged.
+> Drafted by Claude 5 Oct 2026 for the new format, UNREVIEWED. The load is what is on the sled. A colour asks for at least the load AND at least the distance.
 
-**Everyone**
+**Men**
 
-- Kiwikiwi: D1 · ≤ 4:00
-- Whero: D1 · ≤ 2:30
-- Karaka: D1 · ≤ 1:45
-- Kōwhai: D2 · ≤ 4:00
-- Kākāriki: D2 · ≤ 2:45
-- Kahurangi: D2 · ≤ 2:00
-- Poroporo: D3 · ≤ 4:00
-- Parahi: D3 · ≤ 3:00
-- Hiriwa: D3 · ≤ 2:15
-- Kōura: D3 · ≤ 1:45
-- Uenuku: D4 · ≤ 4:00
-- Taniwha: D4 · ≤ 2:00
+- Kiwikiwi: 20kg · 20m
+- Whero: 40kg · 50m
+- Karaka: 60kg · 100m
+- Kōwhai: 80kg · 100m
+- Kākāriki: 100kg · 100m
+- Kahurangi: 120kg · 100m
+- Poroporo: 140kg · 100m
+- Parahi: 160kg · 100m
+- Hiriwa: 180kg · 100m
+- Kōura: 200kg · 100m
+- Uenuku: 250kg · 100m
+- Taniwha: 300kg · 100m
+
+**Women**
+
+- Kiwikiwi: 10kg · 20m
+- Whero: 25kg · 50m
+- Karaka: 40kg · 100m
+- Kōwhai: 50kg · 100m
+- Kākāriki: 60kg · 100m
+- Kahurangi: 80kg · 100m
+- Poroporo: 100kg · 100m
+- Parahi: 110kg · 100m
+- Hiriwa: 120kg · 100m
+- Kōura: 140kg · 100m
+- Uenuku: 170kg · 100m
+- Taniwha: 200kg · 100m
 
 ---
 
@@ -2128,9 +2039,9 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 ### 82. Middle Split
 
-*Scored by: difficulty level, then longest hold · 3 players have scored it*
+*Scored by: difficulty level, then longest hold*
 
-> Drafted by rule. Twelve colours spread over the rungs, extras on the lowest. Reach a rung, then own it.
+> Redrafted by rule 5 Oct 2026 for the new ladder, UNREVIEWED. Colours spread over the drill rungs, extras on the lowest. Reach a rung, then own it.
 
 **Everyone**
 
@@ -2144,8 +2055,8 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Parahi: D4 · 30s
 - Hiriwa: D5 · 10s
 - Kōura: D5 · 30s
-- Uenuku: D6 · 30s
-- Taniwha: D7 · 30s
+- Uenuku: D6 · 10s
+- Taniwha: D6 · 30s
 
 ### 83. Standing Split
 
@@ -2351,69 +2262,58 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 ### 92. Tae Kwon Do
 
-*Scored by: difficulty level, then most reps · 4 players have scored it*
+*Scored by: win, draw or loss against another player*
 
-> Drafted by rule. Six drill colours spread over the drill rungs, extras on the lowest. Reach a rung, then own it.
-
-**Everyone**
-
-- Kiwikiwi: D1 · 5
-- Whero: D1 · 8
-- Karaka: D2 · 5
-- Kōwhai: D2 · 8
-- Kākāriki: D3 · 5
-- Kahurangi: D3 · 8
-
-*Poroporo and above: the head-to-head rating.*
+**Rating only.** No fair solo drill exists, so every colour comes from the head-to-head rating.
 
 ### 93. Breakdancing
 
-*Scored by: difficulty level, then longest hold · 0 players have scored it*
+*Scored by: difficulty level, then longest time*
 
-> Drafted by rule. Six drill colours spread over the drill rungs, extras on the lowest. Reach a rung, then own it.
+> Redrafted by rule 5 Oct 2026 for the new ladder, UNREVIEWED. Colours spread over the drill rungs, extras on the lowest. Reach a rung, then own it.
 
 **Everyone**
 
-- Kiwikiwi: D1 · 30s
-- Whero: D2 · 30s
-- Karaka: D3 · 30s
-- Kōwhai: D4 · 30s
-- Kākāriki: D5 · 30s
-- Kahurangi: D6 · 30s
+- Kiwikiwi: D1 · 10s
+- Whero: D1 · 30s
+- Karaka: D2 · 10s
+- Kōwhai: D2 · 30s
+- Kākāriki: D3 · 30s
+- Kahurangi: D4 · 30s
 
 *Poroporo and above: the head-to-head rating.*
 
 ### 94. Trampolining
 
-*Scored by: difficulty level, then most reps · 4 players have scored it*
+*Scored by: difficulty level, then most reps*
 
-> Drafted by rule. Six drill colours spread over the drill rungs, extras on the lowest. Reach a rung, then own it.
+> Redrafted by rule 5 Oct 2026 for the new ladder, UNREVIEWED. Colours spread over the drill rungs, extras on the lowest. Reach a rung, then own it.
 
 **Everyone**
 
-- Kiwikiwi: D1 · 10
-- Whero: D2 · 10
-- Karaka: D3 · 10
-- Kōwhai: D4 · 10
-- Kākāriki: D5 · 10
-- Kahurangi: D6 · 10
+- Kiwikiwi: D1 · 5
+- Whero: D1 · 15
+- Karaka: D2 · 10
+- Kōwhai: D3 · 10
+- Kākāriki: D4 · 10
+- Kahurangi: D5 · 10
 
 *Poroporo and above: the head-to-head rating.*
 
 ### 95. Jump Rope
 
-*Scored by: difficulty level, then most reps · 12 players have scored it*
+*Scored by: difficulty level, then most reps*
 
-> Approved in review.
+> Redrafted 5 Oct 2026 for the new ladder, UNREVIEWED. Keeps the approved shape (one rep, then ten) on the basic jump before the dutch rungs.
 
 **Everyone**
 
 - Kiwikiwi: D1 · 1
 - Whero: D1 · 10
-- Karaka: D2 · 10
-- Kōwhai: D3 · 10
-- Kākāriki: D4 · 10
-- Kahurangi: D5 · 10
+- Karaka: D1 · 30
+- Kōwhai: D1 · 60
+- Kākāriki: D2 · 10
+- Kahurangi: D3 · 10
 
 *Poroporo and above: the head-to-head rating.*
 
@@ -2425,18 +2325,18 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 ### 97. Gymnastics
 
-*Scored by: difficulty level, then most reps · 2 players have scored it*
+*Scored by: difficulty level, then most reps*
 
-> Drafted by rule. Six drill colours spread over the drill rungs, extras on the lowest. Reach a rung, then own it.
+> Redrafted by rule 5 Oct 2026 for the new ladder, UNREVIEWED. Colours spread over the drill rungs, extras on the lowest. Reach a rung, then own it.
 
 **Everyone**
 
-- Kiwikiwi: D1 · 10
-- Whero: D2 · 10
-- Karaka: D3 · 10
-- Kōwhai: D4 · 10
-- Kākāriki: D5 · 10
-- Kahurangi: D6 · 10
+- Kiwikiwi: D1 · 5
+- Whero: D1 · 15
+- Karaka: D2 · 5
+- Kōwhai: D2 · 15
+- Kākāriki: D3 · 10
+- Kahurangi: D4 · 10
 
 *Poroporo and above: the head-to-head rating.*
 
@@ -2459,37 +2359,26 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 ### 99. SKATE
 
-*Scored by: difficulty level, then most reps · 4 players have scored it*
+*Scored by: difficulty level, then most reps*
 
-> Drafted by rule. Six drill colours spread over the drill rungs, extras on the lowest. Reach a rung, then own it.
+> Redrafted by rule 5 Oct 2026 for the new ladder, UNREVIEWED. Colours spread over the drill rungs, extras on the lowest. Reach a rung, then own it.
 
 **Everyone**
 
 - Kiwikiwi: D1 · 5
 - Whero: D1 · 15
-- Karaka: D2 · 10
-- Kōwhai: D3 · 10
-- Kākāriki: D4 · 10
-- Kahurangi: D5 · 10
+- Karaka: D2 · 5
+- Kōwhai: D2 · 15
+- Kākāriki: D3 · 10
+- Kahurangi: D4 · 10
 
 *Poroporo and above: the head-to-head rating.*
 
 ### 100. Fencing
 
-*Scored by: difficulty level, then most reps · 6 players have scored it*
+*Scored by: win, draw or loss against another player*
 
-> Drafted by rule. Six drill colours spread over the drill rungs, extras on the lowest. Reach a rung, then own it.
-
-**Everyone**
-
-- Kiwikiwi: D1 · 5
-- Whero: D1 · 8
-- Karaka: D2 · 5
-- Kōwhai: D2 · 8
-- Kākāriki: D3 · 5
-- Kahurangi: D3 · 8
-
-*Poroporo and above: the head-to-head rating.*
+**Rating only.** No fair solo drill exists, so every colour comes from the head-to-head rating.
 
 ### 101. Juggling
 
@@ -2527,18 +2416,18 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 ### 103. Slackline
 
-*Scored by: difficulty level, then longest hold · 0 players have scored it*
+*Scored by: difficulty level, then longest hold*
 
-> Drafted by rule. Six drill colours spread over the drill rungs, extras on the lowest. Reach a rung, then own it.
+> Redrafted by rule 5 Oct 2026 for the new ladder, UNREVIEWED. Colours spread over the drill rungs, extras on the lowest. Reach a rung, then own it.
 
 **Everyone**
 
 - Kiwikiwi: D1 · 10s
 - Whero: D1 · 30s
-- Karaka: D2 · 30s
-- Kōwhai: D3 · 30s
-- Kākāriki: D4 · 30s
-- Kahurangi: D5 · 30s
+- Karaka: D2 · 10s
+- Kōwhai: D2 · 30s
+- Kākāriki: D3 · 10s
+- Kahurangi: D3 · 30s
 
 *Poroporo and above: the head-to-head rating.*
 
@@ -2586,18 +2475,18 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 ### 106. Baseball
 
-*Scored by: difficulty level, then most reps · 4 players have scored it*
+*Scored by: difficulty level, then most reps*
 
-> Drafted by rule. Six drill colours spread over the drill rungs, extras on the lowest. Reach a rung, then own it.
+> Redrafted by rule 5 Oct 2026 for the new ladder, UNREVIEWED. Colours spread over the drill rungs, extras on the lowest. Reach a rung, then own it.
 
 **Everyone**
 
 - Kiwikiwi: D1 · 5
 - Whero: D1 · 15
-- Karaka: D2 · 5
-- Kōwhai: D2 · 15
-- Kākāriki: D3 · 10
-- Kahurangi: D4 · 10
+- Karaka: D2 · 10
+- Kōwhai: D3 · 10
+- Kākāriki: D4 · 10
+- Kahurangi: D5 · 10
 
 *Poroporo and above: the head-to-head rating.*
 
@@ -2637,18 +2526,18 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 ### 109. Cricket
 
-*Scored by: difficulty level, then most reps · 7 players have scored it*
+*Scored by: difficulty level, then most reps*
 
-> Drafted by rule. Six drill colours spread over the drill rungs, extras on the lowest. Reach a rung, then own it.
+> Redrafted by rule 5 Oct 2026 for the new ladder, UNREVIEWED. Colours spread over the drill rungs, extras on the lowest. Reach a rung, then own it.
 
 **Everyone**
 
 - Kiwikiwi: D1 · 5
 - Whero: D1 · 15
-- Karaka: D2 · 5
-- Kōwhai: D2 · 15
-- Kākāriki: D3 · 10
-- Kahurangi: D4 · 10
+- Karaka: D2 · 10
+- Kōwhai: D3 · 10
+- Kākāriki: D4 · 10
+- Kahurangi: D5 · 10
 
 *Poroporo and above: the head-to-head rating.*
 
@@ -2777,9 +2666,9 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 ### 117. Netball
 
-*Scored by: difficulty level, then most reps · 6 players have scored it*
+*Scored by: difficulty level, then most reps*
 
-> Drafted by rule. Six drill colours spread over the drill rungs, extras on the lowest. Reach a rung, then own it.
+> Redrafted by rule 5 Oct 2026 for the new ladder, UNREVIEWED. Colours spread over the drill rungs, extras on the lowest. Reach a rung, then own it.
 
 **Everyone**
 
@@ -2787,8 +2676,8 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Whero: D1 · 15
 - Karaka: D2 · 5
 - Kōwhai: D2 · 15
-- Kākāriki: D3 · 10
-- Kahurangi: D4 · 10
+- Kākāriki: D3 · 5
+- Kahurangi: D3 · 15
 
 *Poroporo and above: the head-to-head rating.*
 
@@ -2879,18 +2768,18 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 ### 123. Darts
 
-*Scored by: difficulty level, then most reps · 3 players have scored it*
+*Scored by: difficulty level, then most reps*
 
-> Drafted by rule. Six drill colours spread over the drill rungs, extras on the lowest. Reach a rung, then own it.
+> Redrafted by rule 5 Oct 2026 for the new ladder, UNREVIEWED. Colours spread over the drill rungs, extras on the lowest. Reach a rung, then own it.
 
 **Everyone**
 
 - Kiwikiwi: D1 · 5
-- Whero: D1 · 15
-- Karaka: D2 · 5
-- Kōwhai: D2 · 15
-- Kākāriki: D3 · 10
-- Kahurangi: D4 · 10
+- Whero: D1 · 10
+- Karaka: D1 · 20
+- Kōwhai: D2 · 5
+- Kākāriki: D2 · 10
+- Kahurangi: D2 · 20
 
 *Poroporo and above: the head-to-head rating.*
 
@@ -2947,18 +2836,18 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 ### 127. Table Tennis
 
-*Scored by: difficulty level, then most reps · 0 players have scored it*
+*Scored by: difficulty level, then most reps*
 
-> Drafted by rule. Six drill colours spread over the drill rungs, extras on the lowest. Reach a rung, then own it.
+> Redrafted by rule 5 Oct 2026 for the new ladder, UNREVIEWED. Colours spread over the drill rungs, extras on the lowest. Reach a rung, then own it.
 
 **Everyone**
 
 - Kiwikiwi: D1 · 5
-- Whero: D1 · 15
-- Karaka: D2 · 5
-- Kōwhai: D2 · 15
-- Kākāriki: D3 · 5
-- Kahurangi: D3 · 15
+- Whero: D1 · 10
+- Karaka: D1 · 20
+- Kōwhai: D2 · 5
+- Kākāriki: D2 · 10
+- Kahurangi: D2 · 20
 
 *Poroporo and above: the head-to-head rating.*
 

@@ -36,7 +36,7 @@ import DomainIcon from '@/components/DomainIcon'
 // Literal, not derived from EVENTS: importing lib/eventData.ts would ship the
 // how-to prose for every event to a page that needs ten names.
 const DOMAIN_NAMES = ['Maximal Strength', 'Calisthenics', 'Power', 'Speed', 'Stamina',
-  'Aerobic Endurance', 'Flexibility', 'Body Awareness', 'Coordination', 'Aim & Precision']
+  'Endurance', 'Flexibility', 'Body Awareness', 'Coordination', 'Aim & Precision']
 
 type ActiveSession = {
   id: string

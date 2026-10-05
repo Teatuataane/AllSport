@@ -204,6 +204,9 @@ describe('getEventByName', () => {
     ['Pushups', 'push-up-contest', 'Pushup Contest'],
     ['Internal Wrist Stretch', 'wrist-stretch', 'Wrist Stretch'],
     ['External Wrist Stretch', 'reverse-wrist-stretch', 'Reverse Wrist Stretch'],
+    // 5 Oct 2026, same ladders.
+    ['Repeat Vault', 'repeat-high-jump', 'Repeat High Jump'],
+    ['Chinups', 'chin-up-contest', 'Chinup Contest'],
   ])('%s keeps the slug %s, and %s is gone', (name, slug, old) => {
     expect(getEventByName(name)!.slug).toBe(slug)
     expect(getEventByName(old)).toBeUndefined()
@@ -233,21 +236,14 @@ describe('getEventByName', () => {
       expect(encodeDiffTime(1, 1, faster)).toBeGreaterThan(encodeDiffTime(0, 600, faster))
     })
 
-  it('the three carries share one bodyweight ladder and rank fastest-first', () => {
-    // The Sept 2026 grading rebuild moved all three from fixed kilos to fractions
-    // of bodyweight, topping out at a bodyweight load, so they now share the
-    // whole ladder (the 200kg wheelbarrow rung went with the fixed weights).
-    // Renamed Sept 2026: Weighted Carry -> Sandbag Carry, Wheelbarrow Push ->
-    // Farmer Carry, Wheelbarrow Pull -> Weighted Drag. The ladder is unchanged,
-    // which is the point of this test: three implements, one ask.
-    const carry = getEventByName('Sandbag Carry')!
-    const carryNames = carry.difficultyTiers!.map(t => t.name)
-    expect(carryNames).toEqual(['¼ BW — 200m', '½ BW — 200m', '¾ BW — 200m', 'Bodyweight — 200m'])
-    expect(isTimedEffort(carry.slug)).toBe(true)
-    for (const name of ['Farmer Carry', 'Weighted Drag']) {
+  it('the three carries are an open load, distance and time', () => {
+    // 5 Oct 2026: the bodyweight-fraction ladders went, and the load, distance
+    // and time are entered as done. Heaviest wins, then furthest, then fastest.
+    for (const name of ['Sandbag Carry', 'Farmer Carry', 'Weighted Drag']) {
       const e = getEventByName(name)!
-      expect(e.difficultyTiers!.map(t => t.name)).toEqual(carryNames)
-      expect(isTimedEffort(e.slug)).toBe(true)
+      expect(e.inputMode).toBe('weight+distance+time')
+      expect(e.hasDifficultyTiers).toBe(false)
+      expect(e.difficultyTiers).toBeUndefined()
     }
   })
 
@@ -284,7 +280,7 @@ describe('getEventsByDomain', () => {
     const map = getEventsByDomain()
     const expected: Record<string, number> = {
       'Maximal Strength': 14, 'Calisthenics': 13, 'Power': 12, 'Speed': 12,
-      'Stamina': 13, 'Aerobic Endurance': 12, 'Flexibility': 15,
+      'Stamina': 13, 'Endurance': 12, 'Flexibility': 15,
       'Body Awareness': 13, 'Coordination': 12, 'Aim & Precision': 12,
     }
     for (const [domain, events] of Object.entries(map)) {
@@ -299,9 +295,11 @@ describe('getEventsByDomain', () => {
     expect(maxStr.some(e => e.slug === 'deadlift')).toBe(true)
   })
 
-  it('Aerobic Endurance contains new domain 6 events', () => {
+  // Renamed from Aerobic Endurance, 5 Oct 2026.
+  it('Endurance contains the domain 6 events', () => {
     const map = getEventsByDomain()
-    const aerobic = map['Aerobic Endurance']
+    expect(map['Aerobic Endurance']).toBeUndefined()
+    const aerobic = map['Endurance']
     const slugs = aerobic.map(e => e.slug)
     expect(slugs).toContain('running')
     expect(slugs).toContain('animal-crawl')
@@ -381,9 +379,13 @@ describe('getBonusTargets', () => {
     // by a Game rung), and the grading rebuild gave the other pure contests a
     // drill too. Wrestling is the one left on plain win/draw/loss: no fair solo
     // drill exists, so every colour in it comes from the rating.
+    // 5 Oct 2026: thirteen contests lost their drills again and joined it.
     const wrestling = EVENTS.find(e => e.slug === 'wrestling')!
     expect(wrestling.inputMode).toBe('sport')
-    expect(EVENTS.filter(e => e.inputMode === 'sport').map(e => e.slug)).toEqual(['wrestling'])
+    expect(EVENTS.filter(e => e.inputMode === 'sport').map(e => e.slug).sort()).toEqual([
+      '100m-sprint', '200m-sprint', 'arm-wrestling', 'beach-flags', 'capture-the-flag', 'fencing',
+      'kabaddi', 'rats-and-rabbits', 'speed-chess', 't-race', 'tae-kwon-do', 'tag', 'tug-of-war', 'wrestling',
+    ])
     const targets = getBonusTargets(wrestling, null)
     expect(targets).toHaveLength(1)
     expect(targets[0].inputMode).toBe('sport')
@@ -411,7 +413,6 @@ describe('getBonusTargets', () => {
 
   it('non-sport/non-score event with null PR → []', () => {
     expect(getBonusTargets(deadlift, null)).toEqual([])
-    expect(getBonusTargets(sprint100, null)).toEqual([])
     expect(getBonusTargets(lSitHold, null)).toEqual([])
   })
 
@@ -427,13 +428,10 @@ describe('getBonusTargets', () => {
     expect(getBonusTargets(deadlift, 0)).toEqual([])
   })
 
-  it('100m Sprint is now a distance ladder, timed fastest-first', () => {
-    expect(sprint100.inputMode).toBe('difficulty+time')
-    expect(isTimedEffort(sprint100.slug)).toBe(true)
-    // D1 (20m) at 4s → raw = 0*10000 + (10000 - 4)
-    const targets = getBonusTargets(sprint100, 9996)
-    expect(targets).toHaveLength(1)
-    expect(targets[0].inputMode).toBe('difficulty+time')
+  it('100m Sprint is plain win/draw/loss again (5 Oct 2026), a time recorded alongside', () => {
+    expect(sprint100.inputMode).toBe('sport')
+    expect(sprint100.recordsTime).toBe(true)
+    expect(sprint100.hasDifficultyTiers).toBe(false)
   })
 
   it('difficulty+time event at D5 (raw_score=40060) → 1 hold target at D4', () => {
@@ -459,20 +457,11 @@ describe('getBonusTargets', () => {
     expect(targets[0].points).toBe(5)
   })
 
-  it('D6 difficulty+time at D3 → target uses half distance (tier below)', () => {
-    // Running D3 (1000m) at 180s → raw = 2*10000 + 180 = 20180
-    const targets = getBonusTargets(running, 20180)
-    expect(targets).toHaveLength(1)
-    expect(targets[0].label).toContain('500m')
-    expect(targets[0].points).toBe(5)
-  })
-
-  it('D6 difficulty+time at D1 → target uses same distance, 1.2x time', () => {
-    // Running D1 (250m) at 60s → raw = 0*10000 + 60 = 60
-    const targets = getBonusTargets(running, 60)
-    expect(targets).toHaveLength(1)
-    expect(targets[0].label).toContain('250m')
-    expect(targets[0].points).toBe(5)
+  it('an open distance effort has no effort target (effort tasks are retired)', () => {
+    // Running became an open distance + time on 5 Oct 2026, ranked on its
+    // predicted 1000m time; getBonusTargets predates it and offers nothing.
+    expect(running.inputMode).toBe('distance+time')
+    expect(getBonusTargets(running, 9760)).toEqual([])
   })
 })
 
@@ -601,7 +590,13 @@ describe('getBonusTargets: rungs with their own scoring', () => {
   })
 
   it('difficulty+distance targets 80% of the PR throw on the same implement', () => {
-    const ev = getEventBySlug('javelin-throw')!
+    // No event is on difficulty+distance since 5 Oct 2026 (Javelin and Shotput
+    // lost their implements); the branch stays for historical rows, so it is
+    // exercised on the ladder Javelin used to have.
+    const ev = {
+      ...getEventBySlug('javelin-throw')!, inputMode: 'difficulty+distance' as const, hasDifficultyTiers: true,
+      difficultyTiers: [{ level: 1, name: 'Stick' }, { level: 2, name: 'Short Javelin' }, { level: 3, name: 'Long Javelin' }],
+    }
     const targets = getBonusTargets(ev, 2 * 10000 + 314) // D3, 31.4m
     expect(targets).toHaveLength(1)
     expect(targets[0].inputMode).toBe('difficulty+distance')

@@ -4,11 +4,13 @@
 // as lib/colourDisplay.ts can call it without pulling the play-screen UI into
 // every bundle that imports them. chrome.tsx re-exports it.
 
-import { fmtTime, tierScoring } from '@/lib/scoring'
+import { fmtTime, tierScoring, decodeCarry, fmtDistance } from '@/lib/scoring'
 import { decodeDiffTime, isTimedEffort, type EventData } from '@/lib/eventData'
 
 export function formatPR(rawScore: number, inputMode: string, slug?: string, eventData?: EventData): string {
   switch (inputMode) {
+    // Shoulder Dislocate stored a negative grip width here; it left the roster
+    // on 5 Oct 2026 and its rows were archived, so every strength row is a lift.
     case 'strength':   return `${rawScore} kg 1RM`
     case 'reps':       return `${rawScore} reps`
     case 'time':
@@ -43,6 +45,23 @@ export function formatPR(rawScore: number, inputMode: string, slug?: string, eve
       const kg = Math.floor(rawScore / 10000) / 100
       const secs = rawScore % 10000
       return `${kg > 0 ? `${kg}kg` : 'Bodyweight'} · ${fmtTime(secs)}`
+    }
+    case 'weight+reps': {
+      const kg = Math.floor(rawScore / 10000) / 100
+      const reps = rawScore % 10000
+      return `${kg > 0 ? `${kg}kg` : 'Bodyweight'} × ${reps} rep${reps !== 1 ? 's' : ''}`
+    }
+    case 'distance+time': {
+      // The score is the time predicted over the reference distance.
+      const tierIdx = Math.floor(rawScore / 10000)
+      const secs = 10000 - (rawScore % 10000)
+      const ref = eventData?.referenceMetres
+      const over = ref ? `${fmtDistance(ref)} ` : ''
+      return eventData?.difficultyTiers?.length ? `D${tierIdx + 1} · ${over}${fmtTime(secs)}` : `${over}${fmtTime(secs)}`
+    }
+    case 'weight+distance+time': {
+      const d = decodeCarry(rawScore)
+      return `${d.weightKg}kg · ${fmtDistance(d.metres)} · ${fmtTime(d.secs)}`
     }
     default: return String(rawScore)
   }

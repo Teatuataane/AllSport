@@ -2653,6 +2653,60 @@ Replaces his Google Sheet for personal-training clients.
   results and logged entries lifetime. `results.is_pr` is still stored per row, now with the
   new rule. Not wired yet: the PR tag on events ADDED to a game (`useGameSwaps` returns false).
 
+## The 5 October difficulty review (October 2026) — v0.28.0.0, MIGRATION NOT YET APPLIED
+
+Tāne edited an older (16 Sept, 120-event) copy of `EVENT_DIFFICULTY_REVIEW.md`. It
+was diffed against the copy it was based on (`bae312c`) to separate his edits from
+changes made since, and the edits were merged into the current 128-event sheet,
+then compiled into `lib/eventData.ts` with the usual parse/apply scripts.
+
+**Rebased onto the Stamina roster (v0.27.0.0, `20260930011149`), which merged
+and was applied while this was in review.** Where the two overlapped, the
+applied release won: Lunges and Shoulder Dislocate were already removed (with
+their scores KEPT as orphan names, not archived as this branch first did),
+Pushups was already renamed, and L-Sit Hold had become Compression on a new
+ladder, so the sheet's Floor Tuck Hold was dropped. This migration redefines
+that release's `enforce_relevelled_ladders()` to guard every ladder it changes
+too, as its header asks of any later ladder change, and regenerates
+`__tests__/fixtures/levelNames.json`.
+
+**Decisions taken in the session (Tāne, 5 Oct 2026):**
+- Open distance and time: *"what wins is the best effort — a 4 min kilometre is much
+  harder than a 15 min three k."* Built as Riegel's prediction over a reference
+  distance (1000m; 25m for Animal Crawl), shorten-only, so an effort below the
+  reference is refused and a long effort predicts a conservative short time.
+- Tibialis Curl: heaviest load wins, reps break the tie (same answer as the
+  weighted rungs, review item 2).
+- "Lunges (Remove Lunges from Stamina)": remove the event entirely.
+- Cricket's new ladder had no Game rung: add Game on top, like every ball sport.
+
+**Calls made without asking, all reversible:**
+- A rung renamed in place keeps its history when it is plainly the same rung
+  (Climbing's rope rungs, Touch Rugby and American Football passes, Tennis hits,
+  SKATE's 180/360, Foot Juggling's 0 → No Bounce, Slackline's Beam/Slackline,
+  Pancake's Over 2 → 3 Blocks, Golf/Disc Golf "Game (4 Holes)" → "Game"). Where the
+  sheet's "used N times" note survived the edit, Tāne was treating it as a rename.
+- Middle Split maps BY NAME, not position: the sheet typed "3 Blocks" over the old
+  D1 ("2 Blocks") without changing its detail, but the two people who scored D1
+  were on two blocks, so their rows stay "2 Blocks" (now D2). Details were
+  corrected to match the names.
+- Javelin and Shotput keep only the full implement's history; Running and the
+  ergs keep only their 1000m rows (250m and 500m are below the reference distance).
+- Thirteen contests became plain `sport`; a Game row keeps its result. The raced
+  ones carry `recordsTime: true`, an optional time that never ranks.
+
+**The migration** (`20261005012108`) was written WITHOUT database access, so it
+quotes no counts. It was run end to end on a scratch Postgres 16 with a fixture
+covering every path; its output matched `computeScoreVals` exactly, and the
+redefined guard refused a logged sprint result, an old-format Tibialis Curl and a
+`lunges` entry. `__tests__/gradingLadders.test.ts` pins its mapping tables to the
+ladders and `__tests__/difficultyReviewOct.test.ts` pins the new modes and the
+redefined trigger.
+
+**Standards:** every changed event got new standards, marked UNREVIEWED in
+`GRADING_STANDARDS_REVIEW.md`. The compiler learned `"BW · 20"` (weight+reps),
+`"40kg · 100m"` (carries) and `"≤ 4:05"` (predicted reference time).
+
 ## Game screen by domain, + to add, colour by grade (September 2026) — v0.19.0.0
 
 Settled in a `/grill-me` with Tāne on 2026-09-26. No migration.
