@@ -2,7 +2,7 @@
 // (EventCard + QuickEntrySheet in app/scoring/[sessionId]/page.tsx).
 // Everything here is side-effect free so it can be unit tested directly.
 
-import { isTimedEffort, encodeDiffTime, decodeDiffTime, DT_CAP, type EventData } from '@/lib/eventData'
+import { isTimedEffort, encodeDiffTime, decodeDiffTime, predictedEffortSecs, DT_CAP, type EventData } from '@/lib/eventData'
 
 export function fmtTime(totalSecs: number): string {
   const abs = Math.abs(totalSecs)
@@ -110,7 +110,8 @@ export type EntryVals = {
   timeSecs: string
   sprintCs: string
   distanceVal: string
-  distanceUnit: 'm' | 'cm'
+  // 'km' only on an open distance + time event (Running, Row Erg …).
+  distanceUnit: 'm' | 'cm' | 'km'
   sportResult: 'win' | 'draw' | 'loss' | ''
   sportScore: string
   opponentName: string
@@ -147,6 +148,9 @@ export type ResultLike = {
   weight_kg: number | null
   reps: number | null
   time_seconds: number | null
+  // Optional so every older caller still satisfies the type; the open
+  // distance modes prefill from it when it is there.
+  distance_m?: number | null
 }
 
 // Within-tier band width for difficulty encodings — a within-tier term at or
@@ -221,6 +225,51 @@ export function liftLabel(weightKg: number, reps: number | null | undefined): st
   return `${weightKg}kg × ${r} reps · est. 1RM ${estimatedOneRm(weightKg, r)}kg`
 }
 
+// ─── Open distance, load and time (5 Oct 2026) ───────────────────────────────
+
+/** Metres from the entry's distance field, in whatever unit it was typed. */
+export function entryMetres(v: Pick<EntryVals, 'distanceVal' | 'distanceUnit'>): number {
+  const val = parseFloat(v.distanceVal) || 0
+  if (val <= 0) return 0
+  return v.distanceUnit === 'km' ? val * 1000 : v.distanceUnit === 'cm' ? val / 100 : val
+}
+
+/** "3km" / "800m", for a label. */
+export function fmtDistance(metres: number): string {
+  return metres >= 1000 ? `${(metres / 1000).toFixed(2).replace(/\.?0+$/, '')}km` : `${Math.round(metres)}m`
+}
+
+// 'weight+distance+time' packs three keys, most significant first:
+//   load in tenths of a kg × 10^9 + whole metres × 10^4 + (10^4 − seconds)
+// so a heavier load always wins, then the longer distance, then the faster
+// time. 999.9kg, 99,999m and 9,999s are the ceilings; past one the entry is
+// refused rather than clamped (a clamp would let two different efforts tie,
+// and one step further would spill into the next key).
+export const CARRY_KG_KEY = 1e9
+export const CARRY_M_KEY = 1e4
+export const MAX_CARRY_KG = 999.9
+export const MAX_CARRY_METRES = 99999
+
+export function encodeCarry(weightKg: number, metres: number, secs: number): number | null {
+  const kgT = Math.round(weightKg * 10)
+  const m = Math.round(metres)
+  const t = Math.round(secs)
+  if (kgT <= 0 || kgT > MAX_CARRY_KG * 10 || m <= 0 || m > MAX_CARRY_METRES || t <= 0 || t >= DT_CAP) return null
+  return kgT * CARRY_KG_KEY + m * CARRY_M_KEY + (DT_CAP - t)
+}
+
+export function decodeCarry(raw: number): { weightKg: number; metres: number; secs: number } {
+  const kgT = Math.floor(raw / CARRY_KG_KEY)
+  const rest = raw - kgT * CARRY_KG_KEY
+  const m = Math.floor(rest / CARRY_M_KEY)
+  return { weightKg: kgT / 10, metres: m, secs: DT_CAP - (rest - m * CARRY_M_KEY) }
+}
+
+/** A raced contest's optional time: "12.34s" under a minute, "1:05" past it. */
+export function fmtRaceTime(secs: number): string {
+  return secs < 60 ? `${Math.round(secs * 100) / 100}s` : fmtTime(secs)
+}
+
 export function computeScoreVals(
   mode: string, eventData: EventData | undefined, v: EntryVals
 ): { raw_score: number; score_label: string } | null {
@@ -233,10 +282,6 @@ export function computeScoreVals(
     const w = parseFloat(v.weightKg) || 0
     if (w <= 0) return null
     const r = Math.max(0, parseInt(v.repCount) || 0)
-    if (eventData?.slug === 'shoulder-dislocate') {
-      const label = r > 0 ? `${w}cm × ${r} rep${r !== 1 ? 's' : ''}` : `${w}cm`
-      return { raw_score: -w, score_label: label }
-    }
     return { raw_score: estimatedOneRm(w, r), score_label: liftLabel(w, r) }
   }
   if (mode === 'reps') {
@@ -341,6 +386,40 @@ export function computeScoreVals(
     const label = w > 0 ? `${w}kg · ${fmtTime(totalSecs)}` : `Bodyweight · ${fmtTime(totalSecs)}`
     return { raw_score, score_label: label }
   }
+  if (mode === 'weight+reps') {
+    // Heaviest wins, reps break the tie; 0kg is bodyweight and sits below any
+    // load, the same rule as 'weight+time'.
+    const w = v.weightKg === '' ? 0 : parseFloat(v.weightKg)
+    const term = Number.isFinite(w) ? weightTerm(w) : null
+    const r = parseInt(v.repCount) || 0
+    if (term === null || r <= 0 || r >= TIER_BAND) return null
+    const label = w > 0 ? `${w}kg × ${r} rep${r !== 1 ? 's' : ''}` : `Bodyweight × ${r} rep${r !== 1 ? 's' : ''}`
+    return { raw_score: term * TIER_BAND + r, score_label: label }
+  }
+  if (mode === 'distance+time') {
+    const ref = eventData?.referenceMetres
+    if (!ref) return null
+    let tierIdx = 0
+    let prefix = ''
+    if (eventData?.difficultyTiers?.length) {
+      tierIdx = eventData.difficultyTiers.findIndex(t => t.name === v.difficultyTier)
+      if (tierIdx < 0) return null
+      prefix = `D${tierIdx + 1} ${v.difficultyTier} · `
+    }
+    const metres = entryMetres(v)
+    const predicted = predictedEffortSecs(ref, metres, totalSecs)
+    if (predicted === null) return null
+    const done = `${fmtDistance(metres)} · ${fmtTime(totalSecs)}`
+    const est = Math.round(metres) === ref ? '' : ` · est. ${fmtDistance(ref)} ${fmtTime(predicted)}`
+    return { raw_score: tierIdx * TIER_BAND + (TIER_BAND - predicted), score_label: `${prefix}${done}${est}` }
+  }
+  if (mode === 'weight+distance+time') {
+    const w = parseFloat(v.weightKg) || 0
+    const metres = entryMetres(v)
+    const raw = encodeCarry(w, metres, totalSecs)
+    if (raw === null) return null
+    return { raw_score: raw, score_label: `${w}kg · ${fmtDistance(metres)} · ${fmtTime(totalSecs)}` }
+  }
   if (mode === 'distance') {
     const val = parseFloat(v.distanceVal) || 0
     if (val <= 0) return null
@@ -353,6 +432,8 @@ export function computeScoreVals(
     let label = v.sportResult.charAt(0).toUpperCase() + v.sportResult.slice(1)
     if (v.opponentName) label += ` vs ${v.opponentName}`
     if (v.sportScore) label += ` (${v.sportScore})`
+    // A raced contest may carry its time. It is the record, never the rank.
+    if (eventData?.recordsTime && totalSecs > 0) label += ` · ${fmtRaceTime(totalSecs)}`
     return { raw_score, score_label: label }
   }
   if (mode === 'sprint') {
@@ -414,6 +495,16 @@ export function scoreColumns(mode: string, eventData: EventData | undefined, v: 
   }
   if (['time', 'hold', 'difficulty+time', 'weight+time'].includes(mode) && totalSecs > 0) c.time_seconds = totalSecs
   if (mode === 'weight+time') c.weight_kg = parseFloat(v.weightKg) || 0
+  if (mode === 'weight+reps') {
+    c.weight_kg = parseFloat(v.weightKg) || 0
+    c.reps = parseInt(v.repCount) || 0
+  }
+  // The distance and time actually done; raw_score holds the prediction.
+  if (mode === 'distance+time' || mode === 'weight+distance+time') {
+    c.distance_m = entryMetres(v)
+    c.time_seconds = totalSecs
+    if (mode === 'weight+distance+time') c.weight_kg = parseFloat(v.weightKg) || 0
+  }
   if (mode === 'difficulty+reps' || mode === 'difficulty+distance') {
     const special = tierScoring(eventData, { name: v.difficultyTier })
     if (special === 'weight') {
@@ -449,6 +540,7 @@ export function scoreColumns(mode: string, eventData: EventData | undefined, v: 
     c.result_type = v.sportResult
     if (v.opponentName) c.opponent_name = v.opponentName
     if (v.sportScore) c.match_score = v.sportScore
+    if (eventData?.recordsTime && totalSecs > 0) c.time_seconds = totalSecs
   }
   return c
 }
@@ -467,6 +559,18 @@ export function valsFromResult(mode: string, r: ResultLike): Partial<EntryVals> 
     else p.repCount = String(r.reps ?? '')
   } else if (mode === 'weight+time') {
     p.weightKg = String(r.weight_kg ?? '')
+    const secs = r.time_seconds ?? 0
+    p.timeMins = String(Math.floor(secs / 60))
+    p.timeSecs = String(Math.round(secs % 60))
+  } else if (mode === 'weight+reps') {
+    p.weightKg = String(r.weight_kg ?? 0)
+    p.repCount = String(r.reps ?? '')
+  } else if (mode === 'distance+time' || mode === 'weight+distance+time') {
+    if (mode === 'weight+distance+time') {
+      p.weightKg = String(r.weight_kg ?? decodeCarry(r.raw_score).weightKg)
+    }
+    const m = r.distance_m ?? (mode === 'weight+distance+time' ? decodeCarry(r.raw_score).metres : null)
+    if (m) { p.distanceVal = String(m); p.distanceUnit = 'm' }
     const secs = r.time_seconds ?? 0
     p.timeMins = String(Math.floor(secs / 60))
     p.timeSecs = String(Math.round(secs % 60))
@@ -491,6 +595,11 @@ export function valsFromResult(mode: string, r: ResultLike): Partial<EntryVals> 
     p.sportResult = (r.result_type as 'win' | 'draw' | 'loss') || ''
     p.opponentName = r.opponent_name ?? ''
     p.sportScore = r.match_score ?? ''
+    if (r.time_seconds) {
+      const secs = r.time_seconds
+      p.timeMins = secs >= 60 ? String(Math.floor(secs / 60)) : ''
+      p.timeSecs = String(Math.round((secs >= 60 ? secs % 60 : secs) * 100) / 100)
+    }
   } else if (mode === 'score') {
     p.scoreInput = String(Math.abs(r.raw_score))
   }
@@ -505,7 +614,7 @@ export function valsFromRaw(mode: string, eventData: EventData | undefined, raw:
     // A lift's raw_score is its estimated 1RM, not a load anyone lifted for
     // reps, so the prefill is that load as a SINGLE. Leaving reps as they were
     // would record, say, 112.5kg × 5 from a PR of 100kg × 5.
-    if (eventData?.slug !== 'shoulder-dislocate') p.repCount = '1'
+    p.repCount = '1'
   } else if (mode === 'reps') {
     p.repCount = String(raw)
   } else if (mode === 'time' || mode === 'hold') {
@@ -546,6 +655,22 @@ export function valsFromRaw(mode: string, eventData: EventData | undefined, raw:
     const secs = raw % TIER_BAND
     p.weightKg = String(Math.floor(raw / TIER_BAND) / 100)
     p.timeMins = String(Math.floor(secs / 60)); p.timeSecs = String(Math.round(secs % 60))
+  } else if (mode === 'weight+reps') {
+    p.weightKg = String(Math.floor(raw / TIER_BAND) / 100)
+    p.repCount = String(raw % TIER_BAND)
+  } else if (mode === 'distance+time') {
+    // The PR is a PREDICTION, so the prefill is that time over the reference.
+    const tierIdx = Math.floor(raw / TIER_BAND)
+    const tierName = eventData?.difficultyTiers?.[tierIdx]?.name
+    if (tierName) p.difficultyTier = tierName
+    const secs = TIER_BAND - (raw % TIER_BAND)
+    if (eventData?.referenceMetres) { p.distanceVal = String(eventData.referenceMetres); p.distanceUnit = 'm' }
+    p.timeMins = String(Math.floor(secs / 60)); p.timeSecs = String(Math.round(secs % 60))
+  } else if (mode === 'weight+distance+time') {
+    const d = decodeCarry(raw)
+    p.weightKg = String(d.weightKg)
+    p.distanceVal = String(d.metres); p.distanceUnit = 'm'
+    p.timeMins = String(Math.floor(d.secs / 60)); p.timeSecs = String(Math.round(d.secs % 60))
   } else if (mode === 'score') {
     p.scoreInput = String(Math.abs(raw))
   }

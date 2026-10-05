@@ -61,10 +61,19 @@ describe('the workout logging schema', () => {
 
   it('seeds aliases only for real events', () => {
     const seed = sql.slice(sql.indexOf('INSERT INTO public.activity_aliases'), sql.indexOf('ON CONFLICT (alias) DO NOTHING'))
-    const slugs = [...seed.matchAll(/\('[^']+', '([^']+)'\)/g)].map(m => m[1])
-    expect(slugs.length).toBeGreaterThan(20)
+    const pairs = [...seed.matchAll(/\('([^']+)', '([^']+)'\)/g)].map(m => [m[1], m[2]] as const)
+    expect(pairs.length).toBeGreaterThan(20)
+    // A later roster change may retire a seeded event; it must then repoint or
+    // drop the alias BY NAME (20261005012108 did for Lunges), which
+    // trainingLoad.test.ts replays in full. Here only those aliases are excused.
+    const later = readdirSync('supabase/migrations').filter(n => n > '20260915214702').sort()
+      .map(n => readFileSync(`supabase/migrations/${n}`, 'utf8')).join('\n')
+    const moved = new Set<string>()
+    for (const m of later.matchAll(/(?:UPDATE (?:public\.)?activity_aliases SET event_slug = '[^']+'|DELETE FROM (?:public\.)?activity_aliases)\s+WHERE alias IN \(([^)]*)\)/g)) {
+      for (const a of m[1].matchAll(/'([^']+)'/g)) moved.add(a[1])
+    }
     const roster = new Set(EVENTS.map(e => e.slug))
-    for (const s of slugs) expect(roster.has(s), s).toBe(true)
+    for (const [alias, slug] of pairs) if (!moved.has(alias)) expect(roster.has(slug), `${alias} → ${slug}`).toBe(true)
   })
 
   it('redefines delete_my_account as the previous definition plus the workouts delete, and nothing else', () => {

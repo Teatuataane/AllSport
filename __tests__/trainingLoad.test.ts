@@ -103,8 +103,12 @@ describe('training load migration', () => {
     for (const u of later.matchAll(/UPDATE (?:public\.)?activity_aliases SET event_slug = '([^']+)'\s+WHERE alias (?:IN \(([^)]*)\)|= ('[^']*'))/g)) {
       for (const a of (u[2] ?? u[3]).matchAll(/'([^']+)'/g)) effective.set(a[1], u[1])
     }
+    for (const d of later.matchAll(/DELETE FROM (?:public\.)?activity_aliases WHERE alias IN \(([^)]*)\)/g)) {
+      for (const a of d[1].matchAll(/'([^']+)'/g)) effective.delete(a[1])
+    }
     const touches = (later.match(/(?:INSERT INTO|UPDATE|DELETE FROM) (?:public\.)?activity_aliases/g) ?? []).length
     const understood = (later.match(/INSERT INTO (?:public\.)?activity_aliases/g) ?? []).length
+      + (later.match(/DELETE FROM (?:public\.)?activity_aliases WHERE alias IN \(/g) ?? []).length
       + (later.match(/UPDATE (?:public\.)?activity_aliases SET event_slug = '[^']+'\s+WHERE alias (?:IN \(|= ')/g) ?? []).length
     if (touches !== understood) throw new Error(`${name} changes activity_aliases in a form this test cannot replay`)
   }

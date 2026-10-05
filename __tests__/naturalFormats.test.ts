@@ -6,7 +6,9 @@ import {
 import { getEventBySlug, decodeDiffTime, isTimedEffort } from '@/lib/eventData'
 import { MAX_ESTIMATED_REPS } from '@/lib/scoring'
 
-const running = getEventBySlug('running')!
+// Running takes a distance natively since 5 Oct 2026; Burpee Broad Jump is
+// the one ladder of distances left for the natural format to convert onto.
+const running = getEventBySlug('burpee-broad-jump')!
 const deadlift = getEventBySlug('deadlift')!
 
 describe('Brzycki', () => {
@@ -79,7 +81,7 @@ describe('what an entry becomes', () => {
   })
 
   it('converts a long run to the highest rung it covers', () => {
-    const e = estimateFromDistance(running, 5000, 1570)!
+    const e = estimateFromDistance(running, 1000, 600)!
     const rungs = distanceRungs(running).sort((a, b) => a.metres - b.metres)
     const top = rungs[rungs.length - 1]
     expect(e.difficulty_tier).toBe(top.name)
@@ -111,13 +113,15 @@ describe('which events take which format', () => {
   it('sets belong to lifts', () => {
     expect(takesSets(deadlift)).toBe(true)
     expect(takesSets(running)).toBe(false)
-    // Shoulder Dislocate borrows `strength` to measure a grip width in cm.
-    expect(takesSets(getEventBySlug('shoulder-dislocate')!)).toBe(false)
+    // A load and reps that is not a lift (Tibialis Curl, 5 Oct 2026).
+    expect(takesSets(getEventBySlug('tibialis-curl')!)).toBe(false)
   })
 
   it('distance belongs to raced distance events', () => {
     expect(takesDistance(running)).toBe(true)
     expect(takesDistance(deadlift)).toBe(false)
+    // An open distance + time event takes the distance natively, not converted.
+    expect(takesDistance(getEventBySlug('running')!)).toBe(false)
     // A hold ladder is not a distance ladder, even when it is timed.
     expect(takesDistance(getEventBySlug('wall-sit')!)).toBe(false)
   })

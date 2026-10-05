@@ -16,6 +16,14 @@ import {
 } from '@/lib/scoring'
 import { EVENTS, getEventBySlug, encodeDiffTime, isTimedEffort, type EventData } from '@/lib/eventData'
 
+// No event has been on difficulty+distance since 5 Oct 2026 (Javelin and
+// Shotput lost their implements). The mode stays for historical rows, so it is
+// exercised on the ladder Javelin had.
+const OLD_JAVELIN: EventData = {
+  ...getEventBySlug('javelin-throw')!, inputMode: 'difficulty+distance', hasDifficultyTiers: true,
+  difficultyTiers: [{ level: 1, name: 'Stick' }, { level: 2, name: 'Short Javelin' }, { level: 3, name: 'Long Javelin' }],
+}
+
 function vals(patch: Partial<EntryVals>): EntryVals {
   return { ...EMPTY_VALS, ...patch }
 }
@@ -44,10 +52,6 @@ describe('computeScoreVals: strength', () => {
     expect(computeScoreVals('strength', getEventBySlug('deadlift'), vals({ repCount: '5' }))).toBeNull()
   })
 
-  it('shoulder-dislocate stores NEGATIVE cm so narrower ranks better', () => {
-    const r = computeScoreVals('strength', getEventBySlug('shoulder-dislocate'), vals({ weightKg: '55', repCount: '5' }))
-    expect(r).toEqual({ raw_score: -55, score_label: '55cm × 5 reps' })
-  })
 })
 
 describe('computeScoreVals: reps', () => {
@@ -83,7 +87,7 @@ describe('computeScoreVals: difficulty+time', () => {
   })
 
   it('TIMED EFFORT events invert the within-tier term (faster wins within tier)', () => {
-    const running = getEventBySlug('running')! // in TIMED_EFFORT_SLUGS
+    const running = getEventBySlug('bronco')! // in TIMED_EFFORT_SLUGS (Running left it 5 Oct 2026)
     const tierName = running.difficultyTiers![1].name // D2, tierIdx 1
     const fast = computeScoreVals('difficulty+time', running, vals({ difficultyTier: tierName, timeMins: '1', timeSecs: '35' }))
     const slow = computeScoreVals('difficulty+time', running, vals({ difficultyTier: tierName, timeMins: '1', timeSecs: '40' }))
@@ -92,7 +96,7 @@ describe('computeScoreVals: difficulty+time', () => {
   })
 
   it('a higher tier always outranks a lower tier, regardless of time', () => {
-    const running = getEventBySlug('running')!
+    const running = getEventBySlug('bronco')!
     const d1 = running.difficultyTiers![0].name
     const d2 = running.difficultyTiers![1].name
     const fastD1 = computeScoreVals('difficulty+time', running, vals({ difficultyTier: d1, timeSecs: '30' }))
@@ -101,7 +105,7 @@ describe('computeScoreVals: difficulty+time', () => {
   })
 
   it('returns null without a tier or without a time', () => {
-    const running = getEventBySlug('running')!
+    const running = getEventBySlug('bronco')!
     expect(computeScoreVals('difficulty+time', running, vals({ timeSecs: '90' }))).toBeNull()
     expect(computeScoreVals('difficulty+time', running, vals({ difficultyTier: running.difficultyTiers![0].name }))).toBeNull()
   })
@@ -204,12 +208,8 @@ describe('valsFromRaw (season PR prefill)', () => {
     expect(back.raw_score).toBe(112.5)
   })
 
-  it('leaves Shoulder Dislocate (cm, not a lift) without a rep count', () => {
-    expect(valsFromRaw('strength', getEventBySlug('shoulder-dislocate'), -40).repCount).toBeUndefined()
-  })
-
   it('decodes a timed-effort difficulty+time PR back to tier + seconds', () => {
-    const running = getEventBySlug('running')!
+    const running = getEventBySlug('bronco')!
     const raw = encodeDiffTime(1, 95, true)
     const p = valsFromRaw('difficulty+time', running, raw)
     expect(p.difficultyTier).toBe(running.difficultyTiers![1].name)
@@ -224,7 +224,7 @@ describe('valsFromRaw (season PR prefill)', () => {
   })
 
   it('prefill → computeScoreVals reproduces the original raw_score (encode/decode round trip)', () => {
-    const running = getEventBySlug('running')!
+    const running = getEventBySlug('bronco')!
     const raw = encodeDiffTime(2, 240, true)
     const p = valsFromRaw('difficulty+time', running, raw)
     const r = computeScoreVals('difficulty+time', running, vals(p))
@@ -245,10 +245,6 @@ describe('computeScoreVals: rejects hostile/invalid input', () => {
     expect(computeScoreVals('sprint', undefined, vals({ timeSecs: '0', sprintCs: '-5' }))).toBeNull()
   })
 
-  it('negative grip width is rejected for Shoulder Dislocate', () => {
-    expect(computeScoreVals('strength', getEventBySlug('shoulder-dislocate'), vals({ weightKg: '-5', repCount: '5' }))).toBeNull()
-  })
-
   it('negative weight / reps / distance / hold are rejected', () => {
     expect(computeScoreVals('strength', getEventBySlug('deadlift'), vals({ weightKg: '-100' }))).toBeNull()
     expect(computeScoreVals('reps', undefined, vals({ repCount: '-42' }))).toBeNull()
@@ -257,7 +253,7 @@ describe('computeScoreVals: rejects hostile/invalid input', () => {
   })
 
   it('difficulty+time rejects negative and tier-band-overflow times', () => {
-    const running = getEventBySlug('running')!
+    const running = getEventBySlug('bronco')!
     const tier = running.difficultyTiers![0].name
     expect(computeScoreVals('difficulty+time', running, vals({ difficultyTier: tier, timeSecs: '-30' }))).toBeNull()
     // ≥10000s would leak into the next tier's band
@@ -332,11 +328,11 @@ describe('Game rungs', () => {
   })
 
   it('does NOT invert the result on a timed-effort ladder', () => {
-    // T-Race is a timed effort, so its seconds term is stored as DT_CAP - secs.
+    // Climbing is a timed effort, so its seconds term is stored as DT_CAP - secs.
     // Inverting the win/draw/loss term too would make a loss beat a win.
-    const ev = getEventBySlug('t-race')!
+    const ev = getEventBySlug('rope-climb')!
     expect(isTimedEffort(ev.slug)).toBe(true)
-    const idx = gameIdx('t-race')
+    const idx = gameIdx('rope-climb')
     const rung = ev.difficultyTiers![idx].name
     const win = computeScoreVals('difficulty+time', ev, vals({ difficultyTier: rung, sportResult: 'win' }))!
     const loss = computeScoreVals('difficulty+time', ev, vals({ difficultyTier: rung, sportResult: 'loss' }))!
@@ -386,7 +382,7 @@ describe('weight rungs', () => {
 
 describe('difficulty+distance (throw ladders)', () => {
   it('bands the throw under its implement, to 0.1m', () => {
-    const ev = getEventBySlug('javelin-throw')!
+    const ev = OLD_JAVELIN
     expect(ev.inputMode).toBe('difficulty+distance')
     const r = computeScoreVals('difficulty+distance', ev, vals({ difficultyTier: ev.difficultyTiers![2].name, distanceVal: '31.4' }))!
     expect(r.raw_score).toBe(2 * 10000 + 314)
@@ -394,7 +390,7 @@ describe('difficulty+distance (throw ladders)', () => {
   })
 
   it('a short throw with the hard implement still beats a long one with the easy implement', () => {
-    const ev = getEventBySlug('javelin-throw')!
+    const ev = OLD_JAVELIN
     const hard = computeScoreVals('difficulty+distance', ev, vals({ difficultyTier: ev.difficultyTiers![2].name, distanceVal: '5' }))!
     const easy = computeScoreVals('difficulty+distance', ev, vals({ difficultyTier: ev.difficultyTiers![0].name, distanceVal: '90' }))!
     expect(hard.raw_score).toBeGreaterThan(easy.raw_score)
@@ -429,7 +425,7 @@ describe('weight+time (Leg Ext Hold)', () => {
 
 describe('the new modes reject what they cannot encode', () => {
   const legExt = getEventBySlug('leg-extension')!
-  const javelin = getEventBySlug('javelin-throw')!
+  const javelin = OLD_JAVELIN
 
   it('weight+time refuses a negative load instead of inventing a score', () => {
     // Before the guard this encoded raw -4999970 under the label "Bodyweight",
@@ -462,7 +458,7 @@ describe('the new modes reject what they cannot encode', () => {
 
 describe('prefill round-trips for the new modes', () => {
   it('valsFromRaw reproduces a difficulty+distance score', () => {
-    const ev = getEventBySlug('javelin-throw')!
+    const ev = OLD_JAVELIN
     const raw = 2 * 10000 + 314
     const p = _vfr('difficulty+distance', ev, raw)
     expect(p.difficultyTier).toBe(ev.difficultyTiers![2].name)
@@ -556,37 +552,38 @@ describe('Climbing: a Game rung on top of a raced ladder (Sept 2026)', () => {
   const mk = (res: 'win' | 'draw' | 'loss') =>
     computeScoreVals('difficulty+time', ev, vals({ difficultyTier: game, sportResult: res }))!
 
-  it('tops the ladder at D9 and is a timed effort in Body Awareness', () => {
+  // The pegboard and L-sit rungs went on 5 Oct 2026, so the Game is D6.
+  it('tops the ladder at D6 and is a timed effort in Body Awareness', () => {
     expect(ev.domainNumber).toBe(8)
     expect(isTimedEffort(ev.slug)).toBe(true)
-    expect(idx).toBe(8)
+    expect(idx).toBe(5)
     expect(idx).toBe(ev.difficultyTiers!.length - 1)
   })
 
-  it('encodes the result un-inverted: win 8*10000+2, draw +1, loss +0', () => {
-    expect(mk('win').raw_score).toBe(8 * 10000 + 2)
-    expect(mk('draw').raw_score).toBe(8 * 10000 + 1)
-    expect(mk('loss').raw_score).toBe(8 * 10000 + 0)
+  it('encodes the result un-inverted: win 5*10000+2, draw +1, loss +0', () => {
+    expect(mk('win').raw_score).toBe(5 * 10000 + 2)
+    expect(mk('draw').raw_score).toBe(5 * 10000 + 1)
+    expect(mk('loss').raw_score).toBe(5 * 10000 + 0)
   })
 
-  it('a loss still outranks the fastest possible D8 Pegboard Climb', () => {
-    const d8 = ev.difficultyTiers![idx - 1].name
-    const fastest = computeScoreVals('difficulty+time', ev, vals({ difficultyTier: d8, timeMins: '0', timeSecs: '1' }))!
-    expect(fastest.raw_score).toBe(7 * 10000 + (10000 - 1))
+  it('a loss still outranks the fastest possible D5 No Feet Climb', () => {
+    const d5 = ev.difficultyTiers![idx - 1].name
+    const fastest = computeScoreVals('difficulty+time', ev, vals({ difficultyTier: d5, timeMins: '0', timeSecs: '1' }))!
+    expect(fastest.raw_score).toBe(4 * 10000 + (10000 - 1))
     expect(mk('loss').raw_score).toBeGreaterThan(fastest.raw_score)
   })
 
   it('prefills a stored win as a result, not a 9998-second climb', () => {
-    const p = _vfr('difficulty+time', ev, 8 * 10000 + 2)
+    const p = _vfr('difficulty+time', ev, 5 * 10000 + 2)
     expect(p.sportResult).toBe('win')
     expect(p.timeSecs).toBeUndefined()
   })
 })
 
 describe('a Game rung on a TIMED-EFFORT ladder is not a time', () => {
-  // 100m Sprint, 200m Sprint and T-Race each top a timed ladder with a Game
-  // rung. decodeDiffTime would turn a win (term 2) into 10000 - 2 = 9998 seconds.
-  it.each(['100m-sprint', '200m-sprint', 't-race'])('%s prefills a result, not 9998s', (slug) => {
+  // Climbing tops a timed ladder with a Game rung (the sprints and T-Race did
+  // until 5 Oct 2026). decodeDiffTime would turn a win (term 2) into 9998 seconds.
+  it.each(['rope-climb'])('%s prefills a result, not 9998s', (slug) => {
     const ev = getEventBySlug(slug)!
     expect(isTimedEffort(ev.slug)).toBe(true)
     const idx = ev.difficultyTiers!.findIndex(t => t.scoring === 'sport')
@@ -624,6 +621,9 @@ describe('every input mode on the roster is actually handled', () => {
       case 'difficulty+reps': return { ...base, repCount: '10' }
       case 'difficulty+distance': return { ...base, distanceVal: '30' }
       case 'weight+time': return { weightKg: '8', timeMins: '1', timeSecs: '0' }
+      case 'weight+reps': return { weightKg: '5', repCount: '30' }
+      case 'distance+time': return { ...base, distanceVal: String(e.referenceMetres ?? 0), distanceUnit: 'm' as const, timeMins: '4', timeSecs: '0' }
+      case 'weight+distance+time': return { weightKg: '40', distanceVal: '100', distanceUnit: 'm' as const, timeMins: '1', timeSecs: '0' }
     }
   }
 

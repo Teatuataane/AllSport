@@ -29,7 +29,7 @@ describe('event_domains mirrors lib/eventData.ts', () => {
 
   it('seeds every event, and only real events', () => {
     expect(seeded).toHaveLength(EVENTS.length)
-    expect(seeded).toHaveLength(128)
+    expect(seeded).toHaveLength(126)
     expect(new Set(seeded.map(s => s.name)).size).toBe(seeded.length)
   })
 

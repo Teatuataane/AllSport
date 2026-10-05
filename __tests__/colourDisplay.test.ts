@@ -7,7 +7,7 @@ const slug = (name: string) => getEventByName(name)!.slug
 
 describe('bestScoreLabel', () => {
   it('writes the tier name where formatPR writes D-number', () => {
-    const label = bestScoreLabel({ slug: slug('Pushup Contest'), best: { raw_score: 30001, weight_kg: null, difficulty_tier: '1 Arm Pushup' } })
+    const label = bestScoreLabel({ slug: slug('Pushups'), best: { raw_score: 30001, weight_kg: null, difficulty_tier: '1 Arm Pushup' } })
     expect(label).toBe('1 Arm Pushup · 1 reps')
   })
 
@@ -25,11 +25,11 @@ describe('bestEventByColour', () => {
   it('takes the highest event colour, Top % breaking a tie', () => {
     const events = new Map([
       ['a', { slug: slug('Deadlift'), rung: 4 }],
-      ['b', { slug: slug('Pushup Contest'), rung: 4 }],
+      ['b', { slug: slug('Pushups'), rung: 4 }],
       ['c', { slug: slug('Javelin'), rung: 2 }],
     ])
-    const pct = new Map([['Deadlift', 30], ['Pushup Contest', 5]])
-    expect(bestEventByColour(events, pct)).toEqual({ slug: slug('Pushup Contest'), rung: 4 })
+    const pct = new Map([['Deadlift', 30], ['Pushups', 5]])
+    expect(bestEventByColour(events, pct)).toEqual({ slug: slug('Pushups'), rung: 4 })
     expect(bestEventByColour(new Map([['c', { slug: 'x', rung: 0 }]]))).toBeNull()
   })
 })

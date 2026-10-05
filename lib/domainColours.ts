@@ -37,7 +37,7 @@ export const DOMAIN_COLORS = [
   '#F9E051', // 3  Power                Kōwhai     yellow
   '#4DB26E', // 4  Speed                Kākāriki   green
   '#2371BB', // 5  Anaerobic Endurance  Kahurangi  blue
-  '#B87DB5', // 6  Aerobic Endurance    Poroporo   purple
+  '#B87DB5', // 6  Endurance            Poroporo   purple
   '#F397C0', // 7  Flexibility          Māwhero    pink
   '#B87333', // 8  Body Awareness       Kōkōwai    brown / red ochre
   '#F2F2F2', // 9  Coordination         Mā         white

@@ -11,6 +11,8 @@ const DOMAIN_SLUGS: Record<string, string> = {
   'Power': 'power',
   'Speed': 'speed',
   'Anaerobic Endurance': 'anaerobic-endurance',
+  // Renamed from Aerobic Endurance 5 Oct 2026; the icon file keeps its name.
+  'Endurance': 'aerobic-endurance',
   'Aerobic Endurance': 'aerobic-endurance',
   'Flexibility': 'flexibility',
   'Body Awareness': 'body-awareness',

@@ -514,7 +514,8 @@ describe('found by the adversarial review', () => {
   it('the switch-on steps put the Vercel key AFTER the replay', () => {
     // The route confers the moment Vercel has the key, and the replay skips
     // anyone who already holds a colour.
-    const doc = readFileSync('CLAUDE.md', 'utf8')
+    // The full record moved from CLAUDE.md to docs/PROJECT_HISTORY.md (Oct 2026).
+    const doc = readFileSync('docs/PROJECT_HISTORY.md', 'utf8')
     const applyStep = doc.indexOf('2. `scripts/replay-colours.ts --apply`')
     const vercelStep = doc.indexOf('3. Key added to Vercel')
     expect(applyStep).toBeGreaterThan(-1)

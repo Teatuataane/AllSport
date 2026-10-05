@@ -166,6 +166,24 @@
 
 ## P1 — Do Next
 
+### Apply `20261005012108_difficulty_review_oct.sql` straight after v0.27.0.0 deploys
+**What:** deploy the code first, then `supabase db push` from a clean `main` checkout with no game or workout running, then `node --import ./scripts/ts-loader.mjs scripts/refresh-leaderboard-scores.ts --apply`, then hard-refresh every kaiwhakawā device. Verify by object: `event_domains` holds 126 rows; `guard_workout_entries_write` and `record_entry_match` list fourteen pure-contest slugs; `enforce_lift_estimate` refuses a Tibialis Curl that names a level.
+**Why it matters:** the migration was written without database access, so it quotes no row counts. It was run on a scratch Postgres 16 with a fixture covering every conversion, and its output matched what the app writes, but read the closing NOTICE (rows archived, colours citing a removed event) at apply time. Its assertions abort the whole file if anything is left in an old shape.
+**Noticed:** v0.27.0.0
+
+### Review the standards redrafted for the 5 Oct 2026 difficulty review
+**What:** every event whose ladder or format changed has new standards in `GRADING_STANDARDS_REVIEW.md`, marked UNREVIEWED. The ones to read hardest are the carries (now absolute kilos, split men and women, a colour needs the load AND the distance), Javelin and Shotput (one implement, twelve distances), and the distance efforts (Kahurangi and up are the old 1000m-rung times; the five colours below are spaced from Kahurangi by rule).
+**Noticed:** v0.27.0.0
+
+### Loose ends from the 5 Oct 2026 difficulty review
+- **Repeat Vault's rules still describe two-foot jumps over the bar.** Only the name changed on the sheet. If a vault means hands on the bar, the how-to and rules need rewriting.
+- **Cricket's new ladder had no Game rung on the sheet;** Tāne confirmed adding one on top (5 Oct 2026). The sheet now shows it.
+- **A carry ranks heaviest first, whatever the distance,** as the sheet says ("weight then distance then time"). 61kg carried 2m outranks 60kg carried 200m in a game. Colours are safe (each asks for a distance too); only game ranking is affected. Consider a minimum distance if it gets gamed.
+- **Thirteen more events are win/draw/loss only,** so they can no longer be scored in a personal workout or training session (the same as Wrestling always was). Speed now has three events that can be logged solo.
+- **Climbing's hang rungs (D1–D3) are on a faster-wins ladder.** Unchanged by this review, but the renames made it visible: "Assisted Hang" scored by fastest time reads oddly.
+- Review items 12 (Table Tennis wall juggles vs partner hits), 13 (Bowling and Kubb distances) and 15 (L-Sit and Chinups replacement rungs) are still unanswered on the sheet.
+**Noticed:** v0.27.0.0
+
 ### ~~Apply `20260928201510_estimated_one_rep_max.sql` straight after v0.24.0.0 deploys~~ DONE 2026-09-30
 Applied and verified by object (see CLAUDE.md), with `20260928015753` (never applied until now) just before it. Leaderboard refreshed: 27 written, 0 failed. **Still to do by hand:** hard-refresh every kaiwhakawā device.
 

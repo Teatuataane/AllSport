@@ -56,8 +56,9 @@ const MODE_OVERRIDES = {
   // Ladder is Walking / Timed / Game: the first two are times, so this is a
   // timed effort with a Game rung on top, NOT a rep ladder.
   'T-Race': 'difficulty+time',
-  // New event replacing Duck Walk. Levels are crawl distances, score is time.
-  'Animal Crawl': 'difficulty+time',
+  // Crawl styles are the levels; distance and time are open (5 Oct 2026), ranked
+  // on the time the effort predicts over the event's reference distance.
+  'Animal Crawl': 'distance+time',
   // Pure contests that gained a drill under their Game rung (Sept 2026 grading
   // rebuild). Their old mode is `sport`, which would default to reps, but these
   // drills are raced, and Arm Wrestling's is a hold. Kabaddi, Speed Chess,
@@ -68,6 +69,26 @@ const MODE_OVERRIDES = {
   'Beach Flags': 'difficulty+time',
   'Tug of War': 'difficulty+time',
   'Arm Wrestling': 'difficulty+time',
+}
+
+// Events with NO ladder whose mode still changed. A ladderless event otherwise
+// keeps the mode it has, so each of these is stated (5 Oct 2026 review).
+const LADDERLESS_MODES = {
+  // One implement; the throw is the score.
+  'Javelin': 'distance', 'Shotput': 'distance',
+  // Only the game: win, draw or loss. The raced ones record a time alongside.
+  'Arm Wrestling': 'sport', 'Tug of War': 'sport', '100m Sprint': 'sport', 'Tag': 'sport',
+  'T-Race': 'sport', 'Beach Flags': 'sport', '200m Sprint': 'sport', 'Rats & Rabbits': 'sport',
+  'Speed Chess': 'sport', 'Capture the Flag': 'sport', 'Kabaddi': 'sport',
+  'Tae Kwon Do': 'sport', 'Fencing': 'sport',
+  // Open distance and time, ranked on the time it predicts over a set distance.
+  'Running': 'distance+time', 'Cycling': 'distance+time', 'Ski Erg': 'distance+time',
+  'Row Erg': 'distance+time', 'Scooting': 'distance+time',
+  // Open load, distance and time: heaviest, then furthest, then fastest.
+  'Sandbag Carry': 'weight+distance+time', 'Farmer Carry': 'weight+distance+time',
+  'Weighted Drag': 'weight+distance+time',
+  // Any load and reps: heaviest, then most reps.
+  'Tibialis Curl': 'weight+reps',
 }
 
 // Events whose ladder is the implement thrown, while the score stays the distance.
@@ -105,7 +126,7 @@ for (const e of sheet) {
     domainNumber: cur?.domainNumber ?? null,
     oldMode: cur?.mode ?? null, oldTiers: cur?.tiers ?? [],
     tiers: e.tiers, none: e.none,
-    newMode: e.tiers.length ? resolveMode(e.name, e.tiers, cur) : (cur?.mode ?? null),
+    newMode: e.tiers.length ? resolveMode(e.name, e.tiers, cur) : (LADDERLESS_MODES[e.name] ?? cur?.mode ?? null),
   }
   out.push(rec)
 }
@@ -113,7 +134,7 @@ for (const e of sheet) {
 if (process.argv.includes('--json')) {
   console.log(JSON.stringify(out, null, 1))
 } else {
-  const changed = out.filter(r => r.tiers.length && r.oldMode !== r.newMode)
+  const changed = out.filter(r => r.oldMode !== r.newMode)
   console.log(`parsed ${out.length} events: ${out.filter(r => r.tiers.length).length} with ladders, ` +
               `${out.filter(r => !r.tiers.length).length} without`)
   console.log(`\nMODE CHANGES (${changed.length}):`)

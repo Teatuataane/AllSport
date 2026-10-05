@@ -27,7 +27,7 @@ import { tierScoring, fmtTime } from './scoring'
 import { eventRungInGame, placePoints, MAX_GAME_COLOUR_TOTAL } from './leaderboardScores'
 import { ladderFor, liftKg, type PlayerGrades, type GradePlayer } from './playerGrades'
 import {
-  ageBand, rungForScore, rungForLoadHold, thresholdFor, ratioThresholdsKg, bodyweightOn, gradeForRung,
+  ageBand, rungForScore, rungForCompound, thresholdFor, ratioThresholdsKg, bodyweightOn, gradeForRung,
   AGE_SHIFT, DOMAIN_COUNT, DRILL_CAP, TOP_RUNG, type BodyweightDeclaration,
 } from './grading'
 import { seasonRowsFrom, ratingsAtClose, gradePlayerOf, type GradeInputs, type GradeAward } from './loadGrades'
@@ -183,7 +183,35 @@ const secsText = (s: number) => (s >= 60 ? fmtTime(Math.ceil(s)) : `${trim(s)}s`
  * What it takes to move a raw score from `best` to `target`, in the event's
  * units. Null for a mode this cannot put into words, which leaves the event out.
  */
+const carryKg = (x: number) => Math.floor(x / 1e9) / 10
+const carryMetres = (x: number) => Math.floor((x % 1e9) / 1e4)
+
 export function describeRawGap(ev: EventData, best: number, target: number): string | null {
+  if (ev.inputMode === 'weight+distance+time') {
+    // A colour needs its load and its distance (rungForCarry).
+    const needKg = carryKg(target), needM = carryMetres(target)
+    if (needKg > carryKg(best)) return `${trim(needKg)}kg for ${needM}m`
+    const d = needM - carryMetres(best)
+    return d > 0 ? `${d}m further` : null
+  }
+  if (ev.inputMode === 'weight+reps') {
+    const kg = (x: number) => Math.floor(x / DT_CAP) / 100
+    const needKg = kg(target), needReps = target % DT_CAP
+    if (needKg > kg(best)) return `${trim(needKg)}kg for ${plural(needReps, 'rep', 'reps')}`
+    const d = needReps - (best % DT_CAP)
+    return d > 0 ? plural(d, 'more rep', 'more reps') : null
+  }
+  if (ev.inputMode === 'distance+time') {
+    // The score is the time predicted over the reference distance.
+    const ref = ev.referenceMetres ?? 0
+    const needTier = Math.floor(target / DT_CAP), bestTier = Math.floor(best / DT_CAP)
+    if (needTier > bestTier) {
+      const name = ev.difficultyTiers?.[needTier]?.name
+      return name ? `move up to ${name}` : null
+    }
+    const d = target - best
+    return d > 0 ? `${secsText(d)} faster over ${ref >= 1000 ? `${ref / 1000}km` : `${ref}m`}` : null
+  }
   if (ev.inputMode === 'weight+time') {
     // A colour needs its load and its time (rungForLoadHold), so name both
     // when the load has to go up, and only the time when it does not.
@@ -263,7 +291,7 @@ export function nextStep(
     } else {
       const raw = eg.best.raw_score
       if (raw == null) continue
-      cur = ev.inputMode === 'weight+time' ? rungForLoadHold(raw, ladder, band) : rungForScore(raw, ladder, band, { cap })
+      cur = rungForCompound(ev.inputMode, raw, ladder, band) ?? rungForScore(raw, ladder, band, { cap })
       if (cur + 1 > cap) continue
       to = thresholdFor(ladder, cur + 1 - shift)
       from = cur > 0 ? thresholdFor(ladder, cur - shift) : Math.min(raw, to)
@@ -274,12 +302,16 @@ export function nextStep(
     // A load-and-hold score can sit ABOVE the threshold's number (a heavier
     // load, held too briefly) and still miss the colour. Its progress is then
     // the hold, not the number.
-    const heldShort = ev.inputMode === 'weight+time' && bestVal >= to
-    if (!heldShort && !(to > bestVal)) continue
+    const heldShort = (ev.inputMode === 'weight+time' || ev.inputMode === 'weight+reps') && bestVal >= to
+    // A carry likewise: a heavier load carried too short a way.
+    const carriedShort = ev.inputMode === 'weight+distance+time' && bestVal >= to
+    if (!heldShort && !carriedShort && !(to > bestVal)) continue
     const span = to - from
     const progress = heldShort
       ? Math.max(0, Math.min(1, (bestVal % DT_CAP) / Math.max(1, to % DT_CAP)))
-      : span > 0 ? Math.max(0, Math.min(1, (bestVal - from) / span)) : 0
+      : carriedShort
+        ? Math.max(0, Math.min(1, carryMetres(bestVal) / Math.max(1, carryMetres(to))))
+        : span > 0 ? Math.max(0, Math.min(1, (bestVal - from) / span)) : 0
     const step: NextStep = { eventName: ev.name, slug: ev.slug, nextRung: cur + 1, gap, progress }
     if (!pick || step.progress > pick.progress) pick = step
   }

@@ -124,7 +124,7 @@ export const TOP_RUNG = 12
  * conferred one. HOME forces one full recheck per player when this differs
  * from the version it last checked under (lib/useNewColours.ts).
  */
-export const GRADING_RULES_VERSION = '2026-09-29-estimated-1rm'
+export const GRADING_RULES_VERSION = '2026-10-05-difficulty-review'
 export const DOMAIN_COUNT = 10
 
 /**
@@ -461,6 +461,52 @@ export function rungForLoadHold(score: number, thresholds: readonly number[], ba
     if (meetsLoadHold(score, thresholdFor(thresholds, c - shift))) rung = c
   }
   return rung
+}
+
+// ─── Load-and-reps and load-distance-time (5 Oct 2026) ──────────────────────
+// Tibialis Curl ('weight+reps') packs `round(kg × 100) × 10000 + reps`, the same
+// shape as a load-and-hold, so the same rule holds: at least the load AND at
+// least the reps. The carries ('weight+distance+time') pack load, distance and
+// time (lib/scoring.ts encodeCarry); a colour asks for at least the load AND at
+// least the distance, and the time only ranks a game. Read as one number,
+// "40kg · 100m" would be passed by 40.1kg carried a single metre.
+
+const CARRY_KG_KEY = 1e9
+const CARRY_M_KEY = 1e4
+
+/** Whether a carry meets one threshold: load at least, and distance at least. */
+export function meetsCarry(score: number, threshold: number): boolean {
+  if (threshold <= 0) return score >= threshold
+  const kg = Math.floor(score / CARRY_KG_KEY), m = Math.floor((score % CARRY_KG_KEY) / CARRY_M_KEY)
+  const tKg = Math.floor(threshold / CARRY_KG_KEY), tM = Math.floor((threshold % CARRY_KG_KEY) / CARRY_M_KEY)
+  return kg >= tKg && m >= tM
+}
+
+/** rungForScore for a carry ladder: each colour checks its load and its distance. */
+export function rungForCarry(score: number, thresholds: readonly number[], band: AgeBand): number {
+  if (thresholds.length === 0) return 0
+  const shift = AGE_SHIFT[band]
+  const top = Math.min(TOP_RUNG, thresholds.length + shift)
+  let rung = 0
+  for (let c = 1; c <= top; c++) {
+    if (meetsCarry(score, thresholdFor(thresholds, c - shift))) rung = c
+  }
+  return rung
+}
+
+/**
+ * The rung for a mode whose score packs two keys a colour must BOTH meet, or
+ * null for an ordinary one-number mode (use rungForScore). One place, so the
+ * grading engine and the game report cannot disagree about which modes these are.
+ */
+export function isCompoundMode(mode: string): boolean {
+  return mode === 'weight+time' || mode === 'weight+reps' || mode === 'weight+distance+time'
+}
+
+export function rungForCompound(mode: string, score: number, thresholds: readonly number[], band: AgeBand): number | null {
+  if (mode === 'weight+time' || mode === 'weight+reps') return rungForLoadHold(score, thresholds, band)
+  if (mode === 'weight+distance+time') return rungForCarry(score, thresholds, band)
+  return null
 }
 
 // ─── Game-rung events: drills below, the rating above ────────────────────────

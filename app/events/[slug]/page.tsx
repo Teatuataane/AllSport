@@ -33,6 +33,9 @@ const INPUT_MODE_LABEL: Record<InputMode, string> = {
   'difficulty+reps': 'Difficulty tier + repetitions',
   'difficulty+distance': 'Difficulty tier + distance thrown',
   'weight+time': 'Weight held + hold time',
+  'weight+reps': 'Weight lifted + repetitions — heavier wins, reps break a tie',
+  'distance+time': 'Any distance + its time, ranked on the time it predicts over the set distance',
+  'weight+distance+time': 'Weight carried + distance + time — heavier, then further, then faster',
   score: 'Stroke count over 4 holes',
 }
 
