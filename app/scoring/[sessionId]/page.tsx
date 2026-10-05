@@ -17,10 +17,12 @@ import QuickEntrySheet, { type SubmitOutcome } from '@/components/play/QuickEntr
 import AddEventsSheet from '@/components/play/AddEventsSheet'
 import GameEventList from '@/components/play/GameEventList'
 import { playList, domainsCovered, type PlaySlot, type DomainGroup } from '@/lib/gameSwaps'
-import { scoreRung, rungSegment, liveGameColourRung } from '@/lib/scoreColour'
+import { liveEventRung, rungSegment, liveGameColourRung } from '@/lib/scoreColour'
 import { GradeDot } from '@/components/GradeDot'
 import { gradeForRung } from '@/lib/grading'
 import { useGradeProfile } from '@/lib/useGradeProfile'
+import { useSportRatings } from '@/lib/useSportRatings'
+import { gameEventLine, gameEventLineText } from '@/lib/gameEventLine'
 import { recheckGrades, type ConferredColour } from '@/lib/recheckGrades'
 import { usePlayerGames } from '@/lib/usePlayerGames'
 import { usePRRows } from '@/lib/usePRRows'
@@ -1163,6 +1165,12 @@ export default function SessionPage() {
   // What colouring a score needs for whoever's tab is open: division, age and
   // the day's bodyweight. Same player as the swaps store, so a guest gets none.
   const gradeProfile = useGradeProfile(swapPlayerId, sessionDay)
+  // The rating in each sport, for the win/draw/loss buttons. Null until loaded or if the read fails.
+  const sportRatings = useSportRatings(swapPlayerId)
+  const gameLineOf = (ev: ReturnType<typeof getEventBySlug>) => {
+    const line = gameEventLine(ev, sportRatings.ratings)
+    return line ? gameEventLineText(line) : undefined
+  }
 
   // Every roster row's scored-event set, computed once per results change
   const rosterScored = useMemo(
@@ -1706,7 +1714,8 @@ export default function SessionPage() {
         const sheetSlot = sheetEventId ? slots.find(sl => sl.se.id === sheetEventId) : undefined
         const sheetEvent = sheetSlot?.kind === 'official' ? events.find(e => e.id === sheetEventId) : undefined
         const eventDataFor = (slot: PlaySlot) => slot.kind === 'official' ? getEventByName(slot.se.event_name) : getEventBySlug(slot.se.event_slug)
-        const rungFor = (slot: PlaySlot) => scoreRung(eventDataFor(slot), slotRows(slot), gradeProfile.player, gradeProfile.bodyweightKg)
+        const rungFor = (slot: PlaySlot) => liveEventRung(eventDataFor(slot), slotRows(slot), gradeProfile.player, gradeProfile.bodyweightKg,
+          sportRatings.ratings?.get(eventDataFor(slot)?.name ?? ''))
         // A domain's segment takes the best colour reached anywhere in it.
         const domainFill = (ev: { domain_number: number }) =>
           rungSegment(Math.max(0, ...slots.filter(sl => sl.se.domain_number === ev.domain_number).map(rungFor))) ?? '#666'
@@ -1786,6 +1795,7 @@ export default function SessionPage() {
               noteFor={slot => eventDivisionRank(slot.se.id, results, playerInfoMap, pDivision,
                 bestRaw(results.filter(r => r.event_id === slot.se.id && r.player_id === pid)))}
               rungFor={rungFor}
+              gameLineFor={slot => gameLineOf(eventDataFor(slot))}
               canAdd={swaps.available}
               scoredSlugs={swaps.scoredSlugs}
               onOpen={setSheetEventId}
@@ -1804,6 +1814,11 @@ export default function SessionPage() {
                 seasonPR={null}
                 prRows={playerPRRows[sheetSlot.se.event_slug] ?? []}
                 locked={sessionEnded}
+                standards={{
+                  player: gradeProfile.player, bodyweightKg: gradeProfile.bodyweightKg, reached: rungFor(sheetSlot),
+                  bodyweightPrompt: <BodyweightField playerId={pid} eventSlugs={[sheetSlot.se.event_slug]} day={sessionDay}
+                    locked={sessionEnded} onSaved={gradeProfile.setBodyweightKg} />,
+                }}
                 bestLabel="Best today"
                 prLabel="Training"
                 natural
@@ -1841,6 +1856,11 @@ export default function SessionPage() {
                 seasonPR={seasonPRs[sheetEvent.id] ?? null}
                 prRows={playerPRRows[sheetEvent.event_slug] ?? []}
                 locked={sessionEnded}
+                standards={{
+                  player: gradeProfile.player, bodyweightKg: gradeProfile.bodyweightKg, reached: rungFor(sheetSlot!),
+                  bodyweightPrompt: <BodyweightField playerId={pid} eventSlugs={[sheetEvent.event_slug]} day={sessionDay}
+                    locked={sessionEnded} onSaved={gradeProfile.setBodyweightKg} />,
+                }}
                 onSubmit={(v, editingId, matchOpponents) => submitEntry({
                   sessionId: sessionId as string, eventId: sheetEvent.id, playerId: pid, playerName: pName,
                   mode: getEventByName(sheetEvent.event_name)?.inputMode || sheetEvent.input_mode,
@@ -1861,6 +1881,7 @@ export default function SessionPage() {
                   setTimeout(() => setToast(null), meta.isPR || isNewEvent ? 4000 : 3000)
                   await loadResults()
                   reloadPlayerPRs()
+                  sportRatings.reload()
                 }}
                 onDeleted={async () => { await loadResults(); reloadPlayerPRs() }}
               />
@@ -1928,7 +1949,8 @@ export default function SessionPage() {
         const judgeEventDataFor = (slot: PlaySlot) => slot.kind === 'official' ? getEventByName(slot.se.event_name) : getEventBySlug(slot.se.event_slug)
         // A guest is never graded: no player, so every rung is 0.
         const judgeRungFor = (slot: PlaySlot) => target?.isGuest ? 0
-          : scoreRung(judgeEventDataFor(slot), judgeSlotRows(slot), gradeProfile.player, gradeProfile.bodyweightKg)
+          : liveEventRung(judgeEventDataFor(slot), judgeSlotRows(slot), gradeProfile.player, gradeProfile.bodyweightKg,
+            sportRatings.ratings?.get(judgeEventDataFor(slot)?.name ?? ''))
         const judgeDomainFill = (ev: { domain_number: number }) =>
           rungSegment(Math.max(0, ...judgeSlots.filter(sl => sl.se.domain_number === ev.domain_number).map(judgeRungFor))) ?? '#666'
         const unlistedPlayers = sessionPlayers.filter(sp => !judgeRoster.registeredIds.has(sp.id))
@@ -2084,6 +2106,7 @@ export default function SessionPage() {
                   noteFor={slot => eventDivisionRank(slot.se.id, results, playerInfoMap, targetDivision,
                     bestRaw(targetResults.filter(r => r.event_id === slot.se.id)))}
                   rungFor={judgeRungFor}
+                  gameLineFor={slot => target?.isGuest ? undefined : gameLineOf(judgeEventDataFor(slot))}
                   canAdd={swaps.available}
                   scoredSlugs={swaps.scoredSlugs}
                   onOpen={setSheetEventId}
@@ -2102,6 +2125,11 @@ export default function SessionPage() {
                     seasonPR={null}
                     prRows={target.id ? (targetPRRows[judgeSheetSlot.se.event_slug] ?? []) : []}
                     locked={sessionEnded}
+                    standards={{
+                      player: gradeProfile.player, bodyweightKg: gradeProfile.bodyweightKg, reached: judgeRungFor(judgeSheetSlot),
+                      bodyweightPrompt: <BodyweightField playerId={target.isGuest ? null : (target.id ?? null)} eventSlugs={[judgeSheetSlot.se.event_slug]} day={sessionDay}
+                        locked={sessionEnded} onSaved={gradeProfile.setBodyweightKg} />,
+                    }}
                     bestLabel="Best today"
                     prLabel="Training"
                     natural
@@ -2138,6 +2166,11 @@ export default function SessionPage() {
                     seasonPR={target.id ? (judgePRs[sheetEvent.id] ?? null) : null}
                     prRows={target.id ? (targetPRRows[sheetEvent.event_slug] ?? []) : []}
                     locked={sessionEnded}
+                    standards={{
+                      player: gradeProfile.player, bodyweightKg: gradeProfile.bodyweightKg, reached: judgeRungFor(judgeSheetSlot!),
+                      bodyweightPrompt: <BodyweightField playerId={target.isGuest ? null : (target.id ?? null)} eventSlugs={[sheetEvent.event_slug]} day={sessionDay}
+                        locked={sessionEnded} onSaved={gradeProfile.setBodyweightKg} />,
+                    }}
                     onSubmit={(v, editingId, matchOpponents) => submitEntry({
                       sessionId: sessionId as string, eventId: sheetEvent.id, playerId: target.id, playerName: target.name,
                       mode: getEventByName(sheetEvent.event_name)?.inputMode || sheetEvent.input_mode,
@@ -2154,6 +2187,7 @@ export default function SessionPage() {
                       setTimeout(() => setToast(null), meta.isPR ? 4000 : 3000)
                       await loadResults()
                       reloadTargetPRs()
+                      sportRatings.reload()
                     }}
                     onDeleted={async () => { await loadResults(); reloadTargetPRs() }}
                   />

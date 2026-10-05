@@ -2,6 +2,18 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.29.0.0] - 2026-10-05
+
+### Added
+- **The colour standards, in game and on My Events.** Each event shows what every colour, Kiwikiwi to Taniwha, takes on your own ladder (your sex, with your age allowance), in the event's own units. In a game it is a Standards section under HOW TO; on My Events it is a Standards toggle under each event. Strength shows the multiple of your bodyweight and asks for your bodyweight to show the weights. Win/draw/loss events show their drill scores up to Kahurangi, then the rating each higher colour needs.
+- **My Events lists every level.** Each event with levels now shows the whole ladder, named ("D3 · Feet elevated"), with "No record yet" on the levels you haven't played. The entry sheet still lists only the levels you've played.
+
+### Changed
+- **Win, draw and loss events show their colour in a live game.** The button turns Kahurangi for a win, Kākāriki for a draw and Kōwhai for a loss, or your rating's colour if that is higher, the same colour the game report pays. Under the score it says how many games you still need for a rating ("7 games to a rating"), or your rating once you have one ("Rating 1,148"). A game only counts once both players have recorded it or a kaiwhakawā has settled it. Personal games show the same line but keep their colour as it was.
+- **The entry sheet's "Rules & standards" heading is now "Rules"**, since it holds the rules text.
+- **Every event button names its own domain.** The domain headings between events are gone; each button carries its domain ("4 · Speed") on its second line, so the buttons all line up and are the same height. Added events no longer indent.
+- **One order on every play screen.** Personal games and kaiwhakawā training sessions now list events in domain order, the same as a live game, and a row no longer jumps to a "Scored" list when you score it.
+
 ## [0.28.2.0] - 2026-10-05
 
 ### Changed

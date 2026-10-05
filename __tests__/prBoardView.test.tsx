@@ -29,6 +29,16 @@ describe('PRBoardView', () => {
     expect(screen.queryByText('D4')).toBeNull()
   })
 
+  it('lists every level with its name when asked, and says so where nothing is recorded', () => {
+    const dips = getEventBySlug('pause-dips')!
+    const tiers = dips.difficultyTiers!
+    render(<PRBoardView ev={dips} showAllLevels rows={[row('a', 10005, '5 reps')]} />)
+    expect(screen.getByText(`D${tiers.length}`)).toBeTruthy()
+    expect(screen.getByText(tiers[0].name)).toBeTruthy()
+    expect(screen.getByText(tiers[tiers.length - 1].name)).toBeTruthy()
+    expect(screen.getAllByText('No record yet')).toHaveLength(tiers.length - 1)
+  })
+
   it('lists the top five in order on an event without levels', () => {
     const dl = getEventBySlug('deadlift')!
     const rows = [100, 140, 120, 110, 130, 90].map((v, i) => row(`r${i}`, v, `${v}kg`))

@@ -19,6 +19,7 @@ import { GRADES, gradeForRung, gradeInk } from './grading'
 import { RAINBOW } from './domainColours'
 import { eventRungInGame } from './leaderboardScores'
 import { gameColourRung } from './gameReport'
+import type { SportRating } from './headToHead'
 
 export type ScoreRow = {
   raw_score: number | null
@@ -29,6 +30,11 @@ export type ScoreRow = {
 /**
  * The highest colour today's rows reach on this event, 0 when none.
  *
+ * Win, draw and loss stay NEUTRAL here: the standards never grade a single
+ * result, and a personal game cannot hold a real one. The live game's button
+ * uses liveEventRung instead. `rating` (optional) is the player's rating in this
+ * sport, whose colour counts when it is higher than a drill's.
+ *
  * `bodyweightKg` is the declaration in force today. Every row on this screen is
  * from the same day, so one number serves them all.
  */
@@ -37,6 +43,7 @@ export function scoreRung(
   rows: readonly ScoreRow[],
   player: GradePlayer | null,
   bodyweightKg: number | null,
+  rating?: SportRating,
 ): number {
   if (!ev || !player || rows.length === 0) return 0
   return eventGrade(ev, rows.map(r => ({
@@ -45,7 +52,7 @@ export function scoreRung(
     weight_kg: r.weight_kg,
     difficulty_tier: r.difficulty_tier,
     bodyweightKg,
-  })), player).rung
+  })), player, rating).rung
 }
 
 export type RungPaint = {
@@ -96,12 +103,17 @@ export const NEUTRAL_ICON_TINT = '#bbbbbb'
  * the game screen is the one the report shows afterwards. A game result pays
  * its floor (win 6, draw 5, loss 4); a rating colour above that is only known
  * at close, so the live figure can only ever be low, never high.
+ *
+ * `rating` is optional: the live BUTTON passes the player's rating so far (the
+ * higher of the result colour and the rating colour), while the game's running
+ * colour total leaves it out and stays at the result floor.
  */
 export function liveEventRung(
   ev: EventData | undefined,
   rows: readonly ScoreRow[],
   player: GradePlayer | null,
   bodyweightKg: number | null,
+  rating?: SportRating,
 ): number {
   if (!ev || !player || rows.length === 0) return 0
   return eventRungInGame(ev.name, rows.map(r => ({
@@ -110,7 +122,7 @@ export function liveEventRung(
     weight_kg: r.weight_kg,
     difficulty_tier: r.difficulty_tier,
     bodyweightKg,
-  })), player)
+  })), player, rating)
 }
 
 /**

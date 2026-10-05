@@ -19,11 +19,13 @@ export type GradeProfile = {
   player: GradePlayer | null
   /** The declaration in force on `day`, or null when none has been made. */
   bodyweightKg: number | null
+  /** The day that declaration was made, 'YYYY-MM-DD', or null when none. */
+  bodyweightOn: string | null
   /** Set the day's weight straight after BodyweightField saves one. */
   setBodyweightKg: (kg: number) => void
 }
 
-type Loaded = { key: string; player: GradePlayer | null; bodyweightKg: number | null }
+type Loaded = { key: string; player: GradePlayer | null; bodyweightKg: number | null; bodyweightOn: string | null }
 
 export function useGradeProfile(playerId: string | null, day: string): GradeProfile {
   const [loaded, setLoaded] = useState<Loaded | null>(null)
@@ -39,12 +41,13 @@ export function useGradeProfile(playerId: string | null, day: string): GradeProf
         // player, their parent and a kaiwhakawā read it; anyone else gets no
         // row, and a junior then takes the boys' ladder, as ladderFor does.
         supabase.from('players').select('gender').eq('id', playerId).maybeSingle(),
-        supabase.from('player_bodyweights').select('kg').eq('player_id', playerId)
+        supabase.from('player_bodyweights').select('kg, measured_on').eq('player_id', playerId)
           .lte('measured_on', day).order('measured_on', { ascending: false }).limit(1),
       ])
       if (cancelled) return
       const p = pub.data as { division: string | null; age_years: number | null } | null
-      const kg = (bw.data as { kg: number }[] | null)?.[0]?.kg
+      const latest = (bw.data as { kg: number; measured_on: string }[] | null)?.[0]
+      const kg = latest?.kg
       setLoaded({
         key,
         player: p ? {
@@ -53,6 +56,7 @@ export function useGradeProfile(playerId: string | null, day: string): GradeProf
           gender: (priv.data as { gender: string | null } | null)?.gender ?? null,
         } : null,
         bodyweightKg: kg == null ? null : Number(kg),
+        bodyweightOn: latest?.measured_on ?? null,
       })
     })()
     return () => { cancelled = true }
@@ -60,8 +64,11 @@ export function useGradeProfile(playerId: string | null, day: string): GradeProf
 
   const current = loaded && loaded.key === key ? loaded : null
   const setBodyweightKg = useCallback((kg: number) => {
-    setLoaded(prev => (prev && prev.key === key ? { ...prev, bodyweightKg: kg } : prev))
-  }, [key])
+    setLoaded(prev => (prev && prev.key === key ? { ...prev, bodyweightKg: kg, bodyweightOn: day } : prev))
+  }, [key, day])
 
-  return { player: current?.player ?? null, bodyweightKg: current?.bodyweightKg ?? null, setBodyweightKg }
+  return {
+    player: current?.player ?? null, bodyweightKg: current?.bodyweightKg ?? null,
+    bodyweightOn: current?.bodyweightOn ?? null, setBodyweightKg,
+  }
 }
