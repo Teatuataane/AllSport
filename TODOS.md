@@ -177,7 +177,7 @@
 
 ### Loose ends from the 5 Oct 2026 difficulty review
 - ~~**The sheet was edited from an older copy.** It asked for a Floor Tuck Hold on L-Sit Hold; that ladder is now Compression (v0.27.0.0).~~ Settled 5 Oct 2026: Tāne kept the Compression ladder and renamed the event back to **L-Sit** (v0.28.1.0, `20261005032653`).
-- **Repeat Vault's rules still describe two-foot jumps over the bar.** Only the name changed on the sheet.
+- ~~**Repeat Vault's rules still described two-foot jumps.**~~ Done v0.28.2.0: 10 vaults, at least one hand on the bar, any vault style (Tāne, 5 Oct 2026). Its 30-second colours were drafted for a kaiwhakawā-set rep count; check them against 10.
 - **A carry ranks heaviest first, whatever the distance,** as the sheet says. 61kg carried 2m outranks 60kg carried 200m in a game. Colours are safe (each asks for a distance too).
 - **Thirteen more events are win/draw/loss only,** so they can no longer be scored in a personal workout or training session (the same as Wrestling always was).
 - **Climbing's hang rungs (D1–D3) are on a faster-wins ladder.** Unchanged by this review, but the renames made it visible.

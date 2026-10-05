@@ -1540,8 +1540,8 @@ export const EVENTS: EventData[] = [
       { level: 5, name: 'Rib Height' },
       { level: 6, name: 'Shoulder height' },
     ],
-    howToPerform: "Choose your bar height — ankle, knee, hip, belly button, rib or shoulder height. On the signal, complete the set number of two-foot jumps over the bar, rebounding side to side, as fast as you can.",
-    rules: "Declare your tier before starting. The rep count is set by the kaiwhakawā and is the same for everyone. Two-foot take-off and landing; clipping the bar means resetting it before you continue, with the clock running. Fastest time to finish all reps at your tier wins; a higher tier always outranks a lower one.",
+    howToPerform: "Choose your bar height — ankle, knee, hip, belly button, rib or shoulder height. On the signal, vault the bar 10 times, back and forth side to side, as fast as you can. Put a hand on the bar and clear it any way you like: a speed vault, lazy vault, step vault or two-handed vault.",
+    rules: "Declare your height before starting. An attempt is 10 vaults, timed from the signal until you land the tenth. Every vault must be made with at least one hand on the bar; any vault style counts, and you may change style between reps. Clipping or knocking the bar off means resetting it before you continue, with the clock running. Fastest time for 10 vaults at your height wins; a higher bar always outranks a lower one.",
 
     videoPlaceholder: true,
     emoji: '⬆️',

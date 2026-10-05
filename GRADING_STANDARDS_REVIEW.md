@@ -1211,6 +1211,8 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 > Renamed from Repeat High Jump, 5 Oct 2026. Standards unchanged.
 
+> 5 Oct 2026 (Tāne): an attempt is now 10 vaults, hands on the bar, any vault style. The 30-second colours below are now for exactly 10 vaults. They were drafted for a rep count the kaiwhakawā set on the day, so read them against 10.
+
 > Drafted by hand. Two colours a height: complete the set, then complete it inside 30 seconds. The number of jumps is set by the kaiwhakawā, so the time assumes it never changes.
 
 **Everyone**
