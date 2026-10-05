@@ -80,7 +80,6 @@ export default function QuickEntrySheet({
     return hits.length === 1 ? hits[0].id : null
   }
   const mode = (eventData?.inputMode || se.input_mode || 'strength') as string
-  const isDislocate = eventData?.slug === 'shoulder-dislocate'
   const seasonPRNum = typeof seasonPR === 'number' ? seasonPR : null
   const myBestResult = myResults.length > 0
     ? myResults.reduce((best, r) => r.raw_score > best.raw_score ? r : best, myResults[0])
@@ -191,7 +190,7 @@ export default function QuickEntrySheet({
     if (myBestResult) quickPicks.push({ label: `Today · ${myBestResult.score_label}`, patch: valsFromResult(mode, myBestResult) })
     if (seasonPRNum !== null) {
       quickPicks.push({ label: `PR · ${formatPR(seasonPRNum, mode, eventData?.slug, eventData)}`, patch: valsFromRaw(mode, eventData, seasonPRNum) })
-      if (mode === 'strength' && !isDislocate) {
+      if (mode === 'strength') {
         quickPicks.push({ label: `PR +2.5kg`, patch: { weightKg: String(Math.round((seasonPRNum + 2.5) * 10) / 10), repCount: '1' } })
       }
     }
@@ -441,11 +440,11 @@ export default function QuickEntrySheet({
                   {/* Weight stepper */}
                   {showWeight && !setMode && (
                     <>
-                      <div style={QES_LBL}>{isDislocate ? 'Grip width (cm)' : 'Weight (kg)'}</div>
+                      <div style={QES_LBL}>Weight (kg)</div>
                       <div style={{ display: 'flex', gap: '10px' }}>
-                        <StepBtn onClick={() => bumpNum('weightKg', isDislocate ? -1 : -2.5)}>−</StepBtn>
+                        <StepBtn onClick={() => bumpNum('weightKg', -2.5)}>−</StepBtn>
                         <input type="number" inputMode="decimal" value={v.weightKg} onChange={e => set({ weightKg: e.target.value })} placeholder="0" style={QES_INP} />
-                        <StepBtn onClick={() => bumpNum('weightKg', isDislocate ? 1 : 2.5)}>+</StepBtn>
+                        <StepBtn onClick={() => bumpNum('weightKg', 2.5)}>+</StepBtn>
                       </div>
                     </>
                   )}
@@ -459,7 +458,7 @@ export default function QuickEntrySheet({
                         <input type="number" inputMode="numeric" value={v.repCount} onChange={e => set({ repCount: e.target.value })} placeholder="0" style={QES_INP} />
                         <StepBtn onClick={() => bumpNum('repCount', 1)}>+</StepBtn>
                       </div>
-                      {mode === 'strength' && !isDislocate && (() => {
+                      {mode === 'strength' && (() => {
                         const w = parseFloat(v.weightKg) || 0
                         const r = parseInt(v.repCount) || 0
                         return (

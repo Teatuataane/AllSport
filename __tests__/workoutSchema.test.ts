@@ -64,7 +64,18 @@ describe('the workout logging schema', () => {
     const slugs = [...seed.matchAll(/\('[^']+', '([^']+)'\)/g)].map(m => m[1])
     expect(slugs.length).toBeGreaterThan(20)
     const roster = new Set(EVENTS.map(e => e.slug))
-    for (const s of slugs) expect(roster.has(s), s).toBe(true)
+    // This migration is applied and frozen. An event removed later takes its
+    // aliases with it in its own migration, so those slugs are allowed here
+    // only when a later file actually deletes them.
+    const removedLater = new Set<string>()
+    for (const name of readdirSync(dir).sort()) {
+      if (name <= '20260915214702_workout_logging.sql') continue
+      const later = readFileSync(`${dir}/${name}`, 'utf8')
+      for (const d of later.matchAll(/DELETE FROM (?:public\.)?activity_aliases WHERE event_slug IN \(([^)]*)\)/g)) {
+        for (const m of d[1].matchAll(/'([^']+)'/g)) removedLater.add(m[1])
+      }
+    }
+    for (const s of slugs) expect(roster.has(s) || removedLater.has(s), s).toBe(true)
   })
 
   it('redefines delete_my_account as the previous definition plus the workouts delete, and nothing else', () => {

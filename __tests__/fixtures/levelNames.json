@@ -1,0 +1,728 @@
+{
+ "pause-dips": [
+  "Assisted · 2 Feet",
+  "Dip Top Hold",
+  "Dip Negatives",
+  "Straight Bar Dips",
+  "Rings Turned Out Dip",
+  "Weighted RTO Dip"
+ ],
+ "pause-chin-up": [
+  "High Ring Row",
+  "Low Ring Row",
+  "Chinup Negative",
+  "Banded Chinup",
+  "Chinup",
+  "Weighted Chinup"
+ ],
+ "1-leg-squat": [
+  "Assisted Lunge",
+  "Lunge",
+  "Bulgarian Split Squat",
+  "Shrimp Squat",
+  "Pistol Squat",
+  "Dragon Squat"
+ ],
+ "flag": [
+  "Elevated Side Plank",
+  "Side Plank",
+  "1 Leg Side Plank",
+  "Assisted Flag",
+  "Tuck Flag",
+  "Full Flag"
+ ],
+ "windshield-wipers": [
+  "Tuck Floor Wiper",
+  "Floor Wipers",
+  "Hanging Tuck Circles",
+  "Hanging Circles",
+  "Windshield Wipers"
+ ],
+ "planche": [
+  "Pseudo Planche Lean",
+  "Elevated Pseudo Lean",
+  "Banded Tuck Planche",
+  "Tuck Planche",
+  "Banded Planche",
+  "Straddle Planche",
+  "Full Planche"
+ ],
+ "back-lever": [
+  "Assisted Hang",
+  "Hang",
+  "Inverted Hang",
+  "German Hang",
+  "Tuck Back Lever",
+  "Banded Back Lever",
+  "Back Lever"
+ ],
+ "iron-cross": [
+  "2 Feet Top Hold",
+  "Straight Bar Top Hold",
+  "Ring Top Hold",
+  "Elbow Supported Cross",
+  "Forearm Supported Iron Cross",
+  "Banded Iron Cross",
+  "Iron Cross"
+ ],
+ "front-lever": [
+  "Assisted Hang",
+  "Hang",
+  "Inverted Hang",
+  "Tuck Lever Negative",
+  "Tuck Front Lever",
+  "Banded Front Lever",
+  "Front Lever"
+ ],
+ "chin-hang": [
+  "Feet Assisted",
+  "Banded Hang",
+  "Two-Hand Chin Hang",
+  "One-Hand Chin Hang",
+  "Banded Hands-Free",
+  "Chin Hang"
+ ],
+ "skull-hang": [
+  "Feet Assisted",
+  "Banded Hang",
+  "Two-Hand Hang",
+  "One-Hand Hang",
+  "Banded Hands-Free",
+  "Free Hang"
+ ],
+ "hand-walk": [
+  "Pushup Hold",
+  "Elevated Pushup Hold",
+  "Wall Handstand",
+  "Freestanding",
+  "1 Arm Handstand"
+ ],
+ "headstand": [
+  "Wall Head Plank",
+  "Feet-Supported Tripod",
+  "Tripod Headstand",
+  "Forearm Headstand",
+  "Wall Assisted",
+  "Freestanding"
+ ],
+ "l-sit-hold": [
+  "Curl Up",
+  "V Up",
+  "Tuck Hold",
+  "L Sit",
+  "V Sit"
+ ],
+ "reverse-maltese": [
+  "High Ring Lean",
+  "45° Lean",
+  "Low Lean",
+  "Feet Raised",
+  "Tuck R Maltese"
+ ],
+ "chin-up-contest": [
+  "High Ring Row",
+  "Low Ring Row",
+  "Elevated Ring Row",
+  "Banded Chinup",
+  "Chin Up",
+  "Muscle Up"
+ ],
+ "push-up-contest": [
+  "Hands Up Knee Pushup",
+  "Knee Pushup",
+  "Elevated Pushup",
+  "Pushup",
+  "1 Arm Pushup"
+ ],
+ "tibialis-curl": [
+  "Bodyweight",
+  "2.5kg",
+  "5kg",
+  "10kg",
+  "15kg",
+  "20kg"
+ ],
+ "finger-push-up": [
+  "Elevated Knee",
+  "Knee Finger Pushup",
+  "Finger Pushup",
+  "4 Finger Pushup",
+  "3 Finger Pushup",
+  "2 Finger Pushup",
+  "Thumb Pushup"
+ ],
+ "ghd-situp": [
+  "Dead Bug",
+  "Crunch",
+  "Sit Up",
+  "GHD Situp",
+  "Weighted GHD Situp"
+ ],
+ "hamstring-curl": [
+  "Glute Thrust",
+  "Ball Glute Thrust",
+  "Floor Slider Curl",
+  "Banded Nordic Curl",
+  "Nordic Curl"
+ ],
+ "sandbag-to-shoulder": [
+  "5kg",
+  "10kg",
+  "25kg",
+  "50kg",
+  "80kg",
+  "100kg"
+ ],
+ "calf-raises": [
+  "Calf Raise",
+  "Deficit Calf Raise",
+  "Toe Calf Raise",
+  "Single Leg Toe Raise"
+ ],
+ "back-extension": [
+  "Bird Dog",
+  "Superman",
+  "Back Ext",
+  "Straight Arm Ext"
+ ],
+ "hollow-hold": [
+  "Knee Plank",
+  "Plank",
+  "Tuck Hollow",
+  "Hollow Hold",
+  "Tuck Dragon",
+  "Dragon Flag"
+ ],
+ "rear-hand-clasp": [
+  "Towel-Assisted",
+  "Block Assisted",
+  "Half Block Assisted",
+  "Finger Tips Touch",
+  "Finger Clasp",
+  "Palm Clasp",
+  "Butterfly Clasp"
+ ],
+ "bridge": [
+  "Glute Bridge",
+  "Wall Assisted Bridge",
+  "Headstand Bridge",
+  "Bridge",
+  "Straight Arm Bridge",
+  "Rainbow Bridge"
+ ],
+ "forward-fold": [
+  "Elevated Seated",
+  "Standing Fold",
+  "Standing · Bent Knees",
+  "Standing · Straight",
+  "Fingertips to Floor",
+  "Palms to Floor",
+  "Elbows to Toes",
+  "Head to Legs"
+ ],
+ "needle-pose": [
+  "Seated Quad Stretch",
+  "Standing Quad Stretch",
+  "2 Hands to Back Foot",
+  "1 Foot, 1 Knee",
+  "2 Knee",
+  "Full Needle Pose"
+ ],
+ "front-split": [
+  "2 Blocks",
+  "1.5 Blocks",
+  "1 Block",
+  "0.5 Blocks",
+  "Front Split",
+  "Over Split"
+ ],
+ "middle-split": [
+  "2 Blocks",
+  "1.5 Blocks",
+  "1.25 Blocks",
+  "1 Block",
+  "0.75 Blocks",
+  "0.5 Blocks",
+  "Middle Split"
+ ],
+ "standing-split": [
+  "Ankle Height",
+  "Knee Height",
+  "Hip Height",
+  "Rib Height",
+  "Shoulder Height",
+  "Head Height",
+  "Standing Split"
+ ],
+ "foot-behind-head": [
+  "Assisted Pidgeon Pose",
+  "90/90 Pose",
+  "Pidgeon Pose",
+  "Elevated Pidgeon Pose",
+  "Foot to Head Pose",
+  "Foot Behind Head Pose",
+  "Both Feet Behind Head"
+ ],
+ "pancake": [
+  "Over 2 Blocks",
+  "2 Blocks",
+  "1.5 Blocks",
+  "1 Block",
+  "0.5 Blocks",
+  "Elbows to Floor",
+  "Head to Floor"
+ ],
+ "side-bend": [
+  "Standing Bend",
+  "Gate Pose",
+  "Seated Bend",
+  "Side-Split Lateral"
+ ],
+ "full-bound-twist": [
+  "Seated Twist",
+  "Half Lord",
+  "Bound Twist",
+  "Full Bound Twist"
+ ],
+ "javelin-throw": [
+  "Stick",
+  "Short Javelin",
+  "Long Javelin"
+ ],
+ "shot-put": [
+  "Tennis Ball",
+  "Half Weight",
+  "Full Weight"
+ ],
+ "australian-football": [
+  "Drop Kick",
+  "Drop Kick (5m)",
+  "Drop Kick (10m)",
+  "Drop Kick (20m)",
+  "Game"
+ ],
+ "arm-wrestling": [
+  "5kg Hold",
+  "10kg Hold",
+  "15kg Hold",
+  "20kg Hold",
+  "Game"
+ ],
+ "tug-of-war": [
+  "25kg Sled",
+  "50kg Sled",
+  "100kg Sled",
+  "150kg Sled",
+  "Game"
+ ],
+ "plie-squat": [
+  "Supported Demi",
+  "Demi",
+  "Grand",
+  "Relevé Grand"
+ ],
+ "seiza": [
+  "Supported Kneel",
+  "Hips to Heels",
+  "Toes Tucked",
+  "Reclined Kneel"
+ ],
+ "wrist-stretch": [
+  "Hand Assisted",
+  "Hand Forward",
+  "Fingers Inwards",
+  "Fingers Backwards",
+  "Backwards Plank"
+ ],
+ "reverse-wrist-stretch": [
+  "Hand Assisted",
+  "Fingers Outwards",
+  "Fingers Backwards",
+  "Fingers Inwards",
+  "Inwards Plank"
+ ],
+ "burpee-broad-jump": [
+  "25m",
+  "50m",
+  "100m",
+  "200m"
+ ],
+ "running": [
+  "250m",
+  "500m",
+  "1000m"
+ ],
+ "cycling": [
+  "250m",
+  "500m",
+  "1000m"
+ ],
+ "ski-erg": [
+  "250m",
+  "500m",
+  "1000m"
+ ],
+ "row-erg": [
+  "250m",
+  "500m",
+  "1000m"
+ ],
+ "sandbag-carry": [
+  "¼ BW — 200m",
+  "½ BW — 200m",
+  "¾ BW — 200m",
+  "Bodyweight — 200m"
+ ],
+ "animal-crawl": [
+  "25m Crawl",
+  "25m Bear Crawl",
+  "25m Lizard Crawl",
+  "25m Duck Walk",
+  "100m Duck Walk"
+ ],
+ "bronco": [
+  "1 Lap",
+  "2 Laps",
+  "3 Laps",
+  "4 Laps",
+  "5 Laps"
+ ],
+ "scooting": [
+  "250m",
+  "500m",
+  "1000m"
+ ],
+ "farmer-carry": [
+  "¼ BW — 200m",
+  "½ BW — 200m",
+  "¾ BW — 200m",
+  "Bodyweight — 200m"
+ ],
+ "weighted-drag": [
+  "¼ BW — 200m",
+  "½ BW — 200m",
+  "¾ BW — 200m",
+  "Bodyweight — 200m"
+ ],
+ "100m-sprint": [
+  "Walking",
+  "Timed",
+  "Game"
+ ],
+ "tag": [
+  "Grid Dodge",
+  "Game"
+ ],
+ "t-race": [
+  "Walking",
+  "Timed",
+  "Game"
+ ],
+ "beach-flags": [
+  "Get-Up Sprint",
+  "Game"
+ ],
+ "200m-sprint": [
+  "Walking",
+  "Timed",
+  "Game"
+ ],
+ "touch-rugby": [
+  "Ball Passes",
+  "Partner Pass (2m)",
+  "Partner Pass (5m)",
+  "Moving Pass (5m)",
+  "Game"
+ ],
+ "repeat-high-jump": [
+  "Ankle height",
+  "Knee height",
+  "Hip height",
+  "Belly Button Height",
+  "Rib Height",
+  "Shoulder height"
+ ],
+ "rats-and-rabbits": [
+  "Reaction Chase",
+  "Game"
+ ],
+ "speed-chess": [
+  "Mate in 1",
+  "Mate in 2",
+  "Mate in 3",
+  "Game"
+ ],
+ "american-football": [
+  "Ball Passes",
+  "Partner Pass (2m)",
+  "Partner Pass (5m)",
+  "Moving Pass (5m)",
+  "Game"
+ ],
+ "capture-the-flag": [
+  "Flag Run",
+  "Game"
+ ],
+ "kabaddi": [
+  "One-Breath Raid",
+  "Game"
+ ],
+ "rope-climb": [
+  "Leaning Rope Hold",
+  "Assisted Rope Hang",
+  "No Feet Rope Hang",
+  "Feet Assisted Climb",
+  "No Feet Rope Climb",
+  "L-Sit Rope Climb",
+  "Assisted Pegboard",
+  "Pegboard Climb",
+  "Game"
+ ],
+ "tae-kwon-do": [
+  "Waist Kick",
+  "Chest Kick",
+  "Head Kick",
+  "Game"
+ ],
+ "breakdancing": [
+  "Indian Step",
+  "Salsa Step",
+  "6 Step",
+  "3 Step",
+  "Baby Freeze",
+  "Pilot Freeze",
+  "Windmill",
+  "Game"
+ ],
+ "trampolining": [
+  "Basic Bounce",
+  "180 Spin",
+  "360 Spin",
+  "Forward Flip",
+  "Back Flip",
+  "Front Flip 180",
+  "Game"
+ ],
+ "jump-rope": [
+  "Basic Two-Foot Jump",
+  "Alternating Feet",
+  "Criss-Cross",
+  "Double Under",
+  "Single Dutch",
+  "Double Dutch",
+  "Game"
+ ],
+ "gymnastics": [
+  "Forward Roll",
+  "Backward Roll",
+  "Cartwheel",
+  "Roundoff",
+  "Handspring",
+  "One-Hand Cartwheel",
+  "Front Handspring",
+  "Game"
+ ],
+ "balance-ball": [
+  "Seated",
+  "Kneeling",
+  "Kneeling · No Hands",
+  "1 Leg · No Hands",
+  "Standing",
+  "Game"
+ ],
+ "skate": [
+  "180 Pivot",
+  "360 Pivot",
+  "Ollie",
+  "Pop Shove It",
+  "Kickflip",
+  "Game"
+ ],
+ "fencing": [
+  "2m Lunge",
+  "3m Lunge",
+  "4m Lunge",
+  "Game"
+ ],
+ "juggling": [
+  "2 Ball (both hands)",
+  "2 Ball (one hand)",
+  "3 Ball",
+  "Game"
+ ],
+ "foot-juggling": [
+  "2 Bounce",
+  "1 Bounce",
+  "0 Bounce",
+  "Game"
+ ],
+ "slackline": [
+  "Single Leg Balance",
+  "Plank Walk",
+  "Beam Walk",
+  "Slackline Walk",
+  "Slackline Bounce",
+  "Game"
+ ],
+ "volleyball": [
+  "Sets",
+  "Digs",
+  "Partner Digs (2m)",
+  "Partner Digs (5m)",
+  "Game"
+ ],
+ "baseball": [
+  "Pitch Ball",
+  "Bat Ball",
+  "Pitch & Bat (2m)",
+  "Pitch & Bat (5m)",
+  "Game"
+ ],
+ "teqball": [
+  "Juggles · 2 Bounce",
+  "Partner Pass",
+  "Partner Pass (2m)",
+  "Game"
+ ],
+ "tennis": [
+  "Vertical Juggles",
+  "Partner Hits (2m)",
+  "Partner Hits (5m)",
+  "Partner Hits (10m)",
+  "Game"
+ ],
+ "cricket": [
+  "Bowl Ball",
+  "Bat Ball",
+  "Bowl & Bat (2m)",
+  "Bowl & Bat (5m)",
+  "Game"
+ ],
+ "badminton": [
+  "Vertical Juggles",
+  "Partner Hits (2m)",
+  "Partner Hits (5m)",
+  "Partner Hits (10m)",
+  "Game"
+ ],
+ "basketball": [
+  "Bounce Ball",
+  "2 Ball Bounce",
+  "2 Ball Side to Side",
+  "2 Ball Back & Forth",
+  "Game"
+ ],
+ "football": [
+  "Partner Pass",
+  "Partner Pass (2m)",
+  "Partner Pass (5m)",
+  "Partner Pass (10m)",
+  "Game"
+ ],
+ "hockey": [
+  "Partner Pass",
+  "Partner Pass (2m)",
+  "Partner Pass (5m)",
+  "Partner Pass (10m)",
+  "Game"
+ ],
+ "squash": [
+  "Partner Pass",
+  "Partner Pass (2m)",
+  "Partner Pass (5m)",
+  "Partner Pass (10m)",
+  "Game"
+ ],
+ "lacrosse": [
+  "Partner Pass",
+  "Partner Pass (2m)",
+  "Partner Pass (5m)",
+  "Partner Pass (10m)",
+  "Game"
+ ],
+ "ultimate-frisbee": [
+  "Partner Pass",
+  "Partner Pass (2m)",
+  "Partner Pass (5m)",
+  "Partner Pass (10m)",
+  "Game"
+ ],
+ "netball": [
+  "Chest Pass",
+  "Shot Under Hoop",
+  "Shot (2m)",
+  "Shot (5m)",
+  "Game"
+ ],
+ "bocce": [
+  "Bowl Ball",
+  "Within 5m of Jack",
+  "Within 1m of Jack",
+  "Hit the Jack",
+  "Game"
+ ],
+ "dodgeball": [
+  "Throw Ball",
+  "Throw & Catch (1m)",
+  "Throw & Catch (5m)",
+  "Throw & Catch (10m)",
+  "Game"
+ ],
+ "carrom": [
+  "Strike a Piece",
+  "Pocket a Piece",
+  "Game"
+ ],
+ "archery": [
+  "Hit the Target (5m)",
+  "Hit the Target (10m)",
+  "Hit the Gold (10m)",
+  "Hit the Gold (20m)",
+  "Game"
+ ],
+ "bowling": [
+  "Partner Bowl",
+  "Partner Bowl (5m)",
+  "Partner Bowl (10m)",
+  "Partner Bowl (20m)",
+  "Game"
+ ],
+ "darts": [
+  "Hit the Board",
+  "Named Number",
+  "Named Double",
+  "Bullseye",
+  "Game"
+ ],
+ "disc-golf": [
+  "Putt (2m)",
+  "Putt (5m)",
+  "Approach (20m)",
+  "Game (4 Holes)"
+ ],
+ "golf": [
+  "Putt (2m)",
+  "Putt (5m)",
+  "Chip (10m)",
+  "Game (4 Holes)"
+ ],
+ "handball": [
+  "Partner Pass (2m)",
+  "Partner Pass (5m)",
+  "Past a Keeper",
+  "Game"
+ ],
+ "table-tennis": [
+  "Vertical Juggles",
+  "Wall Juggles",
+  "Partner Hits",
+  "Game"
+ ],
+ "kubb": [
+  "Throw Baton",
+  "Hit Kubb (2m)",
+  "Hit Kubb (5m)",
+  "Hit Kubb (10m)",
+  "Game"
+ ]
+}

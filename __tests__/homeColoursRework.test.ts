@@ -139,7 +139,7 @@ describe('bestScoreLabel edge cases', () => {
     expect(bestScoreLabel({ slug: ev('Wrestling').slug, rating: { rating: 1000, games: 1 } })).toBe('Rating 1000 · 1 game')
   })
   it('keeps formatPR\'s D-number when the row carries no tier name', () => {
-    const label = bestScoreLabel({ slug: ev('Pushup Contest').slug, best: { raw_score: 30001, weight_kg: null, difficulty_tier: null } })
+    const label = bestScoreLabel({ slug: ev('Pushups').slug, best: { raw_score: 40001, weight_kg: null, difficulty_tier: null } })
     expect(label).toMatch(/^D\d+ · /)
   })
 })

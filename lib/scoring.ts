@@ -226,17 +226,13 @@ export function computeScoreVals(
 ): { raw_score: number; score_label: string } | null {
   // All numeric inputs are typed as well as stepped, so every branch must
   // reject non-positive values — a negative here flips the raw_score sign and
-  // silently ranks first in faster/narrower-wins events.
+  // silently ranks first in faster-wins events.
   const totalSecs = (parseFloat(v.timeMins) || 0) * 60 + (parseFloat(v.timeSecs) || 0)
   const isWeightVariation = !!v.exerciseVariation && (eventData?.weightVariations?.includes(v.exerciseVariation) ?? false)
   if (mode === 'strength') {
     const w = parseFloat(v.weightKg) || 0
     if (w <= 0) return null
     const r = Math.max(0, parseInt(v.repCount) || 0)
-    if (eventData?.slug === 'shoulder-dislocate') {
-      const label = r > 0 ? `${w}cm × ${r} rep${r !== 1 ? 's' : ''}` : `${w}cm`
-      return { raw_score: -w, score_label: label }
-    }
     return { raw_score: estimatedOneRm(w, r), score_label: liftLabel(w, r) }
   }
   if (mode === 'reps') {
@@ -505,7 +501,7 @@ export function valsFromRaw(mode: string, eventData: EventData | undefined, raw:
     // A lift's raw_score is its estimated 1RM, not a load anyone lifted for
     // reps, so the prefill is that load as a SINGLE. Leaving reps as they were
     // would record, say, 112.5kg × 5 from a PR of 100kg × 5.
-    if (eventData?.slug !== 'shoulder-dislocate') p.repCount = '1'
+    p.repCount = '1'
   } else if (mode === 'reps') {
     p.repCount = String(raw)
   } else if (mode === 'time' || mode === 'hold') {

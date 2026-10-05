@@ -111,6 +111,19 @@ export function ladderFor(p: Pick<GradePlayer, 'division' | 'gender'>): 'M' | 'F
 /** Is this row a Game-rung result (a win, draw or loss) rather than a drill? */
 const isGameRow = (ev: EventData, row: GradeResultRow) => isGameTier(ev, row.difficulty_tier)
 
+/**
+ * A tiered row grades only when its stored level IS the ladder's level at the
+ * band its raw_score sits in. A ladder change moves the bands, and until its
+ * migration moves the old rows (or if a stale app writes one) a row reads as a
+ * different level: in Sept 2026 an old 'L-Sit' at band 4 read as the new
+ * 'V Sit' and graded Taniwha, and auto-conferral never takes a colour back.
+ * A row with no stored level grades as before.
+ */
+const onCurrentLadder = (ev: EventData, row: GradeResultRow) => {
+  if (!ev.difficultyTiers?.length || row.difficulty_tier == null || row.raw_score == null) return true
+  return ev.difficultyTiers[Math.floor(row.raw_score / 10000)]?.name === row.difficulty_tier
+}
+
 /** The colour one player's rows earn in one event. */
 /**
  * What a lift is worth against a ratio standard: its ESTIMATED 1RM, which is
@@ -133,7 +146,7 @@ export function eventGrade(
   const s = STANDARDS[ev.slug]
   const band = ageBand(p.division, p.ageYears)
   const rated = rating ? ratingRung(rating.rating, rating.games) : 0
-  const drillRows = rows.filter(r => r.raw_score != null && !isGameRow(ev, r))
+  const drillRows = rows.filter(r => r.raw_score != null && !isGameRow(ev, r) && onCurrentLadder(ev, r))
   const played = rows.length > 0 || !!rating
 
   const pick = (r: GradeResultRow | undefined) =>

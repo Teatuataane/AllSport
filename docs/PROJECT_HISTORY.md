@@ -102,17 +102,17 @@ linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)
 
 ### Domain Display Order
 
-128 events as of v0.15.0.0, and domains are no longer even (14 / 12 / 12 / 12 / 13 / 12 / 16 / 13 / 12 / 12). `lib/eventData.ts` is the source of truth; this table mirrors it.
+128 events as of the Stamina roster (30 Sept 2026), and domains are no longer even (14 / 13 / 12 / 12 / 13 / 12 / 15 / 13 / 12 / 12). `lib/eventData.ts` is the source of truth; this table mirrors it.
 
 | # | Domain | Events |
 |---|--------|--------|
 | 1 | Maximal Strength | 1A Press, Deadlift, Clean & Press, Pause Dips, Pause Chinup, Pause Back Squat, Zercher Dead, Pause Bench, Turkish Getup, Arthur Lift, Pause Row, Pause Front Squat, Pullover & Press, Loaded Lunge |
-| 2 | Calisthenics | 1 Leg Squat, Human Flag, Windshield Wipers, Planche, Back Lever, Iron Cross, Front Lever, Chin Hang, Skull Hang, Handstand, Headstand, L-Sit Hold |
+| 2 | Calisthenics | 1 Leg Squat, Human Flag, Windshield Wipers, Planche, Back Lever, Iron Cross, Front Lever, Chin Hang, Skull Hang, Handstand, Headstand, Compression, Reverse Maltese |
 | 3 | Power | Kelly Snatch, 1A Snatch, Javelin, Shotput, Australian Football, Vertical Jump, Clean & Jerk, Snatch, Standing Broad Jump, High Jump, Arm Wrestling, Tug of War |
 | 4 | Speed | 100m Sprint, Tag, T-Race, Beach Flags, 200m Sprint, Touch Rugby, Repeat High Jump, Rats & Rabbits, Speed Chess, American Football, Capture the Flag, Kabaddi |
-| 5 | Anaerobic Endurance | Chinup Contest, Pushup Contest, Tibialis Curl, Finger Pushup, GHD Situp, Leg Ext Hold, Ab Rollout, Hamstring Curl, Sandbag to Shoulder, Wall Sit, Toe Lift, Lunges, Calf Raises |
+| 5 | Stamina | Chinup Contest, Pushups, Tibialis Curl, Finger Pushup, GHD Situp, Leg Ext Hold, Hamstring Curl, Sandbag to Shoulder, Wall Sit, Toe Lift, Calf Raises, Back Extension, Hollow Hold |
 | 6 | Aerobic Endurance | Burpee Broad Jump, Running, Cycling, Ski Erg, Row Erg, Breath Hold, Sandbag Carry, Animal Crawl, Bronco, Scooting, Farmer Carry, Weighted Drag |
-| 7 | Flexibility | Rear Hand Clasp, Bridge, Forward Fold, Needle Pose, Forward Split, Middle Split, Standing Split, Foot Behind Head Pose, Shoulder Dislocate, Pancake, Side Bend, Full Bound Twist, Plie Squat, Seiza, Wrist Stretch, Reverse Wrist Stretch |
+| 7 | Flexibility | Rear Hand Clasp, Bridge, Forward Fold, Needle Pose, Forward Split, Middle Split, Standing Split, Foot Behind Head Pose, Pancake, Side Bend, Full Bound Twist, Plie Squat, Seiza, Internal Wrist Stretch, External Wrist Stretch |
 | 8 | Body Awareness | Climbing, Tae Kwon Do, Breakdancing, Trampolining, Jump Rope, Wrestling, Gymnastics, Balance Ball, SKATE, Fencing, Juggling, Foot Juggling, Slackline |
 | 9 | Coordination | Volleyball, Baseball, Teqball, Tennis, Cricket, Badminton, Basketball, Football, Hockey, Squash, Lacrosse, Ultimate Frisbee |
 | 10 | Aim & Precision | Netball, Bocce, Dodgeball, Carrom, Archery, Bowling, Darts, Disc Golf, Golf, Handball, Table Tennis, Kubb |
@@ -2561,6 +2561,21 @@ because an ordinary recheck never withdraws. `refresh-leaderboard-scores.ts --ap
   same colour the report shows. A rating colour above a game result's floor only lands at close, so
   the live figure can only be low. Player tab only; not seen with a real login.
 
+## Stamina roster (30 Sept 2026) — migration `20260930011149`, NOT YET APPLIED
+Tāne's list of 30 Sept 2026. Still 128 events.
+- **Domain 5 renamed Anaerobic Endurance → Stamina.** Name only. `DomainIcon` maps both names to `stamina.png` because older `session_events.domain_name` rows and vote nominations keep the old name; the migration rewrites `session_events.domain_name` (all 68 rows are domain 5).
+- **Renamed, slugs kept:** L-Sit Hold → **Compression**, Pushup Contest → **Pushups**, Wrist Stretch → **Internal Wrist Stretch**, Reverse Wrist Stretch → **External Wrist Stretch**. The migration repoints `session_events.event_name`.
+- **Re-levelled:** Compression (Curl Up / V Up / Tuck Hold / L Sit / V Sit, all holds), Pushups (Hands Up Knee / Knee / Elevated / Pushup / 1 Arm; handstand levels gone), Calf Raises, both wrist stretches. 26 scored rows move level (L-Sit D5→D4, Push Up D3→D4, 1 Arm D4→D5, plus same-level relabels on Pushups and Calf Raises); order within each event is kept, so no placement changes. Pre-image kept.
+- **Removed:** Lunges, Ab Rollout, Shoulder Dislocate. Scores stay as orphan names; their 7 aliases are deleted, and one finished personal game's plan loses `shoulder-dislocate`. Shoulder Dislocate's cm special cases are all gone: every `formatPR` caller resolves its slug from the live roster, so the one kept "for history" was unreachable. Old rows show their stored `score_label`. Level names were shortened in review so the chips stop truncating (`Backwards Plank`, `Inwards Plank`, `Hands Up Knee Pushup`, `45° Lean`).
+- **Added (holds):** Back Extension, Hollow Hold (Stamina), Reverse Maltese (Calisthenics; level descriptions unreviewed).
+- **Standards:** Pushups keeps its approved numbers moved up a level, except Kākāriki, now 10 Elevated Pushups (women 6) so the new level has a colour of its own, and Kōura/Uenuku/Taniwha redrafted (the handstand levels are gone). Everything else new or re-levelled is drafted and unreviewed. `GRADING_RULES_VERSION` bumped.
+- **Conferred colours citing a REMOVED event: 12 on 2026-10-05** (Ab Rollout in Stamina, Shoulder Dislocate in Flexibility). They stand: an ordinary recheck never withdraws, and `citesRemovedEvent()` / `protectedAwards()` in `lib/autoConfer.ts` stop a kaiwhakawā's score deletion from re-judging them (or anything below them) away, because the engine can no longer see removed events. The Colours tab names such a colour so the kaiwhakawā checks it by hand (Tāne, 1 Oct 2026). `loadGrades` reads `grade_awards.events` for this. **A future rename that MOVES a slug must repoint `grade_awards.events` too**, or every colour citing the old slug becomes protected.
+- **Season points DO move, accepted by Tāne 1 Oct 2026:** past games that drew Ab Rollout (4 draws) or Shoulder Dislocate (5) score 0 for it once the board is refreshed.
+- **Server guard `enforce_relevelled_ladders()`** (triggers `trg_zz_relevelled_ladders_results` / `_entries`): a write that changes the score on the five re-levelled events must name a level of the new ladder in that level's band, and a new score on a removed event is refused (22023). Updates that leave the score AND the event alone (placements at close, band stamps, erasure) are never checked, so one bad row cannot stop a game closing; moving a row onto another event is checked. A protected colour cannot be taken back in the app at all: the Colours tab says it needs a manual database change. The level shift also rebuilds each moved row's `score_label`. Same approach as `enforce_lift_estimate`. **Any future change to these five ladders must redefine it in a new migration**; `__tests__/staminaRoster.test.ts` pins the newest definition. Aliases deleted for removed events are archived in `activity_aliases_archive_20260930011149`.
+- **Dry-run against production 2026-09-30, 2026-10-01 and 2026-10-05** in rolled-back transactions: every assertion passed and production was unchanged afterwards. The first two shifted 24 rows; on 2026-10-05 it was 26 (two Calf Raises scores written on 2 Oct, repointed to the same movement), 0 archived, and the guard refused an old-label save.
+- **A level name is now a stored contract.** The grading engine ignores a tiered row whose stored level is not the ladder's level at its band (`onCurrentLadder` in `lib/playerGrades.ts`), which is what stops an old 'L-Sit' grading as 'V Sit' before the migration. The cost: renaming a level un-grades its stored rows until a migration repoints `results.difficulty_tier` and `workout_entries.difficulty_tier`. `__tests__/levelNames.test.ts` fails on any rename against a frozen list.
+- **DEPLOY: code first, then the migration straight after, with no game or workout running.** Then hard-refresh kaiwhakawā devices and run `scripts/refresh-leaderboard-scores.ts --apply`.
+
 ## One nav bar, coloured workouts (September 2026), v0.25.0.0
 
 Asked by Tāne 2026-09-30. No migration.
@@ -3622,7 +3637,7 @@ real host is `evil.com`. `safeNext()` now rejects that plus the `//` and `/\` va
 - Difficulty tiers: D1 = easiest, purely informational, stored in results.difficulty_tier as tier name string
 - Weight-scored final tiers: GHD Situp D4, Pause Dips D5 (Weighted RTO Dip), Pause Chin Up D5 (Weighted Chinup) — these tiers switch input to weight_kg instead of reps
 - "Banded" in tier names (e.g. "Banded Iron Cross", "Banded Front Lever") always means heavy band — no light/medium variants; single tier entry only
-- Shoulder Dislocate: repurposed `strength` mode — weight_kg stores grip width in cm, raw_score = −weight_kg (narrower = better rank); UI placeholder "Grip width (cm)"; formatPR shows Xcm; effort task: ≤80% of PR grip width for 5 reps (inverted check: weight_kg ≤ targetCm)
+- Shoulder Dislocate (REMOVED 30 Sept 2026; its rows keep their stored score_label, no code decodes them any more): was a repurposed `strength` mode — weight_kg stores grip width in cm, raw_score = −weight_kg (narrower = better rank); UI placeholder "Grip width (cm)"; formatPR shows Xcm; effort task: ≤80% of PR grip width for 5 reps (inverted check: weight_kg ≤ targetCm)
 - Sandbag to Shoulder: `difficulty+reps`, D1–D6 (5/10/25/50/80/100kg); slug `sandbag-to-shoulder`; bar at player's shoulder height; one rep = sandbag fully clears bar; player retrieves from other side
 - Weighted Carry: tiers updated to fixed weights — D1–D6: "5kg — 200m" through "100kg — 200m" (was bodyweight multiples x0.25/x0.5/x1)
 - Handbalance (session 18): renamed from Hand Walk; slug stays `hand-walk` so historical results stay linked. Tiers: D1 Pushup Hold, D2 Elevated Pushup Hold, D3 Wall Handstand, D4 Freestanding Handstand. Hold event (longer time wins)

@@ -10,7 +10,10 @@ const DOMAIN_SLUGS: Record<string, string> = {
   'Calisthenics': 'calisthenics',
   'Power': 'power',
   'Speed': 'speed',
-  'Anaerobic Endurance': 'anaerobic-endurance',
+  'Stamina': 'stamina',
+  // Domain 5's name until Sept 2026. event_vote_nominations keep it, and so do
+  // session_events rows until migration 20260930011149 rewrites them.
+  'Anaerobic Endurance': 'stamina',
   'Aerobic Endurance': 'aerobic-endurance',
   'Flexibility': 'flexibility',
   'Body Awareness': 'body-awareness',

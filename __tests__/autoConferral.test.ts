@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
-import { awardsToConfer, awardsToWithdraw, awardAfterWithdraw } from '@/lib/autoConfer'
+import { awardsToConfer, awardsToWithdraw, awardAfterWithdraw, protectedAwards } from '@/lib/autoConfer'
 import { eventsBehind } from '@/lib/playerGrades'
 import { SERVICE_KEY_ENV } from '@/lib/supabase-admin'
 import { colourGate, gradeForRung } from '@/lib/grading'
@@ -200,13 +200,13 @@ describe('awardsToConfer', () => {
 // ─── Taking a colour back (step 5) ──────────────────────────────────────────
 
 
-const withAwards = (standardsRung: number, awards: { rung: number; domain: number; id?: string }[], availableCount = 12): GradeState => ({
+const withAwards = (standardsRung: number, awards: { rung: number; domain: number; id?: string; events?: string[] }[], availableCount = 12): GradeState => ({
   ...stateWith([]),
   grades: {
     ...stateWith([]).grades,
     domains: [{ domainNumber: 3, rung: standardsRung, availableCount, slots: Math.min(availableCount, 6), counted: [], average: standardsRung, nextRung: null, toNext: 0 }],
   },
-  awards: awards.map(a => ({ domain_number: a.domain, rung: a.rung, grade_name: `G${a.rung}`, conferred_at: '2026-09-01T00:00:00Z', id: a.id })),
+  awards: awards.map(a => ({ domain_number: a.domain, rung: a.rung, grade_name: `G${a.rung}`, conferred_at: '2026-09-01T00:00:00Z', id: a.id, events: a.events })),
 } as unknown as GradeState)
 
 describe('awardsToWithdraw', () => {
@@ -238,6 +238,43 @@ describe('awardsToWithdraw', () => {
 
   it('does nothing before the grading schema exists', () => {
     expect(awardsToWithdraw({ ...withAwards(0, [{ domain: 3, rung: 2, id: 'a' }]), schemaReady: false }, 3)).toEqual([])
+  })
+
+  // Value: protects=a colour that stood on an event since removed from the roster;
+  // fails_when=a kaiwhakawā deleting an unrelated score re-judges the domain without
+  // the removed event and takes the colour back; why_new=removal is new in Sept 2026
+  // (Ab Rollout, Shoulder Dislocate) and 11 conferred colours cite them; seam=none
+  it('never takes back a colour that cites a removed event, nor anything below it', () => {
+    const state = withAwards(0, [
+      { domain: 3, rung: 4, id: 'above', events: ['wall-sit'] },
+      { domain: 3, rung: 3, id: 'removed', events: ['ab-wheel-rollout', 'wall-sit'] },
+      { domain: 3, rung: 2, id: 'current', events: ['wall-sit'] },
+      { domain: 3, rung: 1, id: 'none' },
+    ])
+    // Only what sits ABOVE the protected colour goes; the player visibly holds
+    // rung 3, so a notice for rungs 1 and 2 would describe a loss they have not had.
+    expect(awardsToWithdraw(state, 3).map(a => a.id)).toEqual(['above'])
+    // The protected one is named, so the kaiwhakawā can check it by hand.
+    expect(protectedAwards(state, 3).map(a => a.id)).toEqual(['removed'])
+  })
+
+  // Value: protects=the kaiwhakawā notice naming only colours the evidence no longer supports;
+  // fails_when=protectedAwards drops its `rung > standards` check and the panel tells the
+  // kaiwhakawā a colour still earned on current scores "needs a manual change to the database";
+  // why_new=the existing protection test grades the domain at Mā, so every award is above it; seam=none
+  it('does not flag a colour on a removed event that the current scores still give', () => {
+    const state = withAwards(3, [
+      { domain: 3, rung: 3, id: 'supported', events: ['ab-wheel-rollout'] },
+      { domain: 3, rung: 2, id: 'below', events: ['shoulder-dislocate'] },
+    ])
+    expect(protectedAwards(state, 3)).toEqual([])
+    expect(awardsToWithdraw(state, 3)).toEqual([])
+  })
+
+  it('protects nothing when no award cites a removed event', () => {
+    const state = withAwards(0, [{ domain: 3, rung: 2, id: 'a', events: ['wall-sit'] }])
+    expect(protectedAwards(state, 3)).toEqual([])
+    expect(awardsToWithdraw(state, 3).map(a => a.id)).toEqual(['a'])
   })
 })
 
@@ -513,8 +550,9 @@ describe('found by the adversarial review', () => {
 
   it('the switch-on steps put the Vercel key AFTER the replay', () => {
     // The route confers the moment Vercel has the key, and the replay skips
-    // anyone who already holds a colour.
-    const doc = readFileSync('CLAUDE.md', 'utf8')
+    // anyone who already holds a colour. The record moved from CLAUDE.md to
+    // docs/PROJECT_HISTORY.md when CLAUDE.md was condensed (Oct 2026).
+    const doc = readFileSync('docs/PROJECT_HISTORY.md', 'utf8')
     const applyStep = doc.indexOf('2. `scripts/replay-colours.ts --apply`')
     const vercelStep = doc.indexOf('3. Key added to Vercel')
     expect(applyStep).toBeGreaterThan(-1)

@@ -166,6 +166,15 @@
 
 ## P1 — Do Next
 
+### Apply `20260930011149_stamina_roster.sql` straight after v0.27.0.0 deploys
+**What:** confirm v0.27.0.0 is live (e.g. `/events/hollow-hold` serves and `/events/lunges` shows "Event not found"), check no game is running and no score has been deleted in the meantime, then apply with `supabase db query --linked -f` in one transaction with its ledger row (the migration is OLDER than the already-applied `20260930222237`, so `db push` would need `--include-all`). Verify by object: `event_domains` 128 rows at 14/13/12/12/13/12/15/13/12/12, both `trg_zz_relevelled_ladders_*` triggers, no `session_events` row on the four old names, every scored row on the five re-levelled events sitting on its new level, and the four archive/pre-image tables plus the alias archive returning 401 as `anon`. Then hard-refresh kaiwhakawā devices and run `scripts/refresh-leaderboard-scores.ts --apply`.
+**Why now:** until it runs, grading ignores the 26 scores on old levels, so a kaiwhakawā deleting a score in Calisthenics, Stamina or Flexibility in that window can take back a colour (it returns at the next check). The 2026-10-05 dry run moved 26 rows and archived none.
+**Noticed:** v0.27.0.0
+
+### Review the drafted Stamina roster standards and Reverse Maltese levels
+**What:** Back Extension, Hollow Hold, Reverse Maltese, Compression, both wrist stretches and the top three Pushups colours are Claude's drafts in `GRADING_STANDARDS_REVIEW.md`. Reverse Maltese's levels have no judge details yet.
+**Noticed:** v0.27.0.0
+
 ### ~~Apply `20260928201510_estimated_one_rep_max.sql` straight after v0.24.0.0 deploys~~ DONE 2026-09-30
 Applied and verified by object (see CLAUDE.md), with `20260928015753` (never applied until now) just before it. Leaderboard refreshed: 27 written, 0 failed. **Still to do by hand:** hard-refresh every kaiwhakawā device.
 
@@ -317,6 +326,15 @@ now only reachable if Whānau's own art goes missing, and for Te Kāhui, which n
 ---
 
 ## P2 — Soon
+
+### Freeze the level names of events added from now on
+**What:** `__tests__/levelNames.test.ts` only checks events already in `__tests__/fixtures/levelNames.json`, so a tiered event added later is not protected against a rename, and there is no script to regenerate the fixture. Add an assertion that every tiered event in `EVENTS` is in the fixture, and a small `scripts/freeze-level-names.ts`.
+**Why:** since v0.27.0.0 renaming a level un-grades its stored rows until they are repointed.
+**Noticed:** v0.27.0.0 review
+
+### Harden the re-levelled ladder guard and the withdrawal path
+**What:** four small follow-ups from the v0.27.0.0 adversarial review. (1) A withdrawal (`withdrawIn` in `app/api/grades/recheck/route.ts`) should refuse while any row in the domain fails `onCurrentLadder`, so a deletion before a ladder migration cannot take back a colour. (2) `enforce_relevelled_ladders()` refuses a removed event only on INSERT; also refuse an UPDATE that moves a row onto one. (3) The guard reads `session_events` with the writer's rights and skips every check if the row is hidden; refuse when no row comes back. (4) The migration's `doomed` set would also archive a row with a NULL score or level, and `array_remove` can leave an empty plan; neither exists in production.
+**Noticed:** v0.27.0.0 adversarial review
 
 ### One way to draw a colour swatch
 **What:** `Swatch` in `components/GradesCard.tsx`, `GradeDot` and `rungSegment` each draw Mā and Taniwha differently (outline vs ring vs white fill). Fold them into one helper in `components/GradeDot.tsx`.

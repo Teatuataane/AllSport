@@ -75,20 +75,20 @@ describe('the compiled standards', () => {
   it('grade strength as a ratio and everything else against raw_score', () => {
     for (const e of EVENTS) {
       const s = STANDARDS[e.slug]
-      if (e.inputMode === 'strength' && e.slug !== 'shoulder-dislocate') expect(s.kind, e.name).toBe('ratio')
+      if (e.inputMode === 'strength') expect(s.kind, e.name).toBe('ratio')
       else if (e.inputMode !== 'sport') expect(s.kind, e.name).toBe('raw')
     }
   })
 })
 
 describe('the standards approved in review come back out of the engine', () => {
-  it('Pushup Contest: one 1-arm push-up is Parahi, and Hiriwa for a Master', () => {
-    const M = std('Pushup Contest').M!
-    const oneArmOne = 3 * 10000 + 1 // D4, one rep
+  it('Pushups: one 1-arm push-up is Parahi, and Hiriwa for a Master', () => {
+    const M = std('Pushups').M!
+    const oneArmOne = 4 * 10000 + 1 // D5, one rep
     expect(rungForScore(oneArmOne, M, 'Open')).toBe(8)
     expect(rungForScore(oneArmOne, M, 'Masters')).toBe(9)
-    expect(rungForScore(2 * 10000 + 49, M, 'Open')).toBe(8) // 49 push-ups
-    expect(rungForScore(3 * 10000 + 5, M, 'Open')).toBe(9) // Hiriwa is five
+    expect(rungForScore(3 * 10000 + 49, M, 'Open')).toBe(8) // 49 push-ups
+    expect(rungForScore(4 * 10000 + 5, M, 'Open')).toBe(9) // Hiriwa is five
   })
 
   it('Jump Rope: eight basic jumps is Kiwikiwi, and Karaka for an under-14', () => {

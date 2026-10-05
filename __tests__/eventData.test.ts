@@ -161,8 +161,8 @@ describe('getEventByName', () => {
 
   it.each([
     ['Headstand', 'Calisthenics', 2],
-    ['L-Sit Hold', 'Calisthenics', 2],
-    ['Toe Lift', 'Anaerobic Endurance', 5],
+    ['Compression', 'Calisthenics', 2],
+    ['Toe Lift', 'Stamina', 5],
     ['American Football', 'Speed', 4],
   ])('moved %s now sits in %s', (name, domain, domainNumber) => {
     const e = getEventByName(name)
@@ -176,7 +176,8 @@ describe('getEventByName', () => {
     'Farmer Carry', 'Weighted Drag', 'Kubb',
     // Added Sept 2026
     'Pullover & Press', 'Loaded Lunge', 'Skull Hang', 'Calf Raises',
-    'Plie Squat', 'Seiza', 'Wrist Stretch', 'Reverse Wrist Stretch',
+    'Plie Squat', 'Seiza', 'Internal Wrist Stretch', 'External Wrist Stretch',
+    'Back Extension', 'Hollow Hold', 'Reverse Maltese',
   ])('new event %s is defined with real content', (name) => {
     const e = getEventByName(name)
     expect(e).toBeDefined()
@@ -190,24 +191,22 @@ describe('getEventByName', () => {
     // Replaced by Lunges, August 2026. A different movement, so its history is
     // deliberately NOT swept onto the new slug — see the Lunges test below.
     'Toe Squat',
+    // Removed 30 Sept 2026. Their scores stay as orphan name strings.
+    'Lunges', 'Ab Rollout', 'Shoulder Dislocate',
   ])('removed event %s is gone from the roster', (name) => {
     expect(getEventByName(name)).toBeUndefined()
   })
 
-  it('Lunges replaced Toe Squat without inheriting its slug', () => {
-    const e = getEventByName('Lunges')!
-    expect(e.slug).toBe('lunges')
-    // The whole point: a squat on your toes and a lunge are different
-    // movements, so reusing `toe-balance` would credit every Toe Squat score
-    // ever set to a lift nobody did. Same rule that kept OHP off Clean & Press.
-    expect(e.slug).not.toBe('toe-balance')
-    expect(e.domain).toBe('Anaerobic Endurance')
-    expect(e.domainNumber).toBe(5)
-    expect(e.inputMode).toBe('difficulty+reps')
-    // Gained a 5th rung (Jumping Bulgarian) in the Sept 2026 difficulty review.
-    expect(e.difficultyTiers).toHaveLength(5)
-    expect(e.howToPerform).not.toContain('coming soon')
-    expect(e.rules).not.toContain('coming soon')
+  // Renamed 30 Sept 2026 with their slugs kept, so their history stays attached
+  // once the migration repoints session_events.event_name.
+  it.each([
+    ['Compression', 'l-sit-hold', 'L-Sit Hold'],
+    ['Pushups', 'push-up-contest', 'Pushup Contest'],
+    ['Internal Wrist Stretch', 'wrist-stretch', 'Wrist Stretch'],
+    ['External Wrist Stretch', 'reverse-wrist-stretch', 'Reverse Wrist Stretch'],
+  ])('%s keeps the slug %s, and %s is gone', (name, slug, old) => {
+    expect(getEventByName(name)!.slug).toBe(slug)
+    expect(getEventByName(old)).toBeUndefined()
   })
 
   it('Leg Ext Hold is a loaded hold with no ladder', () => {
@@ -284,8 +283,8 @@ describe('getEventsByDomain', () => {
   it('holds at least 12 events in every domain, and the expected count in each', () => {
     const map = getEventsByDomain()
     const expected: Record<string, number> = {
-      'Maximal Strength': 14, 'Calisthenics': 12, 'Power': 12, 'Speed': 12,
-      'Anaerobic Endurance': 13, 'Aerobic Endurance': 12, 'Flexibility': 16,
+      'Maximal Strength': 14, 'Calisthenics': 13, 'Power': 12, 'Speed': 12,
+      'Stamina': 13, 'Aerobic Endurance': 12, 'Flexibility': 15,
       'Body Awareness': 13, 'Coordination': 12, 'Aim & Precision': 12,
     }
     for (const [domain, events] of Object.entries(map)) {

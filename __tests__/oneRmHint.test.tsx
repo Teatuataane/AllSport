@@ -58,11 +58,6 @@ describe('the est. 1RM hint', () => {
     expect(screen.queryByText(/Est\. 1RM \d/)).toBeNull()
   })
 
-  it('never appears on Shoulder Dislocate, which stores a grip width', () => {
-    render(<QuickEntrySheet {...props('shoulder-dislocate')} />)
-    expect(screen.queryByText(/estimated 1RM/)).toBeNull()
-  })
-
   it('counts reps past ten as ten', () => {
     render(<QuickEntrySheet {...props('deadlift')} />)
     const [weight, reps] = screen.getAllByPlaceholderText('0')

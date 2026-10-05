@@ -11,6 +11,8 @@ import {
   sportTermOf,
   sportRecord,
   valsFromRaw as _vfr,
+  estimatedOneRm,
+  liftLabel,
   EMPTY_VALS,
   type EntryVals,
 } from '@/lib/scoring'
@@ -42,11 +44,6 @@ describe('computeScoreVals: strength', () => {
 
   it('returns null without a weight', () => {
     expect(computeScoreVals('strength', getEventBySlug('deadlift'), vals({ repCount: '5' }))).toBeNull()
-  })
-
-  it('shoulder-dislocate stores NEGATIVE cm so narrower ranks better', () => {
-    const r = computeScoreVals('strength', getEventBySlug('shoulder-dislocate'), vals({ weightKg: '55', repCount: '5' }))
-    expect(r).toEqual({ raw_score: -55, score_label: '55cm × 5 reps' })
   })
 })
 
@@ -204,10 +201,6 @@ describe('valsFromRaw (season PR prefill)', () => {
     expect(back.raw_score).toBe(112.5)
   })
 
-  it('leaves Shoulder Dislocate (cm, not a lift) without a rep count', () => {
-    expect(valsFromRaw('strength', getEventBySlug('shoulder-dislocate'), -40).repCount).toBeUndefined()
-  })
-
   it('decodes a timed-effort difficulty+time PR back to tier + seconds', () => {
     const running = getEventBySlug('running')!
     const raw = encodeDiffTime(1, 95, true)
@@ -243,10 +236,6 @@ describe('computeScoreVals: rejects hostile/invalid input', () => {
   it('negative sprint seconds are rejected', () => {
     expect(computeScoreVals('sprint', undefined, vals({ timeSecs: '-10' }))).toBeNull()
     expect(computeScoreVals('sprint', undefined, vals({ timeSecs: '0', sprintCs: '-5' }))).toBeNull()
-  })
-
-  it('negative grip width is rejected for Shoulder Dislocate', () => {
-    expect(computeScoreVals('strength', getEventBySlug('shoulder-dislocate'), vals({ weightKg: '-5', repCount: '5' }))).toBeNull()
   })
 
   it('negative weight / reps / distance / hold are rejected', () => {
@@ -648,5 +637,18 @@ describe('every input mode on the roster is actually handled', () => {
       if (!again || again.raw_score !== first.raw_score) dead.push(`${e.name} [${e.inputMode}] did not round-trip`)
     }
     expect(dead, dead.join('\n')).toEqual([])
+  })
+})
+
+// Value: protects=every `strength` event on the roster scoring and pre-filling as a lift now that the
+// Shoulder Dislocate cm branch is gone; fails_when=a per-slug special case returns (or a cm/metric
+// event is added in `strength` mode) and one event stops storing its estimated 1RM or gets a PR
+// prefill that is not a single; why_new=the strength tests only exercise Deadlift; seam=none
+describe('every strength event is a lift', () => {
+  const lifts = EVENTS.filter(e => e.inputMode === 'strength')
+  it.each(lifts.map(e => [e.name, e] as const))('%s stores its estimated 1RM', (_name, e) => {
+    expect(computeScoreVals('strength', e, vals({ weightKg: '100', repCount: '5' })))
+      .toEqual({ raw_score: estimatedOneRm(100, 5), score_label: liftLabel(100, 5) })
+    expect(valsFromRaw('strength', e, 112.5).repCount).toBe('1')
   })
 })

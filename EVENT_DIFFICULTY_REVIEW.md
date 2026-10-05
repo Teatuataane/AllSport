@@ -418,22 +418,33 @@ _No levels yet._
 - D5: Wall Assisted   (Headstand with no hands, wall support allowed)
 - D6: Freestanding   (Freestanding headstand, no wall or hands)
 
-### 27. L-Sit Hold
+### 27. Compression
 
 *Scored by: difficulty level, then longest hold*
 
-- D1: 2 Feet Assisted Tuck
-- D2: 1 Foot Assisted Tuck
-- D3: Tuck Hold   (Both knees pulled to the chest)
-- D4: 1 Leg L-Sit   (One leg extended)
-- D5: L-Sit
-- D6: V-Sit
+Renamed from L-Sit Hold and re-levelled 30 Sept 2026 (Tāne). Every level is a hold.
+- D1: Curl Up   (Lying on the back, head and shoulders curled off the floor, hands reaching past the knees)
+- D2: V Up   (Seated on the floor, straight legs and torso lifted into a V, hands off the floor)
+- D3: Tuck Hold   (Supported on straight arms, hips off the floor, both knees pulled to the chest)
+- D4: L Sit   (Supported on straight arms, legs straight and level with the hips)
+- D5: V Sit   (Supported on straight arms, straight legs raised above level)
+
+### 28. Reverse Maltese
+
+*Scored by: difficulty level, then longest hold*
+
+NEW EVENT, 30 Sept 2026 (Tāne). A hold on the rings. Nobody has scored it.
+- D1: High Ring Lean
+- D2: 45° Lean
+- D3: Low Lean
+- D4: Feet Raised
+- D5: Tuck R Maltese
 
 ---
 
 ## 3. Power
 
-### 28. Kelly Snatch
+### 29. Kelly Snatch
 
 *Scored by: heaviest weight lifted*
 
@@ -445,7 +456,7 @@ _No levels yet._
 - D4: 
 - D5: 
 
-### 29. 1A Snatch
+### 30. 1A Snatch
 
 *Scored by: heaviest weight lifted*
 
@@ -457,7 +468,7 @@ _No levels yet._
 - D4: 
 - D5: 
 
-### 30. Javelin
+### 31. Javelin
 
 *Scored by: furthest or highest*
 
@@ -465,7 +476,7 @@ _No levels yet._
 - D2: Short Javelin
 - D3: Long Javelin
 
-### 31. Shotput
+### 32. Shotput
 
 *Scored by: furthest or highest*
 
@@ -473,7 +484,7 @@ _No levels yet._
 - D2: Half Weight
 - D3: Full Weight
 
-### 32. Australian Football
+### 33. Australian Football
 
 *Scored by: win, draw or loss against another player*
 
@@ -483,7 +494,7 @@ _No levels yet._
 - D4: Drop Kick (20m)   (Drop kick to a partner)
 - D5: Game
 
-### 33. Vertical Jump
+### 34. Vertical Jump
 
 *Scored by: furthest or highest*
 
@@ -495,7 +506,7 @@ _No levels yet._
 - D4: 
 - D5: 
 
-### 34. Clean & Jerk
+### 35. Clean & Jerk
 
 *Scored by: heaviest weight lifted*
 
@@ -507,7 +518,7 @@ _No levels yet._
 - D4: 
 - D5: 
 
-### 35. Snatch
+### 36. Snatch
 
 *Scored by: heaviest weight lifted*
 
@@ -519,7 +530,7 @@ _No levels yet._
 - D4: 
 - D5: 
 
-### 36. Standing Broad Jump
+### 37. Standing Broad Jump
 
 *Scored by: furthest or highest*
 
@@ -531,7 +542,7 @@ _No levels yet._
 - D4: 
 - D5: 
 
-### 37. High Jump
+### 38. High Jump
 
 *Scored by: furthest or highest*
 
@@ -543,7 +554,7 @@ _No levels yet._
 - D4: 
 - D5: 
 
-### 38. Arm Wrestling
+### 39. Arm Wrestling
 
 *Scored by: difficulty level, then longest hold*
 
@@ -553,7 +564,7 @@ _No levels yet._
 - D4: 20kg Hold
 - D5: Game
 
-### 39. Tug of War
+### 40. Tug of War
 
 *Scored by: difficulty level, then fastest time*
 
@@ -567,7 +578,7 @@ _No levels yet._
 
 ## 4. Speed
 
-### 40. 100m Sprint
+### 41. 100m Sprint
 
 *Scored by: fastest time*
 
@@ -577,14 +588,14 @@ _No levels yet._
 - D2: Timed
 - D3: Game
 
-### 41. Tag
+### 42. Tag
 
 *Scored by: difficulty level, then fastest time*
 
 - D1: Grid Dodge   (In a 10m grid, touch the cones the kaiwhakawā calls at random. Six calls, timed)
 - D2: Game
 
-### 42. T-Race
+### 43. T-Race
 > Timed requires a time, game is a race against opponents
 *Scored by: win, draw or loss against another player*
 
@@ -592,7 +603,7 @@ _No levels yet._
 - D2: Timed
 - D3: Game
 
-### 43. Beach Flags
+### 44. Beach Flags
 
 *Scored by: difficulty level, then fastest time*
 > Timed requires a time, game is a race against opponents
@@ -600,7 +611,7 @@ _No levels yet._
 - D1: Get-Up Sprint   (From face down, feet toward the flag, get up and sprint 15m to it. Timed)
 - D2: Game
 
-### 44. 200m Sprint
+### 45. 200m Sprint
 
 *Scored by: fastest time*
 > Timed requires a time, game is a race against opponents
@@ -608,7 +619,7 @@ _No levels yet._
 - D2: Timed
 - D3: Game
 
-### 45. Touch Rugby
+### 46. Touch Rugby
 
 *Scored by: win, draw or loss against another player*
 
@@ -618,7 +629,7 @@ _No levels yet._
 - D4: Moving Pass (5m)   (Both players moving)
 - D5: Game
 
-### 46. Repeat High Jump
+### 47. Repeat High Jump
 
 *Scored by: difficulty level, then fastest time*
 
@@ -629,7 +640,7 @@ _No levels yet._
 - D5: Rib Height
 - D6: Shoulder height
 
-### 47. Rats & Rabbits
+### 48. Rats & Rabbits
 
 *Scored by: difficulty level, then fastest time*
 > Timed requires a time, game is a race against opponents
@@ -637,7 +648,7 @@ _No levels yet._
 - D1: Reaction Chase   (React to the call, turn the right way and sprint 10m to the line. Timed from the call; turning the wrong way is a miss)
 - D2: Game
 
-### 48. Speed Chess
+### 49. Speed Chess
 
 *Scored by: difficulty level, then most reps*
 
@@ -646,7 +657,7 @@ _No levels yet._
 - D3: Mate in 3
 - D4: Game
 
-### 49. American Football
+### 50. American Football
 
 *Scored by: win, draw or loss against another player*
 
@@ -656,14 +667,14 @@ _No levels yet._
 - D4: Moving Pass (5m)   (Both players moving)
 - D5: Game
 
-### 50. Capture the Flag
+### 51. Capture the Flag
 
 *Scored by: difficulty level, then fastest time*
 
 - D1: Flag Run   (Sprint 20m to the flag, pick it up and carry it back over halfway. Timed)
 - D2: Game
 
-### 51. Kabaddi
+### 52. Kabaddi
 
 *Scored by: difficulty level, then most reps*
 
@@ -672,9 +683,9 @@ _No levels yet._
 
 ---
 
-## 5. Anaerobic Endurance
+## 5. Stamina
 
-### 52. Chinup Contest
+### 53. Chinup Contest
 
 *Scored by: difficulty level, then most reps*
 
@@ -685,18 +696,18 @@ _No levels yet._
 - D5: Chin Up   (used 3 times)
 - D6: Muscle Up
 
-### 53. Pushup Contest
+### 54. Pushups
 
 *Scored by: difficulty level, then most reps*
 
-- D1: Elevated Knee Push Up
-- D2: Knee Push Up   (used 3 times)
-- D3: Push Up   (used 15 times)
-- D4: 1 Arm Pushup   (used 3 times)
-- D5: Handstand Pushup
-- D6: Deficit Handstand   (Handstand push-up from parallettes or blocks, below floor level)
+Renamed from Pushup Contest and re-levelled 30 Sept 2026 (Tāne). The two handstand levels are gone; elevated means the hands are raised on a box.
+- D1: Hands Up Knee Pushup   (On the knees, hands raised on a box or bench)
+- D2: Knee Pushup
+- D3: Elevated Pushup   (Full pushup with the hands raised on a box or bench)
+- D4: Pushup
+- D5: 1 Arm Pushup
 
-### 54. Tibialis Curl
+### 55. Tibialis Curl
 
 *Scored by: difficulty level, then most reps in 2 minutes*
 
@@ -708,7 +719,7 @@ Changed 29 Sept 2026 (Tāne): Anaerobic Endurance is a 2-minute contest, so the 
 - D5: 15kg
 - D6: 20kg
 
-### 55. Finger Pushup
+### 56. Finger Pushup
 
 *Scored by: difficulty level, then most reps*
 
@@ -720,7 +731,7 @@ Changed 29 Sept 2026 (Tāne): Anaerobic Endurance is a 2-minute contest, so the 
 - D6: 2 Finger Pushup
 - D7: Thumb Pushup
 
-### 56. GHD Situp
+### 57. GHD Situp
 
 *Scored by: difficulty level, then most reps*
 Weighted GHD requires weight and reps
@@ -730,21 +741,11 @@ Weighted GHD requires weight and reps
 - D4: GHD Situp   (used 5 times)
 - D5: Weighted GHD Situp
 
-### 57. Leg Ext Hold
+### 58. Leg Ext Hold
 
 *Scored by: difficulty level, then longest hold*
 
 This should be weight and time
-
-### 58. Ab Rollout
-
-*Scored by: difficulty level, then most reps*
-
-- D1: Elevated Hold   (Kneeling hold with the wheel elevated)
-- D2: Kneeling Rollout   (used 1 time)
-- D3: Elevated Kneeling   (Kneeling rollout with hands elevated)
-- D4: Banded Rollout   (Standing rollout with heavy band assistance)
-- D5: Full Rollout   (Standing ab rollout, no assistance)
 
 ### 59. Hamstring Curl
 
@@ -793,32 +794,43 @@ _No levels yet._
 - D4: 
 - D5: 
 
-### 63. Lunges
-
-*Scored by: difficulty level, then most reps*
-
-- D1: Assisted Elevated   (Rear foot raised, hand on a support for balance)
-- D2: Elevated Lunge   (Rear foot raised, no support)
-- D3: Lunge  (Both feet on the floor — the plain lunge)
-- D4: Jumping Switch Lunges  (Switch legs in the air, no pause between reps)
-- D5: Jumping Bulgarian   (Rear foot raised on a box, switching legs in the air)
-
 ---
 
-### 64. Calf Raises
+### 63. Calf Raises
 
 *Scored by: difficulty level, then most reps*
 
-- D1: Two-Leg Raise   (Both feet flat on the floor, rising to the top of the toes)
-- D2: Two-Leg Deficit   (Both feet on a step, heels dropping below the toes each rep)
-- D3: Single-Leg Raise   (One foot on the floor, the other held clear)
-- D4: Single-Leg Deficit   (One foot on a step, heel dropping below the toes each rep)
+Re-levelled 30 Sept 2026 (Tāne). Toe Calf Raise rises until only the tips of the toes touch, like en pointe, with a full deficit.
+- D1: Calf Raise   (Both feet flat on the floor, rising onto the balls of the feet)
+- D2: Deficit Calf Raise   (Balls of both feet on a step, heels dropping below the step each rep)
+- D3: Toe Calf Raise   (On the step with a full deficit, rising until only the tips of the toes touch, like en pointe)
+- D4: Single Leg Toe Raise   (The toe calf raise on one leg, the other held clear)
 
-> NEW EVENT, Sept 2026 (Tāne). Nobody has scored it, so there is no usage to calibrate against.
+### 64. Back Extension
+
+*Scored by: difficulty level, then longest hold*
+
+NEW EVENT, 30 Sept 2026 (Tāne). A hold. Nobody has scored it.
+- D1: Bird Dog   (On hands and knees, one arm and the opposite leg held out straight and level)
+- D2: Superman   (Face down on the floor, arms, chest and legs lifted off the floor)
+- D3: Back Ext   (Hips on a back extension bench or GHD pad, body held straight and level, hands at the chest)
+- D4: Straight Arm Ext   (The back extension with the arms held straight overhead)
+
+### 65. Hollow Hold
+
+*Scored by: difficulty level, then longest hold*
+
+NEW EVENT, 30 Sept 2026 (Tāne). A hold. Nobody has scored it.
+- D1: Knee Plank   (Forearm plank on the knees, body straight from knees to shoulders)
+- D2: Plank   (Forearm plank on the toes, body in one straight line)
+- D3: Tuck Hollow   (On the back, lower back pressed to the floor, shoulders lifted, knees tucked to the chest)
+- D4: Hollow Hold   (Lower back pressed to the floor, arms overhead and straight legs, both held just off the floor)
+- D5: Tuck Dragon   (Lying on a bench gripping behind the head, hips and knees lifted off the bench in a tuck, weight on the shoulders)
+- D6: Dragon Flag   (The body held straight and rigid from the shoulders, off the bench)
 
 ## 6. Aerobic Endurance
 
-### 65. Burpee Broad Jump
+### 66. Burpee Broad Jump
 
 *Scored by: difficulty level, then fastest time*
 
@@ -827,7 +839,7 @@ _No levels yet._
 - D3: 100m 
 - D4: 200m 
 
-### 66. Running
+### 67. Running
 
 *Scored by: difficulty level, then fastest time*
 
@@ -835,7 +847,7 @@ _No levels yet._
 - D2: 500m   (used 1 time)
 - D3: 1000m   (used 2 times)
 
-### 67. Cycling
+### 68. Cycling
 
 *Scored by: difficulty level, then fastest time*
 
@@ -843,7 +855,7 @@ _No levels yet._
 - D2: 500m   (used 6 times)
 - D3: 1000m   (used 3 times)
 
-### 68. Ski Erg
+### 69. Ski Erg
 
 *Scored by: difficulty level, then fastest time*
 
@@ -851,7 +863,7 @@ _No levels yet._
 - D2: 500m   (used 1 time)
 - D3: 1000m   (used 4 times)
 
-### 69. Row Erg
+### 70. Row Erg
 
 *Scored by: difficulty level, then fastest time*
 
@@ -859,7 +871,7 @@ _No levels yet._
 - D2: 500m   (used 2 times)
 - D3: 1000m   (used 1 time)
 
-### 70. Breath Hold
+### 71. Breath Hold
 
 *Scored by: longest hold*
 
@@ -871,7 +883,7 @@ _No levels yet._
 - D4: 
 - D5: 
 
-### 71. Sandbag Carry
+### 72. Sandbag Carry
 
 *Scored by: difficulty level, then fastest time*
 
@@ -882,7 +894,7 @@ _No levels yet._
 
 > Renamed from Weighted Carry, Sept 2026. Ladder unchanged; only the implement is named.
 
-### 72. Animal Crawl
+### 73. Animal Crawl
 
 *Scored by: difficulty level, then fastest time*
 
@@ -892,7 +904,7 @@ _No levels yet._
 - D4: 25m Duck Walk   (Deep squat, hips below knees, stepping without standing up)
 - D5: 100m Duck Walk
 
-### 73. Bronco
+### 74. Bronco
 
 *Scored by: difficulty level, then fastest time*
 
@@ -902,7 +914,7 @@ _No levels yet._
 - D4: 4 Laps
 - D5: 5 Laps   (used 2 times)
 
-### 74. Scooting
+### 75. Scooting
 
 *Scored by: difficulty level, then fastest time*
 
@@ -910,7 +922,7 @@ _No levels yet._
 - D2: 500m
 - D3: 1000m
 
-### 75. Farmer Carry
+### 76. Farmer Carry
 
 *Scored by: difficulty level, then fastest time*
 
@@ -921,7 +933,7 @@ _No levels yet._
 
 > Renamed from Wheelbarrow Push, Sept 2026. Ladder unchanged; only the implement is named.
 
-### 76. Weighted Drag
+### 77. Weighted Drag
 
 *Scored by: difficulty level, then fastest time*
 
@@ -936,7 +948,7 @@ _No levels yet._
 
 ## 7. Flexibility
 
-### 77. Rear Hand Clasp
+### 78. Rear Hand Clasp
 
 *Scored by: difficulty level, then longest hold*
 
@@ -948,7 +960,7 @@ _No levels yet._
 - D6: Palm Clasp
 - D7: Butterfly Clasp
 
-### 78. Bridge
+### 79. Bridge
 
 *Scored by: difficulty level, then longest hold*
 
@@ -959,7 +971,7 @@ _No levels yet._
 - D5: Straight Arm Bridge
 - D6: Rainbow Bridge   (used 3 times)
 
-### 79. Forward Fold
+### 80. Forward Fold
 
 *Scored by: difficulty level, then longest hold*
 
@@ -972,7 +984,7 @@ _No levels yet._
 - D7: Elbows to Toes   (Straight legs, elbows reach the toes)
 - D8: Head to Legs   (Full fold — head touching the legs)
 
-### 80. Needle Pose
+### 81. Needle Pose
 
 *Scored by: difficulty level, then longest hold*
 
@@ -983,7 +995,7 @@ _No levels yet._
 - D5: 2 Knee
 - D6: Full Needle Pose
 
-### 81. Forward Split
+### 82. Forward Split
 
 *Scored by: difficulty level, then longest hold*
 
@@ -994,7 +1006,7 @@ _No levels yet._
 - D5: Front Split
 - D6: Over Split
 
-### 82. Middle Split
+### 83. Middle Split
 
 *Scored by: difficulty level, then longest hold*
 
@@ -1006,7 +1018,7 @@ _No levels yet._
 - D6: 0.5 Blocks   (Middle split supported on half a block)
 - D7: Middle Split
 
-### 83. Standing Split
+### 84. Standing Split
 
 *Scored by: difficulty level, then longest hold*
 
@@ -1018,7 +1030,7 @@ _No levels yet._
 - D6: Head Height
 - D7: Standing Split
 
-### 84. Foot Behind Head Pose
+### 85. Foot Behind Head Pose
 
 *Scored by: difficulty level, then longest hold*
 
@@ -1029,21 +1041,6 @@ _No levels yet._
 - D5: Foot to Head Pose   (used 2 times)
 - D6: Foot Behind Head Pose
 - D7: Both Feet Behind Head
-
-### 85. Shoulder Dislocate
-
-*Scored by: narrowest hand width, and reps at that width*
-
-> Your note: this is already how it works. Hand width is measured in cm and a narrower grip
-> scores higher; reps are recorded alongside it. My sheet mislabelled it, not the app.
-
-_No levels yet._
-
-- D1: 
-- D2: 
-- D3: 
-- D4: 
-- D5: 
 
 ### 86. Pancake
 
@@ -1099,28 +1096,27 @@ _No levels yet._
 
 > NEW EVENT, Sept 2026 (Tāne). Nobody has scored it, so there is no usage to calibrate against.
 
-### 91. Wrist Stretch
+### 91. Internal Wrist Stretch
 
 *Scored by: difficulty level, then longest hold*
 
-- D1: Fingers Forward   (Palms flat on the floor, fingers pointing away, elbows soft)
-- D2: Elbows Locked   (Palms flat, fingers pointing away, arms straight, weight over the hands)
-- D3: Fingers Turned In   (Palms flat, fingers pointing back toward the knees, arms straight)
-- D4: Fingers In · Loaded   (Fingers pointing back with the hips stacked over the hands)
+Renamed from Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
+- D1: Hand Assisted   (The other hand eases the fingers back toward the forearm)
+- D2: Hand Forward   (Kneeling, palms flat on the floor, fingers pointing forward, arms straight)
+- D3: Fingers Inwards   (Palms flat, fingers pointing toward each other, arms straight)
+- D4: Fingers Backwards   (Palms flat, fingers pointing back toward the knees, arms straight)
+- D5: Backwards Plank   (Fingers pointing back, in a full plank with the weight over the hands)
 
-> NEW EVENT, Sept 2026 (Tāne). Nobody has scored it, so there is no usage to calibrate against.
-
-### 92. Reverse Wrist Stretch
+### 92. External Wrist Stretch
 
 *Scored by: difficulty level, then longest hold*
 
-- D1: Backs Down · Bent   (Backs of the hands on the floor, fingers pointing back, elbows soft)
-- D2: Backs Down · Straight   (Backs of the hands flat, fingers pointing back, arms straight)
-- D3: Fingers Forward   (Backs of the hands flat, fingers pointing away from the knees, arms straight)
-- D4: Backs Down · Loaded   (Backs of the hands flat with the hips stacked over them)
-
-> NEW EVENT, Sept 2026 (Tāne). Nobody has scored it, so there is no usage to calibrate against.
-> Shorter range than Wrist Stretch at every rung: the wrist bends far less this way.
+Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
+- D1: Hand Assisted   (The other hand eases the back of the hand toward the forearm)
+- D2: Fingers Outwards   (Kneeling, backs of the hands flat on the floor, fingers pointing out to the sides, arms straight)
+- D3: Fingers Backwards   (Backs of the hands flat, fingers pointing back toward the knees, arms straight)
+- D4: Fingers Inwards   (Backs of the hands flat, fingers pointing toward each other, arms straight)
+- D5: Inwards Plank   (Fingers pointing toward each other, in a full plank with the weight over the backs of the hands)
 
 ## 8. Body Awareness
 
