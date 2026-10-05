@@ -360,6 +360,11 @@ export default function PersonalGamePage() {
           prLabel="Your best"
           allowGames={false}
           natural
+          standards={{
+            player: gradeProfile.player, bodyweightKg: gradeProfile.bodyweightKg, reached: rungFor(sheetEvent.id),
+            bodyweightPrompt: <BodyweightField playerId={workout.player_id} eventSlugs={[sheetEvent.event_slug]}
+              day={workout.performed_on} locked={locked} onSaved={gradeProfile.setBodyweightKg} />,
+          }}
           onClose={() => setSheetSlug(null)}
           onSubmit={(v, editingId) => submit(sheetEvent.id, v, editingId)}
           onDelete={remove}

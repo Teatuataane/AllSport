@@ -1804,6 +1804,11 @@ export default function SessionPage() {
                 seasonPR={null}
                 prRows={playerPRRows[sheetSlot.se.event_slug] ?? []}
                 locked={sessionEnded}
+                standards={{
+                  player: gradeProfile.player, bodyweightKg: gradeProfile.bodyweightKg, reached: rungFor(sheetSlot),
+                  bodyweightPrompt: <BodyweightField playerId={pid} eventSlugs={[sheetSlot.se.event_slug]} day={sessionDay}
+                    locked={sessionEnded} onSaved={gradeProfile.setBodyweightKg} />,
+                }}
                 bestLabel="Best today"
                 prLabel="Training"
                 natural
@@ -1841,6 +1846,11 @@ export default function SessionPage() {
                 seasonPR={seasonPRs[sheetEvent.id] ?? null}
                 prRows={playerPRRows[sheetEvent.event_slug] ?? []}
                 locked={sessionEnded}
+                standards={{
+                  player: gradeProfile.player, bodyweightKg: gradeProfile.bodyweightKg, reached: rungFor(sheetSlot!),
+                  bodyweightPrompt: <BodyweightField playerId={pid} eventSlugs={[sheetEvent.event_slug]} day={sessionDay}
+                    locked={sessionEnded} onSaved={gradeProfile.setBodyweightKg} />,
+                }}
                 onSubmit={(v, editingId, matchOpponents) => submitEntry({
                   sessionId: sessionId as string, eventId: sheetEvent.id, playerId: pid, playerName: pName,
                   mode: getEventByName(sheetEvent.event_name)?.inputMode || sheetEvent.input_mode,
@@ -2102,6 +2112,11 @@ export default function SessionPage() {
                     seasonPR={null}
                     prRows={target.id ? (targetPRRows[judgeSheetSlot.se.event_slug] ?? []) : []}
                     locked={sessionEnded}
+                    standards={{
+                      player: gradeProfile.player, bodyweightKg: gradeProfile.bodyweightKg, reached: judgeRungFor(judgeSheetSlot),
+                      bodyweightPrompt: <BodyweightField playerId={target.isGuest ? null : (target.id ?? null)} eventSlugs={[judgeSheetSlot.se.event_slug]} day={sessionDay}
+                        locked={sessionEnded} onSaved={gradeProfile.setBodyweightKg} />,
+                    }}
                     bestLabel="Best today"
                     prLabel="Training"
                     natural
@@ -2138,6 +2153,11 @@ export default function SessionPage() {
                     seasonPR={target.id ? (judgePRs[sheetEvent.id] ?? null) : null}
                     prRows={target.id ? (targetPRRows[sheetEvent.event_slug] ?? []) : []}
                     locked={sessionEnded}
+                    standards={{
+                      player: gradeProfile.player, bodyweightKg: gradeProfile.bodyweightKg, reached: judgeRungFor(judgeSheetSlot!),
+                      bodyweightPrompt: <BodyweightField playerId={target.isGuest ? null : (target.id ?? null)} eventSlugs={[sheetEvent.event_slug]} day={sessionDay}
+                        locked={sessionEnded} onSaved={gradeProfile.setBodyweightKg} />,
+                    }}
                     onSubmit={(v, editingId, matchOpponents) => submitEntry({
                       sessionId: sessionId as string, eventId: sheetEvent.id, playerId: target.id, playerName: target.name,
                       mode: getEventByName(sheetEvent.event_name)?.inputMode || sheetEvent.input_mode,

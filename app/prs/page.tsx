@@ -1,6 +1,7 @@
 'use client'
 
 import PRBoardView from '@/components/play/PRBoardView'
+import EventStandards from '@/components/play/EventStandards'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -613,6 +614,11 @@ export default function PRsPage() {
                                 }))}
                               />
                             </div>
+                            {activePlayerId && (
+                              <div style={{ marginBottom: '12px' }}>
+                                <EventStandards ev={event} playerId={activePlayerId} today={nzDay()} rows={eventResults.map(r => ({ raw_score: r.raw_score, weight_kg: null, difficulty_tier: r.difficulty_tier }))} />
+                              </div>
+                            )}
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                               {eventResults.map((r, i) => {
                                 const isBest = i === 0

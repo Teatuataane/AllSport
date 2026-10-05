@@ -8,11 +8,13 @@
 
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import EventIcon from '@/components/EventIcon'
 import { domainColor } from '@/components/EventIcon'
 import { isGameEntry } from '@/lib/matches'
 import PRBoardView from '@/components/play/PRBoardView'
+import StandardsLadderView from '@/components/play/StandardsLadderView'
+import type { GradePlayer } from '@/lib/playerGrades'
 import type { PRRow } from '@/lib/prBoard'
 import { isTimedEffort, type EventData } from '@/lib/eventData'
 import { computeScoreVals, valsFromResult, valsFromRaw, EMPTY_VALS, estimatedOneRm, MAX_ESTIMATED_REPS, type EntryVals } from '@/lib/scoring'
@@ -58,6 +60,17 @@ type QuickEntrySheetProps = {
    * training and the drill fields stay.
    */
   allowGames?: boolean
+  /**
+   * What the Standards section needs: who is playing, the bodyweight in force,
+   * the colour reached on this event, and whatever asks for a bodyweight. Omit
+   * and the section is left out.
+   */
+  standards?: {
+    player: GradePlayer | null
+    bodyweightKg: number | null
+    reached: number
+    bodyweightPrompt?: ReactNode
+  }
   onClose: () => void
   onSubmit: (v: EntryVals, editingId: string | null, matchOpponents: string[] | null) => Promise<SubmitOutcome>
   onDelete: (id: string) => Promise<string | null>
@@ -67,7 +80,7 @@ type QuickEntrySheetProps = {
 
 export default function QuickEntrySheet({
   se, eventData, myResults, opponents, seasonPR, prRows = [], locked,
-  bestLabel = "Today's best", prLabel = 'Season PR', allowGames = true, natural = false,
+  bestLabel = "Today's best", prLabel = 'Season PR', allowGames = true, natural = false, standards,
   onClose, onSubmit, onDelete, onSubmitted, onDeleted,
 }: QuickEntrySheetProps) {
   // A stored opponent NAME resolves to an id only when exactly one pick carries
@@ -273,7 +286,7 @@ export default function QuickEntrySheet({
               <p style={{ fontSize: '14.5px', lineHeight: 1.6, color: '#ccc', fontWeight: 300, margin: 0 }}>
                 {contentMissing ? 'Content coming soon — ask your kaiwhakawā for a demo.' : eventData!.howToPerform}
               </p>
-              <div style={{ ...QES_LBL, color: '#F9B051' }}>Rules & standards</div>
+              <div style={{ ...QES_LBL, color: '#F9B051' }}>Rules</div>
               <p style={{ fontSize: '14.5px', lineHeight: 1.6, color: '#ccc', fontWeight: 300, margin: 0 }}>
                 {contentMissing || eventData!.rules === 'Content coming soon.' ? 'Content coming soon.' : eventData!.rules}
               </p>
@@ -289,6 +302,13 @@ export default function QuickEntrySheet({
                       </span>
                     </div>
                   ))}
+                </>
+              )}
+              {standards?.player && (
+                <>
+                  <div style={{ ...QES_LBL, color: '#F9B051' }}>Standards</div>
+                  <StandardsLadderView ev={eventData} player={standards.player} bodyweightKg={standards.bodyweightKg}
+                    reached={standards.reached} bodyweightPrompt={standards.bodyweightPrompt} />
                 </>
               )}
               <button onClick={() => setShowHow(false)} style={{

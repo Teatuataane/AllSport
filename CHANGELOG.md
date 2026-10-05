@@ -2,6 +2,14 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.27.2.0] - 2026-10-05
+
+### Added
+- **The colour standards, in game and on My Events.** Each event shows what every colour, Kiwikiwi to Taniwha, takes on your own ladder (your sex, with your age allowance), in the event's own units. In a game it is a Standards section under HOW TO; on My Events it is a Standards toggle under each event. Strength shows the multiple of your bodyweight and asks for your bodyweight to show the weights. Win/draw/loss events show their drill scores up to Kahurangi, then the rating each higher colour needs.
+
+### Changed
+- **The entry sheet's "Rules & standards" heading is now "Rules"**, since it holds the rules text.
+
 ## [0.27.1.0] - 2026-10-05
 
 ### Added
