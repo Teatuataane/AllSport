@@ -2,6 +2,11 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.27.3.0] - 2026-10-05
+
+### Changed
+- **Win, draw and loss events show their colour in a live game.** The button turns Kahurangi for a win, Kākāriki for a draw and Kōwhai for a loss, or your rating's colour if that is higher, the same colour the game report pays. Under the score it says how many games you still need for a rating ("7 games to a rating"), or your rating once you have one ("Rating 1,148"). A game only counts once both players have recorded it or a kaiwhakawā has settled it. Personal games show the same line but keep their colour as it was.
+
 ## [0.27.2.0] - 2026-10-05
 
 ### Added

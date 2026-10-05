@@ -16,7 +16,7 @@ import type { EventData } from '@/lib/eventData'
 import type { EntryRow } from './chrome'
 
 export default function GameEventList({
-  events, chosen, eventDataFor, rowsFor, noteFor, rungFor, canAdd, scoredSlugs, onOpen, onAdd, onRemove,
+  events, chosen, eventDataFor, rowsFor, noteFor, rungFor, gameLineFor, canAdd, scoredSlugs, onOpen, onAdd, onRemove,
 }: {
   events: readonly OfficialEvent[]
   chosen: readonly string[]
@@ -26,6 +26,8 @@ export default function GameEventList({
   noteFor: (slot: PlaySlot) => { label: string; color: string } | undefined
   /** The colour a slot's score reaches on the standards, 0 for none. */
   rungFor: (slot: PlaySlot) => number
+  /** A win/draw/loss event's rating line, where there is one. */
+  gameLineFor?: (slot: PlaySlot) => string | undefined
   /** False for a guest (no account to store extras against) and after the game. */
   canAdd: boolean
   /** Added events that already carry a score, which cannot be removed. */
@@ -48,6 +50,7 @@ export default function GameEventList({
               myResults={rowsFor(g.official)}
               note={noteFor(g.official)}
               gradeRung={rungFor(g.official)}
+              gameLine={gameLineFor?.(g.official)}
               onOpen={() => onOpen(g.official!.se.id)}
               corner={canAdd
                 ? <RowCorner variant="add" label={`Add ${g.domainName} events`} onClick={() => onAdd(g)} />
@@ -62,6 +65,7 @@ export default function GameEventList({
               myResults={rowsFor(slot)}
               note={{ label: 'Not placed', color: '#888' }}
               gradeRung={rungFor(slot)}
+              gameLine={gameLineFor?.(slot)}
               tag="Added"
               onOpen={() => onOpen(slot.se.id)}
               corner={canAdd && !scoredSlugs.has(slot.se.id)

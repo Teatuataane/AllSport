@@ -19,7 +19,7 @@ import type { EventData } from '@/lib/eventData'
 import { sportWDL, type PlayEvent, type EntryRow } from './chrome'
 
 export default function EventListRow({
-  se, eventData, myResults, note, onOpen, gradeRung, tag, corner,
+  se, eventData, myResults, note, onOpen, gradeRung, gameLine, tag, corner,
 }: {
   se: PlayEvent
   eventData: EventData | undefined
@@ -29,6 +29,10 @@ export default function EventListRow({
   onOpen: () => void
   /** The colour today's score reaches (0 = none). Present only on the live game. */
   gradeRung?: number
+  /** A win/draw/loss event's rating line: "7 games to a rating" or "Rating 1,148".
+      It replaces the division rank on a scored button, and rides the domain
+      line on one still to score. */
+  gameLine?: string
   /** A small label under the name, such as "Added". */
   tag?: string
   /** A control pinned to the top-right corner (the + or the ✕). A sibling of
@@ -67,6 +71,7 @@ export default function EventListRow({
               colour a score reaches stays the only colour on it. */}
           <div style={{ fontFamily: 'var(--font-label)', fontSize: '11px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             {se.domain_number} · {se.domain_name}
+            {todo && gameLine && <span>· {gameLine}</span>}
             {tag && (
               <span style={{ fontSize: '10.5px', color: '#aaa', border: '1px solid #444', borderRadius: '999px', padding: '0 7px' }}>{tag}</span>
             )}
@@ -78,19 +83,21 @@ export default function EventListRow({
             fontSize: '12px', color: '#fff', background: '#2371BB', borderRadius: '999px', padding: '6px 12px', flexShrink: 0, fontWeight: 500,
           }}>Tap to score</span>
         ) : (
-          <div style={{ textAlign: 'right', flexShrink: 0, marginRight: corner ? '8px' : 0 }}>
+          <div style={{ textAlign: 'right', flexShrink: 1, maxWidth: '58%', marginRight: corner ? '8px' : 0 }}>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', color: scoreInk }}>
               {mode === 'sport' ? sportWDL(myResults) : myBestResult!.score_label}
             </div>
-            {(paint || note) && (
+            {(paint || note || gameLine) && (
               <div style={{ fontFamily: 'var(--font-label)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: '2px' }}>
                 {paint && (
                   <span style={paint.rainbow
                     ? { background: RAINBOW, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }
                     : { color: paint.ink }}>{paint.name}</span>
                 )}
-                {paint && note && <span style={{ color: '#aaa' }}> · </span>}
-                {note && <span style={{ color: paint ? '#aaa' : note.color }}>{note.label}</span>}
+                {paint && (gameLine || note) && <span style={{ color: '#aaa' }}> · </span>}
+                {gameLine
+                  ? <span style={{ color: '#aaa' }}>{gameLine}</span>
+                  : note && <span style={{ color: paint ? '#aaa' : note.color }}>{note.label}</span>}
               </div>
             )}
           </div>

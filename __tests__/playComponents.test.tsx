@@ -110,6 +110,32 @@ describe('the event row', () => {
   })
 })
 
+describe('a win/draw/loss event button', () => {
+  const tennis = getEventBySlug('tennis')!
+  const won = { id: 'w', raw_score: 20002, score_label: 'D3 · Win', difficulty_tier: null, weight_kg: null, reps: null, time_seconds: null, result_type: 'win', opponent_name: null, match_score: null }
+
+  it('puts the games still to play on the domain line before it is scored', () => {
+    render(<EventListRow se={asPlayEvent('tennis')} eventData={tennis} myResults={[]} gradeRung={0}
+      gameLine="7 games to a rating" onOpen={vi.fn()} />)
+    expect(screen.getByText(/7 games to a rating/)).toBeTruthy()
+    expect(screen.getByText('Tap to score')).toBeTruthy()
+  })
+
+  it('shows the colour beside the rating once scored, in place of the division rank', () => {
+    render(<EventListRow se={asPlayEvent('tennis')} eventData={tennis} myResults={[won]} gradeRung={6}
+      gameLine="Rating 1,148" note={{ label: '1st in event', color: '#F9B051' }} onOpen={vi.fn()} />)
+    expect(screen.getByText('Kahurangi')).toBeTruthy()
+    expect(screen.getByText('Rating 1,148')).toBeTruthy()
+    expect(screen.queryByText('1st in event')).toBeNull()
+  })
+
+  it('keeps the division rank where there is no rating line', () => {
+    render(<EventListRow se={asPlayEvent('tennis')} eventData={tennis} myResults={[won]} gradeRung={6}
+      note={{ label: '1st in event', color: '#F9B051' }} onOpen={vi.fn()} />)
+    expect(screen.getByText('1st in event')).toBeTruthy()
+  })
+})
+
 describe('the live game list', () => {
   const official = [asPlayEvent('deadlift'), asPlayEvent('tennis')]
   const scored = { id: 'r1', raw_score: 140, score_label: '140kg × 1', difficulty_tier: null, weight_kg: 140, reps: 1, time_seconds: null, result_type: null, opponent_name: null, match_score: null }

@@ -141,7 +141,7 @@ export async function loadMatches(db: GradeDb): Promise<MatchRow[]> {
 }
 
 /** loadMatches, saying whether the read failed rather than returning an empty list for it. */
-async function loadMatchesChecked(db: GradeDb): Promise<{ rows: MatchRow[]; failed: boolean }> {
+export async function loadMatchesChecked(db: GradeDb): Promise<{ rows: MatchRow[]; failed: boolean }> {
   const { data, error } = await db
     .from('matches')
     // event_name is stored on an entry match (a game played as a SWAP), which

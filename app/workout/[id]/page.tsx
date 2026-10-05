@@ -35,6 +35,8 @@ import BodyweightField from '@/components/play/BodyweightField'
 import EventPlanPicker from '@/components/play/EventPlanPicker'
 import { GradeDot } from '@/components/GradeDot'
 import { useGradeProfile } from '@/lib/useGradeProfile'
+import { useSportRatings } from '@/lib/useSportRatings'
+import { gameEventLine, gameEventLineText } from '@/lib/gameEventLine'
 import { scoreRung, rungSegment, workoutColourRung, workoutSlugs } from '@/lib/scoreColour'
 import { gradeForRung } from '@/lib/grading'
 import type { EntryVals } from '@/lib/scoring'
@@ -118,6 +120,14 @@ export default function PersonalGamePage() {
   // What colours a score: the player's ladder and the bodyweight declared for
   // the day the workout was trained. Any failure leaves the buttons neutral.
   const gradeProfile = useGradeProfile(workout?.player_id ?? null, workout?.performed_on ?? '')
+  // The rating line on a win/draw/loss button. A personal game cannot hold a
+  // real result, so the colour stays as it is; only the games-to-a-rating count
+  // and the rating show.
+  const sportRatings = useSportRatings(workout?.player_id ?? null)
+  const gameLineFor = (slug: string) => {
+    const line = gameEventLine(getEventBySlug(slug), sportRatings.ratings)
+    return line ? gameEventLineText(line) : undefined
+  }
   const rungFor = useCallback((slug: string) => scoreRung(
     getEventBySlug(slug), entries.filter(e => e.event_slug === slug), gradeProfile.player, gradeProfile.bodyweightKg,
   ), [entries, gradeProfile.player, gradeProfile.bodyweightKg])
@@ -288,6 +298,7 @@ export default function PersonalGamePage() {
           eventData={getEventBySlug(ev.event_slug)}
           myResults={entriesFor(ev.id)}
           gradeRung={rungFor(ev.id)}
+          gameLine={gameLineFor(ev.id)}
           onOpen={() => setSheetSlug(ev.id)}
         />
       ))}
