@@ -19,7 +19,7 @@ import type { EventData } from '@/lib/eventData'
 import { sportWDL, type PlayEvent, type EntryRow } from './chrome'
 
 export default function EventListRow({
-  se, eventData, myResults, note, onOpen, gradeRung, showDomain = true, tag, corner,
+  se, eventData, myResults, note, onOpen, gradeRung, tag, corner,
 }: {
   se: PlayEvent
   eventData: EventData | undefined
@@ -29,8 +29,6 @@ export default function EventListRow({
   onOpen: () => void
   /** The colour today's score reaches (0 = none). Present only on the live game. */
   gradeRung?: number
-  /** False where a domain title above the row already names it. */
-  showDomain?: boolean
   /** A small label under the name, such as "Added". */
   tag?: string
   /** A control pinned to the top-right corner (the + or the ✕). A sibling of
@@ -64,14 +62,15 @@ export default function EventListRow({
           size={46} tint={graded ? NEUTRAL_ICON_TINT : undefined} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: '19px', letterSpacing: '0.03em', lineHeight: 1 }}>{se.event_name}</div>
-          {(showDomain || tag) && (
-            <div style={{ fontFamily: 'var(--font-label)', fontSize: '11px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              {showDomain && se.domain_name}
-              {tag && (
-                <span style={{ fontSize: '10.5px', color: '#aaa', border: '1px solid #444', borderRadius: '999px', padding: '0 7px' }}>{tag}</span>
-              )}
-            </div>
-          )}
+          {/* The domain rides inside the button, in the same grey as the rest of
+              the secondary text, so every button is the same height and the
+              colour a score reaches stays the only colour on it. */}
+          <div style={{ fontFamily: 'var(--font-label)', fontSize: '11px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            {se.domain_number} · {se.domain_name}
+            {tag && (
+              <span style={{ fontSize: '10.5px', color: '#aaa', border: '1px solid #444', borderRadius: '999px', padding: '0 7px' }}>{tag}</span>
+            )}
+          </div>
         </div>
         {todo ? (
           <span style={{

@@ -124,10 +124,11 @@ describe('the live game list', () => {
     onOpen: vi.fn(), onAdd: vi.fn(), onRemove: vi.fn(),
   }
 
-  it('titles each domain and puts the added event under it', () => {
+  it('names the domain inside each button and puts the added event under its official one', () => {
     render(<GameEventList {...base} canAdd />)
-    expect(screen.getByText('1 · Maximal Strength')).toBeTruthy()
-    expect(screen.getByText('9 · Coordination')).toBeTruthy()
+    // No heading between events: the domain is a line inside each button.
+    expect(screen.getAllByText(/^1 · Maximal Strength/)).toHaveLength(2)
+    expect(screen.getAllByText(/^9 · Coordination/)).toHaveLength(1)
     const order = screen.getAllByText(/^(Deadlift|Pause Row|Tennis)$/).map(n => n.textContent)
     expect(order).toEqual(['Deadlift', 'Pause Row', 'Tennis'])
   })

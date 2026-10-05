@@ -30,7 +30,7 @@ import { formatNZDate } from '@/lib/dates'
 import { entryPayload, isOpen, planEvents, sortPlan, PLAN_MAX } from '@/lib/personalGame'
 import QuickEntrySheet from '@/components/play/QuickEntrySheet'
 import EventListRow from '@/components/play/EventListRow'
-import { sectionLabel, ProgressSegments, type PlayEvent, type EntryRow } from '@/components/play/chrome'
+import { ProgressSegments, type PlayEvent, type EntryRow } from '@/components/play/chrome'
 import BodyweightField from '@/components/play/BodyweightField'
 import EventPlanPicker from '@/components/play/EventPlanPicker'
 import { GradeDot } from '@/components/GradeDot'
@@ -55,7 +55,9 @@ type Workout = {
 
 /** A planned event as the play screen draws it. The slug IS the id here. */
 function playEvents(plan: readonly string[]): PlayEvent[] {
-  return planEvents(plan).map(e => ({
+  // Domain 1 to 10, then the order planned: the same order the live game uses.
+  // Array.sort is stable, so events in one domain keep their planned order.
+  return [...planEvents(plan)].sort((a, b) => a.domainNumber - b.domainNumber).map(e => ({
     id: e.slug,
     domain_number: e.domainNumber,
     domain_name: e.domain,
@@ -159,8 +161,6 @@ export default function PersonalGamePage() {
   }, [coached, isJudge, planIsEmpty, workout?.player_id, workout?.id])
 
 
-  const todo = events.filter(e => !scoredSlugs.has(e.id))
-  const done = events.filter(e => scoredSlugs.has(e.id))
   const sheetEvent = sheetSlug ? events.find(e => e.id === sheetSlug) : undefined
 
   const setPlan = async (next: string[]) => {
@@ -242,7 +242,7 @@ export default function PersonalGamePage() {
           fontFamily: 'var(--font-label)', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase',
         }}>
           <span style={{ color: 'var(--text-muted)' }}>
-            {done.length} of {events.length} event{events.length === 1 ? '' : 's'} scored
+            {events.filter(e => scoredSlugs.has(e.id)).length} of {events.length} event{events.length === 1 ? '' : 's'} scored
           </span>
           {workoutColour && (
             <span data-testid="workout-colour" title="This workout's colour: each event's colour, averaged" style={{
@@ -279,9 +279,9 @@ export default function PersonalGamePage() {
         onSaved={gradeProfile.setBodyweightKg}
       />
 
-      {/* Still to play */}
-      {todo.length > 0 && sectionLabel('Still to play')}
-      {todo.map(ev => (
+      {/* One list in domain order, the same order the live game uses. Rows
+          never move when scored. */}
+      {events.map(ev => (
         <EventListRow
           key={ev.id}
           se={ev}
@@ -291,23 +291,6 @@ export default function PersonalGamePage() {
           onOpen={() => setSheetSlug(ev.id)}
         />
       ))}
-
-      {/* Scored */}
-      {done.length > 0 && sectionLabel('Scored')}
-      {done.map(ev => {
-        const rows = entriesFor(ev.id)
-        const evData = getEventBySlug(ev.event_slug)
-        return (
-          <EventListRow
-            key={ev.id}
-            se={ev}
-            eventData={evData}
-            myResults={rows}
-            gradeRung={rungFor(ev.id)}
-            onOpen={() => setSheetSlug(ev.id)}
-          />
-        )
-      })}
 
       {events.length === 0 && (
         <div style={{ color: 'var(--text-muted)', fontSize: 14, padding: '20px 4px' }}>

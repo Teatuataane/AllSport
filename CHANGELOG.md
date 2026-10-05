@@ -2,6 +2,12 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.27.1.0] - 2026-10-05
+
+### Changed
+- **Every event button names its own domain.** The domain headings between events are gone; each button carries its domain ("4 · Speed") on its second line, so the buttons all line up and are the same height. Added events no longer indent.
+- **One order on every play screen.** Personal games and kaiwhakawā training sessions now list events in domain order, the same as a live game, and a row no longer jumps to a "Scored" list when you score it.
+
 ## [0.27.0.0] - 2026-10-05
 
 ### Added

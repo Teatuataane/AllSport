@@ -1,14 +1,15 @@
 'use client'
 
 // ─── The live game's event list ──────────────────────────────────────────────
-// Domain by domain: a plain title, the official event, then whatever the player
-// added in that domain. The order never changes as events are scored (Tāne,
+// Domain by domain: the official event, then whatever the player added in that
+// domain. No headings: each button names its own domain. The order never changes as events are scored (Tāne,
 // 26 Sept 2026 — rows used to jump from "Still to play" down to "Scored").
 //
 // The + on an official event opens that domain's other events; the ✕ on an
 // added event takes it off again, but only while it has no score. Shared by the
 // player tab and the kaiwhakawā tab so the two cannot drift apart.
 
+import { Fragment } from 'react'
 import { domainGroups, type OfficialEvent, type PlaySlot, type DomainGroup } from '@/lib/gameSwaps'
 import EventListRow, { RowCorner } from './EventListRow'
 import type { EventData } from '@/lib/eventData'
@@ -33,17 +34,13 @@ export default function GameEventList({
   onAdd: (group: DomainGroup) => void
   onRemove: (slug: string) => void
 }) {
+  // One flat list, domain 1 to 10, so every button shares a left edge and a
+  // height. The domain is named inside each button instead of by a heading.
   const groups = domainGroups(events, chosen)
   return (
     <div>
       {groups.map(g => (
-        <section key={g.domainNumber} aria-label={g.domainName}>
-          <div style={{
-            margin: '18px 4px 12px', fontFamily: 'var(--font-label)', fontSize: '11.5px', color: '#888',
-            textTransform: 'uppercase', letterSpacing: '0.14em',
-          }}>
-            {g.domainNumber} · {g.domainName}
-          </div>
+        <Fragment key={g.domainNumber}>
           {g.official && (
             <EventListRow
               se={g.official.se}
@@ -51,7 +48,6 @@ export default function GameEventList({
               myResults={rowsFor(g.official)}
               note={noteFor(g.official)}
               gradeRung={rungFor(g.official)}
-              showDomain={false}
               onOpen={() => onOpen(g.official!.se.id)}
               corner={canAdd
                 ? <RowCorner variant="add" label={`Add ${g.domainName} events`} onClick={() => onAdd(g)} />
@@ -59,23 +55,21 @@ export default function GameEventList({
             />
           )}
           {g.added.map(slot => (
-            <div key={slot.se.id} style={{ marginLeft: 14 }}>
-              <EventListRow
-                se={slot.se}
-                eventData={eventDataFor(slot)}
-                myResults={rowsFor(slot)}
-                note={{ label: 'Not placed', color: '#888' }}
-                gradeRung={rungFor(slot)}
-                showDomain={false}
-                tag="Added"
-                onOpen={() => onOpen(slot.se.id)}
-                corner={canAdd && !scoredSlugs.has(slot.se.id)
-                  ? <RowCorner variant="remove" label={`Remove ${slot.se.event_name}`} onClick={() => onRemove(slot.se.id)} />
-                  : undefined}
-              />
-            </div>
+            <EventListRow
+              key={slot.se.id}
+              se={slot.se}
+              eventData={eventDataFor(slot)}
+              myResults={rowsFor(slot)}
+              note={{ label: 'Not placed', color: '#888' }}
+              gradeRung={rungFor(slot)}
+              tag="Added"
+              onOpen={() => onOpen(slot.se.id)}
+              corner={canAdd && !scoredSlugs.has(slot.se.id)
+                ? <RowCorner variant="remove" label={`Remove ${slot.se.event_name}`} onClick={() => onRemove(slot.se.id)} />
+                : undefined}
+            />
           ))}
-        </section>
+        </Fragment>
       ))}
     </div>
   )
