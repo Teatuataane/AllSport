@@ -166,10 +166,8 @@
 
 ## P1 — Do Next
 
-### Apply `20260930011149_stamina_roster.sql` straight after v0.27.0.0 deploys
-**What:** confirm v0.27.0.0 is live (e.g. `/events/hollow-hold` serves and `/events/lunges` shows "Event not found"), check no game is running and no score has been deleted in the meantime, then apply with `supabase db query --linked -f` in one transaction with its ledger row (the migration is OLDER than the already-applied `20260930222237`, so `db push` would need `--include-all`). Verify by object: `event_domains` 128 rows at 14/13/12/12/13/12/15/13/12/12, both `trg_zz_relevelled_ladders_*` triggers, no `session_events` row on the four old names, every scored row on the five re-levelled events sitting on its new level, and the four archive/pre-image tables plus the alias archive returning 401 as `anon`. Then hard-refresh kaiwhakawā devices and run `scripts/refresh-leaderboard-scores.ts --apply`.
-**Why now:** until it runs, grading ignores the 26 scores on old levels, so a kaiwhakawā deleting a score in Calisthenics, Stamina or Flexibility in that window can take back a colour (it returns at the next check). The 2026-10-05 dry run moved 26 rows and archived none.
-**Noticed:** v0.27.0.0
+### ~~Apply `20260930011149_stamina_roster.sql` straight after v0.27.0.0 deploys~~ DONE 2026-10-05
+Applied and verified by object (see docs/PROJECT_HISTORY.md), with its ledger row in the same transaction. 26 rows shifted, 0 archived, every tiered row on its level. Leaderboard refreshed: 27 written, 0 failed. **Still to do by hand:** hard-refresh every kaiwhakawā device.
 
 ### Review the drafted Stamina roster standards and Reverse Maltese levels
 **What:** Back Extension, Hollow Hold, Reverse Maltese, Compression, both wrist stretches and the top three Pushups colours are Claude's drafts in `GRADING_STANDARDS_REVIEW.md`. Reverse Maltese's levels have no judge details yet.
