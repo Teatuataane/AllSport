@@ -166,7 +166,9 @@
 
 ## P1 — Do Next
 
-### Apply `20261005222950_roster_144.sql` after v0.30.0.0 deploys, and AFTER the two 5 Oct migrations
+### ~~Apply `20261005222950_roster_144.sql` after v0.30.0.0 deploys, and AFTER the two 5 Oct migrations~~ DONE 2026-10-06
+**Done:** applied with the two 5 Oct migrations, in order, each in one transaction with its ledger row (`supabase db query --linked -f`), from a clean worktree on main. Verified: 144 rows in `event_domains` (16/13/15/15/14/15/15/14/13/14), Wrestling in 3, Australian Football in 4, L-Sit renamed, Cornhole's 4 games at 30000+ on Game, 7 Triple Jump results back, Steinborn and the four new contests in the functions. As `authenticated`, in a rolled-back transaction: a Swim entry was accepted, a home Mas Wrestling win refused, Steinborn 100kg × 5 stored as 112.5. Season board republished (28 players). Still to do: hard-refresh kaiwhakawā devices.
+
 **What:** One `supabase db push` from a clean worktree on `main` applies `20261005012108`, `20261005032653` and `20261005222950` in order (checked 6 Oct 2026: none of the three was live; production's newest was `20260930222237`). Then hard-refresh kaiwhakawā devices and run `scripts/refresh-leaderboard-scores.ts --apply`.
 **Why:** `event_domains` is the write gate for workout entries, so until it runs the 16 new events can be drawn but not added on top of a game or logged. The migration also moves Cornhole's four old games onto its Game level, puts Steinborn on the lift list and adds the four new pure contests to the two functions that list them.
 
