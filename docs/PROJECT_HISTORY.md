@@ -2653,7 +2653,7 @@ Replaces his Google Sheet for personal-training clients.
   results and logged entries lifetime. `results.is_pr` is still stored per row, now with the
   new rule. Not wired yet: the PR tag on events ADDED to a game (`useGameSwaps` returns false).
 
-## The 5 October difficulty review (October 2026) — v0.28.0.0, MIGRATION NOT YET APPLIED
+## The 5 October difficulty review (October 2026) — v0.28.0.0, applied 6 Oct 2026
 
 Tāne edited an older (16 Sept, 120-event) copy of `EVENT_DIFFICULTY_REVIEW.md`. It
 was diffed against the copy it was based on (`bae312c`) to separate his edits from
@@ -2713,7 +2713,7 @@ redefined trigger.
 `GRADING_STANDARDS_REVIEW.md`. The compiler learned `"BW · 20"` (weight+reps),
 `"40kg · 100m"` (carries) and `"≤ 4:05"` (predicted reference time).
 
-## The 144-event roster (6 October 2026) — v0.30.0.0, MIGRATION NOT YET APPLIED
+## The 144-event roster (6 October 2026) — v0.30.0.0, applied 6 Oct 2026
 
 Tāne sent a screenshot of the event list he keeps and asked where it differed
 from the app. It had 151 entries; the diff listed what was missing, renamed or in
@@ -2739,7 +2739,9 @@ anywhere, so the slug was reused as an open distance + time and taken OUT of
 out not to exist. No `grade_awards` row cited any moved or returning event, so
 the moves change no conferred colour; the migration asserts that still holds.
 
-**Not yet applied, and order matters:** production's newest migration that day
+**Applied 6 Oct 2026, after v0.30.0.0 deployed**, in order, each file in one
+transaction with its ledger row, and verified by querying the objects and by
+writing as `authenticated` in a rolled-back transaction. Before that, production's newest migration
 was `20260930222237`. `20261005012108` (5 Oct review) and `20261005032653` (L-Sit)
 had not run, so `20261005222950` waits behind them; one `db push` takes all three.
 
