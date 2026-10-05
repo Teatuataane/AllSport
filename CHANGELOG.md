@@ -2,6 +2,23 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.27.0.0] - 2026-10-05
+
+### Added
+- **Three new holds.** Back Extension (Bird Dog to Straight Arm Ext) and Hollow Hold (Knee Plank to Dragon Flag) in Stamina, and Reverse Maltese (High Ring Lean to Tuck R Maltese) in Calisthenics. Longest hold at your level wins.
+
+### Changed
+- **Anaerobic Endurance is now Stamina.** Same domain, same events, same colour; old game reports show the new name too.
+- **Four events renamed, with all their history kept:** L-Sit Hold is Compression, Pushup Contest is Pushups, Wrist Stretch is Internal Wrist Stretch, and Reverse Wrist Stretch is External Wrist Stretch.
+- **New levels on five events.** Compression runs Curl Up, V Up, Tuck Hold, L Sit, V Sit, all holds. Pushups runs Hands Up Knee Pushup, Knee Pushup, Elevated Pushup (hands on a box), Pushup, 1 Arm Pushup. Calf Raises adds the en pointe Toe Calf Raise. Both wrist stretches start hand assisted and finish in a plank. Scores already on these events move to the matching new level, so nobody loses a score or a place.
+- **Pushups colours fit the new levels.** Kākāriki is now 10 Elevated Pushups (6 for women), so the new level has a colour of its own. The new and re-levelled events' colour standards are drafts, to be reviewed after a trial.
+
+### Removed
+- **Lunges, Ab Rollout and Shoulder Dislocate are off the roster.** Old scores stay in your history. A colour you earned partly on one of them is kept, and a kaiwhakawā deleting another score in that domain can't take it back; the Colours tab says it needs checking by hand.
+
+### Fixed
+- **A score saved from an out-of-date app can no longer land on the wrong level.** The server refuses a score on a re-levelled event whose level doesn't match the new ladder, or a new score on a removed event, and asks you to refresh. Colours also ignore any score whose stored level doesn't match its event's ladder, so an old score can never count as a harder level than the one you did.
+
 ## [0.26.0.0] - 2026-10-01
 
 ### Added
