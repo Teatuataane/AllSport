@@ -9,6 +9,11 @@ import { getEventBySlug, getEventByName } from '@/lib/eventData'
 const sql = readFileSync('supabase/migrations/20260930011149_stamina_roster.sql', 'utf8')
 const section = (from: string, to: string) => sql.slice(sql.indexOf(from), sql.indexOf(to, sql.indexOf(from)))
 
+// This migration is applied and frozen, so it names events as they were on
+// 30 Sept 2026. A later rename (slug kept) is mapped onto today's name here.
+const RENAMED_LATER: Record<string, string> = { Compression: 'L-Sit' } // 20261005032653
+const today = (name: string) => RENAMED_LATER[name] ?? name
+
 describe('stamina roster migration', () => {
   const newLevels = [...section('INSERT INTO new_levels VALUES', ';')
     .matchAll(/\('([^']+)', '([^']+)', '([^']+)', (\d+)\)/g)]
@@ -20,7 +25,7 @@ describe('stamina roster migration', () => {
     for (const slug of slugs) {
       const ev = getEventBySlug(slug)!
       const rows = newLevels.filter(l => l.slug === slug)
-      expect(rows.every(r => r.name === ev.name), slug).toBe(true)
+      expect(rows.every(r => today(r.name) === ev.name), slug).toBe(true)
       expect(rows.map(r => r.tier), slug).toEqual(ev.difficultyTiers!.map(t => t.name))
       expect(rows.map(r => r.idx), slug).toEqual(ev.difficultyTiers!.map((_, i) => i))
     }
@@ -41,7 +46,7 @@ describe('stamina roster migration', () => {
     expect(map).toHaveLength(9)
     for (const m of map) {
       const ev = getEventBySlug(m.slug)!
-      expect(m.name, m.slug).toBe(ev.name)
+      expect(today(m.name), m.slug).toBe(ev.name)
       expect(ev.difficultyTiers![m.newIdx]?.name, `${m.slug} ${m.newTier}`).toBe(m.newTier)
       // A typo on the OLD side would send real rows to the archive instead.
       expect(OLD[m.slug][m.oldIdx], `${m.slug} old ${m.oldIdx}`).toBe(m.oldTier)
@@ -58,8 +63,8 @@ describe('stamina roster migration', () => {
     expect(repoints.map(m => m[2]).sort()).toEqual(['l-sit-hold', 'push-up-contest', 'reverse-wrist-stretch', 'wrist-stretch'])
     for (const [, name, slug, whereSlug] of repoints) {
       expect(whereSlug).toBe(slug)
-      expect(getEventBySlug(slug)?.name, slug).toBe(name)
-      expect(getEventByName(name)?.slug).toBe(slug)
+      expect(getEventBySlug(slug)?.name, slug).toBe(today(name))
+      expect(getEventByName(today(name))?.slug).toBe(slug)
     }
     expect(sql).toMatch(/SET domain_name = 'Stamina'\s+WHERE domain_name = 'Anaerobic Endurance' AND domain_number = 5/)
   })
@@ -113,7 +118,7 @@ describe('stamina roster migration', () => {
 
   it('names every event it resolves by name correctly', () => {
     const REMOVED: Record<string, string> = { Lunges: 'lunges', 'Ab Rollout': 'ab-wheel-rollout', 'Shoulder Dislocate': 'shoulder-dislocate' }
-    const OLD_NAMES: Record<string, string> = { 'L-Sit Hold': 'l-sit-hold', 'Pushup Contest': 'push-up-contest', 'Wrist Stretch': 'wrist-stretch', 'Reverse Wrist Stretch': 'reverse-wrist-stretch' }
+    const OLD_NAMES: Record<string, string> = { 'L-Sit Hold': 'l-sit-hold', Compression: 'l-sit-hold', 'Pushup Contest': 'push-up-contest', 'Wrist Stretch': 'wrist-stretch', 'Reverse Wrist Stretch': 'reverse-wrist-stretch' }
     const whens = [...guardSql.matchAll(/WHEN event_name (?:IN \(([^)]*)\)|= ('[^']*')) THEN '([^']+)'/g)]
     expect(whens.length).toBeGreaterThan(0)
     for (const w of whens) {

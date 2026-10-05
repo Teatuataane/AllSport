@@ -161,7 +161,7 @@ describe('getEventByName', () => {
 
   it.each([
     ['Headstand', 'Calisthenics', 2],
-    ['Compression', 'Calisthenics', 2],
+    ['L-Sit', 'Calisthenics', 2],
     ['Toe Lift', 'Stamina', 5],
     ['American Football', 'Speed', 4],
   ])('moved %s now sits in %s', (name, domain, domainNumber) => {
@@ -200,7 +200,8 @@ describe('getEventByName', () => {
   // Renamed 30 Sept 2026 with their slugs kept, so their history stays attached
   // once the migration repoints session_events.event_name.
   it.each([
-    ['Compression', 'l-sit-hold', 'L-Sit Hold'],
+    // L-Sit Hold -> Compression (30 Sept) -> L-Sit (5 Oct 2026), one slug throughout.
+    ['L-Sit', 'l-sit-hold', 'Compression'],
     ['Pushups', 'push-up-contest', 'Pushup Contest'],
     ['Internal Wrist Stretch', 'wrist-stretch', 'Wrist Stretch'],
     ['External Wrist Stretch', 'reverse-wrist-stretch', 'Reverse Wrist Stretch'],
