@@ -41,7 +41,7 @@ Fonts: Bebas Neue (headings), Barlow (body), Barlow Condensed (labels). Use `var
 
 ## 4. Backend / database structure
 
-- **89 migrations** in `supabase/migrations/` (14-digit timestamp names, newest `20260930222237_training_sessions.sql`). `supabase/config.toml` and `supabase/README.md` document the CLI workflow.
+- **90 migrations** in `supabase/migrations/` (14-digit timestamp names, newest `20260930222237_training_sessions.sql`). `supabase/config.toml` and `supabase/README.md` document the CLI workflow.
 - Core tables: `players` (+ `players_public` view), `sessions`, `session_events`, `results`, `session_player_summary`, `rankings` (legacy, seasonal), `grade_awards`, `grade_exemptions`, `grade_withdrawals`, `player_bodyweights`, `matches` / `match_players`, `workouts`, `workout_entries`, `activity_aliases`, `player_game_colours` (+ `season_points` view), `player_domain_colours`, `event_domains`, `referrals`, `partners`, `event_votes*`, `wellbeing_surveys`. Several `*_archive_*` tables exist behind RLS with no policies.
 - Key SQL objects: `award_session_points`, `compute_event_placements`, `close_expired_sessions` (also run by pg_cron every 5 minutes), `leaderboard_page()`, `player_dashboard(uuid[])`, `confer_grade`, `grades_need_recheck`, `record_match`, `record_entry_match`, `settle_dispute`, `record_bodyweight`, `fit_activity`, `delete_my_account`, `enforce_lift_estimate` (trigger), plus `guard_*_write` triggers.
 - `session_date` is derived from `started_at` at `Pacific/Auckland` by a DB trigger. Derive local days from `started_at`, not `session_date`, for data before v0.6.5.2.
@@ -70,7 +70,7 @@ Supabase (DB, Auth, Realtime, pg_cron), Vercel (hosting), Google OAuth, Google F
 - Time events use `time_seconds` stored raw; sport events store `result_type` (win 2 / draw 1 / loss 0 within a Game rung).
 - Strength standards are a ratio of the player's **bodyweight of the day** (`player_bodyweights`, written only through `record_bodyweight()`).
 - Per-event placement is computed server-side by `compute_event_placements` at close: one best row per player per event, ties share a place, missing a scored event = last.
-- **Re-levelled ladders are guarded in the database** (`enforce_relevelled_ladders()`, migration `20260930011149`): a write that changes the score on Compression, Pushups, Calf Raises or either wrist stretch must name a level of the new ladder in that level's band, and a new score on a removed event (Lunges, Ab Rollout, Shoulder Dislocate) is refused. Any future change to those five ladders must redefine it in a NEW migration; `__tests__/staminaRoster.test.ts` pins the newest definition to `lib/eventData.ts`. The grading engine also ignores a tiered row whose stored level name is not the ladder's name at its band, so **renaming a level is now a migration**: repoint `results.difficulty_tier` and `workout_entries.difficulty_tier`, then regenerate `__tests__/fixtures/levelNames.json` (`__tests__/levelNames.test.ts` fails until you do).
+- **Re-levelled ladders are guarded in the database** (`enforce_relevelled_ladders()`, migration `20260930011149`, **not yet applied to production as of v0.27.0.0**; deploy the code first, then the migration straight after with no game or workout running): a write that changes the score on Compression, Pushups, Calf Raises or either wrist stretch must name a level of the new ladder in that level's band, and a new score on a removed event (Lunges, Ab Rollout, Shoulder Dislocate) is refused. Any future change to those five ladders must redefine it in a NEW migration; `__tests__/staminaRoster.test.ts` pins the newest definition to `lib/eventData.ts`. The grading engine also ignores a tiered row whose stored level name is not the ladder's name at its band, so **renaming a level is now a migration**: repoint `results.difficulty_tier` and `workout_entries.difficulty_tier`, then regenerate `__tests__/fixtures/levelNames.json` (`__tests__/levelNames.test.ts` fails until you do).
 - Natural formats (sets × reps, distance + time) are converted in `lib/naturalFormats.ts` for swaps/extras/personal games only.
 
 ## 8. Ranking, grading and leaderboard
@@ -157,7 +157,7 @@ npx vitest run __tests__/grading.test.ts
 - New UI uses the canonical tokens and `components/ui.tsx` primitives; existing pages still use inline `style={{}}` heavily, so match the surrounding file.
 - Each new Supabase read of a possibly-missing table/column is its **own query** with PGRST205/42P01/42703 handled as "not live yet".
 - Dates: parse DATE columns with `lib/dates.ts` (`parseLocalDate`, `formatNZDate`, `sessionStart`), never `new Date('YYYY-MM-DD')`; all dates mean NZ time.
-- Commit/changelog: `VERSION` (currently `0.26.0.0`) and `CHANGELOG.md` are bumped per shipped change; open work is tracked in `TODOS.md`. Comments in this codebase explain *why* at length; match that density when you touch a risky area.
+- Commit/changelog: `VERSION` (currently `0.27.0.0`) and `CHANGELOG.md` are bumped per shipped change; open work is tracked in `TODOS.md`. Comments in this codebase explain *why* at length; match that density when you touch a risky area.
 - Event/standards/difficulty changes are made by editing the reviewed sheet and re-running the apply script, not by hand-editing generated output.
 
 ## 15. Important files and directories
@@ -181,7 +181,8 @@ npx vitest run __tests__/grading.test.ts
 | `EVENT_DIFFICULTY_REVIEW.md`, `GRADING_STANDARDS_REVIEW.md` | Reviewed sheets that are compiled into `lib/eventData.ts` / `lib/standards.ts` |
 | `TODOS.md`, `CHANGELOG.md`, `VERSION` | Open work, release notes, version |
 | `docs/PROJECT_HISTORY.md` | Full prior project record (the previous CLAUDE.md, unabridged) |
+| `AGENTS.md`, `HANDOFF.md` | Agent-neutral operating manual, and the handoff note for the next agent |
 | `*_PLAN.md`, `EVENT_*.md`, `design-canvas/` | Older design records and mockups; historical |
 | `.claude/` | Claude Code skills and launch config (tooling only) |
 
-*Last updated: 2 October 2026 (v0.26.0.0).*
+*Last updated: 5 October 2026 (v0.27.0.0).*
