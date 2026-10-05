@@ -605,6 +605,7 @@ export default function PRsPage() {
                               <PRBoardView
                                 ev={event}
                                 colour={colour}
+                                showAllLevels
                                 rows={eventResults.map(r => ({
                                   id: r.id, raw_score: r.raw_score, score_label: r.score_label,
                                   difficulty_tier: r.difficulty_tier, date: r.session_date,

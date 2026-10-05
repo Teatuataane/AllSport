@@ -25,12 +25,16 @@ function Source({ row }: { row: PRRow }) {
 }
 
 export default function PRBoardView({
-  ev, rows, currentLevel = null, onPick, colour = '#F9B051',
+  ev, rows, currentLevel = null, showAllLevels = false, onPick, colour = '#F9B051',
 }: {
   ev: EventData | undefined
   rows: readonly PRRow[]
   /** The level the player is about to score: shown even if they have no record there yet. */
   currentLevel?: number | null
+  /** List every level of the ladder, played or not, each with its name.
+      My Events sets it; the entry sheet does not, because a twelve-row ladder
+      pushes the score boxes off a phone. */
+  showAllLevels?: boolean
   /** Tapping a record pre-fills it. Omit for a read-only list. */
   onPick?: (row: PRRow) => void
   colour?: string
@@ -38,7 +42,7 @@ export default function PRBoardView({
   const board = buildPRBoard(ev, rows)
   if (board.kind === 'none') return null
 
-  const line = (row: PRRow | null, left: string, key: string, active = false) => {
+  const line = (row: PRRow | null, left: string, key: string, active = false, name?: string) => {
     const Tag = onPick && row ? 'button' : 'div'
     return (
       <Tag
@@ -51,6 +55,7 @@ export default function PRBoardView({
         }}
       >
         <span style={{ ...MUTED, color: active ? colour : '#999', minWidth: '28px' }}>{left}</span>
+        {name && <span style={{ ...MUTED, color: active ? colour : '#999', whiteSpace: 'nowrap' }}>{name}</span>}
         {row ? (
           <>
             <span style={{ flex: 1, fontSize: '14px', color: '#fff', fontFamily: 'var(--font-body)' }}>{row.score_label}</span>
@@ -58,18 +63,18 @@ export default function PRBoardView({
             <span style={MUTED}>{formatNZDate(row.date)}</span>
           </>
         ) : (
-          <span style={{ flex: 1, fontSize: '13px', color: '#444' }}>No record yet</span>
+          <span style={{ flex: 1, fontSize: '13px', color: '#444', textAlign: name ? 'right' : 'left' }}>No record yet</span>
         )}
       </Tag>
     )
   }
 
   if (board.kind === 'levels') {
-    const shown = board.levels.filter(l => l.best || l.index === currentLevel)
+    const shown = showAllLevels ? board.levels : board.levels.filter(l => l.best || l.index === currentLevel)
     if (shown.length === 0) return null
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-        {shown.map(l => line(l.best, `D${l.index + 1}`, `l${l.index}`, l.index === currentLevel))}
+        {shown.map(l => line(l.best, `D${l.index + 1}`, `l${l.index}`, l.index === currentLevel, showAllLevels ? l.name : undefined))}
       </div>
     )
   }
