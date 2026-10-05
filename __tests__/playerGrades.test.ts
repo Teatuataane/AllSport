@@ -158,7 +158,7 @@ describe('a player\'s grades', () => {
   })
 
   it('ignores rows from retired events', () => {
-    const g = computePlayerGrades({ player: openMan, ...none, results: [row('Walking', 5000)] })
+    const g = computePlayerGrades({ player: openMan, ...none, results: [row('Backwards Walk', 5000)] })
     expect([...g.events.values()].every(e => !e.played)).toBe(true)
   })
 

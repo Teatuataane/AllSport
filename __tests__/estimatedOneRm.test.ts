@@ -11,8 +11,20 @@ import { estimatedOneRm, liftLabel, MAX_ESTIMATED_REPS } from '@/lib/scoring'
 import { EVENTS, getEventBySlug, isTimedEffort } from '@/lib/eventData'
 import { STANDARDS } from '@/lib/standards'
 
-const MIGRATION = fs.readFileSync(
-  path.join(__dirname, '..', 'supabase', 'migrations', '20260928201510_estimated_one_rep_max.sql'), 'utf8')
+const MIGRATIONS_DIR = path.join(__dirname, '..', 'supabase', 'migrations')
+const MIGRATION = fs.readFileSync(path.join(MIGRATIONS_DIR, '20260928201510_estimated_one_rep_max.sql'), 'utf8')
+
+// The trigger is redefined whole whenever the lift list changes, so the NEWEST
+// definition is the one the database runs.
+const NEWEST_TRIGGER = (() => {
+  const f = fs.readdirSync(MIGRATIONS_DIR).sort().reverse()
+    .find(n => fs.readFileSync(path.join(MIGRATIONS_DIR, n), 'utf8').includes('CREATE OR REPLACE FUNCTION public.enforce_lift_estimate'))!
+  return fs.readFileSync(path.join(MIGRATIONS_DIR, f), 'utf8')
+})()
+
+// Lifts added after the 29 Sept 2026 history re-encode. They had no rows to
+// re-encode, so that migration rightly does not name them.
+const LIFTS_ADDED_LATER = new Set(['steinborn'])
 
 /** Postgres numeric: exact w × 36 / (37 − r), rounded half away from zero to 0.1. */
 function exactSql(weightKg: number, reps: number): number {
@@ -65,7 +77,7 @@ describe('estimatedOneRm', () => {
   })
 
   it('the database trigger uses the same formula and the same lift list', () => {
-    const fn = MIGRATION.slice(MIGRATION.indexOf('CREATE OR REPLACE FUNCTION public.enforce_lift_estimate'))
+    const fn = NEWEST_TRIGGER.slice(NEWEST_TRIGGER.indexOf('CREATE OR REPLACE FUNCTION public.enforce_lift_estimate'))
     expect(fn).toContain('round(round(NEW.weight_kg, 2) * 36 / (37 - least(NEW.reps, 10)), 1)')
     // Never mints a score on an unfitted entry (the guard's fitting-only exemption).
     expect(fn).toContain('IF NEW.weight_kg > 0 AND NEW.raw_score IS NOT NULL THEN')
@@ -97,7 +109,7 @@ describe('the history migration', () => {
   })
 
   it('re-encodes exactly the strength events, and never Shoulder Dislocate', () => {
-    const lifts = EVENTS.filter(e => e.inputMode === 'strength')
+    const lifts = EVENTS.filter(e => e.inputMode === 'strength' && !LIFTS_ADDED_LATER.has(e.slug))
     for (const e of lifts) {
       expect(MIGRATION).toContain(`'${e.name}'`)
       expect(MIGRATION).toContain(`'${e.slug}'`)
@@ -107,7 +119,7 @@ describe('the history migration', () => {
   })
 
   it('re-encodes nothing but the strength events', () => {
-    const lifts = EVENTS.filter(e => e.inputMode === 'strength')
+    const lifts = EVENTS.filter(e => e.inputMode === 'strength' && !LIFTS_ADDED_LATER.has(e.slug))
     const listAfter = (marker: string) => {
       const from = MIGRATION.indexOf(marker)
       const body = MIGRATION.slice(MIGRATION.indexOf('IN (', from) + 4, MIGRATION.indexOf(')', MIGRATION.indexOf('IN (', from)))

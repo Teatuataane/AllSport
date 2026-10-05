@@ -166,6 +166,14 @@
 
 ## P1 — Do Next
 
+### Apply `20261005222950_roster_144.sql` after v0.30.0.0 deploys, and AFTER the two 5 Oct migrations
+**What:** One `supabase db push` from a clean worktree on `main` applies `20261005012108`, `20261005032653` and `20261005222950` in order (checked 6 Oct 2026: none of the three was live; production's newest was `20260930222237`). Then hard-refresh kaiwhakawā devices and run `scripts/refresh-leaderboard-scores.ts --apply`.
+**Why:** `event_domains` is the write gate for workout entries, so until it runs the 16 new events can be drawn but not added on top of a game or logged. The migration also moves Cornhole's four old games onto its Game level, puts Steinborn on the lift list and adds the four new pure contests to the two functions that list them.
+
+### Review the drafts for the 16 events added 6 Oct 2026
+**What:** Levels (Clap Pushups, Diving, Poi, Water Polo, Cornhole, Airsoft) in `EVENT_DIFFICULTY_REVIEW.md`, and every new event's colour standards in `GRADING_STANDARDS_REVIEW.md`, all marked UNREVIEWED. Re-run both apply scripts after editing.
+**Also:** 11 new events have no icon in `public/event-icons/` (steinborn, glute-thrust, reverse-wrist-extension, clap-pushups, mas-wrestling, obstacle-course, swim, diving, poi, water-polo, cornhole; 400m/800m Sprint borrow `400m-race.png`). The Glute Thrust EVENT and the Glute Thrust LEVEL of Hamstring Curl share a name on purpose (Tāne, 6 Oct 2026).
+
 ### Apply `20261005012108_difficulty_review_oct.sql` then `20261005032653_rename_l_sit.sql` straight after v0.28.1.0 deploys
 **What:** deploy the code first, then `supabase db push` from a clean `main` checkout (it applies both, in timestamp order) with no game or workout running, then `node --import ./scripts/ts-loader.mjs scripts/refresh-leaderboard-scores.ts --apply`, then hard-refresh every kaiwhakawā device. Verify by object: `event_domains` holds 128 rows; `guard_workout_entries_write` and `record_entry_match` list fourteen pure-contest slugs; `enforce_lift_estimate` refuses a Tibialis Curl that names a level; `enforce_relevelled_ladders` lists the 30 guarded ladders.
 **Why it matters:** the migration was written without database access, so it quotes no row counts. It was run on a scratch Postgres 16 in the state `20260930011149` leaves production in, with a fixture covering every conversion: its output matched what the app writes, the Stamina roster's rows were untouched, and the redefined guard refused every old-bundle shape. Read the closing NOTICE at apply time. Its assertions abort the whole file if anything is left in an old shape.

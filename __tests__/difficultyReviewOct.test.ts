@@ -132,7 +132,10 @@ describe('20261005012108 redefines the functions it must', () => {
       const from = body.indexOf(marker)
       return [...body.slice(body.indexOf('(', from) + 1, body.indexOf(')', from)).matchAll(/'((?:[^']|'')*)'/g)].map(m => m[1]).sort()
     }
-    const lifts = EVENTS.filter(e => e.inputMode === 'strength')
+    // The lifts as they stood on 5 Oct 2026. Steinborn joined on 6 Oct, in
+    // 20261005222950, which redefines this trigger (estimatedOneRm.test.ts
+    // pins the newest definition to the full roster).
+    const lifts = EVENTS.filter(e => e.inputMode === 'strength' && e.slug !== 'steinborn')
     expect(list('IF v_name IN')).toEqual(lifts.map(e => e.name).sort())
     expect(list('OR v_slug IN')).toEqual(lifts.map(e => e.slug).sort())
     expect(body).toContain("(v_name = 'Tibialis Curl' OR v_slug = 'tibialis-curl') AND NEW.difficulty_tier IS NOT NULL")

@@ -1,4 +1,4 @@
-// lib/eventData.ts — Single source of truth for all 128 AllSport events.
+// lib/eventData.ts — Single source of truth for all 144 AllSport events.
 
 export type InputMode =
   | 'strength'
@@ -273,6 +273,33 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: "Take the load on your back, in the front rack, or in each hand. Step forward into a lunge until the back knee touches or nearly touches the floor and the front thigh is at least parallel. Drive back to standing under control, then change legs.",
     rules: "Both legs must be lunged for the lift to count — one rep each side. The back knee comes to within a fist of the floor and the front shin stays roughly vertical. Barbell, dumbbells or kettlebells allowed; declare which before you lift, and with two implements score their combined weight. Score is your estimated one-rep max: more reps at a weight score higher, counted up to 10 reps.",
+    videoPlaceholder: true,
+    emoji: '🏋️',
+  },
+  {
+    slug: 'steinborn',
+    name: 'Steinborn',
+    domain: 'Maximal Strength',
+    domainNumber: 1,
+    inputMode: 'strength',
+    hasDifficultyTiers: false,
+    howToPerform: "Stand the loaded barbell upright on one plate. Squat down beside it, tip it across your upper back as it falls, and settle into the bottom of a full squat with the bar on your back. Drive up to standing, then return the bar to the floor under control.",
+    rules: "No rack: the bar starts standing on its end and comes onto the back from there. Stand to full extension with hips and knees locked and the bar steady on your back. The bar is lowered under control, never dropped from the back. Score is your estimated one-rep max: more reps at a weight score higher, counted up to 10 reps.",
+    videoPlaceholder: true,
+    emoji: '🏋️',
+  },
+  {
+    slug: 'glute-thrust',
+    name: 'Glute Thrust',
+    domain: 'Maximal Strength',
+    domainNumber: 1,
+    // A weighted hold (Tāne, 6 Oct 2026): heavier wins, the longest hold breaks
+    // the tie, the same scoring as Leg Ext Hold. Not the Glute Thrust level of
+    // Hamstring Curl, which stays a rep level on that ladder.
+    inputMode: 'weight+time',
+    hasDifficultyTiers: false,
+    howToPerform: "Sit with your upper back against a bench and the load across your hips. Drive through your heels to lift your hips until your shoulders, hips and knees are in a straight line, then hold that top position for as long as you can.",
+    rules: "Record the load you used. The timer starts when the hips reach full extension and stops the moment they drop out of line. Feet stay planted and the upper back stays on the bench. Heaviest load wins; within a load, the longest hold wins.",
     videoPlaceholder: true,
     emoji: '🏋️',
   },
@@ -791,6 +818,18 @@ export const EVENTS: EventData[] = [
     videoPlaceholder: true,
     emoji: '🍌',
   },
+  {
+    slug: 'reverse-wrist-extension',
+    name: 'Reverse Wrist Ext',
+    domain: 'Stamina',
+    domainNumber: 5,
+    inputMode: 'weight+reps',
+    hasDifficultyTiers: false,
+    howToPerform: "Rest your forearm on a bench or your thigh, palm down, with the load in your hand and your wrist just past the edge. Lift the back of your hand up as far as it goes, then lower under control. Keep going for 2 minutes.",
+    rules: "Declare your load before you start and stay on it for the whole set; enter the load (0 for bodyweight) and your reps. The forearm stays on its support and only the wrist moves. Full range every rep, or it does not count. Either arm. You have 2 minutes. A heavier load always outranks a lighter one, and at the same load the most reps wins.",
+    videoPlaceholder: true,
+    emoji: '💪',
+  },
   // ─── Domain 7: Flexibility ────────────────────────────────────────────────────
   {
     slug: 'rear-hand-clasp',
@@ -1078,26 +1117,6 @@ export const EVENTS: EventData[] = [
     emoji: '🏋️',
   },
   {
-    slug: 'australian-football',
-    name: 'Australian Football',
-    domain: 'Power',
-    domainNumber: 3,
-    inputMode: 'difficulty+reps',
-    hasDifficultyTiers: true,
-    difficultyTiers: [
-      { level: 1, name: 'Drop Kick' },
-      { level: 2, name: 'Drop Kick (5m)', detail: 'Drop kick to a partner or target' },
-      { level: 3, name: 'Drop Kick (10m)', detail: 'Drop kick to a partner' },
-      { level: 4, name: 'Drop Kick (20m)', detail: 'Drop kick to a partner' },
-      { level: 5, name: 'Game', scoring: 'sport' },
-    ],
-    howToPerform: "Play a short-format game built on Australian Football skills — kicking, marking, and handballing. The kaiwhakawā sets the format on the day to suit numbers and space (kick-to-kick marking contests, or a small-sided game).",
-    rules: "Format and scoring set by the kaiwhakawā before play and kept the same for all matches. Log your result as a win, draw, or loss with your opponent's name.",
-
-    videoPlaceholder: true,
-    emoji: '🏉',
-  },
-  {
     slug: 'vertical-jump',
     name: 'Vertical Jump',
     domain: 'Power',
@@ -1260,6 +1279,67 @@ export const EVENTS: EventData[] = [
     rules: 'Declare your level before starting. On the floor levels the back of each hand and every knuckle stay in contact with the floor and the arms stay straight; the hold ends the moment a hand rolls up onto its edge. On the plank level the knees stay off the floor. Ease into this one: the wrist has far less range this way than palms-down. Longest hold at your level wins; a higher level always outranks a lower one.',
     videoPlaceholder: true,
     emoji: '✋',
+  },
+  {
+    slug: 'wrestling',
+    name: 'Wrestling',
+    domain: 'Power',
+    domainNumber: 3,
+    // Moved from Body Awareness 6 Oct 2026 (Tāne). The slug is unchanged, so its
+    // results come with it; the grading engine reads an event's domain from
+    // this roster, so they now count toward Power.
+    inputMode: 'sport',
+    hasDifficultyTiers: false,
+    howToPerform: "Wrestle a short match on mats. Score with takedowns, reversals, and control positions — win by points or by pin, as set on the day.",
+    rules: "Match length and scoring set by the kaiwhakawā. No strikes, no submissions, no slams — takedowns must be controlled to the mat. Log your result as a win, draw, or loss with your opponent's name.",
+
+    videoPlaceholder: true,
+    emoji: '🤼',
+  },
+  {
+    slug: 'clap-pushups',
+    name: 'Clap Pushups',
+    domain: 'Power',
+    domainNumber: 3,
+    inputMode: 'difficulty+reps',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Knee Clap' },
+      { level: 2, name: 'Clap' },
+      { level: 3, name: 'Chest Slap' },
+      { level: 4, name: 'Double Clap' },
+      { level: 5, name: 'Behind-Back Clap' },
+    ],
+    howToPerform: "Choose your tier. From the top of a pushup (or on your knees for the first tier), lower your chest to the floor, then push up explosively so your hands leave the ground, clap or slap as your tier asks, and land back in position. Repeat for max reps.",
+    rules: "Declare your tier before starting. Chest to a fist height from the floor every rep, and the body stays in a straight line. The hands must leave the floor and complete the tier's clap before landing; a missed clap or a collapse ends the set. Most reps at your tier wins, and a higher tier always outranks a lower one.",
+    videoPlaceholder: true,
+    emoji: '💪',
+  },
+  {
+    slug: 'triple-jump',
+    name: 'Triple Jump',
+    domain: 'Power',
+    domainNumber: 3,
+    // Back on the roster 6 Oct 2026 with its old slug, so its seven results
+    // from May to July 2026 (distance in cm) count again.
+    inputMode: 'distance',
+    hasDifficultyTiers: false,
+    howToPerform: "From the take-off line, perform the hop, step, and jump sequence: land the hop on your take-off foot, the step on the other foot, then jump and land with both feet in the pit or landing zone. Run-up allowed.",
+    rules: "The sequence must be hop (same foot), step (other foot), jump. Take off behind the line; crossing it is a foul. Distance is measured from the take-off line to the closest mark made on landing. Furthest jump wins.",
+    videoPlaceholder: true,
+    emoji: '🦘',
+  },
+  {
+    slug: 'mas-wrestling',
+    name: 'Mas Wrestling',
+    domain: 'Power',
+    domainNumber: 3,
+    inputMode: 'sport',
+    hasDifficultyTiers: false,
+    howToPerform: "Sit facing your opponent with the soles of your feet pressed against theirs (or against a board between you), knees bent. Both of you grip a stick held level between you. On the signal, pull the stick toward you and lift your opponent off the ground or rip the stick from their hands.",
+    rules: "Grip and foot position are set before the start signal. A bout is won by pulling the opponent over or taking the stick from both their hands. No jerking before the signal, no letting go to unbalance the opponent. Log your result as a win, draw or loss with your opponent's name.",
+    videoPlaceholder: true,
+    emoji: '🤼',
   },
   // ─── Domain 6: Endurance ─────────────────────────────────────────────────────
   {
@@ -1434,6 +1514,49 @@ export const EVENTS: EventData[] = [
     rules: "The load is DRAGGED on the ground for the whole distance — lifting or carrying any part of it voids the attempt. The load entered is what is on the sled; spilling it means reloading before you carry on. Timed from the start signal to the end of your distance. Enter the combined load, the distance you covered, and your time. Heavier always wins; at the same load the longer distance wins, and at the same load and distance the faster time wins. Setting the load down is allowed, but the clock never stops.",
     videoPlaceholder: true,
     emoji: '🛷',
+  },
+  {
+    slug: 'obstacle-course',
+    name: 'Obstacle Course',
+    domain: 'Endurance',
+    domainNumber: 6,
+    // Win/draw/loss: the course is built fresh each time, so times from
+    // different days do not compare. A time is kept for the record only.
+    inputMode: 'sport',
+    hasDifficultyTiers: false,
+    howToPerform: "Race your opponent through the obstacle course set up for the session: over, under and through each obstacle in order, from the start line to the finish.",
+    rules: "The course and its order are set by the kaiwhakawā and walked through before the race. Every obstacle must be completed as shown; a missed obstacle must be gone back for. First across the finish wins. Log your result as a win, draw or loss with your opponent's name; your time can be recorded alongside it but does not decide the result.",
+    videoPlaceholder: true,
+    emoji: '🏃',
+    recordsTime: true,
+  },
+  {
+    slug: 'swim',
+    name: 'Swim',
+    domain: 'Endurance',
+    domainNumber: 6,
+    inputMode: 'distance+time',
+    hasDifficultyTiers: false,
+    howToPerform: "Swim any distance of 100m or more in a pool or on a measured open-water course, any stroke, as hard as you can hold. Pace yourself to finish strong.",
+    rules: "Timed from the start signal to the touch at the end of your distance. Enter the distance you covered and your time. Any stroke; no fins, paddles or pull buoys. Any distance of at least 100m counts. Your effort is ranked on the 100m time it predicts (Riegel's formula), so a faster pace over a longer distance is a better effort.",
+    videoPlaceholder: true,
+    emoji: '🏊',
+    referenceMetres: 100,
+  },
+  {
+    slug: 'walking',
+    name: 'Walking',
+    domain: 'Endurance',
+    domainNumber: 6,
+    // Back 6 Oct 2026 as an open distance + time. The old Walking (retired
+    // Aug 2026) kept this slug and left no scores, only four empty draws.
+    inputMode: 'distance+time',
+    hasDifficultyTiers: false,
+    howToPerform: "Walk any distance of 1000m or more on a measured course or a GPS watch, as fast as you can while still walking.",
+    rules: "Walking only: one foot is on the ground at all times and the front leg straightens as it lands. Breaking into a run voids the effort. Enter the distance you covered and your time. Any distance of at least 1000m counts. Your effort is ranked on the 1000m time it predicts (Riegel's formula).",
+    videoPlaceholder: true,
+    emoji: '🚶',
+    referenceMetres: 1000,
   },
   // ─── Domain 4: Speed ────────────────────────────────────────────────────────────
   {
@@ -1618,6 +1741,53 @@ export const EVENTS: EventData[] = [
     emoji: '🤼',
     recordsTime: true,
   },
+  {
+    slug: 'australian-football',
+    name: 'Australian Football',
+    domain: 'Speed',
+    domainNumber: 4,
+    // Moved from Power 6 Oct 2026 (Tāne). Same slug, so its history moves with it.
+    inputMode: 'difficulty+reps',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Drop Kick' },
+      { level: 2, name: 'Drop Kick (5m)', detail: 'Drop kick to a partner or target' },
+      { level: 3, name: 'Drop Kick (10m)', detail: 'Drop kick to a partner' },
+      { level: 4, name: 'Drop Kick (20m)', detail: 'Drop kick to a partner' },
+      { level: 5, name: 'Game', scoring: 'sport' },
+    ],
+    howToPerform: "Play a short-format game built on Australian Football skills — kicking, marking, and handballing. The kaiwhakawā sets the format on the day to suit numbers and space (kick-to-kick marking contests, or a small-sided game).",
+    rules: "Format and scoring set by the kaiwhakawā before play and kept the same for all matches. Log your result as a win, draw, or loss with your opponent's name.",
+
+    videoPlaceholder: true,
+    emoji: '🏉',
+  },
+  {
+    slug: '400m-sprint',
+    name: '400m Sprint',
+    domain: 'Speed',
+    domainNumber: 4,
+    inputMode: 'sport',
+    hasDifficultyTiers: false,
+    howToPerform: "Race 400 metres side by side from a standing start on a measured course, usually one lap of a track. Run hard from the signal and hold your speed through the finish.",
+    rules: "Distance must be exactly 400 metres on a measured course. Standing start. Stay in your lane where lanes are marked. First across the line wins. Log your result as a win, draw or loss with your opponent's name; your time can be recorded alongside it but does not decide the result.",
+    videoPlaceholder: true,
+    emoji: '💨',
+    recordsTime: true,
+  },
+  {
+    slug: '800m-sprint',
+    name: '800m Sprint',
+    domain: 'Speed',
+    domainNumber: 4,
+    inputMode: 'sport',
+    hasDifficultyTiers: false,
+    howToPerform: "Race 800 metres side by side from a standing start on a measured course, usually two laps of a track. Pace the first lap and finish with everything you have left.",
+    rules: "Distance must be exactly 800 metres on a measured course. Standing start. Runners may break to the inside after the first bend. First across the line wins. Log your result as a win, draw or loss with your opponent's name; your time can be recorded alongside it but does not decide the result.",
+    videoPlaceholder: true,
+    emoji: '💨',
+    recordsTime: true,
+  },
   // ─── Domain 8: Body Awareness ─────────────────────────────────────────────────
   {
     // Moved Calisthenics -> Body Awareness (Sept 2026); slug stays 'rope-climb'
@@ -1717,19 +1887,6 @@ export const EVENTS: EventData[] = [
 
     videoPlaceholder: true,
     emoji: '🪢',
-  },
-  {
-    slug: 'wrestling',
-    name: 'Wrestling',
-    domain: 'Body Awareness',
-    domainNumber: 8,
-    inputMode: 'sport',
-    hasDifficultyTiers: false,
-    howToPerform: "Wrestle a short match on mats. Score with takedowns, reversals, and control positions — win by points or by pin, as set on the day.",
-    rules: "Match length and scoring set by the kaiwhakawā. No strikes, no submissions, no slams — takedowns must be controlled to the mat. Log your result as a win, draw, or loss with your opponent's name.",
-
-    videoPlaceholder: true,
-    emoji: '🤼',
   },
   {
     slug: 'gymnastics',
@@ -1860,6 +2017,43 @@ export const EVENTS: EventData[] = [
     rules: "Declare your tier before starting. The clock starts once you are balanced unassisted and stops the moment a foot touches the ground or a support. Longest time at your tier wins; a higher tier always outranks a lower one. Game: side by side on two lines; the last one on wins.",
     videoPlaceholder: true,
     emoji: '🎪',
+  },
+  {
+    slug: 'diving',
+    name: 'Diving',
+    domain: 'Body Awareness',
+    domainNumber: 8,
+    inputMode: 'difficulty+reps',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Sit Dive' },
+      { level: 2, name: 'Kneeling Dive' },
+      { level: 3, name: 'Standing Dive' },
+      { level: 4, name: 'Forward Somersault' },
+      { level: 5, name: 'Game', scoring: 'sport' },
+    ],
+    howToPerform: "Choose your tier and dive from the pool edge or a low board into water deep enough for it: from sitting, from kneeling, standing, or a forward somersault entry. Count your clean dives.",
+    rules: "Only in water of a safe depth for the dive, with a kaiwhakawā watching. A clean dive enters hands first (feet first after a somersault) with the body straight and no belly or back flop. Declare your tier before starting; most clean dives at your tier wins, and a higher tier always outranks a lower one. Game: dive head to head, judged on entry and form. Log your result as a win, draw or loss with your opponent's name.",
+    videoPlaceholder: true,
+    emoji: '🤿',
+  },
+  {
+    slug: 'poi',
+    name: 'Poi',
+    domain: 'Body Awareness',
+    domainNumber: 8,
+    inputMode: 'difficulty+time',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Single Poi Spin' },
+      { level: 2, name: 'Two Poi Same Way' },
+      { level: 3, name: 'Weave' },
+      { level: 4, name: 'Game', scoring: 'sport' },
+    ],
+    howToPerform: "Choose your tier and keep the pattern going as long as you can: one poi spinning, two poi spinning together in the same direction, or the weave. The attempt ends when a poi tangles, stops or hits you.",
+    rules: "Declare your tier before starting. Timer starts with the first full circle and stops when the pattern breaks. Longest continuous spin at your tier wins; a higher tier always outranks a lower one. Game: side by side, same pattern; the last one still spinning wins.",
+    videoPlaceholder: true,
+    emoji: '🪢',
   },
   // ─── Domain 9: Coordination ──────────────────────────────────────────────────
   {
@@ -2101,6 +2295,25 @@ export const EVENTS: EventData[] = [
     videoPlaceholder: true,
     emoji: '🥏',
   },
+  {
+    slug: 'water-polo',
+    name: 'Water Polo',
+    domain: 'Coordination',
+    domainNumber: 9,
+    inputMode: 'difficulty+reps',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Partner Pass' },
+      { level: 2, name: 'Partner Pass (2m)' },
+      { level: 3, name: 'Partner Pass (5m)' },
+      { level: 4, name: 'Partner Pass (10m)' },
+      { level: 5, name: 'Game', scoring: 'sport' },
+    ],
+    howToPerform: "Treading water, pass the ball back and forth with a partner one-handed, catching it cleanly without touching the bottom, at your tier's distance. At the top tier, play a game of water polo.",
+    rules: "Declare your tier before starting. One-handed passes and catches only, no standing on the bottom. A dropped or two-handed catch ends the count. Most clean passes at your tier wins; a higher tier always outranks a lower one. Game: format and pool size set by the kaiwhakawā. Log your result as a win, draw or loss with your opponent's name.",
+    videoPlaceholder: true,
+    emoji: '🤽',
+  },
   // ─── Domain 10: Aim & Precision ──────────────────────────────────────────────
   {
     slug: 'netball',
@@ -2325,6 +2538,45 @@ export const EVENTS: EventData[] = [
     videoPlaceholder: true,
     emoji: '🪵',
   },
+  {
+    slug: 'cornhole',
+    name: 'Cornhole',
+    domain: 'Aim & Precision',
+    domainNumber: 10,
+    // Back on the roster 6 Oct 2026 with its old slug. Its four old results
+    // were plain win/draw/loss games, so the roster migration moves them onto
+    // the Game rung.
+    inputMode: 'difficulty+reps',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Hit the Board' },
+      { level: 2, name: 'Hole (3m)' },
+      { level: 3, name: 'Hole (8m)' },
+      { level: 4, name: 'Game', scoring: 'sport' },
+    ],
+    howToPerform: "Throw beanbags underarm at the cornhole board. Land them on the board, or sink them through the hole from your tier's distance. At the top tier, play a game of cornhole.",
+    rules: "Declare your tier before starting. Underarm throws from behind the line. A bag counts on the board if it stays on it, and in the hole if it drops through. Most bags landed at your tier wins; a higher tier always outranks a lower one. Game: 3 points in the hole, 1 on the board, cancelling scoring, first to 21. Log your result as a win, draw or loss with your opponent's name.",
+    videoPlaceholder: true,
+    emoji: '🎯',
+  },
+  {
+    slug: 'airsoft',
+    name: 'Airsoft',
+    domain: 'Aim & Precision',
+    domainNumber: 10,
+    inputMode: 'difficulty+reps',
+    hasDifficultyTiers: true,
+    difficultyTiers: [
+      { level: 1, name: 'Hit Target (5m)' },
+      { level: 2, name: 'Hit Target (10m)' },
+      { level: 3, name: 'Hit Target (20m)' },
+      { level: 4, name: 'Game', scoring: 'sport' },
+    ],
+    howToPerform: "With eye protection on, shoot at a target from your tier's distance and count your hits. At the top tier, play an airsoft game.",
+    rules: "Full-seal eye protection for everyone in range, at all times. Declare your tier before starting. Hits on the target face count. Most hits at your tier wins; a higher tier always outranks a lower one. Game: format, field and safety rules set by the kaiwhakawā; hits are called honestly. Log your result as a win, draw or loss with your opponent's name.",
+    videoPlaceholder: true,
+    emoji: '🎯',
+  },
 ]
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -2349,14 +2601,19 @@ export const DT_CAP = 10000
 // Events where finishing FASTER is better (timed efforts), not holding LONGER.
 // Duck Walk joined July 2026 when its tiers became all-walk (holds removed).
 export const TIMED_EFFORT_SLUGS = new Set<string>([
-  'bronco', 'walking', 'burpee-broad-jump', 'rope-climb', 'repeat-high-jump',
+  'bronco', 'burpee-broad-jump', 'rope-climb', 'repeat-high-jump',
   'duck-walk', 'backwards-walk',
 ])
-// NOTE: 'walking', 'backwards-walk' and 'duck-walk' are retired events (removed
-// from EVENTS by the Aug 2026 and Sept 2026 roster updates) but stay in this set
+// NOTE: 'backwards-walk' and 'duck-walk' are retired events (removed from
+// EVENTS by the Aug 2026 and Sept 2026 roster updates) but stay in this set
 // on purpose — their historical raw_scores are inverted-encoded, so
 // decodeDiffTime must keep reading them as timed efforts wherever old sessions
 // are rendered.
+//
+// 'walking' LEFT THE SET 6 Oct 2026, when Walking came back as an open
+// distance + time on its old slug. Checked against production that day: the
+// old Walking left four empty draws and no result or workout entry, so no
+// stored row was ever encoded inverted under it.
 //
 // LEFT THE SET 5 Oct 2026, because they are no longer 'difficulty+time': the
 // distance efforts (running, cycling, ski-erg, row-erg, scooting, animal-crawl)
