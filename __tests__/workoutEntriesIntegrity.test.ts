@@ -52,7 +52,20 @@ describe('the database recognises a Game rung by its name', () => {
   })
 
   it('lists exactly the pure contests, which have no rungs to name', () => {
-    const listed = [...sql.match(/NEW\.event_slug IN \(([^)]*)\)/)![1].matchAll(/'([^']+)'/g)].map(m => m[1]).sort()
-    expect(listed).toEqual(EVENTS.filter(e => e.inputMode === 'sport').map(e => e.slug).sort())
+    // The CURRENT definitions, which are the newest migration to redefine each
+    // (thirteen contests joined Wrestling in 20261005012108).
+    const newest = (fn: string) => {
+      const f = readdirSync(dir).filter(n => readFileSync(`${dir}/${n}`, 'utf8').includes(`FUNCTION public.${fn}`)).sort().pop()!
+      return strip(readFileSync(`${dir}/${f}`, 'utf8'))
+    }
+    const sport = EVENTS.filter(e => e.inputMode === 'sport').map(e => e.slug).sort()
+    for (const [fn, re] of [
+      ['guard_workout_entries_write', /NEW\.event_slug IN \(([^)]*)\)/],
+      ['record_entry_match', /e\.event_slug IN \(([^)]*)\)/],
+    ] as const) {
+      const body = fnBody(newest(fn), fn)
+      const listed = [...body.match(re)![1].matchAll(/'([^']+)'/g)].map(m => m[1]).sort()
+      expect(listed, fn).toEqual(sport)
+    }
   })
 })

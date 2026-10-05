@@ -81,7 +81,7 @@ function roster() {
 }
 
 const DOMAINS = ['', 'Maximal Strength', 'Calisthenics', 'Power', 'Speed', 'Stamina',
-  'Aerobic Endurance', 'Flexibility', 'Body Awareness', 'Coordination', 'Aim & Precision']
+  'Endurance', 'Flexibility', 'Body Awareness', 'Coordination', 'Aim & Precision']
 // The rule is IMPORTED, not restated. This script used to keep its own copy of
 // the (since retired) half-the-domain rule, and it drifted: when Flexibility went to sixteen
 // events the copy reported a threshold of 8 while the engine asked for 6.

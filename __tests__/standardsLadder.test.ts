@@ -83,7 +83,13 @@ describe('standardsLadder', () => {
   it('writes a raced event\'s "just finish it" threshold as any time, not three hours', () => {
     const rows = standardsLadder(ev('animal-crawl'), open, null)
     expect(rows[0].label).toMatch(/any time/)
-    expect(rows.some(r => /\d{2,}:\d\d/.test(r.label) && Number(r.label.match(/(\d+):/)![1]) > 100)).toBe(false)
+    // No ladder anywhere reads a "just finish it" as a multi-hour time.
+    for (const e of EVENTS) {
+      for (const r of standardsLadder(e, open, null)) {
+        const m = r.label.match(/(\d+):\d\d/)
+        expect(!m || Number(m[1]) < 100, `${e.slug} ${r.name}: ${r.label}`).toBe(true)
+      }
+    }
   })
 
   it('agrees with grading: the score a row names earns exactly that colour (raw ladders)', () => {

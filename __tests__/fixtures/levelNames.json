@@ -60,8 +60,8 @@
   "2 Feet Top Hold",
   "Straight Bar Top Hold",
   "Ring Top Hold",
-  "Elbow Supported Cross",
-  "Forearm Supported Iron Cross",
+  "Elbow Iron Cross",
+  "Forearm Iron Cross",
   "Banded Iron Cross",
   "Iron Cross"
  ],
@@ -134,22 +134,11 @@
   "Pushup",
   "1 Arm Pushup"
  ],
- "tibialis-curl": [
-  "Bodyweight",
-  "2.5kg",
-  "5kg",
-  "10kg",
-  "15kg",
-  "20kg"
- ],
  "finger-push-up": [
   "Elevated Knee",
   "Knee Finger Pushup",
   "Finger Pushup",
-  "4 Finger Pushup",
-  "3 Finger Pushup",
-  "2 Finger Pushup",
-  "Thumb Pushup"
+  "1 Arm Finger Pushup"
  ],
  "ghd-situp": [
   "Dead Bug",
@@ -237,11 +226,10 @@
   "Over Split"
  ],
  "middle-split": [
+  "3 Blocks",
   "2 Blocks",
   "1.5 Blocks",
-  "1.25 Blocks",
   "1 Block",
-  "0.75 Blocks",
   "0.5 Blocks",
   "Middle Split"
  ],
@@ -264,7 +252,7 @@
   "Both Feet Behind Head"
  ],
  "pancake": [
-  "Over 2 Blocks",
+  "3 Blocks",
   "2 Blocks",
   "1.5 Blocks",
   "1 Block",
@@ -284,35 +272,11 @@
   "Bound Twist",
   "Full Bound Twist"
  ],
- "javelin-throw": [
-  "Stick",
-  "Short Javelin",
-  "Long Javelin"
- ],
- "shot-put": [
-  "Tennis Ball",
-  "Half Weight",
-  "Full Weight"
- ],
  "australian-football": [
   "Drop Kick",
   "Drop Kick (5m)",
   "Drop Kick (10m)",
   "Drop Kick (20m)",
-  "Game"
- ],
- "arm-wrestling": [
-  "5kg Hold",
-  "10kg Hold",
-  "15kg Hold",
-  "20kg Hold",
-  "Game"
- ],
- "tug-of-war": [
-  "25kg Sled",
-  "50kg Sled",
-  "100kg Sled",
-  "150kg Sled",
   "Game"
  ],
  "plie-squat": [
@@ -347,38 +311,11 @@
   "100m",
   "200m"
  ],
- "running": [
-  "250m",
-  "500m",
-  "1000m"
- ],
- "cycling": [
-  "250m",
-  "500m",
-  "1000m"
- ],
- "ski-erg": [
-  "250m",
-  "500m",
-  "1000m"
- ],
- "row-erg": [
-  "250m",
-  "500m",
-  "1000m"
- ],
- "sandbag-carry": [
-  "¼ BW — 200m",
-  "½ BW — 200m",
-  "¾ BW — 200m",
-  "Bodyweight — 200m"
- ],
  "animal-crawl": [
-  "25m Crawl",
-  "25m Bear Crawl",
-  "25m Lizard Crawl",
-  "25m Duck Walk",
-  "100m Duck Walk"
+  "Crawl",
+  "Bear Crawl",
+  "Lizard Crawl",
+  "Duck Walk"
  ],
  "bronco": [
   "1 Lap",
@@ -387,51 +324,11 @@
   "4 Laps",
   "5 Laps"
  ],
- "scooting": [
-  "250m",
-  "500m",
-  "1000m"
- ],
- "farmer-carry": [
-  "¼ BW — 200m",
-  "½ BW — 200m",
-  "¾ BW — 200m",
-  "Bodyweight — 200m"
- ],
- "weighted-drag": [
-  "¼ BW — 200m",
-  "½ BW — 200m",
-  "¾ BW — 200m",
-  "Bodyweight — 200m"
- ],
- "100m-sprint": [
-  "Walking",
-  "Timed",
-  "Game"
- ],
- "tag": [
-  "Grid Dodge",
-  "Game"
- ],
- "t-race": [
-  "Walking",
-  "Timed",
-  "Game"
- ],
- "beach-flags": [
-  "Get-Up Sprint",
-  "Game"
- ],
- "200m-sprint": [
-  "Walking",
-  "Timed",
-  "Game"
- ],
  "touch-rugby": [
-  "Ball Passes",
-  "Partner Pass (2m)",
-  "Partner Pass (5m)",
-  "Moving Pass (5m)",
+  "Passes",
+  "Pass (2m)",
+  "Pass (5m)",
+  "Pass (10m)",
   "Game"
  ],
  "repeat-high-jump": [
@@ -442,72 +339,39 @@
   "Rib Height",
   "Shoulder height"
  ],
- "rats-and-rabbits": [
-  "Reaction Chase",
-  "Game"
- ],
- "speed-chess": [
-  "Mate in 1",
-  "Mate in 2",
-  "Mate in 3",
-  "Game"
- ],
  "american-football": [
-  "Ball Passes",
-  "Partner Pass (2m)",
-  "Partner Pass (5m)",
-  "Moving Pass (5m)",
-  "Game"
- ],
- "capture-the-flag": [
-  "Flag Run",
-  "Game"
- ],
- "kabaddi": [
-  "One-Breath Raid",
+  "Passes",
+  "Pass (2m)",
+  "Pass (5m)",
+  "Pass (10m)",
+  "Pass (20m)",
   "Game"
  ],
  "rope-climb": [
-  "Leaning Rope Hold",
-  "Assisted Rope Hang",
-  "No Feet Rope Hang",
+  "Assisted Hang",
+  "Hang",
+  "No Feet Hang",
   "Feet Assisted Climb",
-  "No Feet Rope Climb",
-  "L-Sit Rope Climb",
-  "Assisted Pegboard",
-  "Pegboard Climb",
-  "Game"
- ],
- "tae-kwon-do": [
-  "Waist Kick",
-  "Chest Kick",
-  "Head Kick",
+  "No Feet Climb",
   "Game"
  ],
  "breakdancing": [
-  "Indian Step",
-  "Salsa Step",
-  "6 Step",
-  "3 Step",
-  "Baby Freeze",
-  "Pilot Freeze",
-  "Windmill",
+  "Top Rock",
+  "Footwork",
+  "Top Rock + Footwork",
+  "Top Rock + Footwork + Freeze",
   "Game"
  ],
  "trampolining": [
   "Basic Bounce",
-  "180 Spin",
+  "Bounce to Butt",
   "360 Spin",
   "Forward Flip",
   "Back Flip",
-  "Front Flip 180",
   "Game"
  ],
  "jump-rope": [
   "Basic Two-Foot Jump",
-  "Alternating Feet",
-  "Criss-Cross",
-  "Double Under",
   "Single Dutch",
   "Double Dutch",
   "Game"
@@ -516,10 +380,7 @@
   "Forward Roll",
   "Backward Roll",
   "Cartwheel",
-  "Roundoff",
   "Handspring",
-  "One-Hand Cartwheel",
-  "Front Handspring",
   "Game"
  ],
  "balance-ball": [
@@ -531,17 +392,10 @@
   "Game"
  ],
  "skate": [
-  "180 Pivot",
-  "360 Pivot",
+  "Board Tilts",
+  "360 Spin",
   "Ollie",
   "Pop Shove It",
-  "Kickflip",
-  "Game"
- ],
- "fencing": [
-  "2m Lunge",
-  "3m Lunge",
-  "4m Lunge",
   "Game"
  ],
  "juggling": [
@@ -553,49 +407,49 @@
  "foot-juggling": [
   "2 Bounce",
   "1 Bounce",
-  "0 Bounce",
+  "No Bounce",
   "Game"
  ],
  "slackline": [
   "Single Leg Balance",
-  "Plank Walk",
-  "Beam Walk",
-  "Slackline Walk",
-  "Slackline Bounce",
+  "Beam",
+  "Slackline",
   "Game"
  ],
  "volleyball": [
-  "Sets",
-  "Digs",
-  "Partner Digs (2m)",
-  "Partner Digs (5m)",
+  "Dig Passes (2m)",
+  "Dig Passes (5m)",
+  "Partner Digs (10m)",
+  "Partner Digs (20m)",
   "Game"
  ],
  "baseball": [
-  "Pitch Ball",
-  "Bat Ball",
-  "Pitch & Bat (2m)",
-  "Pitch & Bat (5m)",
+  "Bat & Catch",
+  "Bat & Catch (2m)",
+  "Bat & Catch (5m)",
+  "Bat & Catch (10m)",
+  "Bat & Catch (20m)",
   "Game"
  ],
  "teqball": [
-  "Juggles · 2 Bounce",
-  "Partner Pass",
-  "Partner Pass (2m)",
+  "Bounce Pass",
+  "Bounce Pass (2m)",
+  "Bounce Pass (5m)",
   "Game"
  ],
  "tennis": [
   "Vertical Juggles",
-  "Partner Hits (2m)",
-  "Partner Hits (5m)",
-  "Partner Hits (10m)",
+  "Hits (2m)",
+  "Hits (5m)",
+  "Hits (10m)",
   "Game"
  ],
  "cricket": [
-  "Bowl Ball",
-  "Bat Ball",
-  "Bowl & Bat (2m)",
-  "Bowl & Bat (5m)",
+  "Bat & Catch",
+  "Bat & Catch (2m)",
+  "Bat & Catch (5m)",
+  "Bat & Catch (10m)",
+  "Bat & Catch (20m)",
   "Game"
  ],
  "badminton": [
@@ -648,7 +502,6 @@
   "Game"
  ],
  "netball": [
-  "Chest Pass",
   "Shot Under Hoop",
   "Shot (2m)",
   "Shot (5m)",
@@ -690,21 +543,19 @@
  "darts": [
   "Hit the Board",
   "Named Number",
-  "Named Double",
-  "Bullseye",
   "Game"
  ],
  "disc-golf": [
   "Putt (2m)",
   "Putt (5m)",
-  "Approach (20m)",
-  "Game (4 Holes)"
+  "Putt (10m)",
+  "Game"
  ],
  "golf": [
   "Putt (2m)",
   "Putt (5m)",
   "Chip (10m)",
-  "Game (4 Holes)"
+  "Game"
  ],
  "handball": [
   "Partner Pass (2m)",
@@ -715,7 +566,6 @@
  "table-tennis": [
   "Vertical Juggles",
   "Wall Juggles",
-  "Partner Hits",
   "Game"
  ],
  "kubb": [

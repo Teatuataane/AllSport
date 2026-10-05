@@ -123,8 +123,16 @@ describe('next time', () => {
     const fold = getEventByName('Forward Fold')!
     expect(describeRawGap(fold, 20020, 20030)).toBe('10s longer')
     expect(describeRawGap(fold, 20030, 30010)).toBe('move up to Standing · Straight')
-    // Running is raced: the within-tier term is 10000 minus the seconds.
-    expect(describeRawGap(getEventByName('Running')!, 19860, 19875)).toBe('15s faster')
+    // Bronco is raced: the within-tier term is 10000 minus the seconds.
+    expect(describeRawGap(getEventByName('Bronco')!, 19860, 19875)).toBe('15s faster')
+    // Running is an open distance (5 Oct 2026), ranked on its predicted 1000m.
+    expect(describeRawGap(getEventByName('Running')!, 9700, 9715)).toBe('15s faster over 1km')
+    // A carry names the load and distance; a Tibialis Curl the load and reps.
+    const carry = (kg: number, m: number, secs: number) => kg * 10 * 1e9 + m * 1e4 + (1e4 - secs)
+    expect(describeRawGap(getEventByName('Farmer Carry')!, carry(40, 100, 60), carry(50, 100, 1e4 - 1))).toBe('50kg for 100m')
+    expect(describeRawGap(getEventByName('Farmer Carry')!, carry(50, 60, 60), carry(50, 100, 1e4 - 1))).toBe('40m further')
+    expect(describeRawGap(getEventByName('Tibialis Curl')!, 500 * 1e4 + 30, 1000 * 1e4 + 20)).toBe('10kg for 20 reps')
+    expect(describeRawGap(getEventByName('Tibialis Curl')!, 1000 * 1e4 + 12, 1000 * 1e4 + 20)).toBe('8 more reps')
     expect(describeRawGap(getEventByName('Pause Dips')!, 20005, 20015)).toBe('10 more reps')
     expect(describeRawGap(fold, 20030, 20030)).toBeNull()
   })

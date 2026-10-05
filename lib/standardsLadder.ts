@@ -19,6 +19,7 @@ import {
 } from './grading'
 import { ladderFor, type GradePlayer } from './playerGrades'
 import { formatPR } from './scoreFormat'
+import { decodeCarry, fmtDistance } from './scoring'
 import { isTimedEffort, type EventData } from './eventData'
 
 export type LadderRow = {
@@ -46,8 +47,15 @@ export function needsBodyweight(ev: EventData): boolean {
  * three hours), so it says so.
  */
 function drillLabel(ev: EventData, t: number): string {
-  if (ev.inputMode === 'difficulty+time' && isTimedEffort(ev.slug) && t % 10000 <= 1) {
-    return `D${Math.floor(t / 10000) + 1} · any time`
+  const raced = ev.inputMode === 'distance+time' || (ev.inputMode === 'difficulty+time' && isTimedEffort(ev.slug))
+  if (raced && t % 10000 <= 1) {
+    return ev.difficultyTiers?.length ? `D${Math.floor(t / 10000) + 1} · any time` : 'Any time'
+  }
+  if (ev.inputMode === 'weight+distance+time') {
+    // A loaded carry's time is raced too: 10000 minus the seconds, so a floor
+    // standard with no time attached would read as nearly three hours.
+    const d = decodeCarry(t)
+    if (d.secs >= 6000) return `${d.weightKg}kg · ${fmtDistance(d.metres)} · any time`
   }
   return formatPR(t, ev.inputMode, ev.slug, ev)
 }

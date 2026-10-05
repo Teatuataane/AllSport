@@ -110,6 +110,7 @@ describe('training load migration', () => {
     }
     const touches = (later.match(/(?:INSERT INTO|UPDATE|DELETE FROM) (?:public\.)?activity_aliases/g) ?? []).length
     const understood = (later.match(/INSERT INTO (?:public\.)?activity_aliases/g) ?? []).length
+      + (later.match(/DELETE FROM (?:public\.)?activity_aliases WHERE alias IN \(/g) ?? []).length
       + (later.match(/UPDATE (?:public\.)?activity_aliases SET event_slug = '[^']+'\s+WHERE alias (?:IN \(|= ')/g) ?? []).length
       + (later.match(/DELETE FROM (?:public\.)?activity_aliases WHERE event_slug IN \(/g) ?? []).length
     if (touches !== understood) throw new Error(`${name} changes activity_aliases in a form this test cannot replay`)

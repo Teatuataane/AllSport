@@ -17,7 +17,7 @@ import StandardsLadderView from '@/components/play/StandardsLadderView'
 import type { GradePlayer } from '@/lib/playerGrades'
 import type { PRRow } from '@/lib/prBoard'
 import { isTimedEffort, type EventData } from '@/lib/eventData'
-import { computeScoreVals, valsFromResult, valsFromRaw, EMPTY_VALS, estimatedOneRm, MAX_ESTIMATED_REPS, type EntryVals } from '@/lib/scoring'
+import { computeScoreVals, valsFromResult, valsFromRaw, EMPTY_VALS, estimatedOneRm, MAX_ESTIMATED_REPS, entryMetres, fmtDistance, type EntryVals } from '@/lib/scoring'
 import {
   takesSets, takesDistance, estimateFromSets, estimateFromDistance, paceLabel,
 } from '@/lib/naturalFormats'
@@ -102,7 +102,7 @@ export default function QuickEntrySheet({
     let init: EntryVals = { ...EMPTY_VALS }
     if (myBestResult) init = { ...init, ...valsFromResult(mode, myBestResult) }
     else if (seasonPRNum !== null) init = { ...init, ...valsFromRaw(mode, eventData, seasonPRNum) }
-    if (mode === 'sport') init = { ...init, sportResult: '', opponentName: '', sportScore: '' }
+    if (mode === 'sport') init = { ...init, sportResult: '', opponentName: '', sportScore: '', timeMins: '', timeSecs: '' }
     // A Game rung pre-fills the last opponent's NAME from the best result. Resolve
     // the id too, so what the sheet shows as picked is what gets recorded.
     init = { ...init, opponentId: opponentIdFor(init.opponentName) ?? '' }
@@ -227,17 +227,24 @@ export default function QuickEntrySheet({
 
   const showTierChips = tiers.length > 0 && (
     mode === 'difficulty+time' || mode === 'difficulty+reps' ||
-    mode === 'difficulty+distance' || mode === 'hold')
-  const showWeight = mode === 'strength' || mode === 'weight+time' || weightRung
+    mode === 'difficulty+distance' || mode === 'hold' || mode === 'distance+time')
+  // The open modes (5 Oct 2026): any load, distance and time is entered as done.
+  const openDistance = mode === 'distance+time' || mode === 'weight+distance+time'
+  const showWeight = mode === 'strength' || mode === 'weight+time' || mode === 'weight+reps' ||
+    mode === 'weight+distance+time' || weightRung
   // A weight rung records reps as well as load — the load ranks, the reps are
   // the record of what was actually done.
   // `records` is load-bearing, not decoration: a weight rung shows the rep field
   // only because it declares `records: 'reps'`.
-  const showReps = mode === 'strength' || mode === 'reps' ||
+  const showReps = mode === 'strength' || mode === 'reps' || mode === 'weight+reps' ||
     (mode === 'difficulty+reps' && !gameRung && (!weightRung || rung?.records === 'reps'))
-  const showTime = mode === 'time' || mode === 'hold' || mode === 'weight+time' ||
+  const showTime = mode === 'time' || mode === 'hold' || mode === 'weight+time' || openDistance ||
     (mode === 'difficulty+time' && !gameRung)
-  const showDistance = mode === 'distance' || (mode === 'difficulty+distance' && !gameRung)
+  // A raced contest (100m Sprint, Tag …) may record its time beside the result.
+  const showRaceTime = showSport && mode === 'sport' && !!eventData?.recordsTime
+  const showDistance = mode === 'distance' || openDistance || (mode === 'difficulty+distance' && !gameRung)
+  const refMetres = eventData?.referenceMetres ?? 0
+  const enteredMetres = entryMetres(v)
   // Golf and Disc Golf keep their stroke count on the Game rung.
   const showStrokes = mode === 'score' || (gameRung && rung?.records === 'strokes')
   const domainC = domainColor(se.domain_number)
@@ -460,7 +467,7 @@ export default function QuickEntrySheet({
                   {/* Weight stepper */}
                   {showWeight && !setMode && (
                     <>
-                      <div style={QES_LBL}>Weight (kg)</div>
+                      <div style={QES_LBL}>{mode === 'weight+reps' ? 'Weight (kg, 0 for bodyweight)' : 'Weight (kg)'}</div>
                       <div style={{ display: 'flex', gap: '10px' }}>
                         <StepBtn onClick={() => bumpNum('weightKg', -2.5)}>−</StepBtn>
                         <input type="number" inputMode="decimal" value={v.weightKg} onChange={e => set({ weightKg: e.target.value })} placeholder="0" style={QES_INP} />
@@ -494,7 +501,7 @@ export default function QuickEntrySheet({
                   {/* Time stepper (min:sec, ±5s) */}
                   {showTime && !distanceMode && (
                     <>
-                      <div style={QES_LBL}>{mode === 'time' || isTimedEffort(eventData?.slug) ? 'Time' : 'Hold time'}</div>
+                      <div style={QES_LBL}>{mode === 'time' || openDistance || isTimedEffort(eventData?.slug) ? 'Time' : 'Hold time'}</div>
                       <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                         <StepBtn onClick={() => bumpTime(-5)}>−</StepBtn>
                         <input type="number" inputMode="numeric" value={v.timeMins} onChange={e => set({ timeMins: e.target.value })} placeholder="min" style={QES_INP} />
@@ -522,10 +529,10 @@ export default function QuickEntrySheet({
                     <>
                       <div style={QES_LBL}>Distance</div>
                       <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                        <input type="number" inputMode="decimal" value={v.distanceVal} onChange={e => set({ distanceVal: e.target.value })} placeholder="0" style={QES_INP} />
-                        <div style={{ display: 'flex', borderRadius: '12px', overflow: 'hidden', flexShrink: 0 }} hidden={mode !== 'distance'}>
-                          {(['m', 'cm'] as const).map(u => (
-                            <button key={u} onClick={() => set({ distanceUnit: u })} style={{
+                        <input type="number" inputMode="decimal" value={v.distanceVal} aria-label="Distance" onChange={e => set({ distanceVal: e.target.value })} placeholder="0" style={QES_INP} />
+                        <div style={{ display: 'flex', borderRadius: '12px', overflow: 'hidden', flexShrink: 0 }} hidden={mode !== 'distance' && !openDistance}>
+                          {(openDistance ? (['m', 'km'] as const) : (['m', 'cm'] as const)).map(u => (
+                            <button key={u} onClick={() => set({ distanceUnit: u })} aria-pressed={v.distanceUnit === u} style={{
                               padding: '14px 18px', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '15px',
                               background: v.distanceUnit === u ? '#2371BB' : '#1a1a1a',
                               color: v.distanceUnit === u ? '#fff' : '#666',
@@ -534,6 +541,22 @@ export default function QuickEntrySheet({
                         </div>
                       </div>
                     </>
+                  )}
+
+                  {/* What an open distance effort predicts, so the player sees what ranks */}
+                  {mode === 'distance+time' && refMetres > 0 && (
+                    <div style={{ fontSize: 12.5, color: '#777', marginTop: 8, lineHeight: 1.5 }}>
+                      {enteredMetres > 0 && enteredMetres < refMetres
+                        ? `At least ${fmtDistance(refMetres)} to count.`
+                        : scored && enteredMetres > 0 && Math.round(enteredMetres) !== refMetres
+                          ? `${paceLabel(enteredMetres, (parseFloat(v.timeMins) || 0) * 60 + (parseFloat(v.timeSecs) || 0))} · ranks as ${scored.score_label.split(' · est. ')[1] ?? ''}`
+                          : `Any distance of ${fmtDistance(refMetres)} or more. It ranks on the ${fmtDistance(refMetres)} time it predicts.`}
+                    </div>
+                  )}
+                  {mode === 'weight+distance+time' && (
+                    <div style={{ fontSize: 12.5, color: '#777', marginTop: 8, lineHeight: 1.5 }}>
+                      Heaviest wins, then the furthest distance, then the fastest time.
+                    </div>
                   )}
 
                   {/* Sport, and the `Game` rung that tops a drill ladder */}
@@ -575,13 +598,28 @@ export default function QuickEntrySheet({
                         </div>
                       )}
                       <input value={v.sportScore} onChange={e => set({ sportScore: e.target.value })} placeholder="Score e.g. 21–18 (optional)" style={{ ...INP, fontSize: '15px', marginTop: '8px' }} />
+                      {showRaceTime && (
+                        <>
+                          <div style={QES_LBL}>Time (optional)</div>
+                          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                            <input type="number" inputMode="numeric" value={v.timeMins} aria-label="Minutes"
+                              onChange={e => set({ timeMins: e.target.value })} placeholder="min" style={QES_INP} />
+                            <span style={{ color: '#555', fontSize: '26px', fontFamily: 'var(--font-display)' }}>:</span>
+                            <input type="number" inputMode="decimal" value={v.timeSecs} aria-label="Seconds"
+                              onChange={e => set({ timeSecs: e.target.value })} placeholder="sec" style={QES_INP} />
+                          </div>
+                          <div style={{ fontSize: 12, color: '#777', marginTop: 6, lineHeight: 1.4 }}>
+                            Recorded with the result. The win, draw or loss is what counts.
+                          </div>
+                        </>
+                      )}
                     </>
                   )}
 
                   {/* Golf/Disc Golf strokes */}
                   {showStrokes && (
                     <>
-                      <div style={QES_LBL}>Stroke count (4 holes)</div>
+                      <div style={QES_LBL}>Stroke count</div>
                       <div style={{ display: 'flex', gap: '10px' }}>
                         <StepBtn onClick={() => bumpNum('scoreInput', -1, 1)}>−</StepBtn>
                         <input type="number" inputMode="numeric" value={v.scoreInput} onChange={e => set({ scoreInput: e.target.value })} placeholder="e.g. 18" style={QES_INP} />

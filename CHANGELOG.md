@@ -2,27 +2,44 @@
 
 All notable changes to AllSport are documented here.
 
-## [0.27.3.0] - 2026-10-05
-
-### Changed
-- **Win, draw and loss events show their colour in a live game.** The button turns Kahurangi for a win, Kākāriki for a draw and Kōwhai for a loss, or your rating's colour if that is higher, the same colour the game report pays. Under the score it says how many games you still need for a rating ("7 games to a rating"), or your rating once you have one ("Rating 1,148"). A game only counts once both players have recorded it or a kaiwhakawā has settled it. Personal games show the same line but keep their colour as it was.
-
-## [0.27.2.0] - 2026-10-05
+## [0.29.0.0] - 2026-10-05
 
 ### Added
 - **The colour standards, in game and on My Events.** Each event shows what every colour, Kiwikiwi to Taniwha, takes on your own ladder (your sex, with your age allowance), in the event's own units. In a game it is a Standards section under HOW TO; on My Events it is a Standards toggle under each event. Strength shows the multiple of your bodyweight and asks for your bodyweight to show the weights. Win/draw/loss events show their drill scores up to Kahurangi, then the rating each higher colour needs.
-
-### Changed
-- **The entry sheet's "Rules & standards" heading is now "Rules"**, since it holds the rules text.
-
-## [0.27.1.0] - 2026-10-05
-
-### Added
 - **My Events lists every level.** Each event with levels now shows the whole ladder, named ("D3 · Feet elevated"), with "No record yet" on the levels you haven't played. The entry sheet still lists only the levels you've played.
 
 ### Changed
+- **Win, draw and loss events show their colour in a live game.** The button turns Kahurangi for a win, Kākāriki for a draw and Kōwhai for a loss, or your rating's colour if that is higher, the same colour the game report pays. Under the score it says how many games you still need for a rating ("7 games to a rating"), or your rating once you have one ("Rating 1,148"). A game only counts once both players have recorded it or a kaiwhakawā has settled it. Personal games show the same line but keep their colour as it was.
+- **The entry sheet's "Rules & standards" heading is now "Rules"**, since it holds the rules text.
 - **Every event button names its own domain.** The domain headings between events are gone; each button carries its domain ("4 · Speed") on its second line, so the buttons all line up and are the same height. Added events no longer indent.
 - **One order on every play screen.** Personal games and kaiwhakawā training sessions now list events in domain order, the same as a live game, and a row no longer jumps to a "Scored" list when you score it.
+
+## [0.28.2.0] - 2026-10-05
+
+### Changed
+- **Repeat Vault is a vault now, not a jump.** An attempt is 10 vaults over the bar, back and forth, with at least one hand on the bar each time. Any vault style counts. Fastest time for 10 vaults at your bar height wins.
+
+## [0.28.1.0] - 2026-10-05
+
+### Changed
+- **Compression is called L-Sit again.** Same levels (Curl Up to V Sit), same scores and colours; only the name changes.
+
+## [0.28.0.0] - 2026-10-05
+
+### Changed
+- **The 5 October difficulty review is in.** New levels on 24 events, Repeat High Jump renamed Repeat Vault, Chinup Contest renamed Chinups, and Aerobic Endurance renamed Endurance. (Lunges and Shoulder Dislocate, also on the sheet, already went in 0.27.0.0, and L-Sit Hold's levels are the Compression ladder from that release.)
+- **Runs, rides, ski, row and scooting take any distance and time.** Your effort ranks on the 1000m time it predicts, so the best effort wins: a 4:00 kilometre beats a 15:00 3km (which predicts 4:41). Anything shorter than 1000m does not count. Animal Crawl works the same way over 25m, with the crawl style as the level.
+- **Sandbag Carry, Farmer Carry and Weighted Drag take any load, distance and time.** The heaviest load wins, then the furthest distance, then the fastest time.
+- **Tibialis Curl takes any load and reps.** A heavier load always wins, and reps break a tie.
+- **Thirteen contests are win, draw or loss only:** Arm Wrestling, Tug of War, 100m Sprint, 200m Sprint, Tag, T-Race, Beach Flags, Rats & Rabbits, Capture the Flag, Kabaddi, Speed Chess, Tae Kwon Do and Fencing. Their colours come from head-to-head games. The races can record a time alongside the result, but it does not decide anything.
+- **Javelin and Shotput are one implement each,** and the furthest throw wins.
+- **New colour standards** for every event whose levels or format changed. They are drafts and need Tāne's review (see `GRADING_STANDARDS_REVIEW.md`).
+
+### Removed
+- **Scores on levels that no longer exist are archived**, as the review asked ("remove historical scores that conflict"): for example Criss-Cross and Double Under on Jump Rope, the sprint drills, the lighter javelins and the 250m and 500m runs. They are kept in archive tables, not deleted outright.
+
+### Fixed
+- **An out-of-date app can no longer save a score in the old format** on any event changed here: the server refuses an old level, a level on an event that no longer has levels, or a contest score that is not a win, draw or loss, and asks you to refresh.
 
 ## [0.27.0.0] - 2026-10-05
 

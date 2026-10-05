@@ -36,7 +36,7 @@ const DOMAIN_META = [
     desc: 'Most reps, longest holds. How far can you push before you break?',
   },
   {
-    name: 'Aerobic Endurance',
+    name: 'Endurance',
     color: '#4DB26E',
     desc: 'Keep going, even when it hurts. The engine that runs everything else.',
   },

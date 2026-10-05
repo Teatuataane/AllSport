@@ -39,7 +39,7 @@ if (!hasServiceKey()) {
 const db = createSupabaseAdminClient()
 const now = new Date().toISOString()
 const DOMAINS = ['Maximal Strength', 'Calisthenics', 'Power', 'Speed', 'Stamina',
-  'Aerobic Endurance', 'Flexibility', 'Body Awareness', 'Coordination', 'Aim & Precision']
+  'Endurance', 'Flexibility', 'Body Awareness', 'Coordination', 'Aim & Precision']
 const day = (iso: string) => new Date(iso).toLocaleDateString('en-NZ', { timeZone: 'Pacific/Auckland', day: 'numeric', month: 'short', year: 'numeric' })
 
 const { data: people, error } = await db.from('players')

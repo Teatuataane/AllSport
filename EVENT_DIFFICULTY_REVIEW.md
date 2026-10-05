@@ -96,7 +96,6 @@ Heaviest wins
   replacement? Same question for **Chinup Contest**, where `Elevated Ring Row` sits alongside
   `High Ring Row`, and `Muscle Up` tops a chin-up contest.
 
-
 ### Unmarked
 
 - [ ] **16. 23 events are blank with no `NONE`**, so I can't tell "no levels" from "not done":
@@ -333,11 +332,13 @@ _No levels yet._
 
 *Scored by: difficulty level, then longest hold*
 
+> Changed 5 Oct 2026 (Tāne): D4 and D5 renamed (Elbow / Forearm Iron Cross). Same holds.
+
 - D1: 2 Feet Top Hold
 - D2: Straight Bar Top Hold
 - D3: Ring Top Hold   (Support hold in the top position on rings · used 2 times)
-- D4: Elbow Supported Cross
-- D5: Forearm Supported Iron Cross
+- D4: Elbow Iron Cross
+- D5: Forearm Iron Cross
 - D6: Banded Iron Cross
 - D7: Iron Cross
 
@@ -383,19 +384,14 @@ _No levels yet._
 
 *Scored by: difficulty level, then fastest time*
 
-- D1: Leaning Rope Hold   (used 1 time)
-- D2: Assisted Rope Hang   (Feet may grip the rope)
-- D3: No Feet Rope Hang   (used 2 times)
-- D4: Feet Assisted Climb   (Feet may grip the rope · used 1 time)
-- D5: No Feet Rope Climb   (used 2 times)
-- D6: L-Sit Rope Climb   (used 1 time)
-- D7: Assisted Pegboard   (Feet allowed for support on the board or frame)
-- D8: Pegboard Climb
-- D9: Game   (A head-to-head race — same rope or board, same start signal, fastest climber takes the win)
+> Changed 5 Oct 2026 (Tāne): Rope rungs renamed, L-Sit Rope Climb and both pegboard rungs removed, the Game is now a HORSE-style match.
 
-> Moved Calisthenics -> Body Awareness and topped with a Game rung, Sept 2026 (Tāne).
-> The drill rungs are unchanged. NOTE the Game term is NOT time-inverted the way the drills
-> are, so playing the race outranks every drill below it whatever the result — which is the point.
+- D1: Assisted Hang   (used 1 time)
+- D2: Hang   (Feet may grip the rope)
+- D3: No Feet Hang   (used 2 times)
+- D4: Feet Assisted Climb   (Feet may grip the rope · used 1 time)
+- D5: No Feet Climb   (used 2 times)
+- D6: Game   (Like HORSE: players take turns to nominate a climb, the fastest up it takes the point, first to 3 points wins)
 
 ### 25. Handstand
 
@@ -418,7 +414,9 @@ _No levels yet._
 - D5: Wall Assisted   (Headstand with no hands, wall support allowed)
 - D6: Freestanding   (Freestanding headstand, no wall or hands)
 
-### 27. Compression
+### 27. L-Sit
+
+> Renamed from Compression, 5 Oct 2026 (Tāne). Same ladder, same slug.
 
 *Scored by: difficulty level, then longest hold*
 
@@ -470,26 +468,28 @@ _No levels yet._
 
 ### 31. Javelin
 
-*Scored by: furthest or highest*
+*Scored by: furthest throw*
 
-- D1: Stick
-- D2: Short Javelin
-- D3: Long Javelin
+> Changed 5 Oct 2026 (Tāne): Levels removed: one implement, the full javelin, and the distance is the score.
+
+**NONE**
 
 ### 32. Shotput
 
-*Scored by: furthest or highest*
+*Scored by: furthest throw*
 
-- D1: Tennis Ball
-- D2: Half Weight
-- D3: Full Weight
+> Changed 5 Oct 2026 (Tāne): Levels removed: one implement, the full-weight shot, and the distance is the score.
+
+**NONE**
 
 ### 33. Australian Football
 
 *Scored by: win, draw or loss against another player*
 
+> Changed 5 Oct 2026 (Tāne): D2 may kick to a target as well as a partner.
+
 - D1: Drop Kick
-- D2: Drop Kick (5m)   (Drop kick to a partner)
+- D2: Drop Kick (5m)   (Drop kick to a partner or target)
 - D3: Drop Kick (10m)   (Drop kick to a partner)
 - D4: Drop Kick (20m)   (Drop kick to a partner)
 - D5: Game
@@ -556,23 +556,19 @@ _No levels yet._
 
 ### 39. Arm Wrestling
 
-*Scored by: difficulty level, then longest hold*
+*Scored by: win, draw or loss against another player*
 
-- D1: 5kg Hold   (Forearm held at 45 degrees from the table against the load, the last moment before a pin. Timed)
-- D2: 10kg Hold
-- D3: 15kg Hold
-- D4: 20kg Hold
-- D5: Game
+> Changed 5 Oct 2026 (Tāne): Levels removed, only the game.
+
+**NONE**
 
 ### 40. Tug of War
 
-*Scored by: difficulty level, then fastest time*
+*Scored by: win, draw or loss against another player*
 
-- D1: 25kg Sled   (Hand over hand on a rope, pull the loaded sled 10m. Timed)
-- D2: 50kg Sled
-- D3: 100kg Sled
-- D4: 150kg Sled
-- D5: Game
+> Changed 5 Oct 2026 (Tāne): Levels removed, only the game.
+
+**NONE**
 
 ---
 
@@ -580,58 +576,61 @@ _No levels yet._
 
 ### 41. 100m Sprint
 
-*Scored by: fastest time*
+*Scored by: win, draw or loss against another player; the time is recorded alongside when one is taken*
 
-> > Timed requires a time, game is a race against opponents
+> Changed 5 Oct 2026 (Tāne): Levels removed: only win/draw/loss, time optional.
 
-- D1: Walking
-- D2: Timed
-- D3: Game
+**NONE**
 
 ### 42. Tag
 
-*Scored by: difficulty level, then fastest time*
+*Scored by: win, draw or loss against another player; the time is recorded alongside when one is taken*
 
-- D1: Grid Dodge   (In a 10m grid, touch the cones the kaiwhakawā calls at random. Six calls, timed)
-- D2: Game
+> Changed 5 Oct 2026 (Tāne): Levels removed: only win/draw/loss, time optional.
+
+**NONE**
 
 ### 43. T-Race
-> Timed requires a time, game is a race against opponents
-*Scored by: win, draw or loss against another player*
 
-- D1: Walking
-- D2: Timed
-- D3: Game
+*Scored by: win, draw or loss against another player; the time is recorded alongside when one is taken*
+
+> Changed 5 Oct 2026 (Tāne): Levels removed: only win/draw/loss, time optional.
+
+**NONE**
 
 ### 44. Beach Flags
 
-*Scored by: difficulty level, then fastest time*
-> Timed requires a time, game is a race against opponents
+*Scored by: win, draw or loss against another player; the time is recorded alongside when one is taken*
 
-- D1: Get-Up Sprint   (From face down, feet toward the flag, get up and sprint 15m to it. Timed)
-- D2: Game
+> Changed 5 Oct 2026 (Tāne): Levels removed: only win/draw/loss, time optional.
+
+**NONE**
 
 ### 45. 200m Sprint
 
-*Scored by: fastest time*
-> Timed requires a time, game is a race against opponents
-- D1: Walking
-- D2: Timed
-- D3: Game
+*Scored by: win, draw or loss against another player; the time is recorded alongside when one is taken*
+
+> Changed 5 Oct 2026 (Tāne): Levels removed: only win/draw/loss, time optional.
+
+**NONE**
 
 ### 46. Touch Rugby
 
 *Scored by: win, draw or loss against another player*
 
-- D1: Ball Passes
-- D2: Partner Pass (2m)
-- D3: Partner Pass (5m)
-- D4: Moving Pass (5m)   (Both players moving)
+> Changed 5 Oct 2026 (Tāne): Pass rungs renamed; the moving pass is now from 10m.
+
+- D1: Passes
+- D2: Pass (2m)
+- D3: Pass (5m)
+- D4: Pass (10m)   (Both players moving)
 - D5: Game
 
-### 47. Repeat High Jump
+### 47. Repeat Vault
 
 *Scored by: difficulty level, then fastest time*
+
+> Changed 5 Oct 2026 (Tāne): Renamed from Repeat High Jump. Same heights, so its history carries over.
 
 - D1: Ankle height   (used 2 times)
 - D2: Knee height   (used 3 times)
@@ -642,52 +641,58 @@ _No levels yet._
 
 ### 48. Rats & Rabbits
 
-*Scored by: difficulty level, then fastest time*
-> Timed requires a time, game is a race against opponents
+*Scored by: win, draw or loss against another player; the time is recorded alongside when one is taken*
 
-- D1: Reaction Chase   (React to the call, turn the right way and sprint 10m to the line. Timed from the call; turning the wrong way is a miss)
-- D2: Game
+> Changed 5 Oct 2026 (Tāne): Levels removed: only win/draw/loss, time optional.
+
+**NONE**
 
 ### 49. Speed Chess
 
-*Scored by: difficulty level, then most reps*
+*Scored by: win, draw or loss against another player*
 
-- D1: Mate in 1   (Puzzles solved in three minutes at this difficulty)
-- D2: Mate in 2
-- D3: Mate in 3
-- D4: Game
+> Changed 5 Oct 2026 (Tāne): Levels removed, only the game.
+
+**NONE**
 
 ### 50. American Football
 
 *Scored by: win, draw or loss against another player*
 
-- D1: Ball Passes
-- D2: Partner Pass (2m)
-- D3: Partner Pass (5m)
-- D4: Moving Pass (5m)   (Both players moving)
-- D5: Game
+> Changed 5 Oct 2026 (Tāne): Pass rungs out to 20m; the moving pass is gone.
+
+- D1: Passes
+- D2: Pass (2m)
+- D3: Pass (5m)
+- D4: Pass (10m)
+- D5: Pass (20m)
+- D6: Game
 
 ### 51. Capture the Flag
 
-*Scored by: difficulty level, then fastest time*
+*Scored by: win, draw or loss against another player; the time is recorded alongside when one is taken*
 
-- D1: Flag Run   (Sprint 20m to the flag, pick it up and carry it back over halfway. Timed)
-- D2: Game
+> Changed 5 Oct 2026 (Tāne): Levels removed: only win/draw/loss, time optional.
+
+**NONE**
 
 ### 52. Kabaddi
 
-*Scored by: difficulty level, then most reps*
+*Scored by: win, draw or loss against another player; the time is recorded alongside when one is taken*
 
-- D1: One-Breath Raid   (On one breath while chanting, cross the line, touch as many of five cones as you can and get back. Cones touched)
-- D2: Game
+> Changed 5 Oct 2026 (Tāne): Levels removed: only win/draw/loss, time optional.
+
+**NONE**
 
 ---
 
 ## 5. Stamina
 
-### 53. Chinup Contest
+### 53. Chinups
 
 *Scored by: difficulty level, then most reps*
+
+> Changed 5 Oct 2026 (Tāne): Renamed from Chinup Contest. Ladder unchanged.
 
 - D1: High Ring Row
 - D2: Low Ring Row
@@ -709,27 +714,22 @@ Renamed from Pushup Contest and re-levelled 30 Sept 2026 (Tāne). The two handst
 
 ### 55. Tibialis Curl
 
-*Scored by: difficulty level, then most reps in 2 minutes*
+*Scored by: heaviest load, then most reps in 2 minutes*
 
-Changed 29 Sept 2026 (Tāne): Anaerobic Endurance is a 2-minute contest, so the load is the level and reps are the score.
-- D1: Bodyweight   (No added load, toes lifted against gravity only)
-- D2: 2.5kg
-- D3: 5kg
-- D4: 10kg
-- D5: 15kg
-- D6: 20kg
+> Changed 5 Oct 2026 (Tāne): Fixed loads removed: any weight and reps are entered. Heavier always wins; reps break the tie.
+
+**NONE**
 
 ### 56. Finger Pushup
 
 *Scored by: difficulty level, then most reps*
 
+> Changed 5 Oct 2026 (Tāne): The 4, 3, 2 finger and thumb rungs replaced by one 1 Arm Finger Pushup.
+
 - D1: Elevated Knee   (Knee finger pushups with hands elevated)
 - D2: Knee Finger Pushup   (used 7 times)
 - D3: Finger Pushup   (used 3 times)
-- D4: 4 Finger Pushup
-- D5: 3 Finger Pushup
-- D6: 2 Finger Pushup
-- D7: Thumb Pushup
+- D4: 1 Arm Finger Pushup
 
 ### 57. GHD Situp
 
@@ -744,6 +744,8 @@ Weighted GHD requires weight and reps
 ### 58. Leg Ext Hold
 
 *Scored by: difficulty level, then longest hold*
+
+> Changed 5 Oct 2026 (Tāne): Checked: it records the load and the hold time, heavier wins and the hold breaks a tie.
 
 This should be weight and time
 
@@ -828,7 +830,7 @@ NEW EVENT, 30 Sept 2026 (Tāne). A hold. Nobody has scored it.
 - D5: Tuck Dragon   (Lying on a bench gripping behind the head, hips and knees lifted off the bench in a tuck, weight on the shoulders)
 - D6: Dragon Flag   (The body held straight and rigid from the shoulders, off the bench)
 
-## 6. Aerobic Endurance
+## 6. Endurance
 
 ### 66. Burpee Broad Jump
 
@@ -841,35 +843,35 @@ NEW EVENT, 30 Sept 2026 (Tāne). A hold. Nobody has scored it.
 
 ### 67. Running
 
-*Scored by: difficulty level, then fastest time*
+*Scored by: best effort: any distance of at least 1000m and its time, ranked on the 1000m time it predicts*
 
-- D1: 250m
-- D2: 500m   (used 1 time)
-- D3: 1000m   (used 2 times)
+> Changed 5 Oct 2026 (Tāne): Open distance and time. A 4:00 km beats a 15:00 3km, which predicts about 4:41.
+
+**NONE**
 
 ### 68. Cycling
 
-*Scored by: difficulty level, then fastest time*
+*Scored by: best effort: any distance of at least 1000m and its time, ranked on the 1000m time it predicts*
 
-- D1: 250m   (used 1 time)
-- D2: 500m   (used 6 times)
-- D3: 1000m   (used 3 times)
+> Changed 5 Oct 2026 (Tāne): Open distance and time.
+
+**NONE**
 
 ### 69. Ski Erg
 
-*Scored by: difficulty level, then fastest time*
+*Scored by: best effort: any distance of at least 1000m and its time, ranked on the 1000m time it predicts*
 
-- D1: 250m   (used 1 time)
-- D2: 500m   (used 1 time)
-- D3: 1000m   (used 4 times)
+> Changed 5 Oct 2026 (Tāne): Open distance and time.
+
+**NONE**
 
 ### 70. Row Erg
 
-*Scored by: difficulty level, then fastest time*
+*Scored by: best effort: any distance of at least 1000m and its time, ranked on the 1000m time it predicts*
 
-- D1: 250m   (used 2 times)
-- D2: 500m   (used 2 times)
-- D3: 1000m   (used 1 time)
+> Changed 5 Oct 2026 (Tāne): Open distance and time.
+
+**NONE**
 
 ### 71. Breath Hold
 
@@ -885,24 +887,22 @@ _No levels yet._
 
 ### 72. Sandbag Carry
 
-*Scored by: difficulty level, then fastest time*
+*Scored by: heaviest load, then furthest distance, then fastest time*
 
-- D1: ¼ BW — 200m   (A quarter of your bodyweight, taken from the middle of your band. Carry the heaviest sandbag we own at or under it)
-- D2: ½ BW — 200m
-- D3: ¾ BW — 200m
-- D4: Bodyweight — 200m
+> Changed 5 Oct 2026 (Tāne): Open weight, distance and time.
 
-> Renamed from Weighted Carry, Sept 2026. Ladder unchanged; only the implement is named.
+**NONE**
 
 ### 73. Animal Crawl
 
-*Scored by: difficulty level, then fastest time*
+*Scored by: difficulty level, then best effort: any distance of at least 25m and its time, ranked on the 25m time it predicts*
 
-- D1: 25m Crawl   (Hands and knees, knees off the ground)
-- D2: 25m Bear Crawl   (Hands and feet, hips high, opposite hand and foot together)
-- D3: 25m Lizard Crawl   (Chest low, elbows bent, hips down)
-- D4: 25m Duck Walk   (Deep squat, hips below knees, stepping without standing up)
-- D5: 100m Duck Walk
+> Changed 5 Oct 2026 (Tāne): Crawl styles are the levels; distance and time are open. The old 100m Duck Walk lands on Duck Walk.
+
+- D1: Crawl   (Hands and knees)
+- D2: Bear Crawl   (Hands and feet, hips high, opposite hand and foot together)
+- D3: Lizard Crawl   (Chest low, elbows bent, hips down)
+- D4: Duck Walk   (Deep squat, hips below knees, stepping without standing up)
 
 ### 74. Bronco
 
@@ -916,31 +916,27 @@ _No levels yet._
 
 ### 75. Scooting
 
-*Scored by: difficulty level, then fastest time*
+*Scored by: best effort: any distance of at least 1000m and its time, ranked on the 1000m time it predicts*
 
-- D1: 250m
-- D2: 500m
-- D3: 1000m
+> Changed 5 Oct 2026 (Tāne): Open distance and time.
+
+**NONE**
 
 ### 76. Farmer Carry
 
-*Scored by: difficulty level, then fastest time*
+*Scored by: heaviest load, then furthest distance, then fastest time*
 
-- D1: ¼ BW — 200m   (A quarter of your bodyweight SPLIT ACROSS THE PAIR, taken from the middle of your band. Take the heaviest matched pair we own at or under it)
-- D2: ½ BW — 200m
-- D3: ¾ BW — 200m
-- D4: Bodyweight — 200m
+> Changed 5 Oct 2026 (Tāne): Open weight, distance and time.
 
-> Renamed from Wheelbarrow Push, Sept 2026. Ladder unchanged; only the implement is named.
+**NONE**
 
 ### 77. Weighted Drag
 
-*Scored by: difficulty level, then fastest time*
+*Scored by: heaviest load, then furthest distance, then fastest time*
 
-- D1: ¼ BW — 200m   (A quarter of your bodyweight on the sled, taken from the middle of your band. Load the heaviest weight we own at or under it)
-- D2: ½ BW — 200m
-- D3: ¾ BW — 200m
-- D4: Bodyweight — 200m
+> Changed 5 Oct 2026 (Tāne): Open weight, distance and time.
+
+**NONE**
 
 ---
 
@@ -1010,13 +1006,14 @@ _No levels yet._
 
 *Scored by: difficulty level, then longest hold*
 
-- D1: 2 Blocks   (Middle split supported on 2 blocks · used 2 times)
-- D2: 1.5 Blocks   (Middle split supported on 1.5 blocks · used 1 time)
-- D3: 1.25 Blocks   (Middle split supported on 1.25 blocks)
+> Changed 5 Oct 2026 (Tāne): 3 Blocks added at the bottom; 1.25 and 0.75 removed.
+
+- D1: 3 Blocks   (Middle split supported on 3 blocks)
+- D2: 2 Blocks   (Middle split supported on 2 blocks · used 2 times)
+- D3: 1.5 Blocks   (Middle split supported on 1.5 blocks · used 1 time)
 - D4: 1 Block   (Middle split supported on 1 block)
-- D5: 0.75 Blocks   (Middle split supported on 0.75 blocks)
-- D6: 0.5 Blocks   (Middle split supported on half a block)
-- D7: Middle Split
+- D5: 0.5 Blocks   (Middle split supported on half a block)
+- D6: Middle Split
 
 ### 84. Standing Split
 
@@ -1046,7 +1043,9 @@ _No levels yet._
 
 *Scored by: difficulty level, then longest hold*
 
-- D1: Over 2 Blocks   (Seated elevated on more than 2 blocks · used 1 time)
+> Changed 5 Oct 2026 (Tāne): Over 2 Blocks renamed 3 Blocks.
+
+- D1: 3 Blocks   (Seated elevated on 3 blocks · used 1 time)
 - D2: 2 Blocks   (Seated elevated on 2 blocks · used 2 times)
 - D3: 1.5 Blocks   (Seated elevated on 1.5 blocks · used 2 times)
 - D4: 1 Block   (Seated elevated on 1 block)
@@ -1122,51 +1121,47 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 
 ### 93. Tae Kwon Do
 
-*Scored by: difficulty level, then most reps*
+*Scored by: win, draw or loss against another player*
 
-> Settled in the Sept 2026 grading review: reps until the game, as your first note asked.
+> Changed 5 Oct 2026 (Tāne): Levels removed, only the game.
 
-- D1: Waist Kick   (Kicks landed on a held pad at this height, out of ten)
-- D2: Chest Kick
-- D3: Head Kick
-- D4: Game
+**NONE**
 
 ### 94. Breakdancing
 
-*Scored by: difficulty level, then longest hold*
+*Scored by: difficulty level, then longest time*
 
-- D1: Indian Step
-- D2: Salsa Step
-- D3: 6 Step
-- D4: 3 Step
-- D5: Baby Freeze
-- D6: Pilot Freeze
-- D7: Windmill
-- D8: Game
+> Changed 5 Oct 2026 (Tāne): New ladder.
+
+- D1: Top Rock
+- D2: Footwork
+- D3: Top Rock + Footwork
+- D4: Top Rock + Footwork + Freeze
+- D5: Game
 
 ### 95. Trampolining
 
 *Scored by: difficulty level, then most reps*
 
+> Changed 5 Oct 2026 (Tāne): 180 Spin replaced by Bounce to Butt; Front Flip 180 removed.
+
 - D1: Basic Bounce
-- D2: 180 Spin   (used 1 time)
+- D2: Bounce to Butt
 - D3: 360 Spin   (used 2 times)
 - D4: Forward Flip   (used 3 times)
 - D5: Back Flip   (used 1 time)
-- D6: Front Flip 180
-- D7: Game
+- D6: Game
 
 ### 96. Jump Rope
 
 *Scored by: difficulty level, then most reps*
 
+> Changed 5 Oct 2026 (Tāne): Alternating Feet, Criss-Cross and Double Under removed.
+
 - D1: Basic Two-Foot Jump   (used 11 times)
-- D2: Alternating Feet   (Alternating single-foot jumps · used 1 time)
-- D3: Criss-Cross   (used 9 times)
-- D4: Double Under   (used 6 times)
-- D5: Single Dutch
-- D6: Double Dutch
-- D7: Game
+- D2: Single Dutch
+- D3: Double Dutch
+- D4: Game
 
 ### 97. Wrestling
 
@@ -1178,14 +1173,13 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 
 *Scored by: difficulty level, then most reps*
 
+> Changed 5 Oct 2026 (Tāne): Roundoff, One-Hand Cartwheel and Front Handspring removed.
+
 - D1: Forward Roll   (used 1 time)
 - D2: Backward Roll   (used 1 time)
 - D3: Cartwheel   (used 1 time)
-- D4: Roundoff   (used 2 times)
-- D5: Handspring   (Front or back handspring)
-- D6: One-Hand Cartwheel
-- D7: Front Handspring
-- D8: Game
+- D4: Handspring   (Front or back handspring)
+- D5: Game
 
 ### 99. Balance Ball
 
@@ -1202,21 +1196,21 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 
 *Scored by: difficulty level, then most reps*
 
-- D1: 180 Pivot   (used 1 time)
-- D2: 360 Pivot   (used 6 times)
+> Changed 5 Oct 2026 (Tāne): 180 Pivot renamed Board Tilts, 360 Pivot renamed 360 Spin, Kickflip removed.
+
+- D1: Board Tilts   (used 1 time)
+- D2: 360 Spin   (used 6 times)
 - D3: Ollie   (used 1 time)
 - D4: Pop Shove It
-- D5: Kickflip
-- D6: Game
+- D5: Game
 
 ### 101. Fencing
 
-*Scored by: difficulty level, then most reps*
+*Scored by: win, draw or loss against another player*
 
-- D1: 2m Lunge   (Hits on a target out of ten, lunging from this distance)
-- D2: 3m Lunge
-- D3: 4m Lunge
-- D4: Game
+> Changed 5 Oct 2026 (Tāne): Levels removed, only the game.
+
+**NONE**
 
 ### 102. Juggling
 
@@ -1231,21 +1225,23 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 
 *Scored by: difficulty level, then most reps*
 
+> Changed 5 Oct 2026 (Tāne): 0 Bounce renamed No Bounce.
+
 - D1: 2 Bounce
 - D2: 1 Bounce
-- D3: 0 Bounce
+- D3: No Bounce
 - D4: Game
 
 ### 104. Slackline
 
 *Scored by: longest hold*
 
+> Changed 5 Oct 2026 (Tāne): Plank Walk and Slackline Bounce removed; Beam Walk and Slackline Walk renamed.
+
 - D1: Single Leg Balance
-- D2: Plank Walk
-- D3: Beam Walk
-- D4: Slackline Walk
-- D5: Slackline Bounce
-- D6: Game
+- D2: Beam
+- D3: Slackline
+- D4: Game
 
 ---
 
@@ -1255,50 +1251,62 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 
 *Scored by: win, draw or loss against another player*
 
-- D1: Sets
-- D2: Digs
-- D3: Partner Digs (2m)
-- D4: Partner Digs (5m)
+> Changed 5 Oct 2026 (Tāne): New drill ladder.
+
+- D1: Dig Passes (2m)
+- D2: Dig Passes (5m)
+- D3: Partner Digs (10m)
+- D4: Partner Digs (20m)
 - D5: Game
 
 ### 106. Baseball
 
 *Scored by: win, draw or loss against another player*
 
-- D1: Pitch Ball
-- D2: Bat Ball
-- D3: Pitch & Bat (2m)
-- D4: Pitch & Bat (5m)
-- D5: Game
+> Changed 5 Oct 2026 (Tāne): New drill ladder.
+
+- D1: Bat & Catch
+- D2: Bat & Catch (2m)
+- D3: Bat & Catch (5m)
+- D4: Bat & Catch (10m)
+- D5: Bat & Catch (20m)
+- D6: Game
 
 ### 107. Teqball
 
 *Scored by: win, draw or loss against another player*
 
-- D1: Juggles · 2 Bounce   (Foot juggles, two bounces allowed between touches)
-- D2: Partner Pass   (Passes to a partner, one bounce allowed)
-- D3: Partner Pass (2m)   (Passes to a partner from 2m, one bounce allowed)
+> Changed 5 Oct 2026 (Tāne): New drill ladder.
+
+- D1: Bounce Pass
+- D2: Bounce Pass (2m)
+- D3: Bounce Pass (5m)
 - D4: Game
 
 ### 108. Tennis
 
 *Scored by: win, draw or loss against another player*
 
+> Changed 5 Oct 2026 (Tāne): Partner Hits renamed Hits.
+
 - D1: Vertical Juggles
-- D2: Partner Hits (2m)
-- D3: Partner Hits (5m)
-- D4: Partner Hits (10m)
+- D2: Hits (2m)
+- D3: Hits (5m)
+- D4: Hits (10m)
 - D5: Game
 
 ### 109. Cricket
 
 *Scored by: win, draw or loss against another player*
 
-- D1: Bowl Ball
-- D2: Bat Ball
-- D3: Bowl & Bat (2m)
-- D4: Bowl & Bat (5m)
-- D5: Game
+> Changed 5 Oct 2026 (Tāne): New drill ladder; Game kept on top (confirmed 5 Oct 2026).
+
+- D1: Bat & Catch
+- D2: Bat & Catch (2m)
+- D3: Bat & Catch (5m)
+- D4: Bat & Catch (10m)
+- D5: Bat & Catch (20m)
+- D6: Game
 
 ### 110. Badminton
 
@@ -1378,11 +1386,12 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 
 *Scored by: win, draw or loss against another player*
 
-- D1: Chest Pass
-- D2: Shot Under Hoop   (Standing directly under the hoop)
-- D3: Shot (2m)
-- D4: Shot (5m)
-- D5: Game
+> Changed 5 Oct 2026 (Tāne): Chest Pass removed.
+
+- D1: Shot Under Hoop   (Standing directly under the hoop)
+- D2: Shot (2m)
+- D3: Shot (5m)
+- D4: Game
 
 ### 118. Bocce
 
@@ -1436,29 +1445,33 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 
 *Scored by: win, draw or loss against another player*
 
+> Changed 5 Oct 2026 (Tāne): Named Double and Bullseye removed.
+
 - D1: Hit the Board   (Land all three darts of a visit on the board)
 - D2: Named Number   (Hit a number called before you throw)
-- D3: Named Double   (Hit the double ring of a number called before you throw)
-- D4: Bullseye
-- D5: Game
+- D3: Game
 
 ### 124. Disc Golf
 
-*Scored by: fewest strokes over 4 holes*
+*Scored by: win, draw or loss against another player at the top level*
+
+> Changed 5 Oct 2026 (Tāne): Approach (20m) replaced by Putt (10m); the game is any round, strokes recorded alongside.
 
 - D1: Putt (2m)
 - D2: Putt (5m)
-- D3: Approach (20m)   (Land inside a set radius of the basket)
-- D4: Game (4 Holes)
+- D3: Putt (10m)
+- D4: Game
 
 ### 125. Golf
 
-*Scored by: fewest strokes over 4 holes*
+*Scored by: win, draw or loss against another player at the top level*
+
+> Changed 5 Oct 2026 (Tāne): The game is any round, strokes recorded alongside.
 
 - D1: Putt (2m)
 - D2: Putt (5m)
 - D3: Chip (10m)
-- D4: Game (4 Holes)
+- D4: Game
 
 ### 126. Handball
 
@@ -1473,10 +1486,11 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 
 *Scored by: win, draw or loss against another player*
 
+> Changed 5 Oct 2026 (Tāne): Partner Hits removed.
+
 - D1: Vertical Juggles   (Bounce the ball on the bat, standing)
 - D2: Wall Juggles
-- D3: Partner Hits
-- D4: Game
+- D3: Game
 
 ### 128. Kubb
 
