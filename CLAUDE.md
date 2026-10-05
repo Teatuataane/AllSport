@@ -158,7 +158,7 @@ npx vitest run __tests__/grading.test.ts
 - New UI uses the canonical tokens and `components/ui.tsx` primitives; existing pages still use inline `style={{}}` heavily, so match the surrounding file.
 - Each new Supabase read of a possibly-missing table/column is its **own query** with PGRST205/42P01/42703 handled as "not live yet".
 - Dates: parse DATE columns with `lib/dates.ts` (`parseLocalDate`, `formatNZDate`, `sessionStart`), never `new Date('YYYY-MM-DD')`; all dates mean NZ time.
-- Commit/changelog: `VERSION` (currently `0.28.1.0`) and `CHANGELOG.md` are bumped per shipped change; open work is tracked in `TODOS.md`. Comments in this codebase explain *why* at length; match that density when you touch a risky area.
+- Commit/changelog: `VERSION` (currently `0.28.2.0`) and `CHANGELOG.md` are bumped per shipped change; open work is tracked in `TODOS.md`. Comments in this codebase explain *why* at length; match that density when you touch a risky area.
 - Event/standards/difficulty changes are made by editing the reviewed sheet and re-running the apply script, not by hand-editing generated output.
 
 ## 15. Important files and directories
@@ -186,4 +186,4 @@ npx vitest run __tests__/grading.test.ts
 | `*_PLAN.md`, `EVENT_*.md`, `design-canvas/` | Older design records and mockups; historical |
 | `.claude/` | Claude Code skills and launch config (tooling only) |
 
-*Last updated: 5 October 2026 (v0.28.1.0).*
+*Last updated: 5 October 2026 (v0.28.2.0).*

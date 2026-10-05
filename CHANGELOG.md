@@ -2,6 +2,11 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.28.2.0] - 2026-10-05
+
+### Changed
+- **Repeat Vault is a vault now, not a jump.** An attempt is 10 vaults over the bar, back and forth, with at least one hand on the bar each time. Any vault style counts. Fastest time for 10 vaults at your bar height wins.
+
 ## [0.28.1.0] - 2026-10-05
 
 ### Changed
