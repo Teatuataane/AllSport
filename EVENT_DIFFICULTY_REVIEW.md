@@ -414,7 +414,9 @@ _No levels yet._
 - D5: Wall Assisted   (Headstand with no hands, wall support allowed)
 - D6: Freestanding   (Freestanding headstand, no wall or hands)
 
-### 27. Compression
+### 27. L-Sit
+
+> Renamed from Compression, 5 Oct 2026 (Tāne). Same ladder, same slug.
 
 *Scored by: difficulty level, then longest hold*
 

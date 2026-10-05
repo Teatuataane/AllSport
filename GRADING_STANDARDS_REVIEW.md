@@ -751,7 +751,9 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Uenuku: D6 · 10s
 - Taniwha: D6 · 30s
 
-### 26. Compression
+### 26. L-Sit
+
+> Renamed from Compression, 5 Oct 2026. Standards unchanged.
 
 *Scored by: difficulty level, then longest hold · 4 players have scored it (as L-Sit Hold)*
 

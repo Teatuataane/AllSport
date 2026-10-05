@@ -2670,6 +2670,12 @@ that release's `enforce_relevelled_ladders()` to guard every ladder it changes
 too, as its header asks of any later ladder change, and regenerates
 `__tests__/fixtures/levelNames.json`.
 
+**Follow-up, v0.28.1.0:** Tāne kept the Compression ladder but renamed the
+event **L-Sit** (`20261005032653`: `session_events.event_name` and a full
+`event_domains` re-seed; slug `l-sit-hold` unchanged, so nothing keyed on the
+slug moves). The frozen Stamina migration's tests map 'Compression' onto the
+new name.
+
 **Decisions taken in the session (Tāne, 5 Oct 2026):**
 - Open distance and time: *"what wins is the best effort — a 4 min kilometre is much
   harder than a 15 min three k."* Built as Riegel's prediction over a reference

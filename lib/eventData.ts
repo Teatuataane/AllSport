@@ -519,7 +519,7 @@ export const EVENTS: EventData[] = [
   {
     // Renamed from L-Sit Hold (Sept 2026). Slug stays 'l-sit-hold' so its history stays attached.
     slug: 'l-sit-hold',
-    name: 'Compression',
+    name: 'L-Sit',
     domain: 'Calisthenics',
     domainNumber: 2,
     inputMode: 'difficulty+time',

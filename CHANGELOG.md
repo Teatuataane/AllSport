@@ -2,6 +2,11 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.28.1.0] - 2026-10-05
+
+### Changed
+- **Compression is called L-Sit again.** Same levels (Curl Up to V Sit), same scores and colours; only the name changes.
+
 ## [0.28.0.0] - 2026-10-05
 
 ### Changed

@@ -50,12 +50,12 @@ describe('an event\'s colour', () => {
   // conferring Taniwha for good; why_new=no test fed eventGrade a row whose level
   // and band disagree; seam=none
   it('ignores a level that is not the ladder\'s level at its band', () => {
-    const old = row('Compression', 40030, { difficulty_tier: 'L-Sit' })
-    expect(eventGrade(ev('Compression'), [old], openMan).rung).toBe(0)
-    const moved = row('Compression', 30030, { difficulty_tier: 'L Sit' })
-    expect(eventGrade(ev('Compression'), [old, moved], openMan).best?.raw_score).toBe(30030)
+    const old = row('L-Sit', 40030, { difficulty_tier: 'L-Sit' })
+    expect(eventGrade(ev('L-Sit'), [old], openMan).rung).toBe(0)
+    const moved = row('L-Sit', 30030, { difficulty_tier: 'L Sit' })
+    expect(eventGrade(ev('L-Sit'), [old, moved], openMan).best?.raw_score).toBe(30030)
     // A row with no stored level grades as before.
-    expect(eventGrade(ev('Compression'), [row('Compression', 30030)], openMan).rung).toBeGreaterThan(0)
+    expect(eventGrade(ev('L-Sit'), [row('L-Sit', 30030)], openMan).rung).toBeGreaterThan(0)
   })
 
   it('carries the score that earned the colour, for HOME to show', () => {
