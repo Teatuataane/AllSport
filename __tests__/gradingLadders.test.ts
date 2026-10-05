@@ -42,14 +42,17 @@ describe('pure contests (5 Oct 2026)', () => {
     }
   })
 
-  it('are, with Wrestling, every event on plain win/draw/loss', () => {
+  // The 6 Oct 2026 roster added four more, born plain win/draw/loss.
+  const ADDED_OCT_6 = ['Mas Wrestling', '400m Sprint', '800m Sprint', 'Obstacle Course']
+
+  it('are, with Wrestling and the 6 Oct additions, every event on plain win/draw/loss', () => {
     expect(EVENTS.filter(e => e.inputMode === 'sport').map(e => e.name).sort())
-      .toEqual([...PURE_CONTESTS, 'Wrestling'].sort())
+      .toEqual([...PURE_CONTESTS, 'Wrestling', ...ADDED_OCT_6].sort())
   })
 
   it('record a time alongside exactly when they are raced', () => {
     const raced = ['100m Sprint', '200m Sprint', 'Tag', 'T-Race', 'Beach Flags', 'Rats & Rabbits',
-      'Capture the Flag', 'Kabaddi']
+      'Capture the Flag', 'Kabaddi', '400m Sprint', '800m Sprint', 'Obstacle Course']
     expect(EVENTS.filter(e => e.recordsTime).map(e => e.name).sort()).toEqual(raced.sort())
   })
 })

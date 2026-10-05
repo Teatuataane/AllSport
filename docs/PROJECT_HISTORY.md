@@ -2713,6 +2713,36 @@ redefined trigger.
 `GRADING_STANDARDS_REVIEW.md`. The compiler learned `"BW · 20"` (weight+reps),
 `"40kg · 100m"` (carries) and `"≤ 4:05"` (predicted reference time).
 
+## The 144-event roster (6 October 2026) — v0.30.0.0, MIGRATION NOT YET APPLIED
+
+Tāne sent a screenshot of the event list he keeps and asked where it differed
+from the app. It had 151 entries; the diff listed what was missing, renamed or in
+another domain. He then chose: add 16 events, move Wrestling to Power and
+Australian Football to Speed. Not taken from his sheet: Mana (the app has Skull
+Hang), Wrestler Bridge, Weighted Pull, Shoulder Dislocate (removed 30 Sept), and
+his older names for events the app has renamed.
+
+**Decisions (Tāne, 6 Oct 2026):** both moves are moves, not duplicates (an event
+has one domain). Steinborn ranks on estimated 1RM like every lift. Glute Thrust is
+a weighted hold (`weight+time`), and the Glute Thrust LEVEL of Hamstring Curl
+stays as it is. The scoring of the other thirteen was drafted by Claude and
+accepted as a first draft for the review sheets.
+
+**Production, read-only, the same day:** `triple-jump` held 7 results in cm
+(May to July 2026) on the same `distance` encoding, so the slug was reused and
+they count again. `cornhole` held 4 plain win/draw/loss results (raw 0/1/2, no
+level); the new Cornhole is a ladder with Game at index 3, so `20261005222950`
+moves them to 30000 + result with `difficulty_tier = 'Game'` (pre-image in
+`results_archive_20261006_cornhole`). `walking` held 4 empty draws and no score
+anywhere, so the slug was reused as an open distance + time and taken OUT of
+`TIMED_EFFORT_SLUGS`, where it had been kept only to decode history that turned
+out not to exist. No `grade_awards` row cited any moved or returning event, so
+the moves change no conferred colour; the migration asserts that still holds.
+
+**Not yet applied, and order matters:** production's newest migration that day
+was `20260930222237`. `20261005012108` (5 Oct review) and `20261005032653` (L-Sit)
+had not run, so `20261005222950` waits behind them; one `db push` takes all three.
+
 ## Game screen by domain, + to add, colour by grade (September 2026) — v0.19.0.0
 
 Settled in a `/grill-me` with Tāne on 2026-09-26. No migration.

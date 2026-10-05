@@ -31,7 +31,7 @@ describe('logged bests on My Events', () => {
       entry({ raw_score: null }),
       entry({ score_label: null }),
       entry({ event_slug: null }),
-      entry({ event_slug: 'walking' }),
+      entry({ event_slug: 'backwards-walk' }),
       entry({ workouts: null }),
     ])).toEqual([])
   })

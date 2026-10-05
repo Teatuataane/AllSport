@@ -15,8 +15,8 @@ import {
 // ─── EVENTS array integrity ───────────────────────────────────────────────────
 
 describe('EVENTS array', () => {
-  it('contains exactly 128 events', () => {
-    expect(EVENTS).toHaveLength(128)
+  it('contains exactly 144 events', () => {
+    expect(EVENTS).toHaveLength(144)
   })
 
   it('every event has a unique slug', () => {
@@ -164,6 +164,9 @@ describe('getEventByName', () => {
     ['L-Sit', 'Calisthenics', 2],
     ['Toe Lift', 'Stamina', 5],
     ['American Football', 'Speed', 4],
+    // Moved 6 Oct 2026, slugs kept so their results move with them.
+    ['Wrestling', 'Power', 3],
+    ['Australian Football', 'Speed', 4],
   ])('moved %s now sits in %s', (name, domain, domainNumber) => {
     const e = getEventByName(name)
     expect(e).toBeDefined()
@@ -178,6 +181,10 @@ describe('getEventByName', () => {
     'Pullover & Press', 'Loaded Lunge', 'Skull Hang', 'Calf Raises',
     'Plie Squat', 'Seiza', 'Internal Wrist Stretch', 'External Wrist Stretch',
     'Back Extension', 'Hollow Hold', 'Reverse Maltese',
+    // Added 6 Oct 2026
+    'Steinborn', 'Glute Thrust', 'Reverse Wrist Ext', 'Clap Pushups', 'Triple Jump',
+    'Mas Wrestling', '400m Sprint', '800m Sprint', 'Obstacle Course', 'Swim', 'Walking',
+    'Diving', 'Poi', 'Water Polo', 'Cornhole', 'Airsoft',
   ])('new event %s is defined with real content', (name) => {
     const e = getEventByName(name)
     expect(e).toBeDefined()
@@ -186,8 +193,9 @@ describe('getEventByName', () => {
   })
 
   it.each([
-    'Reverse Hyper', 'Triple Jump', '400m Race', '50m Sprint',
-    'Football Dribble', 'Hockey Dribble', 'Walking', 'Backwards Walk', 'Airsoft',
+    // Triple Jump, Walking and Airsoft were here until they came back, 6 Oct 2026.
+    'Reverse Hyper', '400m Race', '50m Sprint',
+    'Football Dribble', 'Hockey Dribble', 'Backwards Walk',
     // Replaced by Lunges, August 2026. A different movement, so its history is
     // deliberately NOT swept onto the new slug — see the Lunges test below.
     'Toe Squat',
@@ -261,9 +269,9 @@ describe('getEventsByDomain', () => {
     expect(Object.keys(map)).toHaveLength(10)
   })
 
-  it('Maximal Strength has 14 events', () => {
+  it('Maximal Strength has 16 events', () => {
     const map = getEventsByDomain()
-    expect(map['Maximal Strength']).toHaveLength(14)
+    expect(map['Maximal Strength']).toHaveLength(16)
   })
 
   it('every event appears in exactly one domain bucket', () => {
@@ -280,9 +288,9 @@ describe('getEventsByDomain', () => {
   it('holds at least 12 events in every domain, and the expected count in each', () => {
     const map = getEventsByDomain()
     const expected: Record<string, number> = {
-      'Maximal Strength': 14, 'Calisthenics': 13, 'Power': 12, 'Speed': 12,
-      'Stamina': 13, 'Endurance': 12, 'Flexibility': 15,
-      'Body Awareness': 13, 'Coordination': 12, 'Aim & Precision': 12,
+      'Maximal Strength': 16, 'Calisthenics': 13, 'Power': 15, 'Speed': 15,
+      'Stamina': 14, 'Endurance': 15, 'Flexibility': 15,
+      'Body Awareness': 14, 'Coordination': 13, 'Aim & Precision': 14,
     }
     for (const [domain, events] of Object.entries(map)) {
       expect(events.length, `${domain} should hold at least 12 events`).toBeGreaterThanOrEqual(12)
@@ -319,16 +327,18 @@ describe('getEventsByDomain', () => {
     expect(slugs).not.toContain('sprint-repeats')
     expect(slugs).not.toContain('30-15-test')
     // Retired Aug 2026 — still in TIMED_EFFORT_SLUGS for historical decode
-    expect(slugs).not.toContain('walking')
     expect(slugs).not.toContain('backwards-walk')
+    // Walking came back 6 Oct 2026 on its old slug as an open distance + time.
+    expect(slugs).toContain('walking')
+    expect(slugs).toContain('swim')
   })
 
-  // Guards a deliberate decision that reads like dead config: 'walking' and
-  // 'backwards-walk' are retired events kept in TIMED_EFFORT_SLUGS on purpose.
-  // Their historical raw_scores are inverted-encoded, so dropping them would
-  // make every archived Walking row decode backwards (a 4:00 reading as 2:40)
-  // wherever a past session is rendered.
-  it.each(['walking', 'backwards-walk'])(
+  // Guards a deliberate decision that reads like dead config: 'backwards-walk'
+  // is a retired event kept in TIMED_EFFORT_SLUGS on purpose. Its historical
+  // raw_scores are inverted-encoded, so dropping it would make every archived
+  // row decode backwards (a 4:00 reading as 2:40) wherever a past session is
+  // rendered.
+  it.each(['backwards-walk'])(
     'retired event %s still decodes as a timed effort',
     (slug) => {
       expect(getEventBySlug(slug)).toBeUndefined() // gone from the roster
@@ -338,6 +348,17 @@ describe('getEventsByDomain', () => {
       expect(decodeDiffTime(raw, isTimedEffort(slug)).secs).toBe(240)
     }
   )
+
+  // 'walking' left the set 6 Oct 2026, when Walking came back as an open
+  // distance + time on its old slug. Production held no stored score under it,
+  // so no row was ever inverted-encoded; keeping it would misdecode the new one.
+  it('Walking is back as an open distance + time, and no longer a timed effort', () => {
+    const walking = getEventBySlug('walking')!
+    expect(walking.inputMode).toBe('distance+time')
+    expect(walking.referenceMetres).toBe(1000)
+    expect(isTimedEffort('walking')).toBe(false)
+    expect(getEventBySlug('swim')!.referenceMetres).toBe(100)
+  })
 })
 
 // ─── effectiveScore helper (pure logic) ──────────────────────────────────────
@@ -384,8 +405,9 @@ describe('getBonusTargets', () => {
     const wrestling = EVENTS.find(e => e.slug === 'wrestling')!
     expect(wrestling.inputMode).toBe('sport')
     expect(EVENTS.filter(e => e.inputMode === 'sport').map(e => e.slug).sort()).toEqual([
-      '100m-sprint', '200m-sprint', 'arm-wrestling', 'beach-flags', 'capture-the-flag', 'fencing',
-      'kabaddi', 'rats-and-rabbits', 'speed-chess', 't-race', 'tae-kwon-do', 'tag', 'tug-of-war', 'wrestling',
+      '100m-sprint', '200m-sprint', '400m-sprint', '800m-sprint', 'arm-wrestling', 'beach-flags',
+      'capture-the-flag', 'fencing', 'kabaddi', 'mas-wrestling', 'obstacle-course', 'rats-and-rabbits',
+      'speed-chess', 't-race', 'tae-kwon-do', 'tag', 'tug-of-war', 'wrestling',
     ])
     const targets = getBonusTargets(wrestling, null)
     expect(targets).toHaveLength(1)
@@ -505,7 +527,7 @@ describe('TIMED_EFFORT_SLUGS', () => {
   // Retired events kept on purpose: their historical raw_scores are
   // inverted-encoded, so decodeDiffTime must keep reading them as timed efforts
   // wherever an old session is rendered.
-  const RETIRED = new Set(['walking', 'backwards-walk', 'duck-walk'])
+  const RETIRED = new Set(['backwards-walk', 'duck-walk'])
 
   it('every entry either names a real event or is a declared retired slug', () => {
     for (const slug of TIMED_EFFORT_SLUGS) {

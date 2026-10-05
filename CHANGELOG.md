@@ -2,6 +2,24 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.30.0.0] - 2026-10-06
+
+### Added
+- **144 events.** Sixteen new events from Tāne's list of 6 October:
+  - Maximal Strength: **Steinborn** (estimated one-rep max, like the other lifts) and **Glute Thrust** (a weighted hold: heaviest load, then longest hold).
+  - Stamina: **Reverse Wrist Ext** (heaviest load, then most reps).
+  - Power: **Clap Pushups** (five levels, most reps), **Triple Jump** (furthest jump) and **Mas Wrestling** (win, draw or loss).
+  - Speed: **400m Sprint** and **800m Sprint** (win, draw or loss, time kept alongside).
+  - Endurance: **Obstacle Course** (win, draw or loss, time kept), **Swim** (any distance from 100m, ranked on its predicted 100m time) and **Walking** (any distance from 1km, ranked on its predicted 1km time).
+  - Body Awareness: **Diving** and **Poi**. Coordination: **Water Polo**. Aim & Precision: **Cornhole** and **Airsoft**. Each has a ladder of levels topped by a Game.
+- **Triple Jump's seven old results count again**, and Cornhole's four old games move onto its new Game level.
+
+### Changed
+- **Wrestling is a Power event and Australian Football a Speed event.** Their scores move with them. No colour anyone holds rests on either event, so no colour changes hands.
+- Everyone's colours are rechecked once.
+
+The levels and colour standards for the new events are a first draft, marked UNREVIEWED in both review sheets. Eleven of the new events have no icon yet and show an emoji until they do; the 400m and 800m Sprints borrow the old 400m race icon.
+
 ## [0.29.0.0] - 2026-10-05
 
 ### Added
