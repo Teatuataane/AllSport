@@ -12,7 +12,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase-browser'
 import { getEventByName, getEventBySlug } from '@/lib/eventData'
-import { loggedBestRows, type LoggedBestEntry } from '@/lib/workouts'
+import { loggedBestRows, trainingDistanceRows, type LoggedBestEntry } from '@/lib/workouts'
 import type { PRRow } from '@/lib/prBoard'
 
 const supabase = createClient()
@@ -25,6 +25,9 @@ type ResultRow = {
   raw_score: number | null
   score_label: string | null
   difficulty_tier: string | null
+  distance_m: number | null
+  time_seconds: number | null
+  weight_kg: number | null
   session_events: { event_name: string } | null
   sessions: { session_date: string } | null
 }
@@ -46,17 +49,19 @@ export function usePRRows(playerId: string | null, slugs: readonly string[]) {
     const [games, entries] = await Promise.all([
       supabase
         .from('results')
-        .select('id, raw_score, score_label, difficulty_tier, session_events!inner(event_name), sessions!inner(session_date)')
+        .select('id, raw_score, score_label, difficulty_tier, distance_m, time_seconds, weight_kg, session_events!inner(event_name), sessions!inner(session_date)')
         .eq('player_id', playerId)
         .in('session_events.event_name', names)
         .not('raw_score', 'is', null)
         .range(0, 4999),
       supabase
         .from('workout_entries')
-        .select('id, event_slug, raw_score, score_label, difficulty_tier, workouts!inner(player_id, performed_on, witnessed)')
+        .select('id, event_slug, raw_score, score_label, difficulty_tier, distance_m, time_seconds, weight_kg, workouts!inner(player_id, performed_on, witnessed)')
         .eq('workouts.player_id', playerId)
         .in('event_slug', slugKey.split(','))
-        .not('raw_score', 'is', null)
+        // A distance effort with no raw_score is training under the reference
+        // distance, still a record at its own distance (lib/prBoard.ts).
+        .or('raw_score.not.is.null,distance_m.not.is.null')
         .range(0, 4999),
     ])
 
@@ -67,17 +72,20 @@ export function usePRRows(playerId: string | null, slugs: readonly string[]) {
         push(ev.slug, {
           id: r.id, raw_score: Number(r.raw_score), score_label: r.score_label ?? '',
           difficulty_tier: r.difficulty_tier, date: r.sessions.session_date, source: 'game',
+          distance_m: r.distance_m, time_seconds: r.time_seconds, weight_kg: r.weight_kg,
         })
       }
     }
     if (!entries.error) {
-      for (const r of loggedBestRows((entries.data ?? []) as unknown as LoggedBestEntry[])) {
+      const logged = (entries.data ?? []) as unknown as LoggedBestEntry[]
+      for (const r of [...loggedBestRows(logged), ...trainingDistanceRows(logged)]) {
         const ev = getEventByName(r.event_name)
         if (!ev) continue
         push(ev.slug, {
           id: r.id, raw_score: r.raw_score, score_label: r.score_label,
           difficulty_tier: r.difficulty_tier, date: r.session_date,
           source: r.witnessed ? 'witnessed' : 'logged',
+          distance_m: r.distance_m, time_seconds: r.time_seconds, weight_kg: r.weight_kg,
         })
       }
     }

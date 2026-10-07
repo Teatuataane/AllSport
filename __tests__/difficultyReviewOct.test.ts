@@ -37,14 +37,16 @@ describe('distance + time: the best effort wins', () => {
     expect(predictedEffortSecs(1000, 42195, 12600)!).toBeGreaterThan(200)
   })
 
-  it('keeps the crawl level as the band, the predicted 25m inside it', () => {
+  it('keeps the crawl level as the band, the predicted 100m inside it', () => {
     const d2 = crawl.difficultyTiers![1].name
-    const r = computeScoreVals('distance+time', crawl, vals({ difficultyTier: d2, distanceVal: '100', timeMins: '2', timeSecs: '0' }))!
-    expect(r.raw_score).toBe(1 * DT_CAP + DT_CAP - predictedEffortSecs(25, 100, 120)!)
+    const r = computeScoreVals('distance+time', crawl, vals({ difficultyTier: d2, distanceVal: '200', timeMins: '4', timeSecs: '0' }))!
+    expect(r.raw_score).toBe(1 * DT_CAP + DT_CAP - predictedEffortSecs(100, 200, 240)!)
     // Any effort on a harder crawl beats every effort on an easier one.
-    const fastD1 = computeScoreVals('distance+time', crawl, vals({ difficultyTier: crawl.difficultyTiers![0].name, distanceVal: '25', timeSecs: '5' }))!
+    const fastD1 = computeScoreVals('distance+time', crawl, vals({ difficultyTier: crawl.difficultyTiers![0].name, distanceVal: '100', timeSecs: '30' }))!
     expect(r.raw_score).toBeGreaterThan(fastD1.raw_score)
-    expect(computeScoreVals('distance+time', crawl, vals({ distanceVal: '25', timeSecs: '20' }))).toBeNull()
+    // Under 100m it does not rank (8 Oct 2026): a record only, in training.
+    expect(computeScoreVals('distance+time', crawl, vals({ difficultyTier: d2, distanceVal: '50', timeSecs: '20' }))).toBeNull()
+    expect(computeScoreVals('distance+time', crawl, vals({ distanceVal: '100', timeSecs: '20' }))).toBeNull()
   })
 
   it('writes what was done and prefills it back', () => {

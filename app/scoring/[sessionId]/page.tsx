@@ -66,6 +66,7 @@ type Result = {
   weight_kg: number | null
   reps: number | null
   time_seconds: number | null
+  distance_m?: number | null
   is_pr: boolean
 }
 
@@ -128,8 +129,13 @@ async function submitEntry(args: {
     const live: PRRow[] = myResults.map(r => ({
       id: r.id, raw_score: r.raw_score, score_label: r.score_label,
       difficulty_tier: r.difficulty_tier, date: new Date().toISOString().slice(0, 10), source: 'game',
+      distance_m: r.distance_m ?? null, time_seconds: r.time_seconds, weight_kg: r.weight_kg,
     }))
-    const newIsPR = playerId !== null && isNewPR(eventData, mergeRows(prRows, live), scored.raw_score, editingResultId)
+    // A distance event keeps a record per distance, read off what was done.
+    const newIsPR = playerId !== null && isNewPR(eventData, mergeRows(prRows, live), {
+      raw_score: scored.raw_score, difficulty_tier: scored.difficulty_tier ?? null,
+      distance_m: scored.distance_m ?? null, time_seconds: scored.time_seconds ?? null, weight_kg: scored.weight_kg ?? null,
+    }, editingResultId)
     payload.is_pr = newIsPR
     // Effort tasks are retired, so effort_task_completions is no longer
     // written: a new row takes the column default (0), and an edit leaves a

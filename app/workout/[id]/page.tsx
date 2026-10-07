@@ -111,7 +111,8 @@ export default function PersonalGamePage() {
   // Lifetime best per event, for the pre-fill and the "Your best" tile.
   const bestRaw = (slug: string): number | null => {
     const rs = prRows[slug] ?? []
-    return rs.length > 0 ? Math.max(...rs.map(r => r.raw_score)) : null
+    const scored = rs.map(r => r.raw_score).filter((n): n is number => n !== null)
+    return scored.length > 0 ? Math.max(...scored) : null
   }
   const entriesFor = useCallback((slug: string) => entries.filter(e => e.event_slug === slug), [entries])
   const scoredSlugs = useMemo(
@@ -185,7 +186,12 @@ export default function PersonalGamePage() {
     if (!ev || !workout) return { error: 'That event is no longer on the roster', isPR: false }
     const payload = entryPayload(ev, v)
     if (!payload) return { error: 'Enter a valid score first', isPR: false }
-    const isPR = payload.raw_score != null && isNewPR(ev, prRows[slug] ?? [], payload.raw_score, editingId ? `logged:${editingId}` : null)
+    // A short distance effort (no raw_score) can still set a record at its
+    // own distance, so the whole row goes to the PR rule.
+    const isPR = isNewPR(ev, prRows[slug] ?? [], {
+      raw_score: payload.raw_score ?? null, difficulty_tier: payload.difficulty_tier ?? null,
+      distance_m: payload.distance_m, time_seconds: payload.time_seconds, weight_kg: payload.weight_kg,
+    }, editingId ? `logged:${editingId}` : null)
     const { error: e } = editingId
       ? await supabase.from('workout_entries').update(payload).eq('id', editingId)
       : await supabase.from('workout_entries').insert({ ...payload, workout_id: workout.id })

@@ -66,6 +66,11 @@ export type EventData = {
   // a SHORTER distance well and a longer one badly (a 250m sprint would
   // "predict" an elite 1000m).
   referenceMetres?: number
+  // 'distance+time' and 'weight+distance+time': the distances a player keeps a
+  // record at (lib/prBoard.ts), shortest first. Above the last one is an open
+  // "and longer" record. Records only: colours and game places still rank on
+  // referenceMetres (or, for a carry, on load then distance then time).
+  recordDistances?: readonly number[]
   // 'sport' only: a raced contest where a time may be recorded alongside the
   // win, draw or loss. It is kept for the record and never ranks.
   recordsTime?: boolean
@@ -80,6 +85,12 @@ export type BonusTarget = {
 }
 
 const PLACEHOLDER_CONTENT = 'Content coming soon.'
+
+// Records per distance (8 Oct 2026, Tāne): the runs, rides and ergs keep a
+// best at 250m to 5km, the crawls, carries and the swim at 25m to 500m, each
+// with an open record above the top distance.
+export const LONG_RECORD_DISTANCES: readonly number[] = [250, 500, 1000, 2000, 5000]
+export const SHORT_RECORD_DISTANCES: readonly number[] = [25, 50, 100, 200, 500]
 
 export const EVENTS: EventData[] = [
   // ─── Domain 1: Maximal Strength ─────────────────────────────────────────────
@@ -1372,6 +1383,7 @@ export const EVENTS: EventData[] = [
     videoPlaceholder: true,
     emoji: '🏃',
     referenceMetres: 1000,
+    recordDistances: LONG_RECORD_DISTANCES,
   },
   {
     slug: 'cycling',
@@ -1385,6 +1397,7 @@ export const EVENTS: EventData[] = [
     videoPlaceholder: true,
     emoji: '🚴',
     referenceMetres: 1000,
+    recordDistances: LONG_RECORD_DISTANCES,
   },
   {
     slug: 'ski-erg',
@@ -1398,6 +1411,7 @@ export const EVENTS: EventData[] = [
     videoPlaceholder: true,
     emoji: '⛷️',
     referenceMetres: 1000,
+    recordDistances: LONG_RECORD_DISTANCES,
   },
   {
     slug: 'row-erg',
@@ -1411,6 +1425,7 @@ export const EVENTS: EventData[] = [
     videoPlaceholder: true,
     emoji: '🚣',
     referenceMetres: 1000,
+    recordDistances: LONG_RECORD_DISTANCES,
   },
   {
     slug: 'breath-hold',
@@ -1435,6 +1450,7 @@ export const EVENTS: EventData[] = [
     rules: "The bag is carried against the body — no handles, straps or barrow. Timed from the start signal to the end of your distance. Enter the combined load, the distance you covered, and your time. Heavier always wins; at the same load the longer distance wins, and at the same load and distance the faster time wins. Setting the load down is allowed, but the clock never stops.",
     videoPlaceholder: true,
     emoji: '📦',
+    recordDistances: SHORT_RECORD_DISTANCES,
   },
   {
     // REPLACES Duck Walk (Sept 2026). Not a rename: a bear crawl is not a duck
@@ -1452,11 +1468,12 @@ export const EVENTS: EventData[] = [
       { level: 3, name: 'Lizard Crawl', detail: 'Chest low, elbows bent, hips down' },
       { level: 4, name: 'Duck Walk', detail: 'Deep squat, hips below knees, stepping without standing up' },
     ],
-    howToPerform: "Choose your crawl, then cover any distance of 25m or more in it without breaking position.",
-    rules: "Declare your crawl before starting. Hold the position for the whole distance — standing up or dropping the knees stops the clock until you are back in position. A harder crawl always outranks an easier one. Within a crawl, enter the distance you covered and your time. Any distance of at least 25m counts. Your effort is ranked on the 25m time it predicts (Riegel's formula, the standard endurance prediction), so a faster pace over a longer distance is a better effort: a 15-second 25m beats a 2-minute 100m.",
+    howToPerform: "Choose your crawl, then cover any distance in it without breaking position. 100m or more counts for colours.",
+    rules: "Declare your crawl before starting. Hold the position for the whole distance — standing up or dropping the knees stops the clock until you are back in position. A harder crawl always outranks an easier one. Within a crawl, enter the distance you covered and your time. Any distance of at least 100m counts for colours and game places. Your effort is ranked on the 100m time it predicts (Riegel's formula, the standard endurance prediction), so a faster pace over a longer distance is a better effort: a 1-minute 100m beats a 3-minute 200m. In training, a shorter effort still sets your record at 25m or 50m.",
     videoPlaceholder: true,
     emoji: '🦆',
-    referenceMetres: 25,
+    referenceMetres: 100,
+    recordDistances: SHORT_RECORD_DISTANCES,
   },
   {
     slug: 'bronco',
@@ -1490,6 +1507,7 @@ export const EVENTS: EventData[] = [
     videoPlaceholder: true,
     emoji: '🧎',
     referenceMetres: 1000,
+    recordDistances: LONG_RECORD_DISTANCES,
   },
   {
     slug: 'farmer-carry',
@@ -1502,6 +1520,7 @@ export const EVENTS: EventData[] = [
     rules: "The two loads must match, and the load entered is their COMBINED weight. Both stay in your hands while you are moving — resting them on the body or a shoulder voids the attempt. Timed from the start signal to the end of your distance. Enter the combined load, the distance you covered, and your time. Heavier always wins; at the same load the longer distance wins, and at the same load and distance the faster time wins. Setting the load down is allowed, but the clock never stops.",
     videoPlaceholder: true,
     emoji: '🧳',
+    recordDistances: SHORT_RECORD_DISTANCES,
   },
   {
     slug: 'weighted-drag',
@@ -1514,6 +1533,7 @@ export const EVENTS: EventData[] = [
     rules: "The load is DRAGGED on the ground for the whole distance — lifting or carrying any part of it voids the attempt. The load entered is what is on the sled; spilling it means reloading before you carry on. Timed from the start signal to the end of your distance. Enter the combined load, the distance you covered, and your time. Heavier always wins; at the same load the longer distance wins, and at the same load and distance the faster time wins. Setting the load down is allowed, but the clock never stops.",
     videoPlaceholder: true,
     emoji: '🛷',
+    recordDistances: SHORT_RECORD_DISTANCES,
   },
   {
     slug: 'obstacle-course',
@@ -1542,6 +1562,7 @@ export const EVENTS: EventData[] = [
     videoPlaceholder: true,
     emoji: '🏊',
     referenceMetres: 100,
+    recordDistances: SHORT_RECORD_DISTANCES,
   },
   {
     slug: 'walking',
@@ -1557,6 +1578,7 @@ export const EVENTS: EventData[] = [
     videoPlaceholder: true,
     emoji: '🚶',
     referenceMetres: 1000,
+    recordDistances: LONG_RECORD_DISTANCES,
   },
   // ─── Domain 4: Speed ────────────────────────────────────────────────────────────
   {

@@ -78,6 +78,15 @@ type QuickEntrySheetProps = {
   onDeleted: () => void
 }
 
+// What a training effort under the reference distance does: no rank or colour,
+// but a record at the longest record distance it covered (lib/prBoard.ts).
+function shortRecordHint(ev: EventData | undefined, metres: number, ref: number): string {
+  const at = (ev?.recordDistances ?? []).filter(d => d <= Math.round(metres)).pop()
+  return at
+    ? `Under ${fmtDistance(ref)}, so it does not rank or count for colours. It counts for your ${fmtDistance(at)} record.`
+    : `Under ${fmtDistance(ref)}, so it is saved as training and does not rank. Go ${fmtDistance(ref)} or more to rank.`
+}
+
 export default function QuickEntrySheet({
   se, eventData, myResults, opponents, seasonPR, prRows = [], locked,
   bestLabel = "Today's best", prLabel = 'Season PR', allowGames = true, natural = false, standards,
@@ -350,7 +359,7 @@ export default function QuickEntrySheet({
 
               {prRows.length > 0 && (
                 <>
-                  <div style={QES_LBL}>{eventData?.hasDifficultyTiers ? 'Your records by level' : 'Your top scores'}</div>
+                  <div style={QES_LBL}>{eventData?.recordDistances?.length ? 'Your records by distance' : eventData?.hasDifficultyTiers ? 'Your records by level' : 'Your top scores'}</div>
                   <PRBoardView
                     ev={eventData}
                     rows={prRows}
@@ -359,7 +368,19 @@ export default function QuickEntrySheet({
                     onPick={locked ? undefined : row => {
                       keepExistingMatch.current = false
                       setEditingResult(null)
-                      setV({ ...EMPTY_VALS, ...valsFromRaw(mode, eventData, row.raw_score) })
+                      // A distance record pre-fills what was actually done;
+                      // the rest decode their one number.
+                      setV({
+                        ...EMPTY_VALS,
+                        ...(row.distance_m && row.time_seconds
+                          ? valsFromResult(mode, {
+                              raw_score: row.raw_score ?? 0, difficulty_tier: row.difficulty_tier,
+                              result_type: null, opponent_name: null, match_score: null,
+                              weight_kg: row.weight_kg ?? null, reps: null,
+                              time_seconds: row.time_seconds, distance_m: row.distance_m,
+                            })
+                          : row.raw_score !== null ? valsFromRaw(mode, eventData, row.raw_score) : {}),
+                      })
                     }}
                   />
                 </>
@@ -554,7 +575,7 @@ export default function QuickEntrySheet({
                     <div style={{ fontSize: 12.5, color: '#777', marginTop: 8, lineHeight: 1.5 }}>
                       {enteredMetres > 0 && enteredMetres < refMetres
                         ? natural
-                          ? `Under ${fmtDistance(refMetres)}, so it is saved as training and does not rank. Go ${fmtDistance(refMetres)} or more to rank.`
+                          ? shortRecordHint(eventData, enteredMetres, refMetres)
                           : `At least ${fmtDistance(refMetres)} to count.`
                         : scored && enteredMetres > 0 && Math.round(enteredMetres) !== refMetres
                           ? `${paceLabel(enteredMetres, (parseFloat(v.timeMins) || 0) * 60 + (parseFloat(v.timeSecs) || 0))} · ranks as ${scored.score_label.split(' · est. ')[1] ?? ''}`

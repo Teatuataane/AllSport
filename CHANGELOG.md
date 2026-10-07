@@ -2,6 +2,15 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.31.0.0] - 2026-10-08
+
+### Added
+- **Records at each distance.** Distance events now keep a best at several distances instead of one top-five list. Running, Cycling, Ski Erg, Row Erg, Scooting and Walking keep 250m, 500m, 1km, 2km, 5km and a "5km+" record for the longest effort over 5km. Animal Crawl, Swim, Farmer Carry, Sandbag Carry and Weighted Drag keep 25m, 50m, 100m, 200m, 500m and "500m+". An effort between two distances counts at the shorter one, on the time it predicts there (a 700m row in 2:20 is a 500m record of about 1:40). On a carry the heavier load wins, then the faster time. Animal Crawl keeps its records per crawl. The entry sheet shows the records at hand, and My Events lists all of them.
+- **A short training effort now sets a record.** A 500m row in a training session still does not rank or count for colours, but it is your 500m record. The hint under the distance says which record it counts for. On My Events, an event with only training efforts now opens to show them (marked TRAINING) instead of reading "not played".
+
+### Changed
+- **Animal Crawl ranks on 100m, not 25m.** Colours and game places need a crawl of 100m or more, ranked on its predicted 100m time. The draft crawl standards were carried to 100m (still unreviewed). No crawl had been scored yet, so no score changes.
+
 ## [0.30.0.1] - 2026-10-08
 
 ### Fixed

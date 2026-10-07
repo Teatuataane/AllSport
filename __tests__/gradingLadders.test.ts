@@ -83,7 +83,10 @@ describe('the 5 Oct 2026 history migration agrees with the ladders', () => {
     const rows = [...valuesOf(OCT, 'crawl_map').matchAll(/\('([^']+)', (\d+), '([^']+)', (\d+), (\d+)\)/g)]
     expect(rows).toHaveLength(5)
     for (const m of rows) expect(tiers[+m[4]], m[1]).toBe(m[3])
-    expect(getEventBySlug('animal-crawl')!.referenceMetres).toBe(25)
+    // The migration encoded crawls on a 25m reference. The event moved to 100m
+    // on 8 Oct 2026, when production held no Animal Crawl result or entry
+    // (checked that day), so no stored row is on the old encoding.
+    expect(getEventBySlug('animal-crawl')!.referenceMetres).toBe(100)
   })
 
   it('converts each old Tibialis Curl level to the load it was', () => {

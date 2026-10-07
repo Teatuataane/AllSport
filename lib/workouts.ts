@@ -145,6 +145,16 @@ export type LoggedBestEntry = {
   score_label: string | null
   difficulty_tier: string | null
   workouts: { performed_on: string; witnessed: boolean } | null
+} & DistanceDone
+
+/**
+ * What a distance effort actually did. Records per distance (lib/prBoard.ts)
+ * read these, not raw_score; a load that leaves them out still works.
+ */
+export type DistanceDone = {
+  distance_m?: number | null
+  time_seconds?: number | null
+  weight_kg?: number | null
 }
 
 /** A logged best effort shaped like a game result, so /prs can rank the two together. */
@@ -158,7 +168,7 @@ export type LoggedBestRow = {
   event_name: string
   domain_number: number
   witnessed: boolean
-}
+} & DistanceDone
 
 /**
  * The logged entries that are a best effort on a CURRENT event (decision 16:
@@ -190,6 +200,36 @@ export function loggedBestRows(entries: readonly LoggedBestEntry[]): LoggedBestR
       event_name: ev.name,
       domain_number: ev.domainNumber,
       witnessed: e.workouts.witnessed,
+      distance_m: e.distance_m, time_seconds: e.time_seconds, weight_kg: e.weight_kg,
+    })
+  }
+  return out
+}
+
+/**
+ * Logged distance efforts under the event's reference distance (a 500m row on
+ * a 1km event): saved with no raw_score, so they never rank or grade, but each
+ * is still a record at its own distance. Only events that keep records per
+ * distance, and only rows with a distance and a time.
+ */
+export function trainingDistanceRows(entries: readonly LoggedBestEntry[]): (Omit<LoggedBestRow, 'raw_score'> & { raw_score: null })[] {
+  const out: (Omit<LoggedBestRow, 'raw_score'> & { raw_score: null })[] = []
+  for (const e of entries) {
+    if (!e.workouts || e.raw_score != null || !e.score_label || !e.event_slug) continue
+    const ev = getEventBySlug(e.event_slug)
+    if (!ev?.recordDistances?.length) continue
+    if (!(Number(e.distance_m) > 0) || !(Number(e.time_seconds) > 0)) continue
+    out.push({
+      id: `logged:${e.id}`,
+      score_label: e.score_label,
+      raw_score: null,
+      difficulty_tier: e.difficulty_tier,
+      session_date: e.workouts.performed_on,
+      event_name: ev.name,
+      domain_number: ev.domainNumber,
+      witnessed: e.workouts.witnessed,
+      distance_m: Number(e.distance_m), time_seconds: Number(e.time_seconds),
+      weight_kg: e.weight_kg == null ? null : Number(e.weight_kg),
     })
   }
   return out

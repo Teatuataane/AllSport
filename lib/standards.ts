@@ -27,7 +27,7 @@ export const STANDARDS: Readonly<Record<string, EventStandards>> = {
   '800m-sprint': { kind: 'rating', game: true },
   'airsoft': { kind: 'raw', game: true, all: [5, 10, 10005, 10010, 20003, 20006] },
   'american-football': { kind: 'raw', game: true, all: [5, 15, 10010, 20010, 30010, 40010] },
-  'animal-crawl': { kind: 'raw', game: false, all: [1, 9970, 9980, 10001, 19970, 19980, 29955, 29970, 39960, 39970, 39975, 39980] },
+  'animal-crawl': { kind: 'raw', game: false, all: [1, 9870, 9915, 10001, 19870, 19915, 29805, 29870, 39825, 39870, 39890, 39915] },
   'archery': { kind: 'raw', game: true, all: [5, 15, 10005, 10015, 20010, 30010] },
   'arm-wrestling': { kind: 'rating', game: true },
   'arthur-lift': { kind: 'ratio', game: false, M: [0, 0.24, 0.32, 0.39, 0.45, 0.52, 0.6, 0.65, 0.7, 0.77, 0.88, 1.05], F: [0, 0.16, 0.21, 0.25, 0.3, 0.35, 0.39, 0.43, 0.48, 0.52, 0.6, 0.7] },

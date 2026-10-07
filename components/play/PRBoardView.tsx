@@ -1,10 +1,11 @@
 'use client'
 
-// A player's records on one event, in the sheet and on My Events. Tiered events
-// list a best per level played; the rest list the top five. Pure display over
+// A player's records on one event, in the sheet and on My Events. Distance
+// events list a best per distance (per crawl, on Animal Crawl); other tiered
+// events a best per level played; the rest the top five. Pure display over
 // lib/prBoard.ts: nothing here decides what a record is.
 
-import { buildPRBoard, type PRRow } from '@/lib/prBoard'
+import { buildPRBoard, distanceRecordName, type PRRow } from '@/lib/prBoard'
 import type { EventData } from '@/lib/eventData'
 import { formatNZDate } from '@/lib/dates'
 
@@ -42,7 +43,7 @@ export default function PRBoardView({
   const board = buildPRBoard(ev, rows)
   if (board.kind === 'none') return null
 
-  const line = (row: PRRow | null, left: string, key: string, active = false, name?: string) => {
+  const line = (row: PRRow | null, left: string, key: string, active = false, name?: string, text?: string | null) => {
     const Tag = onPick && row ? 'button' : 'div'
     return (
       <Tag
@@ -58,7 +59,7 @@ export default function PRBoardView({
         {name && <span style={{ ...MUTED, color: active ? colour : '#999', whiteSpace: 'nowrap' }}>{name}</span>}
         {row ? (
           <>
-            <span style={{ flex: 1, fontSize: '14px', color: '#fff', fontFamily: 'var(--font-body)' }}>{row.score_label}</span>
+            <span style={{ flex: 1, fontSize: '14px', color: '#fff', fontFamily: 'var(--font-body)' }}>{text ?? row.score_label}</span>
             <Source row={row} />
             <span style={MUTED}>{formatNZDate(row.date)}</span>
           </>
@@ -69,6 +70,24 @@ export default function PRBoardView({
     )
   }
 
+  if (board.kind === 'distances') {
+    // My Events lists every distance (of each crawl played); the sheet only the
+    // distances with a record, at the crawl about to be scored.
+    const played = new Set(board.records.filter(r => r.best).map(r => r.level))
+    const shown = board.records.filter(r => showAllLevels
+      ? played.has(r.level)
+      : r.best !== null && (currentLevel === null || r.level === null || r.level === currentLevel))
+    if (shown.length === 0) return null
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+        {shown.map(r => line(
+          r.best, distanceRecordName(r), `d${r.level ?? ''}-${r.metres}${r.open ? '+' : ''}`,
+          r.level !== null && r.level === currentLevel,
+          r.levelName ?? undefined, r.label,
+        ))}
+      </div>
+    )
+  }
   if (board.kind === 'levels') {
     const shown = showAllLevels ? board.levels : board.levels.filter(l => l.best || l.index === currentLevel)
     if (shown.length === 0) return null
