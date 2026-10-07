@@ -9,7 +9,7 @@
 // tests all agree on what a plan is and what one submission stores.
 
 import { EVENTS, getEventBySlug, type EventData } from './eventData'
-import { scoreColumns, type EntryVals } from './scoring'
+import { scoreColumns, shortDistanceEffort, type EntryVals } from './scoring'
 import { estimateFromSets, estimateFromDistance, takesSets, takesDistance } from './naturalFormats'
 import { isGameTier } from './eventKinds'
 import { nzDay } from './workouts'
@@ -62,7 +62,7 @@ export function planEvents(plan: readonly string[]): EventData[] {
 export type EntryPayload = {
   activity: string
   event_slug: string
-  raw_score?: number
+  raw_score?: number | null
   score_label?: string
   difficulty_tier?: string | null
   exercise_variation?: string | null
@@ -146,9 +146,24 @@ export function entryPayload(
   const natural = naturalPayload(ev, v)
   if (natural) return natural
   const scored = scoreColumns(ev.inputMode, ev, v)
-  if (!scored) return null
-  const tier = v.difficultyTier || null
   const base = { activity: ev.name, event_slug: ev.slug }
+  if (!scored) {
+    // A distance effort under the reference distance is training, not a score:
+    // what was done is kept, with no raw_score, so it never grades or ranks.
+    const short = shortDistanceEffort(ev.inputMode, ev, v)
+    if (!short) return null
+    // raw_score is written as null, not left out: an edit that shortens a
+    // ranked row must clear its old score.
+    return {
+      ...base,
+      raw_score: null,
+      score_label: short.score_label,
+      difficulty_tier: short.difficulty_tier ?? null,
+      exercise_variation: null, weight_kg: null, reps: null,
+      time_seconds: short.time_seconds, distance_m: short.distance_m,
+    }
+  }
+  const tier = v.difficultyTier || null
   if (isGameTier(ev, tier) && !opts.allowGameScore) return base
   return {
     ...base,

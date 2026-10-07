@@ -2,6 +2,11 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.30.0.1] - 2026-10-08
+
+### Fixed
+- **A short distance effort can be saved in a personal or training session.** A 500m row on Row Erg left Submit greyed out, because an effort under an event's reference distance cannot predict a ranking time. It now saves as training ("500m · 1:47 · training"): it shows in the session but never ranks, grades or counts as a record. The same applies to every open distance event (Running, Cycling, Ski Erg, Row Erg, Scooting, Swim, Walking, Animal Crawl) and to events added at a game. An official game result still needs the full reference distance.
+
 ## [0.30.0.0] - 2026-10-06
 
 ### Added

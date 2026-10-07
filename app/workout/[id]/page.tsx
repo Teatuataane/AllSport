@@ -185,7 +185,7 @@ export default function PersonalGamePage() {
     if (!ev || !workout) return { error: 'That event is no longer on the roster', isPR: false }
     const payload = entryPayload(ev, v)
     if (!payload) return { error: 'Enter a valid score first', isPR: false }
-    const isPR = payload.raw_score !== undefined && isNewPR(ev, prRows[slug] ?? [], payload.raw_score, editingId ? `logged:${editingId}` : null)
+    const isPR = payload.raw_score != null && isNewPR(ev, prRows[slug] ?? [], payload.raw_score, editingId ? `logged:${editingId}` : null)
     const { error: e } = editingId
       ? await supabase.from('workout_entries').update(payload).eq('id', editingId)
       : await supabase.from('workout_entries').insert({ ...payload, workout_id: workout.id })

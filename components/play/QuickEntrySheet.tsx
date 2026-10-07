@@ -17,7 +17,7 @@ import StandardsLadderView from '@/components/play/StandardsLadderView'
 import type { GradePlayer } from '@/lib/playerGrades'
 import type { PRRow } from '@/lib/prBoard'
 import { isTimedEffort, type EventData } from '@/lib/eventData'
-import { computeScoreVals, valsFromResult, valsFromRaw, EMPTY_VALS, estimatedOneRm, MAX_ESTIMATED_REPS, entryMetres, fmtDistance, type EntryVals } from '@/lib/scoring'
+import { computeScoreVals, valsFromResult, valsFromRaw, EMPTY_VALS, estimatedOneRm, MAX_ESTIMATED_REPS, entryMetres, fmtDistance, shortDistanceEffort, type EntryVals } from '@/lib/scoring'
 import {
   takesSets, takesDistance, estimateFromSets, estimateFromDistance, paceLabel,
 } from '@/lib/naturalFormats'
@@ -154,7 +154,12 @@ export default function QuickEntrySheet({
     : null
 
   const scored = setMode || distanceMode ? estimate : computeScoreVals(mode, eventData, v)
-  const canSubmit = scored !== null && !submitting && !locked
+  // `natural` is the workout-entry path (a personal game, a training session,
+  // an event added at a game). There a distance under the reference (a 500m
+  // row on Row Erg) is saved as training with no score; an official result
+  // still needs the full reference distance.
+  const shortEffort = natural && !scored ? shortDistanceEffort(mode, eventData, v) : null
+  const canSubmit = (scored !== null || shortEffort !== null) && !submitting && !locked
 
   const setRows = v.setRows ?? []
   const setSet = (i: number, patch: Partial<{ weightKg: string; reps: string }>) =>
@@ -166,7 +171,8 @@ export default function QuickEntrySheet({
   })
 
   async function handleSheetSubmit() {
-    if (!canSubmit || !scored) return
+    const submittedLabel = scored?.score_label ?? shortEffort?.score_label
+    if (!canSubmit || !submittedLabel) return
     if (inFlight.current) return // ref guard — React state alone lets a double-tap insert twice
     inFlight.current = true
     setSubmitting(true); setError('')
@@ -187,7 +193,7 @@ export default function QuickEntrySheet({
     setSubmitting(false)
     if (outcome.error) { setError(outcome.error); return }
     setEditingResult(null)
-    onSubmitted(scored.score_label, { isPR: outcome.isPR })
+    onSubmitted(submittedLabel, { isPR: outcome.isPR })
   }
 
   async function handleSheetDelete(resultId: string) {
@@ -547,7 +553,9 @@ export default function QuickEntrySheet({
                   {mode === 'distance+time' && refMetres > 0 && (
                     <div style={{ fontSize: 12.5, color: '#777', marginTop: 8, lineHeight: 1.5 }}>
                       {enteredMetres > 0 && enteredMetres < refMetres
-                        ? `At least ${fmtDistance(refMetres)} to count.`
+                        ? natural
+                          ? `Under ${fmtDistance(refMetres)}, so it is saved as training and does not rank. Go ${fmtDistance(refMetres)} or more to rank.`
+                          : `At least ${fmtDistance(refMetres)} to count.`
                         : scored && enteredMetres > 0 && Math.round(enteredMetres) !== refMetres
                           ? `${paceLabel(enteredMetres, (parseFloat(v.timeMins) || 0) * 60 + (parseFloat(v.timeSecs) || 0))} · ranks as ${scored.score_label.split(' · est. ')[1] ?? ''}`
                           : `Any distance of ${fmtDistance(refMetres)} or more. It ranks on the ${fmtDistance(refMetres)} time it predicts.`}
@@ -650,7 +658,7 @@ export default function QuickEntrySheet({
                     fontFamily: 'var(--font-label)', textTransform: 'uppercase',
                     letterSpacing: '0.12em', fontSize: '16px', fontWeight: 600,
                   }}>
-                    {submitting ? 'Saving...' : scored ? `${editingResult ? 'Save' : 'Submit'} — ${scored.score_label}` : 'Enter your score'}
+                    {submitting ? 'Saving...' : scored || shortEffort ? `${editingResult ? 'Save' : 'Submit'} — ${(scored ?? shortEffort)!.score_label}` : 'Enter your score'}
                   </button>
                 </>
               )}
