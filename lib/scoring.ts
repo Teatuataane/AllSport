@@ -469,6 +469,44 @@ export type ScoreColumns = {
 }
 
 /**
+ * A distance effort SHORTER than the event's reference distance (a 500m row on
+ * a 1000m event), as training. Riegel only shortens, so such an effort predicts
+ * nothing and can never rank; `computeScoreVals` refuses it. A logged workout
+ * still records it — with no raw_score, so it never grades, ranks or counts as a
+ * record — because an interval or a warm-up is training all the same. Official
+ * game results never take this path: there the reference distance stands.
+ *
+ * Null for anything else: another mode, an effort long enough to rank, a level
+ * not yet picked on a laddered event, or a distance or time not yet typed.
+ */
+export type TrainingEffort = {
+  score_label: string
+  difficulty_tier?: string
+  time_seconds: number
+  distance_m: number
+}
+export function shortDistanceEffort(mode: string, eventData: EventData | undefined, v: EntryVals): TrainingEffort | null {
+  if (mode !== 'distance+time') return null
+  const ref = eventData?.referenceMetres
+  if (!ref) return null
+  const metres = entryMetres(v)
+  const totalSecs = (parseFloat(v.timeMins) || 0) * 60 + (parseFloat(v.timeSecs) || 0)
+  if (!(metres > 0) || metres >= ref || !(totalSecs > 0) || totalSecs > 86400) return null
+  let prefix = ''
+  if (eventData?.difficultyTiers?.length) {
+    const tierIdx = eventData.difficultyTiers.findIndex(t => t.name === v.difficultyTier)
+    if (tierIdx < 0) return null
+    prefix = `D${tierIdx + 1} ${v.difficultyTier} · `
+  }
+  return {
+    score_label: `${prefix}${fmtDistance(metres)} · ${fmtTime(totalSecs)} · training`,
+    difficulty_tier: v.difficultyTier || undefined,
+    time_seconds: totalSecs,
+    distance_m: metres,
+  }
+}
+
+/**
  * The columns an entry writes: raw_score and its label, plus the source
  * columns behind them. ONE path for a game result (the live session) and a
  * logged best effort (workout logging), so a solo score is encoded exactly as a
