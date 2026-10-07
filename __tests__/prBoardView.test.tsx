@@ -17,6 +17,24 @@ const row = (id: string, raw: number, label: string, date = '2026-09-01', source
 })
 
 describe('PRBoardView', () => {
+  it('lists a best per distance, a short training effort included', () => {
+    const rowErg = getEventBySlug('row-erg')!
+    const rows: PRRow[] = [
+      { ...row('a', 0, '500m · 1:47 · training'), raw_score: null, distance_m: 500, time_seconds: 107, source: 'logged' },
+      { ...row('b', 9760, '1km · 4:00'), distance_m: 1000, time_seconds: 240 },
+    ]
+    const { unmount } = render(<PRBoardView ev={rowErg} rows={rows} />)
+    expect(screen.getByText('500m')).toBeTruthy()
+    expect(screen.getByText('500m · 1:47')).toBeTruthy()
+    expect(screen.getByText('1km')).toBeTruthy()
+    expect(screen.queryByText('2km')).toBeNull()
+    unmount()
+    // My Events lists every distance, with the open one last.
+    render(<PRBoardView ev={rowErg} rows={rows} showAllLevels />)
+    expect(screen.getByText('5km+')).toBeTruthy()
+    expect(screen.getAllByText('No record yet')).toHaveLength(4)
+  })
+
   it('lists a best per level played, plus the level about to be scored', () => {
     const dips = getEventBySlug('pause-dips')!
     render(<PRBoardView ev={dips} currentLevel={2} rows={[row('a', 10005, '5 reps'), row('b', 3, '3 reps')]} />)

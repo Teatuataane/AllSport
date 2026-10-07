@@ -977,7 +977,9 @@ _No levels yet._
 
 ### 82. Animal Crawl
 
-*Scored by: difficulty level, then best effort: any distance of at least 25m and its time, ranked on the 25m time it predicts*
+*Scored by: difficulty level, then best effort: any distance of at least 100m and its time, ranked on the 100m time it predicts*
+
+> Changed 8 Oct 2026 (Tāne): the crawl ranks on 100m, not 25m. Records are kept at 25m, 50m, 100m, 200m, 500m and longer.
 
 > Changed 5 Oct 2026 (Tāne): Crawl styles are the levels; distance and time are open. The old 100m Duck Walk lands on Duck Walk.
 

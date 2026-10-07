@@ -1958,24 +1958,25 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 ### 81. Animal Crawl
 
-*Scored by: difficulty level, then best effort over any distance of at least 25m, as its predicted 25m time*
+*Scored by: difficulty level, then best effort over any distance of at least 100m, as its predicted 100m time*
 
 > Drafted by Claude 5 Oct 2026 for the new format, UNREVIEWED. The old 25m-rung times by crawl; the old 100m Duck Walk colours become fast 25m Duck Walks.
+> 8 Oct 2026: the crawl now ranks on 100m. Each 25m time was carried to 100m with Riegel (× 4.35) and rounded to 5 seconds. Still UNREVIEWED; no crawl had been scored when it changed.
 
 **Everyone**
 
 - Kiwikiwi: D1 · finish
-- Whero: D1 · ≤ 30s
-- Karaka: D1 · ≤ 20s
+- Whero: D1 · ≤ 2:10
+- Karaka: D1 · ≤ 1:25
 - Kōwhai: D2 · finish
-- Kākāriki: D2 · ≤ 30s
-- Kahurangi: D2 · ≤ 20s
-- Poroporo: D3 · ≤ 45s
-- Parahi: D3 · ≤ 30s
-- Hiriwa: D4 · ≤ 40s
-- Kōura: D4 · ≤ 30s
-- Uenuku: D4 · ≤ 25s
-- Taniwha: D4 · ≤ 20s
+- Kākāriki: D2 · ≤ 2:10
+- Kahurangi: D2 · ≤ 1:25
+- Poroporo: D3 · ≤ 3:15
+- Parahi: D3 · ≤ 2:10
+- Hiriwa: D4 · ≤ 2:55
+- Kōura: D4 · ≤ 2:10
+- Uenuku: D4 · ≤ 1:50
+- Taniwha: D4 · ≤ 1:25
 
 ### 82. Bronco
 

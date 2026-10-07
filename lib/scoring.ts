@@ -472,8 +472,10 @@ export type ScoreColumns = {
  * A distance effort SHORTER than the event's reference distance (a 500m row on
  * a 1000m event), as training. Riegel only shortens, so such an effort predicts
  * nothing and can never rank; `computeScoreVals` refuses it. A logged workout
- * still records it — with no raw_score, so it never grades, ranks or counts as a
- * record — because an interval or a warm-up is training all the same. Official
+ * still records it — with no raw_score, so it never grades or ranks — because an
+ * interval or a warm-up is training all the same. Since 8 Oct 2026 it still
+ * sets a record at its own distance (lib/prBoard.ts reads distance_m and
+ * time_seconds, not raw_score). Official
  * game results never take this path: there the reference distance stands.
  *
  * Null for anything else: another mode, an effort long enough to rank, a level

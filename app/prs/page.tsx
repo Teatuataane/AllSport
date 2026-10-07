@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase-browser'
 import { eventRecordsSport, sportRecord } from '@/lib/scoring'
-import { loggedBestRows, nzDay, type LoggedBestEntry } from '@/lib/workouts'
+import { loggedBestRows, trainingDistanceRows, nzDay, type LoggedBestEntry, type DistanceDone } from '@/lib/workouts'
 import { useActivePlayer } from '@/lib/useActivePlayer'
 import PlayerTabs, { ViewingAsBanner } from '@/components/PlayerTabs'
 import {
@@ -61,7 +61,7 @@ type PRResult = {
   /** A best effort from a logged workout rather than an official game. */
   logged?: boolean
   witnessed?: boolean
-}
+} & DistanceDone
 
 // Marks a logged best wherever it appears, so a PR set alone is never mistaken
 // for one set in front of a kaiwhakawā at a game.
@@ -197,7 +197,7 @@ export default function PRsPage() {
   // Best efforts from logged workouts (decision 16 of workout logging): shown
   // here, marked, and never in any public ranking. Keyed by the player they
   // were loaded for, so a switch never shows the previous player's logs.
-  const [logged, setLogged] = useState<{ id: string; rows: PRResult[] } | null>(null)
+  const [logged, setLogged] = useState<{ id: string; rows: PRResult[]; training: ReturnType<typeof trainingDistanceRows> } | null>(null)
 
   useEffect(() => {
     if (playerLoading) return
@@ -216,7 +216,7 @@ export default function PRsPage() {
         supabase
         .from('results')
         .select(`
-          id, score_label, raw_score, difficulty_tier, placement,
+          id, score_label, raw_score, difficulty_tier, placement, distance_m, time_seconds, weight_kg,
           session_events!inner(event_name, domain_number),
           sessions!inner(session_date, is_championship)
         `)
@@ -242,6 +242,7 @@ export default function PRsPage() {
           is_championship: r.sessions.is_championship,
           event_name: r.session_events.event_name,
           domain_number: r.session_events.domain_number,
+          distance_m: r.distance_m, time_seconds: r.time_seconds, weight_kg: r.weight_kg,
         }))
         setGameLoaded({ id: user.id, rows: mapped })
       }
@@ -271,24 +272,27 @@ export default function PRsPage() {
     let cancelled = false
     supabase
       .from('workout_entries')
-      .select('id, event_slug, raw_score, score_label, difficulty_tier, workouts!inner(player_id, performed_on, witnessed)')
+      .select('id, event_slug, raw_score, score_label, difficulty_tier, distance_m, time_seconds, weight_kg, workouts!inner(player_id, performed_on, witnessed)')
       .eq('workouts.player_id', activePlayerId)
-      .not('raw_score', 'is', null)
+      // A distance effort with no raw_score is training under the reference
+      // distance: never a PB here, but still a record at its own distance.
+      .or('raw_score.not.is.null,distance_m.not.is.null')
       // Best first: the server caps a response at 1000 rows, so if a player
       // ever passes that it is the weakest efforts that fall off, not a random set.
-      .order('raw_score', { ascending: false })
+      .order('raw_score', { ascending: false, nullsFirst: false })
       .range(0, 4999)
       .then(({ data, error }) => {
         if (cancelled) return
         if (error) {
           console.warn('workout_entries unavailable — logged bests hidden', error.message)
-          setLogged({ id: activePlayerId, rows: [] })
+          setLogged({ id: activePlayerId, rows: [], training: [] })
           return
         }
-        const rows = loggedBestRows((data ?? []) as unknown as LoggedBestEntry[]).map(r => ({
+        const entries = (data ?? []) as unknown as LoggedBestEntry[]
+        const rows = loggedBestRows(entries).map(r => ({
           ...r, placement: null, is_championship: false, logged: true,
         }))
-        setLogged({ id: activePlayerId, rows })
+        setLogged({ id: activePlayerId, rows, training: trainingDistanceRows(entries) })
       })
     return () => { cancelled = true }
   }, [activePlayerId])
@@ -345,6 +349,7 @@ export default function PRsPage() {
   const CURRENT_YEAR = currentYear()
   const gameRows = gameLoaded && gameLoaded.id === activePlayerId ? gameLoaded.rows : []
   const loggedRows = logged && logged.id === activePlayerId ? logged.rows : []
+  const trainingRows = logged && logged.id === activePlayerId ? logged.training : []
   const allResults = [...gameRows, ...loggedRows]
   const visibleResults = tab === 'season'
     ? allResults.filter(r => sessionYear(r.session_date) === CURRENT_YEAR)
@@ -506,34 +511,39 @@ export default function PRsPage() {
                     <span style={{ width: '10px' }} />
                   </div>
                   {domainEvents.map(event => {
-                    const eventResults = resultsByEvent[event.name]
+                    const eventResults: PRResult[] | undefined = resultsByEvent[event.name]
                     const pb = eventResults?.[0]
+                    // Short distance efforts never rank, so they are no PB, but
+                    // they are records at their distance: an event with only
+                    // those still opens to show them.
+                    const training = trainingRows.filter(t => t.event_name === event.name && (tab !== 'season' || sessionYear(t.session_date) === CURRENT_YEAR))
+                    const played = !!pb || training.length > 0
                     const isExpanded = expanded.has(event.slug)
 
                     return (
                       <div
                         key={event.slug}
                         style={{
-                          background: '#111', border: `1px solid ${pb ? colour + '33' : '#1a1a1a'}`,
+                          background: '#111', border: `1px solid ${played ? colour + '33' : '#1a1a1a'}`,
                           borderRadius: '8px', overflow: 'hidden',
                         }}
                       >
                         {/* Event row */}
                         <button
-                          onClick={() => { if (pb) toggleExpanded(event.slug) }}
+                          onClick={() => { if (played) toggleExpanded(event.slug) }}
                           style={{
                             width: '100%', background: 'transparent', border: 'none',
-                            padding: '11px 14px', cursor: pb ? 'pointer' : 'default',
+                            padding: '11px 14px', cursor: played ? 'pointer' : 'default',
                             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                             textAlign: 'left',
                           }}
                         >
                           <div style={{ display: 'flex', alignItems: 'center', gap: '11px', minWidth: 0 }}>
-                            <div style={{ opacity: pb ? 1 : 0.4, flexShrink: 0 }}>
+                            <div style={{ opacity: played ? 1 : 0.4, flexShrink: 0 }}>
                               <EventIcon slug={event.slug} emoji={event.emoji} domainNumber={domainNumber} size={36} />
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
-                              <div style={{ fontSize: '14px', fontWeight: 600, color: pb ? '#fff' : '#444', fontFamily: 'var(--font-body)' }}>
+                              <div style={{ fontSize: '14px', fontWeight: 600, color: played ? '#fff' : '#444', fontFamily: 'var(--font-body)' }}>
                                 {event.name}
                                 {event.hasDifficultyTiers && event.difficultyTiers && (
                                   <span style={{ marginLeft: '8px', fontSize: '11px', color: '#B87DB5', fontFamily: 'var(--font-label)', fontWeight: 700 }}>
@@ -568,6 +578,10 @@ export default function PRsPage() {
                                     <div style={{ marginTop: '3px' }}><span style={LOGGED_CHIP}>LOGGED</span></div>
                                   )}
                                 </>
+                              ) : training.length > 0 ? (
+                                <span style={{ fontSize: '11px', color: '#777', fontFamily: 'var(--font-label)', letterSpacing: '0.05em' }}>
+                                  TRAINING
+                                </span>
                               ) : (
                                 <span style={{ fontSize: '11px', color: '#333', fontFamily: 'var(--font-label)', letterSpacing: '0.05em' }}>
                                   NOT PLAYED
@@ -581,19 +595,21 @@ export default function PRsPage() {
                               {winsReady ? (wins[event.name] ?? 0) : '—'}
                             </div>
                             <div style={{ color: '#333', fontSize: '14px', width: '10px', transform: isExpanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}>
-                              {pb ? '›' : ''}
+                              {played ? '›' : ''}
                             </div>
                           </div>
                         </button>
 
                         {/* Expanded history */}
-                        {isExpanded && pb && (
+                        {isExpanded && played && (
                           <div style={{ borderTop: '1px solid #1e1e1e', padding: '8px 14px 12px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                               <div style={{ fontFamily: 'var(--font-label)', fontSize: '11px', color: '#555', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-                                {`${eventResults.length} result${eventResults.length !== 1 ? 's' : ''}`}
+                                {eventResults
+                                  ? `${eventResults.length} result${eventResults.length !== 1 ? 's' : ''}`
+                                  : `${training.length} training effort${training.length !== 1 ? 's' : ''}`}
                               </div>
-                              {eventRecordsSport(event) && sportRecord(event, eventResults) && (
+                              {eventResults && eventRecordsSport(event) && sportRecord(event, eventResults) && (
                                 <div style={{ fontFamily: 'var(--font-display)', fontSize: '16px', color: '#4DB26E', letterSpacing: '0.05em' }}>
                                   {sportWDL(event, eventResults)}
                                 </div>
@@ -601,26 +617,30 @@ export default function PRsPage() {
                             </div>
                             <div style={{ marginBottom: '12px' }}>
                               <div style={{ fontFamily: 'var(--font-label)', fontSize: '11px', color: '#555', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '6px' }}>
-                                {event.hasDifficultyTiers ? 'Best at each level' : 'Top scores'}
+                                {event.recordDistances?.length ? 'Best at each distance' : event.hasDifficultyTiers ? 'Best at each level' : 'Top scores'}
                               </div>
                               <PRBoardView
                                 ev={event}
                                 colour={colour}
                                 showAllLevels
-                                rows={eventResults.map(r => ({
+                                rows={[
+                                  ...(eventResults ?? []),
+                                  ...training.map(t => ({ ...t, placement: null, is_championship: false, logged: true })),
+                                ].map(r => ({
                                   id: r.id, raw_score: r.raw_score, score_label: r.score_label,
                                   difficulty_tier: r.difficulty_tier, date: r.session_date,
                                   source: r.logged ? (r.witnessed ? 'witnessed' : 'logged') : 'game',
+                                  distance_m: r.distance_m, time_seconds: r.time_seconds, weight_kg: r.weight_kg,
                                 }))}
                               />
                             </div>
                             {activePlayerId && (
                               <div style={{ marginBottom: '12px' }}>
-                                <EventStandards ev={event} playerId={activePlayerId} today={nzDay()} rows={eventResults.map(r => ({ raw_score: r.raw_score, weight_kg: null, difficulty_tier: r.difficulty_tier }))} />
+                                <EventStandards ev={event} playerId={activePlayerId} today={nzDay()} rows={(eventResults ?? []).map(r => ({ raw_score: r.raw_score, weight_kg: null, difficulty_tier: r.difficulty_tier }))} />
                               </div>
                             )}
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                              {eventResults.map((r, i) => {
+                              {(eventResults ?? []).map((r, i) => {
                                 const isBest = i === 0
                                 const date = formatNZDate(r.session_date)
                                 return (

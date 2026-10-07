@@ -103,7 +103,7 @@ describe('the quick-entry sheet', () => {
     const onSubmit = renderSheet(true)
     const submit = screen.getByRole('button', { name: /^Submit — 500m · 1:47 · training$/ }) as HTMLButtonElement
     expect(submit.disabled).toBe(false)
-    expect(screen.getByText(/saved as training and does not rank/)).toBeTruthy()
+    expect(screen.getByText(/does not rank or count for colours\. It counts for your 500m record/)).toBeTruthy()
     fireEvent.click(submit)
     expect(onSubmit).toHaveBeenCalledTimes(1)
   })
