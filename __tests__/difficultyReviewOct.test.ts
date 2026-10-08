@@ -30,9 +30,10 @@ describe('distance + time: the best effort wins', () => {
     expect(threeK.score_label).toBe('3km · 15:00 · est. 1km 4:41')
   })
 
-  it('refuses an effort shorter than the reference, and only ever shortens', () => {
-    expect(predictedEffortSecs(1000, 999, 200)).toBeNull()
-    expect(computeScoreVals('distance+time', running, vals({ distanceVal: '400', timeMins: '1', timeSecs: '0' }))).toBeNull()
+  it('estimates up only from a quarter of the reference (9 Oct 2026; see distanceEstimate.test.ts)', () => {
+    expect(predictedEffortSecs(1000, 249, 40)).toBeNull()
+    expect(predictedEffortSecs(1000, 999, 200)).toBe(200)
+    expect(computeScoreVals('distance+time', running, vals({ distanceVal: '200', timeMins: '1', timeSecs: '0' }))).toBeNull()
     // Going long never games it: a 3:30 marathon predicts a slower km than a 3:20 km.
     expect(predictedEffortSecs(1000, 42195, 12600)!).toBeGreaterThan(200)
   })
@@ -44,8 +45,13 @@ describe('distance + time: the best effort wins', () => {
     // Any effort on a harder crawl beats every effort on an easier one.
     const fastD1 = computeScoreVals('distance+time', crawl, vals({ difficultyTier: crawl.difficultyTiers![0].name, distanceVal: '100', timeSecs: '30' }))!
     expect(r.raw_score).toBeGreaterThan(fastD1.raw_score)
-    // Under 100m it does not rank (8 Oct 2026): a record only, in training.
-    expect(computeScoreVals('distance+time', crawl, vals({ difficultyTier: d2, distanceVal: '50', timeSecs: '20' }))).toBeNull()
+    // Under 100m it ranks on its estimate (9 Oct 2026), below every full 100m
+    // on its crawl but still above any easier crawl.
+    const est = computeScoreVals('distance+time', crawl, vals({ difficultyTier: d2, distanceVal: '50', timeSecs: '20' }))!
+    expect(est.raw_score).toBeLessThan(r.raw_score)
+    expect(est.raw_score).toBeGreaterThan(fastD1.raw_score)
+    // Under 25m it does not rank: training only.
+    expect(computeScoreVals('distance+time', crawl, vals({ difficultyTier: d2, distanceVal: '20', timeSecs: '8' }))).toBeNull()
     expect(computeScoreVals('distance+time', crawl, vals({ distanceVal: '100', timeSecs: '20' }))).toBeNull()
   })
 

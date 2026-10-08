@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
 //
-// ── A distance effort shorter than the reference, logged as training ────────
+// ── A distance effort too short to estimate from, logged as training ────────
 // Since 5 Oct 2026 an open distance event ranks the time an effort predicts
-// over its reference distance, and Riegel only shortens, so a 500m row on the
-// 1000m Row Erg predicts nothing. The sheet refused it outright, which left a
-// personal training session with no way to record an interval at all: Submit
-// never lit up (reported 8 Oct 2026). A workout entry now keeps it as training,
-// with no raw_score; an official result still needs the full distance.
+// over its reference distance. On 8 Oct 2026 (v0.30.0.1) anything under the
+// reference was kept as training with no raw_score; since 9 Oct 2026 an effort
+// from a quarter of the reference up ranks on its estimate, below every full
+// effort (distanceEstimate.test.ts), and only what is shorter than that quarter
+// is training. A workout entry keeps it; an official result refuses it.
 
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, cleanup, fireEvent, screen } from '@testing-library/react'
@@ -23,6 +23,7 @@ afterEach(cleanup)
 const ev = (slug: string) => getEventBySlug(slug)!
 const vals = (p: Partial<EntryVals>): EntryVals => ({ ...EMPTY_VALS, ...p })
 const row500 = vals({ distanceVal: '500', distanceUnit: 'm', timeMins: '1', timeSecs: '47' })
+const row200 = vals({ distanceVal: '200', distanceUnit: 'm', timeMins: '0', timeSecs: '40' })
 
 // Every open distance event: Running, Cycling, Ski Erg, Row Erg, Scooting, Animal Crawl.
 const OPEN_DISTANCE = EVENTS.filter(e => e.inputMode === 'distance+time')
@@ -37,25 +38,27 @@ describe('shortDistanceEffort', () => {
     for (const e of OPEN_DISTANCE) {
       const ref = e.referenceMetres!
       const v = vals({
-        distanceVal: String(ref / 2), distanceUnit: 'm', timeMins: '0', timeSecs: '30',
+        distanceVal: String(ref / 5), distanceUnit: 'm', timeMins: '0', timeSecs: '30',
         difficultyTier: e.difficultyTiers?.[0]?.name ?? '',
       })
       expect(computeScoreVals(e.inputMode, e, v), e.slug).toBeNull()
       const short = shortDistanceEffort(e.inputMode, e, v)
       expect(short, e.slug).not.toBeNull()
-      expect(short!.distance_m).toBe(ref / 2)
+      expect(short!.distance_m).toBe(ref / 5)
       expect(short!.time_seconds).toBe(30)
     }
   })
 
-  it('labels a 500m row as training', () => {
-    expect(shortDistanceEffort('distance+time', ev('row-erg'), row500)?.score_label).toBe('500m · 1:47 · training')
+  it('labels a 200m row as training, and leaves a 500m row to rank on its estimate', () => {
+    expect(shortDistanceEffort('distance+time', ev('row-erg'), row200)?.score_label).toBe('200m · 0:40 · training')
+    expect(shortDistanceEffort('distance+time', ev('row-erg'), row500)).toBeNull()
+    expect(computeScoreVals('distance+time', ev('row-erg'), row500)?.score_label).toBe('500m · 1:47 · est. 1km 3:43')
   })
 
   it('is null once the effort is long enough to rank, or before it is complete', () => {
     const e = ev('row-erg')
     expect(shortDistanceEffort('distance+time', e, vals({ distanceVal: '1000', timeMins: '3', timeSecs: '40' }))).toBeNull()
-    expect(shortDistanceEffort('distance+time', e, vals({ distanceVal: '500' }))).toBeNull()
+    expect(shortDistanceEffort('distance+time', e, vals({ distanceVal: '200' }))).toBeNull()
     expect(shortDistanceEffort('distance+time', e, vals({ timeMins: '1' }))).toBeNull()
   })
 
@@ -69,11 +72,11 @@ describe('shortDistanceEffort', () => {
 
 describe('entryPayload for a short distance effort', () => {
   it('writes what was done with raw_score null, so it never grades and an edit clears an old score', () => {
-    expect(entryPayload(ev('row-erg'), row500)).toEqual({
+    expect(entryPayload(ev('row-erg'), row200)).toEqual({
       activity: 'Row Erg', event_slug: 'row-erg',
-      raw_score: null, score_label: '500m · 1:47 · training',
+      raw_score: null, score_label: '200m · 0:40 · training',
       difficulty_tier: null, exercise_variation: null, weight_kg: null, reps: null,
-      time_seconds: 107, distance_m: 500,
+      time_seconds: 40, distance_m: 200,
     })
   })
 
@@ -88,29 +91,36 @@ describe('the quick-entry sheet', () => {
     const e = ev(slug)
     return { id: e.slug, domain_number: e.domainNumber, domain_name: e.domain, event_name: e.name, event_slug: e.slug, input_mode: e.inputMode }
   }
-  const renderSheet = (natural: boolean) => {
+  const renderSheet = (natural: boolean, metres = '500', secs = '47') => {
     const onSubmit = vi.fn(async () => ({ error: null, isPR: false }))
     render(<QuickEntrySheet se={asPlayEvent('row-erg')} eventData={ev('row-erg')} myResults={[]} opponents={[]}
       seasonPR={null} locked={false} allowGames={false} natural={natural}
       onClose={vi.fn()} onSubmit={onSubmit} onDelete={vi.fn(async () => null)} onSubmitted={vi.fn()} onDeleted={vi.fn()} />)
-    fireEvent.change(screen.getByLabelText('Distance'), { target: { value: '500' } })
-    fireEvent.change(screen.getByPlaceholderText('min'), { target: { value: '1' } })
-    fireEvent.change(screen.getByPlaceholderText('sec'), { target: { value: '47' } })
+    fireEvent.change(screen.getByLabelText('Distance'), { target: { value: metres } })
+    fireEvent.change(screen.getByPlaceholderText('min'), { target: { value: secs === '47' ? '1' : '0' } })
+    fireEvent.change(screen.getByPlaceholderText('sec'), { target: { value: secs } })
     return onSubmit
   }
 
-  it('lets a 500m row be submitted in a personal session, and says it does not rank', () => {
-    const onSubmit = renderSheet(true)
-    const submit = screen.getByRole('button', { name: /^Submit — 500m · 1:47 · training$/ }) as HTMLButtonElement
-    expect(submit.disabled).toBe(false)
-    expect(screen.getByText(/does not rank or count for colours\. It counts for your 500m record/)).toBeTruthy()
-    fireEvent.click(submit)
-    expect(onSubmit).toHaveBeenCalledTimes(1)
+  it('scores a 500m row on its estimate, in a personal session and an official game alike', () => {
+    for (const natural of [true, false]) {
+      const onSubmit = renderSheet(natural)
+      const submit = screen.getByRole('button', { name: /^Submit — 500m · 1:47 · est\. 1km 3:43$/ }) as HTMLButtonElement
+      expect(submit.disabled).toBe(false)
+      expect(screen.getByText(/ranks as 1km 3:43, below every full 1km\. Colours need the full 1km\./)).toBeTruthy()
+      fireEvent.click(submit)
+      expect(onSubmit).toHaveBeenCalledTimes(1)
+      cleanup()
+    }
   })
 
-  it('still refuses it as an official game result', () => {
-    renderSheet(false)
+  it('keeps a 200m row as training in a personal session, and refuses it as an official result', () => {
+    renderSheet(true, '200', '40')
+    expect((screen.getByRole('button', { name: /^Submit — 200m · 0:40 · training$/ }) as HTMLButtonElement).disabled).toBe(false)
+    expect(screen.getByText(/Under 250m, too short to estimate a 1km time/)).toBeTruthy()
+    cleanup()
+    renderSheet(false, '200', '40')
     expect((screen.getByRole('button', { name: 'Enter your score' }) as HTMLButtonElement).disabled).toBe(true)
-    expect(screen.getByText(/At least 1km to count/)).toBeTruthy()
+    expect(screen.getByText(/At least 250m to count/)).toBeTruthy()
   })
 })

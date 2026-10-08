@@ -13,7 +13,7 @@
 //
 // Pure — no React, no Supabase.
 
-import type { EventData } from './eventData'
+import { decodeDistanceEffort, encodeDistanceEffort, type EventData } from './eventData'
 import { eventGrade, type GradePlayer } from './playerGrades'
 import { GRADES, gradeForRung, gradeInk } from './grading'
 import { RAINBOW } from './domainColours'
@@ -53,6 +53,32 @@ export function scoreRung(
     difficulty_tier: r.difficulty_tier,
     bodyweightKg,
   })), player, rating).rung
+}
+
+/**
+ * The colour an ESTIMATED distance effort points to: a 500m row graded as if
+ * its predicted 1km had been rowed. An estimate ranks but never earns a colour
+ * (Tāne, 9 Oct 2026), so this is only ever shown as a note beside it — "a
+ * Kōwhai pace" — and never confers or colours a button. 0 when no row is an
+ * estimate, or when the full distance already reaches as high.
+ */
+export function estimateRung(
+  ev: EventData | undefined,
+  rows: readonly ScoreRow[],
+  player: GradePlayer | null,
+): number {
+  if (!ev || !player || ev.inputMode !== 'distance+time') return 0
+  const asCovered: ScoreRow[] = []
+  for (const r of rows) {
+    if (r.raw_score == null) continue
+    const d = decodeDistanceEffort(r.raw_score)
+    if (!d.estimated) continue
+    const raw = encodeDistanceEffort(d.tierIdx, d.secs, false)
+    if (raw !== null) asCovered.push({ ...r, raw_score: raw })
+  }
+  if (asCovered.length === 0) return 0
+  const est = scoreRung(ev, asCovered, player, null)
+  return est > scoreRung(ev, rows, player, null) ? est : 0
 }
 
 export type RungPaint = {

@@ -274,12 +274,12 @@ describe('natural formats in the sheet', () => {
     expect(screen.getByText(/Submit — 5km · 26:10 · est\. 1km 4:45/)).toBeTruthy()
   })
 
-  it('refuses a run shorter than the 1000m it is compared over', () => {
+  it('refuses a run too short to estimate the 1000m it is compared over', () => {
     render(<QuickEntrySheet {...sheetProps} se={asPlayEvent('running')} eventData={running}
       onSubmit={vi.fn(async () => ({ error: null, isPR: false }))} />)
-    fireEvent.change(screen.getByLabelText('Distance'), { target: { value: '400' } })
+    fireEvent.change(screen.getByLabelText('Distance'), { target: { value: '200' } })
     fireEvent.change(screen.getByPlaceholderText('min'), { target: { value: '1' } })
-    expect(screen.getByText('At least 1km to count.')).toBeTruthy()
+    expect(screen.getByText('At least 250m to count.')).toBeTruthy()
     expect(screen.getByText('Enter your score')).toBeTruthy()
   })
 })

@@ -6,7 +6,7 @@
 // release panel compute the same answer from the same rows, and so it is unit
 // tested against the real roster and the real standards.
 
-import { EVENTS, getEventByName, type EventData } from './eventData'
+import { EVENTS, getEventByName, decodeDistanceEffort, DT_CAP, type EventData } from './eventData'
 import { STANDARDS } from './standards'
 import { isGameTier } from './eventKinds'
 import {
@@ -120,6 +120,15 @@ const isGameRow = (ev: EventData, row: GradeResultRow) => isGameTier(ev, row.dif
  * A row with no stored level grades as before.
  */
 const onCurrentLadder = (ev: EventData, row: GradeResultRow) => {
+  // The same trap without a stored level to catch it (9 Oct 2026): Running,
+  // Cycling and the ergs were laddered by distance until 5 Oct, so an old 1km
+  // row sat at band 2 (raw ~29,700). The new code went live a day before the
+  // migration re-encoded those rows, read 29,700 against 1km standards topping
+  // out under 10,000, and conferred Taniwha on every one: an Endurance colour
+  // no score supports. A distance score past its ladder's top band is never
+  // one the current encoding wrote, so it does not grade.
+  if (ev.inputMode === 'distance+time' && row.raw_score != null &&
+    row.raw_score >= Math.max(1, ev.difficultyTiers?.length ?? 0) * DT_CAP) return false
   if (!ev.difficultyTiers?.length || row.difficulty_tier == null || row.raw_score == null) return true
   return ev.difficultyTiers[Math.floor(row.raw_score / 10000)]?.name === row.difficulty_tier
 }
@@ -201,8 +210,14 @@ export function eventGrade(
       if (rung > drill) { drill = rung; bestRow = r }
     }
   } else if (drillRows.length) {
-    bestRow = maxBy(drillRows, r => r.raw_score!)
-    drill = rungForScore(bestRow!.raw_score!, ladder, band, s.game ? { cap: DRILL_CAP } : {})
+    // An effort short of a distance event's reference ranks on its estimate
+    // but never earns a colour (Tāne, 9 Oct 2026): the colour needs the full
+    // distance. estimateRung in lib/scoreColour.ts says what it points to.
+    const colourRows = ev.inputMode === 'distance+time'
+      ? drillRows.filter(r => !decodeDistanceEffort(r.raw_score!).estimated)
+      : drillRows
+    bestRow = maxBy(colourRows, r => r.raw_score!)
+    drill = bestRow ? rungForScore(bestRow.raw_score!, ladder, band, s.game ? { cap: DRILL_CAP } : {}) : 0
   }
 
   const rung = s.game ? gameEventRung(drill, rated) : drill

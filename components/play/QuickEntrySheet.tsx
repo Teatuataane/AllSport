@@ -16,7 +16,9 @@ import PRBoardView from '@/components/play/PRBoardView'
 import StandardsLadderView from '@/components/play/StandardsLadderView'
 import type { GradePlayer } from '@/lib/playerGrades'
 import type { PRRow } from '@/lib/prBoard'
-import { isTimedEffort, type EventData } from '@/lib/eventData'
+import { isTimedEffort, minEstimateMetres, type EventData } from '@/lib/eventData'
+import { estimateRung } from '@/lib/scoreColour'
+import { gradeForRung } from '@/lib/grading'
 import { computeScoreVals, valsFromResult, valsFromRaw, EMPTY_VALS, estimatedOneRm, MAX_ESTIMATED_REPS, entryMetres, fmtDistance, shortDistanceEffort, type EntryVals } from '@/lib/scoring'
 import {
   takesSets, takesDistance, estimateFromSets, estimateFromDistance, paceLabel,
@@ -78,13 +80,10 @@ type QuickEntrySheetProps = {
   onDeleted: () => void
 }
 
-// What a training effort under the reference distance does: no rank or colour,
-// but a record at the longest record distance it covered (lib/prBoard.ts).
-function shortRecordHint(ev: EventData | undefined, metres: number, ref: number): string {
-  const at = (ev?.recordDistances ?? []).filter(d => d <= Math.round(metres)).pop()
-  return at
-    ? `Under ${fmtDistance(ref)}, so it does not rank or count for colours. It counts for your ${fmtDistance(at)} record.`
-    : `Under ${fmtDistance(ref)}, so it is saved as training and does not rank. Go ${fmtDistance(ref)} or more to rank.`
+// What a training effort too short to estimate from does: no rank or colour.
+// Records start at a quarter of the reference too, so it sets none.
+function shortRecordHint(ref: number): string {
+  return `Under ${fmtDistance(minEstimateMetres(ref))}, too short to estimate a ${fmtDistance(ref)} time, so it is saved as training and does not rank.`
 }
 
 export default function QuickEntrySheet({
@@ -164,10 +163,19 @@ export default function QuickEntrySheet({
 
   const scored = setMode || distanceMode ? estimate : computeScoreVals(mode, eventData, v)
   // `natural` is the workout-entry path (a personal game, a training session,
-  // an event added at a game). There a distance under the reference (a 500m
-  // row on Row Erg) is saved as training with no score; an official result
-  // still needs the full reference distance.
+  // an event added at a game). There a distance too short to estimate from
+  // (under a quarter of the reference) is saved as training with no score;
+  // an official result needs at least that quarter.
   const shortEffort = natural && !scored ? shortDistanceEffort(mode, eventData, v) : null
+  // An effort short of the reference ranks on its estimate but earns no
+  // colour; say which colour the estimate points to (Tāne, 9 Oct 2026).
+  const estColour = mode === 'distance+time' && scored
+    ? estimateRung(eventData, [{ raw_score: scored.raw_score, weight_kg: null, difficulty_tier: v.difficultyTier || null }], standards?.player ?? null)
+    : 0
+  const fullRef = fmtDistance(eventData?.referenceMetres ?? 0)
+  const estimateNote = estColour > 0
+    ? `That is a ${gradeForRung(estColour).name} pace: go the full ${fullRef} to earn it.`
+    : `Colours need the full ${fullRef}.`
   const canSubmit = (scored !== null || shortEffort !== null) && !submitting && !locked
 
   const setRows = v.setRows ?? []
@@ -573,13 +581,14 @@ export default function QuickEntrySheet({
                   {/* What an open distance effort predicts, so the player sees what ranks */}
                   {mode === 'distance+time' && refMetres > 0 && (
                     <div style={{ fontSize: 12.5, color: '#777', marginTop: 8, lineHeight: 1.5 }}>
-                      {enteredMetres > 0 && enteredMetres < refMetres
+                      {enteredMetres > 0 && enteredMetres < minEstimateMetres(refMetres)
                         ? natural
-                          ? shortRecordHint(eventData, enteredMetres, refMetres)
-                          : `At least ${fmtDistance(refMetres)} to count.`
+                          ? shortRecordHint(refMetres)
+                          : `At least ${fmtDistance(minEstimateMetres(refMetres))} to count.`
                         : scored && enteredMetres > 0 && Math.round(enteredMetres) !== refMetres
-                          ? `${paceLabel(enteredMetres, (parseFloat(v.timeMins) || 0) * 60 + (parseFloat(v.timeSecs) || 0))} · ranks as ${scored.score_label.split(' · est. ')[1] ?? ''}`
-                          : `Any distance of ${fmtDistance(refMetres)} or more. It ranks on the ${fmtDistance(refMetres)} time it predicts.`}
+                          ? `${paceLabel(enteredMetres, (parseFloat(v.timeMins) || 0) * 60 + (parseFloat(v.timeSecs) || 0))} · ranks as ${scored.score_label.split(' · est. ')[1] ?? ''}${
+                            enteredMetres < refMetres ? `, below every full ${fmtDistance(refMetres)}. ${estimateNote}` : ''}`
+                          : `Any distance from ${fmtDistance(minEstimateMetres(refMetres))}. It ranks on the ${fmtDistance(refMetres)} time it predicts, and a full ${fmtDistance(refMetres)} or more always beats an estimate.`}
                     </div>
                   )}
                   {mode === 'weight+distance+time' && (

@@ -2713,6 +2713,43 @@ redefined trigger.
 `GRADING_STANDARDS_REVIEW.md`. The compiler learned `"BW · 20"` (weight+reps),
 `"40kg · 100m"` (carries) and `"≤ 4:05"` (predicted reference time).
 
+## Distance estimates and the Endurance Uenuku (9 October 2026) — v0.32.0.0, migration NOT YET APPLIED
+
+Tāne reported two things on 9 Oct 2026.
+
+**1. Endurance at Uenuku on HOME with no Uenuku score.** HOME shows the HELD
+colour (`shownDomainRungs`), the circles beside it the best six today, so a
+held colour above the circles means an award the evidence no longer supports.
+Cause: v0.28.0.0 deployed on 5 Oct, its migration `20261005012108` applied on
+6 Oct. In that gap the old Running / Cycling / erg rows were still on the
+distance ladder (a 1000m at band 2, raw ~29,700) while the new code read them
+as open distance efforts against 1km standards that top out under 10,000, so
+every one graded Taniwha, and the GRADING_RULES_VERSION bump rechecked everyone
+who opened the app. Five Taniwha events and one lower one average to Uenuku.
+Rechecks never withdraw, so it stayed after the migration fixed the rows. The
+same trap as the Sept L-Sit band (`onCurrentLadder`), but these rows' events
+had lost their levels, so the level-name check could not see it. Fixed in code
+(a `distance+time` score past its top band does not grade); the held colours
+are taken back by `scripts/withdraw-gap-colours.ts` (dry run, then `--apply`),
+which only touches colours conferred in the window and uses the audit panel's
+`awardsToWithdraw` / `awardAfterWithdraw`. Not measured against production:
+this session had no database read access. **Lesson: a release that changes an
+encoding AND bumps GRADING_RULES_VERSION must not deploy ahead of its
+migration; grading should refuse out-of-range scores rather than trust them.**
+
+**2. A 500m row got no score.** v0.30.0.1 saved it as training. Tāne: *"A 1km
+time should be estimated from scores less than 1km, but the rule should stand
+that any 1km time is better than an estimated 1km time."* Asked, he chose:
+estimates rank everywhere (official games too) and should note the colour they
+point to without earning it. Built as two halves of each level's band
+(`encodeDistanceEffort`): covered efforts keep `10000 − secs`, estimates take
+`5000 − secs`, so a predicted time must be under 5,000s (83 min per km or
+100m). Calls made without asking: estimates start at a quarter of the
+reference (250m / 25m, the first record distance), below which it stays
+training; the estimate's colour is shown only in the entry sheet hint.
+`20261008223803` re-scores the training rows v0.30.0.1 wrote (workout_entries
+only, pre-image archived) and asserts no covered row sits in the estimate half.
+
 ## The 144-event roster (6 October 2026) — v0.30.0.0, applied 6 Oct 2026
 
 Tāne sent a screenshot of the event list he keeps and asked where it differed

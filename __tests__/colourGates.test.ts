@@ -44,8 +44,8 @@ describe('logged workouts as evidence', () => {
     const player: GradePlayer = { division: "Men's", ageYears: 30, gender: 'Male' }
     const cycling = getEventByName('Cycling')!
     const g = eventGrade(cycling, [
-      { event_name: 'Cycling', raw_score: 19935, weight_kg: null, difficulty_tier: '500m', source: 'game' },
-      { event_name: 'Cycling', raw_score: 29905, weight_kg: null, difficulty_tier: '1000m', source: 'solo' },
+      { event_name: 'Cycling', raw_score: 9850, weight_kg: null, difficulty_tier: null, source: 'game' },
+      { event_name: 'Cycling', raw_score: 9905, weight_kg: null, difficulty_tier: null, source: 'solo' },
     ], player)
     expect(g.rung).toBeGreaterThan(0)
     expect(g.source).toBe('solo')
