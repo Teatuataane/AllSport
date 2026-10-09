@@ -2713,7 +2713,7 @@ redefined trigger.
 `GRADING_STANDARDS_REVIEW.md`. The compiler learned `"BW · 20"` (weight+reps),
 `"40kg · 100m"` (carries) and `"≤ 4:05"` (predicted reference time).
 
-## Distance estimates and the Endurance Uenuku (9 October 2026) — v0.32.0.0, migration NOT YET APPLIED
+## Distance estimates and the Endurance Uenuku (9 October 2026) — v0.32.0.0, APPLIED 10 Oct 2026
 
 Tāne reported two things on 9 Oct 2026.
 
@@ -2749,6 +2749,8 @@ reference (250m / 25m, the first record distance), below which it stays
 training; the estimate's colour is shown only in the entry sheet hint.
 `20261008223803` re-scores the training rows v0.30.0.1 wrote (workout_entries
 only, pre-image archived) and asserts no covered row sits in the estimate half.
+
+**Applied 10 Oct 2026** by Tāne (`supabase db push`): 1 effort re-scored. `scripts/withdraw-gap-colours.ts --apply` then took back 4 colours from 2 players, all conferred 6 Oct ~9am: Endurance Uenuku and Power Poroporo (Tāne), Endurance Poroporo and Power Kahurangi (another player). The Power ones were the same gap: Javelin and Shotput changed format in that release.
 
 ## The 144-event roster (6 October 2026) — v0.30.0.0, applied 6 Oct 2026
 
