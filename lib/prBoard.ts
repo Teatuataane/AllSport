@@ -20,7 +20,7 @@
 // reference (raw_score null) still sets a record at its own distance.
 
 import type { EventData } from '@/lib/eventData'
-import { DT_CAP, RIEGEL_EXPONENT } from '@/lib/eventData'
+import { DT_CAP, RIEGEL_EXPONENT, decodeDistanceEffort } from '@/lib/eventData'
 import { decodeCarry, fmtDistance, fmtTime } from '@/lib/scoring'
 
 export const TOP_N = 5
@@ -101,7 +101,13 @@ function effortOf(ev: EventData, r: Pick<PRRow, 'raw_score' | 'distance_m' | 'ti
   if (!(metres > 0) || !(secs > 0) || (carry && !(kg > 0))) {
     if (raw === null) return null
     if (carry) ({ weightKg: kg, metres, secs } = decodeCarry(raw))
-    else if (ev.referenceMetres) { metres = ev.referenceMetres; secs = DT_CAP - (raw % DT_CAP) }
+    else if (ev.referenceMetres) {
+      // An estimate did not cover the reference, and without its source
+      // columns what it did cover is unknown: no record.
+      const d = decodeDistanceEffort(raw)
+      if (d.estimated) return null
+      metres = ev.referenceMetres; secs = d.secs
+    }
   }
   if (!(metres > 0) || !(secs > 0) || (carry && !(kg > 0))) return null
   let level: number | null = null

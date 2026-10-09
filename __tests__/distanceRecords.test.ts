@@ -61,8 +61,9 @@ describe('buildPRBoard on a distance event', () => {
   })
 
   it('keeps a short training effort as the record at its own distance', () => {
-    const r = run(500, 107)
-    expect(r.raw_score).toBeNull()
+    // Since 9 Oct 2026 a 500m ranks on its estimate; a training row (no
+    // raw_score, as v0.30.0.1 wrote it) is still the record at its distance.
+    const r = { ...run(500, 107), raw_score: null }
     const rec = at(records(running, [r]), 500)
     expect(rec.best?.id).toBe(r.id)
     expect(rec.label).toBe('500m · 1:47')

@@ -21,7 +21,7 @@
 // Pure: no React, no Supabase. The takeover, the game report and play history
 // all compute through here, so the three can never show different numbers.
 
-import { getEventByName, isTimedEffort, DT_CAP, type EventData } from './eventData'
+import { getEventByName, isTimedEffort, decodeDistanceEffort, DT_CAP, type EventData } from './eventData'
 import { STANDARDS } from './standards'
 import { tierScoring, fmtTime } from './scoring'
 import { eventRungInGame, placePoints, MAX_GAME_COLOUR_TOTAL } from './leaderboardScores'
@@ -209,8 +209,11 @@ export function describeRawGap(ev: EventData, best: number, target: number): str
       const name = ev.difficultyTiers?.[needTier]?.name
       return name ? `move up to ${name}` : null
     }
+    const over = ref >= 1000 ? `${ref / 1000}km` : `${ref}m`
+    // An estimate earns no colour, whatever its pace: the step is the distance.
+    if (decodeDistanceEffort(best).estimated) return `the full ${over}`
     const d = target - best
-    return d > 0 ? `${secsText(d)} faster over ${ref >= 1000 ? `${ref / 1000}km` : `${ref}m`}` : null
+    return d > 0 ? `${secsText(d)} faster over ${over}` : null
   }
   if (ev.inputMode === 'weight+time') {
     // A colour needs its load and its time (rungForLoadHold), so name both
@@ -291,7 +294,9 @@ export function nextStep(
     } else {
       const raw = eg.best.raw_score
       if (raw == null) continue
-      cur = rungForCompound(ev.inputMode, raw, ladder, band) ?? rungForScore(raw, ladder, band, { cap })
+      // An estimated distance effort holds no colour (lib/playerGrades.ts).
+      const estimate = ev.inputMode === 'distance+time' && decodeDistanceEffort(raw).estimated
+      cur = estimate ? 0 : rungForCompound(ev.inputMode, raw, ladder, band) ?? rungForScore(raw, ladder, band, { cap })
       if (cur + 1 > cap) continue
       to = thresholdFor(ladder, cur + 1 - shift)
       from = cur > 0 ? thresholdFor(ladder, cur - shift) : Math.min(raw, to)

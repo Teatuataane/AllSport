@@ -5,7 +5,7 @@
 // every bundle that imports them. chrome.tsx re-exports it.
 
 import { fmtTime, tierScoring, decodeCarry, fmtDistance } from '@/lib/scoring'
-import { decodeDiffTime, isTimedEffort, type EventData } from '@/lib/eventData'
+import { decodeDiffTime, decodeDistanceEffort, isTimedEffort, type EventData } from '@/lib/eventData'
 
 export function formatPR(rawScore: number, inputMode: string, slug?: string, eventData?: EventData): string {
   switch (inputMode) {
@@ -53,10 +53,10 @@ export function formatPR(rawScore: number, inputMode: string, slug?: string, eve
     }
     case 'distance+time': {
       // The score is the time predicted over the reference distance.
-      const tierIdx = Math.floor(rawScore / 10000)
-      const secs = 10000 - (rawScore % 10000)
+      // An effort short of the reference reads as the estimate it is.
+      const { tierIdx, secs, estimated } = decodeDistanceEffort(rawScore)
       const ref = eventData?.referenceMetres
-      const over = ref ? `${fmtDistance(ref)} ` : ''
+      const over = `${estimated ? 'est. ' : ''}${ref ? `${fmtDistance(ref)} ` : ''}`
       return eventData?.difficultyTiers?.length ? `D${tierIdx + 1} · ${over}${fmtTime(secs)}` : `${over}${fmtTime(secs)}`
     }
     case 'weight+distance+time': {

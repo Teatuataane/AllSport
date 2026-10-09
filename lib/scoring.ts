@@ -2,7 +2,7 @@
 // (EventCard + QuickEntrySheet in app/scoring/[sessionId]/page.tsx).
 // Everything here is side-effect free so it can be unit tested directly.
 
-import { isTimedEffort, encodeDiffTime, decodeDiffTime, predictedEffortSecs, DT_CAP, type EventData } from '@/lib/eventData'
+import { isTimedEffort, encodeDiffTime, decodeDiffTime, predictedEffortSecs, encodeDistanceEffort, decodeDistanceEffort, minEstimateMetres, DT_CAP, type EventData } from '@/lib/eventData'
 
 export function fmtTime(totalSecs: number): string {
   const abs = Math.abs(totalSecs)
@@ -409,9 +409,13 @@ export function computeScoreVals(
     const metres = entryMetres(v)
     const predicted = predictedEffortSecs(ref, metres, totalSecs)
     if (predicted === null) return null
+    // Short of the reference, the time is an estimate and ranks below every
+    // effort that covered it (encodeDistanceEffort).
+    const raw_score = encodeDistanceEffort(tierIdx, predicted, metres < ref)
+    if (raw_score === null) return null
     const done = `${fmtDistance(metres)} · ${fmtTime(totalSecs)}`
     const est = Math.round(metres) === ref ? '' : ` · est. ${fmtDistance(ref)} ${fmtTime(predicted)}`
-    return { raw_score: tierIdx * TIER_BAND + (TIER_BAND - predicted), score_label: `${prefix}${done}${est}` }
+    return { raw_score, score_label: `${prefix}${done}${est}` }
   }
   if (mode === 'weight+distance+time') {
     const w = parseFloat(v.weightKg) || 0
@@ -469,14 +473,15 @@ export type ScoreColumns = {
 }
 
 /**
- * A distance effort SHORTER than the event's reference distance (a 500m row on
- * a 1000m event), as training. Riegel only shortens, so such an effort predicts
- * nothing and can never rank; `computeScoreVals` refuses it. A logged workout
- * still records it — with no raw_score, so it never grades or ranks — because an
- * interval or a warm-up is training all the same. Since 8 Oct 2026 it still
- * sets a record at its own distance (lib/prBoard.ts reads distance_m and
- * time_seconds, not raw_score). Official
- * game results never take this path: there the reference distance stands.
+ * A distance effort too SHORT to predict the reference time (under a quarter
+ * of it: a 200m row on the 1000m Row Erg), as training. Since 9 Oct 2026 an
+ * effort from a quarter of the reference up ranks on its estimate
+ * (computeScoreVals); below that Riegel says nothing, so `computeScoreVals`
+ * refuses it. A logged workout still records it — with no raw_score, so it
+ * never grades or ranks — because an interval or a warm-up is training all the
+ * same, and it still sets a record at its own distance (lib/prBoard.ts reads
+ * distance_m and time_seconds, not raw_score). Official game results never
+ * take this path.
  *
  * Null for anything else: another mode, an effort long enough to rank, a level
  * not yet picked on a laddered event, or a distance or time not yet typed.
@@ -493,7 +498,7 @@ export function shortDistanceEffort(mode: string, eventData: EventData | undefin
   if (!ref) return null
   const metres = entryMetres(v)
   const totalSecs = (parseFloat(v.timeMins) || 0) * 60 + (parseFloat(v.timeSecs) || 0)
-  if (!(metres > 0) || metres >= ref || !(totalSecs > 0) || totalSecs > 86400) return null
+  if (!(metres > 0) || metres >= minEstimateMetres(ref) || !(totalSecs > 0) || totalSecs > 86400) return null
   let prefix = ''
   if (eventData?.difficultyTiers?.length) {
     const tierIdx = eventData.difficultyTiers.findIndex(t => t.name === v.difficultyTier)
@@ -700,10 +705,9 @@ export function valsFromRaw(mode: string, eventData: EventData | undefined, raw:
     p.repCount = String(raw % TIER_BAND)
   } else if (mode === 'distance+time') {
     // The PR is a PREDICTION, so the prefill is that time over the reference.
-    const tierIdx = Math.floor(raw / TIER_BAND)
+    const { tierIdx, secs } = decodeDistanceEffort(raw)
     const tierName = eventData?.difficultyTiers?.[tierIdx]?.name
     if (tierName) p.difficultyTier = tierName
-    const secs = TIER_BAND - (raw % TIER_BAND)
     if (eventData?.referenceMetres) { p.distanceVal = String(eventData.referenceMetres); p.distanceUnit = 'm' }
     p.timeMins = String(Math.floor(secs / 60)); p.timeSecs = String(Math.round(secs % 60))
   } else if (mode === 'weight+distance+time') {

@@ -2,6 +2,14 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.32.0.0] - 2026-10-09
+
+### Changed
+- **A short distance effort now ranks on its estimate.** A 500m row on Row Erg predicts its 1km time and that estimate ranks, in a workout and in an official game alike. Any effort that covered the full distance (1km, or 100m for Swim and Animal Crawl) always ranks above any estimate, however fast. An estimate never earns a colour: the entry sheet says which colour it points to ("That is a Kōwhai pace: go the full 1km to earn it"). Efforts under a quarter of the distance (250m, or 25m) are still saved as training. Short efforts already saved as training are re-scored by migration `20261008223803`.
+
+### Fixed
+- **A distance score from before 5 Oct can no longer give a colour.** For a day after v0.28.0.0 went live, old Running, Cycling and erg scores (still in their old distance-ladder form) were read against the new 1km standards and graded Taniwha, which gave Endurance colours no score supports (reported as Uenuku with no Uenuku score). Grading now refuses a distance score outside the current encoding. The colours already conferred in that window are taken back by `scripts/withdraw-gap-colours.ts` (dry run first).
+
 ## [0.31.0.0] - 2026-10-08
 
 ### Added

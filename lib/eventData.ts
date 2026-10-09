@@ -2670,23 +2670,62 @@ export function encodeDiffTime(tierIdx: number, secs: number, fasterWins: boolea
 // event's referenceMetres with Riegel, T2 = T1 × (D2/D1)^1.06, the same formula
 // lib/naturalFormats.ts already uses for logged runs, and that time ranks.
 //
-// It only ever SHORTENS: an effort below the reference distance is refused,
-// because extrapolating up would invent endurance nobody showed. There is no
-// upper limit: from a long effort the formula predicts a conservative short
-// time (a 3:30 marathon predicts a 4:00 km), so going long never games it.
+// Since 9 Oct 2026 it also ESTIMATES UP from a shorter effort (Tāne: "a 1km
+// time should be estimated from scores less than 1km, but any 1km time is
+// better than an estimated 1km time"). A 500m row predicts its 1km, and that
+// estimate ranks, but always BELOW every effort that covered the reference:
+// inside a level's band a covered effort scores DT_CAP − secs and an estimate
+// ESTIMATE_BAND − secs, so the two never overlap. An estimate never earns a
+// colour (lib/playerGrades.ts); the entry sheet only notes the colour it
+// points to. Below a quarter of the reference (250m of a 1km, 25m of 100m)
+// nothing is predicted: Riegel from a sprint says nothing about a kilometre,
+// and such an effort is kept as training (shortDistanceEffort).
 //
-// The SQL in the 5 Oct 2026 roster migration re-encodes history with the same
+// Going long still never games it: from a long effort the formula predicts a
+// conservative short time (a 3:30 marathon predicts a 4:00 km).
+//
+// The SQL in the 5 Oct 2026 roster migration re-encoded history with the same
 // formula and rounding (round half up on a positive number).
 export const RIEGEL_EXPONENT = 1.06
+
+/**
+ * The top of the estimate half of a level's band, and the ceiling on any
+ * predicted time: 4,999s (83 minutes) over the reference, far past any real
+ * kilometre or 100m. A covered effort scores above it, an estimate below it.
+ */
+export const ESTIMATE_BAND = 5000
+
+/** The shortest effort that predicts the reference time: a quarter of it. */
+export function minEstimateMetres(referenceMetres: number): number {
+  return referenceMetres / 4
+}
 
 /** Whole seconds an effort predicts over the reference, or null if it cannot be ranked. */
 export function predictedEffortSecs(referenceMetres: number, metres: number, secs: number): number | null {
   if (!(referenceMetres > 0) || !(metres > 0) || !(secs > 0)) return null
-  if (metres < referenceMetres) return null
+  if (metres < minEstimateMetres(referenceMetres)) return null
   const p = metres === referenceMetres
     ? Math.round(secs)
     : Math.round(secs * Math.pow(referenceMetres / metres, RIEGEL_EXPONENT))
-  return p >= 1 && p < DT_CAP ? p : null
+  return p >= 1 && p < ESTIMATE_BAND ? p : null
+}
+
+/**
+ * A 'distance+time' raw_score: the level's band, then a covered effort above
+ * every estimate. `estimated` is true when the effort fell short of the
+ * reference distance. Null when the predicted time is out of range.
+ */
+export function encodeDistanceEffort(tierIdx: number, predictedSecs: number, estimated: boolean): number | null {
+  if (!(predictedSecs >= 1 && predictedSecs < ESTIMATE_BAND) || tierIdx < 0) return null
+  return tierIdx * DT_CAP + (estimated ? ESTIMATE_BAND : DT_CAP) - predictedSecs
+}
+
+/** The inverse of encodeDistanceEffort. */
+export function decodeDistanceEffort(raw: number): { tierIdx: number; secs: number; estimated: boolean } {
+  const tierIdx = Math.floor(raw / DT_CAP)
+  const term = raw - tierIdx * DT_CAP
+  const estimated = term < ESTIMATE_BAND
+  return { tierIdx, secs: (estimated ? ESTIMATE_BAND : DT_CAP) - term, estimated }
 }
 
 export function decodeDiffTime(rawScore: number, fasterWins: boolean): { tierIdx: number; secs: number } {
