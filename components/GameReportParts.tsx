@@ -116,6 +116,7 @@ export type ReportEventLine = {
   scoreLabel: string | null
   /** Division rank in the event, or null when there is none to show. */
   placement: number | null
+  /** The colour reached, plus 0.5 for a half step (shown as "+½"). */
   rung: number
   isPR?: boolean
   firstTime?: boolean
@@ -153,7 +154,7 @@ export function ReportEventRow({ line }: { line: ReportEventLine }) {
       <div style={{ textAlign: 'right', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
           <GradeDot grade={g} size={12} />
-          <span style={{ fontSize: 13, color: gradeInk(g) }}>{g.name}</span>
+          <span style={{ fontSize: 13, color: gradeInk(g) }}>{g.name}{line.rung % 1 ? ' +½' : ''}</span>
         </div>
         {line.placement != null && (
           <div style={{ fontFamily: 'var(--font-label)', fontSize: 12, color: '#666', marginTop: 2 }}>{ord(line.placement)}</div>

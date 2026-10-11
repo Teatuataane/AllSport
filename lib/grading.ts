@@ -124,7 +124,7 @@ export const TOP_RUNG = 12
  * conferred one. HOME forces one full recheck per player when this differs
  * from the version it last checked under (lib/useNewColours.ts).
  */
-export const GRADING_RULES_VERSION = '2026-10-09-distance-estimates'
+export const GRADING_RULES_VERSION = '2026-10-10-half-steps'
 export const DOMAIN_COUNT = 10
 
 /**
@@ -145,10 +145,14 @@ export function gradeAccent(g: GradeRung): string {
   return g.rainbow ? '#F397C0' : gradeInk(g)
 }
 
-/** Mā for 0, otherwise the rung. Out-of-range input is clamped, never thrown. */
+/**
+ * Mā for 0, otherwise the rung. Out-of-range input is clamped, never thrown,
+ * and a half step (5.5, see halfStepCredit) is the colour below it: a
+ * half is credit toward a colour, never a colour.
+ */
 export function gradeForRung(rung: number): GradeRung {
-  if (rung <= 0) return MA
-  return GRADES[Math.min(rung, TOP_RUNG) - 1]
+  if (rung < 1) return MA
+  return GRADES[Math.min(Math.floor(rung), TOP_RUNG) - 1]
 }
 
 // ─── Rule 2: the domain colour ───────────────────────────────────────────────
@@ -173,8 +177,8 @@ export type DomainGradeInput = {
   ungradeable?: ReadonlySet<string>
   /**
    * eventSlug → highest rung whose standard the player has met in that event
-   * (lifetime best). Absent means never played; 0 means played but below the
-   * bottom rung. Both fill a slot as Mā.
+   * (lifetime best), or more when a half step credits it (halfStepCredit). Absent means never played; 0 means played but below
+   * the bottom rung. Both fill a slot as Mā.
    */
   rungByEvent: ReadonlyMap<string, number>
   /**
@@ -194,7 +198,7 @@ export type DomainGradeInput = {
 
 export type DomainGradeResult = {
   domainNumber: number
-  /** The average of the counted slots, rounded down. 0 = Mā. */
+  /** The average of the counted slots, rounded down. 0 = Mā. Always whole. */
   rung: number
   /**
    * Events that count here — the domain's roster minus the events nobody can
@@ -212,6 +216,7 @@ export type DomainGradeResult = {
   /**
    * Colours still to add across the slots to reach `nextRung`: one event up
    * one colour, or an empty slot filled at Kiwikiwi, is one. 0 at the top.
+   * Can end in a half when a counted event holds a half step.
    */
   toNext: number
   /**
@@ -253,7 +258,8 @@ export function domainGrade(input: DomainGradeInput): DomainGradeResult {
     .sort((a, b) => b.rung - a.rung)
     .slice(0, slots)
   const sum = ranked.reduce((t, e) => t + e.rung, 0)
-  // Integer arithmetic, so no epsilon: 17 / 6 is 2 however it is rounded.
+  // No epsilon needed: every credit is a whole or half number, which binary
+  // floating point holds exactly, so 17.5 / 6 is 2 however it is rounded.
   const rung = Math.floor(sum / slots)
   const nextRung = rung >= TOP_RUNG ? null : rung + 1
 
@@ -490,6 +496,61 @@ export function rungForCarry(score: number, thresholds: readonly number[], band:
   let rung = 0
   for (let c = 1; c <= top; c++) {
     if (meetsCarry(score, thresholdFor(thresholds, c - shift))) rung = c
+  }
+  return rung
+}
+
+// ─── Half steps (10 Oct 2026) ────────────────────────────────────────────────
+// Tāne, 10 Oct 2026: a player who lifts the LOAD of a higher colour but falls
+// short of its time, reps or distance earns half a colour below that colour.
+// Without it, both-keys grading is a cliff: every Glute Thrust colour from
+// Kōwhai up asks for 30s, so 180kg held for 25s (Taniwha's load) earned only
+// Kiwikiwi. With it, that effort is worth Uenuku and a half (11.5), and Toe
+// Lift 5kg for 45s, one step short of Parahi's 5kg for 60s, Poroporo and a half.
+//
+// The highest colour whose load is reached counts, not only the next one,
+// because the cliff is not one step deep: Glute Thrust's next colour above
+// Kiwikiwi is a bodyweight hold with no load to reach at all.
+//
+// A floor: the other key must reach at least HALF of that colour's, or one
+// second under 180kg would be worth Uenuku. 25s of a 30s hold passes.
+//
+// The half is CREDIT, not a colour. It counts in the domain average (best six)
+// and in a game's colour total (so on the season board), but no event is ever
+// conferred at it: the colour held stays the both-keys rung, and gradeForRung
+// reads 11.5 as Uenuku.
+//
+// Only the load earns it. The other way round (the time, reps or distance of
+// a higher colour at a lighter load) would credit almost everyone on a ladder
+// whose every rung asks for the same 30s.
+
+/** What reaching part of a colour is worth: half a colour below it. */
+export const HALF_STEP = 0.5
+
+/** The share of a colour's time, reps or distance a half step still needs. */
+export const HALF_STEP_FLOOR = 0.5
+
+/**
+ * What a compound score at `rung` (from rungForCompound) is worth in an
+ * average or a total: `rung`, or half a colour below the highest colour whose
+ * LOAD it reaches with at least half that colour's other key, whichever is
+ * more. Bodyweight rungs (no load to reach) never count; a mode that is not
+ * compound is worth its rung.
+ */
+export function halfStepCredit(mode: string, score: number, thresholds: readonly number[], band: AgeBand, rung: number): number {
+  const keys = mode === 'weight+time' || mode === 'weight+reps'
+    ? (v: number) => ({ load: Math.floor(v / LOAD_HOLD_BAND), other: v % LOAD_HOLD_BAND })
+    : mode === 'weight+distance+time'
+      ? (v: number) => ({ load: Math.floor(v / CARRY_KG_KEY), other: Math.floor((v % CARRY_KG_KEY) / CARRY_M_KEY) })
+      : null
+  if (keys === null || thresholds.length === 0) return rung
+  const shift = AGE_SHIFT[band]
+  const top = Math.min(TOP_RUNG, thresholds.length + shift)
+  const mine = keys(score)
+  for (let c = top; c > rung; c--) {
+    const t = keys(thresholdFor(thresholds, c - shift))
+    if (t.load <= 0) continue
+    if (mine.load >= t.load && mine.other >= t.other * HALF_STEP_FLOOR) return c - HALF_STEP
   }
   return rung
 }
