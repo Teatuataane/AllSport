@@ -2752,6 +2752,35 @@ only, pre-image archived) and asserts no covered row sits in the estimate half.
 
 **Applied 10 Oct 2026** by Tāne (`supabase db push`): 1 effort re-scored. `scripts/withdraw-gap-colours.ts --apply` then took back 4 colours from 2 players, all conferred 6 Oct ~9am: Endurance Uenuku and Power Poroporo (Tāne), Endurance Poroporo and Power Kahurangi (another player). The Power ones were the same gap: Javelin and Shotput changed format in that release.
 
+## Half colours (10 October 2026) — v0.33.0.0, APPLIED 12 Oct 2026
+
+Tāne: a player who lifts the right weight but misses the time or reps of the
+next colour should get partial credit. Both-keys grading (`rungForCompound`)
+was a cliff, not a step: every Glute Thrust colour from Kōwhai up asks for 30s,
+so 180kg for 25s (Taniwha's weight) earned Kiwikiwi. Offered a load/time
+trade-off curve or fractional colours, he chose fractional colours, and asked
+that the Glute Thrust case earn an Uenuku score.
+
+**Rule (`halfStepCredit`, lib/grading.ts):** on weight+time, weight+reps and
+carry events, reaching the LOAD of a higher colour with at least half its other
+key is worth half a colour below that colour (180kg × 25s = 11.5). Only the
+load earns it (the other way would credit almost everyone on a same-30s
+ladder); bodyweight rungs have no load and are skipped. The half-of-the-other-
+key floor was Claude's call, so one second under 180kg earns nothing. The
+credit (`EventGrade.credit`) counts in the domain average and the game colour
+total; it is never conferred, and `gradeForRung` reads 11.5 as Uenuku. The game
+report shows "+½"; a new half alone is not "Colour up".
+
+**Applied 12 Oct 2026** by a Claude session from a clean `main` worktree with
+`supabase db query --linked -f` plus a manual ledger row:
+`20261010021800` changed `player_game_colours.colour_total` to numeric(4,1) and
+recreated `season_points` around it (the only dependent object). Verified:
+numeric(4,1), the 0–120 CHECK kept, `security_invoker=on`, anon SELECT on the
+view (REST 200, totals come back as numbers), no client write, and the season
+board's 20 rows hashed identically before and after. `refresh-leaderboard-
+scores.ts --apply` then wrote 29 players, 0 failed; one game total moved
+(43 → 43.5), no season points changed.
+
 ## The 144-event roster (6 October 2026) — v0.30.0.0, applied 6 Oct 2026
 
 Tāne sent a screenshot of the event list he keeps and asked where it differed
