@@ -2,6 +2,11 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.33.0.0] - 2026-10-12
+
+### Added
+- **Half colours on weight-and-time, weight-and-reps and carry events.** Lifting the weight of a higher colour while falling short of its time, reps or distance now earns half a colour below that colour, as long as the effort reaches at least half of that time, reps or distance. Glute Thrust 180kg for 25s (Taniwha's weight, short of its 30s) is worth Uenuku and a half, where it used to earn only Kiwikiwi; Toe Lift 5kg for 45s (Parahi's weight, short of its 60s) is worth Poroporo and a half. The half counts in the domain colour (best six) and in a game's colour total, so on the season board. It is credit, not a colour: the colour held on the event still needs both halves of the standard. The game report shows it as "+½". Game colour totals can now end in .5, so migration `20261010021800` changes `player_game_colours.colour_total` to `numeric(4,1)`: apply it BEFORE deploying, then run `scripts/refresh-leaderboard-scores.ts --apply`.
+
 ## [0.32.0.0] - 2026-10-09
 
 ### Changed

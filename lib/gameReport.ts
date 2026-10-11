@@ -41,9 +41,9 @@ export type GameScore = {
   /** When it closed (or will: started + 100 minutes). Orders games. */
   closedAt: string | null
   closed: boolean
-  /** Sum of the rungs, 0 to 120. */
+  /** Sum of the rungs, 0 to 120; can end in .5 (a half step). */
   points: number
-  /** The rung each event reached, by event name. */
+  /** The rung each event reached, by event name, plus any half step. */
   rungs: Map<string, number>
 }
 
@@ -116,7 +116,8 @@ export function eventFlags(scores: ReadonlyMap<string, GameScore>, sessionId: st
   for (const [name, rung] of ordered[at].rungs) {
     const before = earlierBest.get(name)
     const firstTime = before === undefined
-    out.set(name, { firstTime, colourUp: !firstTime && rung > 0 && rung > before })
+    // Whole colours only: a new half step is credit, not a colour up.
+    out.set(name, { firstTime, colourUp: !firstTime && rung >= 1 && Math.floor(rung) > Math.floor(before) })
   }
   return out
 }

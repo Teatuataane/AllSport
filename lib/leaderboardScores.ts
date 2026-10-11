@@ -13,9 +13,11 @@
 //
 //   SEASON POINTS — this calendar year. Every official event in every finished
 //   game scores the rung that game's result reached (Kiwikiwi 1 … Taniwha 12),
-//   so a player's colour total in one game is up to 120. Everyone in the game
-//   is then ranked on that total and places pay 100, 99, 98 … (since
-//   2026-09-28; see "Season points" below). Resets each January.
+//   so a player's colour total in one game is up to 120. Since 10 Oct 2026 a
+//   half step can credit an event at a whole and a half (halfStepCredit), so
+//   a total can end in .5. Everyone in the game is then ranked on that total
+//   and places pay 100, 99, 98 … (since 2026-09-28; see "Season points"
+//   below). Resets each January.
 //
 // Pure, so it is tested, and so the route and the backfill script cannot
 // disagree about what a player scored. Computed on the SERVER only: strength
@@ -25,7 +27,7 @@
 import { getEventByName } from './eventData'
 import { STANDARDS } from './standards'
 import { sportTermOf } from './scoring'
-import { eventGrade, type GradePlayer, type GradeResultRow } from './playerGrades'
+import { eventGrade, eventCredit, type GradePlayer, type GradeResultRow } from './playerGrades'
 import { DOMAIN_COUNT, DRILL_CAP, TOP_RUNG, type DomainGradeResult } from './grading'
 import type { SportRating } from './headToHead'
 
@@ -68,8 +70,9 @@ export type SeasonRow = GradeResultRow & {
 }
 
 /**
- * The rung one event reached in one game. `rows` are that event's rows from
- * that game only. `rating` is the player's rating in that sport as it stood
+ * The rung one event reached in one game, or its half-step credit when an
+ * effort lifted a higher colour's load short of its other key (10 Oct 2026),
+ * so it can end in .5. `rows` are that event's rows from that game only. `rating` is the player's rating in that sport as it stood
  * when the game closed, so a later run of wins never re-prices an old game.
  */
 export function eventRungInGame(
@@ -82,7 +85,7 @@ export function eventRungInGame(
   if (!ev) return 0
   // The standards' own answer: drills (capped on a Game-rung event) and the
   // rating colour, exactly as a colour would be judged.
-  let rung = STANDARDS[ev.slug] ? eventGrade(ev, rows, player, rating).rung : 0
+  let rung = STANDARDS[ev.slug] ? eventCredit(eventGrade(ev, rows, player, rating)) : 0
   // The real contest, which the standards deliberately never grade from a single result.
   for (const r of rows) {
     if (r.raw_score == null) continue

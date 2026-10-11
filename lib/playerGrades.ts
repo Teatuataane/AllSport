@@ -10,7 +10,7 @@ import { EVENTS, getEventByName, decodeDistanceEffort, DT_CAP, type EventData } 
 import { STANDARDS } from './standards'
 import { isGameTier } from './eventKinds'
 import {
-  ageBand, rungForScore, rungForCompound, isCompoundMode, ratioThresholdsKg, ratingRung, gameEventRung,
+  ageBand, rungForScore, rungForCompound, isCompoundMode, halfStepCredit, ratioThresholdsKg, ratingRung, gameEventRung,
   domainGrade, overallGrade, colourGate, DRILL_CAP, DOMAIN_COUNT,
   type AgeBand, type DomainGradeResult, type OverallGradeResult, type ColourGate,
 } from './grading'
@@ -58,8 +58,15 @@ export type GradeResultRow = {
 
 export type EventGrade = {
   slug: string
-  /** 0 = below Kiwikiwi, or never played. */
+  /** 0 = below Kiwikiwi, or never played. Always whole: the colour held. */
   rung: number
+  /**
+   * What the event is worth in the domain average and a game's colour total
+   * when a half step makes it more than `rung`: the best effort lifted the
+   * LOAD of a higher colour, short of its other key (halfStepCredit). Ends in
+   * .5. Absent otherwise. Never conferred as a colour.
+   */
+  credit?: number
   /**
    * False when this event leaves the domain's denominator entirely: it has no
    * standard, or it is rating-only and the player holds no rating colour yet.
@@ -133,6 +140,11 @@ const onCurrentLadder = (ev: EventData, row: GradeResultRow) => {
   return ev.difficultyTiers[Math.floor(row.raw_score / 10000)]?.name === row.difficulty_tier
 }
 
+/** What an event is worth in an average or a total: its colour, or its half-step credit. */
+export function eventCredit(g: Pick<EventGrade, 'rung' | 'credit'>): number {
+  return Math.max(g.rung, g.credit ?? 0)
+}
+
 /** The colour one player's rows earn in one event. */
 /**
  * What a lift is worth against a ratio standard: its ESTIMATED 1RM, which is
@@ -169,6 +181,7 @@ export function eventGrade(
 
   const ladder = s.all ?? s[ladderFor(p)] ?? []
   let drill = 0
+  let credit = 0
   let bestRow: GradeResultRow | undefined
   if (s.kind === 'ratio') {
     // Each lift is graded against ITS OWN bodyweight, so the heaviest lift is
@@ -204,10 +217,13 @@ export function eventGrade(
   } else if (isCompoundMode(ev.inputMode)) {
     // A colour needs its load AND its time, reps or distance (rungForCompound),
     // so the heaviest effort is not necessarily the best one: rank rows by the
-    // rung they reach, earliest winning a tie, as for lifts.
+    // rung they reach, earliest winning a tie, as for lifts. The colour held
+    // is the best rung; the credit is the best half step, which can come from
+    // a different row (a heavy short hold beside a light full one).
     for (const r of drillRows) {
       const rung = rungForCompound(ev.inputMode, r.raw_score!, ladder, band)!
       if (rung > drill) { drill = rung; bestRow = r }
+      credit = Math.max(credit, halfStepCredit(ev.inputMode, r.raw_score!, ladder, band, rung))
     }
   } else if (drillRows.length) {
     // An effort short of a distance event's reference ranks on its estimate
@@ -228,7 +244,8 @@ export function eventGrade(
   // raw_score, the same order /prs sorts on: the heaviest LOAD is not the best
   // estimated 1RM once natural formats convert sets (100kg × 1 vs 90kg × 8).
   const shown = bestRow ?? topRow
-  return { slug: ev.slug, rung, gradeable: true, played, ...pick(shown), ...withRating, ...(source ? { source } : {}) }
+  // Compound modes are never Game-rung events, so `rung` is `drill` here.
+  return { slug: ev.slug, rung, ...(credit > rung ? { credit } : {}), gradeable: true, played, ...pick(shown), ...withRating, ...(source ? { source } : {}) }
 }
 
 /** The row with the highest key; the earliest on a tie. */
@@ -289,7 +306,7 @@ export function computePlayerGrades(input: {
       ungradeable,
       bodyweightBlocked,
       unavailable: input.exemptions,
-      rungByEvent: new Map(inDomain.map(e => [e.slug, events.get(e.slug)!.rung])),
+      rungByEvent: new Map(inDomain.map(e => [e.slug, eventCredit(events.get(e.slug)!)])),
     }))
   }
 
