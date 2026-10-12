@@ -2,6 +2,18 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.34.1.0] - 2026-10-13
+
+### Changed
+- **My Events shows colours, not domain hues.** Each domain name is painted in the colour held there (the same rule as HOME), with the colour's name under it; Mā stays white. Event and domain icons are grey, PBs white, and an event that has earned a colour carries a small circle by its name.
+- **An open event shows its colour and its top three.** The colour line says the colour, or why there is none (needs bodyweight, exempt, rated games still to come), and notes a half step. Then the three best results, with "Show all" for the rest, and the Standards toggle. The list of every level of the ladder is gone; distance events keep their best at each distance.
+- **"Played only"** hides the events with nothing on the chosen year tab.
+- The "How a win counts" note is behind a ? beside the win count, and the WON and CHAMP badges are white, no longer the amber of Karaka.
+- The "Strongest to weakest" Top % chart, the "Avg" place column, the input-mode label and the D1–D12 tag are gone. The page no longer downloads the stats bundle the chart needed.
+
+### Fixed
+- **Event icons that still showed an emoji.** All 144 icons exist, but the site cached a missing icon for a week, so a phone that looked before v0.33.1.0 kept the emoji. Icon addresses now carry a version (`ICON_VERSION` in `components/EventIcon.tsx`); bump it whenever icons change.
+
 ## [0.34.0.0] - 2026-10-12
 
 ### Changed

@@ -166,6 +166,8 @@
 
 ## P1 — Do Next
 
+- **Colours earned per calendar year (Jan–Dec).** Tāne, 13 Oct 2026: colours are earned per year, not for life. The code grades every result ever and never withdraws a conferred colour (`grade_awards` has no year). Needs a design pass before building: what HOME shows on 1 January, whether `grade_awards` gains a year, the recheck route, the games cap per year, and `GRADING_RULES_VERSION`. When it lands, drop the "From all your results" note on My Events (`EventColour` in `app/prs/page.tsx`).
+
 ### ~~Apply `20261005222950_roster_144.sql` after v0.30.0.0 deploys, and AFTER the two 5 Oct migrations~~ DONE 2026-10-06
 **Done:** applied with the two 5 Oct migrations, in order, each in one transaction with its ledger row (`supabase db query --linked -f`), from a clean worktree on main. Verified: 144 rows in `event_domains` (16/13/15/15/14/15/15/14/13/14), Wrestling in 3, Australian Football in 4, L-Sit renamed, Cornhole's 4 games at 30000+ on Game, 7 Triple Jump results back, Steinborn and the four new contests in the functions. As `authenticated`, in a rolled-back transaction: a Swim entry was accepted, a home Mas Wrestling win refused, Steinborn 100kg × 5 stored as 112.5. Season board republished (28 players). Still to do: hard-refresh kaiwhakawā devices.
 

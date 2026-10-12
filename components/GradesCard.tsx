@@ -182,7 +182,7 @@ export default function GradesCard({ state, bestEvent = null }: {
  * Mā standing for "no colour yet" is an empty grey outline; on the ladder,
  * where it is a rung, it is solid white.
  */
-function ColourCircle({ rung, size, reached = true, ma = 'empty' }: {
+export function ColourCircle({ rung, size, reached = true, ma = 'empty' }: {
   rung: number; size: number; reached?: boolean; ma?: 'empty' | 'white'
 }) {
   const g = gradeForRung(rung)
