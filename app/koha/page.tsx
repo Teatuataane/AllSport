@@ -9,7 +9,7 @@ const tiers = [
     amount: 'Any Amount',
     referrals: '1 referral',
     reward: 'Supporters Wall',
-    desc: 'Your name goes on the AllSport supporters wall. Every contribution, no matter the size, is acknowledged.',
+    desc: 'Your name on the supporters wall. Every gift counts.',
     color: 'var(--grey)',
     isBase: true,
     referralPath: true,
@@ -18,7 +18,7 @@ const tiers = [
     amount: '>$50',
     referrals: '3 referrals',
     reward: 'Digital Certificate',
-    desc: 'A digital certificate acknowledging your koha — a formal record of your contribution to AllSport.',
+    desc: 'A certificate recording your koha.',
     color: 'var(--green)',
     referralPath: true,
   },
@@ -26,7 +26,7 @@ const tiers = [
     amount: '>$200',
     referrals: '6 referrals',
     reward: 'Sticker Pack',
-    desc: 'AllSport sticker pack plus your digital certificate. Represent the community.',
+    desc: 'Stickers plus your certificate.',
     color: 'var(--blue)',
     referralPath: true,
   },
@@ -34,7 +34,7 @@ const tiers = [
     amount: '>$500',
     referrals: '12 referrals',
     reward: 'Colours T-Shirt',
-    desc: 'A t-shirt in the colour of your highest Colour achieved. Wear your mana.',
+    desc: 'A tee in your highest colour. Wear your mana.',
     color: 'var(--purple)',
     referralPath: true,
   },
@@ -42,7 +42,7 @@ const tiers = [
     amount: '>$1,000',
     referrals: '18 referrals',
     reward: 'Colours Hoodie',
-    desc: 'A hoodie in the colour of your highest Colour achieved. The next level of representing your mana.',
+    desc: 'A hoodie in your highest colour.',
     color: 'var(--red)',
     referralPath: true,
   },
@@ -50,28 +50,28 @@ const tiers = [
     amount: '>$2,000',
     referrals: '25 referrals',
     reward: 'Clothing Stack',
-    desc: '$2,000 worth of AllSport merch — your choice of hoodies, shirts, or any combination. In your colours.',
+    desc: '$2,000 of merch in your colours, your pick.',
     color: 'var(--pink)',
     referralPath: true,
   },
   {
     amount: '>$2,500',
     reward: 'Personal Coaching — 20hrs',
-    desc: '20 personal coaching sessions with AllSport. One-on-one training built around your goals.',
+    desc: 'Twenty one-on-one sessions built around your goals.',
     color: 'var(--amber)',
     referralPath: false,
   },
   {
     amount: '>$5,000',
     reward: 'Personal Coaching — 50hrs',
-    desc: '50 personal coaching sessions per year. The full AllSport coaching experience.',
+    desc: 'Fifty one-on-one sessions a year.',
     color: 'var(--amber)',
     referralPath: false,
   },
   {
     amount: '>$10,000',
     reward: 'AllSport Comes To You',
-    desc: 'We bring AllSport to your workplace or community. Full corporate sessions, run by AllSport.',
+    desc: 'We run AllSport at your workplace or community.',
     color: 'var(--amber)',
     isPremium: true,
     referralPath: false,
@@ -82,19 +82,25 @@ const campaign = {
   title: 'Wheels for AllSport',
   goal: 8000,
   milestones: [
-    { amount: 1000, label: 'Transport van', desc: 'Get AllSport sessions to parks and public venues across Ōtautahi' },
-    { amount: 3000, label: 'Equipment trailer', desc: 'Carry a full set of gear to any outdoor location in the city' },
-    { amount: 8000, label: 'Mobile AllSport setup', desc: 'A complete mobile competition kit — we come to you, anywhere' },
+    { amount: 1000, label: 'Transport van', desc: 'Games in parks across Ōtautahi' },
+    { amount: 3000, label: 'Equipment trailer', desc: 'A full set of gear, anywhere in the city' },
+    { amount: 8000, label: 'Mobile AllSport setup', desc: 'A complete kit. We come to you' },
   ],
 }
 
+// Bank transfer details for the public "How to give" card. Null until the
+// account number is supplied: the card then offers an email instead, so the page
+// never shows a made-up or half-filled number.
+const BANK = {
+  name: 'AllSport Aotearoa',
+  account: null as string | null,
+}
+const KOHA_EMAIL = 'mailto:kiaora@allsport.nz?subject=Koha'
+
 const kohaFacts = [
-  'No set fees — give only what is right for you and your whānau',
-  'AllSport is a community-led charitable initiative',
-  'IRD 33% tax rebate applies to all koha contributions',
-  'Koha acknowledgements range from the supporters wall to personal coaching',
-  'Your colours are earned by playing — not by giving',
-  'We collaborate with local sports clubs so more people benefit from more sport',
+  'No fees for games, ever',
+  'Registered charity, community led',
+  'Colours are earned by playing, never by giving',
 ]
 
 export default function Koha() {
@@ -119,7 +125,38 @@ export default function Koha() {
           </h1>
           <div className="rainbow-line" style={{ width: '88px', margin: '20px 0 28px', borderRadius: '2px' }} />
           <p style={{ color: 'var(--grey-light)', fontSize: '20px', maxWidth: '640px', lineHeight: 1.7 }}>
-            AllSport is a registered charity (CC62657) built on koha. We want everyone to be able to engage in sport and exercise regardless of cost. We do not set fees — we only accept koha. Only give what is reasonable for you and your whānau.
+            No fees. Ever. Give what&apos;s right for you and your whānau.
+          </p>
+          <a href="#give" className="btn btn-primary" style={{ fontSize: '17px', marginTop: '28px' }}>Give Koha</a>
+        </div>
+      </section>
+
+      {/* How to give: the one thing this page must make easy */}
+      <section id="give" className="section" style={{ background: '#0d0d0d', borderTop: '3px solid var(--green)', scrollMarginTop: '72px' }}>
+        <div className="container">
+          <div className="tag">How To Give</div>
+          <h2 style={{ fontSize: 'clamp(36px, 4vw, 56px)', marginBottom: '8px', lineHeight: 1 }}>
+            GIVE <span style={{ color: 'var(--green)' }}>KOHA</span>
+          </h2>
+          <div className="divider" style={{ background: 'var(--green)' }} />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px', maxWidth: '880px' }}>
+            {[
+              { label: 'Account name', value: BANK.name },
+              { label: 'Account number', value: BANK.account },
+              { label: 'Reference', value: 'Your name' },
+            ].map(row => (
+              <div key={row.label} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '20px 24px' }}>
+                <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.18em', textTransform: 'uppercase', color: '#555', marginBottom: '6px' }}>{row.label}</div>
+                {row.value ? (
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '28px', color: 'var(--white)', lineHeight: 1.1, letterSpacing: '0.03em', userSelect: 'all' }}>{row.value}</div>
+                ) : (
+                  <a href={KOHA_EMAIL} style={{ fontFamily: 'var(--font-display)', fontSize: '24px', color: 'var(--green)', lineHeight: 1.1 }}>Email us for it →</a>
+                )}
+              </div>
+            ))}
+          </div>
+          <p style={{ color: 'var(--grey)', fontSize: '15px', lineHeight: 1.7, marginTop: '20px' }}>
+            Need a receipt for IRD? <a href={KOHA_EMAIL} style={{ color: 'var(--green)' }}>Email us</a>.
           </p>
         </div>
       </section>
@@ -133,7 +170,7 @@ export default function Koha() {
           </h2>
           <div className="divider" style={{ background: 'var(--blue)' }} />
           <p style={{ color: 'var(--grey)', fontSize: '16px', maxWidth: '560px', marginBottom: '40px', lineHeight: 1.7 }}>
-            AllSport is built for parks, beaches, and public spaces — not just AllSport HQ. This campaign funds the transport and equipment to take sessions anywhere in Ōtautahi.
+            Taking AllSport out of HQ and into parks and beaches across Ōtautahi.
           </p>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px', marginBottom: '24px' }}>
@@ -150,7 +187,7 @@ export default function Koha() {
           <div style={{ background: 'var(--surface)', border: '1px solid rgba(35,113,187,0.25)', borderRadius: '12px', padding: '20px 28px', display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '40px', color: 'var(--blue)', lineHeight: 1 }}>$8,000 Goal</div>
             <p style={{ color: 'var(--grey)', fontSize: '14px', lineHeight: 1.6, maxWidth: '560px' }}>
-              100% of Wheels for AllSport koha goes toward transport and equipment. IRD 33% tax rebate applies — your $100 koha costs you $67.{' '}
+              Every dollar goes to transport and gear.{' '}
               <a href="mailto:kiaora@allsport.nz?subject=Wheels for AllSport" style={{ color: 'var(--blue)' }}>Get in touch to contribute →</a>
             </p>
           </div>
@@ -167,14 +204,8 @@ export default function Koha() {
                 SPORT FOR<br /><span style={{ color: 'var(--green)' }}>EVERYONE.</span>
               </h2>
               <div className="divider" style={{ background: 'var(--green)' }} />
-              <p style={{ color: 'var(--grey-light)', fontSize: '17px', lineHeight: 1.8, marginBottom: '20px' }}>
-                Koha is a Māori concept of giving — a voluntary contribution made from the heart, not from obligation. AllSport runs entirely on koha because we believe access to sport and health should never be limited by money.
-              </p>
-              <p style={{ color: 'var(--grey)', fontSize: '15px', lineHeight: 1.8, marginBottom: '20px' }}>
-                There are no membership fees, no session costs, and no financial barriers to competing. Give what you can, when you can. Your participation and effort are contribution enough.
-              </p>
-              <p style={{ color: 'var(--grey)', fontSize: '15px', lineHeight: 1.8 }}>
-                To acknowledge those who contribute generously, we offer tiers of appreciation — each a gift of gratitude, not a purchase.
+              <p style={{ color: 'var(--grey-light)', fontSize: '17px', lineHeight: 1.7 }}>
+                Koha is a gift from the heart, not a fee. Sport should never cost someone their place. Your effort is contribution enough.
               </p>
             </div>
 
@@ -199,11 +230,11 @@ export default function Koha() {
           </h2>
           <div className="divider" style={{ background: 'var(--amber)' }} />
           <p style={{ color: 'var(--grey)', fontSize: '16px', maxWidth: '560px', marginBottom: '16px', lineHeight: 1.7 }}>
-            These are gifts of gratitude — not purchases, not memberships. Every tier is our way of saying thank you for believing in what we&apos;re building.
+            Our thank you. Not a purchase, not a membership.
           </p>
           <div style={{ background: '#0d0d0d', border: '1px solid rgba(35,113,187,0.25)', borderLeft: '4px solid var(--blue)', borderRadius: '8px', padding: '14px 20px', marginBottom: '40px', maxWidth: '560px' }}>
             <p style={{ color: '#aaa', fontSize: '14px', lineHeight: 1.6 }}>
-              <strong style={{ color: 'var(--white)' }}>Two paths to tiers 1–6:</strong> donate koha OR refer enough new players. Tiers 7–9 (coaching and corporate) require a koha donation. Referrals qualify when your referred player completes their 10th session.
+              <strong style={{ color: 'var(--white)' }}>Can&apos;t give money?</strong> Bring friends. A referral counts once they play 10 games.
             </p>
           </div>
 
@@ -249,7 +280,7 @@ export default function Koha() {
             <div>
               <div style={{ fontFamily: 'var(--font-display)', fontSize: '28px', color: 'var(--amber)', marginBottom: '4px' }}>IRD Tax Rebate</div>
               <p style={{ color: 'var(--grey-light)', fontSize: '15px', lineHeight: 1.7, maxWidth: '600px' }}>
-                Any koha donated to AllSport can be claimed with the IRD to receive <strong style={{ color: 'var(--white)' }}>33% of your donation back</strong> as a tax credit. Your generosity goes further than you think.
+                Claim <strong style={{ color: 'var(--white)' }}>33% back</strong> from IRD. A $100 koha costs you $67.
               </p>
             </div>
           </div>
@@ -264,7 +295,7 @@ export default function Koha() {
           </h2>
           <div className="rainbow-line" style={{ width: '60px', margin: '0 auto 24px', borderRadius: '2px' }} />
           <p style={{ color: 'var(--grey)', fontSize: '16px', maxWidth: '440px', margin: '0 auto 32px', lineHeight: 1.7 }}>
-            No fees. No barriers. Just sport, community, and the chance to become the most complete athlete you can be.
+            Become the most complete athlete you can be.
           </p>
           <Link href="/register" className="btn btn-primary" style={{ fontSize: '17px' }}>Register Now</Link>
         </div>

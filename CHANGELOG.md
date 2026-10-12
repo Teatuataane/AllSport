@@ -2,6 +2,15 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.34.2.0] - 2026-10-13
+
+### Changed
+- **Home page rebuilt around real games.** The hero now sits over a silent ten second loop cut from the 2026 showcase film (footage only, 1.9 MB, started after load and never for reduced motion or data saver; the poster still paints first). Below it: a live "next game" line, community counts (players, games played, scores logged, read hourly from the public tables), the Winter Jam champions, the ten domains as icon tiles, a strip of six stills, the full film with sound ("AllSport in one minute", loads only on play) and the team photo behind the closing call.
+- **Shorter public pages.** Home, How to Play, Schedule and Koha cut to one idea per line. How to Play goes from seven steps to five and drops the kaupapa block the home page already carries. Schedule's session cards are one line, the venue gets a Get Directions button, and the Championship (now at AllSport HQ) comes before the Winter Jam recap. Koha says the tax rebate once.
+
+### Added
+- **How to give, on /koha.** Account name, account number and reference, reached from a Give Koha button in the hero. The account number is not in the code yet; until it is, that card offers an email instead.
+
 ## [0.34.1.0] - 2026-10-13
 
 ### Changed
