@@ -71,6 +71,13 @@ function drillLabel(ev: EventData, t: number): string {
   if (raced && t % 10000 <= 1) {
     return ev.difficultyTiers?.length ? `D${Math.floor(t / 10000) + 1} · any time` : 'Any time'
   }
+  // "D3 · any" (12 Oct 2026): the level done at all. A within-level term of 1
+  // would otherwise read as "1 reps" or "1s".
+  const tiered = !!ev.difficultyTiers?.length && ev.inputMode.startsWith('difficulty+')
+  if (tiered && t % 10000 === 1) {
+    const idx = Math.floor(t / 10000)
+    if (ev.difficultyTiers![idx]?.scoring !== 'weight') return `D${idx + 1} · any`
+  }
   if (ev.inputMode === 'weight+distance+time') {
     // A loaded carry's time is raced too: 10000 minus the seconds, so a floor
     // standard with no time attached would read as nearly three hours.

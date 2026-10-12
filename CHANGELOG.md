@@ -5,12 +5,18 @@ All notable changes to AllSport are documented here.
 ## [0.34.0.0] - 2026-10-12
 
 ### Changed
-- **The 12 Oct 2026 standards review.** New colour standards on 67 events, compiled from `GRADING_STANDARDS_REVIEW.md`. Lifts: the men's ladders start lower (Kiwikiwi now asks for a small load, e.g. 0.1× bodyweight on Deadlift) and top out lower on most lifts (Deadlift Taniwha 2.25×, was 2.4×). The women's lists were scaled from the new men's lists, keeping each event's old gap between men and women (about two thirds on lifts, about 12% slower on runs and ergs). Running, Ski Erg, Row Erg, Walking and Scooting are a little softer at the top. Holds on the calisthenics and balance ladders now step in 5s and 15s, and flexibility ladders in "any" and 1:00. Toe Lift asks for 5s and 15s holds instead of 30s and 60s. Breath Hold tops out at 2:30 (was 4:00).
+- **The 12 Oct 2026 standards review.** New colour standards on most events, compiled from `GRADING_STANDARDS_REVIEW.md`. Lifts: the men's ladders start lower (Kiwikiwi now asks for a small load, e.g. 0.1× bodyweight on Deadlift) and top out lower on most lifts (Deadlift Taniwha 2.25×, was 2.4×). The women's lists were scaled from the new men's lists, keeping each event's old gap between men and women (about two thirds on lifts, about 12% slower on runs and ergs). Running, Ski Erg, Row Erg, Walking and Scooting are a little softer at the top; Cycling's times are for 1km on grass. Holds on the calisthenics and balance ladders now step in 5s and 15s, flexibility ladders in "any" and 1:00. Toe Lift asks for 5s and 15s holds. Breath Hold tops out at 2:30 (was 4:00).
+- **Loads as a share of bodyweight.** Glute Thrust, Leg Ext Hold, Tibialis Curl, Reverse Wrist Ext and the three carries write their loads like the lifts ("0.25× BW · 30s"), read in kilograms at the bodyweight declared on the day (to the nearest 0.5kg). The scoring screen now asks for the day's bodyweight on these events too; without one the event counts as unmet, as for a lift.
+- **Carries are the official 200m, timed.** A carry colour is that share of bodyweight carried the full 200m inside the colour's time ("0.5× BW · ≤ 2:00"). Ranking is unchanged (heaviest, then furthest, then fastest), so no stored carry changes. A half colour on a carry is a higher colour's load over the 200m within twice its time.
+- **Swim ranks on 200m** (was 100m). No swim had been scored.
+- **New levels** on Repeat Vault (adds Chest and Head), Calf Raises (adds Single Leg Calf Raise), Side Bend, Plie Squat, Seiza, GHD Situp (Crunch, Sit Up, GHD Situp), Clap Pushups, Forward Fold, Full Bound Twist and Diving; Pushups D1 is now Elevated Knee Pushup.
+- **High Jump is scored by levels**: the bar set against the body (2 Feet Hop, 1 Foot Hop, Ankles up to Neck), scored on successful jumps. Its two old results in centimetres cannot be placed on that ladder and are archived by the migration.
 - **"Any" in the standards sheet.** `D3 · any` means the level done at all (any reps, any hold, any time). `any` on Breath Hold is any hold.
 - A raised standard never takes back a colour already conferred; a lowered one confers on the next recheck (`GRADING_RULES_VERSION` bumped).
 
-### Not changed yet
-- Twenty events keep their old standards, with the proposed ones written underneath as notes, because they need a scoring or level change first: Glute Thrust, Leg Ext Hold, Tibialis Curl and Reverse Wrist Ext (loads as a multiple of bodyweight), the three carries (200m timed at a multiple of bodyweight), High Jump (scored by levels), Swim (200m), Cycling (times look like a longer ride than 1km), and the ten events whose levels change (Repeat Vault, Calf Raises, Side Bend, Plie Squat, Seiza, GHD Situp, Clap Pushups, Forward Fold, Full Bound Twist, Diving).
+### Migration
+- `20261012004834_levels_review_12_oct.sql`: moves the stored scores on the re-levelled events onto their new levels (GHD Situp's 5 and one Seiza score move down a level, Forward Fold's Standing · Bent Knees becomes Bent Leg Fold and Standing · Straight becomes Straight Leg, Repeat Vault and Seiza levels are renamed), archives the two High Jump heights, and redefines `enforce_relevelled_ladders` with the new ladders. Deploy the code first, then apply it, then run `scripts/refresh-leaderboard-scores.ts --apply`.
+
 ## [0.33.1.0] - 2026-10-12
 
 ### Added

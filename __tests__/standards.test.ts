@@ -16,7 +16,8 @@ describe('scripts that read TIMED_EFFORT_SLUGS out of the source', () => {
     expect(naive.sort()).toEqual([...TIMED_EFFORT_SLUGS].sort())
   })
 })
-import { rungForScore, rungForCarry, ratioThresholdsKg, DRILL_CAP, TOP_RUNG, JUNIOR_BODYWEIGHT_KG } from '@/lib/grading'
+import { rungForScore, rungForCarry, ratioThresholdsKg, DRILL_CAP, TOP_RUNG, JUNIOR_BODYWEIGHT_KG, compoundLadderAt, halfStepCredit } from '@/lib/grading'
+import { eventGrade } from '@/lib/playerGrades'
 
 // lib/standards.ts is COMPILED from GRADING_STANDARDS_REVIEW.md. These tests
 // prove the two agree, that every ladder is well formed, and that the numbers
@@ -108,17 +109,32 @@ describe('the standards approved in review come back out of the engine', () => {
     expect(rungForScore(3 * 10000 + 31, all, 'Masters')).toBe(8)
   })
 
-  // 5 Oct 2026: the carries are an open load, distance and time. A colour asks
-  // for the load AND the distance (rungForCarry), whatever the time.
-  it('Sandbag Carry: a colour needs both its load and its distance', () => {
-    const m = std('Sandbag Carry').M!
+  // 12 Oct 2026: a carry colour is a share of bodyweight carried the official
+  // 200m inside a time. A colour asks for the load AND the 200m AND the time.
+  it('Sandbag Carry: a colour needs its load, the full 200m and its time', () => {
+    const s = std('Sandbag Carry')
+    expect(s.bwLoad).toBe(true)
+    const m = compoundLadderAt('weight+distance+time', s.M!, s.bwLoad, 80)! // Taniwha: 80kg in 2:00
     const carry = (kg: number, metres: number, secs: number) => Math.round(kg * 10) * 1e9 + metres * 1e4 + (1e4 - secs)
-    expect(rungForCarry(carry(120, 100, 300), m, 'Open')).toBe(12)
-    expect(rungForCarry(carry(119, 100, 300), m, 'Open')).toBe(11)
-    // Every load, but 99m: only the colours that ask for 50m or less.
-    expect(rungForCarry(carry(120, 99, 30), m, 'Open')).toBe(2)
-    // A heavier load carried one metre is not a 100m carry.
-    expect(rungForCarry(carry(200, 1, 5), m, 'Open')).toBe(0)
+    expect(rungForCarry(carry(80, 200, 120), m, 'Open')).toBe(12)
+    expect(rungForCarry(carry(80, 200, 121), m, 'Open')).toBe(11) // Uenuku: 80kg in 3:00
+    expect(rungForCarry(carry(79, 200, 100), m, 'Open')).toBe(9) // Hiriwa: 0.75× = 60kg in 2:00
+    // Every load and time, but 199m: not the official distance, no colour.
+    expect(rungForCarry(carry(200, 199, 30), m, 'Open')).toBe(0)
+    // Kōura's 80kg in 4:00, and Taniwha's load inside twice its time: a half.
+    expect(halfStepCredit('weight+distance+time', carry(80, 200, 200), m, 'Open', 10)).toBe(11.5)
+    // 4:01 misses every timed colour but Kiwikiwi; Uenuku's 3:00 doubled covers it.
+    const slow = carry(80, 200, 241)
+    expect(rungForCarry(slow, m, 'Open')).toBe(1)
+    expect(halfStepCredit('weight+distance+time', slow, m, 'Open', 1)).toBe(10.5)
+  })
+
+  it('a bodyweight-share ladder with no bodyweight declared is unmet, not dropped', () => {
+    const ev = getEventByName('Glute Thrust')!
+    const row = { event_name: ev.name, raw_score: 160 * 100 * 10000 + 30, weight_kg: null, difficulty_tier: null }
+    const man = { division: "Men's", ageYears: 30, gender: 'male' }
+    expect(eventGrade(ev, [row], man)).toMatchObject({ rung: 0, gradeable: true, bodyweightBlocked: true })
+    expect(eventGrade(ev, [{ ...row, bodyweightKg: 80 }], man).rung).toBe(12)
   })
 
   it('Running: the colour reads the predicted 1000m time', () => {

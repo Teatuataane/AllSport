@@ -15,27 +15,28 @@ const ev = (slug: string) => getEventBySlug(slug)!
 
 describe('standardsLadder', () => {
   it('lists all twelve colours on a plain ladder', () => {
-    const rows = standardsLadder(ev('high-jump'), open, null)
+    // Vertical Jump: High Jump was the example until it became levels (12 Oct 2026).
+    const rows = standardsLadder(ev('vertical-jump'), open, null)
     expect(rows.map(r => r.rung)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
     expect(rows[0].name).toBe('Kiwikiwi')
-    expect(rows[0].label).toBe('60cm')
+    expect(rows[0].label).toBe('10cm')
     expect(rows[11].name).toBe('Taniwha')
   })
 
   it("reads the player's own sex ladder", () => {
-    const m = standardsLadder(ev('high-jump'), open, null)[0].label
-    const f = standardsLadder(ev('high-jump'), { division: "Women's", ageYears: 30, gender: null }, null)[0].label
-    expect(m).toBe('60cm')
-    expect(f).toBe('50cm')
+    const m = standardsLadder(ev('vertical-jump'), open, null)[0].label
+    const f = standardsLadder(ev('vertical-jump'), { division: "Women's", ageYears: 30, gender: null }, null)[0].label
+    expect(m).toBe('10cm')
+    expect(f).toBe('8cm')
   })
 
   it('moves the ladder up for age, so Masters need the Open threshold one colour later', () => {
-    const o = standardsLadder(ev('high-jump'), open, null)
-    const m = standardsLadder(ev('high-jump'), { division: 'Masters Men', ageYears: 45, gender: null }, null)
+    const o = standardsLadder(ev('vertical-jump'), open, null)
+    const m = standardsLadder(ev('vertical-jump'), { division: 'Masters Men', ageYears: 45, gender: null }, null)
     // Masters earn rung r on the Open threshold for rung r - 1.
     expect(m[1].label).toBe(o[0].label)
     expect(m[5].label).toBe(o[4].label)
-    const u14 = standardsLadder(ev('high-jump'), { division: 'Junior', ageYears: 13, gender: 'M' }, null)
+    const u14 = standardsLadder(ev('vertical-jump'), { division: 'Junior', ageYears: 13, gender: 'M' }, null)
     expect(u14[2].label).toBe(o[0].label)
   })
 

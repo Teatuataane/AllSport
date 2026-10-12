@@ -13,6 +13,15 @@ const section = (from: string, to: string) => sql.slice(sql.indexOf(from), sql.i
 // 30 Sept 2026. A later rename (slug kept) is mapped onto today's name here.
 const RENAMED_LATER: Record<string, string> = { Compression: 'L-Sit' } // 20261005032653
 const today = (name: string) => RENAMED_LATER[name] ?? name
+// Ladders this migration set that a LATER migration re-levelled, as they stood
+// after this one: the frozen file is checked against these, the newest guard
+// against lib/eventData.ts.
+const RELEVELLED_LATER: Record<string, string[]> = {
+  // 20261012004834: Single Leg Calf Raise added at D3; D1 of Pushups renamed.
+  'calf-raises': ['Calf Raise', 'Deficit Calf Raise', 'Toe Calf Raise', 'Single Leg Toe Raise'],
+  'push-up-contest': ['Hands Up Knee Pushup', 'Knee Pushup', 'Elevated Pushup', 'Pushup', '1 Arm Pushup'],
+}
+const tiersThen = (slug: string) => RELEVELLED_LATER[slug] ?? getEventBySlug(slug)!.difficultyTiers!.map(t => t.name)
 
 describe('stamina roster migration', () => {
   const newLevels = [...section('INSERT INTO new_levels VALUES', ';')
@@ -26,8 +35,8 @@ describe('stamina roster migration', () => {
       const ev = getEventBySlug(slug)!
       const rows = newLevels.filter(l => l.slug === slug)
       expect(rows.every(r => today(r.name) === ev.name), slug).toBe(true)
-      expect(rows.map(r => r.tier), slug).toEqual(ev.difficultyTiers!.map(t => t.name))
-      expect(rows.map(r => r.idx), slug).toEqual(ev.difficultyTiers!.map((_, i) => i))
+      expect(rows.map(r => r.tier), slug).toEqual(tiersThen(slug))
+      expect(rows.map(r => r.idx), slug).toEqual(tiersThen(slug).map((_, i) => i))
     }
   })
 
@@ -47,7 +56,7 @@ describe('stamina roster migration', () => {
     for (const m of map) {
       const ev = getEventBySlug(m.slug)!
       expect(today(m.name), m.slug).toBe(ev.name)
-      expect(ev.difficultyTiers![m.newIdx]?.name, `${m.slug} ${m.newTier}`).toBe(m.newTier)
+      expect(tiersThen(m.slug)[m.newIdx], `${m.slug} ${m.newTier}`).toBe(m.newTier)
       // A typo on the OLD side would send real rows to the archive instead.
       expect(OLD[m.slug][m.oldIdx], `${m.slug} old ${m.oldIdx}`).toBe(m.oldTier)
     }
@@ -96,11 +105,12 @@ describe('stamina roster migration', () => {
     const slugs = [...new Set(guarded.map(g => g.slug))].sort()
     // Stated, not derived: dropping an event from both lists must still fail.
     expect(slugs).toEqual([
-      'american-football', 'animal-crawl', 'baseball', 'breakdancing', 'calf-raises', 'cricket', 'darts',
-      'disc-golf', 'finger-push-up', 'foot-juggling', 'golf', 'gymnastics', 'iron-cross', 'jump-rope',
-      'l-sit-hold', 'middle-split', 'netball', 'pancake', 'push-up-contest', 'reverse-wrist-stretch',
-      'rope-climb', 'skate', 'slackline', 'table-tennis', 'tennis', 'teqball', 'touch-rugby', 'trampolining',
-      'volleyball', 'wrist-stretch',
+      'american-football', 'animal-crawl', 'baseball', 'breakdancing', 'calf-raises', 'clap-pushups', 'cricket',
+      'darts', 'disc-golf', 'diving', 'finger-push-up', 'foot-juggling', 'forward-fold', 'full-bound-twist',
+      'ghd-situp', 'golf', 'gymnastics', 'high-jump', 'iron-cross', 'jump-rope', 'l-sit-hold', 'middle-split',
+      'netball', 'pancake', 'plie-squat', 'push-up-contest', 'repeat-high-jump', 'reverse-wrist-stretch',
+      'rope-climb', 'seiza', 'side-bend', 'skate', 'slackline', 'table-tennis', 'tennis', 'teqball',
+      'touch-rugby', 'trampolining', 'volleyball', 'wrist-stretch',
     ])
     for (const slug of slugs) {
       const ev = getEventBySlug(slug)!
