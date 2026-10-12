@@ -11,13 +11,33 @@ All notable changes to AllSport are documented here.
 - **The leaderboard has a tab for each year**: that year's season points, conferred colours and games cap. The kaiwhakawā Players tab and the family chips show this year's colours.
 - **Late scores still count for their own year.** In the first 14 days of January the colour check also grades last year, so a 31 December game typed in on 2 January confers its 2026 colour. A result belongs to the NZ day it was played, a logged entry to the day it was trained.
 - A kaiwhakawā deleting a logged score re-judges the colour year that score counted in. The release panel lists this year's colours.
-- My Events labels an event's colour with its year, and the "From all your results" note is gone. The /grades guide, How to play and the privacy page say colours are earned per year.
+- My Events labels an event's colour with its year, and the "From all your results" note is gone. The /grades guide, the homepage, How to play and the privacy page say colours are earned per year.
 - `GRADING_RULES_VERSION` bumped, so every player is rechecked once.
 
 ### Migration
 - `20261012230318_yearly_colours.sql` (part A): `grade_awards.season_year` and `grade_withdrawals.season_year`, backfilled from the NZ year of `conferred_at` (all 2026), with a trigger filling them on any insert that leaves them out; a unique key on (player_id, domain_number, rung, season_year); `confer_grade` checks "already holds a higher colour" within this year and conflicts on the year key; `leaderboard_page()` returns conferred colours per year. Keeps the old lifetime key.
 - `20261012231444_yearly_colours_drop_lifetime_key.sql` (part B): drops the old `UNIQUE (player_id, domain_number, rung)`, so a colour can be earned again next year. **Must be applied before 1 January 2027.**
 - Apply both after this version deploys. Until then the new colour check cannot write (it names the year key) and retries on the next visit; nothing else is affected.
+
+## [0.34.2.1] - 2026-10-13
+
+### Fixed
+- **My Events no longer counts voided games.** A score from a game a kaiwhakawā voided was still shown as a personal best; it is now left out, by the same rule the colours use.
+- **My Events reads every result.** The server returns at most 1000 rows a request, so a player with more lost their oldest bests, and the short distance efforts kept as records were the first logged rows cut. Both reads now page (`lib/allRows.ts`, shared with the activity report).
+- **The Standards ladder under an event reads every year's results**, as the colour line above it does, so on the year tab the two never name different colours.
+- **Wins belong to the profile they were loaded for.** After switching family profiles, a failed wins read could leave the previous child's wins on the page.
+- A failed results read now says so, instead of showing every event as not played.
+- The "events won" total counts only events on the current roster, matching the domain counts.
+- **Icon versions bump themselves.** `ICON_VERSION` is a hash of the icon files made at build time, so a new icon reaches phones that cached its 404 without anyone remembering to bump it.
+
+## [0.34.2.0] - 2026-10-13
+
+### Changed
+- **Home page rebuilt around real games.** The hero now sits over a silent ten second loop cut from the 2026 showcase film (footage only, 1.9 MB, started after load and never for reduced motion or data saver; the poster still paints first). Below it: a live "next game" line, community counts (players, games played, scores logged, read hourly from the public tables), the Winter Jam champions, the ten domains as icon tiles, a strip of six stills, the full film with sound ("AllSport in one minute", loads only on play) and the team photo behind the closing call.
+- **Shorter public pages.** Home, How to Play, Schedule and Koha cut to one idea per line. How to Play goes from seven steps to five and drops the kaupapa block the home page already carries. Schedule's session cards are one line, the venue gets a Get Directions button, and the Championship (now at AllSport HQ) comes before the Winter Jam recap. Koha says the tax rebate once.
+
+### Added
+- **How to give, on /koha.** Account name, account number and reference, reached from a Give Koha button in the hero. The account number is not in the code yet; until it is, that card offers an email instead.
 
 ## [0.34.1.0] - 2026-10-13
 

@@ -1,14 +1,16 @@
-// Server component. The only interactive part of this page is the domain
-// accordion, which lives in its own client island (DomainList) — so the ~340
-// lines of static marketing copy no longer ship as client JS, and neither does
-// lib/eventData.ts. `domains` is derived here and passed down already flattened
-// to name strings, which is what keeps the roster (and every event's worth of
-// how-to prose) on the server. Same split as /how-to-play.
+// Server component, cached and rebuilt at most hourly (the community counts are
+// fetched with `revalidate: 3600`). The interactive parts are small client
+// islands: the hero's background clip (HeroVideo), the "next game" line
+// (NextGame) and the domain tiles' icons (DomainIcon). The roster itself stays on
+// the server; only names and counts are passed down.
 import Link from 'next/link'
 import { EVENTS, DOMAIN_ORDER } from '@/lib/eventData'
-import DomainList, { type LandingDomain } from './DomainList'
 import { DOMAIN_COLORS } from '@/lib/domainColours'
 import { GRADES } from '@/lib/grading'
+import { loadCommunityStats } from '@/lib/communityStats'
+import DomainIcon from '@/components/DomainIcon'
+import HeroVideo from './HeroVideo'
+import NextGame from './NextGame'
 
 const RAINBOW = 'var(--rainbow)'
 
@@ -24,17 +26,30 @@ const rainbowText: React.CSSProperties = {
 // palette until August 2026, which disagreed with BOTH the event icons and /prs.
 const DOMAIN_META = DOMAIN_ORDER.map((name, i) => ({ name, color: DOMAIN_COLORS[i] }))
 
-// Event lists are derived from lib/eventData.ts (the single source of truth for
+// Event counts are derived from lib/eventData.ts (the single source of truth for
 // the roster) so domain moves, additions and removals propagate automatically.
-const domains: LandingDomain[] = DOMAIN_META.map(d => ({
+const domains = DOMAIN_META.map(d => ({
   ...d,
-  events: EVENTS.filter(e => e.domain === d.name).map(e => e.name),
+  count: EVENTS.filter(e => e.domain === d.name).length,
 }))
 
+// Stills from the 2026 showcase film (public/media/, cut by hand from the 4K
+// master). Alt text says what is happening, not who it is.
+const photos = [
+  { src: '/media/play-badminton.jpg', alt: 'A junior player returns a shuttlecock at badminton' },
+  { src: '/media/play-carry.jpg', alt: 'A mother and daughter laugh while carrying a medicine ball' },
+  { src: '/media/play-carrom.jpg', alt: 'Players lean in over a carrom board' },
+  { src: '/media/play-sandbag.jpg', alt: 'Players carry sandbags and medicine balls down the lane' },
+  { src: '/media/play-floor.jpg', alt: 'Two players work through floor events in the gym' },
+  { src: '/media/play-hoodie.jpg', alt: 'A player in an AllSport hoodie watches a sprint' },
+]
+
+const nf = new Intl.NumberFormat('en-NZ')
+
 const ethos = [
-  { word: 'Mahi', mean: 'Effort', color: '#EA4742', desc: "Effort is the only measure that counts here. Show up and give what you've got — that's the whole game." },
-  { word: 'Mauri', mean: 'Spirit', color: '#4DB26E', desc: 'Every barrier removed — cost, kit, experience. Come exactly as you are, at any level or age.' },
-  { word: 'Mana', mean: 'Standing', color: '#2371BB', desc: "Earned rep by rep, session by session. The more you put in, the more you grow. That's how mana works." },
+  { word: 'Mahi', mean: 'Effort', color: '#EA4742', desc: 'Show up. Give what you have today.' },
+  { word: 'Mauri', mean: 'Spirit', color: '#4DB26E', desc: 'No cost, no kit, no experience. Come as you are.' },
+  { word: 'Mana', mean: 'Standing', color: '#2371BB', desc: 'Earned rep by rep. Nobody can hand it to you.' },
 ]
 
 const sessions = [
@@ -43,13 +58,31 @@ const sessions = [
   { day: 'Saturday', time: '9:00 AM', color: '#4DB26E' },
 ]
 
-export default function Home() {
+export default async function Home() {
+  const stats = await loadCommunityStats()
+  const proof = [
+    { n: stats.players, l: 'Players' },
+    { n: stats.games, l: 'Games played' },
+    { n: stats.scores, l: 'Scores logged' },
+  ].filter((p): p is { n: number; l: string } => p.n != null)
+
   return (
     <div className="landing">
       <style>{`
         .landing { background: #0a0a0a; }
-        @keyframes lpfloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-16px); } }
-        .lp-float { animation: lpfloat 6s ease-in-out infinite; }
+        .lp-hero { position: relative; overflow: hidden; background: #000; min-height: min(92vh, 860px); display: flex; align-items: center; padding: 120px 0 72px; }
+        .lp-hero-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+        /* Dark on the text side, opening up towards the footage; a phone has no
+           "side", so there it is an even wash plus the fade at the bottom. */
+        .lp-hero-shade { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.72) 45%, rgba(0,0,0,0.3) 100%), linear-gradient(0deg, #0a0a0a 0%, transparent 30%); }
+        @media (max-width: 768px) { .lp-hero-shade { background: linear-gradient(0deg, #0a0a0a 0%, rgba(0,0,0,0.72) 40%, rgba(0,0,0,0.6) 100%); } }
+        .lp-next { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-family: var(--font-label); font-size: 14px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 28px; }
+        .lp-next-dot { width: 8px; height: 8px; border-radius: 50%; background: #EA4742; box-shadow: 0 0 0 4px rgba(234,71,66,0.25); }
+        .lp-tile { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: #111; border: 1px solid #1e1e1e; border-radius: 10px; transition: border-color 0.2s, background 0.2s, transform 0.2s; }
+        .lp-tile:hover { background: #161616; border-color: #333; transform: translateY(-2px); }
+        .lp-photos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        @media (max-width: 768px) { .lp-photos { grid-template-columns: repeat(2, 1fr); } }
+        .lp-photo { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 10px; display: block; background: #111; }
         .lp-tag { display: inline-block; font-family: var(--font-label); font-size: 12px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; padding: 5px 14px; border: 1px solid #2a2a2a; color: #888; border-radius: 2px; }
         .lp-btn { display: inline-block; font-family: var(--font-display); font-size: 20px; letter-spacing: 0.08em; padding: 14px 40px; cursor: pointer; border: none; border-radius: 999px; transition: transform 0.2s cubic-bezier(0.16,1,0.3,1), box-shadow 0.2s, border-color 0.2s; }
         .lp-btn:active { transform: scale(0.97); }
@@ -60,9 +93,6 @@ export default function Home() {
         .lp-rainbow { position: relative; background: #0a0a0a; color: #fff; }
         .lp-rainbow::before { content: ''; position: absolute; inset: 0; padding: 2px; border-radius: 999px; background: ${RAINBOW}; -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
         .lp-rainbow:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(35,113,187,0.35); }
-        .lp-domain { background: #111; border: 1px solid #1e1e1e; border-radius: 8px; cursor: pointer; transition: border-color 0.2s, background 0.2s; overflow: hidden; }
-        .lp-domain:hover { background: #161616; border-color: #333; }
-        .lp-pill { font-family: var(--font-label); font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; padding: 4px 10px; border-radius: 3px; background: #1a1a1a; color: #888; border: 1px solid #242424; }
         .lp-rank { display: flex; align-items: center; gap: 18px; padding: 14px 20px; border: 1px solid #1a1a1a; background: #0d0d0d; border-radius: 6px; transition: background 0.2s, transform 0.2s; }
         .lp-rank:hover { background: #141414; transform: translateX(4px); }
         .lp-rank-name { min-width: 210px; }
@@ -82,75 +112,61 @@ export default function Home() {
         .lp-rainbow-line { height: 4px; background: ${RAINBOW}; border-radius: 2px; }
       `}</style>
 
-      {/* HERO */}
-      <section style={{ position: 'relative', overflow: 'hidden', background: '#000', padding: '140px 0 90px' }}>
-        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(#141414 1px, transparent 1px), linear-gradient(90deg, #141414 1px, transparent 1px)', backgroundSize: '80px 80px', opacity: 0.35 }} />
-        <div style={{ position: 'absolute', top: '8%', right: '4%', width: '460px', height: '460px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(234,71,66,0.12) 0%, transparent 70%)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', bottom: '6%', left: '2%', width: '460px', height: '460px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(35,113,187,0.12) 0%, transparent 70%)', pointerEvents: 'none' }} />
+      {/* HERO: real games behind the headline. The poster is a frame of the
+          same footage and is what paints first (LCP). */}
+      <section className="lp-hero">
+        <HeroVideo />
+        <div className="lp-hero-shade" />
 
-        <div className="container" style={{ position: 'relative', zIndex: 1 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '64px', alignItems: 'center' }}>
-            <div>
-              <div className="lp-tag">Ōtautahi · Aotearoa</div>
-              <h1 style={{ fontSize: 'clamp(52px, 8vw, 104px)', fontFamily: 'var(--font-display)', lineHeight: 0.9, letterSpacing: '0.03em', color: '#fff', margin: '18px 0 2px' }}>ONE SPORT,</h1>
-              <h1 style={{ fontSize: 'clamp(52px, 8vw, 104px)', fontFamily: 'var(--font-display)', lineHeight: 0.9, letterSpacing: '0.03em', marginBottom: '26px', whiteSpace: 'nowrap', ...rainbowText }}>EVERY SPORT.</h1>
+        <div className="container" style={{ position: 'relative', zIndex: 1, width: '100%' }}>
+          <div style={{ maxWidth: '620px' }}>
+            <div className="lp-tag" style={{ background: 'rgba(0,0,0,0.4)' }}>Ōtautahi · Aotearoa</div>
+            <h1 style={{ fontSize: 'clamp(52px, 8vw, 104px)', fontFamily: 'var(--font-display)', lineHeight: 0.9, letterSpacing: '0.03em', color: '#fff', margin: '18px 0 2px' }}>ONE SPORT,</h1>
+            <h1 style={{ fontSize: 'clamp(52px, 8vw, 104px)', fontFamily: 'var(--font-display)', lineHeight: 0.9, letterSpacing: '0.03em', marginBottom: '26px', whiteSpace: 'nowrap', ...rainbowText }}>EVERY SPORT.</h1>
 
-              <div className="lp-rainbow-line" style={{ width: '88px', marginBottom: '26px' }} />
+            <div className="lp-rainbow-line" style={{ width: '88px', marginBottom: '26px' }} />
 
-              <p style={{ fontSize: 'clamp(18px, 2vw, 22px)', color: '#fff', lineHeight: 1.55, marginBottom: '14px', maxWidth: '540px' }}>
-                One sport that makes you better at everything. One sport for everyone.
-              </p>
-              <p style={{ fontSize: '16px', color: '#cccccc', lineHeight: 1.7, marginBottom: '12px', maxWidth: '540px' }}>
-                Strength, speed, flexibility, coordination and endurance — trained together, every session.
-              </p>
-              <p style={{ fontSize: '16px', color: '#888', lineHeight: 1.7, marginBottom: '26px', maxWidth: '540px' }}>
-                The best part? No experience needed. Scale to any level and ability. Play solo or together with whānau!
-              </p>
+            <p style={{ fontSize: 'clamp(20px, 2.2vw, 26px)', color: '#fff', lineHeight: 1.4, marginBottom: '12px', maxWidth: '540px', fontWeight: 600 }}>
+              Ten events. 100 minutes. Every part of you tested.
+            </p>
+            <p style={{ fontSize: '17px', color: '#ccc', lineHeight: 1.6, marginBottom: '22px', maxWidth: '540px' }}>
+              Lift, sprint, jump, throw, balance, aim. Any age, any level. Bring your whānau.
+            </p>
 
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontFamily: 'var(--font-label)', textTransform: 'uppercase', letterSpacing: '0.14em', fontSize: '12px', fontWeight: 700, color: '#4DB26E', border: '1px solid rgba(77,178,110,0.4)', background: 'rgba(77,178,110,0.08)', padding: '6px 14px', borderRadius: '999px', marginBottom: '28px' }}>
-                <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#4DB26E' }} />
-                Koha only — free, always
-              </div>
+            <NextGame />
 
-              <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '52px' }}>
-                <Link href="/register" className="lp-btn lp-primary">Register Now</Link>
-                <Link href="/how-to-play" className="lp-btn lp-outline">How It Works</Link>
-              </div>
-
-              <div style={{ display: 'flex', gap: 0, borderTop: '1px solid #1e1e1e', flexWrap: 'wrap' }}>
-                <div style={{ padding: '24px 40px 0 0', marginRight: '40px', borderRight: '1px solid #1e1e1e' }}>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '54px', lineHeight: 1, background: 'linear-gradient(90deg,#EA4742,#F9B051)', WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>10</div>
-                  <div style={{ fontFamily: 'var(--font-label)', fontSize: '12px', letterSpacing: '0.18em', textTransform: 'uppercase', color: '#666', marginTop: '4px' }}>Disciplines</div>
-                </div>
-                <div style={{ padding: '24px 40px 0 0', marginRight: '40px', borderRight: '1px solid #1e1e1e' }}>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '54px', lineHeight: 1, background: 'linear-gradient(90deg,#4DB26E,#2371BB)', WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{EVENTS.length}</div>
-                  <div style={{ fontFamily: 'var(--font-label)', fontSize: '12px', letterSpacing: '0.18em', textTransform: 'uppercase', color: '#666', marginTop: '4px' }}>Events</div>
-                </div>
-                <div style={{ padding: '24px 0 0 0' }}>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '54px', lineHeight: 1, background: 'linear-gradient(90deg,#2371BB,#B87DB5)', WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>0</div>
-                  <div style={{ fontFamily: 'var(--font-label)', fontSize: '12px', letterSpacing: '0.18em', textTransform: 'uppercase', color: '#666', marginTop: '4px' }}>Experience needed</div>
-                </div>
-              </div>
+            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '20px' }}>
+              <Link href="/register" className="lp-btn lp-primary">Play Your First Game</Link>
+              <a href="#film" className="lp-btn lp-outline" style={{ background: 'rgba(0,0,0,0.35)' }}>Watch The Film</a>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-              {/* LCP element. Served at the size it is actually drawn (440px, or
-                  880px on retina) rather than the 3666px master, and carries
-                  width/height so it reserves its box before decode. */}
-              <img
-                className="lp-float"
-                src="/logo-hero-440.webp"
-                srcSet="/logo-hero-440.webp 440w, /logo-hero-880.webp 880w"
-                sizes="(max-width: 768px) 90vw, 440px"
-                width={440}
-                height={265}
-                fetchPriority="high"
-                decoding="async"
-                alt="AllSport crest"
-                style={{ width: '100%', maxWidth: '440px', height: 'auto', objectFit: 'contain', filter: 'drop-shadow(0 0 60px rgba(234,71,66,0.22))' }}
-              />
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontFamily: 'var(--font-label)', textTransform: 'uppercase', letterSpacing: '0.14em', fontSize: '12px', fontWeight: 700, color: '#4DB26E', border: '1px solid rgba(77,178,110,0.4)', background: 'rgba(0,0,0,0.5)', padding: '6px 14px', borderRadius: '999px' }}>
+              <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#4DB26E' }} />
+              Koha only. No fees, ever.
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* SOCIAL PROOF: live counts, rebuilt hourly. A count that cannot be read
+          is left out rather than shown as zero. */}
+      <section style={{ background: '#0a0a0a', padding: '8px 0 56px' }}>
+        <div className="container">
+          <div style={{ display: 'flex', gap: 0, flexWrap: 'wrap', borderTop: '1px solid #1e1e1e', borderBottom: '1px solid #1e1e1e' }}>
+            {[
+              { n: '10', l: 'Domains', g: 'linear-gradient(90deg,#EA4742,#F9B051)' },
+              { n: String(EVENTS.length), l: 'Events', g: 'linear-gradient(90deg,#F9B051,#4DB26E)' },
+              ...proof.map((p, i) => ({ n: nf.format(p.n), l: p.l, g: ['linear-gradient(90deg,#4DB26E,#2371BB)', 'linear-gradient(90deg,#2371BB,#B87DB5)', 'linear-gradient(90deg,#B87DB5,#EA4742)'][i] })),
+            ].map(s => (
+              <div key={s.l} style={{ flex: '1 1 140px', padding: '22px 12px 20px 0' }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(40px, 5vw, 54px)', lineHeight: 1, background: s.g, WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{s.n}</div>
+                <div style={{ fontFamily: 'var(--font-label)', fontSize: '12px', letterSpacing: '0.18em', textTransform: 'uppercase', color: '#666', marginTop: '4px' }}>{s.l}</div>
+              </div>
+            ))}
+          </div>
+          <p style={{ fontFamily: 'var(--font-label)', fontSize: '13px', letterSpacing: '0.08em', color: '#666', marginTop: '16px' }}>
+            Selwyn Winter Jam 2026 champions: <span style={{ color: '#ccc' }}>kiwigyver · Meredith · Blair · Tarsh</span>
+          </p>
         </div>
       </section>
 
@@ -164,30 +180,42 @@ export default function Home() {
                 DESIGNED TO IMPROVE YOU<br />AT <span style={{ color: '#EA4742' }}>EVERY SPORT.</span>
               </h2>
               <div className="lp-rainbow-line" style={{ width: '60px', margin: '18px 0 28px' }} />
-              <p style={{ color: '#cccccc', fontSize: '17px', lineHeight: 1.8, marginBottom: '20px' }}>
-                Every sport you&apos;ve played tested only a fraction of you. Running tests speed, not strength. Gymnastics tests control, not hand-eye. <strong style={{ color: '#fff' }}>AllSport tests all of you — at once.</strong>
+              <p style={{ color: '#cccccc', fontSize: '17px', lineHeight: 1.7, marginBottom: '16px' }}>
+                Every sport you&apos;ve played tested a slice of you. <strong style={{ color: '#fff' }}>AllSport tests all of it.</strong>
               </p>
-              <p style={{ color: '#888', fontSize: '15px', lineHeight: 1.8, marginBottom: '24px' }}>
-                Ten domains, {EVENTS.length} events. One event per domain, chosen fresh each session. The same system that challenges an elite competitor rebuilds someone returning from injury. That&apos;s the design.
+              <p style={{ color: '#888', fontSize: '15px', lineHeight: 1.7, marginBottom: '28px' }}>
+                One event from each of ten domains, fresh every game. Built for first timers and elite athletes alike.
               </p>
-
-              <div style={{ display: 'flex', gap: '36px', flexWrap: 'wrap', padding: '22px 0 6px', borderTop: '1px solid #1e1e1e', marginBottom: '28px' }}>
-                {[
-                  { n: '10', l: 'Disciplines', c: '#EA4742' },
-                  { n: '100', l: 'Minutes a session', c: '#2371BB' },
-                  { n: 'Lowest', l: 'Total placement wins', c: '#4DB26E' },
-                ].map((s) => (
-                  <div key={s.l}>
-                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '38px', lineHeight: 1, color: s.c }}>{s.n}</div>
-                    <div style={{ fontFamily: 'var(--font-label)', fontSize: '12px', letterSpacing: '0.14em', textTransform: 'uppercase', color: '#666', marginTop: '4px' }}>{s.l}</div>
-                  </div>
-                ))}
-              </div>
 
               <Link href="/how-to-play" className="lp-btn lp-primary">Learn The Rules</Link>
             </div>
 
-            <DomainList domains={domains} />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '8px' }}>
+              {domains.map((d, i) => (
+                <Link key={d.name} href="/events" className="lp-tile">
+                  <DomainIcon domainName={d.name} domainNumber={i + 1} size={44} />
+                  <span style={{ minWidth: 0 }}>
+                    <span style={{ display: 'block', fontFamily: 'var(--font-display)', fontSize: '20px', letterSpacing: '0.04em', color: '#fff', lineHeight: 1.05 }}>{d.name}</span>
+                    <span style={{ display: 'block', fontFamily: 'var(--font-label)', fontSize: '12px', letterSpacing: '0.1em', textTransform: 'uppercase', color: d.color, marginTop: '3px' }}>{d.count} events</span>
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* IN THE ROOM: stills from real games */}
+      <section style={{ padding: '100px 0', background: '#0a0a0a', borderTop: '3px solid #F397C0' }}>
+        <div className="container">
+          <div className="lp-tag">Inside a game</div>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(40px, 5vw, 66px)', lineHeight: 0.9, letterSpacing: '0.03em', margin: '18px 0 28px', color: '#fff' }}>
+            SWEAT. LAUGH. <span style={{ color: '#F397C0' }}>GO AGAIN.</span>
+          </h2>
+          <div className="lp-photos">
+            {photos.map(p => (
+              <img key={p.src} className="lp-photo" src={p.src} alt={p.alt} width={960} height={540} loading="lazy" decoding="async" />
+            ))}
           </div>
         </div>
       </section>
@@ -202,24 +230,13 @@ export default function Home() {
                 EARN YOUR<br /><span style={rainbowText}>COLOURS</span>
               </h2>
               <div className="lp-rainbow-line" style={{ width: '60px', marginBottom: '28px' }} />
-              <p style={{ color: '#cccccc', fontSize: '16px', lineHeight: 1.8, marginBottom: '16px' }}>
-                Every event has a standard for every colour, from Kiwikiwi to Taniwha. A domain&apos;s colour
-                is the average of your best six events in it, and an event you have not played counts as Mā.
+              <p style={{ color: '#cccccc', fontSize: '17px', lineHeight: 1.7, marginBottom: '16px' }}>
+                Twelve colours. Every event has a standard for each. Hit it and the colour is yours for the year.
               </p>
-              <p style={{ color: '#888', fontSize: '15px', lineHeight: 1.8, marginBottom: '16px' }}>
-                Your overall colour is the average of your ten domains, so every domain you raise lifts it and
-                every one you skip holds it back. That is the whole idea of AllSport: one sport, every sport.
+              <p style={{ color: '#888', fontSize: '15px', lineHeight: 1.7, marginBottom: '24px' }}>
+                Lift all ten domains to raise your overall colour. Age allowances built in.
               </p>
-              <p style={{ color: '#888', fontSize: '15px', lineHeight: 1.8, marginBottom: '16px' }}>
-                Your overall colour also asks for games played in the room, so it cannot be built on solo
-                training alone. In the game events the top colours are won, not measured: they come
-                from a head-to-head rating, after ten games recorded by both players. Juniors, Masters and Grandmasters meet every
-                standard with an allowance for age.
-              </p>
-              <p style={{ color: '#555', fontSize: '14px', lineHeight: 1.8, fontStyle: 'italic' }}>
-                Each colour is yours the moment you meet it, and a change to the standards never takes one away. Uenuku is
-                within reach of anyone who trains for years. Taniwha is one in a hundred.
-              </p>
+              <Link href="/grades" className="lp-btn lp-outline" style={{ fontSize: '17px', padding: '11px 28px' }}>See The Standards</Link>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -246,6 +263,30 @@ export default function Home() {
         </div>
       </section>
 
+      {/* THE FILM: the full showcase, with sound. Nothing loads until play. */}
+      <section id="film" style={{ padding: '100px 0', background: '#000', borderTop: '3px solid #B87DB5', scrollMarginTop: '72px' }}>
+        <div className="container">
+          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+            <div className="lp-tag">The film</div>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(40px, 5vw, 64px)', lineHeight: 0.9, letterSpacing: '0.03em', marginTop: '18px', color: '#fff' }}>
+              ALLSPORT IN <span style={rainbowText}>ONE MINUTE</span>
+            </h2>
+          </div>
+          <video
+            controls
+            playsInline
+            preload="none"
+            poster="/media/film-poster.jpg"
+            src="/media/allsport-film.mp4"
+            width={1280}
+            height={720}
+            style={{ display: 'block', width: '100%', maxWidth: '960px', height: 'auto', aspectRatio: '16 / 9', margin: '0 auto', borderRadius: '12px', background: '#111', border: '1px solid #1e1e1e' }}
+          >
+            Your browser cannot play this video.
+          </video>
+        </div>
+      </section>
+
       {/* ETHOS */}
       <section style={{ padding: '100px 0', background: '#0d0d0d', borderTop: '3px solid #4DB26E' }}>
         <div className="container">
@@ -255,7 +296,7 @@ export default function Home() {
               MAHI <span style={{ color: '#333' }}>·</span> MAURI <span style={{ color: '#333' }}>·</span> <span style={{ color: '#4DB26E' }}>MANA</span>
             </h2>
             <p style={{ color: '#888', fontSize: '16px', marginTop: '16px', lineHeight: 1.7 }}>
-              Effort, spirit, standing — the three words we build every session around.
+              Effort, spirit, standing. Every game is built on them.
             </p>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1px', background: '#1e1e1e', border: '1px solid #1e1e1e', borderRadius: '12px', overflow: 'hidden' }}>
@@ -295,21 +336,21 @@ export default function Home() {
         </div>
       </section>
 
-      {/* CTA */}
-      <section style={{ padding: '110px 0', background: '#0a0a0a', textAlign: 'center', position: 'relative', overflow: 'hidden', borderTop: '3px solid #B87DB5' }}>
-        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(#141414 1px, transparent 1px), linear-gradient(90deg, #141414 1px, transparent 1px)', backgroundSize: '80px 80px', opacity: 0.3 }} />
-        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: '600px', height: '600px', background: 'radial-gradient(circle, rgba(184,125,181,0.1) 0%, transparent 70%)', pointerEvents: 'none' }} />
+      {/* CTA: over the team photo from the film */}
+      <section style={{ padding: '130px 0', background: '#0a0a0a', textAlign: 'center', position: 'relative', overflow: 'hidden', borderTop: '3px solid #B87DB5' }}>
+        <img src="/media/whanau.jpg" alt="" aria-hidden="true" width={1280} height={720} loading="lazy" decoding="async" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 40%' }} />
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(0deg, rgba(10,10,10,0.92) 0%, rgba(10,10,10,0.7) 55%, rgba(10,10,10,0.82) 100%)' }} />
         <div className="container" style={{ position: 'relative', zIndex: 1 }}>
-          <div className="lp-tag">Mahi. Mauri. Mana.</div>
+          <div className="lp-tag" style={{ background: 'rgba(0,0,0,0.5)' }}>Mahi. Mauri. Mana.</div>
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(48px, 8vw, 92px)', lineHeight: 0.9, letterSpacing: '0.03em', margin: '18px 0 22px', color: '#fff' }}>
-            READY TO <span style={{ color: '#B87DB5' }}>PLAY?</span>
+            JOIN THE <span style={rainbowText}>WHĀNAU</span>
           </h2>
           <div className="lp-rainbow-line" style={{ width: '88px', margin: '0 auto 30px' }} />
-          <p style={{ color: '#888', fontSize: '18px', maxWidth: '480px', margin: '0 auto 38px', lineHeight: 1.7 }}>
-            Koha only. No fees, no barriers. Bring what you&apos;ve got and earn your first colour.
+          <p style={{ color: '#ccc', fontSize: '18px', maxWidth: '480px', margin: '0 auto 38px', lineHeight: 1.7 }}>
+            Turn up, play ten, earn your first colour. Koha only.
           </p>
           <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Link href="/register" className="lp-btn lp-primary" style={{ fontSize: '22px' }}>Register Now</Link>
+            <Link href="/register" className="lp-btn lp-primary" style={{ fontSize: '22px' }}>Play Your First Game</Link>
             <Link href="/koha" className="lp-btn lp-rainbow" style={{ fontSize: '22px' }}>Give Koha</Link>
           </div>
         </div>

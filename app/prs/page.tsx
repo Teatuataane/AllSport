@@ -21,6 +21,7 @@ import { shownDomainRungs } from '@/lib/colourDisplay'
 import { gradeForRung, gradeInk, MIN_RATED_GAMES } from '@/lib/grading'
 import { STANDARDS } from '@/lib/standards'
 import { NEUTRAL_ICON_TINT } from '@/lib/scoreColour'
+import { allRows } from '@/lib/allRows'
 
 const supabase = createClient()
 
@@ -72,28 +73,23 @@ const LOGGED_CHIP: React.CSSProperties = {
   borderRadius: '4px', padding: '2px 6px', whiteSpace: 'nowrap',
 }
 
-function effectiveScore(r: PRResult): number {
-  return r.raw_score
-}
-
-// A W/D/L record used to mean inputMode 'sport' with raw_score literally 0/1/2.
-// Since Sept 2026 most of them sit on a `Game` rung of a tiered ladder, where the
-// result is the within-tier term of a banded score. lib/scoring.ts owns the rule
-// so this file cannot drift from the live session again.
-function sportWDL(eventData: EventData | undefined, results: PRResult[]): string {
-  return sportRecord(eventData, results) ?? 'No results'
-}
-
-// The PB cell on an event topped by a Game rung shows the win/draw/loss record,
-// but a player who has only done its DRILLS has no record to show. Fall back to
-// the best score rather than claiming "No results" beside a real PB. Logging
-// makes drill-only events common: a logged workout never records a game.
-function pbText(eventData: EventData | undefined, results: PRResult[], pb: PRResult): string {
-  return (eventRecordsSport(eventData) ? sportRecord(eventData, results) : null) ?? pb.score_label
-}
-
 function sessionYear(session_date: string): number {
   return parseInt(session_date.slice(0, 4), 10)
+}
+
+// One `results` row as the My Events read selects it.
+type ResultRow = {
+  id: string
+  session_id: string
+  score_label: string
+  raw_score: number
+  difficulty_tier: string | null
+  placement: number | null
+  distance_m: number | null
+  time_seconds: number | null
+  weight_kg: number | null
+  session_events: { event_name: string; domain_number: number }
+  sessions: { session_date: string; is_championship: boolean }
 }
 
 // How many of an event's results its row shows before "Show all".
@@ -158,8 +154,9 @@ export default function PRsPage() {
   // Events whose whole history is open, past the top three.
   const [showAll, setShowAll] = useState<Set<string>>(new Set())
   // Keyed by the player it was loaded for, like `logged`, so a slow response
-  // for the previous player can never mix into this one's page.
-  const [gameLoaded, setGameLoaded] = useState<{ id: string; rows: PRResult[] } | null>(null)
+  // for the previous player can never mix into this one's page. `failed` is a
+  // read that did not complete: said on the page, never shown as "not played".
+  const [gameLoaded, setGameLoaded] = useState<{ id: string; rows: PRResult[]; failed: boolean } | null>(null)
   const [tab, setTab] = useState<'season' | 'all'>('season')
   // Hide events with nothing on the chosen tab. Each domain lists 13 to 16
   // events, and most players have played a few of each.
@@ -171,12 +168,13 @@ export default function PRsPage() {
   // A win is 1st in the unified division pool with a field of at least 3 —
   // that rule is defined once, in the player_event_wins view, and never
   // reimplemented here.
-  const [wins, setWins] = useState<Record<string, number>>({})
-  // False until the view answers. The view ships in 20260824220633, so if the
-  // client is deployed first this stays false and the whole win layer simply
-  // does not render, rather than taking the page down with a 42703. Same
-  // failure mode CLAUDE.md records for players_public column drift.
-  const [winsReady, setWinsReady] = useState(false)
+  // Keyed by the player it was loaded for, like `logged`: a family profile
+  // switch whose wins read fails must not keep showing the last child's wins.
+  // Absent until the view answers. The view ships in 20260824220633, so if the
+  // client is deployed first the whole win layer simply does not render,
+  // rather than taking the page down with a 42703. Same failure mode CLAUDE.md
+  // records for players_public column drift.
+  const [winsLoaded, setWinsLoaded] = useState<{ id: string; counts: Record<string, number> } | null>(null)
   // Best efforts from logged workouts (decision 16 of workout logging): shown
   // here, marked, and never in any public ranking. Keyed by the player they
   // were loaded for, so a switch never shows the previous player's logs.
@@ -191,31 +189,44 @@ export default function PRsPage() {
       const user = { id: activePlayerId }
       setLoading(true)
 
-      // Both loads at once. They are separate queries on purpose — folding
-      // event_placement into the results select would take the whole page down
-      // with a 42703 if it ever went missing — but there is no reason to wait
-      // for one before starting the other.
-      const [resultsRes, winsRes] = await Promise.all([
-        supabase
-        .from('results')
-        .select(`
-          id, score_label, raw_score, difficulty_tier, placement, distance_m, time_seconds, weight_kg,
-          session_events!inner(event_name, domain_number),
-          sessions!inner(session_date, is_championship)
-        `)
-        .eq('player_id', user.id)
-        .not('score_label', 'is', null)
-        .order('created_at', { ascending: false }),
+      // All three reads at once. They are separate queries on purpose: folding
+      // event_placement or voided_at into the results select would take the
+      // whole page down with a 42703 if either ever went missing.
+      const [resultsRes, winsRes, voidedRes] = await Promise.all([
+        // Paged: PostgREST stops at 1000 rows, about eight months of a
+        // three-games-a-week player, and the rows cut would be their oldest
+        // bests. Stable order (created_at, then id) so pages never overlap.
+        allRows<ResultRow>((from, to) => supabase
+          .from('results')
+          .select(`
+            id, session_id, score_label, raw_score, difficulty_tier, placement, distance_m, time_seconds, weight_kg,
+            session_events!inner(event_name, domain_number),
+            sessions!inner(session_date, is_championship)
+          `)
+          .eq('player_id', user.id)
+          .not('score_label', 'is', null)
+          .order('created_at', { ascending: false })
+          .order('id')
+          .range(from, to)),
         supabase
           .from('player_event_wins')
           .select('event_name, wins')
           .eq('player_id', user.id),
+        // A voided game counts nowhere (CLAUDE.md section 9), so its scores are
+        // no PB here either: the same rule loadGrades applies to colours, so a
+        // PB and the colour line under it read the same rows. Fails open: if
+        // the read fails, nothing is hidden.
+        allRows<{ id: string }>((from, to) => supabase
+          .from('sessions').select('id').not('voided_at', 'is', null).order('id').range(from, to)),
       ])
 
       if (cancelled) return
-      const { data } = resultsRes
-      if (data) {
-        const mapped: PRResult[] = (data as any[]).map(r => ({
+      if (resultsRes.error) console.warn('results unavailable', resultsRes.error.message)
+      if (voidedRes.error) console.warn('voided games unavailable, none hidden', voidedRes.error.message)
+      const voided = new Set(voidedRes.error ? [] : voidedRes.rows.map(v => v.id))
+      const mapped: PRResult[] = resultsRes.rows
+        .filter(r => !voided.has(r.session_id))
+        .map(r => ({
           id: r.id,
           score_label: r.score_label,
           raw_score: r.raw_score,
@@ -227,8 +238,7 @@ export default function PRsPage() {
           domain_number: r.session_events.domain_number,
           distance_m: r.distance_m, time_seconds: r.time_seconds, weight_kg: r.weight_kg,
         }))
-        setGameLoaded({ id: user.id, rows: mapped })
-      }
+      setGameLoaded({ id: user.id, rows: mapped, failed: !!resultsRes.error })
 
       const { data: winRows, error: winErr } = winsRes
       if (winErr) {
@@ -238,8 +248,7 @@ export default function PRsPage() {
         for (const w of winRows as { event_name: string; wins: number }[]) {
           m[w.event_name] = (m[w.event_name] ?? 0) + Number(w.wins)
         }
-        setWins(m)
-        setWinsReady(true)
+        setWinsLoaded({ id: user.id, counts: m })
       }
 
       setLoading(false)
@@ -248,30 +257,32 @@ export default function PRsPage() {
     return () => { cancelled = true }
   }, [playerLoading, userId, activePlayerId, router])
 
-  // Logged bests — their own query, like every workout read. A missing table
-  // (before the migration) or an RLS refusal simply shows no logged bests.
+  // Logged bests — their own query, like every workout read.
   useEffect(() => {
     if (!activePlayerId) return
     let cancelled = false
-    supabase
+    // Paged like the results read: PostgREST stops at 1000 rows whatever
+    // `.range()` asks for, and the short training efforts (raw_score null) sort
+    // last, so a single capped read would cut exactly the distance records this
+    // page alone shows.
+    allRows<LoggedBestEntry>((from, to) => supabase
       .from('workout_entries')
       .select('id, event_slug, raw_score, score_label, difficulty_tier, distance_m, time_seconds, weight_kg, workouts!inner(player_id, performed_on, witnessed)')
       .eq('workouts.player_id', activePlayerId)
       // A distance effort with no raw_score is training under the reference
       // distance: never a PB here, but still a record at its own distance.
       .or('raw_score.not.is.null,distance_m.not.is.null')
-      // Best first: the server caps a response at 1000 rows, so if a player
-      // ever passes that it is the weakest efforts that fall off, not a random set.
-      .order('raw_score', { ascending: false, nullsFirst: false })
-      .range(0, 4999)
-      .then(({ data, error }) => {
+      .order('id')
+      .range(from, to))
+      .then(({ rows: entries, error }) => {
         if (cancelled) return
+        // A missing table (before the migration) or an RLS refusal simply
+        // shows no logged bests.
         if (error) {
           console.warn('workout_entries unavailable — logged bests hidden', error.message)
           setLogged({ id: activePlayerId, rows: [], training: [] })
           return
         }
-        const entries = (data ?? []) as unknown as LoggedBestEntry[]
         const rows = loggedBestRows(entries).map(r => ({
           ...r, placement: null, is_championship: false, logged: true,
         }))
@@ -294,6 +305,9 @@ export default function PRsPage() {
   // displaces it as the PB (the sort below is stable).
   const CURRENT_YEAR = currentYear()
   const gameRows = gameLoaded && gameLoaded.id === activePlayerId ? gameLoaded.rows : []
+  const gameFailed = !!gameLoaded && gameLoaded.id === activePlayerId && gameLoaded.failed
+  const wins = winsLoaded && winsLoaded.id === activePlayerId ? winsLoaded.counts : {}
+  const winsReady = !!winsLoaded && winsLoaded.id === activePlayerId
   const loggedRows = logged && logged.id === activePlayerId ? logged.rows : []
   const trainingRows = logged && logged.id === activePlayerId ? logged.training : []
   const allResults = [...gameRows, ...loggedRows]
@@ -301,21 +315,31 @@ export default function PRsPage() {
     ? allResults.filter(r => sessionYear(r.session_date) === CURRENT_YEAR)
     : allResults
 
-  // Group results by event name
-  const resultsByEvent: Record<string, PRResult[]> = {}
-  for (const r of visibleResults) {
-    if (!resultsByEvent[r.event_name]) resultsByEvent[r.event_name] = []
-    resultsByEvent[r.event_name].push(r)
+  // Results by event name, best first. The sort is stable, so game rows stay
+  // ahead of logged ties.
+  const groupByEvent = <T extends { event_name: string }>(rows: readonly T[]) => {
+    const out: Record<string, T[]> = {}
+    for (const r of rows) (out[r.event_name] ??= []).push(r)
+    return out
   }
-
-  // Sort each event's results descending by effective score (best first)
+  const resultsByEvent = groupByEvent(visibleResults)
   for (const k of Object.keys(resultsByEvent)) {
-    resultsByEvent[k].sort((a, b) => effectiveScore(b) - effectiveScore(a))
+    resultsByEvent[k].sort((a, b) => b.raw_score - a.raw_score)
   }
+  // Every year's results, for the Standards ladder: the colour line above it
+  // is graded on all results, and the two must not name different colours.
+  const lifetimeByEvent = tab === 'season' ? groupByEvent(allResults) : resultsByEvent
+  // Short distance efforts on the chosen tab, by event: never a PB, still a
+  // record. Grouped once rather than filtered again for every event row.
+  const trainingByEvent = groupByEvent(
+    tab === 'season' ? trainingRows.filter(t => sessionYear(t.session_date) === CURRENT_YEAR) : trainingRows,
+  )
+  const trainingFor = (name: string) => trainingByEvent[name] ?? []
 
   // Lifetime and tab-independent: the season tabs filter PBs, but a win is a
-  // permanent fact.
-  const totalWins = Object.keys(wins).length
+  // permanent fact. Counted over the current roster, like the domain chips,
+  // so a win on a removed event never makes "X of 144" overcount.
+  const totalWins = EVENTS.filter(e => wins[e.name]).length
   const totalPBs = Object.keys(resultsByEvent).length
   const totalEvents = EVENTS.length
 
@@ -327,10 +351,6 @@ export default function PRsPage() {
       return next
     })
   }
-
-  // Short distance efforts on the chosen tab: never a PB, still a record.
-  const trainingFor = (name: string) =>
-    trainingRows.filter(t => t.event_name === name && (tab !== 'season' || sessionYear(t.session_date) === CURRENT_YEAR))
 
   const toggleShowAll = (slug: string) => {
     setShowAll(prev => {
@@ -430,6 +450,11 @@ export default function PRsPage() {
       <div style={{ maxWidth: '680px', margin: '0 auto', padding: '24px 16px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
         <div>
           <ViewingAsBanner />
+          {!loading && gameFailed && (
+            <div role="alert" style={{ fontSize: '13px', color: '#E08A5A', marginBottom: '10px', fontFamily: 'var(--font-body)' }}>
+              Some of your game results could not be loaded. Check your connection and reload the page.
+            </div>
+          )}
           {!loading && (
             <button
               type="button"
@@ -528,6 +553,12 @@ export default function PRsPage() {
                   {domainEvents.map(event => {
                     const eventResults: PRResult[] | undefined = resultsByEvent[event.name]
                     const pb = eventResults?.[0]
+                    // An event topped by a Game rung shows its win/draw/loss
+                    // record in the PB cell. A player who has only done its
+                    // drills has none (a logged workout never records a game),
+                    // so the cell falls back to the best score. lib/scoring.ts
+                    // owns the rule so this page cannot drift from the live session.
+                    const record = eventRecordsSport(event) ? sportRecord(event, eventResults ?? []) : null
                     // Short distance efforts never rank, so they are no PB, but
                     // they are records at their distance: an event with only
                     // those still opens to show them.
@@ -577,9 +608,9 @@ export default function PRsPage() {
                               {pb ? (
                                 <>
                                   <div style={{ fontSize: '15px', fontWeight: 700, color: '#fff', fontFamily: 'var(--font-body)' }}>
-                                    {pbText(event, eventResults, pb)}
+                                    {record ?? pb.score_label}
                                   </div>
-                                  {pb.difficulty_tier && !(eventRecordsSport(event) && sportRecord(event, eventResults)) && (
+                                  {pb.difficulty_tier && !record && (
                                     <div style={{ fontSize: '11px', color: '#999', fontFamily: 'var(--font-label)', fontWeight: 700 }}>
                                       {pb.difficulty_tier}
                                     </div>
@@ -624,9 +655,9 @@ export default function PRsPage() {
                                       ? `Top ${TOP_SHOWN} of ${eventResults.length} results`
                                       : `${eventResults.length} result${eventResults.length !== 1 ? 's' : ''}`}
                                   </div>
-                                  {eventRecordsSport(event) && sportRecord(event, eventResults) && (
+                                  {record && (
                                     <div style={{ fontFamily: 'var(--font-display)', fontSize: '16px', color: '#fff', letterSpacing: '0.05em' }}>
-                                      {sportWDL(event, eventResults)}
+                                      {record}
                                     </div>
                                   )}
                                 </div>
@@ -705,7 +736,7 @@ export default function PRsPage() {
                               </div>
                             )}
                             {activePlayerId && (
-                              <EventStandards ev={event} playerId={activePlayerId} today={nzDay()} rows={(eventResults ?? []).map(r => ({ raw_score: r.raw_score, weight_kg: r.weight_kg ?? null, difficulty_tier: r.difficulty_tier }))} />
+                              <EventStandards ev={event} playerId={activePlayerId} today={nzDay()} rows={(lifetimeByEvent[event.name] ?? []).map(r => ({ raw_score: r.raw_score, weight_kg: r.weight_kg ?? null, difficulty_tier: r.difficulty_tier }))} />
                             )}
                             <Link
                               href={`/events/${event.slug}`}

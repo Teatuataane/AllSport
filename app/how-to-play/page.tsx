@@ -69,63 +69,12 @@ const domains = DOMAIN_META.map(d => ({
   events: EVENTS.filter(e => e.domain === d.name).map(e => e.name),
 }))
 
-const ethos = [
-  {
-    word: 'Mahi',
-    meaning: 'Work / Effort',
-    desc: 'AllSport is built on showing up. Every session counts, every rep matters. Effort is the most honest measure of who you are.',
-    color: 'var(--red)',
-  },
-  {
-    word: 'Mauri',
-    meaning: 'Spirit / Life Force',
-    desc: 'We built AllSport to remove every barrier — cost, experience, fitness level. Your spirit, not your starting point, determines your journey.',
-    color: 'var(--green)',
-  },
-  {
-    word: 'Mana',
-    meaning: 'Power / Influence',
-    desc: "Earned through persistence, not talent. The more you put in, the more you earn. That's how mana works.",
-    color: 'var(--blue)',
-  },
-]
-
 const steps = [
-  {
-    number: '01',
-    title: 'Register',
-    desc: 'Sign up online — no experience required. If you can move, you can play.',
-  },
-  {
-    number: '02',
-    title: 'Show Up',
-    desc: 'Arrive at your local session. Wear comfortable training gear. Bring water. Everything else is provided or explained on the day.',
-  },
-  {
-    number: '03',
-    title: 'Learn The Events',
-    desc: "At the start of each session, the 10 events are announced — one drawn from each discipline. Each event is explained before it begins. First time? You'll be guided through everything.",
-  },
-  {
-    number: '04',
-    title: 'Compete',
-    desc: 'Work through all 10 events across the 100-minute session. AllSport is designed for the long term — give what is appropriate for the day and come back next time.',
-  },
-  {
-    number: '05',
-    title: 'Swap What Does Not Suit You',
-    desc: 'Hurt a shoulder, or today’s event is not for you? Swap it for another event from the same discipline, or add extras on top. Swapped events count as training toward your colours, not toward the day’s result — the official event is counted as missed, the same as skipping it, because the ten decide the game for everyone equally.',
-  },
-  {
-    number: '06',
-    title: 'Get Placed',
-    desc: 'In each event, players are ranked by their result. Your placement in each event (1st, 2nd, 3rd...) is recorded, and the lowest total placement across all 10 events wins the game. Every score you set also counts toward your colours. For the season board, everyone in the game is ranked together on the colours their scores reached: 1st earns 100 points, 2nd 99, 3rd 98, and so on, so every game you play counts.',
-  },
-  {
-    number: '07',
-    title: 'Earn Your Colours',
-    desc: 'Every event has a standard for each of twelve colours, from Kiwikiwi to Taniwha. A domain’s colour is the average of your best six events in it, and an event you have not played counts as Mā, so trying new events lifts it until six are on the board. Your overall colour is the average of your ten domains, and it also needs games played in the room. Colours land by themselves and are earned for the calendar year: on 1 January everyone starts again on Mā, and last year’s colours stay on your record.',
-  },
+  { number: '01', title: 'Register', desc: 'Two minutes online. If you can move, you can play.' },
+  { number: '02', title: 'Show Up', desc: 'Training gear and water. Everything else is here.' },
+  { number: '03', title: 'Play Ten', desc: 'Ten events, one from each domain, each explained before it starts. Injured? Swap it for another from the same domain.' },
+  { number: '04', title: 'Get Placed', desc: 'Lowest total placement across the ten wins the game. Every game also earns season points.' },
+  { number: '05', title: 'Earn Your Colours', desc: 'Hit an event\u2019s standard and the colour is yours for the year. Every 1 January starts fresh.' },
 ]
 
 const divisions = [
@@ -139,12 +88,10 @@ const divisions = [
 ]
 
 const checklist = [
-  'Wear comfortable training gear',
-  'Bring water and a towel',
-  'Arrive 10 minutes before the session starts',
-  'Events are announced and explained at the start',
-  'First timers are guided through every event',
-  'Scores are logged digitally in real time',
+  'Wear training gear, bring water',
+  'Arrive 10 minutes early',
+  'Every event is explained first',
+  'First timers are guided through',
 ]
 
 const totalEvents = domains.reduce((n, d) => n + d.events.length, 0)
@@ -156,7 +103,6 @@ export default function HowToPlay() {
         .domain-card-htp { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; transition: all 0.2s; cursor: pointer; overflow: hidden; }
         .domain-card-htp:hover { background: #161616; border-color: var(--border-strong); }
         .event-pill { display: inline-block; font-family: var(--font-label); font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; padding: 4px 10px; border-radius: 3px; background: #1a1a1a; color: var(--grey); border: 1px solid #242424; margin: 2px; }
-        .ethos-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 40px 32px; position: relative; overflow: hidden; }
         .checklist-item { display: flex; align-items: center; gap: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; }
         .info-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 28px; }
         .bonus-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #1a1a1a; }
@@ -174,8 +120,7 @@ export default function HowToPlay() {
           </h1>
           <div className="rainbow-line" style={{ width: '88px', margin: '20px 0 28px', borderRadius: '2px' }} />
           <p style={{ color: 'var(--grey-light)', fontSize: '20px', maxWidth: '620px', lineHeight: 1.7 }}>
-            AllSport is the first sport designed to test your ability across every form of athleticism.
-            Ten disciplines. {totalEvents} events in rotation. No two sessions are ever the same.
+            Ten events. One from each domain. 100 minutes. No two games the same.
           </p>
         </div>
       </section>
@@ -188,9 +133,9 @@ export default function HowToPlay() {
           <SectionLabel style={{ marginBottom: 18 }}>AllSport in 30 seconds</SectionLabel>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
             {[
-              { title: 'Play a game', color: 'var(--red)', desc: 'Ten events, one from each domain, in 100 minutes. Lowest total placement wins the day.' },
-              { title: 'Earn your colours', color: 'var(--amber)', desc: 'Meet published standards, play games and train. Twelve colours in each domain; your overall colour is the average of the ten.' },
-              { title: 'Train between games', color: 'var(--green)', desc: 'Log any workout and fit it to an event. It counts toward your next colour.' },
+              { title: 'Play a game', color: 'var(--red)', desc: 'Ten events in 100 minutes. Lowest total placement wins.' },
+              { title: 'Earn your colours', color: 'var(--amber)', desc: 'Hit the standard, keep the colour. Twelve to climb.' },
+              { title: 'Train between games', color: 'var(--green)', desc: 'Log any workout. It counts toward your next colour.' },
             ].map(c => (
               <div key={c.title} className="info-card" style={{ padding: '20px 22px' }}>
                 <div style={{ width: 24, height: 3, borderRadius: 2, background: c.color, marginBottom: 12 }} />
@@ -210,14 +155,11 @@ export default function HowToPlay() {
               <SectionLabel style={{ marginBottom: 16 }}>For First Timers</SectionLabel>
               <h2 style={{ fontSize: 'clamp(36px, 4vw, 56px)', marginBottom: '8px' }}>WHAT TO <span style={{ color: 'var(--amber)' }}>EXPECT</span></h2>
               <div className="divider" style={{ background: 'var(--amber)' }} />
-              <p style={{ color: 'var(--grey-light)', fontSize: '16px', lineHeight: 1.8, marginBottom: '16px' }}>
-                Walk in knowing nothing — that&apos;s completely fine. Every event is explained before it starts. There are no prerequisites, no minimum fitness level, and no specialist equipment required.
+              <p style={{ color: 'var(--grey-light)', fontSize: '17px', lineHeight: 1.7, marginBottom: '12px' }}>
+                Walk in knowing nothing. That&apos;s fine.
               </p>
-              <p style={{ color: 'var(--grey)', fontSize: '15px', lineHeight: 1.8, marginBottom: '16px' }}>
-                AllSport is designed for the long term. It&apos;s meant to be fun, accessible, and sustainable. You don&apos;t need to push to your limit every session — showing up consistently is what creates results.
-              </p>
-              <p style={{ color: 'var(--grey)', fontSize: '15px', lineHeight: 1.8 }}>
-                Each game is placement-based: you compete against everyone in the room that day. Your colours are different. They are measured against a published standard, not against other people, so coming last today costs you nothing. Come back next week and beat yourself.
+              <p style={{ color: 'var(--grey)', fontSize: '15px', lineHeight: 1.7 }}>
+                No minimum fitness, no special gear. Your colours are measured against a standard, not the room, so coming last costs you nothing.
               </p>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -263,14 +205,14 @@ export default function HowToPlay() {
             {/* Placement explanation */}
             <div>
               <h3 style={{ fontSize: '28px', color: 'var(--white)', marginBottom: '12px' }}>Placement-Based</h3>
-              <p style={{ color: 'var(--grey-light)', fontSize: '16px', lineHeight: 1.8, marginBottom: '16px' }}>
-                In each event, players are ranked by their result. Your placement — 1st, 2nd, 3rd — is recorded. <strong style={{ color: 'var(--white)' }}>Lowest total placement score wins.</strong>
+              <p style={{ color: 'var(--grey-light)', fontSize: '16px', lineHeight: 1.7, marginBottom: '12px' }}>
+                Each event ranks you 1st, 2nd, 3rd. <strong style={{ color: 'var(--white)' }}>Lowest total wins.</strong>
               </p>
-              <p style={{ color: 'var(--grey)', fontSize: '15px', lineHeight: 1.8, marginBottom: '16px' }}>
-                This rewards consistency. A player who finishes 3rd in every event will beat one who wins two events but finishes last in the rest.
+              <p style={{ color: 'var(--grey)', fontSize: '15px', lineHeight: 1.7, marginBottom: '12px' }}>
+                Third in everything beats winning two and coming last in the rest.
               </p>
-              <p style={{ color: '#555555', fontSize: '14px', lineHeight: 1.8, fontStyle: 'italic' }}>
-                Tied results share the same placement. If two players tie for 2nd, both receive 2nd place and the next player receives 4th. A missed event counts as last place.
+              <p style={{ color: '#555555', fontSize: '14px', lineHeight: 1.7, fontStyle: 'italic' }}>
+                Ties share a place. A missed event counts as last.
               </p>
             </div>
 
@@ -278,7 +220,7 @@ export default function HowToPlay() {
             <div className="info-card">
               <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555555', marginBottom: '8px' }}>The Colours</div>
               <p style={{ color: 'var(--grey)', fontSize: '13px', lineHeight: 1.65, marginBottom: '16px' }}>
-                Twelve colours in each of the ten domains. They land by themselves the moment your scores reach them, and are earned fresh each calendar year.
+                Twelve per domain. They land the moment you earn them, fresh each calendar year.
               </p>
               {[
                 { label: 'Each event', rule: 'Its own colour, against twelve standards' },
@@ -299,7 +241,7 @@ export default function HowToPlay() {
             {/* Divisions */}
             <div className="info-card">
               <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555555', marginBottom: '8px' }}>Divisions</div>
-              <p style={{ color: '#666', fontSize: '13px', lineHeight: 1.6, marginBottom: '16px' }}>You compete only within your own division — 1st place is awarded once per division per session. Your division is auto-calculated from your age and gender at registration.</p>
+              <p style={{ color: '#666', fontSize: '13px', lineHeight: 1.6, marginBottom: '16px' }}>You place within your division, set from your age and gender.</p>
               {divisions.map(d => (
                 <div key={d.name} className="bonus-row">
                   <span style={{ fontFamily: 'var(--font-label)', fontWeight: 600, fontSize: '14px', color: 'var(--grey-light)' }}>{d.name}</span>
@@ -317,41 +259,13 @@ export default function HowToPlay() {
           <SectionLabel style={{ marginBottom: 16 }}>The 10 Disciplines</SectionLabel>
           <h2 style={{ fontSize: 'clamp(40px, 5vw, 64px)', marginBottom: '8px' }}>EVENT <span style={{ color: 'var(--purple)' }}>DOMAINS</span></h2>
           <div className="divider" style={{ background: 'var(--purple)' }} />
-          <p style={{ color: 'var(--grey)', fontSize: '16px', maxWidth: '680px', marginBottom: '8px', lineHeight: 1.7 }}>
-            Each session, one event is drawn at random from each of the 10 domains below — 10 events in total. Our annual Championship events are chosen by community vote.
+          <p style={{ color: 'var(--grey)', fontSize: '16px', maxWidth: '680px', marginBottom: '24px', lineHeight: 1.7 }}>
+            One event is drawn from each domain every game. Tap a domain to see its events.
           </p>
-          <p style={{ color: '#555555', fontSize: '14px', maxWidth: '680px', marginBottom: '24px', lineHeight: 1.7 }}>
-            {totalEvents} events in total across all domains. Tap any domain to see its full event list.
-          </p>
-          <Link href="/events" style={{ display: 'inline-block', marginBottom: '32px', padding: '10px 22px', borderRadius: '999px', background: 'var(--surface)', border: '1px solid var(--border-strong)', color: 'var(--grey-light)', fontSize: '13px', fontFamily: 'var(--font-label)', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                    <Link href="/events" style={{ display: 'inline-block', marginBottom: '32px', padding: '10px 22px', borderRadius: '999px', background: 'var(--surface)', border: '1px solid var(--border-strong)', color: 'var(--grey-light)', fontSize: '13px', fontFamily: 'var(--font-label)', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
             Browse All {totalEvents} Events →
           </Link>
           <DomainAccordion domains={domains} />
-        </div>
-      </section>
-
-      {/* Ethos */}
-      <section className="section" style={{ background: '#0d0d0d', position: 'relative' }}>
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'var(--rainbow)' }} />
-        <div className="container">
-          <div style={{ textAlign: 'center', marginBottom: '56px' }}>
-            <div className="tag" style={{ display: 'inline-flex' }}>Our Kaupapa</div>
-            <h2 style={{ fontSize: 'clamp(44px, 6vw, 72px)' }}>MAHI. MAURI. <span style={{ color: 'var(--green)' }}>MANA.</span></h2>
-            <div className="rainbow-line" style={{ width: '80px', margin: '16px auto 0', borderRadius: '2px' }} />
-            <p style={{ color: 'var(--grey)', fontSize: '16px', maxWidth: '560px', margin: '24px auto 0', lineHeight: 1.7 }}>
-              Three kupu (words) that represent what we stand for — and what we expect of every competitor that steps through the door.
-            </p>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
-            {ethos.map(e => (
-              <div key={e.word} className="ethos-card">
-                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: e.color }} />
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: '64px', color: e.color, lineHeight: 1, marginBottom: '4px' }}>{e.word}</div>
-                <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '13px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555555', marginBottom: '16px' }}>{e.meaning}</div>
-                <p style={{ color: 'var(--grey)', fontSize: '15px', lineHeight: 1.7 }}>{e.desc}</p>
-              </div>
-            ))}
-          </div>
         </div>
       </section>
 
@@ -363,9 +277,9 @@ export default function HowToPlay() {
           </h2>
           <div className="rainbow-line" style={{ width: '60px', margin: '0 auto 24px', borderRadius: '2px' }} />
           <p style={{ color: 'var(--grey)', fontSize: '16px', maxWidth: '440px', margin: '0 auto 32px', lineHeight: 1.7 }}>
-            No experience needed. No specialist skills required. Just show up and give what you have today.
+            No experience needed. Just show up.
           </p>
-          <Link href="/register" className="btn btn-primary" style={{ fontSize: '17px' }}>Register Now</Link>
+          <Link href="/register" className="btn btn-primary" style={{ fontSize: '17px' }}>Play Your First Game</Link>
         </div>
       </section>
     </>
