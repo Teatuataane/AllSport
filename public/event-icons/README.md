@@ -14,7 +14,7 @@ It **skips a file only when it is BOTH small enough AND already greyscale/palett
 
 If you ever need a full-size original back, it is in git history (and the real master is the Canva document).
 
-**Then bump `ICON_VERSION` in `components/EventIcon.tsx`.** Icons are cached for a week, and so is a 404: a phone that looked for an icon before it shipped keeps showing the emoji until the version changes.
+**No version to bump.** Icons are cached for a week, and so is a 404: a phone that looked for an icon before it shipped would keep showing the emoji. Every icon address carries `ICON_VERSION`, a hash of the icon files that `next.config.ts` makes at build time, so a new or changed icon gets a new address on the next deploy by itself.
 
 **Export rules:**
 - Transparent background, solid single-colour silhouette (black is fine — the app recolours it to the domain colour via CSS mask, so it will show correctly on the dark theme)

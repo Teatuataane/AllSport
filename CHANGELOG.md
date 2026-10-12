@@ -2,6 +2,17 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.34.2.1] - 2026-10-13
+
+### Fixed
+- **My Events no longer counts voided games.** A score from a game a kaiwhakawā voided was still shown as a personal best; it is now left out, by the same rule the colours use.
+- **My Events reads every result.** The server returns at most 1000 rows a request, so a player with more lost their oldest bests, and the short distance efforts kept as records were the first logged rows cut. Both reads now page (`lib/allRows.ts`, shared with the activity report).
+- **The Standards ladder under an event reads every year's results**, as the colour line above it does, so on the year tab the two never name different colours.
+- **Wins belong to the profile they were loaded for.** After switching family profiles, a failed wins read could leave the previous child's wins on the page.
+- A failed results read now says so, instead of showing every event as not played.
+- The "events won" total counts only events on the current roster, matching the domain counts.
+- **Icon versions bump themselves.** `ICON_VERSION` is a hash of the icon files made at build time, so a new icon reaches phones that cached its 404 without anyone remembering to bump it.
+
 ## [0.34.2.0] - 2026-10-13
 
 ### Changed
