@@ -14,6 +14,8 @@ It **skips a file only when it is BOTH small enough AND already greyscale/palett
 
 If you ever need a full-size original back, it is in git history (and the real master is the Canva document).
 
+**Then bump `ICON_VERSION` in `components/EventIcon.tsx`.** Icons are cached for a week, and so is a 404: a phone that looked for an icon before it shipped keeps showing the emoji until the version changes.
+
 **Export rules:**
 - Transparent background, solid single-colour silhouette (black is fine — the app recolours it to the domain colour via CSS mask, so it will show correctly on the dark theme)
 - Square-ish crop, subject filling most of the canvas

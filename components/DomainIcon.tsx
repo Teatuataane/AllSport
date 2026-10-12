@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { domainColor } from './EventIcon'
+import { domainColor, ICON_VERSION } from './EventIcon'
 
 // Domain name → icon slug. Keep in sync with DOMAIN_ORDER in lib/eventData.ts.
 // Files live in public/domain-icons/{slug}.png (transparent silhouette, tinted here).
@@ -63,11 +63,11 @@ export default function DomainIcon({
     const img = new Image()
     img.onload = () => { iconStatus[slug] = true; setHasIcon(true) }
     img.onerror = () => { iconStatus[slug] = false; setHasIcon(false) }
-    img.src = `/domain-icons/${slug}.png`
+    img.src = `/domain-icons/${slug}.png?v=${ICON_VERSION}`
   }, [slug])
 
   const c = tint ?? domainColor(domainNumber)
-  const maskUrl = `url(/domain-icons/${slug}.png)`
+  const maskUrl = `url(/domain-icons/${slug}.png?v=${ICON_VERSION})`
 
   return (
     <div style={{
