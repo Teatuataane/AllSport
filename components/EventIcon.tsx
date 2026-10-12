@@ -14,6 +14,17 @@ export { DOMAIN_COLORS, domainColor } from '@/lib/domainColours'
 const iconStatus: Record<string, boolean> = {}
 
 /**
+ * Appended to every icon URL. Bump it whenever icons are added or re-exported.
+ *
+ * next.config.ts caches /event-icons/* for a week, and that header is sent on a
+ * 404 too: a phone that asked for an icon before its PNG shipped keeps the 404
+ * and shows the emoji for up to a week. That is what happened to the 23 icons
+ * of v0.33.1.0 (12 Oct 2026). A new query string is a new cache entry, so a
+ * bump reaches every phone on its next visit. DomainIcon reads it too.
+ */
+export const ICON_VERSION = '2'
+
+/**
  * Event pictogram tile. Renders /event-icons/{slug}.png as a CSS mask filled
  * with the domain colour — so any solid silhouette on a transparent background
  * (e.g. a black Canva export) displays correctly on the dark theme and always
@@ -58,11 +69,11 @@ export default function EventIcon({
     const img = new Image()
     img.onload = () => { iconStatus[slug] = true; setHasIcon(true) }
     img.onerror = () => { iconStatus[slug] = false; setHasIcon(false) }
-    img.src = `/event-icons/${slug}.png`
+    img.src = `/event-icons/${slug}.png?v=${ICON_VERSION}`
   }, [slug])
 
   const c = tint ?? domainColor(domainNumber)
-  const maskUrl = `url(/event-icons/${slug}.png)`
+  const maskUrl = `url(/event-icons/${slug}.png?v=${ICON_VERSION})`
 
   return (
     <div style={{
