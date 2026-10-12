@@ -23,18 +23,8 @@
 
 BEGIN;
 
-UPDATE session_events   SET event_slug = 'wrist-extension' WHERE event_slug = 'reverse-wrist-extension';
-UPDATE workout_entries  SET event_slug = 'wrist-extension' WHERE event_slug = 'reverse-wrist-extension';
-UPDATE grade_exemptions SET event_slug = 'wrist-extension' WHERE event_slug = 'reverse-wrist-extension';
-UPDATE grade_awards     SET events = array_replace(events, 'reverse-wrist-extension', 'wrist-extension')
- WHERE 'reverse-wrist-extension' = ANY (events);
-UPDATE workouts         SET planned_events = array_replace(planned_events, 'reverse-wrist-extension', 'wrist-extension')
- WHERE 'reverse-wrist-extension' = ANY (planned_events);
-
 -- event_domains: the roster mirrored into SQL, 144 rows.
 -- Per domain: 1: 16, 2: 13, 3: 15, 4: 15, 5: 14, 6: 15, 7: 15, 8: 14, 9: 13, 10: 14.
-DELETE FROM event_domains;
-INSERT INTO event_domains (event_name, domain_number, slug) VALUES
 DELETE FROM event_domains;
 INSERT INTO event_domains (event_name, domain_number, slug) VALUES
   ('1A Press', 1, 'one-arm-press'),
@@ -181,6 +171,17 @@ INSERT INTO event_domains (event_name, domain_number, slug) VALUES
   ('Kubb', 10, 'kubb'),
   ('Netball', 10, 'netball'),
   ('Table Tennis', 10, 'table-tennis');
+
+-- Repoint every stored slug. AFTER the re-seed on purpose: guard_workouts_write
+-- and guard_workout_entries_write check planned_events / event_slug against
+-- event_domains, so the new slug has to be on the roster before a row can name it.
+UPDATE session_events   SET event_slug = 'wrist-extension' WHERE event_slug = 'reverse-wrist-extension';
+UPDATE workout_entries  SET event_slug = 'wrist-extension' WHERE event_slug = 'reverse-wrist-extension';
+UPDATE grade_exemptions SET event_slug = 'wrist-extension' WHERE event_slug = 'reverse-wrist-extension';
+UPDATE grade_awards     SET events = array_replace(events, 'reverse-wrist-extension', 'wrist-extension')
+ WHERE 'reverse-wrist-extension' = ANY (events);
+UPDATE workouts         SET planned_events = array_replace(planned_events, 'reverse-wrist-extension', 'wrist-extension')
+ WHERE 'reverse-wrist-extension' = ANY (planned_events);
 
 DO $$
 BEGIN
