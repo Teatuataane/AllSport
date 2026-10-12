@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { getEventBySlug } from '@/lib/eventData'
 import { STANDARDS } from '@/lib/standards'
-import { halfStepCredit, rungForCompound, gradeForRung, domainGrade } from '@/lib/grading'
+import { halfStepCredit, rungForCompound, gradeForRung, domainGrade, compoundLadderAt } from '@/lib/grading'
 import { eventGrade, eventCredit, type GradePlayer, type GradeResultRow } from '@/lib/playerGrades'
 import { eventRungInGame } from '@/lib/leaderboardScores'
 import { eventFlags, type GameScore } from '@/lib/gameReport'
@@ -14,50 +14,59 @@ import { eventFlags, type GameScore } from '@/lib/gameReport'
 const toe = getEventBySlug('toe-lift')!
 const tib = getEventBySlug('tibialis-curl')!
 const glute = getEventBySlug('glute-thrust')!
-const ladder = (slug: string) => STANDARDS[slug].all!
+/** A bodyweight for the ladders written as shares of it (12 Oct 2026). */
+const BW = 80
+const ladder = (slug: string) => compoundLadderAt(getEventBySlug(slug)!.inputMode, STANDARDS[slug].all!, STANDARDS[slug].bwLoad, BW)!
 const adult: GradePlayer = { division: "Men's", ageYears: 30, gender: 'male' }
 /** A load-and-hold or load-and-reps score: round(kg × 100) × 10000 + seconds or reps. */
 const packed = (kg: number, n: number) => Math.round(kg * 100) * 10000 + n
-const row = (name: string, raw: number): GradeResultRow => ({ event_name: name, raw_score: raw, weight_kg: null, difficulty_tier: null })
+const row = (name: string, raw: number): GradeResultRow => ({ event_name: name, raw_score: raw, weight_kg: null, difficulty_tier: null, bodyweightKg: BW })
 const credit = (slug: string, mode: string, raw: number) => {
   const rung = rungForCompound(mode, raw, ladder(slug), 'Open')!
   return { rung, credit: halfStepCredit(mode, raw, ladder(slug), 'Open', rung) }
 }
 
 describe('halfStepCredit', () => {
-  it('Glute Thrust 180kg for 25s: Taniwha\'s load, short of 30s, is Uenuku and a half', () => {
-    const c = credit('glute-thrust', 'weight+time', packed(180, 25))
-    expect(gradeForRung(c.rung).name).toBe('Kiwikiwi')
+  // Since 12 Oct 2026 Glute Thrust's loads are shares of bodyweight, every
+  // colour a 30s hold: at 80kg, Taniwha is 2× = 160kg.
+  it('Glute Thrust 160kg for 25s at 80kg: Taniwha\'s load, short of 30s, is Uenuku and a half', () => {
+    const c = credit('glute-thrust', 'weight+time', packed(160, 25))
+    expect(c.rung).toBe(0)
     expect(c.credit).toBe(11.5)
     expect(gradeForRung(c.credit).name).toBe('Uenuku')
   })
 
-  it('needs at least half the time: 180kg for 10s earns no half', () => {
-    expect(credit('glute-thrust', 'weight+time', packed(180, 10)).credit).toBe(0)
-    expect(credit('glute-thrust', 'weight+time', packed(180, 15)).credit).toBe(11.5)
+  it('needs at least half the time: 160kg for 10s earns no half', () => {
+    expect(credit('glute-thrust', 'weight+time', packed(160, 10)).credit).toBe(0)
+    expect(credit('glute-thrust', 'weight+time', packed(160, 15)).credit).toBe(11.5)
   })
 
-  it('Toe Lift 5kg for 45s: Poroporo, and Parahi\'s 5kg short of 60s makes it Poroporo and a half', () => {
-    const c = credit('toe-lift', 'weight+time', packed(5, 45))
+  // Toe Lift since the 12 Oct 2026 review: 5s and 15s holds at each load.
+  it('Toe Lift 5kg for 10s: Poroporo, and Parahi\'s 5kg short of 15s makes it Poroporo and a half', () => {
+    const c = credit('toe-lift', 'weight+time', packed(5, 10))
     expect(gradeForRung(c.rung).name).toBe('Poroporo')
     expect(c.credit).toBe(7.5)
   })
 
-  it('Tibialis Curl 10kg for 30 reps: the next colour\'s load, short of 35 reps', () => {
-    expect(credit('tibialis-curl', 'weight+reps', packed(10, 30))).toEqual({ rung: 7, credit: 7.5 })
+  it('Tibialis Curl 16kg for 20 reps at 80kg: Poroporo\'s load (0.2×), short of its 30 reps', () => {
+    // Kākāriki (0.15× = 12kg for 10) is met; Poroporo's 16kg for 30 is not.
+    expect(credit('tibialis-curl', 'weight+reps', packed(16, 20))).toEqual({ rung: 5, credit: 6.5 })
   })
 
-  it('earns nothing short of every higher load: 5kg for 65s is Parahi, and Hiriwa asks for 7.5kg', () => {
-    expect(credit('toe-lift', 'weight+time', packed(5, 65))).toEqual({ rung: 8, credit: 8 })
+  it('earns nothing short of every higher load: 5kg for 20s is Parahi, and Hiriwa asks for 7.5kg', () => {
+    expect(credit('toe-lift', 'weight+time', packed(5, 20))).toEqual({ rung: 8, credit: 8 })
   })
 
   it('skips a bodyweight colour, which has no load to reach', () => {
-    // Kiwikiwi by the 15s bodyweight hold; Hiriwa's 7.5kg reached for 20 of 30s.
-    expect(credit('toe-lift', 'weight+time', packed(7.5, 20))).toEqual({ rung: 1, credit: 8.5 })
+    // Kiwikiwi by the 5s bodyweight hold; Whero's 15s bodyweight hold reached
+    // for 10s is no half, because Whero asks for no load.
+    expect(credit('toe-lift', 'weight+time', packed(0, 10))).toEqual({ rung: 1, credit: 1 })
+    // Poroporo by 5kg for 5s; Hiriwa's 7.5kg reached for 8 of 15s.
+    expect(credit('toe-lift', 'weight+time', packed(7.5, 8))).toEqual({ rung: 7, credit: 8.5 })
   })
 
   it('earns nothing at the top, or on a mode that is not compound', () => {
-    expect(credit('toe-lift', 'weight+time', packed(15, 30))).toEqual({ rung: 12, credit: 12 })
+    expect(credit('toe-lift', 'weight+time', packed(15, 15))).toEqual({ rung: 12, credit: 12 })
     expect(halfStepCredit('reps', 50, [10, 20, 30], 'Open', 1)).toBe(1)
   })
 })
@@ -69,26 +78,26 @@ describe('a half is credit, never a colour', () => {
   })
 
   it('eventGrade keeps the whole colour and carries the credit', () => {
-    const g = eventGrade(glute, [row(glute.name, packed(180, 25))], adult)
-    expect(g.rung).toBe(1)
+    const g = eventGrade(glute, [row(glute.name, packed(160, 25))], adult)
+    expect(g.rung).toBe(0)
     expect(g.credit).toBe(11.5)
     expect(eventCredit(g)).toBe(11.5)
   })
 
   it('takes the colour and the credit from whichever efforts earn them', () => {
-    const g = eventGrade(tib, [row(tib.name, packed(7.5, 30)), row(tib.name, packed(10, 30))], adult)
-    expect(g.rung).toBe(7)
-    expect(g.credit).toBe(7.5)
-    expect(g.best?.raw_score).toBe(packed(10, 30))
+    const g = eventGrade(tib, [row(tib.name, packed(12, 30)), row(tib.name, packed(16, 20))], adult)
+    expect(g.rung).toBe(6)
+    expect(g.credit).toBe(6.5)
+    expect(g.best?.raw_score).toBe(packed(12, 30))
   })
 
   it('no credit field when it adds nothing', () => {
-    expect(eventGrade(toe, [row(toe.name, packed(5, 65))], adult).credit).toBeUndefined()
+    expect(eventGrade(toe, [row(toe.name, packed(5, 20))], adult).credit).toBeUndefined()
   })
 
   it('counts in a game colour total', () => {
-    expect(eventRungInGame(toe.name, [row(toe.name, packed(5, 45))], adult)).toBe(7.5)
-    expect(eventRungInGame(glute.name, [row(glute.name, packed(180, 25))], adult)).toBe(11.5)
+    expect(eventRungInGame(toe.name, [row(toe.name, packed(5, 10))], adult)).toBe(7.5)
+    expect(eventRungInGame(glute.name, [row(glute.name, packed(160, 25))], adult)).toBe(11.5)
   })
 
   it('counts in the domain average, and can tip it', () => {

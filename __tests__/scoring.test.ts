@@ -371,7 +371,8 @@ describe('weight rungs', () => {
   })
 
   it('rank heaviest first and record the reps without ranking on them', () => {
-    const ev = getEventBySlug('ghd-situp')!
+    // Pause Dips: GHD Situp lost its weighted level on 12 Oct 2026.
+    const ev = getEventBySlug('pause-dips')!
     const idx = ev.difficultyTiers!.findIndex(t => t.scoring === 'weight')
     const rung = ev.difficultyTiers![idx].name
     const light = computeScoreVals('difficulty+reps', ev, vals({ difficultyTier: rung, weightKg: '10', repCount: '30' }))!

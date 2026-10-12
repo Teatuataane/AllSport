@@ -36,10 +36,11 @@ describe('which ladder applies', () => {
 })
 
 describe('an event\'s colour', () => {
-  it('reproduces the review: one 1-arm push-up is Hiriwa for a Master', () => {
+  // 12 Oct 2026 review: one 1-arm push-up is men's Kōura, so Uenuku for a Master.
+  it('reproduces the review: one 1-arm push-up is Uenuku for a Master', () => {
     const g = eventGrade(ev('Pushups'), [row('Pushups', 40001, { difficulty_tier: '1 Arm Pushup' })], master)
     expect(g).toEqual({
-      slug: ev('Pushups').slug, rung: 9, gradeable: true, played: true,
+      slug: ev('Pushups').slug, rung: 11, gradeable: true, played: true,
       best: { raw_score: 40001, weight_kg: null, difficulty_tier: '1 Arm Pushup' },
     })
   })
@@ -65,7 +66,7 @@ describe('an event\'s colour', () => {
 
   it('takes the best row, not the latest', () => {
     const rows = [row('Pushups', 30049), row('Pushups', 30010)]
-    expect(eventGrade(ev('Pushups'), rows, openMan).rung).toBe(8)
+    expect(eventGrade(ev('Pushups'), rows, openMan).rung).toBe(10)
   })
 
   it('never counts a Game-rung result as a drill', () => {
@@ -89,7 +90,7 @@ describe('an event\'s colour', () => {
   it('grades a lift against the declared bodyweight, and counts it unmet without one', () => {
     const bench = ev('Pause Bench')
     const lift = [row('Pause Bench', 95, { weight_kg: 95, bodyweightKg: BW })]
-    expect(eventGrade(bench, lift, openMan).rung).toBe(11) // 1.25x of 75kg is 95kg
+    expect(eventGrade(bench, lift, openMan).rung).toBe(9) // 95kg is 1.27x of 75kg: Hiriwa (1.2x), short of Kōura (1.3x)
     // No declaration: unmet and still in the denominator, NOT removed from it.
     const undeclared = [row('Pause Bench', 95, { weight_kg: 95 })]
     expect(eventGrade(bench, undeclared, master))
@@ -98,12 +99,12 @@ describe('an event\'s colour', () => {
 
   it('grades a junior against their own declaration, on their own ladder, then shifts it', () => {
     const lift = [row('Pause Bench', 15, { weight_kg: 15, bodyweightKg: 50 })]
-    // A boy: 15kg is under the men's second rung (17.5kg), so Kiwikiwi, then +2.
-    expect(eventGrade(ev('Pause Bench'), lift, { ...under14, gender: 'Male' }).rung).toBe(3)
-    // A girl: 15kg meets the women's third rung (0.3 x 50kg), so Karaka, then +2.
+    // A boy: 15kg meets the men's third rung (0.2 x 50kg), so Karaka, then +2.
+    expect(eventGrade(ev('Pause Bench'), lift, { ...under14, gender: 'Male' }).rung).toBe(5)
+    // A girl: 15kg meets the women's fourth rung (0.26 x 50kg = 13kg), so Kōwhai, then +2.
     // The review page graded every junior on the men's ladder only because
     // public data carries no sex; the real grade reads the registration answer.
-    expect(eventGrade(ev('Pause Bench'), lift, under14).rung).toBe(5)
+    expect(eventGrade(ev('Pause Bench'), lift, under14).rung).toBe(6)
   })
 
   it('reads Wrestling from the rating alone', () => {

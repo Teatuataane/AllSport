@@ -20,12 +20,22 @@
 //                        asks for the load AND the distance, lib/grading.ts)
 //   strength             a RATIO of bodyweight (kind 'ratio'), compared with
 //                        weight_kg ÷ the bodyweight lib/grading.ts supplies
+//
+// Since the 12 Oct 2026 review the weighted holds, reps and carries may write
+// their load as a share of bodyweight ("0.25× BW · 30s", "0.5× BW · ≤ 2:00").
+// That ladder is marked `bwLoad` and its load key holds THOUSANDTHS of
+// bodyweight; lib/grading.ts bwLoadThresholds turns it into kilograms at the
+// bodyweight on the day. A ladder is all kilograms or all shares, never mixed.
+// A share-of-bodyweight carry is the official 200m in a time.
 
 export const COLOURS = ['Kiwikiwi', 'Whero', 'Karaka', 'Kōwhai', 'Kākāriki', 'Kahurangi',
   'Poroporo', 'Parahi', 'Hiriwa', 'Kōura', 'Uenuku', 'Taniwha']
 export const TOP = 12
 export const DRILL_COLOURS = 6
 const BAND = 10000
+/** The official carry distance since the 12 Oct 2026 review. */
+export const CARRY_METRES = 200
+const BW_SHARE = /^(\d+(?:\.\d+)?)× BW$/
 
 /** The roster from lib/eventData.ts source, parsed rather than imported (.mjs). */
 export function parseRoster(src) {
@@ -89,7 +99,7 @@ const secsOf = v => {
 
 /** An open-distance effort: "finish", or "≤ 4:05" as the time predicted over the reference. */
 function effortThreshold(base, rest, bad) {
-  if (rest === 'finish') return base + 1
+  if (rest === 'finish' || rest === 'any') return base + 1
   const m = rest.match(/^≤ (.+)$/)
   const s = m && secsOf(m[1])
   if (s == null) throw bad('an open distance effort: expected "finish" or "≤ 4:05"')
@@ -97,7 +107,7 @@ function effortThreshold(base, rest, bad) {
 }
 
 /** One sheet value to its threshold. Throws with the event and value named. */
-export function threshold(ev, value) {
+export function threshold(ev, value, load) {
   const bad = why => new Error(`${ev.name}: "${value}" — ${why}`)
   const v = value.trim()
 
@@ -114,27 +124,34 @@ export function threshold(ev, value) {
     return m[2] === 'm' ? Math.round(Number(m[1]) * 100) : Number(m[1])
   }
   if (ev.mode === 'hold') {
+    // "any": any hold at all, one second or more.
+    if (v === 'any') return 1
     const s = secsOf(v)
     if (s == null) throw bad('expected "45s" or "1:30"')
     return s
   }
-  if (ev.mode === 'weight+time') {
-    const m = v.match(/^(BW|\d+(?:\.\d+)?kg) · (.+)$/)
-    const s = m && secsOf(m[2])
-    if (!m || s == null) throw bad('expected "BW · 30s" or "12kg · 30s"')
-    const kg = m[1] === 'BW' ? 0 : Number(m[1].slice(0, -2))
-    return Math.round(kg * 100) * BAND + s
-  }
-  if (ev.mode === 'weight+reps') {
-    const m = v.match(/^(BW|\d+(?:\.\d+)?kg) · (\d+)$/)
-    if (!m) throw bad('expected "BW · 20" or "10kg · 20"')
-    const kg = m[1] === 'BW' ? 0 : Number(m[1].slice(0, -2))
-    return Math.round(kg * 100) * BAND + Number(m[2])
+  if (ev.mode === 'weight+time' || ev.mode === 'weight+reps') {
+    const reps = ev.mode === 'weight+reps'
+    const m = v.match(/^(.+?) · (.+)$/)
+    const other = m && (reps ? (/^\d+$/.test(m[2]) ? Number(m[2]) : null) : secsOf(m[2]))
+    const share = m && m[1].match(BW_SHARE)
+    const kg = m && (m[1] === 'BW' ? 0 : /^\d+(?:\.\d+)?kg$/.test(m[1]) ? Number(m[1].slice(0, -2)) : null)
+    if (!m || other == null || (kg == null && !share)) {
+      throw bad(reps ? 'expected "BW · 20", "10kg · 20" or "0.1× BW · 20"' : 'expected "BW · 30s", "12kg · 30s" or "0.25× BW · 30s"')
+    }
+    if (share) { load?.('bw'); return Math.round(Number(share[1]) * 1000) * BAND + other }
+    if (kg > 0) load?.('kg')
+    return Math.round(kg * 100) * BAND + other
   }
   if (ev.mode === 'weight+distance+time') {
     const m = v.match(/^(\d+(?:\.\d+)?)kg · (\d+)m$/)
-    if (!m) throw bad('expected "40kg · 100m"')
-    return Math.round(Number(m[1]) * 10) * 1e9 + Number(m[2]) * BAND
+    if (m) { load?.('kg'); return Math.round(Number(m[1]) * 10) * 1e9 + Number(m[2]) * BAND }
+    // "0.5× BW · ≤ 2:00": that share of bodyweight over the official 200m, in
+    // the time; "· any" in any time.
+    const b = v.match(/^(\d+(?:\.\d+)?)× BW · (.+)$/)
+    if (!b) throw bad('expected "0.5× BW · ≤ 2:00", "0.1× BW · any" or "40kg · 100m"')
+    load?.('bw')
+    return Math.round(Number(b[1]) * 1000) * 1e9 + CARRY_METRES * BAND + effortThreshold(0, b[2], bad)
   }
   if (ev.mode === 'distance+time' && ev.tiers.length === 0) return effortThreshold(0, v, bad)
 
@@ -147,6 +164,11 @@ export function threshold(ev, value) {
   if (tier.scoring === 'sport') throw bad('the Game rung carries no standard; its colours come from the rating')
   const rest = t[2].trim()
   const base = idx * BAND
+  // "D3 · any" (12 Oct 2026 review): doing the level at all, any reps, any
+  // hold, any time. Every scored row on a level sits at base + 1 or above, so
+  // this is the lowest threshold on that level. Not on a weighted rung, where
+  // the number is the load.
+  if (rest === 'any' && tier.scoring !== 'weight') return base + 1
 
   if (tier.scoring === 'weight') {
     const m = rest.match(/^\+(\d+(?:\.\d+)?)kg$/)
@@ -214,7 +236,10 @@ export function compile(sheetText, rosterSrc) {
     for (const key of keys) {
       const label = { E: 'Everyone', M: 'Men', F: 'Women' }[key]
       let nums
-      try { nums = s.lists[key].map(v => threshold(ev, v)) } catch (e) { errors.push(e.message); continue }
+      const loads = new Set()
+      try { nums = s.lists[key].map(v => threshold(ev, v, l => loads.add(l))) } catch (e) { errors.push(e.message); continue }
+      if (loads.size > 1) { errors.push(`${ev.name} (${label}): mixes kilograms and shares of bodyweight`); continue }
+      if (loads.has('bw')) entry.bwLoad = true
       if (nums.length > want) errors.push(`${ev.name} (${label}): ${nums.length} colours; a ${game ? 'Game-rung event lists six' : 'ladder lists twelve'}`)
       if (nums.length < want) partial.push(`${ev.name} (${label}): ${nums.length} of ${want}`)
       for (let i = 1; i < nums.length; i++) {
@@ -260,6 +285,8 @@ export function render({ standards }) {
   L.push('  all?: readonly number[]')
   L.push('  M?: readonly number[]')
   L.push('  F?: readonly number[]')
+  L.push('  /** Loads are thousandths of bodyweight, not kilograms (lib/grading.ts bwLoadThresholds). */')
+  L.push('  bwLoad?: true')
   L.push('}')
   L.push('')
   L.push('export const STANDARDS: Readonly<Record<string, EventStandards>> = {')
@@ -268,6 +295,7 @@ export function render({ standards }) {
     if (s.all) parts.push(`all: ${arr(s.all)}`)
     if (s.M) parts.push(`M: ${arr(s.M)}`)
     if (s.F) parts.push(`F: ${arr(s.F)}`)
+    if (s.bwLoad) parts.push('bwLoad: true')
     L.push(`  '${s.slug}': { ${parts.join(', ')} },`)
   }
   L.push('}')

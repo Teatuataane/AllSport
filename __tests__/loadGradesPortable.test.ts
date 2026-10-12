@@ -72,8 +72,8 @@ describe('lib/loadGrades.ts is server-safe', () => {
     const { db } = fakeDb(base())
     const state = await loadGradeState(db, 'p1')
     expect(state).not.toBeNull()
-    // The deadlift above is rung 5 at a 90-100kg band. See bodyweightBand.test.ts.
-    expect(state!.grades.events.get('deadlift')!.rung).toBe(5)
+    // The deadlift above is rung 6 at a 90-100kg band. See bodyweightBand.test.ts.
+    expect(state!.grades.events.get('deadlift')!.rung).toBe(6)
     expect(state!.games).toBe(1)
   })
 
@@ -145,7 +145,7 @@ describe('the 42703 fallbacks keep the scores', () => {
     const { db } = fakeDb(script)
     const state = await loadGradeState(db, 'p1')
     // No band on the row: it falls back to the player's, 90 to 100kg -> rung 5.
-    expect(state!.grades.events.get('deadlift')!.rung).toBe(5)
+    expect(state!.grades.events.get('deadlift')!.rung).toBe(6)
     expect(state!.games).toBe(1)
   })
 
@@ -158,7 +158,7 @@ describe('the 42703 fallbacks keep the scores', () => {
     }])]
     const { db } = fakeDb(script)
     const state = await loadGradeState(db, 'p1')
-    expect(state!.grades.events.get('deadlift')!.rung).toBe(5)
+    expect(state!.grades.events.get('deadlift')!.rung).toBe(6)
     expect(state!.grades.events.get('deadlift')!.source).toBe('solo')
   })
 
@@ -169,7 +169,7 @@ describe('the 42703 fallbacks keep the scores', () => {
     withFirst.results = [ok(rows)]
     // Unstamped lift, current band Under 50kg, first band 90 to 100kg: graded
     // on the FIRST, so re-declaring lighter gains nothing.
-    expect((await loadGradeState(fakeDb(withFirst).db, 'p1'))!.grades.events.get('deadlift')!.rung).toBe(5)
+    expect((await loadGradeState(fakeDb(withFirst).db, 'p1'))!.grades.events.get('deadlift')!.rung).toBe(6)
 
     // A database without bodyweight_band_first: the band read hits 42703 and
     // must ask again without it, keeping the current band.
@@ -180,7 +180,7 @@ describe('the 42703 fallbacks keep the scores', () => {
     const bandAsks = log.filter(c => c.table === 'players' && c.cols.includes('bodyweight_band')).map(c => c.cols)
     expect(bandAsks).toEqual(['bodyweight_band, bodyweight_band_first', 'bodyweight_band'])
     expect(state!.hasBand).toBe(true)
-    expect(state!.grades.events.get('deadlift')!.rung).toBe(5)
+    expect(state!.grades.events.get('deadlift')!.rung).toBe(6)
   })
 })
 
@@ -205,7 +205,7 @@ describe('the bodyweight of the day', () => {
     const state = await loadGradeState(fakeDb(script).db, 'p1')
     // 100kg at 95kg bodyweight is rung 5. The row's own band says Under 50kg,
     // which would be rung 11 — so the band is genuinely no longer read.
-    expect(state!.grades.events.get('deadlift')!.rung).toBe(5)
+    expect(state!.grades.events.get('deadlift')!.rung).toBe(6)
     expect(state!.hasBand).toBe(true)
   })
 
@@ -215,7 +215,7 @@ describe('the bodyweight of the day', () => {
       { measured_on: '2026-09-20', kg: 45, created_at: '2026-09-20T00:00:00Z' },
     ])
     // A lighter weight declared AFTER the lift must not re-price it.
-    expect((await loadGradeState(fakeDb(script).db, 'p1'))!.grades.events.get('deadlift')!.rung).toBe(5)
+    expect((await loadGradeState(fakeDb(script).db, 'p1'))!.grades.events.get('deadlift')!.rung).toBe(6)
   })
 
   it('counts the lift as unmet when the table is live but they have declared nothing', async () => {

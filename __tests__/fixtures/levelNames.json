@@ -128,7 +128,7 @@
   "Muscle Up"
  ],
  "push-up-contest": [
-  "Hands Up Knee Pushup",
+  "Elevated Knee Pushup",
   "Knee Pushup",
   "Elevated Pushup",
   "Pushup",
@@ -141,11 +141,9 @@
   "1 Arm Finger Pushup"
  ],
  "ghd-situp": [
-  "Dead Bug",
   "Crunch",
   "Sit Up",
-  "GHD Situp",
-  "Weighted GHD Situp"
+  "GHD Situp"
  ],
  "hamstring-curl": [
   "Glute Thrust",
@@ -165,8 +163,9 @@
  "calf-raises": [
   "Calf Raise",
   "Deficit Calf Raise",
+  "Single Leg Calf Raise",
   "Toe Calf Raise",
-  "Single Leg Toe Raise"
+  "SL Toe Calf Raise"
  ],
  "back-extension": [
   "Bird Dog",
@@ -200,10 +199,10 @@
   "Rainbow Bridge"
  ],
  "forward-fold": [
-  "Elevated Seated",
-  "Standing Fold",
-  "Standing · Bent Knees",
-  "Standing · Straight",
+  "Bent Leg Fold",
+  "Straight Leg",
+  "Hands to Legs",
+  "Elbows to Legs",
   "Fingertips to Floor",
   "Palms to Floor",
   "Elbows to Toes",
@@ -264,32 +263,45 @@
   "Standing Bend",
   "Gate Pose",
   "Seated Bend",
-  "Side-Split Lateral"
+  "Top Hand to Foot",
+  "Pancake Side Bend"
  ],
  "full-bound-twist": [
   "Seated Twist",
   "Half Lord",
+  "Assisted Bound Twist",
   "Bound Twist",
   "Full Bound Twist"
  ],
- "australian-football": [
-  "Drop Kick",
-  "Drop Kick (5m)",
-  "Drop Kick (10m)",
-  "Drop Kick (20m)",
-  "Game"
+ "high-jump": [
+  "2 Feet Hop",
+  "1 Foot Hop",
+  "Ankles",
+  "Shins",
+  "Knees",
+  "Thighs",
+  "Hips",
+  "Belly Button",
+  "Ribs",
+  "Chest",
+  "Shoulder",
+  "Neck"
  ],
  "plie-squat": [
-  "Supported Demi",
+  "Seated Demi",
   "Demi",
-  "Grand",
-  "Relevé Grand"
+  "Demi Squat",
+  "Partial Crossed Plie",
+  "Crossed Plie Squat"
  ],
  "seiza": [
   "Supported Kneel",
-  "Hips to Heels",
-  "Toes Tucked",
-  "Reclined Kneel"
+  "Seiza",
+  "Reclined Seiza",
+  "Elbows to Floor",
+  "Shoulders to Floor",
+  "Seiza Bridge",
+  "Rainbow Seiza"
  ],
  "wrist-stretch": [
   "Hand Assisted",
@@ -304,6 +316,15 @@
   "Fingers Backwards",
   "Fingers Inwards",
   "Inwards Plank"
+ ],
+ "clap-pushups": [
+  "Elevated Knee Clap",
+  "Knee Clap",
+  "Elevated Clap",
+  "Clap Pushups",
+  "Chest Slap",
+  "Double Clap",
+  "Behind-Back Clap"
  ],
  "burpee-broad-jump": [
   "25m",
@@ -332,12 +353,14 @@
   "Game"
  ],
  "repeat-high-jump": [
-  "Ankle height",
-  "Knee height",
-  "Hip height",
-  "Belly Button Height",
-  "Rib Height",
-  "Shoulder height"
+  "Ankles",
+  "Knees",
+  "Hips",
+  "Belly Button",
+  "Ribs",
+  "Chest",
+  "Shoulder",
+  "Head"
  ],
  "american-football": [
   "Passes",
@@ -345,6 +368,13 @@
   "Pass (5m)",
   "Pass (10m)",
   "Pass (20m)",
+  "Game"
+ ],
+ "australian-football": [
+  "Drop Kick",
+  "Drop Kick (5m)",
+  "Drop Kick (10m)",
+  "Drop Kick (20m)",
   "Game"
  ],
  "rope-climb": [
@@ -414,6 +444,19 @@
   "Single Leg Balance",
   "Beam",
   "Slackline",
+  "Game"
+ ],
+ "diving": [
+  "Dive",
+  "1m Dive",
+  "2m Dive",
+  "5m Dive",
+  "Game"
+ ],
+ "poi": [
+  "Single Poi Spin",
+  "Two Poi Same Way",
+  "Weave",
   "Game"
  ],
  "volleyball": [
@@ -501,6 +544,13 @@
   "Partner Pass (10m)",
   "Game"
  ],
+ "water-polo": [
+  "Partner Pass",
+  "Partner Pass (2m)",
+  "Partner Pass (5m)",
+  "Partner Pass (10m)",
+  "Game"
+ ],
  "netball": [
   "Shot Under Hoop",
   "Shot (2m)",
@@ -573,6 +623,18 @@
   "Hit Kubb (2m)",
   "Hit Kubb (5m)",
   "Hit Kubb (10m)",
+  "Game"
+ ],
+ "cornhole": [
+  "Hit the Board",
+  "Hole (3m)",
+  "Hole (8m)",
+  "Game"
+ ],
+ "airsoft": [
+  "Hit Target (5m)",
+  "Hit Target (10m)",
+  "Hit Target (20m)",
   "Game"
  ]
 }

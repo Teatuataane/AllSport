@@ -43,19 +43,19 @@ const MAR = '2026-03-05T03:00:00.000Z'
 describe('colour score', () => {
   it('matches the colour total the leaderboard publishes for each game', () => {
     const i = inputs([
-      row('a', JAN, 'Forward Fold', 20030),
-      row('b', FEB, 'Forward Fold', 30030),
+      row('a', JAN, 'Forward Fold', 40060),
+      row('b', FEB, 'Forward Fold', 50060),
       row('b', FEB, 'Deadlift', 100, { weight_kg: 100 }),
     ])
     const scores = gameScores('p', i)
     const published = leaderboardScoresFrom('p', i, gradeStateFrom('p', i)).games
     expect(published.map(g => [g.session_id, g.total])).toEqual([...scores.values()].map(g => [g.sessionId, g.points]))
     expect(scores.get('a')!.points).toBe(6)
-    expect(scores.get('b')!.rungs.get('Deadlift')).toBe(6)
+    expect(scores.get('b')!.rungs.get('Deadlift')).toBe(7)
   })
 
   it('includes a game still in progress, marked open', () => {
-    const live = row('live', MAR, 'Forward Fold', 20030)
+    const live = row('live', MAR, 'Forward Fold', 40060)
     live.sessions!.is_active = true
     const g = gameScores('p', inputs([live])).get('live')!
     expect(g.closed).toBe(false)
@@ -73,10 +73,10 @@ describe('colour score', () => {
 
 describe('what was new', () => {
   const i = inputs([
-    row('a', JAN, 'Forward Fold', 20030),
-    row('b', FEB, 'Forward Fold', 30030),
+    row('a', JAN, 'Forward Fold', 40060),
+    row('b', FEB, 'Forward Fold', 50060),
     row('b', FEB, 'Bridge', 60),
-    row('c', MAR, 'Forward Fold', 20030),
+    row('c', MAR, 'Forward Fold', 40060),
   ])
   const scores = gameScores('p', i)
 
@@ -103,7 +103,7 @@ describe('what was new', () => {
 describe('colours earned in a game', () => {
   const award = (at: string, domain = 7): GradeAward => ({ domain_number: domain, rung: 3, grade_name: 'Karaka', conferred_at: at })
   const close = (start: string) => Date.parse(start) + GAME_MS
-  const scores = gameScores('p', inputs([row('a', JAN, 'Forward Fold', 20030), row('b', FEB, 'Forward Fold', 20030)]))
+  const scores = gameScores('p', inputs([row('a', JAN, 'Forward Fold', 40060), row('b', FEB, 'Forward Fold', 40060)]))
 
   it('takes an award from the game or the hours after it', () => {
     const during = new Date(close(JAN) - 1000).toISOString()
@@ -122,7 +122,7 @@ describe('next time', () => {
   it('puts the gap in the event\'s own units', () => {
     const fold = getEventByName('Forward Fold')!
     expect(describeRawGap(fold, 20020, 20030)).toBe('10s longer')
-    expect(describeRawGap(fold, 20030, 30010)).toBe('move up to Standing · Straight')
+    expect(describeRawGap(fold, 20030, 30010)).toBe('move up to Elbows to Legs')
     // Bronco is raced: the within-tier term is 10000 minus the seconds.
     expect(describeRawGap(getEventByName('Bronco')!, 19860, 19875)).toBe('15s faster')
     // Running is an open distance (5 Oct 2026), ranked on its predicted 1000m.
@@ -138,10 +138,11 @@ describe('next time', () => {
   })
 
   it('states a lift in kilograms at the player\'s latest bodyweight', () => {
-    // 80kg: Kahurangi is 95kg, Poroporo 110kg, so a 100kg best is 10kg short.
+    // 80kg: Poroporo is 96kg, Parahi 112kg, so a 100kg best is 12kg short,
+    // stated to the next 2.5kg plate step.
     const i = inputs([row('a', JAN, 'Deadlift', 100, { weight_kg: 100 })])
     const step = nextStep(['Deadlift'], gradeStateFrom('p', i).grades, MEN, i.bodyweights!, '2026-03-01')!
-    expect(nextStepLine(step)).toBe('Deadlift: est. 1RM 10kg higher for Poroporo')
+    expect(nextStepLine(step)).toBe('Deadlift: est. 1RM 12.5kg higher for Parahi')
   })
 
   it('leaves a lift out when no bodyweight has been declared', () => {
@@ -150,8 +151,8 @@ describe('next time', () => {
   })
 
   it('picks the event sitting closest to its next colour', () => {
-    // Forward Fold 20029 is one second short; Bridge 60 sits at the bottom of its step.
-    const i = inputs([row('a', JAN, 'Forward Fold', 20029), row('a', JAN, 'Bridge', 60)])
+    // Forward Fold 20059 is one second short of Kōwhai's D3 · 1:00; Bridge 60 sits at the bottom of its step.
+    const i = inputs([row('a', JAN, 'Forward Fold', 20059), row('a', JAN, 'Bridge', 60)])
     const step = nextStep(['Forward Fold', 'Bridge'], gradeStateFrom('p', i).grades, MEN, [], '2026-03-01')!
     expect(step.eventName).toBe('Forward Fold')
     expect(step.gap).toBe('1s longer')

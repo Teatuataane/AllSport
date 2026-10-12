@@ -119,7 +119,10 @@ describe('the backfill migration', () => {
   const sql = readFileSync('supabase/migrations/20261008223803_rescore_short_distance_efforts.sql', 'utf8')
 
   it('lists every open distance event with its reference distance', () => {
-    for (const e of OPEN_DISTANCE) expect(sql, e.slug).toContain(`('${e.slug}', ${e.referenceMetres},`)
+    // Frozen when applied: Swim's reference was 100m until 12 Oct 2026 (no swim
+    // had been scored, so nothing was re-encoded when it became 200m).
+    const THEN: Record<string, number> = { swim: 100 }
+    for (const e of OPEN_DISTANCE) expect(sql, e.slug).toContain(`('${e.slug}', ${THEN[e.slug] ?? e.referenceMetres},`)
     const crawl = ev('animal-crawl')
     crawl.difficultyTiers!.forEach((t, i) => expect(sql).toContain(`('animal-crawl', '${t.name}', ${i})`))
   })

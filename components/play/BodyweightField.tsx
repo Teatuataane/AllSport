@@ -20,9 +20,13 @@ import { useCallback, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase-browser'
 import { STANDARDS } from '@/lib/standards'
 
-/** Does any of today's events grade on a ratio of bodyweight? */
+/**
+ * Does any of today's events grade on a ratio of bodyweight? The lifts, and
+ * since 12 Oct 2026 the weighted holds, reps and carries whose loads are a
+ * share of bodyweight (bwLoad).
+ */
 export function needsBodyweight(eventSlugs: readonly (string | null | undefined)[]): boolean {
-  return eventSlugs.some(s => !!s && STANDARDS[s]?.kind === 'ratio')
+  return eventSlugs.some(s => !!s && (STANDARDS[s]?.kind === 'ratio' || !!STANDARDS[s]?.bwLoad))
 }
 
 type Props = {

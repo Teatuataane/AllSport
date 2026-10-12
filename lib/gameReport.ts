@@ -27,7 +27,7 @@ import { tierScoring, fmtTime } from './scoring'
 import { eventRungInGame, placePoints, MAX_GAME_COLOUR_TOTAL } from './leaderboardScores'
 import { ladderFor, liftKg, type PlayerGrades, type GradePlayer } from './playerGrades'
 import {
-  ageBand, rungForScore, rungForCompound, thresholdFor, ratioThresholdsKg, bodyweightOn, gradeForRung,
+  ageBand, rungForScore, rungForCompound, thresholdFor, ratioThresholdsKg, bodyweightOn, gradeForRung, compoundLadderAt,
   AGE_SHIFT, DOMAIN_COUNT, DRILL_CAP, TOP_RUNG, type BodyweightDeclaration,
 } from './grading'
 import { seasonRowsFrom, ratingsAtClose, gradePlayerOf, type GradeInputs, type GradeAward } from './loadGrades'
@@ -186,14 +186,20 @@ const secsText = (s: number) => (s >= 60 ? fmtTime(Math.ceil(s)) : `${trim(s)}s`
  */
 const carryKg = (x: number) => Math.floor(x / 1e9) / 10
 const carryMetres = (x: number) => Math.floor((x % 1e9) / 1e4)
+/** A carry's time term, 10000 minus the seconds; 0 or 1 on a standard with no time. */
+const carryTerm = (x: number) => x % 1e4
 
 export function describeRawGap(ev: EventData, best: number, target: number): string | null {
   if (ev.inputMode === 'weight+distance+time') {
-    // A colour needs its load and its distance (rungForCarry).
-    const needKg = carryKg(target), needM = carryMetres(target)
-    if (needKg > carryKg(best)) return `${trim(needKg)}kg for ${needM}m`
+    // A colour needs its load, its distance and, since the 12 Oct 2026
+    // review, its time (meetsCarry).
+    const needKg = carryKg(target), needM = carryMetres(target), needTerm = carryTerm(target)
+    const timed = needTerm > 1
+    if (needKg > carryKg(best)) return `${trim(needKg)}kg for ${needM}m${timed ? ` in ${fmtTime(1e4 - needTerm)}` : ''}`
     const d = needM - carryMetres(best)
-    return d > 0 ? `${d}m further` : null
+    if (d > 0) return `${d}m further`
+    const faster = needTerm - carryTerm(best)
+    return timed && faster > 0 ? `${secsText(faster)} faster` : null
   }
   if (ev.inputMode === 'weight+reps') {
     const kg = (x: number) => Math.floor(x / DT_CAP) / 100
@@ -297,10 +303,14 @@ export function nextStep(
       if (raw == null) continue
       // An estimated distance effort holds no colour (lib/playerGrades.ts).
       const estimate = ev.inputMode === 'distance+time' && decodeDistanceEffort(raw).estimated
-      cur = estimate ? 0 : rungForCompound(ev.inputMode, raw, ladder, band) ?? rungForScore(raw, ladder, band, { cap })
+      // A load written as a share of bodyweight reads at the latest bodyweight,
+      // as a lift does; with none, the event is left out.
+      const at = compoundLadderAt(ev.inputMode, ladder, s.bwLoad, bw)
+      if (!at) continue
+      cur = estimate ? 0 : rungForCompound(ev.inputMode, raw, at, band) ?? rungForScore(raw, at, band, { cap })
       if (cur + 1 > cap) continue
-      to = thresholdFor(ladder, cur + 1 - shift)
-      from = cur > 0 ? thresholdFor(ladder, cur - shift) : Math.min(raw, to)
+      to = thresholdFor(at, cur + 1 - shift)
+      from = cur > 0 ? thresholdFor(at, cur - shift) : Math.min(raw, to)
       bestVal = raw
       gap = describeRawGap(ev, raw, to)
     }
@@ -316,7 +326,11 @@ export function nextStep(
     const progress = heldShort
       ? Math.max(0, Math.min(1, (bestVal % DT_CAP) / Math.max(1, to % DT_CAP)))
       : carriedShort
-        ? Math.max(0, Math.min(1, carryMetres(bestVal) / Math.max(1, carryMetres(to))))
+        ? carryMetres(bestVal) < carryMetres(to)
+          ? Math.max(0, Math.min(1, carryMetres(bestVal) / Math.max(1, carryMetres(to))))
+          // The distance is done; the time is short. Progress is how close the
+          // time is: the colour's seconds over the best's.
+          : Math.max(0, Math.min(1, (1e4 - carryTerm(to)) / Math.max(1, 1e4 - carryTerm(bestVal))))
         : span > 0 ? Math.max(0, Math.min(1, (bestVal - from) / span)) : 0
     const step: NextStep = { eventName: ev.name, slug: ev.slug, nextRung: cur + 1, gap, progress }
     if (!pick || step.progress > pick.progress) pick = step

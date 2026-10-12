@@ -45,14 +45,14 @@ describe('liftKg', () => {
 })
 
 describe('the colour a lift reaches', () => {
-  it('grades the estimate: 130kg for reps (est. 140kg) is Poroporo at 100kg bodyweight', () => {
-    // 1.36× is 135kg. The load alone (130kg) would not clear it; the estimate does.
-    expect(scoreRung(deadlift, [liftRow(140, 130)], man, 100)).toBe(7)
-    expect(scoreRung(deadlift, [liftRow(130, 130)], man, 100)).toBeLessThan(7)
+  it('grades the estimate: 130kg for reps (est. 140kg) is Parahi at 100kg bodyweight', () => {
+    // 1.4× is 140kg. The load alone (130kg) would not clear it; the estimate does.
+    expect(scoreRung(deadlift, [liftRow(140, 130)], man, 100)).toBe(8)
+    expect(scoreRung(deadlift, [liftRow(130, 130)], man, 100)).toBeLessThan(8)
   })
 
   it('grades on the load when the score is unusable (0), rather than dropping the lift', () => {
-    expect(scoreRung(deadlift, [liftRow(0, 140)], man, 100)).toBe(7)
+    expect(scoreRung(deadlift, [liftRow(0, 140)], man, 100)).toBe(8)
   })
 
   it('never grades a row with no score at all: eventGrade drops it before liftKg sees it', () => {
@@ -64,7 +64,7 @@ describe('liveEventRung: this game\'s colour on the game screen', () => {
   it('is the rung the game report counts for the same rows', () => {
     const rows = [liftRow(140, 130)]
     const live = liveEventRung(deadlift, rows, man, 100)
-    expect(live).toBe(7)
+    expect(live).toBe(8)
     expect(live).toBe(eventRungInGame('Deadlift', rows.map(r => ({ ...r, event_name: 'Deadlift', bodyweightKg: 100 })), man))
   })
 
@@ -107,7 +107,7 @@ describe('next time, for a lift', () => {
     }
     const step = nextStep(['Deadlift'], gradeStateFrom('p', i).grades, { ...man, gender: 'Male' }, i.bodyweights!, '2026-03-01')!
     expect(getEventByName('Deadlift')).toBeTruthy()
-    expect(nextStepLine(step)).toBe('Deadlift: est. 1RM 10kg higher for Poroporo')
+    expect(nextStepLine(step)).toBe('Deadlift: est. 1RM 12.5kg higher for Parahi')
   })
 })
 
@@ -164,11 +164,11 @@ describe('load-and-hold colours', () => {
     expect(meetsLoadHold(hold(2.5, 90), hold(5, 30))).toBe(false)
   })
 
-  it('reaches the top only with 15kg for 30 seconds', () => {
-    expect(rungForLoadHold(hold(15, 30), toeLadder, 'Open')).toBe(12)
-    // Strictly both: one second short of every 30-second colour leaves only
-    // the 15-second bodyweight hold, however heavy the load.
-    expect(rungForLoadHold(hold(15, 29), toeLadder, 'Open')).toBe(1)
+  it('reaches the top only with 15kg for 15 seconds', () => {
+    expect(rungForLoadHold(hold(15, 15), toeLadder, 'Open')).toBe(12)
+    // Strictly both: one second short of every 15-second colour leaves only
+    // the 5-second holds, the best of them Poroporo's 5kg, however heavy the load.
+    expect(rungForLoadHold(hold(15, 14), toeLadder, 'Open')).toBe(7)
   })
 
   it('grades a bodyweight hold on its seconds', () => {

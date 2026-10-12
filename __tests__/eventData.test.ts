@@ -357,7 +357,8 @@ describe('getEventsByDomain', () => {
     expect(walking.inputMode).toBe('distance+time')
     expect(walking.referenceMetres).toBe(1000)
     expect(isTimedEffort('walking')).toBe(false)
-    expect(getEventBySlug('swim')!.referenceMetres).toBe(100)
+    // 200m, the official race, since 12 Oct 2026.
+    expect(getEventBySlug('swim')!.referenceMetres).toBe(200)
   })
 })
 

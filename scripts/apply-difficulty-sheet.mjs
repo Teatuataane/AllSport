@@ -19,7 +19,6 @@ const byName = new Map(spec.map(r => [r.name, r]))
 const WEIGHT_RUNGS = {
   'Pause Dips': 'Weighted RTO Dip',
   'Pause Chinup': 'Weighted Chinup',
-  'GHD Situp': 'Weighted GHD Situp',
 }
 // Golf and Disc Golf top out in a real round: win/draw/loss, with the stroke
 // count recorded alongside it.

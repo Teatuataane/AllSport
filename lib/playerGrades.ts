@@ -10,7 +10,7 @@ import { EVENTS, getEventByName, decodeDistanceEffort, DT_CAP, type EventData } 
 import { STANDARDS } from './standards'
 import { isGameTier } from './eventKinds'
 import {
-  ageBand, rungForScore, rungForCompound, isCompoundMode, halfStepCredit, ratioThresholdsKg, ratingRung, gameEventRung,
+  ageBand, rungForScore, rungForCompound, isCompoundMode, halfStepCredit, ratioThresholdsKg, ratingRung, gameEventRung, compoundLadderAt,
   domainGrade, overallGrade, colourGate, DRILL_CAP, DOMAIN_COUNT,
   type AgeBand, type DomainGradeResult, type OverallGradeResult, type ColourGate,
 } from './grading'
@@ -220,10 +220,22 @@ export function eventGrade(
     // rung they reach, earliest winning a tie, as for lifts. The colour held
     // is the best rung; the credit is the best half step, which can come from
     // a different row (a heavy short hold beside a light full one).
+    //
+    // Since the 12 Oct 2026 review some of these ladders write the load as a
+    // share of bodyweight (s.bwLoad): each row reads it in kilograms at its own
+    // day's bodyweight, and with no bodyweight on any row the event is unmet
+    // and blocked, exactly as for a lift.
+    let anyBw = false
     for (const r of drillRows) {
-      const rung = rungForCompound(ev.inputMode, r.raw_score!, ladder, band)!
+      const rowLadder = compoundLadderAt(ev.inputMode, ladder, s.bwLoad, r.bodyweightKg)
+      if (!rowLadder) continue
+      anyBw = true
+      const rung = rungForCompound(ev.inputMode, r.raw_score!, rowLadder, band)!
       if (rung > drill) { drill = rung; bestRow = r }
-      credit = Math.max(credit, halfStepCredit(ev.inputMode, r.raw_score!, ladder, band, rung))
+      credit = Math.max(credit, halfStepCredit(ev.inputMode, r.raw_score!, rowLadder, band, rung))
+    }
+    if (s.bwLoad && !anyBw && drillRows.length > 0) {
+      return { slug: ev.slug, rung: 0, gradeable: true, bodyweightBlocked: true, played, ...pick(topRow) }
     }
   } else if (drillRows.length) {
     // An effort short of a distance event's reference ranks on its estimate

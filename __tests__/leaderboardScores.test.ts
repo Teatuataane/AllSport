@@ -12,7 +12,7 @@ const masters: GradePlayer = { division: 'Masters Women', ageYears: 45, gender: 
 
 const row = (over: Partial<SeasonRow>): SeasonRow => ({
   session_id: 's1', session_date: '2026-05-02', closed: true,
-  event_name: 'Forward Fold', raw_score: 20030, weight_kg: null, difficulty_tier: null,
+  event_name: 'Forward Fold', raw_score: 40060, weight_kg: null, difficulty_tier: null,
   ...over,
 })
 
@@ -28,7 +28,7 @@ describe('domain colours', () => {
 
 describe('an event in one game', () => {
   it('scores the colour rung the result reached', () => {
-    // Forward Fold 20030 is rung 6 on the Open ladder.
+    // Forward Fold 40060 (D5 · 1:00) is rung 6 on the Open ladder.
     expect(eventRungInGame('Forward Fold', [row({})], open)).toBe(6)
   })
 

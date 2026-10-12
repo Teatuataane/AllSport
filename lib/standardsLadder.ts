@@ -15,11 +15,11 @@
 import { STANDARDS } from './standards'
 import {
   AGE_SHIFT, DRILL_CAP, RATING_FLOOR, RATING_STEP, TOP_RUNG,
-  ageBand, gradeForRung, ratioThresholdsKg, thresholdFor,
+  ageBand, gradeForRung, ratioThresholdsKg, thresholdFor, bwLoadKg,
 } from './grading'
 import { ladderFor, type GradePlayer } from './playerGrades'
 import { formatPR } from './scoreFormat'
-import { decodeCarry, fmtDistance } from './scoring'
+import { decodeCarry, fmtDistance, fmtTime } from './scoring'
 import { isTimedEffort, type EventData } from './eventData'
 
 export type LadderRow = {
@@ -38,7 +38,27 @@ export const RATING_ONLY_NOTE = 'No drill colours: this event is graded on games
 
 /** Does this event's ladder need a bodyweight to read in kilograms? */
 export function needsBodyweight(ev: EventData): boolean {
-  return STANDARDS[ev.slug]?.kind === 'ratio'
+  const s = STANDARDS[ev.slug]
+  return s?.kind === 'ratio' || !!s?.bwLoad
+}
+
+/**
+ * A threshold whose load is a share of bodyweight (12 Oct 2026): "0.25×
+ * bodyweight · 30s", with the kilograms once a bodyweight is known. The load
+ * key holds thousandths of bodyweight (lib/grading.ts bwLoadThresholds).
+ */
+function bwLoadLabel(ev: EventData, t: number, bodyweightKg: number | null): string {
+  const carry = ev.inputMode === 'weight+distance+time'
+  const key = carry ? 1e9 : 10000
+  const share = Math.floor(t / key) / 1000, rest = t % key
+  const kg = bodyweightKg != null && bodyweightKg > 0 && share > 0 ? ` (${trim(bwLoadKg(share * 1000, bodyweightKg))} kg)` : ''
+  const load = share > 0 ? `${trim(share)}× bodyweight${kg}` : 'Bodyweight'
+  if (carry) {
+    const metres = Math.floor(rest / 10000), term = rest % 10000
+    return `${load} · ${fmtDistance(metres)} · ${term > 1 ? `≤ ${fmtTime(10000 - term)}` : 'any time'}`
+  }
+  if (ev.inputMode === 'weight+reps') return `${load} · ${rest} reps`
+  return `${load} · ${rest >= 60 ? fmtTime(rest) : `${rest}s`}`
 }
 
 /**
@@ -50,6 +70,13 @@ function drillLabel(ev: EventData, t: number): string {
   const raced = ev.inputMode === 'distance+time' || (ev.inputMode === 'difficulty+time' && isTimedEffort(ev.slug))
   if (raced && t % 10000 <= 1) {
     return ev.difficultyTiers?.length ? `D${Math.floor(t / 10000) + 1} · any time` : 'Any time'
+  }
+  // "D3 · any" (12 Oct 2026): the level done at all. A within-level term of 1
+  // would otherwise read as "1 reps" or "1s".
+  const tiered = !!ev.difficultyTiers?.length && ev.inputMode.startsWith('difficulty+')
+  if (tiered && t % 10000 === 1) {
+    const idx = Math.floor(t / 10000)
+    if (ev.difficultyTiers![idx]?.scoring !== 'weight') return `D${idx + 1} · any`
   }
   if (ev.inputMode === 'weight+distance+time') {
     // A loaded carry's time is raced too: 10000 minus the seconds, so a floor
@@ -99,7 +126,7 @@ export function standardsLadder(
     const t = thresholdFor(ladder, r - shift)
     // Below the Open floor the ladder is extrapolated; at or under zero that
     // is "any score".
-    row(r, t > 0 ? drillLabel(ev, t) : 'Any score', 'drill')
+    row(r, t > 0 ? (s.bwLoad ? bwLoadLabel(ev, t, bodyweightKg) : drillLabel(ev, t)) : 'Any score', 'drill')
   }
   if (s.game) ratingRows()
   return rows
