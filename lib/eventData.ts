@@ -830,7 +830,7 @@ export const EVENTS: EventData[] = [
     emoji: '🍌',
   },
   {
-    slug: 'reverse-wrist-extension',
+    slug: 'wrist-extension',
     name: 'Reverse Wrist Ext',
     domain: 'Stamina',
     domainNumber: 5,
