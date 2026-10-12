@@ -15,7 +15,7 @@ All notable changes to AllSport are documented here.
 - A raised standard never takes back a colour already conferred; a lowered one confers on the next recheck (`GRADING_RULES_VERSION` bumped).
 
 ### Migration
-- `20261012004834_levels_review_12_oct.sql`: moves the stored scores on the re-levelled events onto their new levels (GHD Situp's 5 and one Seiza score move down a level, Forward Fold's Standing · Bent Knees becomes Bent Leg Fold and Standing · Straight becomes Straight Leg, Repeat Vault and Seiza levels are renamed), archives the two High Jump heights, and redefines `enforce_relevelled_ladders` with the new ladders. Deploy the code first, then apply it, then run `scripts/refresh-leaderboard-scores.ts --apply`.
+- `20261012004834_levels_review_12_oct.sql`: moves the stored scores on the re-levelled events onto their new levels (GHD Situp's 5 and one Seiza score move down a level, Forward Fold's Standing · Bent Knees becomes Bent Leg Fold and Standing · Straight becomes Straight Leg, Repeat Vault and Seiza levels are renamed), archives the two High Jump heights, and redefines `enforce_relevelled_ladders` with the new ladders. Applied and verified 13 Oct 2026 after the deploy (26 results moved, 2 archived), and the season board refreshed.
 
 ## [0.33.1.0] - 2026-10-12
 
