@@ -2,6 +2,16 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.34.0.0] - 2026-10-12
+
+### Changed
+- **The 12 Oct 2026 standards review.** New colour standards on 67 events, compiled from `GRADING_STANDARDS_REVIEW.md`. Lifts: the men's ladders start lower (Kiwikiwi now asks for a small load, e.g. 0.1× bodyweight on Deadlift) and top out lower on most lifts (Deadlift Taniwha 2.25×, was 2.4×). The women's lists were scaled from the new men's lists, keeping each event's old gap between men and women (about two thirds on lifts, about 12% slower on runs and ergs). Running, Ski Erg, Row Erg, Walking and Scooting are a little softer at the top. Holds on the calisthenics and balance ladders now step in 5s and 15s, and flexibility ladders in "any" and 1:00. Toe Lift asks for 5s and 15s holds instead of 30s and 60s. Breath Hold tops out at 2:30 (was 4:00).
+- **"Any" in the standards sheet.** `D3 · any` means the level done at all (any reps, any hold, any time). `any` on Breath Hold is any hold.
+- A raised standard never takes back a colour already conferred; a lowered one confers on the next recheck (`GRADING_RULES_VERSION` bumped).
+
+### Not changed yet
+- Twenty events keep their old standards, with the proposed ones written underneath as notes, because they need a scoring or level change first: Glute Thrust, Leg Ext Hold, Tibialis Curl and Reverse Wrist Ext (loads as a multiple of bodyweight), the three carries (200m timed at a multiple of bodyweight), High Jump (scored by levels), Swim (200m), Cycling (times look like a longer ride than 1km), and the ten events whose levels change (Repeat Vault, Calf Raises, Side Bend, Plie Squat, Seiza, GHD Situp, Clap Pushups, Forward Fold, Full Bound Twist, Diving).
+
 ## [0.33.0.0] - 2026-10-12
 
 ### Added

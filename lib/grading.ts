@@ -124,7 +124,7 @@ export const TOP_RUNG = 12
  * conferred one. HOME forces one full recheck per player when this differs
  * from the version it last checked under (lib/useNewColours.ts).
  */
-export const GRADING_RULES_VERSION = '2026-10-10-half-steps'
+export const GRADING_RULES_VERSION = '2026-10-12-standards-review'
 export const DOMAIN_COUNT = 10
 
 /**
@@ -473,19 +473,28 @@ export function rungForLoadHold(score: number, thresholds: readonly number[], ba
 // Tibialis Curl ('weight+reps') packs `round(kg × 100) × 10000 + reps`, the same
 // shape as a load-and-hold, so the same rule holds: at least the load AND at
 // least the reps. The carries ('weight+distance+time') pack load, distance and
-// time (lib/scoring.ts encodeCarry); a colour asks for at least the load AND at
-// least the distance, and the time only ranks a game. Read as one number,
-// "40kg · 100m" would be passed by 40.1kg carried a single metre.
+// time (lib/scoring.ts encodeCarry). Read as one number, "40kg · 100m" would be
+// passed by 40.1kg carried a single metre, so each key is checked on its own.
+//
+// Since the 12 Oct 2026 review a carry colour is a fixed 200m in a time ("0.5×
+// BW · ≤ 2:00"), so the time is a key too: at least the load, at least the
+// distance, and no slower than the time. A standard with no time ("any", or a
+// pre-review "40kg · 100m") carries a time term of 0 or 1, which every carry
+// meets, so the older form still reads as load and distance alone.
 
 const CARRY_KG_KEY = 1e9
 const CARRY_M_KEY = 1e4
 
-/** Whether a carry meets one threshold: load at least, and distance at least. */
+/** A carry score or threshold's keys: load (0.1kg), metres, and the time term (10000 − secs). */
+function carryKeys(v: number) {
+  return { kg: Math.floor(v / CARRY_KG_KEY), m: Math.floor((v % CARRY_KG_KEY) / CARRY_M_KEY), term: v % CARRY_M_KEY }
+}
+
+/** Whether a carry meets one threshold: load, distance and time each at least as good. */
 export function meetsCarry(score: number, threshold: number): boolean {
   if (threshold <= 0) return score >= threshold
-  const kg = Math.floor(score / CARRY_KG_KEY), m = Math.floor((score % CARRY_KG_KEY) / CARRY_M_KEY)
-  const tKg = Math.floor(threshold / CARRY_KG_KEY), tM = Math.floor((threshold % CARRY_KG_KEY) / CARRY_M_KEY)
-  return kg >= tKg && m >= tM
+  const s = carryKeys(score), t = carryKeys(threshold)
+  return s.kg >= t.kg && s.m >= t.m && s.term >= t.term
 }
 
 /** rungForScore for a carry ladder: each colour checks its load and its distance. */
@@ -538,21 +547,75 @@ export const HALF_STEP_FLOOR = 0.5
  * compound is worth its rung.
  */
 export function halfStepCredit(mode: string, score: number, thresholds: readonly number[], band: AgeBand, rung: number): number {
-  const keys = mode === 'weight+time' || mode === 'weight+reps'
-    ? (v: number) => ({ load: Math.floor(v / LOAD_HOLD_BAND), other: v % LOAD_HOLD_BAND })
-    : mode === 'weight+distance+time'
-      ? (v: number) => ({ load: Math.floor(v / CARRY_KG_KEY), other: Math.floor((v % CARRY_KG_KEY) / CARRY_M_KEY) })
-      : null
-  if (keys === null || thresholds.length === 0) return rung
+  const loadHold = mode === 'weight+time' || mode === 'weight+reps'
+  if ((!loadHold && mode !== 'weight+distance+time') || thresholds.length === 0) return rung
   const shift = AGE_SHIFT[band]
   const top = Math.min(TOP_RUNG, thresholds.length + shift)
-  const mine = keys(score)
   for (let c = top; c > rung; c--) {
-    const t = keys(thresholdFor(thresholds, c - shift))
-    if (t.load <= 0) continue
-    if (mine.load >= t.load && mine.other >= t.other * HALF_STEP_FLOOR) return c - HALF_STEP
+    const tv = thresholdFor(thresholds, c - shift)
+    if (loadHold) {
+      const load = Math.floor(score / LOAD_HOLD_BAND), other = score % LOAD_HOLD_BAND
+      const tLoad = Math.floor(tv / LOAD_HOLD_BAND), tOther = tv % LOAD_HOLD_BAND
+      if (tLoad <= 0) continue
+      if (load >= tLoad && other >= tOther * HALF_STEP_FLOOR) return c - HALF_STEP
+    } else {
+      // A carry: the colour's load. Before the 12 Oct 2026 review the short key
+      // was the distance (half of it); since then a colour is the full 200m in
+      // a time, so the short key is the time: no slower than twice it.
+      const s = carryKeys(score), t = carryKeys(tv)
+      if (t.kg <= 0 || s.kg < t.kg) continue
+      const timed = t.term > 1
+      if (!timed && s.m >= t.m * HALF_STEP_FLOOR) return c - HALF_STEP
+      if (timed && s.m >= t.m && (CARRY_M_KEY - s.term) * HALF_STEP_FLOOR <= CARRY_M_KEY - t.term) return c - HALF_STEP
+    }
   }
   return rung
+}
+
+// ─── Loads as a share of bodyweight (12 Oct 2026) ───────────────────────────
+// Glute Thrust, Leg Ext Hold, Tibialis Curl, Reverse Wrist Ext and the three
+// carries write their loads as a share of bodyweight ("0.25× BW · 30s"), like
+// the lifts. lib/standards.ts stores those ladders (`bwLoad`) with the load key
+// in THOUSANDTHS of bodyweight where a score holds kilograms, and this turns
+// one into kilograms at the bodyweight on the row's own day, so the packed
+// comparisons above work unchanged. Loads round to the nearest 0.5kg: these are
+// small plates and dumbbells, where the lifts' 2.5kg plate step is too coarse.
+
+/**
+ * A compound ladder ready to compare with a score: itself, or for a `bwLoad`
+ * ladder its loads in kilograms at `bodyweightKg`. Null when the ladder needs
+ * a bodyweight and there is none, which the caller treats as unmet.
+ */
+export function compoundLadderAt(
+  mode: string, ladder: readonly number[], bwLoad: boolean | undefined, bodyweightKg: number | null | undefined,
+): readonly number[] | null {
+  if (!bwLoad) return ladder
+  if (bodyweightKg == null || !(bodyweightKg > 0)) return null
+  return bwLoadThresholds(mode, ladder, bodyweightKg)
+}
+
+/** The load key of a bodyweight ladder: thousandths of bodyweight. */
+export const BW_LOAD_SCALE = 1000
+export const BW_LOAD_STEP_KG = 0.5
+
+/** A share of bodyweight as kilograms, to the nearest 0.5kg. */
+export function bwLoadKg(thousandths: number, bodyweightKg: number): number {
+  return Math.round((thousandths / BW_LOAD_SCALE) * bodyweightKg / BW_LOAD_STEP_KG) * BW_LOAD_STEP_KG
+}
+
+/**
+ * A compound ladder whose loads are shares of bodyweight, in kilograms at
+ * `bodyweightKg`: the same packed shape as a score, so rungForCompound and
+ * halfStepCredit read it directly. A zero load (a bodyweight hold) stays zero.
+ */
+export function bwLoadThresholds(mode: string, thresholds: readonly number[], bodyweightKg: number): number[] {
+  const key = mode === 'weight+distance+time' ? CARRY_KG_KEY : LOAD_HOLD_BAND
+  // A score's load key: 0.1kg on a carry, 0.01kg on a hold or reps.
+  const perKg = mode === 'weight+distance+time' ? 10 : 100
+  return thresholds.map(t => {
+    const th = Math.floor(t / key), rest = t % key
+    return Math.round(bwLoadKg(th, bodyweightKg) * perKg) * key + rest
+  })
 }
 
 /**

@@ -25,14 +25,14 @@ describe('StandardsLadderView', () => {
     render(<StandardsLadderView ev={getEventBySlug('deadlift')} player={player} bodyweightKg={null}
       bodyweightPrompt={<span>WEIGH-IN</span>} />)
     expect(screen.getByText('WEIGH-IN')).toBeTruthy()
-    expect(screen.getByText('0.56× bodyweight')).toBeTruthy()
+    expect(screen.getByText('0.2× bodyweight')).toBeTruthy()
   })
 
   it('shows kilograms and where the weight came from once there is a bodyweight', () => {
     render(<StandardsLadderView ev={getEventBySlug('deadlift')} player={player} bodyweightKg={80}
       bodyweightNote="at 80 kg, 2 Oct" bodyweightPrompt={<span>WEIGH-IN</span>} />)
     expect(screen.queryByText('WEIGH-IN')).toBeNull()
-    expect(screen.getByText('0.56× bodyweight · 45 kg')).toBeTruthy()
+    expect(screen.getByText('0.2× bodyweight · 15 kg')).toBeTruthy()
     expect(screen.getByText(/at 80 kg, 2 Oct/)).toBeTruthy()
   })
 

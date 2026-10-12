@@ -202,7 +202,9 @@ describe('GradesCard — the ladder and the domain rows', () => {
   })
 
   it('shows six circles per row, filled best first from the counted events', () => {
-    const results = [row('Pushups', 40001, { difficulty_tier: '1 Arm Pushup' })]
+    // 20 push-ups on D4: Hiriwa, Kōura for this Master. Not Uenuku, whose
+    // rainbow circle is a gradient rather than one colour.
+    const results = [row('Pushups', 30020, { difficulty_tier: 'Pushup' })]
     const st = state({ results })
     const d = st.grades.domains.find(x => x.domainNumber === pushupDomain)!
     render(<GradesCard state={st} />)

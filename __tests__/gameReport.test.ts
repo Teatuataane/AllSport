@@ -51,7 +51,7 @@ describe('colour score', () => {
     const published = leaderboardScoresFrom('p', i, gradeStateFrom('p', i)).games
     expect(published.map(g => [g.session_id, g.total])).toEqual([...scores.values()].map(g => [g.sessionId, g.points]))
     expect(scores.get('a')!.points).toBe(6)
-    expect(scores.get('b')!.rungs.get('Deadlift')).toBe(6)
+    expect(scores.get('b')!.rungs.get('Deadlift')).toBe(7)
   })
 
   it('includes a game still in progress, marked open', () => {
@@ -138,10 +138,11 @@ describe('next time', () => {
   })
 
   it('states a lift in kilograms at the player\'s latest bodyweight', () => {
-    // 80kg: Kahurangi is 95kg, Poroporo 110kg, so a 100kg best is 10kg short.
+    // 80kg: Poroporo is 96kg, Parahi 112kg, so a 100kg best is 12kg short,
+    // stated to the next 2.5kg plate step.
     const i = inputs([row('a', JAN, 'Deadlift', 100, { weight_kg: 100 })])
     const step = nextStep(['Deadlift'], gradeStateFrom('p', i).grades, MEN, i.bodyweights!, '2026-03-01')!
-    expect(nextStepLine(step)).toBe('Deadlift: est. 1RM 10kg higher for Poroporo')
+    expect(nextStepLine(step)).toBe('Deadlift: est. 1RM 12.5kg higher for Parahi')
   })
 
   it('leaves a lift out when no bodyweight has been declared', () => {

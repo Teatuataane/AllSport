@@ -48,11 +48,12 @@ describe('standardsLadder', () => {
 
   it('shows strength as a ratio always, and in kilograms once a bodyweight is known', () => {
     const noBw = standardsLadder(ev('deadlift'), open, null)
-    expect(noBw[1].label).toBe('0.56× bodyweight')
+    expect(noBw[1].label).toBe('0.2× bodyweight')
     expect(noBw.every(r => r.kind === 'ratio')).toBe(true)
     const bw = standardsLadder(ev('deadlift'), open, 80)
-    expect(bw[1].label).toBe('0.56× bodyweight · 45 kg')
-    expect(bw[0].label).toBe('Any lift')
+    expect(bw[1].label).toBe('0.2× bodyweight · 15 kg')
+    // Since the 12 Oct 2026 review the men's Kiwikiwi asks for a load too.
+    expect(bw[0].label).toBe('0.1× bodyweight · 7.5 kg')
     expect(needsBodyweight(ev('deadlift'))).toBe(true)
     expect(needsBodyweight(ev('high-jump'))).toBe(false)
   })

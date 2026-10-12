@@ -109,11 +109,11 @@ describe('the migration', () => {
 describe('grading against the bodyweight of the day', () => {
   // A lift is graded against the bodyweight declared for the day it was done
   // (lib/loadGrades.ts resolves it; these tests pin the engine reading it).
-  // Deadlift's ladder puts a 100kg pull at rung 5 for a 95kg lifter and rung 11
+  // Deadlift's ladder puts a 100kg pull at rung 6 for a 95kg lifter and rung 11
   // for a 45kg one. That gap is why the number is per-row and not per-profile.
 
   it('grades a lift against the bodyweight on the row', () => {
-    expect(rungOf([lift(100, 95)], lifter())).toBe(5)
+    expect(rungOf([lift(100, 95)], lifter())).toBe(6)
     expect(rungOf([lift(100, 45)], lifter())).toBe(11)
   })
 
@@ -121,8 +121,8 @@ describe('grading against the bodyweight of the day', () => {
     // The exploit, closed by construction: nothing about the player is read,
     // so there is no "current" bodyweight for a new entry to re-grade with.
     const honest = [lift(100, 95)]
-    expect(rungOf(honest, lifter())).toBe(5)
-    expect(rungOf(honest, lifter())).toBe(5)
+    expect(rungOf(honest, lifter())).toBe(6)
+    expect(rungOf(honest, lifter())).toBe(6)
   })
 
   it('takes the best RUNG, not the heaviest lift', () => {

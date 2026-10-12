@@ -550,15 +550,22 @@ _No levels yet._
 
 ### 39. High Jump
 
-*Scored by: furthest or highest*
+*Scored by: difficulty level (the height jumped), then most successful jumps*
 
-_No levels yet._
+> Changed 12 Oct 2026 (Tāne): levels from the 12 Oct standards review. A level is the height of the bar against the body; reps are successful jumps at that height.
 
-- D1: 
-- D2: 
-- D3: 
-- D4: 
-- D5: 
+- D1: 2 Feet Hop
+- D2: 1 Foot Hop
+- D3: Ankles
+- D4: Shins
+- D5: Knees
+- D6: Thighs
+- D7: Hips
+- D8: Belly Button
+- D9: Ribs
+- D10: Chest
+- D11: Shoulder
+- D12: Neck
 
 ### 40. Arm Wrestling
 
@@ -588,13 +595,17 @@ _No levels yet._
 
 *Scored by: difficulty level, then most reps*
 
-> Added 6 Oct 2026 (Tāne). The levels are a first draft by Claude, UNREVIEWED: change them as you like.
+> Changed 12 Oct 2026 (Tāne): levels from the 12 Oct standards review, replacing the draft.
 
-- D1: Knee Clap
-- D2: Clap
-- D3: Chest Slap
-- D4: Double Clap
-- D5: Behind-Back Clap
+> Added 6 Oct 2026 (Tāne).
+
+- D1: Elevated Knee Clap
+- D2: Knee Clap
+- D3: Elevated Clap
+- D4: Clap Pushups
+- D5: Chest Slap
+- D6: Double Clap
+- D7: Behind-Back Clap
 
 ### 44. Triple Jump
 
@@ -672,14 +683,18 @@ _No levels yet._
 
 *Scored by: difficulty level, then fastest time*
 
+> Changed 12 Oct 2026 (Tāne): levels from the 12 Oct standards review.
+
 > Changed 5 Oct 2026 (Tāne): Renamed from Repeat High Jump. Same heights, so its history carries over.
 
-- D1: Ankle height   (used 2 times)
-- D2: Knee height   (used 3 times)
-- D3: Hip height   (used 6 times)
-- D4: Belly Button Height
-- D5: Rib Height
-- D6: Shoulder height
+- D1: Ankles
+- D2: Knees
+- D3: Hips
+- D4: Belly Button
+- D5: Ribs
+- D6: Chest
+- D7: Shoulder
+- D8: Head
 
 ### 53. Rats & Rabbits
 
@@ -777,8 +792,10 @@ _No levels yet._
 
 *Scored by: difficulty level, then most reps*
 
+> Changed 12 Oct 2026 (Tāne): levels from the 12 Oct standards review.
+
 Renamed from Pushup Contest and re-levelled 30 Sept 2026 (Tāne). The two handstand levels are gone; elevated means the hands are raised on a box.
-- D1: Hands Up Knee Pushup   (On the knees, hands raised on a box or bench)
+- D1: Elevated Knee Pushup   (On the knees, hands raised on a box or bench)
 - D2: Knee Pushup
 - D3: Elevated Pushup   (Full pushup with the hands raised on a box or bench)
 - D4: Pushup
@@ -806,12 +823,11 @@ Renamed from Pushup Contest and re-levelled 30 Sept 2026 (Tāne). The two handst
 ### 65. GHD Situp
 
 *Scored by: difficulty level, then most reps*
-Weighted GHD requires weight and reps
-- D1: Dead Bug
-- D2: Crunch
-- D3: Sit Up
-- D4: GHD Situp   (used 5 times)
-- D5: Weighted GHD Situp
+
+> Changed 12 Oct 2026 (Tāne): levels from the 12 Oct standards review.
+- D1: Crunch
+- D2: Sit Up
+- D3: GHD Situp
 
 ### 66. Leg Ext Hold
 
@@ -874,11 +890,14 @@ _No levels yet._
 
 *Scored by: difficulty level, then most reps*
 
+> Changed 12 Oct 2026 (Tāne): levels from the 12 Oct standards review.
+
 Re-levelled 30 Sept 2026 (Tāne). Toe Calf Raise rises until only the tips of the toes touch, like en pointe, with a full deficit.
 - D1: Calf Raise   (Both feet flat on the floor, rising onto the balls of the feet)
 - D2: Deficit Calf Raise   (Balls of both feet on a step, heels dropping below the step each rep)
-- D3: Toe Calf Raise   (On the step with a full deficit, rising until only the tips of the toes touch, like en pointe)
-- D4: Single Leg Toe Raise   (The toe calf raise on one leg, the other held clear)
+- D3: Single Leg Calf Raise
+- D4: Toe Calf Raise   (On the step with a full deficit, rising until only the tips of the toes touch, like en pointe)
+- D5: SL Toe Calf Raise   (The toe calf raise on one leg, the other held clear)
 
 ### 72. Back Extension
 
@@ -1081,10 +1100,12 @@ _No levels yet._
 
 *Scored by: difficulty level, then longest hold*
 
-- D1: Elevated Seated   (Seated fold with the hips elevated on a block)
-- D2: Standing Fold
-- D3: Standing · Bent Knees   (Standing fold with knees bent · used 3 times)
-- D4: Standing · Straight   (Standing fold with straight legs · used 1 time)
+> Changed 12 Oct 2026 (Tāne): levels from the 12 Oct standards review.
+
+- D1: Bent Leg Fold
+- D2: Straight Leg
+- D3: Hands to Legs
+- D4: Elbows to Legs
 - D5: Fingertips to Floor   (Straight legs, fingertips reach the floor)
 - D6: Palms to Floor   (Straight legs, palms flat on the floor)
 - D7: Elbows to Toes   (Straight legs, elbows reach the toes)
@@ -1167,19 +1188,25 @@ _No levels yet._
 
 *Scored by: difficulty level, then longest hold*
 
+> Changed 12 Oct 2026 (Tāne): levels from the 12 Oct standards review.
+
 - D1: Standing Bend   (Feet planted, one arm overhead, bend directly to the side)
 - D2: Gate Pose   (Parighasana — kneel on one knee, opposite leg extended to the side, bend over it)
 - D3: Seated Bend   (Parsva Upavistha — seated wide-legged, torso laid along one leg reaching the foot)
-- D4: Side-Split Lateral   (Wide or side-split stance, torso flat along one leg, chest open)
+- D4: Top Hand to Foot
+- D5: Pancake Side Bend
 
 ### 100. Full Bound Twist
 
 *Scored by: difficulty level, then longest hold*
 
-- D1: Seated Twist   (Sit tall, rotate the torso and hold with one hand behind · used 2 times)
+> Changed 12 Oct 2026 (Tāne): levels from the 12 Oct standards review.
+
+- D1: Seated Twist   (Sit tall, rotate the torso and hold with one hand behind)
 - D2: Half Lord   (Ardha Matsyendrasana — knee crossed over, elbow outside it, rotate toward the knee)
-- D3: Bound Twist   (Marichyasana C — arms bound around the leg to lock the rotation deeper)
-- D4: Full Bound Twist   (Marichyasana D — deepest bound spinal rotation)
+- D3: Assisted Bound Twist
+- D4: Bound Twist   (Marichyasana C — arms bound around the leg to lock the rotation deeper)
+- D5: Full Bound Twist   (Marichyasana D — deepest bound spinal rotation)
 
 ---
 
@@ -1187,10 +1214,13 @@ _No levels yet._
 
 *Scored by: difficulty level, then longest hold*
 
-- D1: Supported Demi   (Hand on a wall or barre, knees bent to half depth, heels down)
+> Changed 12 Oct 2026 (Tāne): levels from the 12 Oct standards review.
+
+- D1: Seated Demi
 - D2: Demi   (No support, thighs above parallel, heels down, knees tracking over the toes)
-- D3: Grand   (Thighs at or below parallel, heels staying down throughout)
-- D4: Relevé Grand   (Full depth held on the balls of both feet, heels lifted and still)
+- D3: Demi Squat
+- D4: Partial Crossed Plie
+- D5: Crossed Plie Squat
 
 > NEW EVENT, Sept 2026 (Tāne). Nobody has scored it, so there is no usage to calibrate against.
 
@@ -1198,10 +1228,15 @@ _No levels yet._
 
 *Scored by: difficulty level, then longest hold*
 
+> Changed 12 Oct 2026 (Tāne): levels from the 12 Oct standards review.
+
 - D1: Supported Kneel   (A block or cushion between the hips and the heels)
-- D2: Hips to Heels   (Hips resting fully on the heels, no support, tops of the feet flat)
-- D3: Toes Tucked   (Hips on the heels with the toes tucked under)
-- D4: Reclined Kneel   (Sitting on the heels and leaning back, shoulders toward the floor)
+- D2: Seiza   (Hips resting fully on the heels, no support, tops of the feet flat)
+- D3: Reclined Seiza   (Sitting on the heels and leaning back, shoulders toward the floor)
+- D4: Elbows to Floor
+- D5: Shoulders to Floor
+- D6: Seiza Bridge
+- D7: Rainbow Seiza
 
 > NEW EVENT, Sept 2026 (Tāne). Nobody has scored it, so there is no usage to calibrate against.
 
@@ -1351,12 +1386,14 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 
 *Scored by: difficulty level, then most clean dives*
 
-> Added 6 Oct 2026 (Tāne). The levels are a first draft by Claude, UNREVIEWED: change them as you like.
+> Changed 12 Oct 2026 (Tāne): levels from the 12 Oct standards review, replacing the draft.
 
-- D1: Sit Dive
-- D2: Kneeling Dive
-- D3: Standing Dive
-- D4: Forward Somersault
+> Added 6 Oct 2026 (Tāne).
+
+- D1: Dive
+- D2: 1m Dive
+- D3: 2m Dive
+- D4: 5m Dive
 - D5: Game
 
 ### 117. Poi

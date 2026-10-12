@@ -37,8 +37,9 @@ describe('halfStepCredit', () => {
     expect(credit('glute-thrust', 'weight+time', packed(180, 15)).credit).toBe(11.5)
   })
 
-  it('Toe Lift 5kg for 45s: Poroporo, and Parahi\'s 5kg short of 60s makes it Poroporo and a half', () => {
-    const c = credit('toe-lift', 'weight+time', packed(5, 45))
+  // Toe Lift since the 12 Oct 2026 review: 5s and 15s holds at each load.
+  it('Toe Lift 5kg for 10s: Poroporo, and Parahi\'s 5kg short of 15s makes it Poroporo and a half', () => {
+    const c = credit('toe-lift', 'weight+time', packed(5, 10))
     expect(gradeForRung(c.rung).name).toBe('Poroporo')
     expect(c.credit).toBe(7.5)
   })
@@ -47,17 +48,20 @@ describe('halfStepCredit', () => {
     expect(credit('tibialis-curl', 'weight+reps', packed(10, 30))).toEqual({ rung: 7, credit: 7.5 })
   })
 
-  it('earns nothing short of every higher load: 5kg for 65s is Parahi, and Hiriwa asks for 7.5kg', () => {
-    expect(credit('toe-lift', 'weight+time', packed(5, 65))).toEqual({ rung: 8, credit: 8 })
+  it('earns nothing short of every higher load: 5kg for 20s is Parahi, and Hiriwa asks for 7.5kg', () => {
+    expect(credit('toe-lift', 'weight+time', packed(5, 20))).toEqual({ rung: 8, credit: 8 })
   })
 
   it('skips a bodyweight colour, which has no load to reach', () => {
-    // Kiwikiwi by the 15s bodyweight hold; Hiriwa's 7.5kg reached for 20 of 30s.
-    expect(credit('toe-lift', 'weight+time', packed(7.5, 20))).toEqual({ rung: 1, credit: 8.5 })
+    // Kiwikiwi by the 5s bodyweight hold; Whero's 15s bodyweight hold reached
+    // for 10s is no half, because Whero asks for no load.
+    expect(credit('toe-lift', 'weight+time', packed(0, 10))).toEqual({ rung: 1, credit: 1 })
+    // Poroporo by 5kg for 5s; Hiriwa's 7.5kg reached for 8 of 15s.
+    expect(credit('toe-lift', 'weight+time', packed(7.5, 8))).toEqual({ rung: 7, credit: 8.5 })
   })
 
   it('earns nothing at the top, or on a mode that is not compound', () => {
-    expect(credit('toe-lift', 'weight+time', packed(15, 30))).toEqual({ rung: 12, credit: 12 })
+    expect(credit('toe-lift', 'weight+time', packed(15, 15))).toEqual({ rung: 12, credit: 12 })
     expect(halfStepCredit('reps', 50, [10, 20, 30], 'Open', 1)).toBe(1)
   })
 })
@@ -83,11 +87,11 @@ describe('a half is credit, never a colour', () => {
   })
 
   it('no credit field when it adds nothing', () => {
-    expect(eventGrade(toe, [row(toe.name, packed(5, 65))], adult).credit).toBeUndefined()
+    expect(eventGrade(toe, [row(toe.name, packed(5, 20))], adult).credit).toBeUndefined()
   })
 
   it('counts in a game colour total', () => {
-    expect(eventRungInGame(toe.name, [row(toe.name, packed(5, 45))], adult)).toBe(7.5)
+    expect(eventRungInGame(toe.name, [row(toe.name, packed(5, 10))], adult)).toBe(7.5)
     expect(eventRungInGame(glute.name, [row(glute.name, packed(180, 25))], adult)).toBe(11.5)
   })
 
