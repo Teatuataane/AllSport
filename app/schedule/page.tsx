@@ -33,7 +33,7 @@ export default function Schedule() {
           </h1>
           <div className="rainbow-line" style={{ width: '88px', margin: '20px 0 28px', borderRadius: '2px' }} />
           <p style={{ color: 'var(--grey-light)', fontSize: '20px', maxWidth: '560px', lineHeight: 1.7 }}>
-            Three sessions per week at AllSport HQ in Ōtautahi. Register online, show up, and compete. No experience needed.
+            Three games a week in Sockburn. Register once, then just turn up.
           </p>
         </div>
       </section>
@@ -53,17 +53,8 @@ export default function Schedule() {
                 <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: dayColors[i] }} />
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: '48px', color: dayColors[i], lineHeight: 1, marginBottom: '4px' }}>{session.day}</div>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: '28px', color: 'var(--white)', marginBottom: '16px' }}>{session.time}</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {[
-                    { label: 'Duration', value: session.duration },
-                    { label: 'Capacity', value: `${session.spots} players` },
-                    { label: 'Entry', value: 'Register online' },
-                  ].map(item => (
-                    <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #1a1a1a', paddingBottom: '8px' }}>
-                      <span style={{ fontFamily: 'var(--font-label)', fontSize: '12px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#555555' }}>{item.label}</span>
-                      <span style={{ fontFamily: 'var(--font-label)', fontWeight: 600, fontSize: '14px', color: 'var(--grey-light)' }}>{item.value}</span>
-                    </div>
-                  ))}
+                <div style={{ fontFamily: 'var(--font-label)', fontSize: '13px', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#666' }}>
+                  {session.duration} · up to {session.spots} players
                 </div>
                 <Link href="/register" className="btn btn-primary" style={{ width: '100%', marginTop: '20px', fontSize: '15px', display: 'flex' }}>
                   Register
@@ -73,7 +64,7 @@ export default function Schedule() {
           </div>
 
           <p style={{ color: '#555555', fontSize: '13px', fontStyle: 'italic' }}>
-            * Session times may vary on public holidays. Check back regularly or register to receive updates.
+            Times may change on public holidays.
           </p>
         </div>
       </section>
@@ -88,23 +79,25 @@ export default function Schedule() {
                 ALLSPORT <span style={{ color: 'var(--blue)' }}>HQ</span>
               </h2>
               <div className="divider" style={{ background: 'var(--blue)' }} />
-              <p style={{ color: 'var(--grey-light)', fontSize: '17px', lineHeight: 1.8, marginBottom: '8px' }}>
+              <p style={{ color: 'var(--grey-light)', fontSize: '17px', lineHeight: 1.7, marginBottom: '20px' }}>
                 26 Carbine Place<br />Sockburn, Ōtautahi
               </p>
-              <p style={{ color: 'var(--grey)', fontSize: '15px', lineHeight: 1.8, marginBottom: '24px' }}>
-                AllSport HQ is our dedicated training facility in Sockburn. All equipment needed for sessions is provided on site. Free parking available.
-              </p>
-              <p style={{ color: '#555555', fontSize: '14px', lineHeight: 1.7, fontStyle: 'italic' }}>
-                More locations coming to Ōtautahi soon — register to be notified when new venues are added.
-              </p>
+              <a
+                href="https://www.google.com/maps/search/?api=1&query=26+Carbine+Place+Sockburn+Christchurch"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-primary"
+                style={{ fontSize: '15px' }}
+              >
+                Get Directions
+              </a>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {[
-                { title: 'Address', desc: '26 Carbine Place, Sockburn, Ōtautahi' },
-                { title: 'Parking', desc: 'Free parking available on site' },
-                { title: 'Equipment', desc: 'All equipment provided — just bring yourself' },
-                { title: 'Facilities', desc: 'Changing rooms available on site' },
+                { title: 'Parking', desc: 'Free, on site' },
+                { title: 'Equipment', desc: 'All gear provided. Just bring yourself' },
+                { title: 'Facilities', desc: 'Changing rooms on site' },
               ].map(item => (
                 <div key={item.title} className="info-card" style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
                   <span style={{ width: 20, height: 3, borderRadius: 3, background: 'var(--rainbow)', flexShrink: 0, marginTop: 8 }} />
@@ -114,61 +107,6 @@ export default function Schedule() {
                   </div>
                 </div>
               ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Selwyn Winter Jam */}
-      <section className="section" style={{ background: '#0d0d0d', borderTop: '3px solid var(--purple)' }}>
-        <div className="container">
-          <div style={{
-            background: 'linear-gradient(135deg, #0a0010 0%, #0d0d0d 100%)',
-            border: '1px solid rgba(184,125,181,0.2)',
-            borderRadius: '16px',
-            padding: 'clamp(32px, 5vw, 56px) clamp(24px, 4vw, 48px)',
-            position: 'relative',
-            overflow: 'hidden',
-          }}>
-            <div style={{ position: 'absolute', top: '-60px', right: '-60px', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(184,125,181,0.08) 0%, transparent 70%)', pointerEvents: 'none' }} />
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'linear-gradient(90deg, var(--purple), var(--red))' }} />
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '48px', alignItems: 'center' }}>
-              <div>
-                <div className="tag">Event Recap</div>
-                <h2 style={{ fontSize: 'clamp(40px, 5vw, 68px)', marginBottom: '8px', lineHeight: 1 }}>
-                  SELWYN<br /><span style={{ color: 'var(--purple)' }}>WINTER JAM</span>
-                </h2>
-                <div className="divider" style={{ background: 'var(--purple)' }} />
-                <p style={{ color: 'var(--grey-light)', fontSize: '16px', lineHeight: 1.8, marginBottom: '16px' }}>
-                  AllSport&apos;s first public competition is in the books. On Saturday 4 July, players across four divisions went head to head over ten events — from Pause Bench and Vertical Jump to Badminton and Carrom. Thank you to everyone who came out, competed, and made it what it was.
-                </p>
-                <p style={{ color: 'var(--grey)', fontSize: '15px', lineHeight: 1.8, marginBottom: '32px' }}>
-                  Missed it? The next big one is the Annual Championship below — and regular sessions run every week.
-                </p>
-                <Link href="/schedule" className="btn btn-primary" style={{ fontSize: '16px' }}>
-                  Join a Weekly Session
-                </Link>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div style={{ background: 'var(--dark)', border: '1px solid rgba(184,125,181,0.2)', borderRadius: '12px', padding: '28px 32px' }}>
-                  <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555555', marginBottom: '8px' }}>Saturday 4 July 2026 — Champions</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '4px' }}>
-                    {[
-                      { division: "Men's", winner: 'kiwigyver' },
-                      { division: "Women's", winner: 'Meredith' },
-                      { division: 'Masters Men (40+)', winner: 'Blair' },
-                      { division: 'Masters Women (40+)', winner: 'Tarsh' },
-                    ].map(w => (
-                      <div key={w.division} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '16px', borderBottom: '1px solid #1e1e1e', paddingBottom: '8px' }}>
-                        <span style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--grey)' }}>{w.division}</span>
-                        <span style={{ fontFamily: 'var(--font-display)', fontSize: '24px', color: 'var(--purple)', lineHeight: 1, textAlign: 'right' }}>{w.winner}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -195,11 +133,8 @@ export default function Schedule() {
                   THE ANNUAL<br /><span style={{ color: 'var(--amber)' }}>CHAMPIONSHIP</span>
                 </h2>
                 <div className="divider" style={{ background: 'var(--amber)' }} />
-                <p style={{ color: 'var(--grey-light)', fontSize: '16px', lineHeight: 1.8, marginBottom: '16px' }}>
-                  Once per year, the AllSport community comes together for the annual Championship — the ultimate test of all-round athletic ability. Every discipline. Full competition. Maximum mana on the line.
-                </p>
-                <p style={{ color: 'var(--grey)', fontSize: '15px', lineHeight: 1.8, marginBottom: '32px' }}>
-                  10 events chosen by community vote. Open to all registered players across all divisions. Rankings, reputation, and the title of AllSport Champion decided in a single day.
+                <p style={{ color: 'var(--grey-light)', fontSize: '16px', lineHeight: 1.7, marginBottom: '28px' }}>
+                  One day. Ten events picked by community vote. Open to every registered player. Who is the most complete athlete in Ōtautahi?
                 </p>
                 <Link href="/register" className="btn btn-gold" style={{ fontSize: '16px' }}>
                   Register to Compete
@@ -213,15 +148,62 @@ export default function Schedule() {
                 </div>
                 <div style={{ background: 'var(--dark)', border: '1px solid rgba(249,176,81,0.2)', borderRadius: '12px', padding: '28px 32px' }}>
                   <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555555', marginBottom: '8px' }}>Location</div>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '28px', color: 'var(--white)', lineHeight: 1 }}>Christchurch Public Park</div>
-                  <div style={{ color: 'var(--grey)', fontSize: '14px', marginTop: '4px' }}>Ōtautahi, Aotearoa</div>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '28px', color: 'var(--white)', lineHeight: 1 }}>AllSport HQ</div>
+                  <div style={{ color: 'var(--grey)', fontSize: '14px', marginTop: '4px' }}>26 Carbine Place, Sockburn</div>
                 </div>
                 <div style={{ background: 'var(--dark)', border: '1px solid rgba(249,176,81,0.2)', borderRadius: '12px', padding: '28px 32px' }}>
                   <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555555', marginBottom: '8px' }}>Divisions</div>
                   <div style={{ color: 'var(--grey-light)', fontSize: '14px', lineHeight: 1.7 }}>
-                    Men&apos;s · Women&apos;s · Juniors (U17)<br />
-                    Masters Men (40+) · Masters Women (40+)<br />
-                    Grandmaster Men (60+) · Grandmaster Women (60+)
+                    Men · Women · Juniors (U17) · Masters (40+) · Grandmasters (60+)
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Selwyn Winter Jam */}
+      <section className="section" style={{ background: '#0d0d0d', borderTop: '3px solid var(--purple)' }}>
+        <div className="container">
+          <div style={{
+            background: 'linear-gradient(135deg, #0a0010 0%, #0d0d0d 100%)',
+            border: '1px solid rgba(184,125,181,0.2)',
+            borderRadius: '16px',
+            padding: 'clamp(32px, 5vw, 56px) clamp(24px, 4vw, 48px)',
+            position: 'relative',
+            overflow: 'hidden',
+          }}>
+            <div style={{ position: 'absolute', top: '-60px', right: '-60px', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(184,125,181,0.08) 0%, transparent 70%)', pointerEvents: 'none' }} />
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'linear-gradient(90deg, var(--purple), var(--red))' }} />
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '48px', alignItems: 'center' }}>
+              <div>
+                <div className="tag">Event Recap</div>
+                <h2 style={{ fontSize: 'clamp(40px, 5vw, 68px)', marginBottom: '8px', lineHeight: 1 }}>
+                  SELWYN<br /><span style={{ color: 'var(--purple)' }}>WINTER JAM</span>
+                </h2>
+                <div className="divider" style={{ background: 'var(--purple)' }} />
+                <p style={{ color: 'var(--grey-light)', fontSize: '16px', lineHeight: 1.7 }}>
+                  Our first public competition, 4 July 2026. Ten events, four divisions, four champions. Ngā mihi to everyone who played.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ background: 'var(--dark)', border: '1px solid rgba(184,125,181,0.2)', borderRadius: '12px', padding: '28px 32px' }}>
+                  <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555555', marginBottom: '8px' }}>Saturday 4 July 2026 — Champions</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '4px' }}>
+                    {[
+                      { division: "Men's", winner: 'kiwigyver' },
+                      { division: "Women's", winner: 'Meredith' },
+                      { division: 'Masters Men (40+)', winner: 'Blair' },
+                      { division: 'Masters Women (40+)', winner: 'Tarsh' },
+                    ].map(w => (
+                      <div key={w.division} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '16px', borderBottom: '1px solid #1e1e1e', paddingBottom: '8px' }}>
+                        <span style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--grey)' }}>{w.division}</span>
+                        <span style={{ fontFamily: 'var(--font-display)', fontSize: '24px', color: 'var(--purple)', lineHeight: 1, textAlign: 'right' }}>{w.winner}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -238,7 +220,7 @@ export default function Schedule() {
           </h2>
           <div className="rainbow-line" style={{ width: '60px', margin: '0 auto 24px', borderRadius: '2px' }} />
           <p style={{ color: 'var(--grey)', fontSize: '16px', maxWidth: '440px', margin: '0 auto 32px', lineHeight: 1.7 }}>
-            Register once and you&apos;re in. Show up Tuesday, Thursday, or Saturday — give what you have on the day.
+            Register once. Turn up Tuesday, Thursday or Saturday.
           </p>
           <Link href="/register" className="btn btn-primary" style={{ fontSize: '17px' }}>Register Now</Link>
         </div>
