@@ -1,4 +1,7 @@
 import type { NextConfig } from "next";
+import { createHash } from "node:crypto";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { buildSecurityHeaders } from "./lib/securityHeaders";
 
 /**
@@ -32,8 +35,27 @@ if (!supabaseUrl) {
 // immediately, ship it under a new filename.
 const ASSET_CACHE = 'public, max-age=604800, stale-while-revalidate=2592000'
 
+// The icon cache-buster (ICON_VERSION in components/EventIcon.tsx): a short
+// hash of every event and domain icon, names and bytes. ASSET_CACHE below also
+// applies to a 404, so a phone that probed an icon before it shipped keeps the
+// 404 for a week; a new query string skips that cache entry. Derived here so it
+// changes exactly when the icons do, instead of relying on a hand-bumped
+// constant that the next icon batch might forget.
+function iconVersion(): string {
+  const hash = createHash("sha256")
+  for (const dir of ["event-icons", "domain-icons"]) {
+    const full = join(process.cwd(), "public", dir)
+    for (const name of readdirSync(full).filter(f => f.endsWith(".png")).sort()) {
+      hash.update(`${dir}/${name}\0`)
+      hash.update(readFileSync(join(full, name)))
+    }
+  }
+  return hash.digest("hex").slice(0, 10)
+}
+
 const nextConfig: NextConfig = {
   reactCompiler: true,
+  env: { NEXT_PUBLIC_ICON_VERSION: iconVersion() },
   async headers() {
     // Both rule sets apply: Next runs every matching rule, and the security
     // headers and Cache-Control share no key, so the asset rules below add to

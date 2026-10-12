@@ -14,15 +14,19 @@ export { DOMAIN_COLORS, domainColor } from '@/lib/domainColours'
 const iconStatus: Record<string, boolean> = {}
 
 /**
- * Appended to every icon URL. Bump it whenever icons are added or re-exported.
+ * Appended to every icon URL. A hash of the icon files, computed by
+ * next.config.ts at build time, so it changes exactly when an icon is added,
+ * removed or re-exported, and no one has to remember to bump it.
  *
  * next.config.ts caches /event-icons/* for a week, and that header is sent on a
  * 404 too: a phone that asked for an icon before its PNG shipped keeps the 404
  * and shows the emoji for up to a week. That is what happened to the 23 icons
- * of v0.33.1.0 (12 Oct 2026). A new query string is a new cache entry, so a
- * bump reaches every phone on its next visit. DomainIcon reads it too.
+ * of v0.33.1.0 (12 Oct 2026), which a hand-bumped '2' then fixed. A new query
+ * string is a new cache entry, so a new hash reaches every phone on its next
+ * visit. DomainIcon reads it too. The fallback is for tests, which do not run
+ * next.config.ts.
  */
-export const ICON_VERSION = '2'
+export const ICON_VERSION = process.env.NEXT_PUBLIC_ICON_VERSION || '2'
 
 /**
  * Event pictogram tile. Renders /event-icons/{slug}.png as a CSS mask filled

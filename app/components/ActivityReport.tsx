@@ -17,12 +17,12 @@ import {
   weeklyActivity, workoutMinutes, addDays, nzDay, weekStart, GUIDELINE_MINUTES, GAME_MINUTES, MIN_COHORT,
   type ActivityInput, type ActivityRow,
 } from '@/lib/workouts'
+import { allRows as all } from '@/lib/allRows'
 
 const supabase = createClient()
 
 /** How many weeks back the report covers. */
 const WEEKS = 12
-const PAGE = 1000
 
 const COLS: { key: keyof ActivityRow; label: string }[] = [
   { key: 'week', label: 'Week of' },
@@ -33,18 +33,6 @@ const COLS: { key: keyof ActivityRow; label: string }[] = [
   { key: 'gameMinutes', label: 'Game minutes' },
   { key: 'loggedMinutes', label: 'Logged minutes' },
 ]
-
-/** Every row a query returns, a page at a time: PostgREST stops at 1000. */
-async function all<T>(q: (from: number, to: number) => PromiseLike<{ data: unknown; error: { code?: string; message: string } | null }>): Promise<{ rows: T[]; error: { code?: string; message: string } | null }> {
-  const rows: T[] = []
-  for (let from = 0; ; from += PAGE) {
-    const { data, error } = await q(from, from + PAGE - 1)
-    if (error) return { rows, error }
-    const page = (data ?? []) as T[]
-    rows.push(...page)
-    if (page.length < PAGE) return { rows, error: null }
-  }
-}
 
 export default function ActivityReport() {
   const [rows, setRows] = useState<ActivityRow[] | null>(null)
