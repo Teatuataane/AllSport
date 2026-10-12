@@ -15,6 +15,7 @@
 import { releasable, eventsBehind } from './playerGrades'
 import { gradeForRung } from './grading'
 import { getEventBySlug } from './eventData'
+import { nzYear } from './seasonYear'
 import type { GradeAward, GradeState } from './loadGrades'
 
 export type PendingAward = {
@@ -25,6 +26,8 @@ export type PendingAward = {
   events: string[]
   /** Null is the point: nobody conferred it. See the migration. */
   conferred_by: null
+  /** The colour year it is earned for (20261012230318): the year the state graded. */
+  season_year: number
 }
 
 /**
@@ -48,6 +51,7 @@ export function awardsToConfer(playerId: string, state: GradeState): PendingAwar
     grade_name: gradeForRung(g.releasable).name,
     events: eventsBehind(state.grades, g.domainNumber),
     conferred_by: null,
+    season_year: state.year ?? nzYear(),
   }))
 }
 
@@ -95,6 +99,8 @@ export type WithdrawnAward = Required<Pick<GradeAward, 'id'>> & GradeAward
  * colour alone.
  */
 export function awardsToWithdraw(state: GradeState, domainNumber: number): WithdrawnAward[] {
+  // state.awards is the graded year's only, so a deletion re-judges that year
+  // and never touches a colour another year's evidence earned.
   const d = judged(state, domainNumber)
   if (!d) return []
   // Nothing at or below a protected colour goes either: the player visibly
@@ -167,5 +173,7 @@ export function awardAfterWithdraw(
     grade_name: gradeForRung(d.rung).name,
     events: eventsBehind(state.grades, domainNumber),
     conferred_by: null,
+    // The same year as the colour it replaces: state.awards is that year's.
+    season_year: state.year ?? nzYear(jump.conferred_at),
   }
 }

@@ -102,8 +102,9 @@ const TOP_SHOWN = 3
 // The colour line in an open event row: the colour the standards give its
 // best effort, or why it has none. The same reasons, in the same order, as
 // the event list under a domain on HOME (GradesCard), so the two never
-// disagree about one event.
-function EventColour({ state, event, yearTab }: { state: GradeState; event: EventData; yearTab: boolean }) {
+// disagree about one event. Colours are earned per calendar year, so this is
+// this year's colour on either tab, and the label says which year.
+function EventColour({ state, event }: { state: GradeState; event: EventData }) {
   const eg = state.grades.events.get(event.slug)
   if (!eg) return null
   const g = gradeForRung(eg.rung)
@@ -119,7 +120,7 @@ function EventColour({ state, event, yearTab }: { state: GradeState; event: Even
   return (
     <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px 10px' }}>
       <span style={{ fontFamily: 'var(--font-label)', fontSize: '11px', color: '#777', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-        Colour
+        {state.year ? `${state.year} colour` : 'Colour'}
       </span>
       {why ? (
         <span style={{ fontSize: '13px', color: '#999' }}>{why}</span>
@@ -138,13 +139,6 @@ function EventColour({ state, event, yearTab }: { state: GradeState; event: Even
         <span style={{ fontSize: '12px', color: '#999' }}>
           + half a step toward {gradeForRung(Math.ceil(eg.credit)).name}
         </span>
-      )}
-      {/* The scores below follow the year tab; the colour, for now, is graded
-          on every result, as HOME grades it. Said here so the two never look
-          like they disagree. Goes when colours become yearly (Tāne, 13 Oct
-          2026: colours are earned per calendar year; not built yet). */}
-      {yearTab && (
-        <span style={{ width: '100%', fontSize: '11.5px', color: '#666' }}>From all your results, not only this year&apos;s</span>
       )}
     </div>
   )
@@ -570,9 +564,8 @@ export default function PRsPage() {
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '14px', fontWeight: 600, color: played ? '#fff' : '#444', fontFamily: 'var(--font-body)' }}>
                                 {event.name}
-                                {/* The event's colour, lifetime: it does not
-                                    follow the season tab, because a colour is
-                                    held, not seasonal. */}
+                                {/* The event's colour THIS year, as HOME
+                                    grades it, on either tab. */}
                                 {eventRung > 0 && <ColourCircle rung={eventRung} size={10} />}
                               </div>
                             </div>
@@ -622,7 +615,7 @@ export default function PRsPage() {
                             distance, which are records nothing else shows. */}
                         {isExpanded && played && (
                           <div style={{ borderTop: '1px solid #1e1e1e', padding: '10px 14px 12px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            {gradeState && <EventColour state={gradeState} event={event} yearTab={tab === 'season'} />}
+                            {gradeState && <EventColour state={gradeState} event={event} />}
                             {eventResults && (
                               <div>
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>

@@ -8,6 +8,7 @@ import { getEventBySlug } from './eventData'
 import { formatPR } from './scoreFormat'
 import { gradeForRung, overallRung, TOP_RUNG, type DomainGradeResult } from './grading'
 import type { GradeState } from './loadGrades'
+import { heldByYear } from './seasonYear'
 import type { EventGrade } from './playerGrades'
 
 /**
@@ -67,6 +68,21 @@ export function shownDomainRungs(state: Pick<GradeState, 'grades' | 'held' | 'sc
  */
 export function shownOverallRung(state: Pick<GradeState, 'grades' | 'held' | 'schemaReady' | 'games'>): number {
   return overallRung([...shownDomainRungs(state).values()], state.games)
+}
+
+/**
+ * The overall colour of each past year the player holds a colour in, newest
+ * first: HOME's "2026: Kōwhai" line. Colours are earned per calendar year
+ * (lib/seasonYear.ts), and last year's stay on record. Each year is capped by
+ * its own games, the same rule as the year it was earned in.
+ */
+export function pastOverallRungs(
+  state: Pick<GradeState, 'year' | 'allAwards' | 'gamesByYear' | 'schemaReady'>,
+): { year: number; rung: number }[] {
+  if (!state.schemaReady || state.year == null) return []
+  return heldByYear(state.allAwards)
+    .filter(y => y.year < state.year!)
+    .map(y => ({ year: y.year, rung: overallRung([...y.held.values()], state.gamesByYear.get(y.year) ?? 0) }))
 }
 
 /**

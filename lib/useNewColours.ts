@@ -56,7 +56,7 @@ export function useNewColours(
       // Cold start: mark everything already conferred as seen, so the history
       // replay does not open the app on a stack of cards for old news. Epoch
       // when they hold nothing yet, so their FIRST colour is still news.
-      write(coloursSeenKey(playerId), latestConferredAt(state.awards) ?? new Date(0).toISOString())
+      write(coloursSeenKey(playerId), latestConferredAt(state.allAwards) ?? new Date(0).toISOString())
       setUnseen([])
       setWithdrawn([])
       return

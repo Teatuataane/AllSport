@@ -80,12 +80,13 @@ for (const p of players) {
   total += planned.length
   console.log(`  ${p.display_name}: ${planned.length}`)
   for (const a of planned) {
-    console.log(`      ${day(a.conferred_at).padEnd(12)} ${a.grade_name.padEnd(10)} ${DOMAINS[a.domain_number - 1]}`)
+    console.log(`      ${day(a.conferred_at).padEnd(12)} ${String(a.season_year).padEnd(6)} ${a.grade_name.padEnd(10)} ${DOMAINS[a.domain_number - 1]}`)
   }
 
   if (apply) {
     const { error: e } = await db.from('grade_awards')
-      .upsert(planned, { onConflict: 'player_id,domain_number,rung', ignoreDuplicates: true })
+      // The year is in the key (20261012230318): one of each colour per year.
+      .upsert(planned, { onConflict: 'player_id,domain_number,rung,season_year', ignoreDuplicates: true })
     if (e) {
       console.error(`\n  Failed for ${p.display_name}: ${e.message}`)
       if (/conferred_by/.test(e.message)) console.error('  Apply migration 20260921232728 first: it lets the server confer.')

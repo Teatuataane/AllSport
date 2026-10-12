@@ -33,6 +33,8 @@ function state(opts: {
   schemaReady?: boolean
   hasBand?: boolean
   games?: number
+  allAwards?: GradeState['allAwards']
+  gamesByYear?: Map<number, number>
 } = {}): GradeState {
   const games = opts.games ?? 0
   const grades = computePlayerGrades({
@@ -40,8 +42,8 @@ function state(opts: {
   })
   const held = opts.held ?? new Map()
   return {
-    grades, awards: [], held, exemptions: new Set(), hasBand: opts.hasBand ?? true,
-    schemaReady: opts.schemaReady ?? true, games,
+    grades, year: 2027, awards: [], allAwards: opts.allAwards ?? [], held, exemptions: new Set(), hasBand: opts.hasBand ?? true,
+    schemaReady: opts.schemaReady ?? true, games, gamesByYear: opts.gamesByYear ?? new Map(),
     gates: colourGates(grades.domains, held),
     workoutsReady: true, disputed: new Map(), complete: true,
   }

@@ -124,7 +124,7 @@ const steps = [
   {
     number: '07',
     title: 'Earn Your Colours',
-    desc: 'Every event has a standard for each of twelve colours, from Kiwikiwi to Taniwha. A domain’s colour is the average of your best six events in it, and an event you have not played counts as Mā, so trying new events lifts it until six are on the board. Your overall colour is the average of your ten domains, and it also needs games played in the room. Colours land by themselves, and a change to the standards never takes one away.',
+    desc: 'Every event has a standard for each of twelve colours, from Kiwikiwi to Taniwha. A domain’s colour is the average of your best six events in it, and an event you have not played counts as Mā, so trying new events lifts it until six are on the board. Your overall colour is the average of your ten domains, and it also needs games played in the room. Colours land by themselves and are earned for the calendar year: on 1 January everyone starts again on Mā, and last year’s colours stay on your record.',
   },
 ]
 
@@ -278,12 +278,12 @@ export default function HowToPlay() {
             <div className="info-card">
               <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555555', marginBottom: '8px' }}>The Colours</div>
               <p style={{ color: 'var(--grey)', fontSize: '13px', lineHeight: 1.65, marginBottom: '16px' }}>
-                Twelve colours in each of the ten domains. They land by themselves the moment your scores reach them.
+                Twelve colours in each of the ten domains. They land by themselves the moment your scores reach them, and are earned fresh each calendar year.
               </p>
               {[
                 { label: 'Each event', rule: 'Its own colour, against twelve standards' },
                 { label: 'Each domain', rule: `The average of your best ${DOMAIN_TOP_EVENTS} events. Unplayed counts as Mā` },
-                { label: 'Overall', rule: `The average of your ten, capped by games played: ${GAMES_REQUIRED[1]} for ${GRADES[0].name}, ${GAMES_REQUIRED[12]} for ${GRADES[11].name}` },
+                { label: 'Overall', rule: `The average of your ten, capped by games played that year: ${GAMES_REQUIRED[1]} for ${GRADES[0].name}, ${GAMES_REQUIRED[12]} for ${GRADES[11].name}` },
               ].map(r => (
                 <div key={r.label} className="bonus-row">
                   <span style={{ fontFamily: 'var(--font-label)', fontWeight: 600, fontSize: '13px', color: 'var(--grey-light)' }}>{r.label}</span>

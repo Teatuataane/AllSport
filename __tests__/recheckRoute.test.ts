@@ -33,6 +33,8 @@ const h = vi.hoisted(() => ({
   inserts: [] as unknown[],
   updates: [] as { table: string; values: Record<string, unknown>; col: string; val: unknown }[],
   loadTakesMs: 0,
+  /** The `year` each gradeStateFrom and loadGradeState call asked for. */
+  years: [] as unknown[],
   scoresThrow: false,
   scoreError: null as unknown,
   scoreRows: [] as { table: string; row: unknown }[],
@@ -59,11 +61,16 @@ vi.mock('@/lib/loadGrades', () => {
     if (h.loadTakesMs) vi.setSystemTime(Date.now() + h.loadTakesMs)
   }
   return {
-    loadGradeState: async (_db: unknown, id: string) => { load(id); return h.state },
+    loadGradeState: async (_db: unknown, id: string, _m?: unknown, opts?: { year?: number }) => {
+      load(id); h.years.push(opts?.year); return h.state
+    },
     // The conferral path reads inputs once and derives the state from them, so
     // the leaderboard numbers ride on the same read.
     loadGradeInputs: async (_db: unknown, id: string) => { load(id); return h.state && { inputs: true } },
-    gradeStateFrom: () => h.state,
+    gradeStateFrom: (_id: string, _inputs: unknown, opts?: { year?: number }) => {
+      h.years.push(opts?.year)
+      return h.state && { ...(h.state as object), year: opts?.year }
+    },
     leaderboardScoresFrom: () => {
       if (h.scoresThrow) throw new Error('boom')
       return { domainRungs: [4, 4, 4, 4, 4, 4, 4, 4, 5, 5], games: h.games }
@@ -78,7 +85,10 @@ vi.mock('@/lib/leaderboardData', () => ({
   },
 }))
 vi.mock('@/lib/autoConfer', () => ({
-  awardsToConfer: () => h.pending,
+  // The year's pending awards: h.pending for the year being graded, stamped
+  // with it, as the real awardsToConfer stamps season_year.
+  awardsToConfer: (_id: string, state: { year?: number }) =>
+    (h.pending as object[]).map(a => ({ ...a, season_year: state.year })),
   awardsToWithdraw: () => h.withdraw,
   protectedAwards: () => h.protected,
   awardAfterWithdraw: () => h.after,
@@ -170,7 +180,11 @@ beforeEach(() => {
   h.inserts = []
   h.updates = []
   h.loadTakesMs = 0
+  h.years = []
   vi.useRealTimers()
+  // A fixed day outside January, so every test grades one year. The January
+  // tests below set their own.
+  vi.useFakeTimers({ now: new Date('2026-09-22T06:00:00.000Z'), toFake: ['Date'] })
 })
 
 describe('recheck route: access', () => {
@@ -239,9 +253,9 @@ describe('recheck route: writing', () => {
 
   it('reports only the rows the upsert actually inserted', async () => {
     h.pending = [award(1, 1), award(2, 3)]
-    h.upsertData = [{ domain_number: 2, rung: 3 }]
+    h.upsertData = [{ domain_number: 2, rung: 3, season_year: 2026 }]
     const body = await (await post({ force: true })).json()
-    expect(body.conferred).toEqual([{ domainNumber: 2, rung: 3, name: 'G3', events: 1 }])
+    expect(body.conferred).toEqual([{ domainNumber: 2, rung: 3, name: 'G3', events: 1, year: 2026 }])
     expect(h.adminOps).toEqual(['upsert:grade_awards', 'score:publish', 'update:players'])
   })
 
@@ -363,7 +377,7 @@ describe('recheck route: withdrawal', () => {
     // Re-judged on a fresh read, in case another kaiwhakawā deleted more evidence meanwhile.
     expect(h.loadCalls.length).toBe(2)
     expect(h.adminOps).toEqual(['delete:grade_awards', 'insert:grade_withdrawals', 'upsert:grade_awards'])
-    expect(h.upsertArgs!.opts).toEqual({ onConflict: 'player_id,domain_number,rung', ignoreDuplicates: true })
+    expect(h.upsertArgs!.opts).toEqual({ onConflict: 'player_id,domain_number,rung,season_year', ignoreDuplicates: true })
   })
 
   it('says so when the award went but the log did not', async () => {
@@ -476,7 +490,7 @@ describe('recheck route: what gets written, and to whom', () => {
     expect(h.updates).toEqual([expect.objectContaining({ table: 'players', col: 'id', val: 'child' })])
     // ignoreDuplicates is what makes the select return only NEW rows; a merge
     // upsert would return the conflicting ones and announce a colour twice.
-    expect(h.upsertArgs!.opts).toEqual({ onConflict: 'player_id,domain_number,rung', ignoreDuplicates: true })
+    expect(h.upsertArgs!.opts).toEqual({ onConflict: 'player_id,domain_number,rung,season_year', ignoreDuplicates: true })
   })
 
   it('a withdrawal names the kaiwhakawā who caused it and the player who lost it', async () => {
@@ -548,5 +562,47 @@ describe('recheck route: never acts on a partial read', () => {
     h.pending = [award(1, 1)]
     expect(await (await post({})).json()).toEqual({ conferred: [], guest: true })
     expect(h.adminCreated).toBe(0)
+  })
+})
+
+// ─── Colours per calendar year (20261012230318) ─────────────────────────────
+describe('recheck route: the colour year', () => {
+  it('grades this NZ year only, outside early January', async () => {
+    h.pending = [award(1, 1)]
+    h.upsertData = []
+    await post({ force: true })
+    expect(h.years).toEqual([2026])
+    expect((h.upsertArgs!.rows as { season_year: number }[]).map(r => r.season_year)).toEqual([2026])
+  })
+
+  it('in the first two weeks of January also grades last year, so a 31 December game still counts', async () => {
+    // 9am 3 January 2027 in Auckland is still 2 January in UTC.
+    vi.setSystemTime(new Date('2027-01-02T20:00:00.000Z'))
+    h.pending = [award(1, 1)]
+    h.upsertData = [{ domain_number: 1, rung: 1, season_year: 2026 }]
+    const body = await (await post({ force: true })).json()
+    expect(h.years).toEqual([2027, 2026])
+    expect((h.upsertArgs!.rows as { season_year: number }[]).map(r => r.season_year)).toEqual([2027, 2026])
+    // Only what landed is announced, by its year.
+    expect(body.conferred).toEqual([{ domainNumber: 1, rung: 1, name: 'G1', events: 1, year: 2026 }])
+  })
+
+  it('stops grading last year after 14 January', async () => {
+    vi.setSystemTime(new Date('2027-01-15T00:00:00.000Z'))
+    await post({ force: true })
+    expect(h.years).toEqual([2027])
+  })
+
+  it('a withdrawal re-judges the year of the deleted score, while that year is still open', async () => {
+    h.rpc.is_judge = { data: true, error: null }
+    vi.setSystemTime(new Date('2027-01-05T00:00:00.000Z'))
+    await post({ withdraw: { domain: 3, year: 2026 } })
+    expect(h.years).toEqual([2026])
+  })
+
+  it('a withdrawal for a closed year re-judges this year instead', async () => {
+    h.rpc.is_judge = { data: true, error: null }
+    await post({ withdraw: { domain: 3, year: 2024 } })
+    expect(h.years).toEqual([2026])
   })
 })

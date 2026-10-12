@@ -148,7 +148,7 @@ export default function GameReviewPage() {
       average: averageBefore(games.scores, sessionId),
       lines,
       added: [...added.entries()],
-      colours: awardsForGame(games.state.awards, games.scores, sessionId)
+      colours: awardsForGame(games.state.allAwards, games.scores, sessionId)
         .map(a => ({ domainNumber: a.domain_number, rung: a.rung })),
       next: nextStep(events.map(e => e.event_name), games.state.grades, games.player,
         games.inputs.bodyweights ?? [], toNZDateString(new Date())),

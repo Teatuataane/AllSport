@@ -1,5 +1,11 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { gradeStateFrom, type GradeInputs, type ResultRow } from '@/lib/loadGrades'
+
+// Colours are graded per NZ calendar year (lib/seasonYear.ts) and these
+// fixtures are dated 2026, so the clock is pinned inside 2026. Otherwise, from
+// 1 January 2027, "this year" would hold none of them.
+beforeEach(() => { vi.useFakeTimers({ now: new Date('2026-10-13T00:00:00.000Z'), toFake: ['Date'] }) })
+afterEach(() => { vi.useRealTimers() })
 
 // ─── gradeStateFrom({ asOf }) ────────────────────────────────────────────────
 // The replay's question: what could this player be graded on at that moment?

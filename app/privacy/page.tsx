@@ -523,7 +523,7 @@ export default function PrivacyPolicy() {
             </p>
             <p className="privacy-p">
               <strong style={{ color: 'var(--white)' }}>Your scores, placements and colours</strong> — kept
-              indefinitely. Colours are a lifetime record and a competition history is not much use with holes in
+              indefinitely. Each year&apos;s colours stay on your record and a competition history is not much use with holes in
               it. If you delete your account, these stay as part of the session record but are separated from
               your name and contact details.
             </p>

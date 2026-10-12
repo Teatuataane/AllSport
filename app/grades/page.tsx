@@ -105,9 +105,10 @@ export default function ColoursGuide() {
       <section style={card}>
         <H2 n={1}>The twelve colours</H2>
         <P>
-          Everyone starts at Mā. Each colour&apos;s standards are aimed at a shrinking share of players:
-          Whero at the top 90%, down to Taniwha for the top one percent. Your overall colour also needs a
-          total number of official games played in the room.
+          Everyone starts at Mā, and starts again every 1 January: colours are earned for a calendar year.
+          Each colour&apos;s standards are aimed at a shrinking share of players: Whero at the top 90%, down
+          to Taniwha for the top one percent. Your overall colour also needs a number of official games
+          played in the room that year.
         </P>
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 62px 56px', gap: '0 8px', marginTop: 8 }}>
           {['Colour', 'Aimed at', 'Games'].map((h, i) => (
@@ -173,7 +174,7 @@ export default function ColoursGuide() {
         </P>
         <P>
           It also needs the games in the table above. Your domains can be built anywhere, but your overall
-          colour only goes as high as the official games you have played.
+          colour only goes as high as the official games you have played this year.
         </P>
         <div style={{ background: '#0b0b0b', border: '1px solid var(--border)', borderRadius: 12, padding: '12px 14px' }}>
           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8 }} aria-hidden>
@@ -214,12 +215,17 @@ export default function ColoursGuide() {
         </P>
       </section>
 
-      {/* ── 6. Keeping it ────────────────────────────────────────────────── */}
+      {/* ── 6. A year at a time ──────────────────────────────────────────── */}
       <section style={card}>
-        <H2 n={6}>A colour stays</H2>
+        <H2 n={6}>A colour for the year</H2>
         <P>
-          A change to the standards never takes a colour away. The only way to lose one is a kaiwhakawā
-          removing the score it rested on.
+          A colour is earned for the calendar year, from your scores that year. On 1 January every domain
+          starts again on Mā, and last year&apos;s colours stay on your record. A head-to-head rating carries
+          over, and counts once you play that sport in the new year.
+        </P>
+        <P>
+          Within a year, a change to the standards never takes a colour away. The only way to lose one is a
+          kaiwhakawā removing the score it rested on.
         </P>
         <Link href="/events" style={{ ...label, fontSize: 12.5, color: 'var(--blue)' }}>
           Every event and its tiers →

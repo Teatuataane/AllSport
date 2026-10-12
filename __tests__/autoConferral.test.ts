@@ -93,7 +93,9 @@ describe('the route', () => {
     // ON CONFLICT DO NOTHING returns just the new rows. Reporting `pending`
     // would announce the same colour twice when two screens race, or when one
     // races a kaiwhakawā releasing it by hand.
-    expect(src).toMatch(/\.select\('domain_number, rung, grade_name, events'\)/)
+    // The year rides along, so a January recheck that confers in two years
+    // reports each by the year it landed in.
+    expect(src).toMatch(/\.select\('domain_number, rung, grade_name, events, season_year'\)/)
     expect(src).toMatch(/conferred = pending\.filter/)
   })
 
@@ -538,7 +540,7 @@ describe('found by the adversarial review', () => {
   it('a failed re-judge after a deletion stays retryable', () => {
     // The score is already gone and Refresh never withdraws.
     const panel = readFileSync('components/GradeReleasePanel.tsx', 'utf8')
-    expect(panel).toMatch(/setPendingRejudge\(failed \? \{ player, domain, reason \} : null\)/)
+    expect(panel).toMatch(/setPendingRejudge\(failed \? \{ player, domain, reason, year \} : null\)/)
     expect(panel).toMatch(/Re-check now/)
     expect(panel).not.toMatch(/could not be re-checked\. Press Refresh/)
   })

@@ -12,7 +12,7 @@
 //   4. The next-time gap is measured from the estimate, not the load.
 //   5. estimatedOneRm / liftLabel / brzycki treat odd rep counts safely.
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { liftKg, type GradePlayer } from '@/lib/playerGrades'
 import { scoreRung, liveEventRung } from '@/lib/scoreColour'
 import { eventRungInGame } from '@/lib/leaderboardScores'
@@ -145,6 +145,12 @@ import { describeRawGap } from '@/lib/gameReport'
 import { computeScoreVals, EMPTY_VALS } from '@/lib/scoring'
 import { liveGameColourRung } from '@/lib/scoreColour'
 import { STANDARDS } from '@/lib/standards'
+
+// Colours are graded per NZ calendar year (lib/seasonYear.ts) and these
+// fixtures are dated 2026, so the clock is pinned inside 2026. Otherwise, from
+// 1 January 2027, "this year" would hold none of them.
+beforeEach(() => { vi.useFakeTimers({ now: new Date('2026-10-13T00:00:00.000Z'), toFake: ['Date'] }) })
+afterEach(() => { vi.useRealTimers() })
 
 const toeLift = getEventBySlug('toe-lift')!
 const hold = (kg: number, secs: number) =>

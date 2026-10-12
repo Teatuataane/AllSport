@@ -21,6 +21,7 @@
 
 import { gradeStateFrom, closedAt, type GradeInputs, type GradeAward } from './loadGrades'
 import { awardsToConfer, type PendingAward } from './autoConfer'
+import { yearsToGrade } from './seasonYear'
 
 export type PlannedAward = PendingAward & { conferred_at: string }
 
@@ -61,13 +62,18 @@ export function replayMoments(playerId: string, inputs: GradeInputs, now: string
 export function replayAwards(playerId: string, inputs: GradeInputs, now: string): PlannedAward[] {
   const planned: PlannedAward[] = []
   for (const t of replayMoments(playerId, inputs, now)) {
-    for (let i = 0; i < MAX_PER_MOMENT; i++) {
-      const awards: GradeAward[] = planned.map(a => ({
-        domain_number: a.domain_number, rung: a.rung, grade_name: a.grade_name, conferred_at: a.conferred_at,
-      }))
-      const due = awardsToConfer(playerId, gradeStateFrom(playerId, inputs, { asOf: t, awards }))
-      if (due.length === 0) break
-      planned.push(...due.map(a => ({ ...a, conferred_at: t })))
+    // Colours are per NZ calendar year: each moment grades the year it falls
+    // in, and in early January last year too, exactly as the live route does.
+    for (const year of yearsToGrade(t)) {
+      for (let i = 0; i < MAX_PER_MOMENT; i++) {
+        const awards: GradeAward[] = planned.map(a => ({
+          domain_number: a.domain_number, rung: a.rung, grade_name: a.grade_name, conferred_at: a.conferred_at,
+          season_year: a.season_year,
+        }))
+        const due = awardsToConfer(playerId, gradeStateFrom(playerId, inputs, { asOf: t, awards, year }))
+        if (due.length === 0) break
+        planned.push(...due.map(a => ({ ...a, conferred_at: t })))
+      }
     }
   }
   return planned

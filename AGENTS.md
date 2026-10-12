@@ -19,7 +19,7 @@ A koha-funded (donation-based) community sport from Ōtautahi, Aotearoa. Players
 
 - `raw_score` is the single ranking number; **higher is always better** in every input mode. Encodings live in `lib/scoring.ts` and `lib/eventData.ts`; tiered events use `tierIdx * 10000 + term`, so a higher tier always outranks a lower one.
 - Lifts rank on estimated 1RM. The database trigger `enforce_lift_estimate` and `lib/scoring.ts` must stay in step.
-- A domain colour is the average of the player's best six events there (unplayed = Mā), rounded down. The overall colour is the average of the ten domains, capped by lifetime official games. Standards are compiled from reviewed sheets, not hand-written.
+- A domain colour is the average of the player's best six events there (unplayed = Mā), rounded down. The overall colour is the average of the ten domains, capped by that year's official games. Colours are earned per NZ calendar year: each year starts on Mā, past years stay on record (`lib/seasonYear.ts`). Standards are compiled from reviewed sheets, not hand-written.
 - Colours are conferred by the server recheck route, which re-reads data under the caller's login and re-runs `lib/grading.ts`. The client never asserts a colour. Ordinary rechecks never withdraw a colour.
 - Season leaderboard: everyone in a finished, unvoided game is ranked together on their game colour total; places pay 100, 99, 98 … never below 1; ties share.
 - A missed event ranks last. Voided games are excluded everywhere (`sessions.voided_at`). Events added on top of an official game are stored as workouts, never in `results`.
