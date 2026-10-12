@@ -11,6 +11,13 @@ All notable changes to AllSport are documented here.
 
 ### Not changed yet
 - Twenty events keep their old standards, with the proposed ones written underneath as notes, because they need a scoring or level change first: Glute Thrust, Leg Ext Hold, Tibialis Curl and Reverse Wrist Ext (loads as a multiple of bodyweight), the three carries (200m timed at a multiple of bodyweight), High Jump (scored by levels), Swim (200m), Cycling (times look like a longer ride than 1km), and the ten events whose levels change (Repeat Vault, Calf Raises, Side Bend, Plie Squat, Seiza, GHD Situp, Clap Pushups, Forward Fold, Full Bound Twist, Diving).
+## [0.33.1.0] - 2026-10-12
+
+### Added
+- **Icons for the 23 events that had none.** Animal Crawl, Back Extension, Calf Raises, Clap Pushups, Cornhole, Diving, Glute Thrust, Hollow Hold, Loaded Lunge, Mas Wrestling, Obstacle Course, Plie Squat, Poi, Pullover & Press, Reverse Maltese, Reverse Wrist Ext, External Wrist Stretch, Seiza, Skull Hang, Steinborn, Swim, Water Polo and Internal Wrist Stretch now show their pictogram instead of an emoji.
+
+### Changed
+- **Reverse Wrist Ext's slug is now `wrist-extension`** (was `reverse-wrist-extension`), to match its icon. The name and ladder are unchanged. Migration `20261012000618` repoints every stored slug (results, workout entries, plans, exemptions, aliases, colour awards) and re-seeds `event_domains`: deploy the code first, then apply it straight after.
 
 ## [0.33.0.0] - 2026-10-12
 

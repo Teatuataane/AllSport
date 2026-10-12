@@ -174,7 +174,7 @@
 
 ### Review the drafts for the 16 events added 6 Oct 2026
 **What:** Levels (Clap Pushups, Diving, Poi, Water Polo, Cornhole, Airsoft) in `EVENT_DIFFICULTY_REVIEW.md`, and every new event's colour standards in `GRADING_STANDARDS_REVIEW.md`, all marked UNREVIEWED. Re-run both apply scripts after editing.
-**Also:** 11 new events have no icon in `public/event-icons/` (steinborn, glute-thrust, reverse-wrist-extension, clap-pushups, mas-wrestling, obstacle-course, swim, diving, poi, water-polo, cornhole; 400m/800m Sprint borrow `400m-race.png`). The Glute Thrust EVENT and the Glute Thrust LEVEL of Hamstring Curl share a name on purpose (Tāne, 6 Oct 2026).
+**Also:** every roster event now has an icon (23 added 12 Oct 2026; 400m/800m Sprint borrow `400m-race.png`). The Glute Thrust EVENT and the Glute Thrust LEVEL of Hamstring Curl share a name on purpose (Tāne, 6 Oct 2026).
 
 ### Apply `20261005012108_difficulty_review_oct.sql` then `20261005032653_rename_l_sit.sql` straight after v0.28.1.0 deploys
 **What:** deploy the code first, then `supabase db push` from a clean `main` checkout (it applies both, in timestamp order) with no game or workout running, then `node --import ./scripts/ts-loader.mjs scripts/refresh-leaderboard-scores.ts --apply`, then hard-refresh every kaiwhakawā device. Verify by object: `event_domains` holds 128 rows; `guard_workout_entries_write` and `record_entry_match` list fourteen pure-contest slugs; `enforce_lift_estimate` refuses a Tibialis Curl that names a level; `enforce_relevelled_ladders` lists the 30 guarded ladders.
