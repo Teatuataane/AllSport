@@ -2,6 +2,11 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.35.0.2] - 2026-10-14
+
+### Added
+- **`/sitemap.xml` and `/robots.txt`** for Google Search Console. The sitemap lists the public pages and all 144 event guides. robots.txt keeps search engines out of player, kaiwhakawā and API pages, and out of `/leaderboard` because it lists players by name, juniors included.
+
 ## [0.35.0.1] - 2026-10-13
 
 ### Changed
