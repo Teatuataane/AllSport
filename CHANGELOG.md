@@ -27,7 +27,7 @@ All notable changes to AllSport are documented here.
 ### Migration
 - `20261012230318_yearly_colours.sql` (part A): `grade_awards.season_year` and `grade_withdrawals.season_year`, backfilled from the NZ year of `conferred_at` (all 2026), with a trigger filling them on any insert that leaves them out; a unique key on (player_id, domain_number, rung, season_year); `confer_grade` checks "already holds a higher colour" within this year and conflicts on the year key; `leaderboard_page()` returns conferred colours per year. Keeps the old lifetime key.
 - `20261012231444_yearly_colours_drop_lifetime_key.sql` (part B): drops the old `UNIQUE (player_id, domain_number, rung)`, so a colour can be earned again next year. **Must be applied before 1 January 2027.**
-- Apply both after this version deploys. Until then the new colour check cannot write (it names the year key) and retries on the next visit; nothing else is affected.
+- Applied together after this version deployed, and verified 13 Oct 2026 (131 awards and 4 withdrawals, all 2026; old key gone, year key in place).
 
 ## [0.34.2.1] - 2026-10-13
 
