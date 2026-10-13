@@ -29,6 +29,9 @@ const SWIRL = { left: 1330, top: 300, width: 1000, height: 1000 }
 const swirl = () => sharp(SRC).extract(SWIRL)
 await swirl().resize(32, 32)
   .png({ compressionLevel: 9, palette: true }).toFile('public/favicon-32.png')
+// Google Search needs a multiple of 48px square, so 32px is not enough there.
+await swirl().resize(192, 192)
+  .png({ compressionLevel: 9, palette: true, quality: 90 }).toFile('public/icon-192.png')
 // iOS paints a transparent home-screen icon black anyway, so flatten it on black.
 await swirl().resize(180, 180).flatten({ background: '#000000' })
   .png({ compressionLevel: 9, palette: true, quality: 90 }).toFile('public/apple-touch-icon.png')

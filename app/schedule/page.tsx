@@ -4,6 +4,12 @@
 import Link from 'next/link'
 import { RainbowText } from '@/components/ui'
 
+// Without its own title Google wrote one from the page ("session schedule").
+export const metadata = {
+  title: 'Game Schedule – AllSport',
+  description: 'Three AllSport games a week in Sockburn, Ōtautahi: Tuesday and Thursday 4:30pm, Saturday 9:00am. 100 minutes, 10 events. Koha-based.',
+}
+
 const sessions = [
   { day: 'Tuesday', time: '4:30 PM', duration: '100 mins', spots: 100 },
   { day: 'Thursday', time: '4:30 PM', duration: '100 mins', spots: 100 },
@@ -28,7 +34,7 @@ export default function Schedule() {
         <div className="container" style={{ position: 'relative', zIndex: 1 }}>
           <div className="tag">Ōtautahi, Aotearoa</div>
           <h1 style={{ fontSize: 'clamp(56px, 8vw, 112px)', lineHeight: 0.92, marginBottom: '8px' }}>
-            SESSION<br />
+            GAME<br />
             <RainbowText>SCHEDULE</RainbowText>
           </h1>
           <div className="rainbow-line" style={{ width: '88px', margin: '20px 0 28px', borderRadius: '2px' }} />
@@ -41,7 +47,7 @@ export default function Schedule() {
       {/* Weekly schedule */}
       <section className="section" style={{ background: '#0d0d0d', borderTop: '3px solid var(--green)' }}>
         <div className="container">
-          <div className="tag">Weekly Sessions</div>
+          <div className="tag">Weekly Games</div>
           <h2 style={{ fontSize: 'clamp(36px, 4vw, 56px)', marginBottom: '8px' }}>
             WHEN WE <span style={{ color: 'var(--green)' }}>PLAY</span>
           </h2>
