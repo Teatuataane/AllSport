@@ -56,6 +56,19 @@ function iconVersion(): string {
 const nextConfig: NextConfig = {
   reactCompiler: true,
   env: { NEXT_PUBLIC_ICON_VERSION: iconVersion() },
+  // www.allsport.nz served the site as well, so Google indexed it as a second
+  // site and kept its old favicon (the create-next-app Vercel triangle) in the
+  // results. One permanent redirect folds it into allsport.nz.
+  async redirects() {
+    return [
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: 'www.allsport.nz' }],
+        destination: 'https://allsport.nz/:path*',
+        permanent: true,
+      },
+    ]
+  },
   async headers() {
     // Both rule sets apply: Next runs every matching rule, and the security
     // headers and Cache-Control share no key, so the asset rules below add to
@@ -63,7 +76,7 @@ const nextConfig: NextConfig = {
     return [
       { source: '/:path*', headers: buildSecurityHeaders(supabaseUrl) },
       {
-        source: '/:file(logo-hero-440.webp|logo-hero-880.webp|logo-mark.webp|favicon-32.png|apple-touch-icon.png)',
+        source: '/:file(logo-hero-440.webp|logo-hero-880.webp|logo-mark.webp|favicon-32.png|icon-192.png|apple-touch-icon.png)',
         headers: [{ key: 'Cache-Control', value: ASSET_CACHE }],
       },
       {
