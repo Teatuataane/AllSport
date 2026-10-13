@@ -2,10 +2,20 @@
 
 All notable changes to AllSport are documented here.
 
-## [0.35.0.1] - 2026-10-14
+## [0.35.0.2] - 2026-10-14
 
 ### Added
 - **`/sitemap.xml` and `/robots.txt`** for Google Search Console. The sitemap lists the public pages and all 144 event guides. robots.txt keeps search engines out of player, kaiwhakawā and API pages, and out of `/leaderboard` because it lists players by name, juniors included.
+
+## [0.35.0.1] - 2026-10-13
+
+### Changed
+- **New tagline: "100 Minutes, 10 Events, 150+ Sports & Exercises"** (Tāne, 13 Oct 2026). It is the site title Google shows, the homepage headline, the footer line and the start of the search description, replacing "One Sport, Every Sport".
+- **The schedule is the Game Schedule**: its heading, its "Weekly Games" tag, and its own page title and description. It had no title, so Google wrote "session schedule" from the page.
+
+### Fixed
+- **Google showed the Vercel triangle for allsport.nz.** www.allsport.nz served the site too, so Google indexed it as a second site with the old create-next-app favicon. It now redirects permanently to allsport.nz.
+- **A 192px icon for Google Search**, which wants a square icon at a multiple of 48px; 32px was too small for it. Generated from the same colour swirl by `scripts/gen-logo-assets.mjs`.
 
 ## [0.35.0.0] - 2026-10-13
 

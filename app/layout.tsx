@@ -50,11 +50,17 @@ const barlowCondensed = Barlow_Condensed({
 })
 
 export const metadata: Metadata = {
-  title: 'AllSport — One Sport, Every Sport',
-  description: 'One sport that makes you better at everything. AllSport tests strength, speed, flexibility, coordination and endurance — trained together, every session. Koha-based, Ōtautahi Aotearoa.',
+  metadataBase: new URL('https://allsport.nz'),
+  title: 'AllSport – 100 Minutes, 10 Events, 150+ Sports & Exercises',
+  description: '100 minutes, 10 events, 150+ sports and exercises. AllSport tests strength, speed, flexibility, coordination and endurance — trained together, every session. Koha-based, Ōtautahi Aotearoa.',
   icons: {
     // ?v= busts browsers' favicon caches, which ignore normal HTTP caching.
-    icon: '/favicon-32.png?v=2',
+    // Google Search wants a square icon at a multiple of 48px; 32px alone is
+    // too small for it, so the 192px swirl is offered alongside.
+    icon: [
+      { url: '/favicon-32.png?v=2', sizes: '32x32', type: 'image/png' },
+      { url: '/icon-192.png?v=2', sizes: '192x192', type: 'image/png' },
+    ],
     apple: '/apple-touch-icon.png?v=2',
   },
 }

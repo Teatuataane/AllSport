@@ -121,13 +121,16 @@ export default async function Home() {
         <div className="container" style={{ position: 'relative', zIndex: 1, width: '100%' }}>
           <div style={{ maxWidth: '620px' }}>
             <div className="lp-tag" style={{ background: 'rgba(0,0,0,0.4)' }}>Ōtautahi · Aotearoa</div>
-            <h1 style={{ fontSize: 'clamp(52px, 8vw, 104px)', fontFamily: 'var(--font-display)', lineHeight: 0.9, letterSpacing: '0.03em', color: '#fff', margin: '18px 0 2px' }}>ONE SPORT,</h1>
-            <h1 style={{ fontSize: 'clamp(52px, 8vw, 104px)', fontFamily: 'var(--font-display)', lineHeight: 0.9, letterSpacing: '0.03em', marginBottom: '26px', whiteSpace: 'nowrap', ...rainbowText }}>EVERY SPORT.</h1>
+            <h1 style={{ fontSize: 'clamp(44px, 7vw, 92px)', fontFamily: 'var(--font-display)', lineHeight: 0.92, letterSpacing: '0.03em', color: '#fff', margin: '18px 0 26px' }}>
+              <span style={{ display: 'block' }}>100 MINUTES.</span>
+              <span style={{ display: 'block' }}>10 EVENTS.</span>
+              <span style={{ display: 'block', ...rainbowText }}>150+ SPORTS &amp; EXERCISES.</span>
+            </h1>
 
             <div className="lp-rainbow-line" style={{ width: '88px', marginBottom: '26px' }} />
 
             <p style={{ fontSize: 'clamp(20px, 2.2vw, 26px)', color: '#fff', lineHeight: 1.4, marginBottom: '12px', maxWidth: '540px', fontWeight: 600 }}>
-              Ten events. 100 minutes. Every part of you tested.
+              One sport that tests every part of you.
             </p>
             <p style={{ fontSize: '17px', color: '#ccc', lineHeight: 1.6, marginBottom: '22px', maxWidth: '540px' }}>
               Lift, sprint, jump, throw, balance, aim. Any age, any level. Bring your whānau.
