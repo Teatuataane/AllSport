@@ -2,6 +2,23 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.35.0.0] - 2026-10-13
+
+### Changed
+- **Colours are earned per calendar year** (January to December, NZ time; Tāne, 13 Oct 2026). On 1 January every domain starts again on Mā, graded only on that year's results and logged training. Last year's colours stay on record, and HOME shows them under this year's colour ("2026: Kōwhai").
+- **The games cap counts that year's games**, on the same table (Taniwha needs 100 games in a year).
+- **A head-to-head rating stays lifetime**, but its colour only counts in a year the player has played that sport.
+- **The leaderboard has a tab for each year**: that year's season points, conferred colours and games cap. The kaiwhakawā Players tab and the family chips show this year's colours.
+- **Late scores still count for their own year.** In the first 14 days of January the colour check also grades last year, so a 31 December game typed in on 2 January confers its 2026 colour. A result belongs to the NZ day it was played, a logged entry to the day it was trained.
+- A kaiwhakawā deleting a logged score re-judges the colour year that score counted in. The release panel lists this year's colours.
+- My Events labels an event's colour with its year, and the "From all your results" note is gone. The /grades guide, the homepage, How to play and the privacy page say colours are earned per year.
+- `GRADING_RULES_VERSION` bumped, so every player is rechecked once.
+
+### Migration
+- `20261012230318_yearly_colours.sql` (part A): `grade_awards.season_year` and `grade_withdrawals.season_year`, backfilled from the NZ year of `conferred_at` (all 2026), with a trigger filling them on any insert that leaves them out; a unique key on (player_id, domain_number, rung, season_year); `confer_grade` checks "already holds a higher colour" within this year and conflicts on the year key; `leaderboard_page()` returns conferred colours per year. Keeps the old lifetime key.
+- `20261012231444_yearly_colours_drop_lifetime_key.sql` (part B): drops the old `UNIQUE (player_id, domain_number, rung)`, so a colour can be earned again next year. **Must be applied before 1 January 2027.**
+- Apply both after this version deploys. Until then the new colour check cannot write (it names the year key) and retries on the next visit; nothing else is affected.
+
 ## [0.34.2.1] - 2026-10-13
 
 ### Fixed

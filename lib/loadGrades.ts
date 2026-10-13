@@ -28,6 +28,7 @@ import { rateGames, type SportRating } from './headToHead'
 import { disputedBySport, type MatchRow } from './matches'
 import { toNZDateString } from './dates'
 import { domainRungsOf, gameColourTotals, type SeasonRow } from './leaderboardScores'
+import { nzYear, yearOfDay, awardsInYear } from './seasonYear'
 
 /**
  * The Supabase client to read through. Passed in rather than created here, so
@@ -53,6 +54,12 @@ export type GradeAward = {
   conferred_by?: string | null
   /** The event slugs whose standards the colour stood on when it was conferred. */
   events?: string[] | null
+  /**
+   * The NZ year the colour was earned for (20261012230318). Absent against an
+   * older database and on an award the replay has only planned; awardYear in
+   * lib/seasonYear.ts falls back to the year it was conferred.
+   */
+  season_year?: number | null
 }
 
 export type GradeState = {
@@ -64,8 +71,16 @@ export type GradeState = {
   /** A guest cannot hold a colour (confer_grade refuses one too). */
   guest?: boolean
   grades: PlayerGrades
+  /**
+   * The colour year this state grades (lib/seasonYear.ts), or null for every
+   * year at once. Grades, awards, held and games all describe this year only.
+   */
+  year: number | null
+  /** This year's awards. */
   awards: GradeAward[]
-  /** Highest conferred colour per domain. */
+  /** Every award in every year: what /profile and HOME's "2026: Kōwhai" line read. */
+  allAwards: GradeAward[]
+  /** Highest colour conferred this year per domain. */
   held: Map<number, number>
   /** Event slugs a kaiwhakawā has confirmed this player cannot do. */
   exemptions: Set<string>
@@ -77,8 +92,10 @@ export type GradeState = {
   hasBand: boolean
   /** False until the grading migration is applied: nothing can be conferred yet. */
   schemaReady: boolean
-  /** Official games played: sessions that finished and were not voided, with any result. Caps the overall colour. */
+  /** Official games played this year: sessions that finished and were not voided, with any result. Caps the overall colour. */
   games: number
+  /** The same count for every year played, so a past year's overall colour is capped by its own games. */
+  gamesByYear: Map<number, number>
   /** What every domain has waiting to be conferred. */
   gates: ColourGate[]
   /** False until the workout migration is applied. */
@@ -294,6 +311,18 @@ async function loadBand(db: GradeDb, playerId: string) {
   return db.from('players').select('bodyweight_band').eq('id', playerId).maybeSingle()
 }
 
+/**
+ * The player's awards. season_year arrived with 20261012230318; a missing
+ * COLUMN is 42703 and would cost every award, so it is asked for and the query
+ * re-run without it (awardYear then reads the year from conferred_at).
+ */
+async function loadAwards(db: GradeDb, playerId: string) {
+  const cols = 'id, domain_number, rung, grade_name, conferred_at, conferred_by, events'
+  const withYear = await db.from('grade_awards').select(`${cols}, season_year`).eq('player_id', playerId)
+  if (withYear.error?.code !== '42703') return withYear
+  return db.from('grade_awards').select(cols).eq('player_id', playerId)
+}
+
 /** PostgREST returns at most this many rows per request, whatever `.range()` asks for. */
 const PAGE = 1000
 
@@ -388,7 +417,7 @@ export async function loadGradeInputs(db: GradeDb, playerId: string, matches?: r
     loadBodyweights(db, playerId),
     loadResults(db, playerId),
     db.from('grade_exemptions').select('event_slug, created_at').eq('player_id', playerId),
-    db.from('grade_awards').select('id, domain_number, rung, grade_name, conferred_at, conferred_by, events').eq('player_id', playerId),
+    loadAwards(db, playerId),
     loadWorkoutEntries(db, playerId),
     matches ? Promise.resolve({ rows: matches, failed: false }) : loadMatchesChecked(db),
     loadRecordedVoids(db),
@@ -417,6 +446,11 @@ export async function loadGradeInputs(db: GradeDb, playerId: string, matches?: r
       && (!awards.error || missing(awards.error))
       && (!gender.error && !band.error),
   }
+}
+
+/** The NZ day a game result was played: session_date, else started_at read in NZ. */
+function resultDay(r: ResultRow): string {
+  return r.sessions?.session_date ?? toNZDateString(new Date(r.sessions?.started_at ?? r.created_at))
 }
 
 /** A game's length, for a session that closed without recording when. */
@@ -522,25 +556,32 @@ export function leaderboardScoresFrom(playerId: string, inputs: GradeInputs, sta
 /**
  * A player's grade state from inputs already fetched.
  *
- * With no options this is exactly what the app shows today. `asOf` answers the
- * replay's question instead — what could this player have been graded on at
- * that moment? — by dropping every piece of evidence that did not exist yet,
- * and counting a game as finished only once it had actually closed. `awards`
+ * With no options this is what the app shows today: THIS year's colours
+ * (lib/seasonYear.ts). `year` grades another year instead, or every year at
+ * once when null. `asOf` answers the replay's question — what could this
+ * player have been graded on at that moment? — by dropping every piece of
+ * evidence that did not exist yet, and counting a game as finished only once
+ * it had actually closed; its year defaults to the year of `asOf`. `awards`
  * substitutes the awards the replay has conferred so far for the stored ones.
  */
 export function gradeStateFrom(
   playerId: string,
   inputs: GradeInputs,
-  opts: { asOf?: string; awards?: GradeAward[] } = {},
+  opts: { asOf?: string; awards?: GradeAward[]; year?: number | null } = {},
 ): GradeState {
   const { asOf } = opts
+  const year = opts.year === undefined ? nzYear(asOf ?? new Date()) : opts.year
+  // Evidence belongs to the NZ DAY it happened on, never to when it was typed:
+  // a 31 December game entered on 2 January is a 31 December game.
+  const inYear = (day: string | null | undefined) => year == null || yearOfDay(day) === year
   // Compared as instants, never as strings. Postgres hands back
   // "…04:05:06.123456+00:00" and JavaScript writes "…04:05:06.123Z"; comparing
   // those lexically is right only by luck of the character codes.
   const asOfMs = asOf ? Date.parse(asOf) : null
   const upTo = (t: string | null | undefined) => asOfMs == null || (t != null && Date.parse(t) <= asOfMs)
 
-  const awardRows = opts.awards ?? inputs.awards
+  const allAwards = opts.awards ?? inputs.awards
+  const awardRows = year == null ? allAwards : awardsInYear(allAwards, year)
   const exempt = new Set(inputs.exemptions.filter(e => upTo(e.created_at)).map(e => e.event_slug))
 
   // Declarations the player had made by `asOf`. Filtered on created_at (when
@@ -554,7 +595,20 @@ export function gradeStateFrom(
   const kgOn = kgResolver(inputs, declared)
 
   const results = inputs.results.filter(r => upTo(r.sessions?.started_at ?? r.created_at))
-  const counted = countedRows(results, inputs.voids)
+  // Voids are judged on every row first (voidedSessions infers some from the
+  // session's other rows), then the year is taken.
+  const everyYear = countedRows(results, inputs.voids)
+  const counted = everyYear.filter(r => inYear(resultDay(r)))
+  // Games per year, for a past year's overall colour (HOME's "2026: Kōwhai").
+  // Closed games only, the same rule gameEvidence applies.
+  const sessionsByYear = new Map<number, Set<string>>()
+  for (const r of everyYear) {
+    const closed = !r.sessions ? true : asOf ? (!r.sessions.is_active && upTo(closedAt(r))) : !r.sessions.is_active
+    const y = yearOfDay(resultDay(r))
+    if (!closed || y == null) continue
+    sessionsByYear.set(y, (sessionsByYear.get(y) ?? new Set()).add(r.session_id))
+  }
+  const gamesByYear = new Map([...sessionsByYear].map(([y, ids]) => [y, ids.size]))
   const game = gameEvidence(counted.map(r => ({
     session_id: r.session_id,
     event_name: r.session_events!.event_name,
@@ -566,18 +620,25 @@ export function gradeStateFrom(
     // The NZ day the game was played. session_date is trigger-derived from
     // started_at (20260902020602); created_at is when the score was typed,
     // which for a late entry is a different day.
-    bodyweightKg: kgOn(
-      r.sessions?.session_date ?? toNZDateString(new Date(r.sessions?.started_at ?? r.created_at)),
-      r.bodyweight_band,
-    ),
+    bodyweightKg: kgOn(resultDay(r), r.bodyweight_band),
   })))
-  const logged = workoutEvidence(inputs.entries.filter(e => upTo(e.workouts?.created_at)).map(e => ({
+  const logged = workoutEvidence(inputs.entries.filter(e => upTo(e.workouts?.created_at) && inYear(e.workouts?.performed_on)).map(e => ({
     ...e,
     // performed_on is the day it was TRAINED, which is what a bodyweight
     // describes. Backdating up to 7 days is allowed, so this is observable.
     bodyweightKg: kgOn(e.workouts?.performed_on, e.bodyweight_band),
   })))
   const matches = asOfMs == null ? inputs.matches : inputs.matches.filter(m => upTo(m.created_at))
+  // The rating is lifetime (Tāne, 13 Oct 2026): a year never resets it, so a
+  // player keeps the games behind it. But a colour is earned in a year, so a
+  // rating colour only counts in a year they played that sport: a scored row
+  // in it, or a recorded game of theirs dated in it.
+  const lifetime = ratingsFor(playerId, matches)
+  const ratings = year == null ? lifetime : new Map([...lifetime].filter(([sport]) =>
+    game.rows.some(r => r.event_name === sport)
+    || logged.rows.some(r => r.event_name === sport)
+    || matches.some(m => m.event_name === sport && m.players.some(p => p.player_id === playerId)
+      && inYear(toNZDateString(new Date(m.created_at))))))
 
   const grades = computePlayerGrades({
     player: {
@@ -586,7 +647,7 @@ export function gradeStateFrom(
       gender: inputs.gender,
     },
     results: [...game.rows, ...logged.rows],
-    ratings: ratingsFor(playerId, matches),
+    ratings,
     exemptions: exempt,
     games: game.games,
   })
@@ -597,10 +658,11 @@ export function gradeStateFrom(
   return {
     active: inputs.profile.is_active !== false,
     guest: inputs.profile.is_guest === true,
-    grades, awards: awardRows, held, exemptions: exempt,
+    grades, year, awards: awardRows, allAwards, held, exemptions: exempt,
     hasBand: inputs.bodyweightsLive ? (inputs.bodyweights ?? []).length > 0 : inputs.band != null,
     schemaReady: inputs.schemaReady,
     games,
+    gamesByYear,
     gates: colourGates(grades.domains, held),
     workoutsReady: inputs.workoutsReady,
     complete: inputs.complete,
@@ -611,9 +673,15 @@ export function gradeStateFrom(
 /**
  * One player's grades and conferred colours, read through `db`. `matches` may
  * be passed in when loading several players, so every match is fetched once.
- * Returns null only if the player cannot be found.
+ * `year` is this NZ year unless given. Returns null only if the player cannot
+ * be found.
  */
-export async function loadGradeState(db: GradeDb, playerId: string, matches?: readonly MatchRow[]): Promise<GradeState | null> {
+export async function loadGradeState(
+  db: GradeDb,
+  playerId: string,
+  matches?: readonly MatchRow[],
+  opts: { year?: number } = {},
+): Promise<GradeState | null> {
   const inputs = await loadGradeInputs(db, playerId, matches)
-  return inputs && gradeStateFrom(playerId, inputs)
+  return inputs && gradeStateFrom(playerId, inputs, { year: opts.year })
 }

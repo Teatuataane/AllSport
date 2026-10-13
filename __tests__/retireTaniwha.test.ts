@@ -49,11 +49,12 @@ describe('the leaderboard function the public page loads', () => {
   const start = leaderboard.search(/create or replace function public\.leaderboard_page/i)
   const fn = leaderboard.slice(start, leaderboard.indexOf('$fn$;', start) + '$fn$;'.length)
 
-  // Redefined last by the points retirement (20260918021529), which dropped the
-  // seasonal rankings key. Everything below still has to hold in whichever
-  // file defines it last.
-  it('is defined last by the points retirement migration', () => {
-    expect(leaderboardFile).toMatch(/_retire_points_server\.sql$/)
+  // Redefined by the points retirement (20260918021529), which dropped the
+  // seasonal rankings key, then by yearly colours (20261012230318), which put
+  // the year on each conferred colour. Everything below still has to hold in
+  // whichever file defines it last.
+  it('is defined last by the yearly colours migration', () => {
+    expect(leaderboardFile).toMatch(/_yearly_colours\.sql$/)
   })
 
   it('carries conferred colours and no taniwha', () => {
@@ -70,8 +71,8 @@ describe('the leaderboard function the public page loads', () => {
   })
 
   it('shapes grades exactly as the leaderboard page reads them', () => {
-    for (const key of ['player_id', 'domain_number', 'rung']) expect(fn).toContain(`'${key}'`)
+    for (const key of ['player_id', 'domain_number', 'rung', 'season_year']) expect(fn).toContain(`'${key}'`)
     const page = readFileSync('app/leaderboard/page.tsx', 'utf8')
-    expect(page).toMatch(/grades\?: \{ player_id: string; domain_number: number; rung: number \}\[\]/)
+    expect(page).toMatch(/grades\?: \{ player_id: string; domain_number: number; rung: number; season_year\?: number \}\[\]/)
   })
 })

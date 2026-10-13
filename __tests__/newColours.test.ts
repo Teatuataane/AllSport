@@ -57,7 +57,9 @@ describe('the hook', () => {
   it('seeds an empty history to the epoch, so a FIRST colour is still news', () => {
     // latestConferredAt is null for a player who holds nothing. Seeding `now`
     // there would swallow the colour they are about to be given.
-    expect(src).toMatch(/latestConferredAt\(state\.awards\) \?\? new Date\(0\)\.toISOString\(\)/)
+    // Every year's awards: on a new device in January, last year's colours are
+    // history too, not news.
+    expect(src).toMatch(/latestConferredAt\(state\.allAwards\) \?\? new Date\(0\)\.toISOString\(\)/)
   })
 
   it('asks the server once per player, not once per reload', () => {

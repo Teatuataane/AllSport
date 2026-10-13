@@ -15,6 +15,10 @@
 // domain by the standards. A lifetime Skill board (the average domain colour)
 // was built and removed the same day, at Tāne's call.
 //
+// Colours are earned per calendar year (Tāne, 13 Oct 2026), so the board has a
+// tab for each year: that year's season points, that year's conferred colours,
+// capped by that year's games.
+//
 // The colours are computed on the server by the recheck route (strength rungs
 // need the private bodyweight) and published in player_domain_colours /
 // player_game_colours; the season_points view ranks each game. This page only
@@ -28,6 +32,7 @@ import { gradeForRung, DOMAIN_COUNT } from '@/lib/grading'
 import { rankBy, bestAndWorst } from '@/lib/leaderboardScores'
 import { colourStanding, displayOverall } from '@/lib/colourBoard'
 import { loadGameCounts } from '@/lib/gameCounts'
+import { nzYear } from '@/lib/seasonYear'
 import { loadSeasonPoints, type SeasonPointsRow } from '@/lib/leaderboardData'
 import { RAINBOW, DOMAIN_COLORS } from '@/lib/domainColours'
 import { GradeDot } from '@/components/GradeDot'
@@ -53,8 +58,11 @@ type SessionLeader = { name: string; eventsCompleted: number; totalPlacement: nu
 // active game and because it heals expired sessions first (20260827211610);
 // its `stats` bundle is no longer read here.
 type LeaderboardPayload = {
-  /** Conferred colours, from grade_awards. Absent against a database before the retirement migration. */
-  grades?: { player_id: string; domain_number: number; rung: number }[]
+  /**
+   * Conferred colours, from grade_awards, highest per domain per year.
+   * season_year is absent before 20261012230318, when every award was this year's.
+   */
+  grades?: { player_id: string; domain_number: number; rung: number; season_year?: number }[]
   active_session: ActiveSession | null
   active_session_results: SessionResult[]
 }
@@ -69,7 +77,7 @@ type RosterPlayer = {
   is_active: boolean | null
 }
 
-type DomainColoursRow = { player_id: string; domain_rungs: number[] }
+type DomainColoursRow = { player_id: string; domain_rungs: number[]; updated_at?: string }
 
 type BoardRow = {
   playerId: string
@@ -276,8 +284,6 @@ function computeLeader(sessionResults: SessionResult[]): SessionLeader | null {
   return best
 }
 
-/** The NZ calendar year, which is the season: 1 January NZ is still 31 December in UTC. */
-const nzYear = () => Number(new Intl.DateTimeFormat('en-NZ', { timeZone: 'Pacific/Auckland', year: 'numeric' }).format(new Date()))
 
 export default function LeaderboardPage() {
   const [activeTab, setActiveTab] = useState<typeof tabs[number]['key']>('all-divisions')
@@ -286,12 +292,14 @@ export default function LeaderboardPage() {
   const [roster, setRoster] = useState<RosterPlayer[]>([])
   const [domainColours, setDomainColours] = useState<Map<string, DomainColoursRow>>(new Map())
   const [season, setSeason] = useState<Map<string, SeasonPointsRow>>(new Map())
-  const [held, setHeld] = useState<Map<string, Map<number, number>>>(new Map())
-  // Lifetime official games per player, which cap the overall colour. Null = unknown.
+  // Every conferred colour, per year. Read once; a year tab picks its own.
+  const [grades, setGrades] = useState<NonNullable<LeaderboardPayload['grades']>>([])
+  // The season's official games per player, which cap the overall colour. Null = unknown.
   const [gamesPlayed, setGamesPlayed] = useState<Map<string, number> | null>(null)
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null)
   const [sessionLeader, setSessionLeader] = useState<SessionLeader | null>(null)
-  const [seasonYear] = useState(nzYear)
+  const [thisYear] = useState(() => nzYear())
+  const [seasonYear, setSeasonYear] = useState(thisYear)
 
   // Four reads in ONE parallel wave. leaderboard_page() heals expired sessions
   // before reading (20260827211610) and carries the live game and conferred
@@ -302,25 +310,19 @@ export default function LeaderboardPage() {
     const supabase = createClient()
     let cancelled = false
     ;(async () => {
-      const [page, rosterRes, domainRes, seasonRes, lifetimeGames] = await Promise.all([
+      const [page, rosterRes, domainRes, seasonRes, yearGames] = await Promise.all([
         supabase.rpc('leaderboard_page', { p_season: seasonYear }),
         supabase.from('players_public').select('id, display_name, username, division, is_guest, is_active'),
-        supabase.from('player_domain_colours').select('player_id, domain_rungs'),
+        supabase.from('player_domain_colours').select('player_id, domain_rungs, updated_at'),
         loadSeasonPoints(supabase, seasonYear),
-        // LIFETIME official games, which cap the overall colour (overallRung).
-        // Not the season's games: a colour is lifetime, so is its cap.
-        loadGameCounts(supabase, null),
+        // That YEAR's official games, which cap the overall colour
+        // (overallRung): colours are earned per year, and so is their cap.
+        loadGameCounts(supabase, null, seasonYear),
       ])
       if (cancelled) return
 
       const d = (page.data ?? null) as LeaderboardPayload | null
-      const h = new Map<string, Map<number, number>>()
-      for (const a of d?.grades ?? []) {
-        const m = h.get(a.player_id) ?? new Map<number, number>()
-        m.set(a.domain_number, Math.max(m.get(a.domain_number) ?? 0, a.rung))
-        h.set(a.player_id, m)
-      }
-      setHeld(h)
+      setGrades(d?.grades ?? [])
       setActiveSession(d?.active_session ?? null)
       setSessionLeader(d?.active_session ? computeLeader(d.active_session_results ?? []) : null)
       setRoster(((rosterRes.data ?? []) as RosterPlayer[]).filter(p => !p.is_guest && p.is_active !== false))
@@ -328,7 +330,7 @@ export default function LeaderboardPage() {
       setDomainColours(new Map(((domainRes.data ?? []) as DomainColoursRow[]).map(r => [r.player_id, r])))
       setSeason(new Map(seasonRes.rows.map(r => [r.player_id, r])))
       setSeasonFailed(seasonRes.failed)
-      setGamesPlayed(lifetimeGames)
+      setGamesPlayed(yearGames)
       setLoading(false)
     })()
     return () => { cancelled = true }
@@ -352,25 +354,48 @@ export default function LeaderboardPage() {
 
   const tab = tabs.find(t => t.key === activeTab)!
 
+  // A tab per year anyone holds a colour in, and always this year.
+  const years = useMemo(() => [...new Set([thisYear, ...grades.map(g => g.season_year ?? thisYear)])]
+    .sort((a, b) => b - a), [grades, thisYear])
+
+  // The tab's year: highest conferred colour per domain per player.
+  const held = useMemo(() => {
+    const h = new Map<string, Map<number, number>>()
+    for (const a of grades) {
+      if ((a.season_year ?? thisYear) !== seasonYear) continue
+      const m = h.get(a.player_id) ?? new Map<number, number>()
+      m.set(a.domain_number, Math.max(m.get(a.domain_number) ?? 0, a.rung))
+      h.set(a.player_id, m)
+    }
+    return h
+  }, [grades, seasonYear, thisYear])
+
   const rows = useMemo(() => {
     const all: BoardRow[] = roster.map(p => {
-      const dc = domainColours.get(p.id)
       const sp = season.get(p.id)
+      // Best and worst domain: this year, the published standards colours, but
+      // only once they have been recomputed this year (a row from last year is
+      // last year's colours until the player's next recheck). A past year:
+      // the colours conferred in it.
+      const dc = seasonYear === thisYear ? domainColours.get(p.id) : undefined
+      const fresh = dc && (!dc.updated_at || nzYear(dc.updated_at) === thisYear)
+      const pastHeld = seasonYear !== thisYear ? held.get(p.id) : undefined
       return {
         playerId: p.id,
         name: p.display_name || p.username || 'Anonymous',
         division: p.division,
-        domainRungs: dc?.domain_rungs ?? Array(DOMAIN_COUNT).fill(0),
+        domainRungs: fresh ? dc.domain_rungs
+          : Array.from({ length: DOMAIN_COUNT }, (_, i) => pastHeld?.get(i + 1) ?? 0),
         points: sp?.points ?? 0,
         games: sp?.games ?? 0,
         // The average of the ten conferred domain colours, rounded down and
-        // capped by lifetime games (lib/colourBoard.ts). An unreadable count is
+        // capped by that year's games (lib/colourBoard.ts). An unreadable count is
         // unknown, not zero, so the cap is left off rather than showing Mā.
         overall: displayOverall(colourStanding(held.get(p.id), gamesPlayed ? (gamesPlayed.get(p.id) ?? 0) : Number.MAX_SAFE_INTEGER)),
       }
     }).filter(r => inTab(r.division, tab))
     return rankBy(all.filter(r => r.points > 0 || r.games > 0), r => [r.points, r.games])
-  }, [roster, domainColours, season, held, gamesPlayed, tab])
+  }, [roster, domainColours, season, held, gamesPlayed, tab, seasonYear, thisYear])
 
   return (
     <>
@@ -439,6 +464,20 @@ export default function LeaderboardPage() {
           <h2 style={{ fontSize: 'clamp(32px, 5vw, 48px)', margin: 0, lineHeight: 1 }}>
             SEASON <span className="rainbow-text">{seasonYear}</span>
           </h2>
+
+          {years.length > 1 && (
+            <div role="group" aria-label="Season" className="lb-chips" style={{ margin: '16px 0 0' }}>
+              {years.map(y => {
+                const on = seasonYear === y
+                return (
+                  <button key={y} aria-pressed={on} className="lb-chip" onClick={() => { setLoading(true); setSeasonYear(y) }}
+                    style={on ? { background: '#fff', borderColor: '#fff', color: '#000' } : undefined}>
+                    {y}
+                  </button>
+                )
+              })}
+            </div>
+          )}
 
           <div role="group" aria-label="Division" className="lb-chips">
             {tabs.map(t => {

@@ -62,7 +62,8 @@ export async function recheckGrades(opts: { playerId?: string; force?: boolean }
 
 /**
  * After a kaiwhakawā deletes a logged score, ask the server to re-judge that
- * ONE domain and take back anything the remaining evidence no longer supports.
+ * ONE domain, in the year the score counted in, and take back anything the
+ * remaining evidence no longer supports.
  * The server refuses anyone but a kaiwhakawā.
  *
  * `ok: false` means the question did not get a real answer — including a 2xx
@@ -70,14 +71,15 @@ export async function recheckGrades(opts: { playerId?: string; force?: boolean }
  * `logged: false` means a colour was taken back but the player's notice could
  * not be recorded, so the panel must not say "they will be told".
  */
-export async function withdrawColours(playerId: string, domain: number, reason?: string): Promise<{
+export async function withdrawColours(playerId: string, domain: number, reason?: string, year?: number): Promise<{
   withdrawn: WithdrawnColour[]; writable: boolean; ok: boolean; logged: boolean
   /** The colour the remaining evidence still gives, conferred straight back after a jump was taken. */
   reconferred: string | null
   /** Colours left standing because they rest on a removed event: check them by hand. */
   protectedColours: WithdrawnColour[]
 }> {
-  const r = await post({ playerId, withdraw: { domain, reason } })
+  // `year`: the colour year the deleted score counted in (its NZ day's year).
+  const r = await post({ playerId, withdraw: { domain, reason, year } })
   const protectedColours = Array.isArray(r?.body.protected) ? r!.body.protected as WithdrawnColour[] : []
   if (r?.status === 503) return { withdrawn: [], writable: false, ok: true, logged: true, reconferred: null, protectedColours }
   if (!ok2xx(r) || !Array.isArray(r.body.withdrawn)) return { withdrawn: [], writable: true, ok: false, logged: true, reconferred: null, protectedColours: [] }

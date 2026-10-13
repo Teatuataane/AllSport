@@ -28,7 +28,7 @@ import { RAINBOW_CONIC } from '@/lib/domainColours'
 import {
   GRADES, MA, gradeForRung, gradeInk, gradeAccent, averageRung, GAMES_REQUIRED, MIN_RATED_GAMES,
 } from '@/lib/grading'
-import { bestScoreLabel, colourBlurb, shownDomainRungs, shownOverallRung, topSlotRungs } from '@/lib/colourDisplay'
+import { bestScoreLabel, colourBlurb, pastOverallRungs, shownDomainRungs, shownOverallRung, topSlotRungs } from '@/lib/colourDisplay'
 import { NEUTRAL_ICON_TINT } from '@/lib/scoreColour'
 import type { GradeState } from '@/lib/loadGrades'
 
@@ -57,19 +57,33 @@ export default function GradesCard({ state, bestEvent = null }: {
   const blurb = colourBlurb(overall.rung)
   const unlock = gradeForRung(overall.rung + 1)
   const best = bestEvent ? getEventBySlug(bestEvent.slug) : null
+  // Colours are earned per calendar year. Past years' stay on record, and are
+  // shown under this year's so 1 January does not look like a demotion.
+  const pastYears = pastOverallRungs(state).filter(p => p.rung > 0)
 
   return (
     <div style={{
       background: 'var(--surface)', border: '1px solid var(--border)',
       borderRadius: 16, padding: '18px 16px 14px', marginBottom: 16,
     }}>
-      <div style={{ ...label, fontSize: 10.5, color: 'var(--text-muted)' }}>Your colour</div>
+      <div style={{ ...label, fontSize: 10.5, color: 'var(--text-muted)' }}>Your {state.year ?? ''} colour</div>
       <div style={{
         fontFamily: 'var(--font-display)', fontSize: 46, lineHeight: 0.95, letterSpacing: '0.04em',
         color: overall.rung ? gradeInk(overall) : 'var(--white)', marginTop: 2,
       }}>
         {overall.name.toUpperCase()}
       </div>
+
+      {pastYears.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', columnGap: 14, rowGap: 4, marginTop: 4, fontSize: 13, color: 'var(--grey-light)' }}>
+          {pastYears.map(p => (
+            <span key={p.year} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <ColourCircle rung={p.rung} size={10} />
+              {p.year}: {gradeForRung(p.rung).name}
+            </span>
+          ))}
+        </div>
+      )}
 
       <ColourLadder rung={overall.rung} />
 
@@ -121,7 +135,7 @@ export default function GradesCard({ state, bestEvent = null }: {
                   ) : (
                     <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', columnGap: 10, rowGap: 4, marginTop: 6 }}>
                       {/* Your best six events as they stand today. The row's
-                          colour is the one held, which never drops, so the two
+                          colour is the one held this year, which never drops within it, so the two
                           can differ after a score is deleted. An empty circle
                           is a slot still on Mā. */}
                       {slots.length > 0 && (

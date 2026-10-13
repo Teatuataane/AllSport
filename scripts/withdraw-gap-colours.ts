@@ -105,7 +105,7 @@ for (const p of players) {
       }
       if (back) {
         const { error: upError } = await db.from('grade_awards')
-          .upsert([back], { onConflict: 'player_id,domain_number,rung', ignoreDuplicates: true })
+          .upsert([back], { onConflict: 'player_id,domain_number,rung,season_year', ignoreDuplicates: true })
         if (upError) console.error(`      (could not put back ${back.grade_name}: ${upError.message}; the next recheck will)`)
       }
     }

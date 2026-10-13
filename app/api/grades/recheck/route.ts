@@ -17,6 +17,7 @@ import { createSupabaseAdminClient, hasServiceKey } from '@/lib/supabase-admin'
 import { loadGradeState, loadGradeInputs, gradeStateFrom, leaderboardScoresFrom, type GradeInputs, type GradeState } from '@/lib/loadGrades'
 import { awardsToConfer, awardsToWithdraw, protectedAwards, awardAfterWithdraw, type PendingAward, type WithdrawnAward } from '@/lib/autoConfer'
 import { publishLeaderboardScores } from '@/lib/leaderboardData'
+import { yearsToGrade } from '@/lib/seasonYear'
 
 export const dynamic = 'force-dynamic'
 
@@ -69,7 +70,11 @@ export async function POST(req: Request) {
   const readFrom = new Date().toISOString()
   const inputs = await loadGradeInputs(db, playerId)
   if (!inputs) return json({ error: 'unknown player' }, 404)
-  const state = gradeStateFrom(playerId, inputs)
+  // Colours are earned per NZ calendar year (lib/seasonYear.ts). This year
+  // first; in the first two weeks of January, last year too, so a 31 December
+  // game typed in late still confers the colour it earned in its own year.
+  const [thisYear, ...lateYears] = yearsToGrade(readFrom)
+  const state = gradeStateFrom(playerId, inputs, { year: thisYear })
 
   // An erased or retired profile is never conferred a colour. Erasure nulls
   // the date of birth, and a junior with no age grades as U14, a colour easier
@@ -84,7 +89,10 @@ export async function POST(req: Request) {
   // 500, not 503: the client reads 503 as "no service key", which is not this.
   if (state.complete === false) return json({ error: 'could not read all of this player\'s evidence' }, 500)
 
-  const pending = awardsToConfer(playerId, state)
+  const pending = [
+    ...awardsToConfer(playerId, state),
+    ...lateYears.flatMap(year => awardsToConfer(playerId, gradeStateFrom(playerId, inputs, { year }))),
+  ]
 
   // Deploying before the secret exists is a normal state: the page keeps
   // showing computed colours and simply confers nothing. Reported honestly so
@@ -96,19 +104,21 @@ export async function POST(req: Request) {
   const admin = createSupabaseAdminClient()
   let conferred: PendingAward[] = []
   if (pending.length > 0) {
-    // ignoreDuplicates, because UNIQUE (player_id, domain_number, rung) is what
-    // makes two screens rechecking at once harmless rather than an error.
+    // ignoreDuplicates, because the unique key (player_id, domain_number, rung,
+    // season_year) is what makes two screens rechecking at once harmless
+    // rather than an error. The year is in the key (20261012230318), so the
+    // same colour can be earned again next year.
     //
     // The select() matters: ON CONFLICT DO NOTHING returns only the rows it
     // actually inserted, so `conferred` is what is NEW. Reporting `pending`
     // instead would announce the same colour on both screens of a race, and
     // again on any recheck that raced a kaiwhakawā releasing it by hand.
     const { data, error } = await admin.from('grade_awards')
-      .upsert(pending, { onConflict: 'player_id,domain_number,rung', ignoreDuplicates: true })
-      .select('domain_number, rung, grade_name, events')
+      .upsert(pending, { onConflict: AWARD_KEY, ignoreDuplicates: true })
+      .select('domain_number, rung, grade_name, events, season_year')
     if (error) return json({ error: error.message }, 500)
-    const landed = new Set((data ?? []).map(r => `${r.domain_number}:${r.rung}`))
-    conferred = pending.filter(a => landed.has(`${a.domain_number}:${a.rung}`))
+    const landed = new Set((data ?? []).map(r => `${r.season_year}:${r.domain_number}:${r.rung}`))
+    conferred = pending.filter(a => landed.has(`${a.season_year}:${a.domain_number}:${a.rung}`))
   }
 
   // The leaderboard's numbers ride on the same full read. Never allowed to
@@ -147,9 +157,12 @@ async function writeScores(
   }
 }
 
+/** The award's unique key, year included (20261012230318). */
+const AWARD_KEY = 'player_id,domain_number,rung,season_year'
+
 /** What the screen needs to say "New colour — Kākāriki in Power". */
 const summarise = (a: PendingAward) => ({
-  domainNumber: a.domain_number, rung: a.rung, name: a.grade_name, events: a.events.length,
+  domainNumber: a.domain_number, rung: a.rung, name: a.grade_name, events: a.events.length, year: a.season_year,
 })
 
 /** The same for a colour taken back. */
@@ -167,13 +180,17 @@ async function stampChecked(admin: ReturnType<typeof createSupabaseAdminClient>,
 // ordinary recheck never comes here, which is what stops a revised standards
 // sheet from demoting anyone.
 
-type WithdrawRequest = { domain: number; reason: string | null }
+type WithdrawRequest = { domain: number; reason: string | null; year: number | null }
 
 function parseWithdraw(v: unknown): WithdrawRequest | null {
   if (!v || typeof v !== 'object') return null
-  const { domain, reason } = v as { domain?: unknown; reason?: unknown }
+  const { domain, reason, year } = v as { domain?: unknown; reason?: unknown; year?: unknown }
   if (typeof domain !== 'number' || !Number.isInteger(domain) || domain < 1 || domain > 10) return null
-  return { domain, reason: typeof reason === 'string' ? reason.slice(0, 200) : null }
+  // The year of the deleted score, so the colour year it counted in is the one
+  // re-judged. Only a year a recheck can still confer in is accepted; anything
+  // else is this year, which is what a withdrawal meant before colours had years.
+  const y = typeof year === 'number' && yearsToGrade().includes(year) ? year : null
+  return { domain, reason: typeof reason === 'string' ? reason.slice(0, 200) : null, year: y }
 }
 
 async function withdrawIn(
@@ -189,7 +206,8 @@ async function withdrawIn(
   if (judgeError) return json({ error: 'could not check access' }, 500)
   if (judge !== true) return json({ error: 'only a kaiwhakawā can take a colour back' }, 403)
 
-  const state = await loadGradeState(db, playerId)
+  const year = req.year ?? yearsToGrade()[0]
+  const state = await loadGradeState(db, playerId, undefined, { year })
   if (!state) return json({ error: 'unknown player' }, 404)
   // Never on a partial read. A failed results read looked like no scores at
   // all, and every colour in the domain would have been taken back and the
@@ -224,7 +242,7 @@ async function withdrawIn(
   if (taken.length > 0) {
     const { error: logError } = await admin.from('grade_withdrawals').insert(taken.map(a => ({
       player_id: playerId, domain_number: a.domain_number, rung: a.rung, grade_name: a.grade_name,
-      conferred_at: a.conferred_at, withdrawn_by: callerId, reason: req.reason,
+      conferred_at: a.conferred_at, withdrawn_by: callerId, reason: req.reason, season_year: year,
     })))
     logged = !logError
   }
@@ -237,14 +255,14 @@ async function withdrawIn(
   // Re-read first: another kaiwhakawā may have deleted evidence in this domain
   // since `state` was loaded, and putting back a colour on stale evidence would
   // leave the player above what remains, which no ordinary recheck takes away.
-  const fresh = taken.length > 0 ? await loadGradeState(db, playerId) : null
+  const fresh = taken.length > 0 ? await loadGradeState(db, playerId, undefined, { year }) : null
   const replacement = fresh && fresh.complete !== false
     ? awardAfterWithdraw(playerId, { ...fresh, awards: state.awards }, req.domain, deleted)
     : null
   if (replacement) {
     // select(): report it only if THIS request inserted it, as the recheck does.
     const { data: put, error: upError } = await admin.from('grade_awards')
-      .upsert([replacement], { onConflict: 'player_id,domain_number,rung', ignoreDuplicates: true })
+      .upsert([replacement], { onConflict: AWARD_KEY, ignoreDuplicates: true })
       .select('domain_number, rung')
     if (!upError && (put ?? []).length > 0) reconferred = replacement.grade_name
   }

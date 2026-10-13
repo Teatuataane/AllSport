@@ -38,6 +38,7 @@ import { gradeForRung } from '@/lib/grading'
 import { releasable, eventsBehind } from '@/lib/playerGrades'
 import { loadGradeState, loadMatches, type GradeState } from '@/lib/loadGrades'
 import { recheckGrades, withdrawColours } from '@/lib/recheckGrades'
+import { yearOfDay } from '@/lib/seasonYear'
 import { reconcileGames, type Game, type MatchRow } from '@/lib/matches'
 import { formatNZDate, toNZDateString } from '@/lib/dates'
 import { GradeDot } from '@/components/GradeDot'
@@ -112,7 +113,7 @@ export default function GradeReleasePanel() {
   // A re-judge that did not happen after its score was deleted. The score is
   // already gone and Refresh never withdraws, so without this the colour the
   // kaiwhakawā meant to take back would stay for good.
-  const [pendingRejudge, setPendingRejudge] = useState<{ player: Player; domain: number; reason: string } | null>(null)
+  const [pendingRejudge, setPendingRejudge] = useState<{ player: Player; domain: number; reason: string; year?: number } | null>(null)
 
   // Disputed games still waiting, then settled ones, each newest first.
   const disputes = useMemo(() => {
@@ -247,7 +248,8 @@ export default function GradeReleasePanel() {
 
     if (domain) {
       const eventName = EVENTS.find(x => x.slug === e.event_slug)?.name ?? e.event_slug
-      await rejudge(r.player, domain, `${eventName}: ${e.score_label ?? 'a logged score'} was removed.`)
+      // The colour year the score counted in: the NZ day it was trained.
+      await rejudge(r.player, domain, `${eventName}: ${e.score_label ?? 'a logged score'} was removed.`, yearOfDay(e.performed_on) ?? undefined)
     } else {
       await refresh(r.player)
     }
@@ -255,11 +257,11 @@ export default function GradeReleasePanel() {
   }
 
   /** Re-judge one domain after a deletion, and keep it pending if it did not happen. */
-  const rejudge = async (player: Player, domain: number, reason: string) => {
-    const out = await withdrawColours(player.id, domain, reason)
+  const rejudge = async (player: Player, domain: number, reason: string, year?: number) => {
+    const out = await withdrawColours(player.id, domain, reason, year)
     const failed = !out.ok || !out.writable
     const kept = [...out.protectedColours].sort((x, y) => y.rung - x.rung)
-    setPendingRejudge(failed ? { player, domain, reason } : null)
+    setPendingRejudge(failed ? { player, domain, reason, year } : null)
     setNotice((
       !out.ok ? `The score is deleted, but ${player.display_name}'s ${DOMAIN_NAMES[domain - 1]} colours could not be re-checked yet.`
       : !out.writable ? 'The score is deleted. Colours cannot be taken back until the server has its service key.'
@@ -362,7 +364,7 @@ export default function GradeReleasePanel() {
               disabled={busy === 'rejudge'}
               onClick={async () => {
                 setBusy('rejudge')
-                await rejudge(pendingRejudge.player, pendingRejudge.domain, pendingRejudge.reason)
+                await rejudge(pendingRejudge.player, pendingRejudge.domain, pendingRejudge.reason, pendingRejudge.year)
                 setBusy(null)
               }}
               style={{ ...btn(busy !== 'rejudge'), marginLeft: '8px', minHeight: '44px' }}>
@@ -545,7 +547,7 @@ export default function GradeReleasePanel() {
 
 // ─── The audit ───────────────────────────────────────────────────────────────
 
-/** What a player holds in each domain, and whether a person or the server conferred it. */
+/** What a player holds in each domain this year, and whether a person or the server conferred it. */
 function HeldColours({ state, nameOf }: { state: GradeState; nameOf: (id: string) => string }) {
   const latest = new Map<number, (typeof state.awards)[number]>()
   for (const a of state.awards) {
@@ -553,11 +555,11 @@ function HeldColours({ state, nameOf }: { state: GradeState; nameOf: (id: string
     if (!cur || a.rung > cur.rung) latest.set(a.domain_number, a)
   }
   if (latest.size === 0) {
-    return <div style={{ fontSize: '13px', color: '#555', fontFamily: 'var(--font-body)', padding: '4px 0' }}>No colours held yet.</div>
+    return <div style={{ fontSize: '13px', color: '#555', fontFamily: 'var(--font-body)', padding: '4px 0' }}>No colours held{state.year ? ` in ${state.year}` : ''} yet.</div>
   }
   return (
     <>
-      <div style={{ ...label, margin: '4px 0 4px' }}>COLOURS HELD</div>
+      <div style={{ ...label, margin: '4px 0 4px' }}>COLOURS HELD{state.year ? ` IN ${state.year}` : ''}</div>
       {[...latest.values()].sort((a, b) => a.domain_number - b.domain_number).map(a => (
         <div key={a.domain_number} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '3px 0', fontSize: '13px', color: '#ccc', fontFamily: 'var(--font-body)' }}>
           <GradeDot grade={gradeForRung(a.rung)} size={10} />

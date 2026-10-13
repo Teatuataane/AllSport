@@ -27,10 +27,13 @@ const MAX_PAGES = 100
  * would show every player Mā overall.
  *
  * `playerIds` narrows the read to those players (a household); null reads all.
+ * `year` counts only the games played in that NZ calendar year: colours are
+ * earned per year, and so is the games cap (Tāne, 13 Oct 2026).
  */
 export async function loadGameCounts(
   db: SupabaseClient,
   playerIds: readonly string[] | null,
+  year?: number,
 ): Promise<Map<string, number> | null> {
   if (playerIds && playerIds.length === 0) return new Map()
 
@@ -51,6 +54,18 @@ export async function loadGameCounts(
     if (page === MAX_PAGES - 1) return null
   }
 
+  if (year) {
+    // One year's games, read the other way round: the games that DO count,
+    // finished and unvoided in that NZ year (a year is ~150 games, well under
+    // the row cap that every other year's sessions would soon pass). A failed
+    // read here would count nothing, so it is unknown instead.
+    const { data: games, error } = await db.from('sessions').select('id')
+      .gte('session_date', `${year}-01-01`).lte('session_date', `${year}-12-31`)
+      .eq('is_active', false).is('voided_at', null)
+    if (error) return null
+    const counts = new Set((games ?? []).map(r => r.id as string))
+    return countGames(rows.filter(r => counts.has(r.session_id)), new Set())
+  }
   // A failed read here only ever OVER-counts (a voided game counts), which is
   // the survivable direction: the domains still have to be earned.
   const { data: notGames, error } = await db.from('sessions').select('id').or('is_active.eq.true,voided_at.not.is.null')

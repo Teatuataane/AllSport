@@ -18,6 +18,8 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase-browser'
 import { gradeForRung, overallRung } from '@/lib/grading'
 import { loadGameCounts } from '@/lib/gameCounts'
+import { loadAwardRows, heldInYear } from '@/lib/yearColours'
+import { nzYear } from '@/lib/seasonYear'
 import {
   useActivePlayer, playerLabel, type ActivePlayerRow,
 } from '@/lib/useActivePlayer'
@@ -35,9 +37,11 @@ async function loadAccents(ids: string[]): Promise<Map<string, string>> {
 
   // The games count caps the overall colour, so it is read here too, by the
   // same rule as the leaderboard (lib/gameCounts.ts, paged past the row cap).
+  // This year's colours and games: colours are earned per NZ calendar year.
+  const year = nzYear()
   const [awards, games] = await Promise.all([
-    supabase.from('grade_awards').select('player_id, domain_number, rung').in('player_id', missing),
-    loadGameCounts(supabase, missing),
+    loadAwardRows(supabase, missing),
+    loadGameCounts(supabase, missing, year),
   ])
   // Unknown games: show the brand red for now and cache NOTHING, so the next
   // mount retries the count rather than keeping a wrong chip all session.
@@ -46,12 +50,7 @@ async function loadAccents(ids: string[]): Promise<Map<string, string>> {
     for (const id of missing) out.set(id, FALLBACK_ACCENT)
     return out
   }
-  const held = new Map<string, Map<number, number>>()
-  for (const a of (awards.data ?? []) as { player_id: string; domain_number: number; rung: number }[]) {
-    const m = held.get(a.player_id) ?? new Map<number, number>()
-    m.set(a.domain_number, Math.max(m.get(a.domain_number) ?? 0, a.rung))
-    held.set(a.player_id, m)
-  }
+  const held = heldInYear(awards ?? [], year)
   for (const [id, m] of held) {
     const overall = overallRung(m.values(), games.get(id) ?? 0)
     if (overall === 0) continue

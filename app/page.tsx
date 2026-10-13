@@ -231,7 +231,7 @@ export default async function Home() {
               </h2>
               <div className="lp-rainbow-line" style={{ width: '60px', marginBottom: '28px' }} />
               <p style={{ color: '#cccccc', fontSize: '17px', lineHeight: 1.7, marginBottom: '16px' }}>
-                Twelve colours. Every event has a standard for each. Hit it and the colour is yours for good.
+                Twelve colours. Every event has a standard for each. Hit it and the colour is yours for the year.
               </p>
               <p style={{ color: '#888', fontSize: '15px', lineHeight: 1.7, marginBottom: '24px' }}>
                 Lift all ten domains to raise your overall colour. Age allowances built in.

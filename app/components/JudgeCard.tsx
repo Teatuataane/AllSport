@@ -11,6 +11,8 @@ import { formatNZDate } from '@/lib/dates'
 import { gradeForRung } from '@/lib/grading'
 import { rankByColours, displayOverall } from '@/lib/colourBoard'
 import { loadGameCounts } from '@/lib/gameCounts'
+import { loadAwardRows, heldInYear } from '@/lib/yearColours'
+import { nzYear } from '@/lib/seasonYear'
 import { GradeDot } from '@/components/GradeDot'
 import TrainingTab from '@/app/components/TrainingTab'
 
@@ -460,17 +462,15 @@ export default function JudgeCard({ playerRole, playerId }: JudgeCardProps) {
     // Games cap the overall colour, so they are counted the way the board
     // counts them (lib/gameCounts.ts). session_player_summary was the source
     // here and misses every game closed before 20260514.
-    const [playersRes, gradesRes, counted] = await Promise.all([
+    // This year's colours and this year's games: colours are earned per NZ
+    // calendar year (lib/seasonYear.ts).
+    const year = nzYear()
+    const [playersRes, awardRows, counted] = await Promise.all([
       supabase.from('players').select('id, display_name, username, full_name, division, icon').eq('is_active', true).order('display_name', { ascending: true }),
-      supabase.from('grade_awards').select('player_id, domain_number, rung'),
-      loadGameCounts(supabase, null),
+      loadAwardRows(supabase, null),
+      loadGameCounts(supabase, null, year),
     ])
-    const held = new Map<string, Map<number, number>>()
-    for (const a of (gradesRes.data ?? []) as { player_id: string; domain_number: number; rung: number }[]) {
-      const m = held.get(a.player_id) ?? new Map<number, number>()
-      m.set(a.domain_number, Math.max(m.get(a.domain_number) ?? 0, a.rung))
-      held.set(a.player_id, m)
-    }
+    const held = heldInYear(awardRows ?? [], year)
     // Null is UNKNOWN (lib/gameCounts.ts), never zero games: ranking on zero
     // would cap everyone at Mā. Leave the cap off until a reload retries.
     const games: Record<string, number> = counted

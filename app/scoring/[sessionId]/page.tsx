@@ -948,7 +948,7 @@ function SessionEndTakeover({
   const earned = new Map<string, { domainNumber: number; rung: number }>()
   for (const c of newColours) earned.set(`${c.domainNumber}:${c.rung}`, c)
   if (games) {
-    for (const a of awardsForGame(games.state.awards, games.scores, sessionId)) {
+    for (const a of awardsForGame(games.state.allAwards, games.scores, sessionId)) {
       earned.set(`${a.domain_number}:${a.rung}`, { domainNumber: a.domain_number, rung: a.rung })
     }
   }

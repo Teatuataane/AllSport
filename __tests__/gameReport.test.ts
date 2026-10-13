@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
   gameColourRung, gameScores, gamesInOrder, eventFlags, averageBefore, awardsForGame,
   describeRawGap, nextStep, nextStepLine, placeInGame, AWARD_WINDOW_MS,
@@ -6,6 +6,12 @@ import {
 import { gradeStateFrom, leaderboardScoresFrom, type GradeInputs, type ResultRow, type GradeAward } from '@/lib/loadGrades'
 import { getEventByName } from '@/lib/eventData'
 import type { GradePlayer } from '@/lib/playerGrades'
+
+// Colours are graded per NZ calendar year (lib/seasonYear.ts) and these
+// fixtures are dated 2026, so the clock is pinned inside 2026. Otherwise, from
+// 1 January 2027, "this year" would hold none of them.
+beforeEach(() => { vi.useFakeTimers({ now: new Date('2026-10-13T00:00:00.000Z'), toFake: ['Date'] }) })
+afterEach(() => { vi.useRealTimers() })
 
 // ─── A player's own game report ──────────────────────────────────────────────
 // What this pins:

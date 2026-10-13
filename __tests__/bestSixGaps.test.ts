@@ -42,16 +42,21 @@ describe('the games cap is counted the same way on every surface', () => {
   // actually exclude the sessions HOME's gameEvidence does not count.
   const src = (p: string) => readFileSync(join(process.cwd(), p), 'utf8')
 
-  it('the leaderboard caps the overall colour by LIFETIME games, through the shared counter', () => {
+  // Colours are earned per calendar year (20261012230318), so the cap is that
+  // year's games everywhere, as HOME's gameEvidence counts them.
+  it('the leaderboard caps the overall colour by the YEAR\'s games, through the shared counter', () => {
     const s = src('app/leaderboard/page.tsx')
-    expect(s).toMatch(/loadGameCounts\(supabase, null\)/)
+    expect(s).toMatch(/loadGameCounts\(supabase, null, seasonYear\)/)
     expect(s).toMatch(/colourStanding\(held\.get\(p\.id\), gamesPlayed/)
   })
 
   it('the family chips and the kaiwhakawā list count games through the shared paged counter', () => {
     // The exclusion and paging rules themselves are tested in gameCounts.test.ts.
-    expect(src('components/PlayerTabs.tsx')).toMatch(/loadGameCounts\(supabase, missing\)/)
-    expect(src('app/components/JudgeCard.tsx')).toMatch(/loadGameCounts\(supabase, null\)/)
+    expect(src('components/PlayerTabs.tsx')).toMatch(/loadGameCounts\(supabase, missing, year\)/)
+    expect(src('app/components/JudgeCard.tsx')).toMatch(/loadGameCounts\(supabase, null, year\)/)
+    // And this year's awards beside them.
+    expect(src('components/PlayerTabs.tsx')).toMatch(/heldInYear\(awards \?\? \[\], year\)/)
+    expect(src('app/components/JudgeCard.tsx')).toMatch(/heldInYear\(awardRows \?\? \[\], year\)/)
     expect(src('app/components/JudgeCard.tsx')).not.toMatch(/from\('session_player_summary'\)\.select\('player_id'\)/)
   })
 })

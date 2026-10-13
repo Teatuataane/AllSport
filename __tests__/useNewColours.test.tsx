@@ -29,7 +29,7 @@ import { coloursSeenKey } from '@/lib/newColours'
 import type { GradeState } from '@/lib/loadGrades'
 
 const award = (conferred_at: string) => ({ domain_number: 1, rung: 1, grade_name: 'Kiwikiwi', conferred_at })
-const state = (awards: ReturnType<typeof award>[]) => ({ awards } as unknown as GradeState)
+const state = (awards: ReturnType<typeof award>[]) => ({ awards, allAwards: awards } as unknown as GradeState)
 
 beforeEach(() => {
   localStorage.clear()

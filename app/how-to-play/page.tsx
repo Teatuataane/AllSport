@@ -74,7 +74,7 @@ const steps = [
   { number: '02', title: 'Show Up', desc: 'Training gear and water. Everything else is here.' },
   { number: '03', title: 'Play Ten', desc: 'Ten events, one from each domain, each explained before it starts. Injured? Swap it for another from the same domain.' },
   { number: '04', title: 'Get Placed', desc: 'Lowest total placement across the ten wins the game. Every game also earns season points.' },
-  { number: '05', title: 'Earn Your Colours', desc: 'Hit an event\u2019s standard and the colour is yours for good.' },
+  { number: '05', title: 'Earn Your Colours', desc: 'Hit an event\u2019s standard and the colour is yours for the year. Every 1 January starts fresh.' },
 ]
 
 const divisions = [
@@ -220,12 +220,12 @@ export default function HowToPlay() {
             <div className="info-card">
               <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555555', marginBottom: '8px' }}>The Colours</div>
               <p style={{ color: 'var(--grey)', fontSize: '13px', lineHeight: 1.65, marginBottom: '16px' }}>
-                Twelve per domain. They land the moment you earn them.
+                Twelve per domain. They land the moment you earn them, fresh each calendar year.
               </p>
               {[
                 { label: 'Each event', rule: 'Its own colour, against twelve standards' },
                 { label: 'Each domain', rule: `The average of your best ${DOMAIN_TOP_EVENTS} events. Unplayed counts as Mā` },
-                { label: 'Overall', rule: `The average of your ten, capped by games played: ${GAMES_REQUIRED[1]} for ${GRADES[0].name}, ${GAMES_REQUIRED[12]} for ${GRADES[11].name}` },
+                { label: 'Overall', rule: `The average of your ten, capped by games played that year: ${GAMES_REQUIRED[1]} for ${GRADES[0].name}, ${GAMES_REQUIRED[12]} for ${GRADES[11].name}` },
               ].map(r => (
                 <div key={r.label} className="bonus-row">
                   <span style={{ fontFamily: 'var(--font-label)', fontWeight: 600, fontSize: '13px', color: 'var(--grey-light)' }}>{r.label}</span>
