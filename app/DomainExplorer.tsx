@@ -64,7 +64,7 @@ export default function DomainExplorer({ domains }: { domains: ExplorerDomain[] 
                   </Link>
                 ))}
               </div>
-              <Link href="/events" style={{ display: 'inline-block', marginTop: '12px', fontFamily: 'var(--font-label)', fontSize: '12px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: d.color }}>
+              <Link href={`/events#domain-${d.number}`} style={{ display: 'inline-block', marginTop: '12px', fontFamily: 'var(--font-label)', fontSize: '12px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: d.color }}>
                 Full event guide →
               </Link>
             </div>

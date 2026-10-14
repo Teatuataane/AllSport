@@ -2,6 +2,14 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.35.2.0] - 2026-10-14
+
+### Changed
+- **Hero line** now reads "The sport about getting good at EVERYTHING!" (Tāne, 14 Oct 2026).
+- **"Free to play · koha welcome" is a bordered pill exactly as wide as the Play button**, sitting square beneath it.
+- **`/events` rebuilt around icons.** A strip of domain icons jumps to each domain; each domain is a grid of event tiles with their icons. The raw input-mode labels and level counts are gone. The homepage's "Full event guide" link opens the page at the domain you were looking at.
+- **Event pages are the icon, How To and Rules only.** The video placeholder, scoring method, level list and personal best card were removed (`PersonalBestCard.tsx` deleted; levels and records still show where players score and on /prs).
+
 ## [0.35.1.0] - 2026-10-14
 
 ### Changed
