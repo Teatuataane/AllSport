@@ -9,6 +9,7 @@ All notable changes to AllSport are documented here.
 - **"Free to play · koha welcome" is a bordered pill exactly as wide as the Play button**, sitting square beneath it.
 - **`/events` rebuilt around icons.** A strip of domain icons jumps to each domain; each domain is a grid of event tiles with their icons. The raw input-mode labels and level counts are gone. The homepage's "Full event guide" link opens the page at the domain you were looking at.
 - **Event pages are the icon, How To and Rules only.** The video placeholder, scoring method, level list and personal best card were removed (`PersonalBestCard.tsx` deleted; levels and records still show where players score and on /prs).
+- **One-line How To and Rules on every event page** (`lib/eventSummaries.ts`, all 144 events). The full text in `lib/eventData.ts` is unchanged and still shows on the scoring sheet. A test fails if an event is added or removed without its line.
 
 ## [0.35.1.0] - 2026-10-14
 
