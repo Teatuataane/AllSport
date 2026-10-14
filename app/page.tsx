@@ -141,6 +141,9 @@ export default async function Home() {
               <Link href="/register" className="lp-btn lp-primary">Play Your First Game</Link>
               <a href="#film" className="lp-btn lp-outline" style={{ background: 'rgba(0,0,0,0.35)' }}>Watch The Film</a>
             </div>
+            <p style={{ fontFamily: 'var(--font-label)', fontSize: '13px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#4DB26E', marginTop: '14px' }}>
+              Free to play, koha welcome
+            </p>
 
           </div>
         </div>
@@ -183,13 +186,6 @@ export default async function Home() {
                 LEARN YOUR STATS,<br />EARN YOUR COLOURS,<br />GET GOOD AT <span style={rainbowText}>EVERYTHING!</span>
               </h2>
               <div className="lp-rainbow-line" style={{ width: '60px', margin: '18px 0 28px' }} />
-              <p style={{ color: '#cccccc', fontSize: '17px', lineHeight: 1.7, marginBottom: '16px' }}>
-                Every sport you&apos;ve played tested a slice of you. <strong style={{ color: '#fff' }}>AllSport tests all of it.</strong>
-              </p>
-              <p style={{ color: '#888', fontSize: '15px', lineHeight: 1.7, marginBottom: '28px' }}>
-                One event from each of ten domains, fresh every game. Built for first timers and elite athletes alike.
-              </p>
-
               <Link href="/how-to-play" className="lp-btn lp-primary">Learn The Rules</Link>
             </div>
 

@@ -51,7 +51,7 @@ const barlowCondensed = Barlow_Condensed({
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://allsport.nz'),
-  title: 'Get good at EVERYTHING!',
+  title: 'AllSport | Get good at EVERYTHING!',
   description: '10 events, 100 minutes, 150+ sports and exercises. AllSport tests strength, speed, flexibility, coordination and endurance — trained together, every session. Koha-based, Ōtautahi Aotearoa.',
   icons: {
     // ?v= busts browsers' favicon caches, which ignore normal HTTP caching.
