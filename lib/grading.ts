@@ -124,7 +124,7 @@ export const TOP_RUNG = 12
  * conferred one. HOME forces one full recheck per player when this differs
  * from the version it last checked under (lib/useNewColours.ts).
  */
-export const GRADING_RULES_VERSION = '2026-10-15-stamina-arm-events'
+export const GRADING_RULES_VERSION = '2026-10-15-exact-scores'
 export const DOMAIN_COUNT = 10
 
 /**
@@ -216,7 +216,7 @@ export type DomainGradeResult = {
   /**
    * Colours still to add across the slots to reach `nextRung`: one event up
    * one colour, or an empty slot filled at Kiwikiwi, is one. 0 at the top.
-   * Can end in a half when a counted event holds a half step.
+   * Fractional when counted events hold exact scores (hundredths).
    */
   toNext: number
   /**
@@ -258,9 +258,9 @@ export function domainGrade(input: DomainGradeInput): DomainGradeResult {
     .sort((a, b) => b.rung - a.rung)
     .slice(0, slots)
   const sum = ranked.reduce((t, e) => t + e.rung, 0)
-  // No epsilon needed: every credit is a whole or half number, which binary
-  // floating point holds exactly, so 17.5 / 6 is 2 however it is rounded.
-  const rung = Math.floor(sum / slots)
+  // Exact scores (hundredths) do not sum exactly in binary floating point, so
+  // a sum that should be exactly 30.00 / 6 must not read as 4.999….
+  const rung = Math.floor(sum / slots + 1e-9)
   const nextRung = rung >= TOP_RUNG ? null : rung + 1
 
   return {
@@ -271,7 +271,7 @@ export function domainGrade(input: DomainGradeInput): DomainGradeResult {
     counted: ranked.filter((e) => e.rung > 0).map((e) => e.slug),
     average: sum / slots,
     nextRung,
-    toNext: nextRung === null ? 0 : nextRung * slots - sum,
+    toNext: nextRung === null ? 0 : Math.round((nextRung * slots - sum) * 100) / 100,
     // Only when the domain has nothing at all: once a colour is held, a
     // missing bodyweight is holding it back rather than blocking it.
     blockedByBodyweight: rung === 0 && available.some((s) => blocked.has(s)),
@@ -330,6 +330,13 @@ export type OverallGradeResult = {
   rung: number
   /** The average before the games cap. Above `rung` only when the cap binds. */
   average: number
+  /**
+   * The exact overall (Scoring v2): the average of the ten domains' exact
+   * averages, floored to hundredths, before the games cap. Display only; the
+   * colour stays the average of the whole domain colours, the same rule the
+   * published board applies.
+   */
+  exact: number
   /** Domains still on Mā. Each one drags the average. */
   ungraded: number[]
   /** The domains sitting at the minimum — what to train next. */
@@ -342,6 +349,7 @@ export function overallGrade(domains: readonly DomainGradeResult[], games: numbe
   return {
     rung: overallRung(rungs, games),
     average: averageRung(rungs),
+    exact: Math.floor(domains.reduce((t, d) => t + d.average, 0) / DOMAIN_COUNT * 100 + 1e-9) / 100,
     ungraded: domains.filter((d) => d.rung === 0).map((d) => d.domainNumber),
     weakest: domains.filter((d) => d.rung === min).map((d) => d.domainNumber),
   }
@@ -572,6 +580,116 @@ export function halfStepCredit(mode: string, score: number, thresholds: readonly
   return rung
 }
 
+// ─── Exact scores (Scoring v2, Tāne 15 Oct 2026) ────────────────────────────
+// A colour is a whole step; the EXACT score says how far between two colour
+// lines an effort sits, on the same 0–12 scale: 35 reps between Kōwhai's 30
+// and Kākāriki's 40 is 4.5. The whole part is always the colour held, so
+// colours, standards and the age shift are unchanged. The exact score is what
+// counts in the domain average (best six) and a game's colour total, so
+// progress inside a colour shows and games rarely tie. Never conferred.
+//
+// Floored to hundredths, and never 1 or more past the colour, so it can never
+// read as the colour above. At the top of a ladder it is the colour itself.
+// SCORING_V2_PLAN.md has the decisions.
+
+/**
+ * An exact score as players read it: one decimal, rounded DOWN so 4.99 never
+ * shows as 5.0 while the colour is still Kōwhai. "4.5".
+ */
+export function formatExact(exact: number): string {
+  return (Math.floor(exact * 10 + 1e-9) / 10).toFixed(1)
+}
+
+/** The most an exact score sits above its colour: just under the next one. */
+const EXACT_CEILING = 0.99
+
+/** An exact score: `rung` plus progress (0–1) toward the next colour, floored to hundredths. */
+export function exactFrom(rung: number, progress: number): number {
+  const p = Math.max(0, Math.min(EXACT_CEILING, Number.isFinite(progress) ? progress : 0))
+  return Math.floor((rung + p) * 100 + 1e-9) / 100
+}
+
+/**
+ * Progress between two lines on one key, higher always better. Across a gap
+ * that does not climb (a flat 30s on every colour, or a ladder alternating 5s
+ * and 15s holds) the share of the next line's own value stands in.
+ */
+function keyProgress(score: number, from: number, to: number): number {
+  if (score >= to) return 1
+  if (to > from) return (score - from) / (to - from)
+  return to > 0 ? score / to : 0
+}
+
+/** Within-level term of a tiered raw score (tier × 10000 + term). */
+const TIER_BAND = 10000
+
+/**
+ * The exact score of a one-number score: its colour (rungForScore) plus how far
+ * it sits toward the next line. Where the two lines are on DIFFERENT levels
+ * of a tiered event, reps on one level are not on a line with another's, so: a
+ * score already on the next colour's level counts its share of that colour's
+ * reps or seconds (1 one-arm push-up of 20 is .05); one still on this colour's
+ * level counts its reps again (twice the colour's reaches the next); a level
+ * between is halfway; a timed effort (faster wins) counts none.
+ */
+export function exactForScore(
+  score: number,
+  thresholds: readonly number[],
+  band: AgeBand,
+  { cap = TOP_RUNG, tiered = false, timed = false }: { cap?: number; tiered?: boolean; timed?: boolean } = {},
+): number {
+  if (thresholds.length === 0) return 0
+  const rung = rungForScore(score, thresholds, band, { cap })
+  const shift = AGE_SHIFT[band]
+  const top = Math.min(TOP_RUNG, thresholds.length + shift, cap)
+  if (rung >= top) return rung
+  const from = thresholdFor(thresholds, rung - shift)
+  const to = thresholdFor(thresholds, rung + 1 - shift)
+  const tier = (v: number) => Math.floor(v / TIER_BAND)
+  if (tiered && tier(from) !== tier(to)) {
+    // Reps or seconds on one level are not on the same line as another's.
+    if (timed) return rung
+    // Already on the next colour's level: the share of its reps or seconds.
+    if (tier(score) === tier(to)) return exactFrom(rung, (score % TIER_BAND) / Math.max(1, to % TIER_BAND))
+    // Still on this colour's level: twice its reps or seconds reaches the next.
+    if (tier(score) === tier(from)) {
+      const base = from % TIER_BAND
+      return exactFrom(rung, (score % TIER_BAND - base) / Math.max(1, base))
+    }
+    // On a level between the two: halfway.
+    return exactFrom(rung, 0.5)
+  }
+  return exactFrom(rung, keyProgress(score, from, to))
+}
+
+/** A packed compound score's keys, each higher-better: [load, time/reps or metres, time term]. */
+function compoundKeys(mode: string, v: number): number[] {
+  if (mode === 'weight+distance+time') { const k = carryKeys(v); return [k.kg, k.m, k.term] }
+  return [Math.floor(v / LOAD_HOLD_BAND), v % LOAD_HOLD_BAND]
+}
+
+/**
+ * The exact score of a two-part score (load and time, load and reps, a carry):
+ * its both-keys colour plus its progress toward the next, which is the WEAKER
+ * part's progress (Tāne, 15 Oct 2026: "the lower of the two"). The half step
+ * stays as a floor: on a ladder whose every colour asks for the same 30s, the
+ * weaker part is the time however heavy the load, and the half step is what
+ * stops a Taniwha load held 25s reading as Kiwikiwi.
+ */
+export function exactForCompound(mode: string, score: number, thresholds: readonly number[], band: AgeBand): number {
+  const rung = rungForCompound(mode, score, thresholds, band) ?? 0
+  if (thresholds.length === 0) return rung
+  const half = halfStepCredit(mode, score, thresholds, band, rung)
+  const shift = AGE_SHIFT[band]
+  const top = Math.min(TOP_RUNG, thresholds.length + shift)
+  if (rung >= top) return Math.max(rung, half)
+  const s = compoundKeys(mode, score)
+  const to = compoundKeys(mode, Math.max(0, thresholdFor(thresholds, rung + 1 - shift)))
+  const from = rung > 0 ? compoundKeys(mode, Math.max(0, thresholdFor(thresholds, rung - shift))) : to.map(() => 0)
+  const progress = Math.min(...s.map((v, i) => keyProgress(v, from[i], to[i])))
+  return Math.max(exactFrom(rung, progress), half)
+}
+
 // ─── Loads as a share of bodyweight (12 Oct 2026) ───────────────────────────
 // Glute Thrust, Leg Ext Hold, Tibialis Curl, Reverse Wrist Ext and the three
 // carries write their loads as a share of bodyweight ("0.25× BW · 30s"), like
@@ -666,6 +784,17 @@ export const MIN_RATED_GAMES = 10
 export function ratingRung(rating: number, games: number): number {
   if (games < MIN_RATED_GAMES || rating < RATING_FLOOR) return 0
   return Math.min(TOP_RUNG, DRILL_CAP + 1 + Math.floor((rating - RATING_FLOOR) / RATING_STEP))
+}
+
+/**
+ * The exact score a rating gives (Scoring v2): 1,150 is Poroporo and a half,
+ * 7.5. 0 wherever ratingRung is 0; Taniwha (12) at 1,600 and above.
+ */
+export function ratingExact(rating: number, games: number): number {
+  const rung = ratingRung(rating, games)
+  if (rung === 0 || rung >= TOP_RUNG) return rung
+  const into = rating - RATING_FLOOR - (rung - DRILL_CAP - 1) * RATING_STEP
+  return exactFrom(rung, into / RATING_STEP)
 }
 
 /** A Game-rung event's colour: the higher of the capped drill colour and the rating colour. */

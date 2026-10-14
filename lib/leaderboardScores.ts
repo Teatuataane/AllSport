@@ -13,9 +13,10 @@
 //
 //   SEASON POINTS — this calendar year. Every official event in every finished
 //   game scores the rung that game's result reached (Kiwikiwi 1 … Taniwha 12),
-//   so a player's colour total in one game is up to 120. Since 10 Oct 2026 a
-//   half step can credit an event at a whole and a half (halfStepCredit), so
-//   a total can end in .5. Everyone in the game is then ranked on that total
+//   so a player's colour total in one game is up to 120. Since 15 Oct 2026
+//   (Scoring v2) each event scores its EXACT score, the colour plus how far
+//   toward the next (Kōwhai and a half is 4.5), so totals rarely tie; the
+//   total is floored to tenths, which is what colour_total numeric(4,1) holds. Everyone in the game is then ranked on that total
 //   and places pay 100, 99, 98 … (since 2026-09-28; see "Season points"
 //   below). Resets each January.
 //
@@ -50,6 +51,15 @@ export const GAME_RESULT_RUNG: Record<0 | 1 | 2, number> = {
 /** The highest colour total in one game: the top colour in each of ten events. */
 export const MAX_GAME_COLOUR_TOTAL = TOP_RUNG * DOMAIN_COUNT
 
+/**
+ * A game's colour total from its events' exact scores: capped at 120 and
+ * floored to tenths, because player_game_colours.colour_total is numeric(4,1)
+ * and the game report must show what the board ranks.
+ */
+export function gameTotalOf(sum: number): number {
+  return Math.floor(Math.min(sum, MAX_GAME_COLOUR_TOTAL) * 10 + 1e-9) / 10
+}
+
 // ─── Domain colours ──────────────────────────────────────────────────────────
 
 /** One rung per domain, in domain order. 0 = no colour by the standards. */
@@ -70,9 +80,8 @@ export type SeasonRow = GradeResultRow & {
 }
 
 /**
- * The rung one event reached in one game, or its half-step credit when an
- * effort lifted a higher colour's load short of its other key (10 Oct 2026),
- * so it can end in .5. `rows` are that event's rows from that game only. `rating` is the player's rating in that sport as it stood
+ * The exact score one event reached in one game (Scoring v2): its colour plus
+ * progress toward the next, or a half step's credit where that is more. `rows` are that event's rows from that game only. `rating` is the player's rating in that sport as it stood
  * when the game closed, so a later run of wins never re-prices an old game.
  */
 export function eventRungInGame(
@@ -127,7 +136,7 @@ export function gameColourTotals(
     for (const [name, list] of events) total += eventRungInGame(name, list, player, ratings?.get(name))
     // A game holds ten events (verified: no session has more). Capped anyway,
     // because the stored CHECK would otherwise refuse every game in the batch.
-    return { session_id: sessionId, session_date: date, total: Math.min(total, MAX_GAME_COLOUR_TOTAL) }
+    return { session_id: sessionId, session_date: date, total: gameTotalOf(total) }
   })
 }
 

@@ -52,7 +52,7 @@ describe('the live button colour', () => {
     const tiers = tennis.difficultyTiers!
     const game = tiers.findIndex(t => t.scoring === 'sport')
     const loss = [{ raw_score: game * 10000, weight_kg: null, difficulty_tier: tiers[game].name }]
-    expect(liveEventRung(tennis, loss, player, null, { rating: 1250, games: 10 })).toBe(8)
+    expect(liveEventRung(tennis, loss, player, null, { rating: 1250, games: 10 })).toBe(8.5)
     expect(liveEventRung(tennis, loss, player, null, { rating: 1250, games: 4 })).toBe(4)
   })
 })

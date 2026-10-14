@@ -57,7 +57,8 @@ describe('colour score', () => {
     const published = leaderboardScoresFrom('p', i, gradeStateFrom('p', i)).games
     expect(published.map(g => [g.session_id, g.total])).toEqual([...scores.values()].map(g => [g.sessionId, g.points]))
     expect(scores.get('a')!.points).toBe(6)
-    expect(scores.get('b')!.rungs.get('Deadlift')).toBe(7)
+    // 100kg sits 28% of the way from Poroporo's line to Parahi's (Scoring v2).
+    expect(scores.get('b')!.rungs.get('Deadlift')).toBe(7.28)
   })
 
   it('includes a game still in progress, marked open', () => {

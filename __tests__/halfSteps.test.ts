@@ -80,19 +80,19 @@ describe('a half is credit, never a colour', () => {
   it('eventGrade keeps the whole colour and carries the credit', () => {
     const g = eventGrade(glute, [row(glute.name, packed(160, 25))], adult)
     expect(g.rung).toBe(0)
-    expect(g.credit).toBe(11.5)
+    expect(g.exact).toBe(11.5)
     expect(eventCredit(g)).toBe(11.5)
   })
 
   it('takes the colour and the credit from whichever efforts earn them', () => {
     const g = eventGrade(tib, [row(tib.name, packed(12, 30)), row(tib.name, packed(16, 20))], adult)
     expect(g.rung).toBe(6)
-    expect(g.credit).toBe(6.5)
+    expect(g.exact).toBe(6.5)
     expect(g.best?.raw_score).toBe(packed(12, 30))
   })
 
   it('no credit field when it adds nothing', () => {
-    expect(eventGrade(toe, [row(toe.name, packed(5, 20))], adult).credit).toBeUndefined()
+    expect(eventGrade(toe, [row(toe.name, packed(5, 20))], adult).exact).toBeUndefined()
   })
 
   it('counts in a game colour total', () => {

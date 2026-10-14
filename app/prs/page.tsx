@@ -18,7 +18,8 @@ import EventIcon from '@/components/EventIcon'
 import { ColourCircle } from '@/components/GradesCard'
 import { loadGradeState, type GradeState } from '@/lib/loadGrades'
 import { shownDomainRungs } from '@/lib/colourDisplay'
-import { gradeForRung, gradeInk, MIN_RATED_GAMES } from '@/lib/grading'
+import { gradeForRung, gradeInk, formatExact, MIN_RATED_GAMES } from '@/lib/grading'
+import { eventCredit } from '@/lib/playerGrades'
 import { STANDARDS } from '@/lib/standards'
 import { NEUTRAL_ICON_TINT } from '@/lib/scoreColour'
 import { allRows } from '@/lib/allRows'
@@ -129,11 +130,11 @@ function EventColour({ state, event }: { state: GradeState; event: EventData }) 
           <ColourCircle rung={eg.rung} size={14} /> {eg.rung ? g.name : 'No colour yet'}
         </span>
       )}
-      {/* A half step: the load of the next colour, short of its other key.
-          It counts in the domain average, never as a colour (v0.33.0.0). */}
-      {!why && eg.credit != null && eg.credit > eg.rung && (
-        <span style={{ fontSize: '12px', color: '#999' }}>
-          + half a step toward {gradeForRung(Math.ceil(eg.credit)).name}
+      {/* The exact score (Scoring v2): the colour plus how far toward the
+          next. It counts in the domain average and game totals, never as a colour. */}
+      {!why && eg.gradeable && (
+        <span style={{ fontFamily: 'var(--font-label)', fontSize: '13px', fontWeight: 700, color: '#999' }}>
+          {formatExact(eventCredit(eg))}
         </span>
       )}
     </div>

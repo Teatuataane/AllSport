@@ -2,6 +2,16 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.37.0.0] - 2026-10-15
+
+### Changed
+- **Exact scores under the colours** (Scoring v2 step 1, Tāne 15 Oct 2026; every decision in `SCORING_V2_PLAN.md`). Each event now scores its colour plus how far toward the next line, on the same 0–12 scale: 35 reps between Kōwhai's 30 and Kākāriki's 40 is 4.5. Colours, standards and age shifts are unchanged; the whole part is always the colour held, and an exact score is never conferred.
+- **Game colour totals and season places use exact scores**, floored to tenths (what `colour_total numeric(4,1)` holds), so games rarely tie. No migration. Run `scripts/refresh-leaderboard-scores.ts --apply` after the deploy to recalculate 2026.
+- **Domain colours are the exact average of the best six, rounded down**, so progress inside a colour can lift a domain. `GRADING_RULES_VERSION` bumped, so every player is rechecked; conferred colours never drop.
+- **Two-part events** (loads with a time, reps or distance) take the weaker part's progress toward the next colour. The half step stays as a floor, because on ladders where every colour asks the same 30s the weaker part is always the time.
+- **Head-to-head rating colours are exact** (1,150 is 7.5). Game-day results still score 6/5/4 until the Swiss contests (step 5).
+- **HOME and My Events show the numbers:** the overall, each domain and each event carry their exact score beside the colour name, one decimal rounded down.
+
 ## [0.36.0.0] - 2026-10-15
 
 ### Added

@@ -56,7 +56,7 @@ describe('an event in one game', () => {
 
   it('lets a rating colour beat the result floor on a game event', () => {
     const win = [row({ event_name: 'Tennis', difficulty_tier: 'Game', raw_score: 40002 })]
-    expect(eventRungInGame('Tennis', win, open, { rating: 1350, games: 12 })).toBe(9)
+    expect(eventRungInGame('Tennis', win, open, { rating: 1350, games: 12 })).toBe(9.5)
   })
 })
 
@@ -88,7 +88,7 @@ describe('colour total in a game', () => {
       row({ session_id: 'late', event_name: 'Tennis', difficulty_tier: 'Game', raw_score: 40002 }),
     ]
     const at = (id: string) => new Map(id === 'late' ? [['Tennis', { rating: 1250, games: 10 }]] : [])
-    expect(gameColourTotals(rows, open, at).map(g => g.total)).toEqual([DRILL_CAP, 8])
+    expect(gameColourTotals(rows, open, at).map(g => g.total)).toEqual([DRILL_CAP, 8.5])
   })
 
   it('caps one game at ten events on Taniwha', () => {
