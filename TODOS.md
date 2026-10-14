@@ -166,6 +166,13 @@
 
 ## P1 — Do Next
 
+### Apply `20261014222805_stamina_arm_events.sql` after v0.36.0.0 deploys
+**What:** From a clean worktree on `main`, `supabase db push`. Verify: 148 rows in `event_domains`, 18 in domain 5, the four new slugs present. As `authenticated`, in a rolled-back transaction, a workout entry for `strict-curl` is accepted. Then hard-refresh kaiwhakawā devices.
+**Why:** `event_domains` is the write gate for workout entries and the evidence check in `confer_grade`, so until it runs the four new events can be drawn at a game but not logged or added on top, and no Stamina colour can cite them.
+
+### Review the drafts for the four Stamina arm events added 15 Oct 2026
+**What:** Skullcrusher, Strict Curl, OH Tricep Extension and Overhead Raise standards in `GRADING_STANDARDS_REVIEW.md`, marked UNREVIEWED (bodyweight shares, men and women split, women about two thirds of the men's loads). Re-run `node scripts/apply-standards-sheet.mjs` after editing. Also: icons for the four (`skullcrusher`, `strict-curl`, `overhead-tricep-extension`, `overhead-raise`).
+
 - **Colours per calendar year: the December notice and the 1 January check.** Built in v0.35.0.0; both migrations (`20261012230318`, `20261012231444`) applied and verified 13 Oct 2026. Left: a WhatsApp notice to players in December that colours start again on 1 January, and one real account checked on HOME and /leaderboard in the first week of January (HOME on Mā with a "2026: …" line, a 2026 tab on the board, a 31 December game typed in late still conferring its 2026 colour).
 
 ### ~~Apply `20261005222950_roster_144.sql` after v0.30.0.0 deploys, and AFTER the two 5 Oct migrations~~ DONE 2026-10-06

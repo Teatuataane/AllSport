@@ -2,6 +2,14 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.36.0.0] - 2026-10-15
+
+### Added
+- **Four arm events in Stamina** (Tāne, 15 Oct 2026): **Skullcrusher**, **Strict Curl**, **OH Tricep Extension** and **Overhead Raise** (straight arms from the thighs to overhead). Each is load, then reps in 2 minutes, like Reverse Wrist Ext; any kit, and the load entered is the total lifted. The roster is 148 events; Stamina holds 18.
+- **Draft colour standards for all four**, as a share of bodyweight on the day, men and women split, marked UNREVIEWED in `GRADING_STANDARDS_REVIEW.md`. `GRADING_RULES_VERSION` bumped.
+- **Migration `20261014222805_stamina_arm_events.sql`** re-seeds `event_domains` with 148 rows. Until it runs, a workout entry for a new event is refused and a colour citing one cannot be conferred. Deploy the code first.
+- No icons yet: the four show the emoji fallback until `public/event-icons/{slug}.png` files are added.
+
 ## [0.35.3.0] - 2026-10-14
 
 ### Changed
