@@ -111,6 +111,7 @@ export default async function Home() {
           .lp-rank { flex-wrap: wrap; gap: 4px 10px; padding: 12px 14px; }
           .lp-rank-name { min-width: 0; flex: 1 1 100%; font-size: 17px; }
         }
+        .lp-free { margin: 0; padding: 9px 14px; text-align: center; font-family: var(--font-label); font-size: 13px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #4DB26E; background: rgba(77,178,110,0.1); border: 1.5px solid rgba(77,178,110,0.55); border-radius: 999px; }
         .lp-rainbow-line { height: 4px; background: ${RAINBOW}; border-radius: 2px; }
       `}</style>
 
@@ -132,18 +133,20 @@ export default async function Home() {
             <div className="lp-rainbow-line" style={{ width: '88px', marginBottom: '26px' }} />
 
             <p style={{ fontSize: 'clamp(20px, 2.2vw, 26px)', color: '#fff', lineHeight: 1.4, marginBottom: '22px', maxWidth: '540px', fontWeight: 600 }}>
-              The sport about being good at EVERYTHING!
+              The sport about getting good at EVERYTHING!
             </p>
 
             <NextGame />
 
-            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
-              <Link href="/register" className="lp-btn lp-primary">Play Your First Game</Link>
+            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+              {/* The play button and its "free" line share one column, so the
+                  line is exactly as wide as the button and sits square under it. */}
+              <div style={{ display: 'inline-flex', flexDirection: 'column', gap: '10px' }}>
+                <Link href="/register" className="lp-btn lp-primary" style={{ textAlign: 'center' }}>Play Your First Game</Link>
+                <p className="lp-free">Free to play · koha welcome</p>
+              </div>
               <a href="#film" className="lp-btn lp-outline" style={{ background: 'rgba(0,0,0,0.35)' }}>Watch The Film</a>
             </div>
-            <p style={{ fontFamily: 'var(--font-label)', fontSize: '13px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#4DB26E', marginTop: '14px' }}>
-              Free to play, koha welcome
-            </p>
 
           </div>
         </div>
