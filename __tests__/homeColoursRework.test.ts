@@ -40,7 +40,7 @@ describe('overallGrade weakest under the average rule', () => {
     expect(r.ungraded).toEqual([3, 9])
   })
   it('an empty list is Mā with nothing weakest', () => {
-    expect(overallGrade([], 100)).toEqual({ rung: 0, average: 0, ungraded: [], weakest: [] })
+    expect(overallGrade([], 100)).toEqual({ rung: 0, average: 0, exact: 0, ungraded: [], weakest: [] })
   })
 })
 

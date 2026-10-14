@@ -40,7 +40,7 @@ describe('an event\'s colour', () => {
   it('reproduces the review: one 1-arm push-up is Uenuku for a Master', () => {
     const g = eventGrade(ev('Pushups'), [row('Pushups', 40001, { difficulty_tier: '1 Arm Pushup' })], master)
     expect(g).toEqual({
-      slug: ev('Pushups').slug, rung: 11, gradeable: true, played: true,
+      slug: ev('Pushups').slug, rung: 11, exact: 11.05, gradeable: true, played: true,
       best: { raw_score: 40001, weight_kg: null, difficulty_tier: '1 Arm Pushup' },
     })
   })

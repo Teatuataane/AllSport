@@ -26,8 +26,9 @@ import { EVENTS, getEventBySlug } from '@/lib/eventData'
 import { STANDARDS } from '@/lib/standards'
 import { RAINBOW_CONIC } from '@/lib/domainColours'
 import {
-  GRADES, MA, gradeForRung, gradeInk, gradeAccent, averageRung, GAMES_REQUIRED, MIN_RATED_GAMES,
+  GRADES, MA, gradeForRung, gradeInk, gradeAccent, averageRung, formatExact, GAMES_REQUIRED, MIN_RATED_GAMES,
 } from '@/lib/grading'
+import { eventCredit } from '@/lib/playerGrades'
 import { bestScoreLabel, colourBlurb, pastOverallRungs, shownDomainRungs, shownOverallRung, topSlotRungs } from '@/lib/colourDisplay'
 import { NEUTRAL_ICON_TINT } from '@/lib/scoreColour'
 import type { GradeState } from '@/lib/loadGrades'
@@ -72,6 +73,11 @@ export default function GradesCard({ state, bestEvent = null }: {
         color: overall.rung ? gradeInk(overall) : 'var(--white)', marginTop: 2,
       }}>
         {overall.name.toUpperCase()}
+        {/* The exact overall (Scoring v2): how far toward the next colour,
+            before the games cap, which the amber line below explains. */}
+        <span style={{ fontSize: 22, color: 'var(--grey-light)', marginLeft: 10 }}>
+          {formatExact(Math.max(grades.overall.exact, overall.rung))}
+        </span>
       </div>
 
       {pastYears.length > 0 && (
@@ -157,6 +163,9 @@ export default function GradesCard({ state, bestEvent = null }: {
                 }}>
                   <ColourCircle rung={shown} size={14} />
                   {g.name}
+                  {/* The exact domain average: the best six's exact scores.
+                      Never below the colour held, which never drops. */}
+                  <span style={{ color: 'var(--grey-light)' }}>{formatExact(Math.max(d.average, shown))}</span>
                 </span>
                 <span aria-hidden style={{
                   color: 'var(--text-muted)', fontSize: 12, flexShrink: 0, width: 12, textAlign: 'center',
@@ -340,6 +349,7 @@ function DomainEvents({ state, domainNumber }: { state: GradeState; domainNumber
             ) : (
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, ...label, fontSize: 11, color: eg.rung ? 'var(--white)' : 'var(--text-muted)' }}>
                 <ColourCircle rung={colour.rung} size={10} /> {colour.name}
+                <span style={{ color: 'var(--grey-light)' }}>{formatExact(eventCredit(eg))}</span>
               </span>
             )}
           </Link>

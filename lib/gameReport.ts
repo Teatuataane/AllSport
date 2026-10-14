@@ -24,7 +24,7 @@
 import { getEventByName, isTimedEffort, decodeDistanceEffort, DT_CAP, type EventData } from './eventData'
 import { STANDARDS } from './standards'
 import { tierScoring, fmtTime } from './scoring'
-import { eventRungInGame, placePoints, MAX_GAME_COLOUR_TOTAL } from './leaderboardScores'
+import { eventRungInGame, placePoints, gameTotalOf } from './leaderboardScores'
 import { ladderFor, liftKg, type PlayerGrades, type GradePlayer } from './playerGrades'
 import {
   ageBand, rungForScore, rungForCompound, thresholdFor, ratioThresholdsKg, bodyweightOn, gradeForRung, compoundLadderAt,
@@ -41,9 +41,9 @@ export type GameScore = {
   /** When it closed (or will: started + 100 minutes). Orders games. */
   closedAt: string | null
   closed: boolean
-  /** Sum of the rungs, 0 to 120; can end in .5 (a half step). */
+  /** Sum of the events' exact scores, 0 to 120, floored to tenths (gameTotalOf). */
   points: number
-  /** The rung each event reached, by event name, plus any half step. */
+  /** The exact score each event reached, by event name. */
   rungs: Map<string, number>
 }
 
@@ -83,7 +83,7 @@ export function gameScores(playerId: string, inputs: GradeInputs): Map<string, G
       rungs.set(name, rung)
       points += rung
     }
-    points = Math.min(points, MAX_GAME_COLOUR_TOTAL)
+    points = gameTotalOf(points)
     out.set(sessionId, { sessionId, date: g.date, closedAt: g.closedAt, closed: g.closed, points, rungs })
   }
   return out
@@ -116,7 +116,7 @@ export function eventFlags(scores: ReadonlyMap<string, GameScore>, sessionId: st
   for (const [name, rung] of ordered[at].rungs) {
     const before = earlierBest.get(name)
     const firstTime = before === undefined
-    // Whole colours only: a new half step is credit, not a colour up.
+    // Whole colours only: progress inside a colour is not a colour up.
     out.set(name, { firstTime, colourUp: !firstTime && rung >= 1 && Math.floor(rung) > Math.floor(before) })
   }
   return out

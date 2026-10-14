@@ -6,11 +6,12 @@
 // release panel compute the same answer from the same rows, and so it is unit
 // tested against the real roster and the real standards.
 
-import { EVENTS, getEventByName, decodeDistanceEffort, DT_CAP, type EventData } from './eventData'
+import { EVENTS, getEventByName, decodeDistanceEffort, isTimedEffort, DT_CAP, type EventData } from './eventData'
 import { STANDARDS } from './standards'
 import { isGameTier } from './eventKinds'
 import {
-  ageBand, rungForScore, rungForCompound, isCompoundMode, halfStepCredit, ratioThresholdsKg, ratingRung, gameEventRung, compoundLadderAt,
+  ageBand, rungForScore, rungForCompound, isCompoundMode, ratioThresholdsKg, ratingRung, gameEventRung, compoundLadderAt,
+  exactForScore, exactForCompound, ratingExact,
   domainGrade, overallGrade, colourGate, DRILL_CAP, DOMAIN_COUNT,
   type AgeBand, type DomainGradeResult, type OverallGradeResult, type ColourGate,
 } from './grading'
@@ -61,12 +62,13 @@ export type EventGrade = {
   /** 0 = below Kiwikiwi, or never played. Always whole: the colour held. */
   rung: number
   /**
-   * What the event is worth in the domain average and a game's colour total
-   * when a half step makes it more than `rung`: the best effort lifted the
-   * LOAD of a higher colour, short of its other key (halfStepCredit). Ends in
-   * .5. Absent otherwise. Never conferred as a colour.
+   * The EXACT score (Scoring v2, 15 Oct 2026): `rung` plus how far the best
+   * effort sits toward the next colour, in hundredths (exactForScore,
+   * exactForCompound, ratingExact), or a half step's credit where that is
+   * more. What the event is worth in the domain average and a game's colour
+   * total. Never conferred as a colour. Absent when it adds nothing to `rung`.
    */
-  credit?: number
+  exact?: number
   /**
    * False when this event leaves the domain's denominator entirely: it has no
    * standard, or it is rating-only and the player holds no rating colour yet.
@@ -140,9 +142,9 @@ const onCurrentLadder = (ev: EventData, row: GradeResultRow) => {
   return ev.difficultyTiers[Math.floor(row.raw_score / 10000)]?.name === row.difficulty_tier
 }
 
-/** What an event is worth in an average or a total: its colour, or its half-step credit. */
-export function eventCredit(g: Pick<EventGrade, 'rung' | 'credit'>): number {
-  return Math.max(g.rung, g.credit ?? 0)
+/** What an event is worth in an average or a total: its exact score, never less than its colour. */
+export function eventCredit(g: Pick<EventGrade, 'rung' | 'exact'>): number {
+  return Math.max(g.rung, g.exact ?? 0)
 }
 
 /** The colour one player's rows earn in one event. */
@@ -177,11 +179,14 @@ export function eventGrade(
   if (!s) return { slug: ev.slug, rung: 0, gradeable: false, played, ...pick(topRow), ...withRating }
   // Wrestling: no fair solo drill, so its only colours are rating colours,
   // and a rating only comes from matches recorded in official sessions.
-  if (s.kind === 'rating') return { slug: ev.slug, rung: rated, gradeable: true, played, ...withRating, ...(rated ? { source: 'game' as const } : {}) }
+  if (s.kind === 'rating') {
+    const ex = rating ? ratingExact(rating.rating, rating.games) : 0
+    return { slug: ev.slug, rung: rated, ...(ex > rated ? { exact: ex } : {}), gradeable: true, played, ...withRating, ...(rated ? { source: 'game' as const } : {}) }
+  }
 
   const ladder = s.all ?? s[ladderFor(p)] ?? []
   let drill = 0
-  let credit = 0
+  let exact = 0
   let bestRow: GradeResultRow | undefined
   if (s.kind === 'ratio') {
     // Each lift is graded against ITS OWN bodyweight, so the heaviest lift is
@@ -197,8 +202,10 @@ export function eventGrade(
       const kg = liftKg(r)
       // The empty bar is Kiwikiwi, and it means a lift that happened: never a 0.
       if (kg <= 0) continue
-      const rung = rungForScore(kg, ratioThresholdsKg(ratios, bw), band)
+      const kgs = ratioThresholdsKg(ratios, bw)
+      const rung = rungForScore(kg, kgs, band)
       if (rung > drill) { drill = rung; bestRow = r }
+      exact = Math.max(exact, exactForScore(kg, kgs, band))
     }
     // They lifted, and NOTHING they lifted carries a bodyweight. The event
     // counts as UNMET and stays in the domain's denominator — it does not leave
@@ -218,7 +225,8 @@ export function eventGrade(
     // A colour needs its load AND its time, reps or distance (rungForCompound),
     // so the heaviest effort is not necessarily the best one: rank rows by the
     // rung they reach, earliest winning a tie, as for lifts. The colour held
-    // is the best rung; the credit is the best half step, which can come from
+    // is the best rung; the exact score is the best row's exact score (the
+    // weaker part's progress, never under a half step), which can come from
     // a different row (a heavy short hold beside a light full one).
     //
     // Since the 12 Oct 2026 review some of these ladders write the load as a
@@ -232,7 +240,7 @@ export function eventGrade(
       anyBw = true
       const rung = rungForCompound(ev.inputMode, r.raw_score!, rowLadder, band)!
       if (rung > drill) { drill = rung; bestRow = r }
-      credit = Math.max(credit, halfStepCredit(ev.inputMode, r.raw_score!, rowLadder, band, rung))
+      exact = Math.max(exact, exactForCompound(ev.inputMode, r.raw_score!, rowLadder, band))
     }
     if (s.bwLoad && !anyBw && drillRows.length > 0) {
       return { slug: ev.slug, rung: 0, gradeable: true, bodyweightBlocked: true, played, ...pick(topRow) }
@@ -246,9 +254,15 @@ export function eventGrade(
       : drillRows
     bestRow = maxBy(colourRows, r => r.raw_score!)
     drill = bestRow ? rungForScore(bestRow.raw_score!, ladder, band, s.game ? { cap: DRILL_CAP } : {}) : 0
+    exact = bestRow ? exactForScore(bestRow.raw_score!, ladder, band, {
+      ...(s.game ? { cap: DRILL_CAP } : {}),
+      tiered: !!ev.difficultyTiers?.length,
+      timed: ev.inputMode === 'distance+time' || isTimedEffort(ev.slug),
+    }) : 0
   }
 
   const rung = s.game ? gameEventRung(drill, rated) : drill
+  if (s.game) exact = Math.max(Math.min(exact, DRILL_CAP), rating ? ratingExact(rating.rating, rating.games) : 0)
   // The rating comes from recorded matches, which only official sessions hold.
   const source = rung === 0 ? undefined : s.game && rated >= rung && rated > Math.min(drill, DRILL_CAP) ? 'game' : bestRow?.source
   // A lift's best is the row that reached the highest rung, not the heaviest,
@@ -257,7 +271,7 @@ export function eventGrade(
   // estimated 1RM once natural formats convert sets (100kg × 1 vs 90kg × 8).
   const shown = bestRow ?? topRow
   // Compound modes are never Game-rung events, so `rung` is `drill` here.
-  return { slug: ev.slug, rung, ...(credit > rung ? { credit } : {}), gradeable: true, played, ...pick(shown), ...withRating, ...(source ? { source } : {}) }
+  return { slug: ev.slug, rung, ...(exact > rung ? { exact } : {}), gradeable: true, played, ...pick(shown), ...withRating, ...(source ? { source } : {}) }
 }
 
 /** The row with the highest key; the earliest on a tie. */
