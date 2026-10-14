@@ -2,6 +2,17 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.35.0.3] - 2026-10-14
+
+### Changed
+- **Homepage copy** (Tāne, 14 Oct 2026). The site title is now "AllSport | Get good at EVERYTHING!". The tagline reads "10 Events, 100 Minutes, 150+ Sports & Exercises" in the hero, footer and search description. The hero line is "The sport about being good at EVERYTHING!", and the "Koha only" pill under the buttons is now the line "Free to play, koha welcome".
+- **The numbers bar shows 150+ Sports & Exercises** in place of the raw event count.
+- **2026 Games champions** (Bodak, Naybay, Lennox) are listed above the Selwyn Winter Jam champions.
+- **"What is AllSport" headline**: Learn your stats, earn your colours, get good at EVERYTHING! The two paragraphs under it are gone; the headline stands alone with the Learn The Rules button.
+
+### Added
+- **The ten domain tiles open** to show that domain's events with their icons, each linking to its event guide. One domain is open at a time.
+
 ## [0.35.0.2] - 2026-10-14
 
 ### Added
