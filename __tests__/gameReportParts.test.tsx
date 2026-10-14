@@ -22,6 +22,17 @@ describe('ColourScore', () => {
     expect(el.textContent).toContain('+8 on your average')
   })
 
+  it('counts the PRs set today, and says nothing with none', () => {
+    render(<ColourScore points={74} average={66} prs={3} />)
+    expect(screen.getByTestId('prs-today').textContent).toBe('3 PRs today')
+    cleanup()
+    render(<ColourScore points={74} average={66} prs={1} />)
+    expect(screen.getByTestId('prs-today').textContent).toBe('1 PR today')
+    cleanup()
+    render(<ColourScore points={74} average={66} />)
+    expect(screen.queryByTestId('prs-today')).toBeNull()
+  })
+
   it('says nothing about an average on a first game', () => {
     render(<ColourScore points={20} average={null} />)
     expect(screen.getByTestId('colour-score').textContent).not.toContain('average')
@@ -29,6 +40,13 @@ describe('ColourScore', () => {
 })
 
 describe('ReportEventRow', () => {
+  it('shows the exact score beside the colour (Scoring v2)', () => {
+    render(<ReportEventRow line={{ eventName: 'Deadlift', scoreLabel: '100kg', placement: null, rung: 7.28 }} />)
+    const el = screen.getByTestId('report-event')
+    expect(el.textContent).toContain('Poroporo 7.2')
+    expect(el.textContent).not.toContain('½')
+  })
+
   it('flags a PR and names the colour reached', () => {
     render(<ReportEventRow line={{ eventName: 'Deadlift', scoreLabel: '100kg', placement: 2, rung: 6, isPR: true }} />)
     const el = screen.getByTestId('report-event')

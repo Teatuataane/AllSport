@@ -132,6 +132,9 @@ export type ResultRow = {
   } | null
   /** The band of the day. Absent before 20260921232726. */
   bodyweight_band?: string | null
+  /** What a distance effort did. Records per distance (lib/prCounts.ts) read these. */
+  distance_m?: number | null
+  time_seconds?: number | null
 }
 
 type MatchQueryRow = {
@@ -257,8 +260,9 @@ function countedRows(rows: readonly ResultRow[], recorded: ReadonlySet<string> |
  */
 async function loadWorkoutEntries(db: GradeDb, playerId: string) {
   // score_label has existed since the table did (20260915214702), so it adds
-  // no new 42703 risk to this query. Display only; HOME shows it.
-  const base = 'event_slug, raw_score, weight_kg, difficulty_tier, score_label'
+  // no new 42703 risk to this query. Display only; HOME shows it. distance_m
+  // and time_seconds are as old (records per distance, lib/prCounts.ts).
+  const base = 'event_slug, raw_score, weight_kg, difficulty_tier, score_label, distance_m, time_seconds'
   const ask = (cols: string, workoutCols: string) => db.from('workout_entries')
     .select(`${cols}, workouts!inner(${workoutCols})`)
     .eq('workouts.player_id', playerId)
@@ -333,8 +337,9 @@ const PAGE = 1000
  * cost every score the player has.
  */
 async function loadResults(db: GradeDb, playerId: string) {
-  // score_label is an original results column (never dropped), display only.
-  const base = 'raw_score, weight_kg, difficulty_tier, score_label, session_id, points_earned, created_at,'
+  // score_label, distance_m and time_seconds are original results columns
+  // (20260429000000, never dropped), so they add no 42703 risk.
+  const base = 'raw_score, weight_kg, difficulty_tier, score_label, distance_m, time_seconds, session_id, points_earned, created_at,'
     + ' session_events(event_name), sessions(is_active, points_awarded_at, started_at, ended_at, session_date)'
   const page = (cols: string, from: number) => db.from('results')
     .select(cols)

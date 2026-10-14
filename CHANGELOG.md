@@ -2,6 +2,17 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.38.0.0] - 2026-10-15
+
+### Added
+- **PRs counted** (Scoring v2 step 2, decision 9). The game report and the session-end screen say "N PRs today"; HOME's stat line counts **PRs this year** (it was a lifetime count). Display only.
+- **PRs are worked out from the scores** (`lib/prCounts.ts`), in the order they were set, with the scoring screen's own rule (`isNewPR`): one PR per event per game or workout, only when it beats every earlier sitting, never a first attempt, voided games left out. The report's PR tags use it too, not `results.is_pr`, which froze when lifts moved to estimated 1RM.
+- **Ghost marker on HOME** (decision 8): each domain row shows last year's exact score faintly ("2026: 5.8"), so the 1 January reset leaves a line to climb back to.
+- **Honours on the profile** (decision 8): every year's overall colour, games, PRs and best domain colour, newest first, kept for good.
+
+### Fixed
+- The game report showed "+½" beside any event whose exact score was not whole; it now shows the exact score ("Poroporo 7.2").
+
 ## [0.37.0.0] - 2026-10-15
 
 ### Changed

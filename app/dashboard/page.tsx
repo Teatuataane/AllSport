@@ -25,7 +25,10 @@ import PlayerTabs, { ViewingAsBanner } from '@/components/PlayerTabs'
 import GradesCard from '@/components/GradesCard'
 import { ColourAvatar, GameOnCard, TrainingOnCard, NextSessionLine, HomeLink } from '@/components/HomeParts'
 import { loadOpenTraining } from '@/lib/training'
-import { loadGradeState, type GradeState } from '@/lib/loadGrades'
+import { loadGradeInputs, gradeStateFrom, type GradeState } from '@/lib/loadGrades'
+import { nzYear } from '@/lib/seasonYear'
+import { ghostAverages } from '@/lib/honours'
+import { prMoments, prsByYear } from '@/lib/prCounts'
 import { useNewColours } from '@/lib/useNewColours'
 import NewColourCard from '@/components/NewColourCard'
 import VoteCard from '@/app/components/VoteCard'
@@ -63,7 +66,14 @@ function DashboardInner() {
   // Tagged with the player it belongs to, so for the one render between a
   // family switch and the effect clearing it, the new player's name never
   // sits in the previous player's colour.
-  const [gradesEntry, setGradesEntry] = useState<{ id: string; state: GradeState | null } | null>(null)
+  const [gradesEntry, setGradesEntry] = useState<{
+    id: string
+    state: GradeState | null
+    /** Last year's exact score per domain (lib/honours.ts). */
+    ghost?: Map<number, number>
+    /** PRs set this NZ year (lib/prCounts.ts). */
+    seasonPRs?: number
+  } | null>(null)
   const [eventsWon, setEventsWon] = useState<number | null>(null)
   const [activeSession, setActiveSession] = useState<any>(null)
   // Only the QR link's ?code= joins by code now; nobody types one.
@@ -122,14 +132,28 @@ function DashboardInner() {
     setGradesEntry(null)
     // A failed load settles as null, which hides the card rather than leaving
     // it on "Loading…" for good.
-    loadGradeState(supabase, activePlayerId)
-      .then(s => { if (!cancelled) setGradesEntry({ id: activePlayerId, state: s }) })
+    // One read of the evidence; this year's colours, last year's ghost marker
+    // and the season's PRs are all worked out from it.
+    loadGradeInputs(supabase, activePlayerId)
+      .then(inputs => {
+        if (cancelled) return
+        if (!inputs) { setGradesEntry({ id: activePlayerId, state: null }); return }
+        const state = gradeStateFrom(activePlayerId, inputs)
+        const year = state.year ?? nzYear()
+        setGradesEntry({
+          id: activePlayerId, state,
+          ghost: ghostAverages(activePlayerId, inputs, year),
+          seasonPRs: prsByYear(prMoments(inputs)).get(year) ?? 0,
+        })
+      })
       .catch(() => { if (!cancelled) setGradesEntry({ id: activePlayerId, state: null }) })
     return () => { cancelled = true }
   }, [activePlayerId, gradesNonce])
 
   const gradesSettled = gradesEntry !== null && gradesEntry.id === activePlayerId
   const grades = gradesSettled ? gradesEntry.state : null
+  const ghost = gradesSettled ? gradesEntry.ghost : undefined
+  const seasonPRs = gradesSettled ? gradesEntry.seasonPRs : undefined
   const newColours = useNewColours(activePlayerId, grades, reloadGrades)
 
   // ── Events won: the player_event_wins view, which /prs reads too. ──────────
@@ -330,7 +354,10 @@ function DashboardInner() {
                 <Stat value={counts?.games} label="games" />
                 <Stat value={eventsWon} label="events won" dot />
                 <Stat value={derived?.gamesWon} label="games won" dot />
-                <Stat value={counts?.prs} label="PRs" dot />
+                {/* This year's, worked out from the scores (lib/prCounts.ts).
+                    The old lifetime count read results.is_pr, frozen since
+                    lifts moved to estimated 1RM. */}
+                <Stat value={seasonPRs} label="PRs this year" dot />
               </div>
             )}
           </div>
@@ -345,7 +372,7 @@ function DashboardInner() {
 
         {/* ── 3. Colours ──────────────────────────────────────────────────── */}
         <NewColourCard awards={newColours.unseen} withdrawn={newColours.withdrawn} onDismiss={newColours.dismiss} />
-        {grades ? <GradesCard state={grades} bestEvent={bestEvent} /> : !gradesSettled && (
+        {grades ? <GradesCard state={grades} bestEvent={bestEvent} ghost={ghost} /> : !gradesSettled && (
           <div style={{
             background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16,
             height: 220, marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)',

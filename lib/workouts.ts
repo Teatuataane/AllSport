@@ -19,6 +19,9 @@ export type WorkoutEntryRow = {
   score_label?: string | null
   /** The band of the day. Absent before 20260921232726. See GradeResultRow. */
   bodyweight_band?: string | null
+  /** What a distance effort did. Records per distance read these. */
+  distance_m?: number | null
+  time_seconds?: number | null
   /**
    * The player's declared bodyweight on the day this was TRAINED
    * (workouts.performed_on), resolved by the caller. See GradeResultRow.
