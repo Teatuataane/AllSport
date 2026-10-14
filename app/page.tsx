@@ -8,9 +8,9 @@ import { EVENTS, DOMAIN_ORDER } from '@/lib/eventData'
 import { DOMAIN_COLORS } from '@/lib/domainColours'
 import { GRADES } from '@/lib/grading'
 import { loadCommunityStats } from '@/lib/communityStats'
-import DomainIcon from '@/components/DomainIcon'
 import HeroVideo from './HeroVideo'
 import NextGame from './NextGame'
+import DomainExplorer from './DomainExplorer'
 
 const RAINBOW = 'var(--rainbow)'
 
@@ -28,9 +28,11 @@ const DOMAIN_META = DOMAIN_ORDER.map((name, i) => ({ name, color: DOMAIN_COLORS[
 
 // Event counts are derived from lib/eventData.ts (the single source of truth for
 // the roster) so domain moves, additions and removals propagate automatically.
-const domains = DOMAIN_META.map(d => ({
+// Only what the tiles show is passed to the client island.
+const domains = DOMAIN_META.map((d, i) => ({
   ...d,
-  count: EVENTS.filter(e => e.domain === d.name).length,
+  number: i + 1,
+  events: EVENTS.filter(e => e.domain === d.name).map(e => ({ slug: e.slug, name: e.name, emoji: e.emoji })),
 }))
 
 // Stills from the 2026 showcase film (public/media/, cut by hand from the 4K
@@ -122,31 +124,27 @@ export default async function Home() {
           <div style={{ maxWidth: '620px' }}>
             <div className="lp-tag" style={{ background: 'rgba(0,0,0,0.4)' }}>Ōtautahi · Aotearoa</div>
             <h1 style={{ fontSize: 'clamp(44px, 7vw, 92px)', fontFamily: 'var(--font-display)', lineHeight: 0.92, letterSpacing: '0.03em', color: '#fff', margin: '18px 0 26px' }}>
-              <span style={{ display: 'block' }}>100 MINUTES.</span>
               <span style={{ display: 'block' }}>10 EVENTS.</span>
+              <span style={{ display: 'block' }}>100 MINUTES.</span>
               <span style={{ display: 'block', ...rainbowText }}>150+ SPORTS &amp; EXERCISES.</span>
             </h1>
 
             <div className="lp-rainbow-line" style={{ width: '88px', marginBottom: '26px' }} />
 
-            <p style={{ fontSize: 'clamp(20px, 2.2vw, 26px)', color: '#fff', lineHeight: 1.4, marginBottom: '12px', maxWidth: '540px', fontWeight: 600 }}>
-              One sport that tests every part of you.
-            </p>
-            <p style={{ fontSize: '17px', color: '#ccc', lineHeight: 1.6, marginBottom: '22px', maxWidth: '540px' }}>
-              Lift, sprint, jump, throw, balance, aim. Any age, any level. Bring your whānau.
+            <p style={{ fontSize: 'clamp(20px, 2.2vw, 26px)', color: '#fff', lineHeight: 1.4, marginBottom: '22px', maxWidth: '540px', fontWeight: 600 }}>
+              The sport about being good at EVERYTHING!
             </p>
 
             <NextGame />
 
-            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
               <Link href="/register" className="lp-btn lp-primary">Play Your First Game</Link>
               <a href="#film" className="lp-btn lp-outline" style={{ background: 'rgba(0,0,0,0.35)' }}>Watch The Film</a>
             </div>
+            <p style={{ fontFamily: 'var(--font-label)', fontSize: '13px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#4DB26E', marginTop: '14px' }}>
+              Free to play, koha welcome
+            </p>
 
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontFamily: 'var(--font-label)', textTransform: 'uppercase', letterSpacing: '0.14em', fontSize: '12px', fontWeight: 700, color: '#4DB26E', border: '1px solid rgba(77,178,110,0.4)', background: 'rgba(0,0,0,0.5)', padding: '6px 14px', borderRadius: '999px' }}>
-              <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#4DB26E' }} />
-              Koha only. No fees, ever.
-            </div>
           </div>
         </div>
       </section>
@@ -158,7 +156,9 @@ export default async function Home() {
           <div style={{ display: 'flex', gap: 0, flexWrap: 'wrap', borderTop: '1px solid #1e1e1e', borderBottom: '1px solid #1e1e1e' }}>
             {[
               { n: '10', l: 'Domains', g: 'linear-gradient(90deg,#EA4742,#F9B051)' },
-              { n: String(EVENTS.length), l: 'Events', g: 'linear-gradient(90deg,#F9B051,#4DB26E)' },
+              // 150+ rounds the roster plus its levels and variations, as the
+              // hero does; EVENTS.length alone (144) undersold it.
+              { n: '150+', l: 'Sports & Exercises', g: 'linear-gradient(90deg,#F9B051,#4DB26E)' },
               ...proof.map((p, i) => ({ n: nf.format(p.n), l: p.l, g: ['linear-gradient(90deg,#4DB26E,#2371BB)', 'linear-gradient(90deg,#2371BB,#B87DB5)', 'linear-gradient(90deg,#B87DB5,#EA4742)'][i] })),
             ].map(s => (
               <div key={s.l} style={{ flex: '1 1 140px', padding: '22px 12px 20px 0' }}>
@@ -168,6 +168,9 @@ export default async function Home() {
             ))}
           </div>
           <p style={{ fontFamily: 'var(--font-label)', fontSize: '13px', letterSpacing: '0.08em', color: '#666', marginTop: '16px' }}>
+            2026 Games champions: <span style={{ color: '#ccc' }}>Bodak · Naybay · Lennox</span>
+          </p>
+          <p style={{ fontFamily: 'var(--font-label)', fontSize: '13px', letterSpacing: '0.08em', color: '#666', marginTop: '6px' }}>
             Selwyn Winter Jam 2026 champions: <span style={{ color: '#ccc' }}>kiwigyver · Meredith · Blair · Tarsh</span>
           </p>
         </div>
@@ -180,30 +183,13 @@ export default async function Home() {
             <div>
               <div className="lp-tag">What is AllSport</div>
               <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(40px, 5vw, 66px)', lineHeight: 0.9, letterSpacing: '0.03em', margin: '18px 0 8px', color: '#fff' }}>
-                DESIGNED TO IMPROVE YOU<br />AT <span style={{ color: '#EA4742' }}>EVERY SPORT.</span>
+                LEARN YOUR STATS,<br />EARN YOUR COLOURS,<br />GET GOOD AT <span style={rainbowText}>EVERYTHING!</span>
               </h2>
               <div className="lp-rainbow-line" style={{ width: '60px', margin: '18px 0 28px' }} />
-              <p style={{ color: '#cccccc', fontSize: '17px', lineHeight: 1.7, marginBottom: '16px' }}>
-                Every sport you&apos;ve played tested a slice of you. <strong style={{ color: '#fff' }}>AllSport tests all of it.</strong>
-              </p>
-              <p style={{ color: '#888', fontSize: '15px', lineHeight: 1.7, marginBottom: '28px' }}>
-                One event from each of ten domains, fresh every game. Built for first timers and elite athletes alike.
-              </p>
-
               <Link href="/how-to-play" className="lp-btn lp-primary">Learn The Rules</Link>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '8px' }}>
-              {domains.map((d, i) => (
-                <Link key={d.name} href="/events" className="lp-tile">
-                  <DomainIcon domainName={d.name} domainNumber={i + 1} size={44} />
-                  <span style={{ minWidth: 0 }}>
-                    <span style={{ display: 'block', fontFamily: 'var(--font-display)', fontSize: '20px', letterSpacing: '0.04em', color: '#fff', lineHeight: 1.05 }}>{d.name}</span>
-                    <span style={{ display: 'block', fontFamily: 'var(--font-label)', fontSize: '12px', letterSpacing: '0.1em', textTransform: 'uppercase', color: d.color, marginTop: '3px' }}>{d.count} events</span>
-                  </span>
-                </Link>
-              ))}
-            </div>
+            <DomainExplorer domains={domains} />
           </div>
         </div>
       </section>

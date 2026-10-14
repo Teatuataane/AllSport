@@ -35,7 +35,7 @@ export default function Footer() {
               </span>
             </div>
             <p style={{ color: 'var(--grey)', fontSize: '14px', lineHeight: '1.7', maxWidth: '260px' }}>
-              100 minutes, 10 events, 150+ sports &amp; exercises. A koha-based community sport built in
+              10 events, 100 minutes, 150+ sports &amp; exercises. A koha-based community sport built in
               Ōtautahi for everyone in Aotearoa.
             </p>
           </div>
