@@ -2,6 +2,15 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.35.3.0] - 2026-10-14
+
+### Changed
+- **/koha is about a third of its old length** (Tāne, 14 Oct 2026): give, where it goes, coaching, our thanks. The "What is koha" block and the bottom Join CTA are gone.
+- **The account number is on the page** (02-1268-0168239-000) with a copy button, and the IRD line says we are an approved donee.
+- **Where it goes shows the three current campaigns:** weekly games at HQ (players' koha only), Wheels for AllSport ($7,000 of $40,000, thanks to Lion Foundation) and AllSport in Schools ($5,300 from Sport Canterbury for a Term 1 pilot).
+- **Personal coaching is its own offer**, recommended koha $40 for 30 minutes or $60 for an hour, not a donation tier.
+- **The thank-you ladder is five tiers, shared with /my-koha** (`lib/kohaTiers.ts`): Supporters Wall, Sticker Pack $100+, Colours Tee $250+, Colours Hoodie $500+, AllSport Comes To You $2,000+. The referral path is off until players can share an invite link. /my-koha's emoji tier icons are replaced by a colour bar.
+
 ## [0.35.2.0] - 2026-10-14
 
 ### Changed

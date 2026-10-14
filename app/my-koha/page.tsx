@@ -3,26 +3,18 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient, getSessionUser } from '@/lib/supabase-browser'
 import Link from 'next/link'
+import { KOHA_TIERS } from '@/lib/kohaTiers'
 
 const supabase = createClient()
 
-const TIERS = [
-  { tier: 1, reward: 'Supporters Wall', icon: '🫶', color: '#888888', donationMin: 0, referralsNeeded: 1, referralPath: true },
-  { tier: 2, reward: 'Digital Certificate', icon: '📜', color: '#4DB26E', donationMin: 50, referralsNeeded: 3, referralPath: true },
-  { tier: 3, reward: 'Sticker Pack', icon: '🎁', color: '#2371BB', donationMin: 200, referralsNeeded: 6, referralPath: true },
-  { tier: 4, reward: 'Colours T-Shirt', icon: '👕', color: '#B87DB5', donationMin: 500, referralsNeeded: 12, referralPath: true },
-  { tier: 5, reward: 'Colours Hoodie', icon: '🧥', color: '#EA4742', donationMin: 1000, referralsNeeded: 18, referralPath: true },
-  { tier: 6, reward: 'Clothing Stack', icon: '🎽', color: '#F9B051', donationMin: 2000, referralsNeeded: 25, referralPath: true },
-  { tier: 7, reward: 'Personal Coaching — 20hrs', icon: '🏆', color: '#F9B051', donationMin: 2500, referralsNeeded: null, referralPath: false },
-  { tier: 8, reward: 'Personal Coaching — 50hrs', icon: '🏆', color: '#F9B051', donationMin: 5000, referralsNeeded: null, referralPath: false },
-  { tier: 9, reward: 'AllSport Comes To You', icon: '🌍', color: '#F9B051', donationMin: 10000, referralsNeeded: null, referralPath: false },
-]
+// The ladder is shared with the public /koha page (lib/kohaTiers.ts).
+const TIERS = KOHA_TIERS
 
 function getCurrentTier(totalDonated: number, qualifiedReferrals: number) {
   let current = null
   for (const t of TIERS) {
     const byDonation = totalDonated >= t.donationMin
-    const byReferral = t.referralPath && t.referralsNeeded !== null && qualifiedReferrals >= t.referralsNeeded
+    const byReferral = t.referralsNeeded !== null && qualifiedReferrals >= t.referralsNeeded
     if (byDonation || byReferral) current = t
   }
   return current
@@ -282,7 +274,7 @@ export default function MyKoha() {
               marginBottom: '20px', maxWidth: '480px',
               display: 'flex', alignItems: 'center', gap: '20px',
             }}>
-              <div style={{ fontSize: '40px', flexShrink: 0 }}>{currentTier.icon}</div>
+              <div style={{ width: 6, alignSelf: 'stretch', borderRadius: 3, background: currentTier.color, flexShrink: 0 }} />
               <div>
                 <div style={{ fontFamily: 'var(--font-label)', fontSize: '11px', letterSpacing: '0.12em', color: currentTier.color, marginBottom: '4px' }}>
                   TIER {currentTier.tier} — CURRENT
@@ -340,7 +332,7 @@ export default function MyKoha() {
               </div>
 
               {/* Referral path */}
-              {nextTier.referralPath && nextTier.referralsNeeded !== null && (
+              {nextTier.referralsNeeded !== null && (
                 <div>
                   <div style={{
                     display: 'flex', justifyContent: 'space-between',
@@ -363,9 +355,9 @@ export default function MyKoha() {
                 </div>
               )}
 
-              {!nextTier.referralPath && (
+              {nextTier.referralsNeeded === null && (
                 <div style={{ fontSize: '12px', color: '#555', fontFamily: 'var(--font-label)', marginTop: '8px' }}>
-                  Tier {nextTier.tier} requires a donation of ${nextTier.donationMin.toLocaleString()}+. No referral path.
+                  Tier {nextTier.tier} is a koha of ${nextTier.donationMin.toLocaleString()}+.
                 </div>
               )}
             </div>
