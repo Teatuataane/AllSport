@@ -2,6 +2,14 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.35.1.0] - 2026-10-14
+
+### Changed
+- **How to Play is four pictures, not thirteen screens of text** (Tāne, 14 Oct 2026). A photo hero with "10 events, 100 minutes, 1 game", the ten domain icons, a three-step game diagram, the colour ladder from Mā to Taniwha, and a first-game checklist. The event lists, divisions table and colour rules moved off it: they live on `/events` and `/grades`.
+
+### Fixed
+- **How to Play said the lowest total placement wins.** Since v0.22.0.0 a game is won on colour total; it now says "Highest colour WINS!"
+
 ## [0.35.0.2] - 2026-10-14
 
 ### Added
