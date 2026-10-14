@@ -166,7 +166,9 @@
 
 ## P1 — Do Next
 
-### Apply `20261014222805_stamina_arm_events.sql` after v0.36.0.0 deploys
+### ~~Apply `20261014222805_stamina_arm_events.sql` after v0.36.0.0 deploys~~ DONE 2026-10-15
+**Done:** pushed by `supabase db push` from a clean worktree on `main` after allsport.nz served the new events. Verified: 148 rows in `event_domains`, 18 in Stamina, the four slugs present, ledger row written; as `authenticated`, in a rolled-back transaction, a Strict Curl workout entry was accepted. Still to do: hard-refresh kaiwhakawā devices.
+
 **What:** From a clean worktree on `main`, `supabase db push`. Verify: 148 rows in `event_domains`, 18 in domain 5, the four new slugs present. As `authenticated`, in a rolled-back transaction, a workout entry for `strict-curl` is accepted. Then hard-refresh kaiwhakawā devices.
 **Why:** `event_domains` is the write gate for workout entries and the evidence check in `confer_grade`, so until it runs the four new events can be drawn at a game but not logged or added on top, and no Stamina colour can cite them.
 
