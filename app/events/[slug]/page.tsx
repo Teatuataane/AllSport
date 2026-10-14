@@ -8,10 +8,13 @@
 // Deliberately short (Oct 2026): the icon, how to do it, and the rules. The
 // video placeholder, scoring method, level list and personal best were cut; a
 // player sees levels and their records where they score (QuickEntrySheet, /prs).
+// How To and Rules are the one-line versions in lib/eventSummaries.ts; the full
+// text is the fallback for an event that has none yet.
 import Link from 'next/link'
 import { EVENTS, getEventBySlug } from '@/lib/eventData'
 import { domainColor } from '@/lib/domainColours'
 import EventIcon from '@/components/EventIcon'
+import { EVENT_SUMMARIES } from '@/lib/eventSummaries'
 
 export function generateStaticParams() {
   return EVENTS.map(e => ({ slug: e.slug }))
@@ -39,6 +42,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
 
   const colour = domainColor(event.domainNumber)
   const back = `/events#domain-${event.domainNumber}`
+  const summary = EVENT_SUMMARIES[event.slug]
 
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a0a', color: '#fff' }}>
@@ -64,11 +68,11 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
         <div style={{ background: '#111', border: '1px solid #1e1e1e', borderTop: `3px solid ${colour}`, borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <section>
             <h2 style={label}>How To</h2>
-            <p style={body}>{event.howToPerform}</p>
+            <p style={body}>{summary?.how ?? event.howToPerform}</p>
           </section>
           <section>
             <h2 style={label}>Rules</h2>
-            <p style={body}>{event.rules}</p>
+            <p style={body}>{summary?.rules ?? event.rules}</p>
           </section>
         </div>
       </div>
