@@ -15,8 +15,8 @@ import {
 // ─── EVENTS array integrity ───────────────────────────────────────────────────
 
 describe('EVENTS array', () => {
-  it('contains exactly 144 events', () => {
-    expect(EVENTS).toHaveLength(144)
+  it('contains exactly 148 events', () => {
+    expect(EVENTS).toHaveLength(148)
   })
 
   it('every event has a unique slug', () => {
@@ -289,7 +289,7 @@ describe('getEventsByDomain', () => {
     const map = getEventsByDomain()
     const expected: Record<string, number> = {
       'Maximal Strength': 16, 'Calisthenics': 13, 'Power': 15, 'Speed': 15,
-      'Stamina': 14, 'Endurance': 15, 'Flexibility': 15,
+      'Stamina': 18, 'Endurance': 15, 'Flexibility': 15,
       'Body Awareness': 14, 'Coordination': 13, 'Aim & Precision': 14,
     }
     for (const [domain, events] of Object.entries(map)) {

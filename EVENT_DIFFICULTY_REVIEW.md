@@ -1,6 +1,6 @@
  # Difficulty Levels — Review
 
-All 144 AllSport events. Go through them and set the difficulty levels for each one.
+All 148 AllSport events. Go through them and set the difficulty levels for each one.
 
 ## How to fill this in
 
@@ -929,11 +929,43 @@ NEW EVENT, 30 Sept 2026 (Tāne). A hold. Nobody has scored it.
 
 **NONE**
 
+### 75. Skullcrusher
+
+*Scored by: heaviest load, then most reps in 2 minutes*
+
+> Added 15 Oct 2026 (Tāne). Any kit; the load is the total lifted.
+
+**NONE**
+
+### 76. Strict Curl
+
+*Scored by: heaviest load, then most reps in 2 minutes*
+
+> Added 15 Oct 2026 (Tāne). Any kit; the load is the total lifted.
+
+**NONE**
+
+### 77. OH Tricep Extension
+
+*Scored by: heaviest load, then most reps in 2 minutes*
+
+> Added 15 Oct 2026 (Tāne). Any kit; the load is the total lifted.
+
+**NONE**
+
+### 78. Overhead Raise
+
+*Scored by: heaviest load, then most reps in 2 minutes*
+
+> Added 15 Oct 2026 (Tāne). Any kit; the load is the total lifted.
+
+**NONE**
+
 ---
 
 ## 6. Endurance
 
-### 75. Burpee Broad Jump
+### 79. Burpee Broad Jump
 
 *Scored by: difficulty level, then fastest time*
 
@@ -942,7 +974,7 @@ NEW EVENT, 30 Sept 2026 (Tāne). A hold. Nobody has scored it.
 - D3: 100m 
 - D4: 200m 
 
-### 76. Running
+### 80. Running
 
 *Scored by: best effort: any distance of at least 1000m and its time, ranked on the 1000m time it predicts*
 
@@ -950,7 +982,7 @@ NEW EVENT, 30 Sept 2026 (Tāne). A hold. Nobody has scored it.
 
 **NONE**
 
-### 77. Cycling
+### 81. Cycling
 
 *Scored by: best effort: any distance of at least 1000m and its time, ranked on the 1000m time it predicts*
 
@@ -958,7 +990,7 @@ NEW EVENT, 30 Sept 2026 (Tāne). A hold. Nobody has scored it.
 
 **NONE**
 
-### 78. Ski Erg
+### 82. Ski Erg
 
 *Scored by: best effort: any distance of at least 1000m and its time, ranked on the 1000m time it predicts*
 
@@ -966,7 +998,7 @@ NEW EVENT, 30 Sept 2026 (Tāne). A hold. Nobody has scored it.
 
 **NONE**
 
-### 79. Row Erg
+### 83. Row Erg
 
 *Scored by: best effort: any distance of at least 1000m and its time, ranked on the 1000m time it predicts*
 
@@ -974,7 +1006,7 @@ NEW EVENT, 30 Sept 2026 (Tāne). A hold. Nobody has scored it.
 
 **NONE**
 
-### 80. Breath Hold
+### 84. Breath Hold
 
 *Scored by: longest hold*
 
@@ -986,7 +1018,7 @@ _No levels yet._
 - D4: 
 - D5: 
 
-### 81. Sandbag Carry
+### 85. Sandbag Carry
 
 *Scored by: heaviest load, then furthest distance, then fastest time*
 
@@ -994,7 +1026,7 @@ _No levels yet._
 
 **NONE**
 
-### 82. Animal Crawl
+### 86. Animal Crawl
 
 *Scored by: difficulty level, then best effort: any distance of at least 100m and its time, ranked on the 100m time it predicts*
 
@@ -1007,7 +1039,7 @@ _No levels yet._
 - D3: Lizard Crawl   (Chest low, elbows bent, hips down)
 - D4: Duck Walk   (Deep squat, hips below knees, stepping without standing up)
 
-### 83. Bronco
+### 87. Bronco
 
 *Scored by: difficulty level, then fastest time*
 
@@ -1017,7 +1049,7 @@ _No levels yet._
 - D4: 4 Laps
 - D5: 5 Laps   (used 2 times)
 
-### 84. Scooting
+### 88. Scooting
 
 *Scored by: best effort: any distance of at least 1000m and its time, ranked on the 1000m time it predicts*
 
@@ -1025,7 +1057,7 @@ _No levels yet._
 
 **NONE**
 
-### 85. Farmer Carry
+### 89. Farmer Carry
 
 *Scored by: heaviest load, then furthest distance, then fastest time*
 
@@ -1033,7 +1065,7 @@ _No levels yet._
 
 **NONE**
 
-### 86. Weighted Drag
+### 90. Weighted Drag
 
 *Scored by: heaviest load, then furthest distance, then fastest time*
 
@@ -1045,7 +1077,7 @@ _No levels yet._
 
 > Renamed from Wheelbarrow Pull, Sept 2026. Ladder unchanged; only the implement is named.
 
-### 87. Obstacle Course
+### 91. Obstacle Course
 
 *Scored by: win, draw or loss against another player; the time is recorded alongside when one is taken*
 
@@ -1053,7 +1085,7 @@ _No levels yet._
 
 **NONE**
 
-### 88. Swim
+### 92. Swim
 
 *Scored by: best effort: any distance of at least 100m and its time, ranked on the 100m time it predicts*
 
@@ -1061,7 +1093,7 @@ _No levels yet._
 
 **NONE**
 
-### 89. Walking
+### 93. Walking
 
 *Scored by: best effort: any distance of at least 1000m and its time, ranked on the 1000m time it predicts*
 
@@ -1073,7 +1105,7 @@ _No levels yet._
 
 ## 7. Flexibility
 
-### 90. Rear Hand Clasp
+### 94. Rear Hand Clasp
 
 *Scored by: difficulty level, then longest hold*
 
@@ -1085,7 +1117,7 @@ _No levels yet._
 - D6: Palm Clasp
 - D7: Butterfly Clasp
 
-### 91. Bridge
+### 95. Bridge
 
 *Scored by: difficulty level, then longest hold*
 
@@ -1096,7 +1128,7 @@ _No levels yet._
 - D5: Straight Arm Bridge
 - D6: Rainbow Bridge   (used 3 times)
 
-### 92. Forward Fold
+### 96. Forward Fold
 
 *Scored by: difficulty level, then longest hold*
 
@@ -1111,7 +1143,7 @@ _No levels yet._
 - D7: Elbows to Toes   (Straight legs, elbows reach the toes)
 - D8: Head to Legs   (Full fold — head touching the legs)
 
-### 93. Needle Pose
+### 97. Needle Pose
 
 *Scored by: difficulty level, then longest hold*
 
@@ -1122,7 +1154,7 @@ _No levels yet._
 - D5: 2 Knee
 - D6: Full Needle Pose
 
-### 94. Forward Split
+### 98. Forward Split
 
 *Scored by: difficulty level, then longest hold*
 
@@ -1133,7 +1165,7 @@ _No levels yet._
 - D5: Front Split
 - D6: Over Split
 
-### 95. Middle Split
+### 99. Middle Split
 
 *Scored by: difficulty level, then longest hold*
 
@@ -1146,7 +1178,7 @@ _No levels yet._
 - D5: 0.5 Blocks   (Middle split supported on half a block)
 - D6: Middle Split
 
-### 96. Standing Split
+### 100. Standing Split
 
 *Scored by: difficulty level, then longest hold*
 
@@ -1158,7 +1190,7 @@ _No levels yet._
 - D6: Head Height
 - D7: Standing Split
 
-### 97. Foot Behind Head Pose
+### 101. Foot Behind Head Pose
 
 *Scored by: difficulty level, then longest hold*
 
@@ -1170,7 +1202,7 @@ _No levels yet._
 - D6: Foot Behind Head Pose
 - D7: Both Feet Behind Head
 
-### 98. Pancake
+### 102. Pancake
 
 *Scored by: difficulty level, then longest hold*
 
@@ -1184,7 +1216,7 @@ _No levels yet._
 - D6: Elbows to Floor   (Fold forward until the elbows rest flat on the floor)
 - D7: Head to Floor   (Fold forward until the head touches the floor)
 
-### 99. Side Bend
+### 103. Side Bend
 
 *Scored by: difficulty level, then longest hold*
 
@@ -1196,7 +1228,7 @@ _No levels yet._
 - D4: Top Hand to Foot
 - D5: Pancake Side Bend
 
-### 100. Full Bound Twist
+### 104. Full Bound Twist
 
 *Scored by: difficulty level, then longest hold*
 
@@ -1210,7 +1242,7 @@ _No levels yet._
 
 ---
 
-### 101. Plie Squat
+### 105. Plie Squat
 
 *Scored by: difficulty level, then longest hold*
 
@@ -1224,7 +1256,7 @@ _No levels yet._
 
 > NEW EVENT, Sept 2026 (Tāne). Nobody has scored it, so there is no usage to calibrate against.
 
-### 102. Seiza
+### 106. Seiza
 
 *Scored by: difficulty level, then longest hold*
 
@@ -1240,7 +1272,7 @@ _No levels yet._
 
 > NEW EVENT, Sept 2026 (Tāne). Nobody has scored it, so there is no usage to calibrate against.
 
-### 103. Internal Wrist Stretch
+### 107. Internal Wrist Stretch
 
 *Scored by: difficulty level, then longest hold*
 
@@ -1251,7 +1283,7 @@ Renamed from Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 - D4: Fingers Backwards   (Palms flat, fingers pointing back toward the knees, arms straight)
 - D5: Backwards Plank   (Fingers pointing back, in a full plank with the weight over the hands)
 
-### 104. External Wrist Stretch
+### 108. External Wrist Stretch
 
 *Scored by: difficulty level, then longest hold*
 
@@ -1264,7 +1296,7 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 
 ## 8. Body Awareness
 
-### 105. Tae Kwon Do
+### 109. Tae Kwon Do
 
 *Scored by: win, draw or loss against another player*
 
@@ -1272,7 +1304,7 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 
 **NONE**
 
-### 106. Breakdancing
+### 110. Breakdancing
 
 *Scored by: difficulty level, then longest time*
 
@@ -1284,7 +1316,7 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 - D4: Top Rock + Footwork + Freeze
 - D5: Game
 
-### 107. Trampolining
+### 111. Trampolining
 
 *Scored by: difficulty level, then most reps*
 
@@ -1297,7 +1329,7 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 - D5: Back Flip   (used 1 time)
 - D6: Game
 
-### 108. Jump Rope
+### 112. Jump Rope
 
 *Scored by: difficulty level, then most reps*
 
@@ -1308,7 +1340,7 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 - D3: Double Dutch
 - D4: Game
 
-### 109. Gymnastics
+### 113. Gymnastics
 
 *Scored by: difficulty level, then most reps*
 
@@ -1320,7 +1352,7 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 - D4: Handspring   (Front or back handspring)
 - D5: Game
 
-### 110. Balance Ball
+### 114. Balance Ball
 
 *Scored by: difficulty level, then longest hold*
 
@@ -1331,7 +1363,7 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 - D5: Standing   (used 1 time)
 - D6: Game
 
-### 111. SKATE
+### 115. SKATE
 
 *Scored by: difficulty level, then most reps*
 
@@ -1343,7 +1375,7 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 - D4: Pop Shove It
 - D5: Game
 
-### 112. Fencing
+### 116. Fencing
 
 *Scored by: win, draw or loss against another player*
 
@@ -1351,7 +1383,7 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 
 **NONE**
 
-### 113. Juggling
+### 117. Juggling
 
 *Scored by: difficulty level, then longest hold*
 
@@ -1360,7 +1392,7 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 - D3: 3 Ball   (used 5 times)
 - D4: Game
 
-### 114. Foot Juggling
+### 118. Foot Juggling
 
 *Scored by: difficulty level, then most reps*
 
@@ -1371,7 +1403,7 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 - D3: No Bounce
 - D4: Game
 
-### 115. Slackline
+### 119. Slackline
 
 *Scored by: longest hold*
 
@@ -1382,7 +1414,7 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 - D3: Slackline
 - D4: Game
 
-### 116. Diving
+### 120. Diving
 
 *Scored by: difficulty level, then most clean dives*
 
@@ -1396,7 +1428,7 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 - D4: 5m Dive
 - D5: Game
 
-### 117. Poi
+### 121. Poi
 
 *Scored by: difficulty level, then longest spin*
 
@@ -1411,7 +1443,7 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 
 ## 9. Coordination
 
-### 118. Volleyball
+### 122. Volleyball
 
 *Scored by: win, draw or loss against another player*
 
@@ -1423,7 +1455,7 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 - D4: Partner Digs (20m)
 - D5: Game
 
-### 119. Baseball
+### 123. Baseball
 
 *Scored by: win, draw or loss against another player*
 
@@ -1436,7 +1468,7 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 - D5: Bat & Catch (20m)
 - D6: Game
 
-### 120. Teqball
+### 124. Teqball
 
 *Scored by: win, draw or loss against another player*
 
@@ -1447,7 +1479,7 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 - D3: Bounce Pass (5m)
 - D4: Game
 
-### 121. Tennis
+### 125. Tennis
 
 *Scored by: win, draw or loss against another player*
 
@@ -1459,7 +1491,7 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 - D4: Hits (10m)
 - D5: Game
 
-### 122. Cricket
+### 126. Cricket
 
 *Scored by: win, draw or loss against another player*
 
@@ -1472,7 +1504,7 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 - D5: Bat & Catch (20m)
 - D6: Game
 
-### 123. Badminton
+### 127. Badminton
 
 *Scored by: win, draw or loss against another player*
 
@@ -1482,7 +1514,7 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 - D4: Partner Hits (10m)
 - D5: Game
 
-### 124. Basketball
+### 128. Basketball
 
 *Scored by: win, draw or loss against another player*
 
@@ -1492,7 +1524,7 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 - D4: 2 Ball Back & Forth
 - D5: Game
 
-### 125. Football
+### 129. Football
 
 *Scored by: win, draw or loss against another player*
 
@@ -1502,7 +1534,7 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 - D4: Partner Pass (10m)
 - D5: Game
 
-### 126. Hockey
+### 130. Hockey
 
 *Scored by: win, draw or loss against another player*
 
@@ -1512,7 +1544,7 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 - D4: Partner Pass (10m)
 - D5: Game
 
-### 127. Squash
+### 131. Squash
 
 *Scored by: win, draw or loss against another player*
 
@@ -1522,7 +1554,7 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 - D4: Partner Pass (10m)
 - D5: Game
 
-### 128. Lacrosse
+### 132. Lacrosse
 
 *Scored by: win, draw or loss against another player*
 
@@ -1532,7 +1564,7 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 - D4: Partner Pass (10m)
 - D5: Game
 
-### 129. Ultimate Frisbee
+### 133. Ultimate Frisbee
 
 *Scored by: win, draw or loss against another player*
 
@@ -1542,7 +1574,7 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 - D4: Partner Pass (10m)
 - D5: Game
 
-### 130. Water Polo
+### 134. Water Polo
 
 *Scored by: win, draw or loss against another player*
 
@@ -1558,7 +1590,7 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 
 ## 10. Aim & Precision
 
-### 131. Netball
+### 135. Netball
 
 *Scored by: win, draw or loss against another player*
 
@@ -1569,7 +1601,7 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 - D3: Shot (5m)
 - D4: Game
 
-### 132. Bocce
+### 136. Bocce
 
 *Scored by: win, draw or loss against another player*
 
@@ -1579,7 +1611,7 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 - D4: Hit the Jack   (Strike the jack itself from the throwing line)
 - D5: Game
 
-### 133. Dodgeball
+### 137. Dodgeball
 
 *Scored by: win, draw or loss against another player*
 
@@ -1589,7 +1621,7 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 - D4: Throw & Catch (10m)
 - D5: Game
 
-### 134. Carrom
+### 138. Carrom
 
 *Scored by: win, draw or loss against another player*
 
@@ -1597,7 +1629,7 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 - D2: Pocket a Piece
 - D3: Game
 
-### 135. Archery
+### 139. Archery
 
 *Scored by: win, draw or loss against another player*
 
@@ -1607,7 +1639,7 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 - D4: Hit the Gold (20m)
 - D5: Game
 
-### 136. Bowling
+### 140. Bowling
 
 *Scored by: win, draw or loss against another player*
 
@@ -1617,7 +1649,7 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 - D4: Partner Bowl (20m)
 - D5: Game
 
-### 137. Darts
+### 141. Darts
 
 *Scored by: win, draw or loss against another player*
 
@@ -1627,7 +1659,7 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 - D2: Named Number   (Hit a number called before you throw)
 - D3: Game
 
-### 138. Disc Golf
+### 142. Disc Golf
 
 *Scored by: win, draw or loss against another player at the top level*
 
@@ -1638,7 +1670,7 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 - D3: Putt (10m)
 - D4: Game
 
-### 139. Golf
+### 143. Golf
 
 *Scored by: win, draw or loss against another player at the top level*
 
@@ -1649,7 +1681,7 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 - D3: Chip (10m)
 - D4: Game
 
-### 140. Handball
+### 144. Handball
 
 *Scored by: win, draw or loss against another player*
 
@@ -1658,7 +1690,7 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 - D3: Past a Keeper   (Score with a keeper in goal)
 - D4: Game
 
-### 141. Table Tennis
+### 145. Table Tennis
 
 *Scored by: win, draw or loss against another player*
 
@@ -1668,7 +1700,7 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 - D2: Wall Juggles
 - D3: Game
 
-### 142. Kubb
+### 146. Kubb
 
 *Scored by: win, draw or loss against another player*
 
@@ -1678,7 +1710,7 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 - D4: Hit Kubb (10m)
 - D5: Game
 
-### 143. Cornhole
+### 147. Cornhole
 
 *Scored by: win, draw or loss against another player*
 
@@ -1689,7 +1721,7 @@ Renamed from Reverse Wrist Stretch and re-levelled 30 Sept 2026 (Tāne).
 - D3: Hole (8m)
 - D4: Game
 
-### 144. Airsoft
+### 148. Airsoft
 
 *Scored by: win, draw or loss against another player*
 

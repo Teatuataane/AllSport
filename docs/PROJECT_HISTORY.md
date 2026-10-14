@@ -156,6 +156,9 @@ linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)
 ### New events added (June 2026 session 16)
 - **Sandbag to Shoulder** → Maximal Strength, `difficulty+reps`, D1–D6 (5/10/25/50/80/100kg); slug: `sandbag-to-shoulder`. Bar set at player's shoulder height; one rep = sandbag fully clears bar and lands on other side; player moves around to retrieve.
 
+### Four arm events added to Stamina (15 Oct 2026) — v0.36.0.0
+Tāne asked for Skullcrusher, Strict Curl, OH Tricep Extension and Overhead Raise in Stamina. Settled in one round of questions: all four are `weight+reps` (load, then reps in 2 minutes, the Reverse Wrist Ext format, so no ladder and no `enforce_relevelled_ladders` change); any kit, the load entered is the total lifted; Overhead Raise is a straight-arm front raise from the thighs to overhead. Slugs `skullcrusher`, `strict-curl`, `overhead-tricep-extension`, `overhead-raise`. Roster 148 (16/13/15/15/18/15/15/14/13/14). Standards drafted by Claude as bodyweight shares (`bwLoad`), men and women split with women at about two thirds of the men's loads, marked UNREVIEWED. Both sheets were renumbered and compile back with no drift. Migration `20261014222805` re-seeds `event_domains` (deploy code first). No icons yet.
+
 ### Event roster update (August 2026 session 27) — 120 events, 12 per domain — DONE (v0.5.3.0)
 Roster reconciled against Tāne's revised lineup. **120 events total** (was 122: +7 new, −9 removed, 9 renamed, 5 moved). Every domain now holds exactly 12 events. Domain names, numbers and order are UNCHANGED — Tāne's sheet showed a different column order and "Speed & Reactivity", both explicitly declined ("Don't reorder… Don't rename the domains either").
 

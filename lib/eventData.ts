@@ -1,4 +1,4 @@
-// lib/eventData.ts — Single source of truth for all 144 AllSport events.
+// lib/eventData.ts — Single source of truth for all 148 AllSport events.
 
 export type InputMode =
   | 'strength'
@@ -837,6 +837,56 @@ export const EVENTS: EventData[] = [
     hasDifficultyTiers: false,
     howToPerform: "Rest your forearm on a bench or your thigh, palm down, with the load in your hand and your wrist just past the edge. Lift the back of your hand up as far as it goes, then lower under control. Keep going for 2 minutes.",
     rules: "Declare your load before you start and stay on it for the whole set; enter the load (0 for bodyweight) and your reps. The forearm stays on its support and only the wrist moves. Full range every rep, or it does not count. Either arm. You have 2 minutes. A heavier load always outranks a lighter one, and at the same load the most reps wins.",
+    videoPlaceholder: true,
+    emoji: '💪',
+  },
+  // Added 15 Oct 2026 (Tāne): four arm events, all load then reps in 2 minutes,
+  // like Reverse Wrist Ext. Any kit (dumbbells, bar, cable); the load is the total lifted.
+  {
+    slug: 'skullcrusher',
+    name: 'Skullcrusher',
+    domain: 'Stamina',
+    domainNumber: 5,
+    inputMode: 'weight+reps',
+    hasDifficultyTiers: false,
+    howToPerform: "Lie on your back on a bench or the floor, holding the load above your chest with straight arms. Keeping your upper arms still, bend only at the elbows to lower the load to your forehead, then straighten your arms again. Keep going for 2 minutes.",
+    rules: "Declare your load before you start and stay on it for the whole set; enter the total load lifted (any kit: dumbbells, bar or cable) and your reps. The upper arms stay still and only the elbows move. Full range every rep: load to the forehead, arms locked out at the top, or it does not count. You have 2 minutes. A heavier load always outranks a lighter one, and at the same load the most reps wins.",
+    videoPlaceholder: true,
+    emoji: '💪',
+  },
+  {
+    slug: 'strict-curl',
+    name: 'Strict Curl',
+    domain: 'Stamina',
+    domainNumber: 5,
+    inputMode: 'weight+reps',
+    hasDifficultyTiers: false,
+    howToPerform: "Stand tall with your back against a wall, holding the load at arm's length, palms forward. Curl it up to your shoulders by bending only at the elbows, then lower it all the way. Keep going for 2 minutes.",
+    rules: "Declare your load before you start and stay on it for the whole set; enter the total load lifted (any kit: dumbbells, bar or cable) and your reps. Back and head stay on the wall, elbows at your sides, no swing or lean. Full range every rep: arms straight at the bottom, load to the shoulders at the top, or it does not count. You have 2 minutes. A heavier load always outranks a lighter one, and at the same load the most reps wins.",
+    videoPlaceholder: true,
+    emoji: '💪',
+  },
+  {
+    slug: 'overhead-tricep-extension',
+    name: 'OH Tricep Extension',
+    domain: 'Stamina',
+    domainNumber: 5,
+    inputMode: 'weight+reps',
+    hasDifficultyTiers: false,
+    howToPerform: "Sit or stand tall holding the load overhead with straight arms. Keeping your upper arms beside your ears, bend at the elbows to lower the load behind your head, then press it back up to straight arms. Keep going for 2 minutes.",
+    rules: "Declare your load before you start and stay on it for the whole set; enter the total load lifted (any kit: dumbbells, bar or cable) and your reps. Upper arms stay up beside the head and only the elbows move. Full range every rep: elbows fully bent at the bottom, arms locked out overhead at the top, or it does not count. You have 2 minutes. A heavier load always outranks a lighter one, and at the same load the most reps wins.",
+    videoPlaceholder: true,
+    emoji: '💪',
+  },
+  {
+    slug: 'overhead-raise',
+    name: 'Overhead Raise',
+    domain: 'Stamina',
+    domainNumber: 5,
+    inputMode: 'weight+reps',
+    hasDifficultyTiers: false,
+    howToPerform: "Stand tall holding the load at your thighs with straight arms. Keeping your arms straight, raise it in front of you all the way up to overhead, then lower it back to your thighs under control. Keep going for 2 minutes.",
+    rules: "Declare your load before you start and stay on it for the whole set; enter the total load lifted (any kit: a plate, dumbbells or a bar) and your reps. Arms stay straight, no swing or lean back. Full range every rep: load at the thighs at the bottom, arms straight overhead at the top, or it does not count. You have 2 minutes. A heavier load always outranks a lighter one, and at the same load the most reps wins.",
     videoPlaceholder: true,
     emoji: '💪',
   },
