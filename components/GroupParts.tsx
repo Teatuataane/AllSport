@@ -1,6 +1,6 @@
-// ─── Groups, in parts ────────────────────────────────────────────────────────
+// ─── Hapū, in parts ────────────────────────────────────────────────────────
 // Props only, so __tests__/groupParts.test.tsx can render them. The pages
-// (/groups and /groups/[groupId]) do the reads; the rule is lib/groupBoard.ts.
+// (/hapu and /hapu/[groupId]) do the reads; the rule is lib/groupBoard.ts.
 
 import Link from 'next/link'
 import { GROUP_KIND_NAMES, improvementLabel, type GroupBoardRow, type GroupMemberRow } from '@/lib/groupBoard'
@@ -20,15 +20,15 @@ const ord = (n: number) => {
   return n + (s[(v - 20) % 10] || s[v] || s[0])
 }
 
-/** The public board: groups only, never a name. */
+/** The public board: hapū only, never a name. */
 export function GroupBoardList({ rows }: { rows: readonly GroupBoardRow[] }) {
   if (rows.length === 0) {
-    return <div style={{ fontSize: 14, color: 'var(--text-muted)', padding: '8px 0' }}>No groups yet.</div>
+    return <div style={{ fontSize: 14, color: 'var(--text-muted)', padding: '8px 0' }}>No hapū yet.</div>
   }
   return (
     <div data-testid="group-board">
       {rows.map(r => (
-        <Link key={r.group_id} href={`/groups/${r.group_id}`} data-testid="group-row" style={{
+        <Link key={r.group_id} href={`/hapu/${r.group_id}`} data-testid="group-row" style={{
           display: 'flex', alignItems: 'center', gap: 12, padding: '12px 2px', borderBottom: '1px solid var(--border)',
           color: 'inherit', textDecoration: 'none',
         }}>
@@ -50,7 +50,7 @@ export function GroupBoardList({ rows }: { rows: readonly GroupBoardRow[] }) {
   )
 }
 
-/** Members inside a group, as group_detail() names them. */
+/** Members inside a hapū, as group_detail() names them. */
 export function GroupMemberList({ rows, onRemove }: {
   rows: readonly GroupMemberRow[]
   /** Set for the leader: shows a remove button per member. */

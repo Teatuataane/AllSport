@@ -2,6 +2,12 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.39.1.0] - 2026-10-15
+
+### Changed
+- **Groups are called hapū** (Tāne, 15 Oct 2026): the page is `/hapu`, and the More menu, HOME link, page text and messages all say hapū. `/groups` redirects there. The database keeps its English names (`groups`, `group_members`, `group_board()`).
+- **Migration `20261015004143_scoring_v2_groups.sql` is applied** (15 Oct 2026, `db query --linked` plus the ledger row). Verified in production in a rolled-back transaction: anon reads the board but not memberships or names, a player can start a hapū and ask to join, a direct insert is refused by RLS, an invite waits for the player, and only the leader can close it.
+
 ## [0.39.0.0] - 2026-10-15
 
 ### Added

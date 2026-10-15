@@ -74,8 +74,9 @@ pilot is 2027, so rules change as each step ships.
 2. PR counts, ghost marker, honours. Done, v0.38.0.0 (PRs worked out from
    the scores in `lib/prCounts.ts`; ghost and honours in `lib/honours.ts`).
 3. Calibration report script (read-only; can run in parallel). Due early Dec.
-4. Groups, privacy, improvement board (before the 2027 school pilot). Built,
-   v0.39.0.0; migration `20261015004143` to apply before the deploy.
+4. Groups (called hapū in the app), privacy, improvement board (before the
+   2027 school pilot). Live, v0.39.1.0; migration `20261015004143` applied and
+   verified 15 Oct 2026.
 5. One-on-one contests: Swiss on demand, performance rating, safety rules.
 6. Races (heats) and team games.
 7. Smooth age curve from a season of calibration data.
