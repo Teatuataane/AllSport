@@ -73,6 +73,16 @@ type QuickEntrySheetProps = {
     reached: number
     bodyweightPrompt?: ReactNode
   }
+  /**
+   * A Swiss contest's card (components/play/ContestCard.tsx), shown above the
+   * result. Given `bye`, which sets the result to a draw with no opponent.
+   */
+  contest?: (api: { bye: () => void }) => ReactNode
+  /**
+   * The opponent the contest paired this player with. Fills the opponent when
+   * the sheet opens; the host re-keys the sheet when a pairing arrives.
+   */
+  pairedOpponent?: OpponentPick | null
   onClose: () => void
   onSubmit: (v: EntryVals, editingId: string | null, matchOpponents: string[] | null) => Promise<SubmitOutcome>
   onDelete: (id: string) => Promise<string | null>
@@ -89,6 +99,7 @@ function shortRecordHint(ref: number): string {
 export default function QuickEntrySheet({
   se, eventData, myResults, opponents, seasonPR, prRows = [], locked,
   bestLabel = "Today's best", prLabel = 'Season PR', allowGames = true, natural = false, standards,
+  contest, pairedOpponent = null,
   onClose, onSubmit, onDelete, onSubmitted, onDeleted,
 }: QuickEntrySheetProps) {
   // A stored opponent NAME resolves to an id only when exactly one pick carries
@@ -114,6 +125,8 @@ export default function QuickEntrySheet({
     // A Game rung pre-fills the last opponent's NAME from the best result. Resolve
     // the id too, so what the sheet shows as picked is what gets recorded.
     init = { ...init, opponentId: opponentIdFor(init.opponentName) ?? '' }
+    // A Swiss pairing names the opponent: the result is all that is left to tap.
+    if (pairedOpponent?.id) init = { ...init, opponentName: pairedOpponent.name, opponentId: pairedOpponent.id }
     // A lift opens with one set, pre-filled from the last one done, so the
     // common case (another set of the same) is two taps.
     if (natural && eventData && takesSets(eventData)) {
@@ -600,6 +613,7 @@ export default function QuickEntrySheet({
                   {/* Sport, and the `Game` rung that tops a drill ladder */}
                   {showSport && (
                     <>
+                      {contest?.({ bye: () => set({ sportResult: 'draw', opponentName: '', opponentId: '' }) })}
                       <div style={QES_LBL}>Result</div>
                       <div style={{ display: 'flex', gap: '10px' }}>
                         {(['win', 'draw', 'loss'] as const).map(r => {

@@ -9,6 +9,8 @@
 //   behind the colour total the leaderboard publishes (eventRungInGame), so the
 //   two always agree. Game-rung results score win 6 / draw 5 /
 //   loss 4, or the rating colour if higher (Tāne confirmed 6/5/4 the same day).
+//   Since Scoring v2 step 5 a Swiss one-on-one contest with confirmed games
+//   scores the game-day performance rating instead (lib/swiss.ts).
 //
 //   GAME COLOUR — the score divided by ten events, rounded down: 74 plays at
 //   Kākāriki. One colour for the day, on the ladder the player already knows.
@@ -32,6 +34,7 @@ import {
 } from './grading'
 import { seasonRowsFrom, ratingsAtClose, gradePlayerOf, type GradeInputs, type GradeAward } from './loadGrades'
 import { GAME_MINUTES } from './workouts'
+import { contestScoresFor } from './swiss'
 
 /** One official game, scored on the colour ladder. */
 export type GameScore = {
@@ -61,6 +64,7 @@ export function gameColourRung(points: number): number {
 export function gameScores(playerId: string, inputs: GradeInputs): Map<string, GameScore> {
   const rows = seasonRowsFrom(inputs)
   const ratingAt = ratingsAtClose(playerId, inputs, rows)
+  const contestAt = contestScoresFor(playerId, inputs.matches)
   const player = gradePlayerOf(inputs)
 
   const bySession = new Map<string, { date: string; closedAt: string | null; closed: boolean; events: Map<string, typeof rows> }>()
@@ -76,10 +80,11 @@ export function gameScores(playerId: string, inputs: GradeInputs): Map<string, G
   const out = new Map<string, GameScore>()
   for (const [sessionId, g] of bySession) {
     const ratings = ratingAt(sessionId)
+    const contests = contestAt(sessionId)
     const rungs = new Map<string, number>()
     let points = 0
     for (const [name, list] of g.events) {
-      const rung = eventRungInGame(name, list, player, ratings.get(name))
+      const rung = eventRungInGame(name, list, player, ratings.get(name), contests.get(name))
       rungs.set(name, rung)
       points += rung
     }

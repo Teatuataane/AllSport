@@ -2,6 +2,17 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.40.0.0] - 2026-10-15
+
+### Added
+- **Swiss one-on-one contests** (Scoring v2 step 5, decisions 4, 13 and 14). In Wrestling, Mas Wrestling, Arm Wrestling, Tae Kwon Do, Fencing, Tag and Speed Chess, the scoring sheet has a contest card: tap **Ready**, and the app pairs you with the best free opponent who is waiting (closest Swiss points today, no rematch while anyone else is free, then the longest wait) and says whom to find. The opponent is filled in; you both record the result as before.
+- **Safety pairing.** Contact events pair within an age group (U12, 12–15, 16+), within 15% of the day's bodyweight, and the same sex except under 12 or where the kaiwhakawā allows mixed; no bodyweight, no pairing. Fencing and Tag pair by age group; Speed Chess has no limit. With nobody eligible, a player can take a bye, recorded as a draw.
+- **Kaiwhakawā controls** in their scoring sheet: who is waiting and playing, pair any two by hand, matches per player (3 unless changed; extra matches count), and mixed allowed.
+- **Migration `20261015011537_swiss_contests.sql`**: the queue, pairings and two `session_events` columns, all writes through SECURITY DEFINER functions; ages, sexes and bodyweights never leave the database. Apply it FIRST, then deploy. Rehearsed in PGlite and on production in a rolled-back transaction.
+
+### Changed
+- **A contest's game-day score is the performance rating** for that game: the opponents' average rating before the game plus 400 × (wins − losses) / games, on the colour scale (1,100 = Poroporo 7, 100 a colour, 1,600 = Taniwha 12, never below 4). It replaces win 6 / draw 5 / loss 4 wherever a player has a confirmed game in that contest; older games and byes keep 6/5/4. Conferred rating colours are unchanged. `GRADING_RULES_VERSION` bumped, so every game total is republished.
+
 ## [0.39.1.0] - 2026-10-15
 
 ### Changed

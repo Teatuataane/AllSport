@@ -29,6 +29,7 @@ import { disputedBySport, type MatchRow } from './matches'
 import { toNZDateString } from './dates'
 import { domainRungsOf, gameColourTotals, type SeasonRow } from './leaderboardScores'
 import { nzYear, yearOfDay, awardsInYear } from './seasonYear'
+import { contestScoresFor } from './swiss'
 
 /**
  * The Supabase client to read through. Passed in rather than created here, so
@@ -554,7 +555,7 @@ export function leaderboardScoresFrom(playerId: string, inputs: GradeInputs, sta
   const rows = seasonRowsFrom(inputs)
   return {
     domainRungs: domainRungsOf(state.grades.domains),
-    games: gameColourTotals(rows, gradePlayerOf(inputs), ratingsAtClose(playerId, inputs, rows)),
+    games: gameColourTotals(rows, gradePlayerOf(inputs), ratingsAtClose(playerId, inputs, rows), contestScoresFor(playerId, inputs.matches)),
   }
 }
 

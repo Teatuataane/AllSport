@@ -78,5 +78,10 @@ pilot is 2027, so rules change as each step ships.
    2027 school pilot). Live, v0.39.1.0; migration `20261015004143` applied and
    verified 15 Oct 2026.
 5. One-on-one contests: Swiss on demand, performance rating, safety rules.
+   Built, v0.40.0.0 (Wrestling, Mas Wrestling, Arm Wrestling, Tae Kwon Do,
+   Fencing, Tag, Speed Chess); migration `20261015011537` to apply before the
+   deploy. Not yet: the contest's event placement still ranks the best single
+   result, not Swiss points; Game rungs on drill events (Tennis, SKATE…) keep
+   the old flow.
 6. Races (heats) and team games.
 7. Smooth age curve from a season of calibration data.

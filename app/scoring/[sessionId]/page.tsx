@@ -30,6 +30,9 @@ import { isNewPR, mergeRows, type PRRow } from '@/lib/prBoard'
 import { averageBefore, awardsForGame, nextStep } from '@/lib/gameReport'
 import { ColourScore, EarnedColours, NextTime, PlacementHeader } from '@/components/GameReportParts'
 import { prMoments, prsAtGame } from '@/lib/prCounts'
+import { isSwissContest } from '@/lib/swiss'
+import { useContest, useContestBoard } from '@/lib/useContest'
+import { ContestCard, ContestJudgeCard } from '@/components/play/ContestCard'
 import { loadGamePlace } from '@/lib/loadGamePlace'
 import type { GamePlace } from '@/lib/gameReport'
 import { useGameSwaps } from '@/lib/useGameSwaps'
@@ -1156,6 +1159,13 @@ export default function SessionPage() {
     userId: authUserId,
     sessionOpen: !sessionEnded,
   })
+  // Scoring v2 step 5: the Swiss contest behind the open sheet, if it is one.
+  // At page level for the same reason as the swaps: the tabs render in a map.
+  const contestSe = events.find(e => e.id === sheetEventId && isSwissContest(e.event_slug)) ?? null
+  const contest = useContest(contestSe && !sessionEnded ? sessionId as string : null, contestSe?.event_name ?? null,
+    activeTab.startsWith('player-') ? activeTab.slice('player-'.length) : null)
+  const contestBoard = useContestBoard(sessionId as string, contestSe?.event_name ?? null,
+    isJudge && activeTab === 'judge' && !sessionEnded)
   // Lifetime scores on the events in this game, for the records list and the PR
   // rule: the viewed player's, and (on the kaiwhakawā tab) the scored player's.
   const prSlugs = [...events.map(e => e.event_slug), ...swaps.chosen]
@@ -1860,7 +1870,7 @@ export default function SessionPage() {
             {/* Quick-entry sheet */}
             {sheetEvent && (
               <QuickEntrySheet
-                key={sheetEvent.id}
+                key={`${sheetEvent.id}-${contest.state?.pairing?.id ?? ''}`}
                 se={sheetEvent}
                 eventData={getEventByName(sheetEvent.event_name)}
                 myResults={results.filter(r => r.event_id === sheetEvent.id && r.player_id === pid)}
@@ -1873,6 +1883,13 @@ export default function SessionPage() {
                   bodyweightPrompt: <BodyweightField playerId={pid} eventSlugs={[sheetEvent.event_slug]} day={sessionDay}
                     locked={sessionEnded} onSaved={gradeProfile.setBodyweightKg} />,
                 }}
+                pairedOpponent={contestSe?.id === sheetEvent.id && contest.state?.pairing
+                  ? { id: contest.state.pairing.opponent_id, name: contest.state.pairing.opponent_name } : null}
+                contest={contestSe?.id === sheetEvent.id && contest.live && contest.state ? ({ bye }) => (
+                  <ContestCard state={contest.state!} busy={contest.busy} error={contest.error} locked={sessionEnded}
+                    onReady={() => { void contest.ready() }} onLeave={() => { void contest.leave() }}
+                    onBye={() => { void contest.leave(); bye() }} />
+                ) : undefined}
                 onSubmit={(v, editingId, matchOpponents) => submitEntry({
                   sessionId: sessionId as string, eventId: sheetEvent.id, playerId: pid, playerName: pName,
                   mode: getEventByName(sheetEvent.event_name)?.inputMode || sheetEvent.input_mode,
@@ -1885,6 +1902,8 @@ export default function SessionPage() {
                 onClose={() => setSheetEventId(null)}
                 onSubmitted={async (label, meta) => {
                   setSheetEventId(null)
+                  // The match is recorded: free both players for their next one.
+                  if (contestSe?.id === sheetEvent.id && contest.state?.pairing) void contest.close()
                   const isNewEvent = playedEventNames !== null && !playedEventNames.has(sheetEvent.event_name)
                   if (isNewEvent) setPlayedLoaded(prev => prev && prev.id === pid
                     ? { id: prev.id, names: new Set(prev.names).add(sheetEvent.event_name) }
@@ -2172,6 +2191,11 @@ export default function SessionPage() {
                   <QuickEntrySheet
                     key={`judge-${target.id ?? target.name}-${sheetEvent.id}`}
                     se={sheetEvent}
+                    contest={contestSe?.id === sheetEvent.id && contestBoard.board ? () => (
+                      <ContestJudgeCard board={contestBoard.board!} error={contestBoard.error}
+                        onPair={(a, b) => { void contestBoard.pair(a, b) }}
+                        onRules={(m, mixed) => { void contestBoard.setRules(m, mixed) }} />
+                    ) : undefined}
                     eventData={getEventByName(sheetEvent.event_name)}
                     myResults={targetResults.filter(r => r.event_id === sheetEvent.id)}
                     opponents={pickOpponents(results, { id: target.id, name: target.name })}

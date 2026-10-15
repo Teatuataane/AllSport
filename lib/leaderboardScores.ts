@@ -89,12 +89,16 @@ export function eventRungInGame(
   rows: readonly GradeResultRow[],
   player: GradePlayer,
   rating?: SportRating,
+  contestExact?: number,
 ): number {
   const ev = getEventByName(eventName)
   if (!ev) return 0
   // The standards' own answer: drills (capped on a Game-rung event) and the
   // rating colour, exactly as a colour would be judged.
   let rung = STANDARDS[ev.slug] ? eventCredit(eventGrade(ev, rows, player, rating)) : 0
+  // A Swiss contest with confirmed games (Scoring v2 step 5): the game-day
+  // performance rating replaces win 6 / draw 5 / loss 4 (lib/swiss.ts).
+  if (contestExact != null) return Math.max(rung, contestExact)
   // The real contest, which the standards deliberately never grade from a single result.
   for (const r of rows) {
     if (r.raw_score == null) continue
@@ -114,12 +118,14 @@ export type GameColours = { session_id: string; session_date: string; total: num
  * the places of everyone they played. Accepted: it is the same ladder HOME
  * shows them today.
  * `ratingAt` returns the player's ratings as they stood at the end of one
- * game; omit it to score game events on their result alone.
+ * game; omit it to score game events on their result alone. `contestAt`
+ * returns the game-day Swiss contest scores (contestScoresFor in lib/swiss.ts).
  */
 export function gameColourTotals(
   rows: readonly SeasonRow[],
   player: GradePlayer,
   ratingAt?: (sessionId: string) => ReadonlyMap<string, SportRating>,
+  contestAt?: (sessionId: string) => ReadonlyMap<string, number>,
 ): GameColours[] {
   const bySession = new Map<string, { date: string; events: Map<string, GradeResultRow[]> }>()
   for (const r of rows) {
@@ -132,8 +138,9 @@ export function gameColourTotals(
   }
   return [...bySession].map(([sessionId, { date, events }]) => {
     const ratings = ratingAt?.(sessionId)
+    const contests = contestAt?.(sessionId)
     let total = 0
-    for (const [name, list] of events) total += eventRungInGame(name, list, player, ratings?.get(name))
+    for (const [name, list] of events) total += eventRungInGame(name, list, player, ratings?.get(name), contests?.get(name))
     // A game holds ten events (verified: no session has more). Capped anyway,
     // because the stored CHECK would otherwise refuse every game in the batch.
     return { session_id: sessionId, session_date: date, total: gameTotalOf(total) }
