@@ -282,6 +282,13 @@ export function MoreMenu({ isJudge, onClose }: {
           </svg>
         </SheetRow>
 
+        <SheetRow href="/groups" label="Groups">
+          <svg {...stroke()} strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="9" cy="8" r="3" /><circle cx="17" cy="9" r="2.5" />
+            <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" /><path d="M15 14.5c3 0 6 2 6 5.5" />
+          </svg>
+        </SheetRow>
+
         <SheetRow href="/profile" label="Profile &amp; family">
           <svg {...stroke()} strokeLinecap="round">
             <circle cx="12" cy="8" r="4" /><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7" />

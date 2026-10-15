@@ -391,6 +391,7 @@ function DashboardInner() {
           <HomeLink href="/workout/new">Log a workout</HomeLink>
           <HomeLink href="/prs">My events</HomeLink>
           <HomeLink href="/history">Play history</HomeLink>
+          <HomeLink href="/groups">Groups</HomeLink>
         </nav>
 
         {userId && activePlayerId && (
