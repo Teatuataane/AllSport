@@ -10,7 +10,7 @@
 import type { ReactNode } from 'react'
 import EventIcon from '@/components/EventIcon'
 import { GradeDot } from '@/components/GradeDot'
-import { gradeForRung, gradeInk, gradeAccent } from '@/lib/grading'
+import { gradeForRung, gradeInk, gradeAccent, formatExact } from '@/lib/grading'
 import { DOMAIN_ORDER, getEventByName } from '@/lib/eventData'
 import { NEUTRAL_ICON_TINT } from '@/lib/scoreColour'
 import { MAX_GAME_COLOUR_TOTAL } from '@/lib/leaderboardScores'
@@ -30,8 +30,9 @@ export function ReportLabel({ children, colour = '#777' }: { children: ReactNode
 /**
  * The game's colour score: out of 120, the colour it plays at, and how it
  * compares with the player's average. `average` null (a first game) says nothing.
+ * `prs` is the PRs set in this game (lib/prCounts.ts); none says nothing.
  */
-export function ColourScore({ points, average }: { points: number; average: number | null }) {
+export function ColourScore({ points, average, prs = 0 }: { points: number; average: number | null; prs?: number }) {
   const g = gradeForRung(gameColourRung(points))
   const delta = average == null ? null : Math.round(points - average)
   return (
@@ -50,6 +51,11 @@ export function ColourScore({ points, average }: { points: number; average: numb
         {delta != null && (
           <div style={{ fontSize: 12.5, color: '#888', marginTop: 2 }}>
             {delta === 0 ? 'Level with your average' : `${delta > 0 ? '+' : '−'}${Math.abs(delta)} on your average`}
+          </div>
+        )}
+        {prs > 0 && (
+          <div data-testid="prs-today" style={{ fontSize: 12.5, color: '#F9B051', marginTop: 2 }}>
+            {prs} {prs === 1 ? 'PR' : 'PRs'} today
           </div>
         )}
       </div>
@@ -116,7 +122,7 @@ export type ReportEventLine = {
   scoreLabel: string | null
   /** Division rank in the event, or null when there is none to show. */
   placement: number | null
-  /** The colour reached, plus 0.5 for a half step (shown as "+½"). */
+  /** The exact score reached (Scoring v2): the colour plus progress toward the next. */
   rung: number
   isPR?: boolean
   firstTime?: boolean
@@ -154,7 +160,9 @@ export function ReportEventRow({ line }: { line: ReportEventLine }) {
       <div style={{ textAlign: 'right', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
           <GradeDot grade={g} size={12} />
-          <span style={{ fontSize: 13, color: gradeInk(g) }}>{g.name}{line.rung % 1 ? ' +½' : ''}</span>
+          <span style={{ fontSize: 13, color: gradeInk(g) }}>
+            {g.name}{played && line.rung > 0 && <span style={{ color: '#888' }}> {formatExact(line.rung)}</span>}
+          </span>
         </div>
         {line.placement != null && (
           <div style={{ fontFamily: 'var(--font-label)', fontSize: 12, color: '#666', marginTop: 2 }}>{ord(line.placement)}</div>

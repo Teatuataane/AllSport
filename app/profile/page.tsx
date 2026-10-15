@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { createClient, getSessionUser } from '@/lib/supabase-browser'
 import { ACTIVE_PLAYER_KEY, useActivePlayer } from '@/lib/useActivePlayer'
 import Link from 'next/link'
+import HonoursCard from '@/components/HonoursCard'
 
 const supabase = createClient()
 
@@ -358,6 +359,9 @@ export default function ProfilePage() {
             ))}
           </div>
         </div>
+
+        {/* ── Honours: each year's colour, games and PRs, kept for good ─────── */}
+        <HonoursCard playerId={player.id} />
 
         {/* ── Profile edit ───────────────────────────────────────────────────── */}
         <div style={{

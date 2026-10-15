@@ -41,10 +41,15 @@ const label = {
   letterSpacing: '0.1em', fontWeight: 600,
 }
 
-export default function GradesCard({ state, bestEvent = null }: {
+export default function GradesCard({ state, bestEvent = null, ghost }: {
   state: GradeState
   /** The event holding the highest colour, from bestEventByColour. */
   bestEvent?: { slug: string; rung: number } | null
+  /**
+   * Last year's exact score per domain (lib/honours.ts): the ghost marker,
+   * shown faintly so the yearly reset leaves a line to climb back to.
+   */
+  ghost?: ReadonlyMap<number, number>
 }) {
   const { grades } = state
   const [open, setOpen] = useState<Set<number>>(() => new Set())
@@ -124,7 +129,7 @@ export default function GradesCard({ state, bestEvent = null }: {
                 type="button"
                 onClick={() => toggle(d.domainNumber)}
                 aria-expanded={isOpen}
-                aria-label={`${DOMAIN_NAMES[d.domainNumber - 1]}, ${g.name}${needsBodyweight ? ', needs bodyweight' : slots.length === 0 ? ', nothing to grade' : ''}`}
+                aria-label={`${DOMAIN_NAMES[d.domainNumber - 1]}, ${g.name}${needsBodyweight ? ', needs bodyweight' : slots.length === 0 ? ', nothing to grade' : ''}${ghost?.has(d.domainNumber) ? `, last year ${formatExact(ghost.get(d.domainNumber)!)}` : ''}`}
                 style={{
                   width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '10px 2px',
                   background: 'none', border: 'none', color: 'inherit', textAlign: 'left', cursor: 'pointer',
@@ -136,7 +141,7 @@ export default function GradesCard({ state, bestEvent = null }: {
                   <div style={{ fontSize: 14.5, color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {DOMAIN_NAMES[d.domainNumber - 1]}
                   </div>
-                  {slots.length === 0 && !needsBodyweight ? (
+                  {slots.length === 0 && !needsBodyweight && !ghost?.has(d.domainNumber) ? (
                     <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>Nothing to grade</div>
                   ) : (
                     <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', columnGap: 10, rowGap: 4, marginTop: 6 }}>
@@ -148,6 +153,15 @@ export default function GradesCard({ state, bestEvent = null }: {
                         <div aria-hidden style={{ display: 'flex', gap: 5 }}>
                           {slots.map((r, i) => <ColourCircle key={i} rung={r} size={9} />)}
                         </div>
+                      )}
+                      {ghost?.has(d.domainNumber) && (
+                        <span data-testid="ghost-marker" title={`Last year: ${gradeForRung(ghost.get(d.domainNumber)!).name}`}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11.5, color: 'var(--text-muted)', lineHeight: 1 }}>
+                          <span style={{ opacity: 0.45, display: 'inline-flex' }}>
+                            <ColourCircle rung={Math.floor(ghost.get(d.domainNumber)!)} size={9} />
+                          </span>
+                          {(state.year ?? 0) - 1}: {formatExact(ghost.get(d.domainNumber)!)}
+                        </span>
                       )}
                       {needsBodyweight && (
                         // Declared on the scoring screen on the day, so there is

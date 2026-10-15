@@ -12,6 +12,7 @@ import {
   ColourScore, EarnedColours, NextTime, PlacementHeader, ReportEventRow, ReportLabel, type ReportEventLine,
 } from '@/components/GameReportParts'
 import { loadGamePlace } from '@/lib/loadGamePlace'
+import { prMoments, prsAtGame } from '@/lib/prCounts'
 import type { GamePlace } from '@/lib/gameReport'
 
 const supabase = createClient()
@@ -126,12 +127,15 @@ export default function GameReviewPage() {
     if (!mine || !games) return null
     const score = games.scores.get(sessionId)
     const flags = eventFlags(games.scores, sessionId)
+    // Worked out from the scores (lib/prCounts.ts), not results.is_pr, which
+    // froze when lifts moved to estimated 1RM.
+    const prd = prsAtGame(prMoments(games.inputs), sessionId)
     const lines: ReportEventLine[] = mine.standing.events.map(cell => ({
       eventName: cell.eventName,
       scoreLabel: cell.hasScore ? cell.scoreLabel ?? '' : null,
       placement: cell.hasScore ? cell.placement : null,
       rung: score?.rungs.get(cell.eventName) ?? 0,
-      isPR: results.some(r => r.player_id === activePlayerId && r.event_id === cell.eventId && r.is_pr),
+      isPR: prd.has(cell.eventName),
       firstTime: flags.get(cell.eventName)?.firstTime,
       colourUp: flags.get(cell.eventName)?.colourUp,
     }))
@@ -145,6 +149,7 @@ export default function GameReviewPage() {
     }
     return {
       score,
+      prs: prd.size,
       average: averageBefore(games.scores, sessionId),
       lines,
       added: [...added.entries()],
@@ -188,7 +193,7 @@ export default function GameReviewPage() {
           <ReportLabel>Your game</ReportLabel>
           <PlacementHeader game={wholeGame}
             division={{ rank: mine.standing.rank, of: mine.participants, name: mine.division }} />
-          {myGame?.score && <ColourScore points={myGame.score.points} average={myGame.average} />}
+          {myGame?.score && <ColourScore points={myGame.score.points} average={myGame.average} prs={myGame.prs} />}
           {myGame?.next && <NextTime step={myGame.next} />}
           {myGame && <EarnedColours colours={myGame.colours} />}
 

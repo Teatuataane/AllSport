@@ -67,8 +67,9 @@ pilot is 2027, so rules change as each step ships.
 ## Build order
 
 1. Exact scores (+ two-part lower-of, exact rating colour, game totals, 2026
-   recalculation). ← in progress
-2. PR counts, ghost marker, honours.
+   recalculation). Done, v0.37.0.0.
+2. PR counts, ghost marker, honours. Done, v0.38.0.0 (PRs worked out from
+   the scores in `lib/prCounts.ts`; ghost and honours in `lib/honours.ts`).
 3. Calibration report script (read-only; can run in parallel). Due early Dec.
 4. Groups, privacy, improvement board (before the 2027 school pilot).
 5. One-on-one contests: Swiss on demand, performance rating, safety rules.

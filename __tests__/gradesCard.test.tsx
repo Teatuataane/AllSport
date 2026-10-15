@@ -336,3 +336,18 @@ describe('the colours guide (/grades)', () => {
     expect(container.textContent).not.toMatch(/training units|What is a unit/i)
   })
 })
+
+describe('GradesCard ghost marker (Scoring v2 step 2)', () => {
+  it('shows last year\'s exact score faintly on a domain row', () => {
+    render(<GradesCard state={state()} ghost={new Map([[pushupDomain, 5.83]])} />)
+    const marks = screen.getAllByTestId('ghost-marker')
+    expect(marks).toHaveLength(1)
+    expect(marks[0].textContent).toContain('2026: 5.8')
+    expect(screen.getByRole('button', { name: new RegExp(`^${domainName}.*last year 5\\.8`) })).toBeTruthy()
+  })
+
+  it('shows nothing without a last year', () => {
+    render(<GradesCard state={state()} />)
+    expect(screen.queryAllByTestId('ghost-marker')).toHaveLength(0)
+  })
+})

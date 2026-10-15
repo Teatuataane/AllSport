@@ -29,6 +29,7 @@ import { usePRRows } from '@/lib/usePRRows'
 import { isNewPR, mergeRows, type PRRow } from '@/lib/prBoard'
 import { averageBefore, awardsForGame, nextStep } from '@/lib/gameReport'
 import { ColourScore, EarnedColours, NextTime, PlacementHeader } from '@/components/GameReportParts'
+import { prMoments, prsAtGame } from '@/lib/prCounts'
 import { loadGamePlace } from '@/lib/loadGamePlace'
 import type { GamePlace } from '@/lib/gameReport'
 import { useGameSwaps } from '@/lib/useGameSwaps'
@@ -959,6 +960,11 @@ function SessionEndTakeover({
   const milestone = sessionNumber !== null && [10, 25, 50].includes(sessionNumber) ? sessionNumber : null
 
   const prs = myResults.filter(r => r.is_pr)
+  // How many events were PR'd, worked out from the scores (lib/prCounts.ts)
+  // once the player's history is loaded; until then, from the flags above.
+  const prCount = games
+    ? prsAtGame(prMoments(games.inputs), sessionId).size
+    : new Set(prs.map(r => r.event_id)).size
   const eventNameFor = (eid: string) => events.find(e => e.id === eid)?.event_name ?? 'Event'
 
   return (
@@ -991,7 +997,7 @@ function SessionEndTakeover({
             division={rank !== null ? { rank, of: divisionPlacement?.playerCount ?? null, name: divisionPlacement?.divisionName ?? 'This game' } : null} />
 
           {/* The game's colour score */}
-          {score ? <ColourScore points={score.points} average={average} /> : (
+          {score ? <ColourScore points={score.points} average={average} prs={prCount} /> : (
             <div style={{ height: '76px', background: '#161616', border: '1px solid #1e1e1e', borderRadius: '14px' }} />
           )}
           {next && <NextTime step={next} />}
