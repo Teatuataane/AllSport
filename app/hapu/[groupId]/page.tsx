@@ -1,6 +1,6 @@
 'use client'
 
-// ─── One group ───────────────────────────────────────────────────────────────
+// ─── One hapū ───────────────────────────────────────────────────────────────
 // Scoring v2 step 4. Members and the leader see names here (group_detail(),
 // which reads an under-13 in a school group as "First L." to everyone but the
 // leader and their own family). Anyone else is told it is members only. The
@@ -83,7 +83,7 @@ export default function GroupPage() {
     const { error: err } = await supabase.rpc('delete_group', { p_group_id: groupId })
     setBusy(false)
     if (err) { setError(groupErrorMessage(err)); return }
-    router.push('/groups')
+    router.push('/hapu')
   }
 
   const waiting = (members ?? []).filter(m => m.status !== 'member')
@@ -91,15 +91,15 @@ export default function GroupPage() {
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a0a', color: 'var(--white)' }}>
       <div style={{ maxWidth: 560, margin: '0 auto', padding: '24px 16px 48px' }}>
-        <Link href="/groups" style={{ color: 'var(--blue)', fontFamily: 'var(--font-label)', fontSize: 14, textDecoration: 'none' }}>← Groups</Link>
+        <Link href="/hapu" style={{ color: 'var(--blue)', fontFamily: 'var(--font-label)', fontSize: 14, textDecoration: 'none' }}>← Hapū</Link>
 
         {!loading && !userId && (
           <div style={{ ...groupCard, marginTop: 16, fontSize: 14 }}>
-            <Link href="/play" style={{ color: 'var(--blue)' }}>Sign in</Link> to see this group.
+            <Link href="/play" style={{ color: 'var(--blue)' }}>Sign in</Link> to see this hapū.
           </div>
         )}
         {userId && group === null && (
-          <div style={{ ...groupCard, marginTop: 16, fontSize: 14, color: 'var(--text-muted)' }}>Group not found.</div>
+          <div style={{ ...groupCard, marginTop: 16, fontSize: 14, color: 'var(--text-muted)' }}>Hapū not found.</div>
         )}
 
         {group && (
@@ -112,7 +112,7 @@ export default function GroupPage() {
 
             {refused ? (
               <div style={{ ...groupCard, fontSize: 14, color: 'var(--grey-light)' }}>
-                Only members see who is in this group. Ask to join from <Link href="/groups" style={{ color: 'var(--blue)' }}>Groups</Link>.
+                Only members see who is in this hapū. Ask to join from <Link href="/hapu" style={{ color: 'var(--blue)' }}>Hapū</Link>.
               </div>
             ) : (
               <div style={groupCard}>
@@ -167,7 +167,7 @@ export default function GroupPage() {
                       <Button size="sm" variant="ghost" onClick={() => setConfirmClose(false)}>Keep it</Button>
                     </span>
                   ) : (
-                    <Button size="sm" variant="ghost" onClick={() => setConfirmClose(true)}>Close this group</Button>
+                    <Button size="sm" variant="ghost" onClick={() => setConfirmClose(true)}>Close this hapū</Button>
                   )}
                 </div>
               </>

@@ -16,11 +16,11 @@ describe('GroupBoardList', () => {
     expect(rows[0].textContent).toContain('School · 2 active · 7 games')
     expect(rows[0].textContent).toContain('+1.4 colours')
     expect(rows[1].textContent).toContain('Not yet active')
-    expect(rows[0].getAttribute('href')).toBe('/groups/a')
+    expect(rows[0].getAttribute('href')).toBe('/hapu/a')
   })
   it('says so when there are none', () => {
     render(<GroupBoardList rows={[]} />)
-    expect(screen.getByText('No groups yet.')).toBeTruthy()
+    expect(screen.getByText('No hapū yet.')).toBeTruthy()
   })
 })
 

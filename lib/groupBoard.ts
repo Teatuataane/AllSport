@@ -1,4 +1,6 @@
-// ─── Groups: schools, clubs and whānau (Scoring v2 step 4) ──────────────────
+// ─── Hapū: schools, clubs and whānau (Scoring v2 step 4) ────────────────────
+// Called hapū everywhere a player sees them (Tāne, 15 Oct 2026); the database
+// keeps the English names (groups, group_members, group_board()).
 // The rule behind the group board, mirrored from group_member_progress() and
 // group_board() in supabase/migrations/20261015004143_scoring_v2_groups.sql.
 // __tests__/groupBoard.test.ts pins the two together.
@@ -67,11 +69,11 @@ export function groupErrorMessage(err: { code?: string; message?: string } | nul
   if (!err) return null
   if (err.code === '23505') {
     return err.message?.includes('player_id_kind')
-      ? 'Already in a group of that kind. Leave it first.'
-      : 'A group of that kind already has that name.'
+      ? 'Already in a hapū of that kind. Leave it first.'
+      : 'A hapū of that kind already has that name.'
   }
   if (err.code === '23514') return 'Names are 2 to 60 characters.'
-  if (err.code === '42501') return 'Only the group leader can do that.'
+  if (err.code === '42501') return 'Only the hapū leader can do that.'
   return err.message ?? 'Something went wrong.'
 }
 

@@ -37,7 +37,7 @@ describe('improvementLabel', () => {
 describe('groupErrorMessage', () => {
   it('names the one-of-each-kind rule', () => {
     expect(groupErrorMessage({ code: '23505', message: 'duplicate key value violates unique constraint "group_members_player_id_kind_key"' }))
-      .toBe('Already in a group of that kind. Leave it first.')
+      .toBe('Already in a hapū of that kind. Leave it first.')
   })
 })
 

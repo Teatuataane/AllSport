@@ -67,6 +67,10 @@ const nextConfig: NextConfig = {
         destination: 'https://allsport.nz/:path*',
         permanent: true,
       },
+      // Groups were renamed hapū on 15 Oct 2026, the day they shipped; an
+      // early link to /groups still lands.
+      { source: '/groups', destination: '/hapu', permanent: true },
+      { source: '/groups/:id', destination: '/hapu/:id', permanent: true },
     ]
   },
   async headers() {
