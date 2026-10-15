@@ -2,6 +2,15 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.39.0.0] - 2026-10-15
+
+### Added
+- **Groups: schools, clubs and whānau** (Scoring v2 step 4, decisions 10 to 12). `/groups` shows the public board and lets a signed-in player find, ask to join, or start a group; `/groups/[id]` shows the members. Also in the More menu and HOME links.
+- **One group of each kind per player.** The leader approves requests. A leader (a teacher adding a class) can invite by username; the player or their parent says yes before they join.
+- **The board ranks by average improvement per active member:** the member's game colour score, the average of their last three games this season after their first, minus their first, in colours. Active = 3+ games. Tāne chose game score over the exact overall on 15 Oct 2026, because the overall also rises just from trying more events. Rule in `lib/groupBoard.ts`.
+- **Privacy:** the public board shows groups only. Inside a group, members and the leader see names, and an under-13 in a school group reads "First L." to other members. A leader gets no access to bodyweights or wellbeing.
+- **Migration `20261015004143_scoring_v2_groups.sql`**: two tables with read-only RLS, writes through SECURITY DEFINER functions only. Apply it FIRST, then deploy; until it runs the page says "Groups are not live yet". Rehearsed in PGlite with stub tables.
+
 ## [0.38.0.0] - 2026-10-15
 
 ### Added

@@ -43,8 +43,11 @@ pilot is 2027, so rules change as each step ships.
    (into honours). Display only. A first-ever attempt is not a PR.
 10. **Groups** (school / club / whānau): a player may belong to one of each type;
     the group leader approves members (teachers can add a class).
-11. **Group board ranks by average improvement per active member** (exact
-    overall now vs first game of the season; active = 3+ games this season).
+11. **Group board ranks by average improvement per active member** (the
+    member's game colour score: average of the last three games after the
+    first, minus the first; active = 3+ games this season). Changed from
+    "exact overall now vs first game" by Tāne on 15 Oct 2026, because the
+    overall also rises just from trying more events.
     Shows active members and games beside the rank, not counted.
 12. **Privacy:** public group board shows groups only; members and leader see
     names inside; under-13 school students are "First L." on the public board or
@@ -71,7 +74,8 @@ pilot is 2027, so rules change as each step ships.
 2. PR counts, ghost marker, honours. Done, v0.38.0.0 (PRs worked out from
    the scores in `lib/prCounts.ts`; ghost and honours in `lib/honours.ts`).
 3. Calibration report script (read-only; can run in parallel). Due early Dec.
-4. Groups, privacy, improvement board (before the 2027 school pilot).
+4. Groups, privacy, improvement board (before the 2027 school pilot). Built,
+   v0.39.0.0; migration `20261015004143` to apply before the deploy.
 5. One-on-one contests: Swiss on demand, performance rating, safety rules.
 6. Races (heats) and team games.
 7. Smooth age curve from a season of calibration data.
