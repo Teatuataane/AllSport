@@ -2,6 +2,17 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.41.0.0] - 2026-10-18
+
+### Added
+- **Swiss one-on-one contests** (Scoring v2 step 5, decisions 4, 13 and 14; redesigned with Tāne 18 Oct 2026, no Ready button). In Wrestling, Mas Wrestling, Arm Wrestling, Tae Kwon Do, Fencing, Tag and Speed Chess, players play their first match against anyone. After that the scoring sheet shows **Play next**: up to three opponents with a record like theirs today (winners play winners), not met yet today, safe to meet, and seen in the contest in the last 15 minutes. Tapping a name fills in the opponent. **Unbeaten today** names whoever has won and not lost. Suggestions count a match as soon as either side records it.
+- **Safety.** Contact events match within an age group (U12, 12–15, 16+), within 15% of the day's bodyweight, and the same sex except under 12 or where the kaiwhakawā allows mixed; no bodyweight, no match. Fencing and Tag match by age group; Speed Chess has no limit. The opponent picker crosses out anyone not safe, and a result against them cannot be saved.
+- **Kaiwhakawā:** the day's table for the contest, Unbeaten today, and the mixed switch on contact events.
+- **Migration `20261015011537_swiss_contests.sql`**: `session_events.contest_mixed`, `contest_safe_opponents()` (returns the ids a player may meet; ages, sexes and bodyweights never leave the database) and `set_contest_mixed()` (kaiwhakawā only). **Applied 18 Oct 2026, before the deploy** (`db query --linked` plus the ledger row) and verified as `anon` and `authenticated`.
+
+### Changed
+- **A contest's game-day score is the performance rating** for that game: the opponents' average rating before the game plus 400 × (wins − losses) / games, on the colour scale (1,100 = Poroporo 7, 100 a colour, 1,600 = Taniwha 12, never below 4). It replaces win 6 / draw 5 / loss 4 wherever a player has a confirmed game in that contest; older games keep 6/5/4. Conferred rating colours are unchanged. `GRADING_RULES_VERSION` bumped, so every game total is republished.
+
 ## [0.40.0.0] - 2026-10-18
 
 ### Changed
