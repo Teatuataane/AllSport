@@ -2,6 +2,11 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.41.0.1] - 2026-10-18
+
+### Changed
+- **Migration `20261017234440_chin_skull_hang_one_hand_banded.sql` is applied** (18 Oct 2026, after the deploy, `db query --linked` plus the ledger row). Rehearsed first in a rolled-back transaction. One Chin Hang result moved from D4 to D5 with its time kept. Verified as `authenticated` in a rolled-back transaction: an old-ladder One-Hand Chin Hang at D4 is refused, and the new D4 and D7 levels are accepted. Leaderboard refreshed (29 players, 0 failed); rechecked 18 Oct 2026: every stored game total matches a fresh dry run.
+
 ## [0.41.0.0] - 2026-10-18
 
 ### Added
