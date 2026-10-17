@@ -82,7 +82,7 @@ pilot is 2027, so rules change as each step ships.
 5. One-on-one contests: Swiss "play next" suggestions, performance rating,
    safety rules. Built, v0.40.0.0, redesigned 18 Oct 2026 without a queue
    (Wrestling, Mas Wrestling, Arm Wrestling, Tae Kwon Do, Fencing, Tag, Speed
-   Chess); migration `20261015011537` to apply before the deploy. Not yet: the contest's event placement still ranks the best single
+   Chess); migration `20261015011537` applied and verified 18 Oct 2026. Not yet: the contest's event placement still ranks the best single
    result, not Swiss points; Game rungs on drill events (Tennis, SKATE…) keep
    the old flow.
 6. Races (heats) and team games.
