@@ -105,11 +105,11 @@ describe('stamina roster migration', () => {
     const slugs = [...new Set(guarded.map(g => g.slug))].sort()
     // Stated, not derived: dropping an event from both lists must still fail.
     expect(slugs).toEqual([
-      'american-football', 'animal-crawl', 'baseball', 'breakdancing', 'calf-raises', 'clap-pushups', 'cricket',
+      'american-football', 'animal-crawl', 'baseball', 'breakdancing', 'calf-raises', 'chin-hang', 'clap-pushups', 'cricket',
       'darts', 'disc-golf', 'diving', 'finger-push-up', 'foot-juggling', 'forward-fold', 'full-bound-twist',
       'ghd-situp', 'golf', 'gymnastics', 'high-jump', 'iron-cross', 'jump-rope', 'l-sit-hold', 'middle-split',
       'netball', 'pancake', 'plie-squat', 'push-up-contest', 'repeat-high-jump', 'reverse-wrist-stretch',
-      'rope-climb', 'seiza', 'side-bend', 'skate', 'slackline', 'table-tennis', 'tennis', 'teqball',
+      'rope-climb', 'seiza', 'side-bend', 'skate', 'skull-hang', 'slackline', 'table-tennis', 'tennis', 'teqball',
       'touch-rugby', 'trampolining', 'volleyball', 'wrist-stretch',
     ])
     for (const slug of slugs) {

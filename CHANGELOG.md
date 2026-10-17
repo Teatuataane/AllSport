@@ -2,7 +2,7 @@
 
 All notable changes to AllSport are documented here.
 
-## [0.40.0.0] - 2026-10-18
+## [0.41.0.0] - 2026-10-18
 
 ### Added
 - **Swiss one-on-one contests** (Scoring v2 step 5, decisions 4, 13 and 14; redesigned with Tāne 18 Oct 2026, no Ready button). In Wrestling, Mas Wrestling, Arm Wrestling, Tae Kwon Do, Fencing, Tag and Speed Chess, players play their first match against anyone. After that the scoring sheet shows **Play next**: up to three opponents with a record like theirs today (winners play winners), not met yet today, safe to meet, and seen in the contest in the last 15 minutes. Tapping a name fills in the opponent. **Unbeaten today** names whoever has won and not lost. Suggestions count a match as soon as either side records it.
@@ -12,6 +12,13 @@ All notable changes to AllSport are documented here.
 
 ### Changed
 - **A contest's game-day score is the performance rating** for that game: the opponents' average rating before the game plus 400 × (wins − losses) / games, on the colour scale (1,100 = Poroporo 7, 100 a colour, 1,600 = Taniwha 12, never below 4). It replaces win 6 / draw 5 / loss 4 wherever a player has a confirmed game in that contest; older games keep 6/5/4. Conferred rating colours are unchanged. `GRADING_RULES_VERSION` bumped, so every game total is republished.
+
+## [0.40.0.0] - 2026-10-18
+
+### Changed
+- **Chin Hang and Skull Hang have a One-Hand Banded level** (Tāne, 18 Oct 2026). The step from two hands to one was too large, so one hand with band assistance now sits at D4 (One-Hand Banded Chin Hang, One-Hand Banded Hang). One-Hand moves to D5, Banded Hands-Free to D6 and the free hang to D7.
+- **Colours stay on the same movements:** Parahi is still a 5s one-hand hang, Taniwha still a 5s free hang. The new level has no colour of its own; it is the step between Poroporo and Parahi.
+- **Migration `20261017234440_chin_skull_hang_one_hand_banded.sql`** moves every stored score on the old D4 to D6 up one level (+10000, name and time kept), with a pre-image, and adds both events to `enforce_relevelled_ladders`. DEPLOY THE CODE FIRST, then apply it, then run `scripts/refresh-leaderboard-scores.ts --apply`. Until it runs, an old D4+ row shows one level low and grading ignores it, so nothing is conferred wrongly.
 
 ## [0.39.1.0] - 2026-10-15
 
