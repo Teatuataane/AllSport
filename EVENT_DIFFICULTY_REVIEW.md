@@ -379,9 +379,13 @@ _No levels yet._
 - D1: Feet Assisted   (Chin hang with both feet assisting on the ground or a box)
 - D2: Banded Hang   (Chin hang with heavy band assistance, hands on the bar)
 - D3: Two-Hand Chin Hang   (Chin over the bar, both hands gripping · used 2 times)
-- D4: One-Hand Chin Hang   (Chin over the bar, one hand gripping)
-- D5: Banded Hands-Free   (Hands-free chin hang with heavy band assistance)
-- D6: Chin Hang  (Chin over the bar with no hands on it)
+- D4: One-Hand Banded Chin Hang   (Chin over the bar, one hand gripping, with band assistance)
+- D5: One-Hand Chin Hang   (Chin over the bar, one hand gripping)
+- D6: Banded Hands-Free   (Hands-free chin hang with heavy band assistance)
+- D7: Chin Hang  (Chin over the bar with no hands on it)
+
+> Changed 18 Oct 2026 (Tāne): One-Hand Banded Chin Hang added at D4. The step from two hands
+> to one was too large, so a band now bridges it; the levels above it move up one.
 
 ### 25. Skull Hang
 
@@ -390,12 +394,14 @@ _No levels yet._
 - D1: Feet Assisted   (Bar behind the neck with both feet assisting on the ground or a box)
 - D2: Banded Hang   (Heavy band assistance, both hands on the bar)
 - D3: Two-Hand Hang   (Bar resting behind the neck, both hands gripping)
-- D4: One-Hand Hang   (Bar resting behind the neck, one hand gripping)
-- D5: Banded Hands-Free   (No hands on the bar, heavy band assistance)
-- D6: Free Hang   (Bar behind the neck, no hands and no band)
+- D4: One-Hand Banded Hang   (Bar resting behind the neck, one hand gripping, with band assistance)
+- D5: One-Hand Hang   (Bar resting behind the neck, one hand gripping)
+- D6: Banded Hands-Free   (No hands on the bar, heavy band assistance)
+- D7: Free Hang   (Bar behind the neck, no hands and no band)
 
 > NEW EVENT, Sept 2026 (Tāne). Nobody has scored it, so there is no usage to calibrate against.
-> Deliberately the Chin Hang ladder unchanged. If this position turns out harder to hold,
+> Deliberately the Chin Hang ladder unchanged (and it took the same One-Hand Banded level
+> on 18 Oct 2026). If this position turns out harder to hold,
 > every rung should come down together rather than one at a time.
 
 ### 26. Climbing
