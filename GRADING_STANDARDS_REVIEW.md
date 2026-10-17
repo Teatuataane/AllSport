@@ -743,7 +743,11 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 
 *Scored by: difficulty level, then longest hold · 6 players have scored it*
 
-*Levels: D1 Feet Assisted; D2 Banded Hang; D3 Two-Hand Chin Hang; D4 One-Hand Chin Hang; D5 Banded Hands-Free; D6 Chin Hang*
+*Levels: D1 Feet Assisted; D2 Banded Hang; D3 Two-Hand Chin Hang; D4 One-Hand Banded Chin Hang; D5 One-Hand Chin Hang; D6 Banded Hands-Free; D7 Chin Hang*
+
+> 18 Oct 2026 (Tāne): the One-Hand Banded level was added at D4 to bridge two hands to one.
+> Every colour stays on the same movement; the new level has no colour of its own, it is
+> the step between Poroporo and Parahi.
 
 > Drafted by rule. Twelve colours spread over the rungs, extras on the lowest. Reach a rung, then own it.
 
@@ -756,17 +760,21 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Kākāriki: D3 · 5s
 - Kahurangi: D3 · 15s
 - Poroporo: D3 · 30s
-- Parahi: D4 · 5s
-- Hiriwa: D4 · 15s
-- Kōura: D5 · 5s
-- Uenuku: D5 · 15s
-- Taniwha: D6 · 5s
+- Parahi: D5 · 5s
+- Hiriwa: D5 · 15s
+- Kōura: D6 · 5s
+- Uenuku: D6 · 15s
+- Taniwha: D7 · 5s
 
 ### 25. Skull Hang
 
 *Scored by: difficulty level, then longest hold · new event, nobody has scored it*
 
-*Levels: D1 Feet Assisted; D2 Banded Hang; D3 Two-Hand Hang; D4 One-Hand Hang; D5 Banded Hands-Free; D6 Free Hang*
+*Levels: D1 Feet Assisted; D2 Banded Hang; D3 Two-Hand Hang; D4 One-Hand Banded Hang; D5 One-Hand Hang; D6 Banded Hands-Free; D7 Free Hang*
+
+> 18 Oct 2026 (Tāne): the One-Hand Banded level was added at D4 to bridge two hands to one.
+> Every colour stays on the same movement; the new level has no colour of its own, it is
+> the step between Poroporo and Parahi.
 
 > Drafted by rule. Twelve colours spread over the rungs, extras on the lowest. Reach a rung, then own it.
 > NEW EVENT — nobody has scored it.
@@ -782,11 +790,11 @@ with the reason underneath: those are the ones to read hardest, and the hand-dra
 - Kākāriki: D3 · 5s
 - Kahurangi: D3 · 15s
 - Poroporo: D3 · 30s
-- Parahi: D4 · 5s
-- Hiriwa: D4 · 15s
-- Kōura: D5 · 5s
-- Uenuku: D5 · 15s
-- Taniwha: D6 · 5s
+- Parahi: D5 · 5s
+- Hiriwa: D5 · 15s
+- Kōura: D6 · 5s
+- Uenuku: D6 · 15s
+- Taniwha: D7 · 5s
 
 ### 26. Handstand
 
