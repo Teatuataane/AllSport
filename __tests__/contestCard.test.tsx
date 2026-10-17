@@ -1,64 +1,67 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { render, cleanup, screen, fireEvent } from '@testing-library/react'
-import { ContestCard, ContestJudgeCard, firstName } from '@/components/play/ContestCard'
-import type { ContestState } from '@/lib/useContest'
+import { ContestCard, ContestJudgeCard, firstName, type ContestName } from '@/components/play/ContestCard'
+import type { ContestRecord } from '@/lib/swiss'
 
 afterEach(cleanup)
 
-const base: ContestState = { status: 'idle', pairing: null, waiting: 0, noneEligible: false, matches: 3, played: 0 }
+const rec = (playerId: string, wins: number, losses: number, draws = 0): ContestRecord =>
+  ({ playerId, wins, losses, draws, points: wins + draws / 2, games: wins + losses + draws, met: new Set(), lastAt: '' })
+const named = (id: string, name: string, wins: number, losses: number): ContestName => ({ id, name, record: rec(id, wins, losses) })
 const noop = () => {}
-const card = (state: Partial<ContestState>, handlers: Partial<{ onReady: () => void; onLeave: () => void; onBye: () => void }> = {}) =>
-  render(<ContestCard state={{ ...base, ...state }} busy={false} error={null} locked={false}
-    onReady={handlers.onReady ?? noop} onLeave={handlers.onLeave ?? noop} onBye={handlers.onBye ?? noop} />)
 
 describe('ContestCard', () => {
-  it('starts with Ready and the match count', () => {
-    const onReady = vi.fn()
-    card({}, { onReady })
-    expect(screen.getByTestId('contest-card').textContent).toContain('Match 1 of 3')
-    fireEvent.click(screen.getByRole('button', { name: 'Ready for a match' }))
-    expect(onReady).toHaveBeenCalled()
+  it('says to play anyone before the first match', () => {
+    render(<ContestCard me={null} suggestions={[]} unbeaten={[]} needsBodyweight={false} pickedId={null} locked={false} onPick={noop} />)
+    expect(screen.getByTestId('contest-first').textContent).toContain('Play anyone')
+    expect(screen.queryByTestId('contest-suggestion')).toBeNull()
   })
-  it('names whom to find once paired', () => {
-    card({ status: 'paired', pairing: { id: 'p', opponent_id: 'o', opponent_name: 'Aroha Smith', opponent_icon: '🦊', by_judge: false } })
-    expect(screen.getByTestId('contest-paired').textContent).toContain('Find Aroha')
-    expect(screen.queryByRole('button', { name: 'Ready for a match' })).toBeNull()
+  it('shows who to play next, and tapping one picks them', () => {
+    const onPick = vi.fn()
+    render(<ContestCard me={rec('me', 2, 0)} suggestions={[named('a', 'Aroha Smith', 2, 0), named('h', 'Hemi Rua', 1, 0)]}
+      unbeaten={[]} needsBodyweight={false} pickedId="h" locked={false} onPick={onPick} />)
+    const chips = screen.getAllByTestId('contest-suggestion')
+    expect(chips.map(c => c.textContent)).toEqual(['Aroha2–0', 'Hemi1–0'])
+    expect(chips[1].getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByTestId('contest-card').textContent).toContain('You: 2–0')
+    fireEvent.click(chips[0])
+    expect(onPick).toHaveBeenCalledWith('a', 'Aroha Smith')
   })
-  it('offers a bye only when nobody can be paired', () => {
-    card({ status: 'waiting', waiting: 1 })
-    expect(screen.queryByRole('button', { name: 'Take a bye' })).toBeNull()
-    cleanup()
-    const onBye = vi.fn()
-    card({ status: 'waiting', waiting: 1, noneEligible: true }, { onBye })
-    fireEvent.click(screen.getByRole('button', { name: 'Take a bye' }))
-    expect(onBye).toHaveBeenCalled()
+  it('says so when nobody can be suggested', () => {
+    render(<ContestCard me={rec('me', 1, 0)} suggestions={[]} unbeaten={[]} needsBodyweight={false} pickedId={null} locked={false} onPick={noop} />)
+    expect(screen.getByTestId('contest-none')).toBeTruthy()
   })
-  it('asks for a bodyweight on a contact event', () => {
-    card({ status: 'needs_bodyweight' })
-    expect(screen.getByTestId('contest-card').textContent).toContain("Enter today's bodyweight")
+  it('asks for a bodyweight on a contact event without one', () => {
+    render(<ContestCard me={rec('me', 1, 0)} suggestions={[named('a', 'Aroha', 1, 0)]} unbeaten={[]} needsBodyweight
+      pickedId={null} locked={false} onPick={noop} />)
+    expect(screen.getByTestId('contest-card').textContent).toContain('bodyweight')
+    expect(screen.queryByTestId('contest-suggestion')).toBeNull()
   })
-  it('says extra matches count once the target is met', () => {
-    card({ played: 3 })
-    expect(screen.getByTestId('contest-card').textContent).toContain('3 played · extra matches count')
-    expect(screen.getByRole('button', { name: 'Ready for another' })).toBeTruthy()
-  })
-  it('first names', () => {
-    expect(firstName('  Aroha  Smith ')).toBe('Aroha')
+  it('names who is unbeaten today', () => {
+    render(<ContestCard me={null} suggestions={[]} needsBodyweight={false} pickedId={null} locked={false} onPick={noop}
+      unbeaten={[named('a', 'Aroha Smith', 3, 0), named('b', 'Ben', 2, 0), named('c', 'Cai', 1, 0), named('d', 'Dee', 1, 0)]} />)
+    expect(screen.getByTestId('contest-unbeaten').textContent).toBe('Unbeaten today: Aroha (3–0), Ben (2–0), Cai (1–0) and 1 more')
   })
 })
 
 describe('ContestJudgeCard', () => {
-  it('pairs two waiting players and changes the rules', () => {
-    const onPair = vi.fn(), onRules = vi.fn()
-    render(<ContestJudgeCard error={null} onPair={onPair} onRules={onRules} board={{
-      waiting: [{ id: 'a', name: 'Ann', points: 1 }, { id: 'b', name: 'Ben', points: 0 }], paired: [], matches: 3, mixed: false,
-    }} />)
-    fireEvent.click(screen.getByText('Ann · 1'))
-    fireEvent.click(screen.getByText('Ben · 0'))
-    fireEvent.click(screen.getByRole('button', { name: 'Pair these two' }))
-    expect(onPair).toHaveBeenCalledWith('a', 'b')
-    fireEvent.click(screen.getByRole('button', { name: 'More matches' }))
-    expect(onRules).toHaveBeenCalledWith(4, false)
+  it('shows the table and the mixed switch on contact events', () => {
+    const onMixed = vi.fn()
+    render(<ContestJudgeCard table={[named('a', 'Aroha Smith', 2, 0), named('b', 'Ben', 0, 2)]} unbeaten={[]} contact mixed={false}
+      error={null} onMixed={onMixed} />)
+    expect(screen.getByTestId('contest-table').textContent).toBe('Aroha Smith2–0Ben0–2')
+    fireEvent.click(screen.getByRole('checkbox'))
+    expect(onMixed).toHaveBeenCalledWith(true)
+  })
+  it('has no mixed switch when the event is not contact', () => {
+    render(<ContestJudgeCard table={[]} unbeaten={[]} contact={false} mixed={false} error={null} onMixed={noop} />)
+    expect(screen.queryByRole('checkbox')).toBeNull()
+  })
+})
+
+describe('firstName', () => {
+  it('is the first word', () => {
+    expect(firstName('  Aroha  Smith ')).toBe('Aroha')
   })
 })

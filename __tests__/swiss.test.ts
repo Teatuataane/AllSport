@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
-  ageGroup, canPair, pickOpponent, performanceRating, performanceExact, contestScores, swissStandings,
-  SWISS_CONTESTS, type ContestPlayer, type Waiting,
+  ageGroup, canPair, performanceRating, performanceExact, contestScores, contestTable, suggestNext, unbeaten, recordLabel,
+  SWISS_CONTESTS, type ContestPlayer,
 } from '@/lib/swiss'
 import { EVENTS } from '@/lib/eventData'
 import type { MatchRow } from '@/lib/matches'
@@ -43,25 +43,6 @@ describe('safety pairing', () => {
     expect(canPair(p('a', { age: 10 }), p('b'), 'age')).toBe(false)
     expect(canPair(p('a', { age: 10 }), p('b'), 'open')).toBe(true)
     expect(canPair(p('a'), p('a'), 'open')).toBe(false)
-  })
-})
-
-describe('pickOpponent', () => {
-  const w = (id: string, points: number, readyAt: string, over: Partial<ContestPlayer> = {}): Waiting =>
-    ({ ...p(id, over), points, readyAt })
-  it('picks the closest points, then the longest wait', () => {
-    const me = { ...p('me'), points: 2 }
-    const pick = pickOpponent(me, [w('x', 0, '10:00'), w('y', 2, '10:05'), w('z', 2, '10:01')], 'open')
-    expect(pick?.id).toBe('z')
-  })
-  it('avoids a rematch while anyone else is free', () => {
-    const me = { ...p('me'), points: 1 }
-    const pick = pickOpponent(me, [w('x', 1, '10:00'), w('y', 0, '10:05')], 'open', { metToday: new Set(['x']) })
-    expect(pick?.id).toBe('y')
-    expect(pickOpponent(me, [w('x', 1, '10:00')], 'open', { metToday: new Set(['x']) })?.id).toBe('x')
-  })
-  it('waits when nobody is eligible', () => {
-    expect(pickOpponent({ ...p('me'), points: 0 }, [w('x', 0, '10:00', { age: 10 })], 'contact')).toBeNull()
   })
 })
 
@@ -110,15 +91,53 @@ describe('contestScores', () => {
     const matches = [match('x', 's1', 'a', 'b', 'a', '2026-10-08T05:00:00Z'), ...both('t', 's1', 'a', 'b', 'a', '2026-10-08T06:00:00Z', 'Tennis')]
     expect(contestScores(matches, swiss).get('s1')).toBeUndefined()
   })
-  it('standings count points from confirmed games', () => {
-    const matches = [
-      ...both('1', 's1', 'a', 'b', 'a', '2026-10-08T05:00:00Z'),
-      ...both('2', 's1', 'a', 'c', 'draw', '2026-10-08T05:10:00Z'),
-    ]
-    expect(swissStandings(matches, 's1', 'Wrestling')).toEqual([
-      { playerId: 'a', points: 1.5, games: 2 },
-      { playerId: 'c', points: 0.5, games: 1 },
-      { playerId: 'b', points: 0, games: 1 },
-    ])
+})
+
+describe('who to play next', () => {
+  const S = 's1', at = (m: number) => `2026-10-18T05:${String(m).padStart(2, '0')}:00Z`
+  const now = new Date('2026-10-18T05:30:00Z')
+  // Round 1: a beat b, c beat d, e beat f. Only one side recorded each.
+  const round1 = [
+    match('1', S, 'a', 'b', 'a', at(20)), match('2', S, 'c', 'd', 'a', at(21)), match('3', S, 'e', 'f', 'a', at(22)),
+  ]
+  const all = new Set(['a', 'b', 'c', 'd', 'e', 'f'])
+
+  it('builds the day\'s table as soon as one side records', () => {
+    const t = contestTable(round1, S, 'Wrestling')
+    expect(t.get('a')).toMatchObject({ wins: 1, losses: 0, points: 1, games: 1 })
+    expect(t.get('b')).toMatchObject({ wins: 0, losses: 1, points: 0 })
+    expect([...t.get('a')!.met]).toEqual(['b'])
+  })
+  it('leaves out disputed games and other contests', () => {
+    const t = contestTable([
+      match('x1', S, 'a', 'b', 'a', at(20)), match('x2', S, 'b', 'a', 'a', at(21)),
+      match('y', S, 'a', 'c', 'a', at(22), 'Fencing'),
+    ], S, 'Wrestling')
+    expect(t.size).toBe(0)
+  })
+  it('suggests nobody before the first match', () => {
+    expect(suggestNext('z', contestTable(round1, S, 'Wrestling'), all, now)).toEqual([])
+  })
+  it('puts winners with winners and losers with losers', () => {
+    const t = contestTable(round1, S, 'Wrestling')
+    expect(suggestNext('a', t, all, now).map(r => r.playerId)).toEqual(['e', 'c', 'f'])
+    expect(suggestNext('b', t, all, now).map(r => r.playerId)).toEqual(['f', 'd', 'e'])
+  })
+  it('skips anyone not safe to meet', () => {
+    const t = contestTable(round1, S, 'Wrestling')
+    expect(suggestNext('a', t, new Set(['b', 'd', 'f']), now).map(r => r.playerId)).toEqual(['f', 'd'])
+  })
+  it('avoids a rematch unless everyone safe has been met', () => {
+    const t = contestTable(round1, S, 'Wrestling')
+    expect(suggestNext('a', t, new Set(['b', 'c']), now).map(r => r.playerId)).toEqual(['c'])
+    expect(suggestNext('a', t, new Set(['b']), now).map(r => r.playerId)).toEqual(['b'])
+  })
+  it('prefers someone seen recently', () => {
+    const t = contestTable([...round1, match('4', S, 'g', 'h', 'a', '2026-10-18T04:30:00Z')], S, 'Wrestling')
+    expect(suggestNext('a', t, new Set([...all, 'g', 'h']), now).map(r => r.playerId)).toEqual(['e', 'c', 'f'])
+  })
+  it('names the unbeaten, most wins first', () => {
+    const t = contestTable([...round1, match('5', S, 'a', 'c', 'a', at(25)), match('6', S, 'e', 'b', 'draw', at(26))], S, 'Wrestling')
+    expect(unbeaten(t).map(r => [r.playerId, recordLabel(r)])).toEqual([['a', '2–0'], ['e', '1–0–1']])
   })
 })

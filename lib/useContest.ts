@@ -1,163 +1,94 @@
 'use client'
 
-// ─── A player's place in a Swiss contest, live ───────────────────────────────
-// Scoring v2 step 5. Wraps contest_state / contest_ready / contest_leave /
-// contest_close (supabase/migrations/20261015011537_swiss_contests.sql). While
-// the player waits, or is paired, it polls every few seconds: a pairing is made
-// by whoever taps Ready second, or by a kaiwhakawā, so this screen learns of it
-// by asking. A database without the migration leaves `live` false and the
-// card hides itself. The kaiwhakawā's view is useContestBoard.
+// ─── A Swiss contest, live ───────────────────────────────────────────────────
+// Scoring v2 step 5 (redesigned 18 Oct 2026: no Ready button, no queue).
+// Loads the two things the contest card needs for one player in one contest:
+//   · who they may safely meet, from contest_safe_opponents()
+//     (supabase/migrations/20261015011537_swiss_contests.sql), ids only;
+//   · every match recorded in this game, which lib/swiss.ts turns into the
+//     table, the "Play next" names and "Unbeaten today".
+// The host passes `refreshKey`, which changes whenever the game's results do
+// (results arrive by realtime and a 15 s poll), so this re-reads alongside.
+// A database without the migration leaves `live` false and the card hides.
 
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase-browser'
+import { contestTable, type ContestRecord, type SafetyLevel } from '@/lib/swiss'
+import type { MatchRow } from '@/lib/matches'
 
-const supabase = createClient()
-const POLL_MS = 4000
-
-export type ContestPairing = {
-  id: string
-  opponent_id: string
-  opponent_name: string
-  opponent_icon: string | null
-  by_judge: boolean
-}
-
-export type ContestState = {
-  status: 'idle' | 'waiting' | 'paired' | 'needs_bodyweight'
-  pairing: ContestPairing | null
-  waiting: number
-  /** Nobody in this game can be paired with this player: offer a bye. */
-  noneEligible: boolean
-  matches: number
-  played: number
+export type ContestSafety = {
+  level: SafetyLevel
+  mixed: boolean
+  /** A contact event, and this player has no bodyweight from the last 30 days. */
+  needsBodyweight: boolean
+  safe: ReadonlySet<string>
 }
 
 type Err = { code?: string; message?: string } | null
 
-/** The functions are not in the database yet. */
+/** The function is not in the database yet. */
 const notLive = (e: Err) => !!e && (e.code === 'PGRST202' || e.code === '42883')
 
-export function useContest(sessionId: string | null, eventName: string | null, playerId: string | null) {
+type MatchQueryRow = {
+  id: string; session_id: string; outcome: MatchRow['outcome']; created_at: string; confirmed_at: string | null
+  event_name: string | null; session_events: { event_name: string } | null
+  match_players: { player_id: string; side: 'a' | 'b' }[] | null
+}
+
+export function useContest(sessionId: string | null, eventName: string | null, playerId: string | null, refreshKey: string) {
   const key = sessionId && eventName && playerId ? `${sessionId}|${eventName}|${playerId}` : null
-  const [loaded, setLoaded] = useState<{ key: string; state: ContestState | null; live: boolean } | null>(null)
+  const [loaded, setLoaded] = useState<{ key: string; safety: ContestSafety | null; matches: MatchRow[] } | null>(null)
   const [nonce, setNonce] = useState(0)
-  const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!key) return
     let cancelled = false
-    supabase.rpc('contest_state', { p_session_id: sessionId, p_event_name: eventName, p_player_id: playerId })
-      .then(({ data, error: err }) => {
-        if (cancelled) return
-        if (notLive(err) || (!err && data == null)) { setLoaded({ key, state: null, live: false }); return }
-        if (err) return
-        const d = data as { status: ContestState['status']; pairing: ContestPairing | null; waiting: number; matches: number; played: number }
-        setLoaded(prev => ({
-          key, live: true,
-          state: {
-            status: d.status, pairing: d.pairing, waiting: d.waiting, matches: d.matches, played: d.played,
-            // Kept from the last Ready: contest_state does not work it out.
-            noneEligible: prev?.key === key && d.status === 'waiting' ? prev.state?.noneEligible ?? false : false,
-          },
+    const supabase = createClient()
+    Promise.all([
+      supabase.rpc('contest_safe_opponents', { p_session_id: sessionId, p_event_name: eventName, p_player_id: playerId }),
+      supabase.from('matches')
+        .select('id, session_id, outcome, created_at, confirmed_at, event_name, session_events(event_name), match_players(player_id, side)')
+        .eq('session_id', sessionId),
+    ]).then(([safeRes, matchRes]) => {
+      if (cancelled) return
+      const d = safeRes.data as { level: SafetyLevel; mixed: boolean; needs_bodyweight: boolean; safe: string[] } | null
+      // Not live, not a contest, or not allowed: no card.
+      if (notLive(safeRes.error) || safeRes.error || !d) { setLoaded({ key, safety: null, matches: [] }); return }
+      const matches = ((matchRes.data ?? []) as unknown as MatchQueryRow[])
+        .map(m => ({
+          id: m.id, session_id: m.session_id, outcome: m.outcome, created_at: m.created_at, confirmed_at: m.confirmed_at,
+          event_name: m.event_name ?? m.session_events?.event_name ?? '', players: m.match_players ?? [],
         }))
+        .filter(m => m.event_name)
+      setLoaded({
+        key,
+        safety: { level: d.level, mixed: d.mixed, needsBodyweight: d.needs_bodyweight, safe: new Set(d.safe) },
+        matches,
       })
+    })
     return () => { cancelled = true }
-  }, [key, sessionId, eventName, playerId, nonce])
+  }, [key, sessionId, eventName, playerId, refreshKey, nonce])
 
   const current = loaded && loaded.key === key ? loaded : null
-  const status = current?.state?.status
+  const table = useMemo<Map<string, ContestRecord>>(
+    () => current && sessionId && eventName ? contestTable(current.matches, sessionId, eventName) : new Map(),
+    [current, sessionId, eventName])
 
-  // Poll while something can change without this player doing anything.
-  useEffect(() => {
-    if (status !== 'waiting' && status !== 'paired') return
-    const t = setInterval(() => setNonce(n => n + 1), POLL_MS)
-    return () => clearInterval(t)
-  }, [status])
-
-  const call = useCallback(async (fn: string, args: Record<string, unknown>) => {
-    setBusy(true); setError(null)
-    const { data, error: err } = await supabase.rpc(fn, args)
-    setBusy(false)
-    if (err) { setError(err.message ?? 'Something went wrong.'); return null }
-    return data
-  }, [])
-
-  const ready = useCallback(async () => {
-    if (!key) return
-    const d = await call('contest_ready', { p_session_id: sessionId, p_event_name: eventName, p_player_id: playerId }) as
-      { status: ContestState['status']; pairing?: ContestPairing; waiting?: number; none_eligible?: boolean } | null
-    if (!d) return
-    setLoaded(prev => {
-      const base = prev?.key === key && prev.state ? prev.state : { matches: 3, played: 0 }
-      return {
-        key, live: true,
-        state: {
-          ...base, status: d.status, pairing: d.pairing ?? null, waiting: d.waiting ?? 0,
-          noneEligible: d.none_eligible ?? false,
-        } as ContestState,
-      }
-    })
-  }, [key, call, sessionId, eventName, playerId])
-
-  const leave = useCallback(async () => {
-    await call('contest_leave', { p_session_id: sessionId, p_event_name: eventName, p_player_id: playerId })
-    setNonce(n => n + 1)
-  }, [call, sessionId, eventName, playerId])
-
-  /** The match is recorded (or called off): free both players for the next one. */
-  const close = useCallback(async () => {
-    const id = current?.state?.pairing?.id
-    if (!id) return
-    await call('contest_close', { p_pairing_id: id })
-    setNonce(n => n + 1)
-  }, [call, current])
-
-  return {
-    live: current?.live ?? false,
-    state: current?.state ?? null,
-    busy, error, ready, leave, close,
-    refresh: () => setNonce(n => n + 1),
-  }
-}
-
-export type ContestBoard = {
-  waiting: { id: string; name: string; points: number }[]
-  paired: { id: string; a: string; b: string }[]
-  matches: number
-  mixed: boolean
-}
-
-/** The kaiwhakawā's view of one contest: who waits, who is paired, the rules. */
-export function useContestBoard(sessionId: string | null, eventName: string | null, enabled: boolean) {
-  const key = enabled && sessionId && eventName ? `${sessionId}|${eventName}` : null
-  const [loaded, setLoaded] = useState<{ key: string; board: ContestBoard | null } | null>(null)
-  const [nonce, setNonce] = useState(0)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!key) return
-    let cancelled = false
-    supabase.rpc('contest_board', { p_session_id: sessionId, p_event_name: eventName }).then(({ data, error: err }) => {
-      if (cancelled) return
-      setLoaded({ key, board: err ? null : data as ContestBoard })
-    })
-    const t = setTimeout(() => setNonce(n => n + 1), POLL_MS)
-    return () => { cancelled = true; clearTimeout(t) }
-  }, [key, sessionId, eventName, nonce])
-
-  const act = async (fn: string, args: Record<string, unknown>) => {
+  /** Kaiwhakawā only: let adults of different sexes meet in this contact event. */
+  const setMixed = async (mixed: boolean) => {
     setError(null)
-    const { error: err } = await supabase.rpc(fn, args)
+    const { error: err } = await createClient().rpc('set_contest_mixed', { p_session_id: sessionId, p_event_name: eventName, p_mixed: mixed })
     if (err) setError(err.message ?? 'Something went wrong.')
     setNonce(n => n + 1)
   }
 
   return {
-    board: loaded && loaded.key === key ? loaded.board : null,
+    live: !!current?.safety,
+    safety: current?.safety ?? null,
+    table,
     error,
-    pair: (a: string, b: string) => act('contest_pair', { p_session_id: sessionId, p_event_name: eventName, p_a: a, p_b: b }),
-    setRules: (matches: number, mixed: boolean) =>
-      act('set_contest_rules', { p_session_id: sessionId, p_event_name: eventName, p_matches: matches, p_mixed: mixed }),
+    setMixed,
+    refresh: () => setNonce(n => n + 1),
   }
 }

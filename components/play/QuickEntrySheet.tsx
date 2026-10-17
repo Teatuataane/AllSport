@@ -75,14 +75,15 @@ type QuickEntrySheetProps = {
   }
   /**
    * A Swiss contest's card (components/play/ContestCard.tsx), shown above the
-   * result. Given `bye`, which sets the result to a draw with no opponent.
+   * result. Given `pick`, which fills in the opponent, and the one picked now.
    */
-  contest?: (api: { bye: () => void }) => ReactNode
+  contest?: (api: { pick: (id: string, name: string) => void; pickedId: string | null }) => ReactNode
   /**
-   * The opponent the contest paired this player with. Fills the opponent when
-   * the sheet opens; the host re-keys the sheet when a pairing arrives.
+   * A Swiss contest's safety rule: true for a player it is not safe to meet
+   * today (age group, bodyweight, sex). Their chip is greyed out and cannot be
+   * picked, and a result against them cannot be saved.
    */
-  pairedOpponent?: OpponentPick | null
+  opponentBlocked?: (id: string) => boolean
   onClose: () => void
   onSubmit: (v: EntryVals, editingId: string | null, matchOpponents: string[] | null) => Promise<SubmitOutcome>
   onDelete: (id: string) => Promise<string | null>
@@ -99,7 +100,7 @@ function shortRecordHint(ref: number): string {
 export default function QuickEntrySheet({
   se, eventData, myResults, opponents, seasonPR, prRows = [], locked,
   bestLabel = "Today's best", prLabel = 'Season PR', allowGames = true, natural = false, standards,
-  contest, pairedOpponent = null,
+  contest, opponentBlocked,
   onClose, onSubmit, onDelete, onSubmitted, onDeleted,
 }: QuickEntrySheetProps) {
   // A stored opponent NAME resolves to an id only when exactly one pick carries
@@ -125,8 +126,6 @@ export default function QuickEntrySheet({
     // A Game rung pre-fills the last opponent's NAME from the best result. Resolve
     // the id too, so what the sheet shows as picked is what gets recorded.
     init = { ...init, opponentId: opponentIdFor(init.opponentName) ?? '' }
-    // A Swiss pairing names the opponent: the result is all that is left to tap.
-    if (pairedOpponent?.id) init = { ...init, opponentName: pairedOpponent.name, opponentId: pairedOpponent.id }
     // A lift opens with one set, pre-filled from the last one done, so the
     // common case (another set of the same) is two taps.
     if (natural && eventData && takesSets(eventData)) {
@@ -189,7 +188,9 @@ export default function QuickEntrySheet({
   const estimateNote = estColour > 0
     ? `That is a ${gradeForRung(estColour).name} pace: go the full ${fullRef} to earn it.`
     : `Colours need the full ${fullRef}.`
-  const canSubmit = (scored !== null || shortEffort !== null) && !submitting && !locked
+  // A contest opponent who is not safe to meet today cannot be saved against.
+  const unsafeOpponent = !!v.opponentId && !!opponentBlocked?.(v.opponentId)
+  const canSubmit = (scored !== null || shortEffort !== null) && !submitting && !locked && !unsafeOpponent
 
   const setRows = v.setRows ?? []
   const setSet = (i: number, patch: Partial<{ weightKg: string; reps: string }>) =>
@@ -613,7 +614,11 @@ export default function QuickEntrySheet({
                   {/* Sport, and the `Game` rung that tops a drill ladder */}
                   {showSport && (
                     <>
-                      {contest?.({ bye: () => set({ sportResult: 'draw', opponentName: '', opponentId: '' }) })}
+                      {contest?.({
+                        // No keepExistingMatch write: a picked id is recorded whatever it says.
+                        pick: (id, name) => set({ opponentName: name, opponentId: id }),
+                        pickedId: v.opponentId || null,
+                      })}
                       <div style={QES_LBL}>Result</div>
                       <div style={{ display: 'flex', gap: '10px' }}>
                         {(['win', 'draw', 'loss'] as const).map(r => {
@@ -632,13 +637,28 @@ export default function QuickEntrySheet({
                       <div style={QES_LBL}>Opponent</div>
                       {opponentPicks.length > 0 && (
                         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
-                          {opponentPicks.map(p => (
-                            <button key={p.id ?? `guest:${p.name}`} onClick={() => { keepExistingMatch.current = false; set({ opponentName: p.name, opponentId: p.id ?? '' }) }} style={{
-                              ...QES_CHIP,
-                              borderColor: opponentPickActive(p) ? '#2371BB' : '#2a2a2a',
-                              background: opponentPickActive(p) ? '#2371BB' : '#161616',
-                            }}>{p.name}</button>
-                          ))}
+                          {opponentPicks.map(p => {
+                            const blocked = !!p.id && !!opponentBlocked?.(p.id)
+                            return (
+                              <button key={p.id ?? `guest:${p.name}`} disabled={blocked} title={blocked ? 'Not a safe match today' : undefined}
+                                onClick={() => { keepExistingMatch.current = false; set({ opponentName: p.name, opponentId: p.id ?? '' }) }} style={{
+                                ...QES_CHIP,
+                                borderColor: opponentPickActive(p) ? '#2371BB' : '#2a2a2a',
+                                background: opponentPickActive(p) ? '#2371BB' : '#161616',
+                                ...(blocked ? { opacity: 0.35, cursor: 'not-allowed', textDecoration: 'line-through' } : {}),
+                              }}>{p.name}</button>
+                            )
+                          })}
+                        </div>
+                      )}
+                      {opponentBlocked && opponentPicks.some(p => p.id && opponentBlocked(p.id)) && (
+                        <div style={{ fontSize: '12px', color: '#888', marginBottom: '8px', lineHeight: 1.4 }}>
+                          Crossed out: not a safe match today (age group, bodyweight or sex).
+                        </div>
+                      )}
+                      {unsafeOpponent && (
+                        <div role="alert" style={{ fontSize: '12.5px', color: '#EA4742', marginBottom: '8px', lineHeight: 1.4 }}>
+                          {v.opponentName || 'This player'} is not a safe match for you today. Pick someone else.
                         </div>
                       )}
                       <input value={v.opponentName} onChange={e => { keepExistingMatch.current = false; set({ opponentName: e.target.value, opponentId: '' }) }} placeholder="Opponent name (optional)" style={{ ...INP, fontSize: '15px' }} />

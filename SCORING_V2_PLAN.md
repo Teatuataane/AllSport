@@ -22,8 +22,10 @@ pilot is 2027, so rules change as each step ships.
 4. **Contests: the head-to-head rating colour is exact** (1,150 = 8.5). The
    game-day 6/5/4 rule is REPLACED by 4d.
    - 4a/4b. Each contest in a game runs as a **Swiss** tournament, paired on
-     demand ("ready" → best free opponent), the app tells players whom to find
-     (photo + first name), both confirm the result, kaiwhakawā can settle/override.
+     demand. Redesigned 18 Oct 2026 (Tāne): no "ready" button. The first match
+     is against anyone; after it the sheet suggests up to three opponents with
+     the same record (winners play winners), "Unbeaten today" shows who beats
+     everyone, both confirm the result, kaiwhakawā can settle/override.
    - 4c/4d. The game-day score is the player's **performance rating** for that
      game on the colour scale: 1,100 = 7 (Poroporo), 100 points a colour, 1,600 =
      12, floor 4. Swiss standings give the podium. Conferred rating colours still
@@ -77,10 +79,10 @@ pilot is 2027, so rules change as each step ships.
 4. Groups (called hapū in the app), privacy, improvement board (before the
    2027 school pilot). Live, v0.39.1.0; migration `20261015004143` applied and
    verified 15 Oct 2026.
-5. One-on-one contests: Swiss on demand, performance rating, safety rules.
-   Built, v0.40.0.0 (Wrestling, Mas Wrestling, Arm Wrestling, Tae Kwon Do,
-   Fencing, Tag, Speed Chess); migration `20261015011537` to apply before the
-   deploy. Not yet: the contest's event placement still ranks the best single
+5. One-on-one contests: Swiss "play next" suggestions, performance rating,
+   safety rules. Built, v0.40.0.0, redesigned 18 Oct 2026 without a queue
+   (Wrestling, Mas Wrestling, Arm Wrestling, Tae Kwon Do, Fencing, Tag, Speed
+   Chess); migration `20261015011537` to apply before the deploy. Not yet: the contest's event placement still ranks the best single
    result, not Swiss points; Game rungs on drill events (Tennis, SKATE…) keep
    the old flow.
 6. Races (heats) and team games.
