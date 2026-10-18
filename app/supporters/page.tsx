@@ -22,6 +22,8 @@ interface Partner {
   display_order: number
 }
 
+export const metadata = { alternates: { canonical: '/supporters' } }
+
 export default async function Supporters() {
   const supabase = createSupabasePublicClient()
   const { data } = await supabase

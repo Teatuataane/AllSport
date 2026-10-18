@@ -24,6 +24,8 @@ function rungFill(rung: number): string {
   return g.rainbow ? RAINBOW : g.hex
 }
 
+export const metadata = { alternates: { canonical: '/how-to-play' } }
+
 export default function HowToPlay() {
   return (
     <>

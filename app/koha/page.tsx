@@ -36,6 +36,8 @@ const labelStyle = { fontFamily: 'var(--font-label)', fontWeight: 700, fontSize:
 const h2Style = { fontSize: 'clamp(36px, 4vw, 56px)', marginBottom: '8px', lineHeight: 1 }
 const cardStyle = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '20px 24px', position: 'relative' as const, overflow: 'hidden' as const }
 
+export const metadata = { alternates: { canonical: '/koha' } }
+
 export default function Koha() {
   return (
     <>

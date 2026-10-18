@@ -20,6 +20,21 @@ export function generateStaticParams() {
   return EVENTS.map(e => ({ slug: e.slug }))
 }
 
+// Each event page names itself. Without this all 148 carried the home page's
+// title and no canonical, and Google filed them as duplicates (Search Console,
+// Oct 2026: "Duplicate without user-selected canonical").
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
+  const event = getEventBySlug(slug)
+  if (!event) return {}
+  const summary = EVENT_SUMMARIES[event.slug]
+  return {
+    title: `${event.name} · AllSport`,
+    ...(summary ? { description: `${summary.how} ${summary.rules}` } : {}),
+    alternates: { canonical: `/events/${event.slug}` },
+  }
+}
+
 const label: React.CSSProperties = {
   fontFamily: 'var(--font-display)', fontSize: '22px', letterSpacing: '0.05em', color: '#fff', margin: '0 0 6px',
 }

@@ -60,6 +60,8 @@ const sessions = [
   { day: 'Saturday', time: '9:00 AM', color: '#4DB26E' },
 ]
 
+export const metadata = { alternates: { canonical: '/' } }
+
 export default async function Home() {
   const stats = await loadCommunityStats()
   const proof = [

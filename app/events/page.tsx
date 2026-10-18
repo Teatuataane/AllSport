@@ -13,6 +13,8 @@ import { DOMAIN_COLORS } from '@/lib/domainColours'
 import DomainIcon from '@/components/DomainIcon'
 import EventIcon from '@/components/EventIcon'
 
+export const metadata = { alternates: { canonical: '/events' } }
+
 export default function EventsIndex() {
   const byDomain = getEventsByDomain()
 
