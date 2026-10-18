@@ -21,6 +21,7 @@ import { GradeDot } from '@/components/GradeDot'
 export const metadata = {
   title: 'Colours · AllSport',
   description: 'Mā to Taniwha: how AllSport colours are earned, domain by domain.',
+  alternates: { canonical: '/grades' },
 }
 
 const label = {

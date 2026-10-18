@@ -8,6 +8,7 @@ import { RainbowText } from '@/components/ui'
 export const metadata = {
   title: 'Game Schedule – AllSport',
   description: 'Three AllSport games a week in Sockburn, Ōtautahi: Tuesday and Thursday 4:30pm, Saturday 9:00am. 100 minutes, 10 events. Koha-based.',
+  alternates: { canonical: '/schedule' },
 }
 
 const sessions = [

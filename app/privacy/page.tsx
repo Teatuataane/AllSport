@@ -5,6 +5,7 @@ export const metadata = {
   title: 'Privacy Policy — AllSport',
   description:
     'How AllSport collects, uses, stores and shares your personal information, and the choices you have. Written for the New Zealand Privacy Act 2020.',
+  alternates: { canonical: '/privacy' },
 }
 
 // Last substantive review of this page. Update whenever the content changes.

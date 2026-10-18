@@ -67,6 +67,15 @@ const nextConfig: NextConfig = {
         destination: 'https://allsport.nz/:path*',
         permanent: true,
       },
+      // The Vercel production alias served the whole site too, a duplicate
+      // copy Google found (Search Console, Oct 2026). Only this exact host:
+      // preview deployments have their own hostnames and must keep working.
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: 'allsport.vercel.app' }],
+        destination: 'https://allsport.nz/:path*',
+        permanent: true,
+      },
       // Groups were renamed hapū on 15 Oct 2026, the day they shipped; an
       // early link to /groups still lands.
       { source: '/groups', destination: '/hapu', permanent: true },

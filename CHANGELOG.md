@@ -2,6 +2,11 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.41.2.0] - 2026-10-19
+
+### Fixed
+- **Google search duplicates** (Search Console, 19 Oct 2026: "Duplicate without user-selected canonical"). Every public page now declares its canonical allsport.nz address, each event guide page has its own title and description instead of the home page's, and allsport.vercel.app redirects permanently to allsport.nz. "Page with redirect" is expected: www, http, /groups and /log redirect on purpose.
+
 ## [0.41.1.0] - 2026-10-18
 
 ### Changed
