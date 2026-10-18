@@ -53,6 +53,16 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://allsport.nz'),
   title: 'AllSport | Get good at EVERYTHING!',
   description: '10 events, 100 minutes, 150+ sports and exercises. AllSport tests strength, speed, flexibility, coordination and endurance — trained together, every session. Koha-based, Ōtautahi Aotearoa.',
+  // Share card for Facebook, WhatsApp and Messenger links (public/og-image.png,
+  // made by scripts/gen-logo-assets.mjs). Pages set their own title, which the
+  // card picks up; they never set openGraph, so this applies site-wide.
+  openGraph: {
+    siteName: 'AllSport',
+    type: 'website',
+    locale: 'en_NZ',
+    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'AllSport' }],
+  },
+  twitter: { card: 'summary_large_image', images: ['/og-image.png'] },
   icons: {
     // ?v= busts browsers' favicon caches, which ignore normal HTTP caching.
     // Google Search wants a square icon at a multiple of 48px; 32px alone is

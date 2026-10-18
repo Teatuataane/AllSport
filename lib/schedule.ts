@@ -3,7 +3,7 @@
 // (Across a DST transition the countdown can be off by up to an hour — acceptable
 // for a "in {n} hours" display.)
 
-const SLOTS = [
+export const SLOTS = [
   { dow: 2, mins: 16 * 60 + 30, label: 'Tuesday 4:30pm' },
   { dow: 4, mins: 16 * 60 + 30, label: 'Thursday 4:30pm' },
   { dow: 6, mins: 9 * 60, label: 'Saturday 9:00am' },

@@ -22,7 +22,12 @@ interface Partner {
   display_order: number
 }
 
-export const metadata = { alternates: { canonical: '/supporters' } }
+export const metadata = {
+  title: 'Supporters · AllSport',
+  description:
+    'The partners and funders who back AllSport, a koha-based community sport in Ōtautahi.',
+  alternates: { canonical: '/supporters' },
+}
 
 export default async function Supporters() {
   const supabase = createSupabasePublicClient()

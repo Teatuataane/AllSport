@@ -2,6 +2,11 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.41.3.0] - 2026-10-19
+
+### Added
+- **Search and sharing.** How to Play, Events, Koha and Supporters have their own titles and descriptions in Google results (they used the home page's). Links shared on Facebook, WhatsApp and Messenger now show the AllSport logo card (`public/og-image.png`, made by `scripts/gen-logo-assets.mjs`). The home page carries schema.org structured data with the HQ address and the three weekly game times, read from `lib/schedule.ts` (`lib/structuredData.ts`).
+
 ## [0.41.2.0] - 2026-10-19
 
 ### Fixed

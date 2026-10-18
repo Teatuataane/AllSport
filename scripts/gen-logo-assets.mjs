@@ -56,3 +56,12 @@ const { writeFile } = await import('node:fs/promises')
 await writeFile('app/favicon.ico', Buffer.concat([header, ...pngs]))
 
 console.log('done')
+
+// Share image (Open Graph), 1200x630: the logo centred on black with room
+// around it, since Facebook and WhatsApp crop the edges on small previews.
+// Without one, links to allsport.nz shared in chats showed no picture.
+const ogLogo = await sharp(SRC).resize({ width: 900 }).png().toBuffer()
+await sharp({ create: { width: 1200, height: 630, channels: 3, background: '#000000' } })
+  .composite([{ input: ogLogo, gravity: 'center' }])
+  .png({ palette: true, quality: 90 })
+  .toFile('public/og-image.png')
