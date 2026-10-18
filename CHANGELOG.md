@@ -2,6 +2,11 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.41.1.0] - 2026-10-18
+
+### Changed
+- **Chin Hang and Skull Hang colours retuned up** (Tāne, 18 Oct 2026): Taniwha is now a 5s Banded Hands-Free hold (D6). Parahi and Hiriwa are One-Hand Banded (D4), Kōura and Uenuku One-Hand (D5). The unassisted hands-free hang (D7) sits above Taniwha with no colour of its own. `GRADING_RULES_VERSION` bumped, so every player is rechecked and can earn the higher colours from holds already logged; nothing is withdrawn.
+
 ## [0.41.0.1] - 2026-10-18
 
 ### Changed
