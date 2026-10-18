@@ -24,7 +24,12 @@ function rungFill(rung: number): string {
   return g.rainbow ? RAINBOW : g.hex
 }
 
-export const metadata = { alternates: { canonical: '/how-to-play' } }
+export const metadata = {
+  title: 'How to Play · AllSport',
+  description:
+    'How an AllSport game works: 10 events, one from each of 10 domains, in 100 minutes. Play at your level and earn colours from Mā to Taniwha.',
+  alternates: { canonical: '/how-to-play' },
+}
 
 export default function HowToPlay() {
   return (

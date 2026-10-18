@@ -13,7 +13,12 @@ import { DOMAIN_COLORS } from '@/lib/domainColours'
 import DomainIcon from '@/components/DomainIcon'
 import EventIcon from '@/components/EventIcon'
 
-export const metadata = { alternates: { canonical: '/events' } }
+export const metadata = {
+  title: 'Events · AllSport',
+  description:
+    `All ${EVENTS.length} AllSport events across 10 domains, from strength and speed to flexibility, coordination and aim, with how to do each one and its rules.`,
+  alternates: { canonical: '/events' },
+}
 
 export default function EventsIndex() {
   const byDomain = getEventsByDomain()

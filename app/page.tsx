@@ -11,6 +11,7 @@ import { loadCommunityStats } from '@/lib/communityStats'
 import HeroVideo from './HeroVideo'
 import NextGame from './NextGame'
 import DomainExplorer from './DomainExplorer'
+import { ORGANISATION, jsonLd } from '@/lib/structuredData'
 
 const RAINBOW = 'var(--rainbow)'
 
@@ -72,6 +73,8 @@ export default async function Home() {
 
   return (
     <div className="landing">
+      {/* Address and game times for Google (lib/structuredData.ts). */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(ORGANISATION) }} />
       <style>{`
         .landing { background: #0a0a0a; }
         .lp-hero { position: relative; overflow: hidden; background: #000; min-height: min(92vh, 860px); display: flex; align-items: center; padding: 120px 0 72px; }

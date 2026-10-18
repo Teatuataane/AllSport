@@ -20,8 +20,9 @@ export type HeaderPair = { key: string; value: string }
  * script-src keeps 'unsafe-inline': Next's App Router injects inline bootstrap
  * and flight scripts on every page. Removing it means per-request nonces, which
  * forces every route dynamic and gives up static prerendering. The tradeoff is
- * accepted deliberately — there is no dangerouslySetInnerHTML in this codebase
- * and React escapes interpolated output, so the inline-injection surface is
+ * accepted deliberately — the only dangerouslySetInnerHTML in this codebase is
+ * the home page's static JSON-LD (lib/structuredData.ts, `<` escaped), and React
+ * escapes interpolated output, so the inline-injection surface is
  * small, while default-src/connect-src still block exfiltration to other hosts.
  *
  * style-src keeps 'unsafe-inline' because the app styles via React
