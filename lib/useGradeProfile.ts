@@ -1,8 +1,9 @@
 'use client'
 
 // ─── What the live screen needs to colour a score ────────────────────────────
-// A score's colour depends on who scored it: the division picks the ladder and
-// the age shift, gender breaks a junior's tie, and a strength lift is graded
+// A score's colour depends on who scored it: the division picks the ladder,
+// the age turned in the day's year picks the age shift, gender breaks a
+// junior's tie, and a strength lift is graded
 // against the bodyweight declared for the day. This loads those three for one
 // player. The pure half is lib/scoreColour.ts.
 //
@@ -11,7 +12,8 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase-browser'
-import type { GradePlayer } from '@/lib/playerGrades'
+import { playerInYear, type GradePlayer } from '@/lib/playerGrades'
+import { yearOfDay, nzYear } from '@/lib/seasonYear'
 
 const supabase = createClient()
 
@@ -35,8 +37,11 @@ export function useGradeProfile(playerId: string | null, day: string): GradeProf
     if (!playerId) return
     let cancelled = false
     ;(async () => {
-      const [pub, priv, bw] = await Promise.all([
+      const [pub, birth, priv, bw] = await Promise.all([
         supabase.from('players_public').select('division, age_years').eq('id', playerId).maybeSingle(),
+        // Its own read: a database without birth_year (42703) must not cost the
+        // division and age above. The age today then stands in.
+        supabase.from('players_public').select('birth_year').eq('id', playerId).maybeSingle(),
         // Gender is only read for juniors, who share one division. RLS lets the
         // player, their parent and a kaiwhakawā read it; anyone else gets no
         // row, and a junior then takes the boys' ladder, as ladderFor does.
@@ -50,11 +55,12 @@ export function useGradeProfile(playerId: string | null, day: string): GradeProf
       const kg = latest?.kg
       setLoaded({
         key,
-        player: p ? {
+        player: p ? playerInYear({
           division: p.division,
           ageYears: p.age_years,
+          birthYear: birth.error ? undefined : (birth.data as { birth_year?: number | null } | null)?.birth_year ?? null,
           gender: (priv.data as { gender: string | null } | null)?.gender ?? null,
-        } : null,
+        }, yearOfDay(day) ?? nzYear()) : null,
         bodyweightKg: kg == null ? null : Number(kg),
         bodyweightOn: latest?.measured_on ?? null,
       })

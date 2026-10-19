@@ -19,8 +19,8 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import {
-  computePlayerGrades, heldRungs, voidedSessions, colourGates, gameEvidence,
-  type PlayerGrades,
+  computePlayerGrades, heldRungs, voidedSessions, colourGates, gameEvidence, playerInYear,
+  type PlayerGrades, type GradePlayer,
 } from './playerGrades'
 import { bodyweightOn, bandMidpointKg, type ColourGate, type BodyweightDeclaration } from './grading'
 import { workoutEvidence, GAME_MINUTES, type WorkoutEntryRow } from './workouts'
@@ -376,7 +376,11 @@ async function loadResults(db: GradeDb, playerId: string) {
  * docs/designs/auto-conferral-spec.md, decision 9.
  */
 export type GradeInputs = {
-  profile: { division: string | null; age_years: number | null; is_active?: boolean | null; is_guest?: boolean | null }
+  profile: {
+    division: string | null; age_years: number | null; is_active?: boolean | null; is_guest?: boolean | null
+    /** players_public.birth_year. Undefined before 20261020000000, when the age today stands in. */
+    birth_year?: number | null
+  }
   gender: string | null
   band: string | null
   /** players.bodyweight_band_first. Undefined before 20260921232726. */
@@ -416,8 +420,11 @@ const missing = (e: { code?: string } | null | undefined) => !!e && (e.code === 
  * if the player cannot be found.
  */
 export async function loadGradeInputs(db: GradeDb, playerId: string, matches?: readonly MatchRow[]): Promise<GradeInputs | null> {
-  const [profile, gender, band, bodyweights, results, exemptions, awards, workouts, allMatches, voids] = await Promise.all([
+  const [profile, birth, gender, band, bodyweights, results, exemptions, awards, workouts, allMatches, voids] = await Promise.all([
     db.from('players_public').select('division, age_years, is_active, is_guest').eq('id', playerId).maybeSingle(),
+    // Its own read: birth_year arrives with a migration that follows the code
+    // deploy, and a missing column (42703) would fail the whole profile read.
+    db.from('players_public').select('birth_year').eq('id', playerId).maybeSingle(),
     db.from('players').select('gender').eq('id', playerId).maybeSingle(),
     loadBand(db, playerId),
     loadBodyweights(db, playerId),
@@ -431,7 +438,10 @@ export async function loadGradeInputs(db: GradeDb, playerId: string, matches?: r
 
   if (!profile.data) return null
   return {
-    profile: profile.data as { division: string | null; age_years: number | null; is_active?: boolean | null; is_guest?: boolean | null },
+    profile: {
+      ...(profile.data as { division: string | null; age_years: number | null; is_active?: boolean | null; is_guest?: boolean | null }),
+      ...(birth.error ? {} : { birth_year: (birth.data as { birth_year?: number | null } | null)?.birth_year ?? null }),
+    },
     gender: (gender.data as { gender: string | null } | null)?.gender ?? null,
     band: band.error ? null : (band.data as { bodyweight_band: string | null } | null)?.bodyweight_band ?? null,
     firstBand: band.error ? undefined
@@ -518,9 +528,18 @@ export function bodyweightOnDay(inputs: GradeInputs, day: string | null | undefi
   return kgResolver(inputs, inputs.bodyweights ?? [])(day, null)
 }
 
-/** The grading player (division, age, gender) the inputs describe. */
-export function gradePlayerOf(inputs: GradeInputs) {
-  return { division: inputs.profile.division, ageYears: inputs.profile.age_years, gender: inputs.gender }
+/**
+ * The grading player (division, age, gender) the inputs describe, aged for
+ * this NZ year. A caller grading another year (a game's year, last year in
+ * January) re-ages it with playerInYear: the birth year is carried for that.
+ */
+export function gradePlayerOf(inputs: GradeInputs): GradePlayer {
+  return playerInYear({
+    division: inputs.profile.division,
+    ageYears: inputs.profile.age_years,
+    birthYear: inputs.profile.birth_year,
+    gender: inputs.gender,
+  }, nzYear())
 }
 
 /**
@@ -647,11 +666,14 @@ export function gradeStateFrom(
       && inYear(toNZDateString(new Date(m.created_at))))))
 
   const grades = computePlayerGrades({
-    player: {
+    // Aged as they turn in the year being graded, so all of a year's evidence
+    // is read on one age (a lifetime view uses the year of asOf).
+    player: playerInYear({
       division: inputs.profile.division,
       ageYears: inputs.profile.age_years,
+      birthYear: inputs.profile.birth_year,
       gender: inputs.gender,
-    },
+    }, year ?? nzYear(asOf ?? new Date())),
     results: [...game.rows, ...logged.rows],
     ratings,
     exemptions: exempt,

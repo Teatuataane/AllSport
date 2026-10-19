@@ -28,7 +28,8 @@
 import { getEventByName } from './eventData'
 import { STANDARDS } from './standards'
 import { sportTermOf } from './scoring'
-import { eventGrade, eventCredit, type GradePlayer, type GradeResultRow } from './playerGrades'
+import { eventGrade, eventCredit, playerInYear, type GradePlayer, type GradeResultRow } from './playerGrades'
+import { yearOfDay } from './seasonYear'
 import { DOMAIN_COUNT, DRILL_CAP, TOP_RUNG, type DomainGradeResult } from './grading'
 import type { SportRating } from './headToHead'
 
@@ -113,10 +114,9 @@ export type GameColours = { session_id: string; session_date: string; total: num
 
 /**
  * A player's colour total in every finished game they played, every year.
- * Priced on the player's CURRENT division, age and bodyweight rules, like
- * their colours, so crossing an age band re-prices past games, and with it
- * the places of everyone they played. Accepted: it is the same ladder HOME
- * shows them today.
+ * Priced on the player's current division and bodyweight rules, like their
+ * colours, and on the age they turned in each game's year: an age band is
+ * crossed on 1 January, so it never re-prices a game from an earlier year.
  * `ratingAt` returns the player's ratings as they stood at the end of one
  * game; omit it to score game events on their result alone. `contestAt`
  * returns the game-day Swiss contest scores (contestScoresFor in lib/swiss.ts).
@@ -139,8 +139,12 @@ export function gameColourTotals(
   return [...bySession].map(([sessionId, { date, events }]) => {
     const ratings = ratingAt?.(sessionId)
     const contests = contestAt?.(sessionId)
+    // Priced on the age the player turned in the game's own year, so a
+    // birthday never re-prices last season's games (Tāne, 20 Oct 2026).
+    const year = yearOfDay(date)
+    const aged = year == null ? player : playerInYear(player, year)
     let total = 0
-    for (const [name, list] of events) total += eventRungInGame(name, list, player, ratings?.get(name), contests?.get(name))
+    for (const [name, list] of events) total += eventRungInGame(name, list, aged, ratings?.get(name), contests?.get(name))
     // A game holds ten events (verified: no session has more). Capped anyway,
     // because the stored CHECK would otherwise refuse every game in the batch.
     return { session_id: sessionId, session_date: date, total: gameTotalOf(total) }
