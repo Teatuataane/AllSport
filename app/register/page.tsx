@@ -236,11 +236,59 @@ function RegisterInner() {
     </div>
   )
 
+  // Asked on step 1 for email sign-ups and on step 2 for Google ones (who skip
+  // step 1). One copy, so the Google path gets the "Another answer" division
+  // pick too: it used to ask only Male/Female/Other with no pick.
+  const divisionQuestion = (
+    <div>
+      <label style={labelStyle}>Which division do you compete in?</label>
+      <div style={{ display: 'flex', gap: '8px' }}>
+        {([['Male', "Men's"], ['Female', "Women's"], ['Other', 'Another answer']] as const).map(([value, label]) => (
+          <button
+            key={value}
+            onClick={() => set('gender', value)}
+            style={genderBtnStyle(form.gender === value)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <div style={{ fontSize: '11px', color: '#555', marginTop: '6px', lineHeight: 1.6 }}>
+        This is the only thing we use it for. Divisions are split by age as well, so a
+        Masters or 60+ division is worked out from your date of birth.
+      </div>
+      {needsDivisionPick && (
+        <div style={{ marginTop: '10px', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: '10px', padding: '12px 14px' }}>
+          <div style={{ fontSize: '12px', color: 'var(--grey-light)', marginBottom: '8px', lineHeight: 1.6 }}>
+            Which division would you like to start in? A kaiwhakawā can move you at any time,
+            before or after your first session.
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {(["Men's", "Women's"] as const).map(d => (
+              <button
+                key={d}
+                onClick={() => set('division_preference', d)}
+                style={genderBtnStyle(form.division_preference === d)}
+              >
+                {d}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+
   // full_name is deliberately NOT required. It is only used for insurance and
   // safeguarding, most players compete under a username, and asking for a legal
   // name as a condition of playing a koha-based community sport collects more
   // than the sport needs.
   const step1Valid = !!(form.email && form.password && form.date_of_birth && form.gender && division)
+  // Google sign-ups give their date of birth and division on step 2, so it must
+  // insist on a division as step 1 does. It used to check only the username,
+  // which let a Google player reach "Create account" with no division and fail
+  // players_division_check on an empty string (reported 19 Oct 2026).
+  const step2Valid = !!(form.username && division)
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--dark)', color: 'var(--white)', padding: '24px', maxWidth: '560px', margin: '0 auto' }}>
@@ -307,43 +355,7 @@ function RegisterInner() {
             <label style={labelStyle}>Date of Birth</label>
             <input type="date" value={form.date_of_birth} onChange={e => set('date_of_birth', e.target.value)} style={inputStyle} />
           </div>
-          <div>
-            <label style={labelStyle}>Which division do you compete in?</label>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              {([['Male', "Men's"], ['Female', "Women's"], ['Other', 'Another answer']] as const).map(([value, label]) => (
-                <button
-                  key={value}
-                  onClick={() => set('gender', value)}
-                  style={genderBtnStyle(form.gender === value)}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            <div style={{ fontSize: '11px', color: '#555', marginTop: '6px', lineHeight: 1.6 }}>
-              This is the only thing we use it for. Divisions are split by age as well, so a
-              Masters or 60+ division is worked out from your date of birth.
-            </div>
-            {needsDivisionPick && (
-              <div style={{ marginTop: '10px', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: '10px', padding: '12px 14px' }}>
-                <div style={{ fontSize: '12px', color: 'var(--grey-light)', marginBottom: '8px', lineHeight: 1.6 }}>
-                  Which division would you like to start in? A kaiwhakawā can move you at any time,
-                  before or after your first session.
-                </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  {(["Men's", "Women's"] as const).map(d => (
-                    <button
-                      key={d}
-                      onClick={() => set('division_preference', d)}
-                      style={genderBtnStyle(form.division_preference === d)}
-                    >
-                      {d}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+          {divisionQuestion}
           <div>
             <label style={labelStyle}>Phone</label>
             <input value={form.phone} onChange={e => set('phone', e.target.value)} style={inputStyle} placeholder="+64 21 000 0000" />
@@ -380,14 +392,7 @@ function RegisterInner() {
                 <label style={labelStyle}>Date of Birth</label>
                 <input type="date" value={form.date_of_birth} onChange={e => set('date_of_birth', e.target.value)} style={inputStyle} />
               </div>
-              <div>
-                <label style={labelStyle}>Gender</label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  {(['Male', 'Female', 'Other'] as const).map(g => (
-                    <button key={g} onClick={() => set('gender', g)} style={genderBtnStyle(form.gender === g)}>{g}</button>
-                  ))}
-                </div>
-              </div>
+              {divisionQuestion}
             </>
           )}
 
@@ -433,7 +438,7 @@ function RegisterInner() {
 
           <div style={{ display: 'flex', gap: '8px' }}>
             <button onClick={() => setStep(1)} style={backBtnStyle}>← Back</button>
-            <button onClick={() => setStep(3)} disabled={!form.username} style={nextBtnStyle(!!form.username)}>
+            <button onClick={() => setStep(3)} disabled={!step2Valid} style={nextBtnStyle(step2Valid)}>
               Next →
             </button>
           </div>

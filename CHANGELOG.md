@@ -5,6 +5,7 @@ All notable changes to AllSport are documented here.
 ## [0.41.4.0] - 2026-10-19
 
 ### Fixed
+- **Google sign-ups could finish registering with no division.** Step 2 (where Google players give their date of birth and division) only checked for a username, so a player who left either blank reached "Create account" and the save failed with `players_division_check` on an empty division. Step 2 now needs a division before Next, and asks the same division question as step 1, including the "Another answer" pick it was missing.
 - **Players aged 60 and over could not register.** The database's division check spelled the 60+ divisions "Grandmasters Men/Women" while the app writes "Grandmaster Men/Women", so the profile save failed with `players_division_check`. Migration `20261019003642_grandmaster_division_spelling.sql` swaps the constraint to the app's spelling (no existing row used either). `__tests__/divisionCheck.test.ts` pins every division the register form can produce to the constraint.
 
 ## [0.41.3.0] - 2026-10-19
