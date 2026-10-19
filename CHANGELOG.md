@@ -2,6 +2,11 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.41.4.0] - 2026-10-19
+
+### Fixed
+- **Players aged 60 and over could not register.** The database's division check spelled the 60+ divisions "Grandmasters Men/Women" while the app writes "Grandmaster Men/Women", so the profile save failed with `players_division_check`. Migration `20261019003642_grandmaster_division_spelling.sql` swaps the constraint to the app's spelling (no existing row used either). `__tests__/divisionCheck.test.ts` pins every division the register form can produce to the constraint.
+
 ## [0.41.3.0] - 2026-10-19
 
 ### Added
