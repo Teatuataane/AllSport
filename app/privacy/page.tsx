@@ -36,7 +36,7 @@ const accountData: Row[] = [
   },
   {
     what: 'Date of birth',
-    why: 'To place you in the right division and age group, to know when a player is under 17, and to apply the age allowance on grade standards: juniors, Masters and Grandmasters meet each colour at an easier standard.',
+    why: 'To know when a player is a junior and which junior age group they are in, and to apply the age allowance on grade standards: players under 17 or 40 and over meet each colour at an easier standard, set by the age they turn that year.',
     who: 'Your age group is used in leaderboards. Kaiwhakawā can see the date itself.',
   },
   {

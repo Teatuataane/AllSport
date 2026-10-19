@@ -29,7 +29,7 @@ export function yearOfDay(day: string | null | undefined): number | null {
 /**
  * The age a player turns in `year`: the one age their colours that year are
  * graded on (Tāne, 20 Oct 2026). From the birth year when it is known
- * (players_public.birth_year, 20261020…); otherwise from their age today,
+ * (players_public.birth_year, 20261019214532); otherwise from their age today,
  * moved by the years between, which can be a year out before their birthday
  * and is only the fallback while the view has no birth year.
  */

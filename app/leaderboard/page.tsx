@@ -1,8 +1,8 @@
 'use client'
 
 // ─── /leaderboard ────────────────────────────────────────────────────────────
-// The board exists so players who could never play together — a Grandmaster
-// woman, a U14 boy, a Men's player — can compete anyway. Settled with Tāne on
+// The board exists so players who could never play together — a woman of 65,
+// a U14 boy, a Men's player — can compete anyway. Settled with Tāne on
 // 2026-09-25. ONE board, SEASON: this calendar year. In every finished game,
 // each player's official events score the colour rungs they reached, and
 // everyone in the game is ranked together on that total, whatever their
@@ -33,6 +33,7 @@ import { rankBy, bestAndWorst } from '@/lib/leaderboardScores'
 import { colourStanding, displayOverall } from '@/lib/colourBoard'
 import { loadGameCounts } from '@/lib/gameCounts'
 import { nzYear } from '@/lib/seasonYear'
+import { divisionPool } from '@/lib/rating'
 import { loadSeasonPoints, type SeasonPointsRow } from '@/lib/leaderboardData'
 import { RAINBOW, DOMAIN_COLORS } from '@/lib/domainColours'
 import { GradeDot } from '@/components/GradeDot'
@@ -95,20 +96,19 @@ const tabs = [
   { key: 'mens', label: "Men's", division: "Men's", color: '#2371BB' },
   { key: 'womens', label: "Women's", division: "Women's", color: '#EA4742' },
   { key: 'juniors', label: 'Juniors', division: 'Juniors', color: '#4DB26E' },
-  { key: 'masters-men', label: 'Masters Men', division: 'Masters Men', color: '#2371BB' },
-  { key: 'masters-women', label: 'Masters Women', division: 'Masters Women', color: '#EA4742' },
-  { key: 'grandmaster-men', label: 'Grandmaster Men', division: 'Grandmaster Men', color: '#B87DB5' },
-  { key: 'grandmaster-women', label: 'Grandmaster Women', division: 'Grandmaster Women', color: '#F397C0' },
 ] as const
 
+// No Masters or Grandmaster tabs (Tāne, 20 Oct 2026): age is in the colour
+// standards, so it is not a division. Rows still holding those values before
+// the migration that folds them in read as Men or Women.
 const SHORT_DIVISION: Record<string, string> = {
   "Men's": 'Men', "Women's": 'Women', Juniors: 'Junior', Youth: 'Junior',
-  'Masters Men': 'Masters M', 'Masters Women': 'Masters W',
-  'Grandmaster Men': 'Grandmaster M', 'Grandmaster Women': 'Grandmaster W',
+  'Masters Men': 'Men', 'Masters Women': 'Women',
+  'Grandmaster Men': 'Men', 'Grandmaster Women': 'Women',
 }
 
 const inTab = (division: string | null, tab: typeof tabs[number]) =>
-  tab.division == null || division === tab.division || (tab.division === 'Juniors' && division === 'Youth')
+  tab.division == null || divisionPool(division) === divisionPool(tab.division)
 
 /** The player's colour: the overall one CONFERRED, or Mā, where every player starts. */
 function ColourChip({ rung, size = 'md' }: { rung: number | null; size?: 'sm' | 'md' }) {

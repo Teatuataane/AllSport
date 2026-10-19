@@ -378,7 +378,7 @@ async function loadResults(db: GradeDb, playerId: string) {
 export type GradeInputs = {
   profile: {
     division: string | null; age_years: number | null; is_active?: boolean | null; is_guest?: boolean | null
-    /** players_public.birth_year. Undefined before 20261020000000, when the age today stands in. */
+    /** players_public.birth_year. Undefined before 20261019214532, when the age today stands in. */
     birth_year?: number | null
   }
   gender: string | null

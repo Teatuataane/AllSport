@@ -10,9 +10,12 @@ const supabase = createClient()
 
 const PLAYER_ICONS = ['🏋️', '🤸', '🏃', '🚴', '🤼', '🏊', '🎯', '🏹', '⚽', '🏀', '🎾', '🏐', '🦅', '🐯', '🦁', '🦊', '🐺', '🦋', '🐬', '🐉']
 
+// A junior turns 16 or under THIS year: the one age per year the colour
+// standards use, and the rule /register and the daily roll-up to Men's or
+// Women's follow (Tāne, 20 Oct 2026).
 function isJuniorDob(dob: string) {
   if (!dob) return false
-  return Math.floor((Date.now() - new Date(dob).getTime()) / 31557600000) < 17
+  return new Date().getFullYear() - Number(dob.slice(0, 4)) <= 16
 }
 
 export default function ProfilePage() {
@@ -415,7 +418,7 @@ export default function ProfilePage() {
                 {[
                   { key: 'show_username', label: 'Show username', sub: 'Your handle next to your display name' },
                   { key: 'show_full_name', label: 'Show full name', sub: 'Off means your legal name is never sent to other players' },
-                  { key: 'show_division', label: 'Show division', sub: 'Hides the "1st Masters" label. You are still ranked in your division' },
+                  { key: 'show_division', label: 'Show division', sub: 'Hides your division next to your name. You are still ranked in your division' },
                 ].map(({ key, label, sub }) => (
                   <label key={key} style={{
                     display: 'flex', alignItems: 'flex-start', gap: '12px',
