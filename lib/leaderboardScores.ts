@@ -1,6 +1,6 @@
 // ─── What the leaderboard publishes ──────────────────────────────────────────
 // Settled with Tāne on 2026-09-25. The board exists so players who could never
-// play together (a Grandmaster woman, a U14 boy, a Men's player) can compete
+// play together (a woman of 65, a U14 boy, a Men's player) can compete
 // anyway, so it prices every score on the COLOUR LADDER, which already shifts
 // for age and sex and scales strength by bodyweight: Kōwhai is the same
 // achievement whoever earned it.

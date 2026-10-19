@@ -30,10 +30,10 @@ describe('standardsLadder', () => {
     expect(f).toBe('8cm')
   })
 
-  it('moves the ladder up for age, so Masters need the Open threshold one colour later', () => {
+  it('moves the ladder up for age, so a 45-year-old needs the Open Power threshold one colour later', () => {
     const o = standardsLadder(ev('vertical-jump'), open, null)
-    const m = standardsLadder(ev('vertical-jump'), { division: 'Masters Men', ageYears: 45, gender: null }, null)
-    // Masters earn rung r on the Open threshold for rung r - 1.
+    const m = standardsLadder(ev('vertical-jump'), { division: "Men's", ageYears: 45, gender: null }, null)
+    // Vertical Jump is Power: +1 at 45, so rung r is the Open threshold for rung r - 1.
     expect(m[1].label).toBe(o[0].label)
     expect(m[5].label).toBe(o[4].label)
     const u14 = standardsLadder(ev('vertical-jump'), { division: 'Junior', ageYears: 13, gender: 'M' }, null)
@@ -70,7 +70,7 @@ describe('standardsLadder', () => {
   })
 
   it('does not age-shift a rating, and does not shift a drill past Kahurangi', () => {
-    const gm = standardsLadder(ev('tennis'), { division: 'Grandmaster Men', ageYears: 65, gender: null }, null)
+    const gm = standardsLadder(ev('tennis'), { division: "Men's", ageYears: 65, gender: null }, null)
     expect(gm.filter(r => r.kind === 'drill')).toHaveLength(6)
     expect(gm[6].label).toBe('Rating 1,100')
   })

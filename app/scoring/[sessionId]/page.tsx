@@ -272,12 +272,10 @@ function JudgeRosterRow({ name, isGuest, scoredIds, events, onOpen }: {
 
 // ─── Division pool constants ──────────────────────────────────────────────────
 
-// Masters and Grandmaster are no longer divisions (Tāne, 20 Oct 2026: the
-// colour standards carry the age allowance, so an older player competes with
-// everyone). They stay listed so rows written before the migration that folds
-// them into Men's and Women's still land in the right pool.
-const MENS_DIVS = ["Men's", 'Masters Men', 'Grandmaster Men']
-const WOMENS_DIVS = ["Women's", 'Masters Women', 'Grandmaster Women']
+// Adults of every age are one field (Tāne, 20 Oct 2026): the colour standards
+// carry the age allowance, so there are no Masters or Grandmaster divisions.
+const MENS_DIVS = ["Men's"]
+const WOMENS_DIVS = ["Women's"]
 
 function medalBg(rank: number): string {
   return rank === 1 ? '#F9B051' : rank === 2 ? '#C0C0C0' : rank === 3 ? '#CD7F32' : '#2a2a2a'
@@ -304,7 +302,7 @@ function JudgeSummaryTab({
       if (!info) return false
       if (pool === 'mens') return MENS_DIVS.includes(info.division)
       if (pool === 'womens') return WOMENS_DIVS.includes(info.division)
-      return info.division === 'Juniors' || info.division === 'Youth'
+      return info.division === 'Juniors'
     })
   }
 
@@ -517,7 +515,7 @@ function LeaderboardTab({
       if (pool === 'mens') return filter ? info.division === filter : MENS_DIVS.includes(info.division)
       if (pool === 'womens') return filter ? info.division === filter : WOMENS_DIVS.includes(info.division)
       if (pool === 'juniors') {
-        if (info.division !== 'Juniors' && info.division !== 'Youth') return false
+        if (info.division !== 'Juniors') return false
         if (ageFilter !== null) return info.age_years != null ? info.age_years === ageFilter : true
         return true
       }

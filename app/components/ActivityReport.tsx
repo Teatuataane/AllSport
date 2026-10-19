@@ -74,7 +74,7 @@ export default function ActivityReport() {
         if (!i) {
           const p = playerOf.get(id)
           if (!p || p.is_guest) return null
-          i = { playerId: id, rangatahi: p.division === 'Juniors' || p.division === 'Youth', logged: [], games: [] }
+          i = { playerId: id, rangatahi: p.division === 'Juniors', logged: [], games: [] }
           inputs.set(id, i)
         }
         return i

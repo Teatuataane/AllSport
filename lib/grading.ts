@@ -392,21 +392,24 @@ export function colourGate(input: { domainNumber: number; standardsRung: number;
 // value-scaling design this replaces multiplied some standards and divided
 // others, and getting that backwards made a standard HARDER with age.
 //
-// Age SHIFTS THE LADDER; it does not scale the value (settled in review). A band
-// that shifts one colour earns colour c at the Open standard for colour c - 1,
-// so a Masters player's Taniwha is an Open player's Uenuku. Below the Open floor
+// Age SHIFTS THE LADDER; it does not scale the value (settled in review). An
+// allowance of one colour earns colour c at the Open standard for colour c - 1,
+// so with it a Taniwha is an Open player's Uenuku. How many colours a player
+// gets is per domain and per age (lib/ageAllowance.ts, Tāne 20 Oct 2026); the
+// functions here take a whole number of colours, or a band for the flat
+// allowance a player with no date of birth still gets. Below the Open floor
 // the ladder is extrapolated by its own first step, so the youngest players can
 // earn the bottom colours for a performance under the Open Kiwikiwi.
 
-export type AgeBand = 'U12' | 'U14' | 'U16' | 'Open' | 'Masters' | 'Grandmaster'
+export type AgeBand = 'U12' | 'U14' | 'U16' | 'Open' | 'Over40' | 'Over60'
 
 /**
- * Colours each band moves up the ladder. Under 14 and Grandmasters two; 14 to
- * 16 and Masters one. U14 was raised to two in review so that no child gets
- * less help than an older one.
+ * The flat allowance before the domain table (lib/ageAllowance.ts): under 14
+ * and 60 or over two colours, 14 to 16 and 40 to 59 one, in every domain. Only
+ * a player with no date of birth is still graded on it.
  */
 export const AGE_SHIFT: Record<AgeBand, number> = {
-  U12: 2, U14: 2, U16: 1, Open: 0, Masters: 1, Grandmaster: 2,
+  U12: 2, U14: 2, U16: 1, Open: 0, Over40: 1, Over60: 2,
 }
 
 /**
@@ -770,8 +773,8 @@ export function rungForCompound(mode: string, score: number, thresholds: readonl
 // rating later falls.
 //
 // The rating is NOT age-shifted. It already measures you against the people you
-// actually play, of every age; shifting it would turn a Masters player's 1,500
-// into a Taniwha.
+// actually play, of every age; shifting it would turn a 1,500 rating of a
+// player over 40 into a Taniwha.
 
 /** Kahurangi: the highest colour a drill can give on a Game-rung event. */
 export const DRILL_CAP = 6
@@ -922,21 +925,18 @@ export function bodyweightOn(
  * division name, and a division is only ever changed by hand: a player who
  * turned 40 kept the Open ladder until a kaiwhakawā moved them, and a junior
  * who turned 17 kept the U16 allowance. The division is only a fallback for a
- * player with no date of birth, who grades as they always did.
+ * player with no date of birth.
  */
 export function ageBand(division: string | null, ageYears: number | null): AgeBand {
   if (ageYears != null && Number.isFinite(ageYears)) {
     if (ageYears < 12) return 'U12'
     if (ageYears < 14) return 'U14'
     if (ageYears < 17) return 'U16'
-    if (ageYears >= 60) return 'Grandmaster'
-    if (ageYears >= 40) return 'Masters'
+    if (ageYears >= 60) return 'Over60'
+    if (ageYears >= 40) return 'Over40'
     return 'Open'
   }
-  const d = division ?? ''
-  if (/Grandmaster/.test(d)) return 'Grandmaster'
-  if (/Masters/.test(d)) return 'Masters'
-  // 'Youth' is the legacy value for Juniors and still appears on old rows.
-  if (/Junior|Youth/.test(d)) return 'U14'
-  return 'Open'
+  // No date of birth: a junior is taken as U14, everyone else as Open. The
+  // Masters and Grandmaster divisions this once read are gone (20261019214532).
+  return division === 'Juniors' ? 'U14' : 'Open'
 }

@@ -23,15 +23,14 @@ describe('ageBand reads the age, not the division', () => {
     expect(ageBand("Women's", 16)).toBe('U16')
     expect(ageBand('Juniors', 17)).toBe('Open')
     expect(ageBand("Women's", 39)).toBe('Open')
-    expect(ageBand("Women's", 40)).toBe('Masters')
-    expect(ageBand('Masters Men', 59)).toBe('Masters')
-    expect(ageBand("Men's", 60)).toBe('Grandmaster')
+    expect(ageBand("Women's", 40)).toBe('Over40')
+    expect(ageBand("Men's", 59)).toBe('Over40')
+    expect(ageBand("Men's", 60)).toBe('Over60')
   })
 
-  it('falls back to the division only when there is no age', () => {
-    expect(ageBand('Masters Women', null)).toBe('Masters')
-    expect(ageBand('Grandmaster Men', null)).toBe('Grandmaster')
+  it('with no age, takes a junior as U14 and anyone else as Open', () => {
     expect(ageBand('Juniors', null)).toBe('U14')
+    expect(ageBand("Women's", null)).toBe('Open')
     expect(ageBand("Men's", null)).toBe('Open')
   })
 

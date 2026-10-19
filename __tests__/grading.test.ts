@@ -275,8 +275,8 @@ describe('standards and the age shift', () => {
   const vjump = [10, 20, 28, 35, 42, 50, 60] // an Open reference, cm
   const twelve = Array.from({ length: 12 }, (_, i) => (i + 1) * 10)
 
-  it('shifts two colours under 14 and for Grandmasters, one for 14 to 16 and Masters', () => {
-    expect(AGE_SHIFT).toEqual({ U12: 2, U14: 2, U16: 1, Open: 0, Masters: 1, Grandmaster: 2 })
+  it('keeps the old flat allowance for a player with no date of birth: two under 14 and at 60, one at 14 to 16 and 40', () => {
+    expect(AGE_SHIFT).toEqual({ U12: 2, U14: 2, U16: 1, Open: 0, Over40: 1, Over60: 2 })
   })
 
   it('grades the Open band against the ladder as written', () => {
@@ -287,11 +287,11 @@ describe('standards and the age shift', () => {
     expect(rungForScore(42, vjump, 'Open')).toBe(5)
   })
 
-  it("moves the ladder rather than scaling the value: a Masters Taniwha is an Open Uenuku", () => {
+  it("moves the ladder rather than scaling the value: with one colour of allowance a Taniwha is an Open Uenuku", () => {
     expect(rungForScore(110, twelve, 'Open')).toBe(11)
-    expect(rungForScore(110, twelve, 'Masters')).toBe(12)
-    expect(rungForScore(100, twelve, 'Grandmaster')).toBe(12)
-    expect(rungForScore(52, vjump, 'Masters')).toBe(7)
+    expect(rungForScore(110, twelve, 'Over40')).toBe(12)
+    expect(rungForScore(100, twelve, 'Over60')).toBe(12)
+    expect(rungForScore(52, vjump, 'Over40')).toBe(7)
   })
 
   it('never goes past Taniwha, however far the shift', () => {
@@ -322,7 +322,7 @@ describe('standards and the age shift', () => {
 
   it('accepts a partial ladder, so an event can grade before all twelve exist', () => {
     expect(rungForScore(100, [10, 20], 'Open')).toBe(2)
-    expect(rungForScore(100, [10, 20], 'Masters')).toBe(3)
+    expect(rungForScore(100, [10, 20], 'Over40')).toBe(3)
     expect(rungForScore(100, [], 'Open')).toBe(0)
   })
 
@@ -439,21 +439,16 @@ describe('resolving a bodyweight to the day a lift was done', () => {
 })
 
 describe('age bands', () => {
-  it('maps divisions to bands', () => {
+  it('maps ages to bands, whatever the division', () => {
     expect(ageBand("Men's", 30)).toBe('Open')
-    expect(ageBand('Masters Women', 45)).toBe('Masters')
-    expect(ageBand('Grandmaster Men', 65)).toBe('Grandmaster')
+    expect(ageBand("Women's", 45)).toBe('Over40')
+    expect(ageBand("Men's", 65)).toBe('Over60')
   })
 
   it('splits juniors by age', () => {
     expect(ageBand('Juniors', 9)).toBe('U12')
     expect(ageBand('Juniors', 13)).toBe('U14')
     expect(ageBand('Juniors', 15)).toBe('U16')
-  })
-
-  it("still understands the legacy 'Youth' division value", () => {
-    // 'Youth' predates the Juniors rename and still appears on old rows.
-    expect(ageBand('Youth', 11)).toBe('U12')
   })
 
   it('falls back to a middle junior band when the birth date is missing', () => {

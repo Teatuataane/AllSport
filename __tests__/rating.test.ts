@@ -7,11 +7,12 @@ import { divisionPool, sessionWins } from '@/lib/rating'
 // player-facing skill score. See PERF_AGGREGATION_PLAN.md.
 
 describe('divisionPool', () => {
-  it('unifies masters/grandmasters into gender pools and treats Youth as Juniors', () => {
+  it('has three pools, one per division', () => {
     expect(divisionPool("Men's")).toBe('men')
-    expect(divisionPool('Grandmaster Men')).toBe('men')
-    expect(divisionPool('Masters Women')).toBe('women')
-    expect(divisionPool('Youth')).toBe('juniors')
+    expect(divisionPool("Women's")).toBe('women')
+    expect(divisionPool('Juniors')).toBe('juniors')
+    // Folded in by 20261019214532; no row holds them.
+    expect(divisionPool('Masters Women')).toBeNull()
     expect(divisionPool(null)).toBeNull()
   })
 })

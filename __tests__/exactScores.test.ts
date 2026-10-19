@@ -27,7 +27,7 @@ describe('exact score of a one-number score', () => {
     expect(exactForScore(35, ladder, 'Open', { cap: 3 })).toBe(3)
   })
   it('follows the age shift: a Master earns one colour higher on the same score', () => {
-    expect(exactForScore(35, [10, 20, 30, 40, 50], 'Masters')).toBe(4.5)
+    expect(exactForScore(35, [10, 20, 30, 40, 50], 'Over40')).toBe(4.5)
   })
   it('across levels: one rep on the next colour\'s level counts its share of that colour\'s reps', () => {
     // Kōura D3·40, Uenuku D4·20: one D4 rep is 1/20 of the way.

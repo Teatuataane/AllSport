@@ -90,7 +90,7 @@ describe('the standards approved in review come back out of the engine', () => {
     const M = std('Pushups').M!
     const oneArmOne = 4 * 10000 + 1 // D5, one rep
     expect(rungForScore(oneArmOne, M, 'Open')).toBe(10)
-    expect(rungForScore(oneArmOne, M, 'Masters')).toBe(11)
+    expect(rungForScore(oneArmOne, M, 'Over40')).toBe(11)
     expect(rungForScore(3 * 10000 + 39, M, 'Open')).toBe(9) // 39 push-ups
     expect(rungForScore(3 * 10000 + 40, M, 'Open')).toBe(10) // Kōura is forty
   })
@@ -106,7 +106,7 @@ describe('the standards approved in review come back out of the engine', () => {
     const all = std('Bridge').all!
     expect(rungForScore(3 * 10000 + 1, all, 'Open')).toBe(6)
     expect(rungForScore(3 * 10000 + 31, all, 'Open')).toBe(7)
-    expect(rungForScore(3 * 10000 + 31, all, 'Masters')).toBe(8)
+    expect(rungForScore(3 * 10000 + 31, all, 'Over40')).toBe(8)
   })
 
   // 12 Oct 2026: a carry colour is a share of bodyweight carried the official

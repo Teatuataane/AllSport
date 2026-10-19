@@ -24,7 +24,7 @@ How a value is written:
 Three rules:
 
 1. **Each colour must be harder than the one before.** A higher level always beats a lower one, however few reps.
-2. **Write the Open standard only.** Juniors, Masters and Grandmasters are shifted up the ladder automatically.
+2. **Write the Open standard only.** Juniors and players 40 and over are shifted up the ladder automatically, by the age allowance in `AGE_ALLOWANCE_REVIEW.md`.
 3. **Game events list six colours.** Poroporo and above come from the head-to-head rating, after ten games.
 
 Every event says where its numbers came from. **Approved** means you settled it in review. **Drafted** means I wrote it,

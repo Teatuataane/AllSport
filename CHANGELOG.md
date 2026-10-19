@@ -2,6 +2,13 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.43.0.0] - 2026-10-20
+
+### Changed
+- **The age allowance is set per domain** (approved by Tāne, 20 Oct 2026, `AGE_ALLOWANCE_REVIEW.md`). It replaces the flat allowance (+1 at 40, +2 at 60 in every domain). Speed and Power get the most (½ at 40 up to 3½ at 75), the skill domains the least (nothing until 55), and nobody gets one at 35. Juniors get most in Maximal Strength, Power and Speed (3 under 12) and none in Flexibility. Halves are graded as the mean of the exact scores at the whole steps either side, so a half is worth half a colour, and the colour itself past the middle of one. The table is `lib/ageAllowance.ts`; `__tests__/ageAllowance.test.ts` pins it to the sheet. `GRADING_RULES_VERSION` bumped.
+- Measured on live data before shipping (old rules against new, all 30 players): no overall colour moves. Three domain colours computed lower for one player born 1979 (Calisthenics, Flexibility, Body Awareness) and one for a junior (Flexibility); colours already conferred this year are kept, as rechecks never withdraw. Most 40+ exact overall scores drop by a few hundredths.
+- **Masters and Grandmaster are gone everywhere.** The public colours guide shows the age table. The standards ladder names the domain and the age ("Includes your Stamina age allowance: +1 colour at 57 this year"), and says where a half goes. Code no longer recognises the old division values ('Masters …', 'Grandmaster …', 'Youth'), which no row holds since `20261019214532`; the internal age bands are named Over40 and Over60 and only grade a player with no date of birth. The Annual Championship lists Men, Women and Juniors. The July 2026 championship winners on /schedule keep their Masters titles, as that is what they won.
+
 ## [0.42.1.0] - 2026-10-20
 
 ### Changed

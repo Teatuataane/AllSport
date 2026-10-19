@@ -12,7 +12,7 @@ const ev = (name: string) => {
   return e
 }
 const openMan: GradePlayer = { division: "Men's", ageYears: 30, gender: 'Male' }
-const master: GradePlayer = { division: 'Masters Men', ageYears: 45, gender: 'Male' }
+const master: GradePlayer = { division: "Men's", ageYears: 45, gender: 'Male' }
 const under14: GradePlayer = { division: 'Juniors', ageYears: 12, gender: 'Female' }
 /** 75kg was the middle of the old "70 to 80kg" band, so the numbers below hold. */
 const BW = 75
@@ -22,8 +22,8 @@ const row = (event_name: string, raw_score: number, extra: Partial<GradeResultRo
 describe('which ladder applies', () => {
   it('takes an adult\'s from their division', () => {
     expect(ladderFor({ division: "Women's", gender: null })).toBe('F')
-    expect(ladderFor({ division: 'Masters Women', gender: 'Male' })).toBe('F')
-    expect(ladderFor({ division: 'Grandmaster Men', gender: null })).toBe('M')
+    expect(ladderFor({ division: "Women's", gender: 'Male' })).toBe('F')
+    expect(ladderFor({ division: "Men's", gender: null })).toBe('M')
   })
   it('takes a junior\'s from the registration answer, in either case', () => {
     expect(ladderFor({ division: 'Juniors', gender: 'Female' })).toBe('F')
