@@ -29,9 +29,10 @@ import { tierScoring, fmtTime } from './scoring'
 import { eventRungInGame, placePoints, gameTotalOf } from './leaderboardScores'
 import { ladderFor, liftKg, playerInYear, type PlayerGrades, type GradePlayer } from './playerGrades'
 import { yearOfDay } from './seasonYear'
+import { ageAllowance } from './ageAllowance'
 import {
-  ageBand, rungForScore, rungForCompound, thresholdFor, ratioThresholdsKg, bodyweightOn, gradeForRung, compoundLadderAt,
-  AGE_SHIFT, DOMAIN_COUNT, DRILL_CAP, TOP_RUNG, type BodyweightDeclaration,
+  rungForScore, rungForCompound, thresholdFor, ratioThresholdsKg, bodyweightOn, gradeForRung, compoundLadderAt,
+  DOMAIN_COUNT, DRILL_CAP, TOP_RUNG, type BodyweightDeclaration,
 } from './grading'
 import { seasonRowsFrom, ratingsAtClose, gradePlayerOf, type GradeInputs, type GradeAward } from './loadGrades'
 import { GAME_MINUTES } from './workouts'
@@ -281,8 +282,6 @@ export function nextStep(
   declarations: readonly BodyweightDeclaration[],
   today: string,
 ): NextStep | null {
-  const band = ageBand(player.division, player.ageYears)
-  const shift = AGE_SHIFT[band]
   const bw = bodyweightOn(declarations, today)
   let pick: NextStep | null = null
 
@@ -295,6 +294,11 @@ export function nextStep(
     const ladder = s.all ?? s[ladderFor(player)] ?? []
     if (ladder.length === 0) continue
     const cap = s.game ? DRILL_CAP : TOP_RUNG
+    // The age allowance is per domain (lib/ageAllowance.ts). A half reads as
+    // the whole step below: the gap shown is one the player is sure to close
+    // the colour with, never one that falls short.
+    const shift = Math.floor(ageAllowance(player, ev.domainNumber))
+    const band = shift
 
     let cur: number, from: number, to: number, bestVal: number, gap: string | null
     if (s.kind === 'ratio') {

@@ -8,7 +8,8 @@ import { DRILL_CAP, type DomainGradeResult } from '@/lib/grading'
 import type { GradePlayer } from '@/lib/playerGrades'
 
 const open: GradePlayer = { division: "Men's", ageYears: 25, gender: 'male' }
-const masters: GradePlayer = { division: 'Masters Women', ageYears: 45, gender: 'female' }
+// Forward Fold is Flexibility: a whole colour of allowance from 65 (lib/ageAllowance.ts).
+const masters: GradePlayer = { division: "Women's", ageYears: 66, gender: 'female' }
 
 const row = (over: Partial<SeasonRow>): SeasonRow => ({
   session_id: 's1', session_date: '2026-05-02', closed: true,
@@ -32,7 +33,7 @@ describe('an event in one game', () => {
     expect(eventRungInGame('Forward Fold', [row({})], open)).toBe(6)
   })
 
-  it('shifts for age, so the same result is worth more to a Master', () => {
+  it('shifts for age, so the same result is worth more to an older player', () => {
     // This is what lets people who never meet compete: the ladder, not the score, moves.
     expect(eventRungInGame('Forward Fold', [row({})], masters)).toBe(7)
   })

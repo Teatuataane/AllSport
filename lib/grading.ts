@@ -124,7 +124,7 @@ export const TOP_RUNG = 12
  * conferred one. HOME forces one full recheck per player when this differs
  * from the version it last checked under (lib/useNewColours.ts).
  */
-export const GRADING_RULES_VERSION = '2026-10-20-age-from-birth-year'
+export const GRADING_RULES_VERSION = '2026-10-20-age-table-by-domain'
 export const DOMAIN_COUNT = 10
 
 /**
@@ -410,6 +410,15 @@ export const AGE_SHIFT: Record<AgeBand, number> = {
 }
 
 /**
+ * Colours a ladder moves: a band's flat shift, or a whole number of colours
+ * given directly. lib/ageAllowance.ts works out the number per domain; a half
+ * is never passed here (lib/playerGrades.ts grades it as two whole steps).
+ */
+export function shiftOf(band: AgeBand | number): number {
+  return typeof band === 'number' ? Math.max(0, Math.floor(band)) : AGE_SHIFT[band]
+}
+
+/**
  * The Open threshold for rung `r`. Rungs at or below 0 lie under the Open floor
  * and are extrapolated by the ladder's first step (rung 1 to rung 2). A one-rung
  * ladder has no step, so its floor holds.
@@ -432,11 +441,11 @@ export function thresholdFor(thresholds: readonly number[], r: number): number {
 export function rungForScore(
   score: number,
   thresholds: readonly number[],
-  band: AgeBand,
+  band: AgeBand | number,
   { cap = TOP_RUNG }: { cap?: number } = {}
 ): number {
   if (thresholds.length === 0) return 0
-  const shift = AGE_SHIFT[band]
+  const shift = shiftOf(band)
   const top = Math.min(TOP_RUNG, thresholds.length + shift)
   let rung = 0
   for (let c = 1; c <= top; c++) {
@@ -466,9 +475,9 @@ export function meetsLoadHold(score: number, threshold: number): boolean {
 }
 
 /** rungForScore for a load-and-hold ladder: each colour checks its load and its time. */
-export function rungForLoadHold(score: number, thresholds: readonly number[], band: AgeBand): number {
+export function rungForLoadHold(score: number, thresholds: readonly number[], band: AgeBand | number): number {
   if (thresholds.length === 0) return 0
-  const shift = AGE_SHIFT[band]
+  const shift = shiftOf(band)
   const top = Math.min(TOP_RUNG, thresholds.length + shift)
   let rung = 0
   for (let c = 1; c <= top; c++) {
@@ -506,9 +515,9 @@ export function meetsCarry(score: number, threshold: number): boolean {
 }
 
 /** rungForScore for a carry ladder: each colour checks its load and its distance. */
-export function rungForCarry(score: number, thresholds: readonly number[], band: AgeBand): number {
+export function rungForCarry(score: number, thresholds: readonly number[], band: AgeBand | number): number {
   if (thresholds.length === 0) return 0
-  const shift = AGE_SHIFT[band]
+  const shift = shiftOf(band)
   const top = Math.min(TOP_RUNG, thresholds.length + shift)
   let rung = 0
   for (let c = 1; c <= top; c++) {
@@ -554,10 +563,10 @@ export const HALF_STEP_FLOOR = 0.5
  * more. Bodyweight rungs (no load to reach) never count; a mode that is not
  * compound is worth its rung.
  */
-export function halfStepCredit(mode: string, score: number, thresholds: readonly number[], band: AgeBand, rung: number): number {
+export function halfStepCredit(mode: string, score: number, thresholds: readonly number[], band: AgeBand | number, rung: number): number {
   const loadHold = mode === 'weight+time' || mode === 'weight+reps'
   if ((!loadHold && mode !== 'weight+distance+time') || thresholds.length === 0) return rung
-  const shift = AGE_SHIFT[band]
+  const shift = shiftOf(band)
   const top = Math.min(TOP_RUNG, thresholds.length + shift)
   for (let c = top; c > rung; c--) {
     const tv = thresholdFor(thresholds, c - shift)
@@ -635,12 +644,12 @@ const TIER_BAND = 10000
 export function exactForScore(
   score: number,
   thresholds: readonly number[],
-  band: AgeBand,
+  band: AgeBand | number,
   { cap = TOP_RUNG, tiered = false, timed = false }: { cap?: number; tiered?: boolean; timed?: boolean } = {},
 ): number {
   if (thresholds.length === 0) return 0
   const rung = rungForScore(score, thresholds, band, { cap })
-  const shift = AGE_SHIFT[band]
+  const shift = shiftOf(band)
   const top = Math.min(TOP_RUNG, thresholds.length + shift, cap)
   if (rung >= top) return rung
   const from = thresholdFor(thresholds, rung - shift)
@@ -676,11 +685,11 @@ function compoundKeys(mode: string, v: number): number[] {
  * weaker part is the time however heavy the load, and the half step is what
  * stops a Taniwha load held 25s reading as Kiwikiwi.
  */
-export function exactForCompound(mode: string, score: number, thresholds: readonly number[], band: AgeBand): number {
+export function exactForCompound(mode: string, score: number, thresholds: readonly number[], band: AgeBand | number): number {
   const rung = rungForCompound(mode, score, thresholds, band) ?? 0
   if (thresholds.length === 0) return rung
   const half = halfStepCredit(mode, score, thresholds, band, rung)
-  const shift = AGE_SHIFT[band]
+  const shift = shiftOf(band)
   const top = Math.min(TOP_RUNG, thresholds.length + shift)
   if (rung >= top) return Math.max(rung, half)
   const s = compoundKeys(mode, score)
@@ -745,7 +754,7 @@ export function isCompoundMode(mode: string): boolean {
   return mode === 'weight+time' || mode === 'weight+reps' || mode === 'weight+distance+time'
 }
 
-export function rungForCompound(mode: string, score: number, thresholds: readonly number[], band: AgeBand): number | null {
+export function rungForCompound(mode: string, score: number, thresholds: readonly number[], band: AgeBand | number): number | null {
   if (mode === 'weight+time' || mode === 'weight+reps') return rungForLoadHold(score, thresholds, band)
   if (mode === 'weight+distance+time') return rungForCarry(score, thresholds, band)
   return null

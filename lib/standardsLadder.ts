@@ -1,7 +1,8 @@
 // ─── The colour standards, as one player reads them ──────────────────────────
 // Which score earns which colour on one event, on the PLAYER'S OWN ladder: their
-// sex's thresholds, moved up the ladder by their age band exactly as grading
-// moves them (rungForScore). No switching between divisions (Tāne, 5 Oct 2026).
+// sex's thresholds, moved up the ladder by their age allowance for the event's
+// domain exactly as grading moves them (rungForScore; a half shows as the whole
+// step below). No switching between divisions (Tāne, 5 Oct 2026).
 //
 // Pure, with no React or Supabase, and it reads STANDARDS and the lib/grading.ts
 // helpers rather than copying a threshold, so it cannot drift from grading. The
@@ -14,10 +15,11 @@
 
 import { STANDARDS } from './standards'
 import {
-  AGE_SHIFT, DRILL_CAP, RATING_FLOOR, RATING_STEP, TOP_RUNG,
-  ageBand, gradeForRung, ratioThresholdsKg, thresholdFor, bwLoadKg, type AgeBand,
+  DRILL_CAP, RATING_FLOOR, RATING_STEP, TOP_RUNG,
+  gradeForRung, ratioThresholdsKg, thresholdFor, bwLoadKg,
 } from './grading'
 import { ladderFor, type GradePlayer } from './playerGrades'
+import { ageAllowance, formatAllowance } from './ageAllowance'
 import { formatPR } from './scoreFormat'
 import { decodeCarry, fmtDistance, fmtTime } from './scoring'
 import { isTimedEffort, type EventData } from './eventData'
@@ -37,23 +39,25 @@ const trim = (n: number) => String(Math.round(n * 100) / 100)
 export const RATING_ONLY_NOTE = 'No drill colours: this event is graded on games.'
 
 /** Who each band is, in the age a player turns this year. */
-const BAND_AGES: Record<AgeBand, string> = {
-  U12: 'under 12 this year', U14: '12 or 13 this year', U16: '14 to 16 this year',
-  Open: '', Masters: '40 or over this year', Grandmaster: '60 or over this year',
-}
-
 /**
  * The line under a ladder that says it is already shifted for age, or null
  * when no shift applies. Without it a player comparing standards with a friend
  * sees different numbers and no reason (Tāne, 20 Oct 2026). Rating colours are
- * never shifted, so a rating-only event says nothing.
+ * never shifted, so a rating-only event says nothing. The allowance is per
+ * domain (lib/ageAllowance.ts); a half is shown on the ladder as the whole step
+ * below, and the line says where the other half goes.
  */
 export function ageAllowanceNote(ev: EventData, player: GradePlayer): string | null {
   if (STANDARDS[ev.slug]?.kind === 'rating') return null
-  const band = ageBand(player.division, player.ageYears)
-  const shift = AGE_SHIFT[band]
-  if (!shift) return null
-  return `Includes your age allowance: +${shift} colour${shift === 1 ? '' : 's'} (${BAND_AGES[band]}).`
+  const a = ageAllowance(player, ev.domainNumber)
+  if (!a) return null
+  const age = player.ageYears != null ? ` at ${player.ageYears} this year` : ''
+  const colours = `+${formatAllowance(a)} colour${a > 1 ? 's' : ''}`
+  if (a === Math.floor(a)) return `Includes your ${ev.domain} age allowance: ${colours}${age}.`
+  const shown = Math.floor(a)
+  return `Your ${ev.domain} age allowance is ${colours}${age}. `
+    + (shown ? `These are the +${shown} standards; the extra half counts in your exact score.`
+             : 'These are the Open standards; the half counts in your exact score.')
 }
 
 /** Does this event's ladder need a bodyweight to read in kilograms? */
@@ -114,7 +118,7 @@ export function standardsLadder(
 ): LadderRow[] {
   const s = STANDARDS[ev.slug]
   if (!s) return []
-  const shift = AGE_SHIFT[ageBand(player.division, player.ageYears)]
+  const shift = Math.floor(ageAllowance(player, ev.domainNumber))
   const rows: LadderRow[] = []
   const row = (rung: number, label: string, kind: LadderRow['kind']) =>
     rows.push({ rung, name: gradeForRung(rung).name, label, kind })

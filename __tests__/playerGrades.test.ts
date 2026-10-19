@@ -37,8 +37,9 @@ describe('which ladder applies', () => {
 
 describe('an event\'s colour', () => {
   // 12 Oct 2026 review: one 1-arm push-up is men's Kōura, so Uenuku for a Master.
-  it('reproduces the review: one 1-arm push-up is Uenuku for a Master', () => {
-    const g = eventGrade(ev('Pushups'), [row('Pushups', 40001, { difficulty_tier: '1 Arm Pushup' })], master)
+  it('reproduces the review: one 1-arm push-up is Uenuku with a whole colour of allowance', () => {
+    // Pushups is Stamina, a whole colour of allowance from 55 (lib/ageAllowance.ts).
+    const g = eventGrade(ev('Pushups'), [row('Pushups', 40001, { difficulty_tier: '1 Arm Pushup' })], { ...master, ageYears: 56 })
     expect(g).toEqual({
       slug: ev('Pushups').slug, rung: 11, exact: 11.05, gradeable: true, played: true,
       best: { raw_score: 40001, weight_kg: null, difficulty_tier: '1 Arm Pushup' },
