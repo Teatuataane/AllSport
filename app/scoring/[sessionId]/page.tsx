@@ -272,6 +272,10 @@ function JudgeRosterRow({ name, isGuest, scoredIds, events, onOpen }: {
 
 // ─── Division pool constants ──────────────────────────────────────────────────
 
+// Masters and Grandmaster are no longer divisions (Tāne, 20 Oct 2026: the
+// colour standards carry the age allowance, so an older player competes with
+// everyone). They stay listed so rows written before the migration that folds
+// them into Men's and Women's still land in the right pool.
 const MENS_DIVS = ["Men's", 'Masters Men', 'Grandmaster Men']
 const WOMENS_DIVS = ["Women's", 'Masters Women', 'Grandmaster Women']
 
@@ -382,9 +386,6 @@ function JudgeSummaryTab({
                   }}>{entry.rank}</div>
                   <div style={{ flex: 1, textAlign: 'left' }}>
                     <div style={{ fontSize: '14px', fontWeight: 700, color: '#fff' }}>{entry.playerName}</div>
-                    {['Masters Men', 'Masters Women', 'Grandmaster Men', 'Grandmaster Women'].includes(entry.division) && (
-                      <div style={{ fontSize: '10px', color: '#B87DB5', fontFamily: 'var(--font-label)' }}>{entry.division}</div>
-                    )}
                   </div>
                   <div style={{ fontSize: '12px', color: '#555', fontFamily: 'var(--font-label)', flexShrink: 0, marginRight: '4px' }}>
                     {entry.totalPlacement} total
@@ -492,8 +493,6 @@ function LeaderboardTab({
   currentPlayerId: string | null
   currentPlayerDivision: string | null
 }) {
-  const [menFilter, setMenFilter] = useState<'Masters Men' | 'Grandmaster Men' | null>(null)
-  const [womenFilter, setWomenFilter] = useState<'Masters Women' | 'Grandmaster Women' | null>(null)
   const [juniorAge, setJuniorAge] = useState<number | null>(null)
   const [eventFilterId, setEventFilterId] = useState<string | null>(null)
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({})
@@ -577,24 +576,8 @@ function LeaderboardTab({
       rank: 1 + arr.filter(x => x.totalPlacement < e.totalPlacement).length,
     }))
 
-    // Compute sub-division ranks when showing full unfiltered pool
-    if (!filter && (pool === 'mens' || pool === 'womens')) {
-      const subDivDefs = pool === 'mens'
-        ? [{ key: 'Masters Men', label: 'Masters' }, { key: 'Grandmaster Men', label: '60+' }]
-        : [{ key: 'Masters Women', label: 'Masters' }, { key: 'Grandmaster Women', label: '60+' }]
-      for (const { key, label } of subDivDefs) {
-        const subRows = ranked.filter(r => playerInfoMap[r.playerId]?.division === key)
-        subRows.sort((a, b) => a.totalPlacement - b.totalPlacement)
-        subRows.forEach((r, _, arr) => {
-          // Ranking still happens for everyone — only the visible "1st Masters"
-          // badge is withheld from players who turned show_division off. The
-          // pool itself cannot be opted out of without breaking the standings.
-          if (playerInfoMap[r.playerId]?.show_division === false) return
-          r.subDivision = label
-          r.subDivisionRank = 1 + arr.filter(x => x.totalPlacement < r.totalPlacement).length
-        })
-      }
-    }
+    // No "1st Masters" badge any more: adults of every age are one field,
+    // and the age allowance is in the colour standards (Tāne, 20 Oct 2026).
     if (!ageFilter && pool === 'juniors') {
       // age_group comes ready-made from the players_public view (U10 0-9,
       // U12 10-11, U14 12-13, U16 14-16). One behaviour change from the
@@ -807,15 +790,10 @@ function LeaderboardTab({
       <div style={{ marginBottom: '24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
           <div style={{ fontSize: '15px', fontWeight: 700, color: '#fff', fontFamily: 'var(--font-display)', letterSpacing: '0.08em' }}>
-            {menFilter === 'Masters Men' ? 'Masters (Men)' : menFilter === 'Grandmaster Men' ? '60+ (Men)' : "Men's"}
-          </div>
-          <div style={{ display: 'flex', gap: '6px' }}>
-            <button onClick={() => { setMenFilter(null); setExpandedPlayerKey(null) }} style={chipStyle(menFilter === null)}>All</button>
-            <button onClick={() => { setMenFilter(menFilter === 'Masters Men' ? null : 'Masters Men'); setExpandedPlayerKey(null) }} style={chipStyle(menFilter === 'Masters Men')}>Masters</button>
-            <button onClick={() => { setMenFilter(menFilter === 'Grandmaster Men' ? null : 'Grandmaster Men'); setExpandedPlayerKey(null) }} style={chipStyle(menFilter === 'Grandmaster Men')}>60+</button>
+            Men&apos;s
           </div>
         </div>
-        {renderSection('mens', menFilter, null, 'mens') ?? (
+        {renderSection('mens', null, null, 'mens') ?? (
           <div style={{ color: '#555', fontSize: '13px', padding: '12px 0', fontFamily: 'var(--font-label)' }}>No scores yet</div>
         )}
       </div>
@@ -824,15 +802,10 @@ function LeaderboardTab({
       <div style={{ marginBottom: '24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
           <div style={{ fontSize: '15px', fontWeight: 700, color: '#fff', fontFamily: 'var(--font-display)', letterSpacing: '0.08em' }}>
-            {womenFilter === 'Masters Women' ? 'Masters (Women)' : womenFilter === 'Grandmaster Women' ? '60+ (Women)' : "Women's"}
-          </div>
-          <div style={{ display: 'flex', gap: '6px' }}>
-            <button onClick={() => { setWomenFilter(null); setExpandedPlayerKey(null) }} style={chipStyle(womenFilter === null)}>All</button>
-            <button onClick={() => { setWomenFilter(womenFilter === 'Masters Women' ? null : 'Masters Women'); setExpandedPlayerKey(null) }} style={chipStyle(womenFilter === 'Masters Women')}>Masters</button>
-            <button onClick={() => { setWomenFilter(womenFilter === 'Grandmaster Women' ? null : 'Grandmaster Women'); setExpandedPlayerKey(null) }} style={chipStyle(womenFilter === 'Grandmaster Women')}>60+</button>
+            Women&apos;s
           </div>
         </div>
-        {renderSection('womens', womenFilter, null, 'womens') ?? (
+        {renderSection('womens', null, null, 'womens') ?? (
           <div style={{ color: '#555', fontSize: '13px', padding: '12px 0', fontFamily: 'var(--font-label)' }}>No scores yet</div>
         )}
       </div>

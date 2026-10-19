@@ -195,9 +195,9 @@ export default function ColoursGuide() {
       <section style={card}>
         <H2 n={4}>Fair at every age and size</H2>
         <P>
-          Younger and older players get a head start of whole colours: under 14 and Grandmasters (60+)
-          {' '}{AGE_SHIFT.U14}, ages 14 to 16 and Masters (40+) {AGE_SHIFT.U16}.
-          Men and women have their own standards.
+          Younger and older players get a head start of whole colours, set by the age you turn this year:
+          under 14 and 60 or over {AGE_SHIFT.U14}, 14 to 16 and 40 or over {AGE_SHIFT.U16}.
+          It moves with you on 1 January. Men and women have their own standards.
         </P>
         <P>
           Lifts and loaded carries are measured against your bodyweight, which you are asked for on the

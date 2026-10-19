@@ -12,7 +12,7 @@
 import type { ReactNode } from 'react'
 import { gradeForRung, gradeInk } from '@/lib/grading'
 import { RAINBOW } from '@/lib/domainColours'
-import { standardsLadder, needsBodyweight, RATING_ONLY_NOTE } from '@/lib/standardsLadder'
+import { standardsLadder, needsBodyweight, ageAllowanceNote, RATING_ONLY_NOTE } from '@/lib/standardsLadder'
 import { STANDARDS } from '@/lib/standards'
 import type { GradePlayer } from '@/lib/playerGrades'
 import type { EventData } from '@/lib/eventData'
@@ -35,10 +35,12 @@ export default function StandardsLadderView({
   const ratio = needsBodyweight(ev)
   const ratingOnly = STANDARDS[ev.slug]?.kind === 'rating'
   const next = reached + 1
+  const allowance = ageAllowanceNote(ev, player)
 
   return (
     <div>
       {ratingOnly && <p style={{ fontSize: 13, color: '#999', margin: '0 0 8px' }}>{RATING_ONLY_NOTE}</p>}
+      {allowance && <p style={{ fontSize: 12.5, color: '#777', margin: '0 0 8px' }}>{allowance}</p>}
       {ratio && bodyweightKg == null && (
         <div style={{ margin: '0 0 8px' }}>
           <p style={{ fontSize: 13, color: '#999', margin: '0 0 6px' }}>
