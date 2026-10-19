@@ -48,7 +48,7 @@ Fonts: Bebas Neue (headings), Barlow (body), Barlow Condensed (labels). Use `var
 
 ## 5. Authentication and authorization
 
-- **Supabase Auth**: email/password and Google OAuth via `@supabase/ssr`. Client components use `createClient()` from `@/lib/supabase-browser`. `lib/supabase.ts` is legacy — do not use in new code. Server components use `lib/supabase-server.ts`.
+- **Supabase Auth**: email/password and Google via `@supabase/ssr`. Google uses Google's own button and `signInWithIdToken` (`components/GoogleSignInButton.tsx`, since v0.41.5.0) so Google shows allsport.nz, not the Supabase address; every origin that shows it must be an Authorized JavaScript origin on the Google OAuth client. `/auth/callback` still serves magic links and the redirect fallback. Client components use `createClient()` from `@/lib/supabase-browser`. `lib/supabase.ts` is legacy — do not use in new code. Server components use `lib/supabase-server.ts`.
 - `lib/supabase-cookies.ts` exports `AUTH_COOKIE_OPTIONS`; it must be passed to **every** Supabase client (browser, server, middleware, callback route). `httpOnly` is deliberately off (the browser client reads the session from `document.cookie`).
 - Any new `createServerClient` call site must forward the second `headers` argument of `setAll` (carries `Cache-Control: private, no-store`).
 - `lib/authCookie.ts` (`hasAuthCookie`) is a Supabase-free probe so the shell avoids importing the client; it fails open.
@@ -158,7 +158,7 @@ npx vitest run __tests__/grading.test.ts
 - New UI uses the canonical tokens and `components/ui.tsx` primitives; existing pages still use inline `style={{}}` heavily, so match the surrounding file.
 - Each new Supabase read of a possibly-missing table/column is its **own query** with PGRST205/42P01/42703 handled as "not live yet".
 - Dates: parse DATE columns with `lib/dates.ts` (`parseLocalDate`, `formatNZDate`, `sessionStart`), never `new Date('YYYY-MM-DD')`; all dates mean NZ time.
-- Commit/changelog: `VERSION` (currently `0.41.4.0`) and `CHANGELOG.md` are bumped per shipped change; open work is tracked in `TODOS.md`. Comments in this codebase explain *why* at length; match that density when you touch a risky area.
+- Commit/changelog: `VERSION` (currently `0.41.5.0`) and `CHANGELOG.md` are bumped per shipped change; open work is tracked in `TODOS.md`. Comments in this codebase explain *why* at length; match that density when you touch a risky area.
 - Event/standards/difficulty changes are made by editing the reviewed sheet and re-running the apply script, not by hand-editing generated output.
 
 ## 15. Important files and directories

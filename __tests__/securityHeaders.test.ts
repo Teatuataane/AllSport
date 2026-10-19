@@ -190,3 +190,24 @@ describe('safeNext — OAuth open-redirect guard', () => {
     }
   })
 })
+
+describe('Google sign-in button allowances', () => {
+  const csp = buildCsp('https://pvutdyosuhpwnklrpczu.supabase.co')
+  const directive = (name: string) =>
+    csp.split('; ').find(d => d.startsWith(`${name} `)) ?? ''
+
+  it('allows only the /gsi/ paths of accounts.google.com', () => {
+    expect(directive('script-src')).toContain('https://accounts.google.com/gsi/client')
+    expect(directive('frame-src')).toBe('frame-src https://accounts.google.com/gsi/')
+    expect(directive('connect-src')).toContain('https://accounts.google.com/gsi/')
+    expect(directive('style-src')).toContain('https://accounts.google.com/gsi/style')
+    // Never the bare host, which would allow any Google script.
+    expect(csp).not.toMatch(/https:\/\/accounts\.google\.com(?=[ ;]|$)/)
+  })
+
+  it('lets the sign-in popup hand its token back', () => {
+    const coop = buildSecurityHeaders('https://pvutdyosuhpwnklrpczu.supabase.co')
+      .find(h => h.key === 'Cross-Origin-Opener-Policy')?.value
+    expect(coop).toBe('same-origin-allow-popups')
+  })
+})
