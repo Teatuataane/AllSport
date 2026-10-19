@@ -159,12 +159,6 @@ const storageRows = [
     life: 'Until you clear your browser data.',
   },
   {
-    name: 'pending_session_code',
-    kind: 'Local storage',
-    purpose: 'Holds a session code while you sign in, so you land in the right session.',
-    life: 'Deleted as soon as you join.',
-  },
-  {
     name: 'allsport_postgame_…, allsport_fullhouse_… (and allsport_effortmax_…, no longer written)',
     kind: 'Local storage',
     purpose: 'Remembers that you have already seen an end-of-session or celebration message, so it does not repeat.',
@@ -195,7 +189,7 @@ const thirdParties = [
     name: 'Google Sign-In',
     role: 'Optional sign-in',
     detail:
-      'Only if you choose "Continue with Google". Google tells us your name and email address; we do not receive your Google password and we cannot see anything else in your Google account.',
+      'The "Continue with Google" button is loaded from Google on the sign-in and register pages, so Google receives your IP address and browser type when you open those pages. Only if you choose it does Google tell us your name and email address; we do not receive your Google password and we cannot see anything else in your Google account.',
   },
 ]
 

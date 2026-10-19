@@ -2,6 +2,11 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.42.1.0] - 2026-10-20
+
+### Changed
+- **"Continue with Google" no longer shows the Supabase address.** Players asked whether the sign-in was a scam because Google's account chooser said "continue to pvutdyosuhpwnklrpczu.supabase.co". The login, register and play pages now use Google's own sign-in button (`components/GoogleSignInButton.tsx`), which opens from allsport.nz, and hand Google's ID token to Supabase with `signInWithIdToken` (with a hashed nonce, `lib/googleSignIn.ts`). If Google's script cannot load, the old redirect button appears instead. The CSP allows only the `/gsi/` paths of accounts.google.com, and `Cross-Origin-Opener-Policy` is `same-origin-allow-popups` so the popup can return its token. The privacy page says Google's script loads on the sign-in pages, and drops `pending_session_code`, which is no longer written. **Needs** https://allsport.nz (and http://localhost:3000 for dev) under "Authorized JavaScript origins" on the Google OAuth client before it is deployed.
+
 ## [0.42.0.0] - 2026-10-20
 
 ### Changed

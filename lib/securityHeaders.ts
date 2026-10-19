@@ -8,6 +8,8 @@
  * only thing that notices.
  */
 
+import { GSI_ORIGIN } from './googleSignIn'
+
 export type HeaderPair = { key: string; value: string }
 
 /**
@@ -34,7 +36,12 @@ export function buildCsp(supabaseUrl: string): string {
 
   return [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline'",
+    // accounts.google.com/gsi/: "Continue with Google" is Google's own button
+    // (components/GoogleSignInButton.tsx), so Google's account chooser names
+    // allsport.nz instead of the Supabase project address. It needs Google's
+    // script, its button iframe, its stylesheet and its token fetch, and
+    // nothing else from Google. Scoped to the /gsi/ path, not the whole host.
+    `script-src 'self' 'unsafe-inline' ${GSI_ORIGIN}/gsi/client`,
     // No Google Fonts hosts. The typefaces are self-hosted by next/font/google
     // (app/layout.tsx), so the stylesheet and the font files both come from our
     // own origin and nothing needs to reach Google.
@@ -44,14 +51,14 @@ export function buildCsp(supabaseUrl: string): string {
     // future `<link rel="stylesheet" href="https://fonts.googleapis.com/...">`
     // from quietly reopening it. Without them that link just works, and nobody
     // finds out. If a font stops rendering, the fault is in layout.tsx.
-    "style-src 'self' 'unsafe-inline'",
+    `style-src 'self' 'unsafe-inline' ${GSI_ORIGIN}/gsi/style`,
     "font-src 'self'",
     // https: covers partner club logos (partners.logo_url is an arbitrary URL
     // set by a kaiwhakawā). data:/blob: cover the session QR code canvas.
     "img-src 'self' data: blob: https:",
-    `connect-src 'self' ${origin} ${socket}`,
+    `connect-src 'self' ${origin} ${socket} ${GSI_ORIGIN}/gsi/`,
     "frame-ancestors 'none'",
-    "frame-src 'none'",
+    `frame-src ${GSI_ORIGIN}/gsi/`,
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -79,7 +86,10 @@ export function buildSecurityHeaders(
     // Legacy backstop for browsers that ignore frame-ancestors.
     { key: 'X-Frame-Options', value: 'DENY' },
     { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-    { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+    // same-origin-allow-popups, not same-origin: the Google sign-in popup has
+    // to hand its token back to the page that opened it, and same-origin cuts
+    // that link. Pages still cannot be reached by windows they did not open.
+    { key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' },
     {
       key: 'Permissions-Policy',
       value: 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
