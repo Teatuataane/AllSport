@@ -15,7 +15,7 @@
 import { STANDARDS } from './standards'
 import {
   AGE_SHIFT, DRILL_CAP, RATING_FLOOR, RATING_STEP, TOP_RUNG,
-  ageBand, gradeForRung, ratioThresholdsKg, thresholdFor, bwLoadKg,
+  ageBand, gradeForRung, ratioThresholdsKg, thresholdFor, bwLoadKg, type AgeBand,
 } from './grading'
 import { ladderFor, type GradePlayer } from './playerGrades'
 import { formatPR } from './scoreFormat'
@@ -35,6 +35,26 @@ const trim = (n: number) => String(Math.round(n * 100) / 100)
 
 /** The line a rating-only event carries above its rating rows. */
 export const RATING_ONLY_NOTE = 'No drill colours: this event is graded on games.'
+
+/** Who each band is, in the age a player turns this year. */
+const BAND_AGES: Record<AgeBand, string> = {
+  U12: 'under 12 this year', U14: '12 or 13 this year', U16: '14 to 16 this year',
+  Open: '', Masters: '40 or over this year', Grandmaster: '60 or over this year',
+}
+
+/**
+ * The line under a ladder that says it is already shifted for age, or null
+ * when no shift applies. Without it a player comparing standards with a friend
+ * sees different numbers and no reason (Tāne, 20 Oct 2026). Rating colours are
+ * never shifted, so a rating-only event says nothing.
+ */
+export function ageAllowanceNote(ev: EventData, player: GradePlayer): string | null {
+  if (STANDARDS[ev.slug]?.kind === 'rating') return null
+  const band = ageBand(player.division, player.ageYears)
+  const shift = AGE_SHIFT[band]
+  if (!shift) return null
+  return `Includes your age allowance: +${shift} colour${shift === 1 ? '' : 's'} (${BAND_AGES[band]}).`
+}
 
 /** Does this event's ladder need a bodyweight to read in kilograms? */
 export function needsBodyweight(ev: EventData): boolean {

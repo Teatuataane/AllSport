@@ -21,18 +21,21 @@ function calculateAge(dob: string): number {
 // men's division, which asks a personal question and then quietly answers it
 // on the player's behalf. Anyone who does not pick Male or Female now chooses
 // their own starting division, and a kaiwhakawā can move anyone at any time.
+//
+// Age is not a division (Tāne, 20 Oct 2026): Masters and Grandmaster are gone,
+// and the age allowance lives in the colour standards, read from the date of
+// birth. Juniors are everyone who turns 16 or under THIS year, the same one
+// age per year the standards use; a daily job moves them to Men's or Women's
+// in the year they turn 17.
 function calculateDivision(dob: string, gender: string, preferred: string): string {
-  const age = calculateAge(dob)
-  if (age <= 16) return 'Juniors'
+  if (ageThisYear(dob) <= 16) return 'Juniors'
   const womens = gender === 'Female' || (gender === 'Other' && preferred === "Women's")
-  if (womens) {
-    if (age < 40) return "Women's"
-    if (age < 60) return 'Masters Women'
-    return 'Grandmaster Women'
-  }
-  if (age < 40) return "Men's"
-  if (age < 60) return 'Masters Men'
-  return 'Grandmaster Men'
+  return womens ? "Women's" : "Men's"
+}
+
+/** The age a player turns this calendar year, birthday or not. */
+function ageThisYear(dob: string): number {
+  return new Date().getFullYear() - Number(dob.slice(0, 4))
 }
 
 const STEP_NAMES = ['Account Details', 'Your Profile', 'Display Preferences']
@@ -92,10 +95,10 @@ function RegisterInner() {
   const set = (field: string, value: any) =>
     setForm(prev => ({ ...prev, [field]: value }))
 
-  // Under-17s are Juniors regardless, so a division resolves without needing
+  // Juniors are Juniors regardless, so a division resolves without needing
   // the extra pick. Everyone else who chose 'Other' must choose a division.
   const needsDivisionPick =
-    form.gender === 'Other' && !!form.date_of_birth && calculateAge(form.date_of_birth) > 16
+    form.gender === 'Other' && !!form.date_of_birth && ageThisYear(form.date_of_birth) > 16
 
   const division = form.date_of_birth && form.gender && (!needsDivisionPick || form.division_preference)
     ? calculateDivision(form.date_of_birth, form.gender, form.division_preference)
@@ -238,8 +241,8 @@ function RegisterInner() {
         ))}
       </div>
       <div style={{ fontSize: '11px', color: '#555', marginTop: '6px', lineHeight: 1.6 }}>
-        This is the only thing we use it for. Divisions are split by age as well, so a
-        Masters or 60+ division is worked out from your date of birth.
+        This is the only thing we use it for. Your age allowance on the colour standards
+        is worked out from your date of birth.
       </div>
       {needsDivisionPick && (
         <div style={{ marginTop: '10px', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: '10px', padding: '12px 14px' }}>
@@ -435,7 +438,7 @@ function RegisterInner() {
             {[
               { field: 'show_username', label: 'Show username / handle', sub: 'Recommended — lets people know who you are without revealing personal details' },
               { field: 'show_full_name', label: 'Show full name', sub: 'Your legal name will be visible on public leaderboards' },
-              { field: 'show_division', label: 'Show division', sub: 'Shows labels like "1st Masters" next to your name. You are ranked in your division either way' },
+              { field: 'show_division', label: 'Show division', sub: 'Shows your division (Men, Women or Junior) next to your name. You are ranked in your division either way' },
             ].map(({ field, label, sub }) => (
               <label key={field} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', cursor: 'pointer', marginBottom: '16px' }}>
                 <input

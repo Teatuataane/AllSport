@@ -425,10 +425,10 @@ describe('the grading identity cannot be self-edited', () => {
     const read = [...loader.matchAll(/from\('players(?:_public)?'\)\.select\('([^']+)'\)/g)]
       .flatMap(m => m[1].split(',').map(c => c.trim()))
     const graded = new Set(read.filter(c => !['bodyweight_band', 'bodyweight_band_first'].includes(c)))
-    // age_years is players_public's view of date_of_birth; is_active and
+    // age_years and birth_year are players_public's views of date_of_birth; is_active and
     // is_guest gate conferral in the route. is_guest is pinned by the older
     // guard_players_privileged_columns, the rest by 20260921182106.
-    const pinned = new Set(['division', 'age_years', 'gender', 'is_active', 'is_guest'])
+    const pinned = new Set(['division', 'age_years', 'birth_year', 'gender', 'is_active', 'is_guest'])
     expect([...graded].sort()).toEqual([...pinned].sort())
   })
 })

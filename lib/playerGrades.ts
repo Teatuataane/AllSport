@@ -16,12 +16,25 @@ import {
   type AgeBand, type DomainGradeResult, type OverallGradeResult, type ColourGate,
 } from './grading'
 import type { SportRating } from './headToHead'
+import { ageInYear } from './seasonYear'
 
 export type GradePlayer = {
   division: string | null
+  /**
+   * The age the ladder is shifted for: the age the player turns in the year
+   * being graded. Build it with playerInYear from the age today and the birth
+   * year; a raw age today is only right for the current year after a birthday.
+   */
   ageYears: number | null
+  /** players_public.birth_year. Undefined against a database without it. */
+  birthYear?: number | null
   /** The registration answer. Only read for juniors, who share one division. */
   gender: string | null
+}
+
+/** The player as graded in `year`: aged as they turn that year. */
+export function playerInYear<P extends GradePlayer>(p: P, year: number): P {
+  return { ...p, ageYears: ageInYear(p, year) }
 }
 
 /**

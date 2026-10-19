@@ -124,7 +124,7 @@ export const TOP_RUNG = 12
  * conferred one. HOME forces one full recheck per player when this differs
  * from the version it last checked under (lib/useNewColours.ts).
  */
-export const GRADING_RULES_VERSION = '2026-10-18-hang-taniwha-banded'
+export const GRADING_RULES_VERSION = '2026-10-20-age-from-birth-year'
 export const DOMAIN_COUNT = 10
 
 /**
@@ -903,17 +903,31 @@ export function bodyweightOn(
   return best && best.kg > 0 ? best.kg : null
 }
 
-/** Age band from a player's division and age. Mirrors the division rules. */
+/**
+ * Age band from the age a player turns in the year being graded (Tāne, 20 Oct
+ * 2026: one age for the whole colour year, so a birthday in June never moves a
+ * colour mid-season). `ageYears` is that age; lib/seasonYear.ts ageInYear
+ * works it out from the birth year.
+ *
+ * The age decides, not the division. The band used to be read from the
+ * division name, and a division is only ever changed by hand: a player who
+ * turned 40 kept the Open ladder until a kaiwhakawā moved them, and a junior
+ * who turned 17 kept the U16 allowance. The division is only a fallback for a
+ * player with no date of birth, who grades as they always did.
+ */
 export function ageBand(division: string | null, ageYears: number | null): AgeBand {
+  if (ageYears != null && Number.isFinite(ageYears)) {
+    if (ageYears < 12) return 'U12'
+    if (ageYears < 14) return 'U14'
+    if (ageYears < 17) return 'U16'
+    if (ageYears >= 60) return 'Grandmaster'
+    if (ageYears >= 40) return 'Masters'
+    return 'Open'
+  }
   const d = division ?? ''
   if (/Grandmaster/.test(d)) return 'Grandmaster'
   if (/Masters/.test(d)) return 'Masters'
   // 'Youth' is the legacy value for Juniors and still appears on old rows.
-  if (/Junior|Youth/.test(d)) {
-    if (ageYears == null) return 'U14'
-    if (ageYears < 12) return 'U12'
-    if (ageYears < 14) return 'U14'
-    return 'U16'
-  }
+  if (/Junior|Youth/.test(d)) return 'U14'
   return 'Open'
 }

@@ -27,7 +27,8 @@ import { getEventByName, isTimedEffort, decodeDistanceEffort, DT_CAP, type Event
 import { STANDARDS } from './standards'
 import { tierScoring, fmtTime } from './scoring'
 import { eventRungInGame, placePoints, gameTotalOf } from './leaderboardScores'
-import { ladderFor, liftKg, type PlayerGrades, type GradePlayer } from './playerGrades'
+import { ladderFor, liftKg, playerInYear, type PlayerGrades, type GradePlayer } from './playerGrades'
+import { yearOfDay } from './seasonYear'
 import {
   ageBand, rungForScore, rungForCompound, thresholdFor, ratioThresholdsKg, bodyweightOn, gradeForRung, compoundLadderAt,
   AGE_SHIFT, DOMAIN_COUNT, DRILL_CAP, TOP_RUNG, type BodyweightDeclaration,
@@ -81,10 +82,13 @@ export function gameScores(playerId: string, inputs: GradeInputs): Map<string, G
   for (const [sessionId, g] of bySession) {
     const ratings = ratingAt(sessionId)
     const contests = contestAt(sessionId)
+    // The age turned in the game's year, as gameColourTotals prices it.
+    const year = yearOfDay(g.date)
+    const aged = year == null ? player : playerInYear(player, year)
     const rungs = new Map<string, number>()
     let points = 0
     for (const [name, list] of g.events) {
-      const rung = eventRungInGame(name, list, player, ratings.get(name), contests.get(name))
+      const rung = eventRungInGame(name, list, aged, ratings.get(name), contests.get(name))
       rungs.set(name, rung)
       points += rung
     }
