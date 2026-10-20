@@ -23,6 +23,9 @@ async function count(path: string): Promise<number | null> {
       method: 'HEAD',
       headers: { apikey: key, Authorization: `Bearer ${key}`, Prefer: 'count=exact', Range: '0-0' },
       next: { revalidate: 3600 },
+      // A hung Supabase (21 Oct 2026, Disk IO throttling) must not hang the
+      // homepage: the build gives a page 60 seconds and then fails the deploy.
+      signal: AbortSignal.timeout(5000),
     })
     if (!res.ok) return null
     const total = Number(res.headers.get('content-range')?.split('/')[1])

@@ -2,6 +2,12 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.43.1.1] - 2026-10-21
+
+### Fixed
+- **Signed-in players could not load any page while Supabase was slow** ("Routing middleware for this page took too long to respond"). The middleware waits on `getUser()`, which only calls Supabase Auth when there is a login cookie, so signed-out browsers loaded and signed-in phones did not. On 21 Oct 2026 the project was throttled for Disk IO and every Supabase request hung. The call is now given 4 seconds; past that the page is served without a refreshed cookie and the next request tries again.
+- The homepage's three community counts give up after 5 seconds, so a hung Supabase no longer fails the build (Next gives a page 60 seconds to prerender).
+
 ## [0.43.1.0] - 2026-10-21
 
 ### Fixed
