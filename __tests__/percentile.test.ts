@@ -9,9 +9,9 @@ import type { RatingEventRow, RatingPlayerRow } from '@/lib/rating'
 // Four men in one pool, one woman (separate pool), one junior (separate pool).
 const players: RatingPlayerRow[] = [
   { id: 'm1', division: "Men's" },
-  { id: 'm2', division: 'Masters Men' },   // same pool as m1
+  { id: 'm2', division: "Men's" },
   { id: 'm3', division: "Men's" },
-  { id: 'm4', division: 'Grandmaster Men' },// same pool as m1
+  { id: 'm4', division: "Men's" },
   { id: 'w1', division: "Women's" },
   { id: 'j1', division: 'Juniors' },
 ]

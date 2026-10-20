@@ -18,11 +18,7 @@ import type { GamePlace } from '@/lib/gameReport'
 const supabase = createClient()
 
 // Order divisions the way the rest of the app does.
-const DIVISION_ORDER = [
-  "Men's", "Women's", 'Juniors',
-  'Masters Men', 'Masters Women',
-  'Grandmaster Men', 'Grandmaster Women',
-]
+const DIVISION_ORDER = ["Men's", "Women's", 'Juniors']
 
 type SessionRow = {
   id: string

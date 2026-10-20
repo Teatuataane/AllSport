@@ -98,13 +98,10 @@ const tabs = [
   { key: 'juniors', label: 'Juniors', division: 'Juniors', color: '#4DB26E' },
 ] as const
 
-// No Masters or Grandmaster tabs (Tāne, 20 Oct 2026): age is in the colour
-// standards, so it is not a division. Rows still holding those values before
-// the migration that folds them in read as Men or Women.
+// No age tabs (Tāne, 20 Oct 2026): age is in the colour standards, so it is
+// not a division.
 const SHORT_DIVISION: Record<string, string> = {
-  "Men's": 'Men', "Women's": 'Women', Juniors: 'Junior', Youth: 'Junior',
-  'Masters Men': 'Men', 'Masters Women': 'Women',
-  'Grandmaster Men': 'Men', 'Grandmaster Women': 'Women',
+  "Men's": 'Men', "Women's": 'Women', Juniors: 'Junior',
 }
 
 const inTab = (division: string | null, tab: typeof tabs[number]) =>

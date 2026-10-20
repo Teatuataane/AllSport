@@ -12,7 +12,7 @@ const ev = (name: string) => {
   return e
 }
 const openMan: GradePlayer = { division: "Men's", ageYears: 30, gender: 'Male' }
-const master: GradePlayer = { division: 'Masters Men', ageYears: 45, gender: 'Male' }
+const master: GradePlayer = { division: "Men's", ageYears: 45, gender: 'Male' }
 const under14: GradePlayer = { division: 'Juniors', ageYears: 12, gender: 'Female' }
 /** 75kg was the middle of the old "70 to 80kg" band, so the numbers below hold. */
 const BW = 75
@@ -22,8 +22,8 @@ const row = (event_name: string, raw_score: number, extra: Partial<GradeResultRo
 describe('which ladder applies', () => {
   it('takes an adult\'s from their division', () => {
     expect(ladderFor({ division: "Women's", gender: null })).toBe('F')
-    expect(ladderFor({ division: 'Masters Women', gender: 'Male' })).toBe('F')
-    expect(ladderFor({ division: 'Grandmaster Men', gender: null })).toBe('M')
+    expect(ladderFor({ division: "Women's", gender: 'Male' })).toBe('F')
+    expect(ladderFor({ division: "Men's", gender: null })).toBe('M')
   })
   it('takes a junior\'s from the registration answer, in either case', () => {
     expect(ladderFor({ division: 'Juniors', gender: 'Female' })).toBe('F')
@@ -32,13 +32,18 @@ describe('which ladder applies', () => {
   })
   it('gives a junior who answered Other the boys\' standards, as Tāne decided', () => {
     expect(ladderFor({ division: 'Juniors', gender: 'Other' })).toBe('M')
+    // Under 12 boys and girls share the one list (21 Oct 2026); 12 and up split.
+    expect(ladderFor({ division: 'Juniors', gender: 'Female', ageYears: 11 })).toBe('M')
+    expect(ladderFor({ division: 'Juniors', gender: 'Female', ageYears: 12 })).toBe('F')
+    expect(ladderFor({ division: 'Juniors', gender: 'Female', ageYears: null })).toBe('F')
   })
 })
 
 describe('an event\'s colour', () => {
   // 12 Oct 2026 review: one 1-arm push-up is men's Kōura, so Uenuku for a Master.
-  it('reproduces the review: one 1-arm push-up is Uenuku for a Master', () => {
-    const g = eventGrade(ev('Pushups'), [row('Pushups', 40001, { difficulty_tier: '1 Arm Pushup' })], master)
+  it('reproduces the review: one 1-arm push-up is Uenuku with a whole colour of allowance', () => {
+    // Pushups is Stamina, a whole colour of allowance from 55 (lib/ageAllowance.ts).
+    const g = eventGrade(ev('Pushups'), [row('Pushups', 40001, { difficulty_tier: '1 Arm Pushup' })], { ...master, ageYears: 56 })
     expect(g).toEqual({
       slug: ev('Pushups').slug, rung: 11, exact: 11.05, gradeable: true, played: true,
       best: { raw_score: 40001, weight_kg: null, difficulty_tier: '1 Arm Pushup' },

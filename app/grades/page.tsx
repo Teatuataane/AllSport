@@ -12,11 +12,12 @@
 
 import Link from 'next/link'
 import {
-  GRADES, MA, GAMES_REQUIRED, AGE_SHIFT, DOMAIN_TOP_EVENTS,
+  GRADES, MA, GAMES_REQUIRED, DOMAIN_TOP_EVENTS,
   DRILL_CAP, RATING_FLOOR, RATING_STEP, MIN_RATED_GAMES, gradeForRung, gradeInk, overallRung, averageRung,
   domainGrade,
 } from '@/lib/grading'
 import { GradeDot } from '@/components/GradeDot'
+import { ADULT_AGES, ADULT_ALLOWANCE, ADULT_ROWS, JUNIOR_ALLOWANCE, JUNIOR_ROWS, formatAllowance } from '@/lib/ageAllowance'
 
 export const metadata = {
   title: 'Colours · AllSport',
@@ -47,6 +48,31 @@ function H2({ n, children }: { n: number; children: React.ReactNode }) {
     }}>
       <span style={{ color: 'var(--text-muted)', marginRight: 8 }}>{n}</span>{children}
     </h2>
+  )
+}
+
+/** One allowance table, read straight from lib/ageAllowance.ts so it cannot drift. */
+function AllowanceTable({ head, rows }: { head: readonly string[]; rows: readonly { label: string; values: readonly number[] }[] }) {
+  const cell = { padding: '6px 6px', textAlign: 'center' as const, borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' as const }
+  return (
+    <div style={{ overflowX: 'auto', margin: '0 0 12px' }}>
+      <table style={{ borderCollapse: 'collapse', fontSize: 13, color: 'var(--grey-light)', minWidth: '100%' }}>
+        <thead>
+          <tr>
+            <th style={{ ...cell, ...label, fontSize: 11, textAlign: 'left' }}>Age this year</th>
+            {head.map(h => <th key={h} style={{ ...cell, ...label, fontSize: 11 }}>{h}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(r => (
+            <tr key={r.label}>
+              <td style={{ ...cell, textAlign: 'left', whiteSpace: 'normal', minWidth: 140 }}>{r.label}</td>
+              {r.values.map((v, i) => <td key={i} style={{ ...cell, color: v ? 'var(--white)' : 'var(--text-muted)' }}>{v ? formatAllowance(v) : '0'}</td>)}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   )
 }
 
@@ -195,10 +221,19 @@ export default function ColoursGuide() {
       <section style={card}>
         <H2 n={4}>Fair at every age and size</H2>
         <P>
-          Younger and older players get a head start of whole colours, set by the age you turn this year:
-          under 14 and 60 or over {AGE_SHIFT.U14}, 14 to 16 and 40 or over {AGE_SHIFT.U16}.
-          It moves with you on 1 January. Men and women have their own standards.
+          Younger and older players get a head start, counted in colours: with one, you earn each colour at
+          the standard for the colour below it. It depends on the domain, because age takes speed and power
+          first and skill last, and on the age you turn this year, so it moves with you on 1 January.
+          A half counts half a colour toward your score. Men and women have their own standards.
         </P>
+        <AllowanceTable
+          head={ADULT_AGES.map((a, i) => (i === ADULT_AGES.length - 1 ? `${a}+` : String(a)))}
+          rows={ADULT_ROWS.map(r => ({ label: r.label, values: ADULT_ALLOWANCE[r.group] }))}
+        />
+        <AllowanceTable
+          head={['Under 12', '12 to 13', '14 to 16']}
+          rows={JUNIOR_ROWS.map(r => ({ label: r.label, values: JUNIOR_ALLOWANCE[r.group] }))}
+        />
         <P>
           Lifts and loaded carries are measured against your bodyweight, which you are asked for on the
           scoring screen on any day you play or train one. Without it those events count as not met.

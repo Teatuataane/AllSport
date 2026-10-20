@@ -17,6 +17,7 @@ import {
 } from './grading'
 import type { SportRating } from './headToHead'
 import { ageInYear } from './seasonYear'
+import { ageAllowance } from './ageAllowance'
 
 export type GradePlayer = {
   division: string | null
@@ -122,9 +123,15 @@ export type PlayerGrades = {
  *
  * A junior who answered "Other" has neither, and takes the boys' standards
  * (Tāne, 16 September 2026).
+ *
+ * Under 12 (turning 11 or younger in the year graded), boys and girls perform
+ * much the same, so they share one list: the boys' (Open) list, which the
+ * junior age allowance is measured against (Tāne, 21 Oct 2026). A junior with
+ * no date of birth keeps the list their answer gives.
  */
-export function ladderFor(p: Pick<GradePlayer, 'division' | 'gender'>): 'M' | 'F' {
+export function ladderFor(p: Pick<GradePlayer, 'division' | 'gender'> & { ageYears?: number | null }): 'M' | 'F' {
   const d = p.division ?? ''
+  if (p.ageYears != null && p.ageYears < 12) return 'M'
   if (/Women/.test(d)) return 'F'
   if (/Men/.test(d)) return 'M'
   return /^f/i.test(p.gender ?? '') ? 'F' : 'M'
@@ -179,8 +186,35 @@ export function eventGrade(
   p: GradePlayer,
   rating?: SportRating,
 ): EventGrade {
+  const allowance = ageAllowance(p, ev.domainNumber)
+  const low = Math.floor(allowance)
+  const lower = eventGradeAt(ev, rows, p, low, rating)
+  if (allowance === low) return lower
+  // A half allowance (Tāne, 20 Oct 2026): the exact score at the whole step
+  // below and at the whole step above, averaged. The colour held is its whole
+  // part, so a half is worth half a colour on the exact score and, past the
+  // middle of a colour, the colour itself. Everything else (the best row, a
+  // bodyweight block) comes from the step below unless the colour rose.
+  const upper = eventGradeAt(ev, rows, p, low + 1, rating)
+  const mean = (eventCredit(lower) + eventCredit(upper)) / 2
+  const rung = Math.max(lower.rung, Math.min(upper.rung, Math.floor(mean + 1e-9)))
+  const exact = Math.floor(mean * 100 + 1e-9) / 100
+  const base = rung > lower.rung ? upper : lower
+  const { exact: _drop, ...rest } = base
+  void _drop
+  return { ...rest, rung, ...(exact > rung ? { exact } : {}) }
+}
+
+/** The colour one player's rows earn in one event with the ladder moved `shift` whole colours. */
+function eventGradeAt(
+  ev: EventData,
+  rows: readonly GradeResultRow[],
+  p: GradePlayer,
+  shift: number,
+  rating?: SportRating,
+): EventGrade {
   const s = STANDARDS[ev.slug]
-  const band = ageBand(p.division, p.ageYears)
+  const band = shift
   const rated = rating ? ratingRung(rating.rating, rating.games) : 0
   const drillRows = rows.filter(r => r.raw_score != null && !isGameRow(ev, r) && onCurrentLadder(ev, r))
   const played = rows.length > 0 || !!rating

@@ -23,7 +23,7 @@ import type { GradeState } from '@/lib/loadGrades'
 
 afterEach(cleanup)
 
-const master: GradePlayer = { division: 'Masters Men', ageYears: 45, gender: 'Male' }
+const master: GradePlayer = { division: "Men's", ageYears: 45, gender: 'Male' }
 const row = (event_name: string, raw_score: number, extra: Partial<GradeResultRow> = {}): GradeResultRow =>
   ({ event_name, raw_score, weight_kg: null, difficulty_tier: null, ...extra })
 

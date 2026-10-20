@@ -124,7 +124,7 @@ export const TOP_RUNG = 12
  * conferred one. HOME forces one full recheck per player when this differs
  * from the version it last checked under (lib/useNewColours.ts).
  */
-export const GRADING_RULES_VERSION = '2026-10-20-age-from-birth-year'
+export const GRADING_RULES_VERSION = '2026-10-21-age-table-u12-one-list'
 export const DOMAIN_COUNT = 10
 
 /**
@@ -392,21 +392,33 @@ export function colourGate(input: { domainNumber: number; standardsRung: number;
 // value-scaling design this replaces multiplied some standards and divided
 // others, and getting that backwards made a standard HARDER with age.
 //
-// Age SHIFTS THE LADDER; it does not scale the value (settled in review). A band
-// that shifts one colour earns colour c at the Open standard for colour c - 1,
-// so a Masters player's Taniwha is an Open player's Uenuku. Below the Open floor
+// Age SHIFTS THE LADDER; it does not scale the value (settled in review). An
+// allowance of one colour earns colour c at the Open standard for colour c - 1,
+// so with it a Taniwha is an Open player's Uenuku. How many colours a player
+// gets is per domain and per age (lib/ageAllowance.ts, Tāne 20 Oct 2026); the
+// functions here take a whole number of colours, or a band for the flat
+// allowance a player with no date of birth still gets. Below the Open floor
 // the ladder is extrapolated by its own first step, so the youngest players can
 // earn the bottom colours for a performance under the Open Kiwikiwi.
 
-export type AgeBand = 'U12' | 'U14' | 'U16' | 'Open' | 'Masters' | 'Grandmaster'
+export type AgeBand = 'U12' | 'U14' | 'U16' | 'Open' | 'Over40' | 'Over60'
 
 /**
- * Colours each band moves up the ladder. Under 14 and Grandmasters two; 14 to
- * 16 and Masters one. U14 was raised to two in review so that no child gets
- * less help than an older one.
+ * The flat allowance before the domain table (lib/ageAllowance.ts): under 14
+ * and 60 or over two colours, 14 to 16 and 40 to 59 one, in every domain. Only
+ * a player with no date of birth is still graded on it.
  */
 export const AGE_SHIFT: Record<AgeBand, number> = {
-  U12: 2, U14: 2, U16: 1, Open: 0, Masters: 1, Grandmaster: 2,
+  U12: 2, U14: 2, U16: 1, Open: 0, Over40: 1, Over60: 2,
+}
+
+/**
+ * Colours a ladder moves: a band's flat shift, or a whole number of colours
+ * given directly. lib/ageAllowance.ts works out the number per domain; a half
+ * is never passed here (lib/playerGrades.ts grades it as two whole steps).
+ */
+export function shiftOf(band: AgeBand | number): number {
+  return typeof band === 'number' ? Math.max(0, Math.floor(band)) : AGE_SHIFT[band]
 }
 
 /**
@@ -432,11 +444,11 @@ export function thresholdFor(thresholds: readonly number[], r: number): number {
 export function rungForScore(
   score: number,
   thresholds: readonly number[],
-  band: AgeBand,
+  band: AgeBand | number,
   { cap = TOP_RUNG }: { cap?: number } = {}
 ): number {
   if (thresholds.length === 0) return 0
-  const shift = AGE_SHIFT[band]
+  const shift = shiftOf(band)
   const top = Math.min(TOP_RUNG, thresholds.length + shift)
   let rung = 0
   for (let c = 1; c <= top; c++) {
@@ -466,9 +478,9 @@ export function meetsLoadHold(score: number, threshold: number): boolean {
 }
 
 /** rungForScore for a load-and-hold ladder: each colour checks its load and its time. */
-export function rungForLoadHold(score: number, thresholds: readonly number[], band: AgeBand): number {
+export function rungForLoadHold(score: number, thresholds: readonly number[], band: AgeBand | number): number {
   if (thresholds.length === 0) return 0
-  const shift = AGE_SHIFT[band]
+  const shift = shiftOf(band)
   const top = Math.min(TOP_RUNG, thresholds.length + shift)
   let rung = 0
   for (let c = 1; c <= top; c++) {
@@ -506,9 +518,9 @@ export function meetsCarry(score: number, threshold: number): boolean {
 }
 
 /** rungForScore for a carry ladder: each colour checks its load and its distance. */
-export function rungForCarry(score: number, thresholds: readonly number[], band: AgeBand): number {
+export function rungForCarry(score: number, thresholds: readonly number[], band: AgeBand | number): number {
   if (thresholds.length === 0) return 0
-  const shift = AGE_SHIFT[band]
+  const shift = shiftOf(band)
   const top = Math.min(TOP_RUNG, thresholds.length + shift)
   let rung = 0
   for (let c = 1; c <= top; c++) {
@@ -554,10 +566,10 @@ export const HALF_STEP_FLOOR = 0.5
  * more. Bodyweight rungs (no load to reach) never count; a mode that is not
  * compound is worth its rung.
  */
-export function halfStepCredit(mode: string, score: number, thresholds: readonly number[], band: AgeBand, rung: number): number {
+export function halfStepCredit(mode: string, score: number, thresholds: readonly number[], band: AgeBand | number, rung: number): number {
   const loadHold = mode === 'weight+time' || mode === 'weight+reps'
   if ((!loadHold && mode !== 'weight+distance+time') || thresholds.length === 0) return rung
-  const shift = AGE_SHIFT[band]
+  const shift = shiftOf(band)
   const top = Math.min(TOP_RUNG, thresholds.length + shift)
   for (let c = top; c > rung; c--) {
     const tv = thresholdFor(thresholds, c - shift)
@@ -635,12 +647,12 @@ const TIER_BAND = 10000
 export function exactForScore(
   score: number,
   thresholds: readonly number[],
-  band: AgeBand,
+  band: AgeBand | number,
   { cap = TOP_RUNG, tiered = false, timed = false }: { cap?: number; tiered?: boolean; timed?: boolean } = {},
 ): number {
   if (thresholds.length === 0) return 0
   const rung = rungForScore(score, thresholds, band, { cap })
-  const shift = AGE_SHIFT[band]
+  const shift = shiftOf(band)
   const top = Math.min(TOP_RUNG, thresholds.length + shift, cap)
   if (rung >= top) return rung
   const from = thresholdFor(thresholds, rung - shift)
@@ -676,11 +688,11 @@ function compoundKeys(mode: string, v: number): number[] {
  * weaker part is the time however heavy the load, and the half step is what
  * stops a Taniwha load held 25s reading as Kiwikiwi.
  */
-export function exactForCompound(mode: string, score: number, thresholds: readonly number[], band: AgeBand): number {
+export function exactForCompound(mode: string, score: number, thresholds: readonly number[], band: AgeBand | number): number {
   const rung = rungForCompound(mode, score, thresholds, band) ?? 0
   if (thresholds.length === 0) return rung
   const half = halfStepCredit(mode, score, thresholds, band, rung)
-  const shift = AGE_SHIFT[band]
+  const shift = shiftOf(band)
   const top = Math.min(TOP_RUNG, thresholds.length + shift)
   if (rung >= top) return Math.max(rung, half)
   const s = compoundKeys(mode, score)
@@ -745,7 +757,7 @@ export function isCompoundMode(mode: string): boolean {
   return mode === 'weight+time' || mode === 'weight+reps' || mode === 'weight+distance+time'
 }
 
-export function rungForCompound(mode: string, score: number, thresholds: readonly number[], band: AgeBand): number | null {
+export function rungForCompound(mode: string, score: number, thresholds: readonly number[], band: AgeBand | number): number | null {
   if (mode === 'weight+time' || mode === 'weight+reps') return rungForLoadHold(score, thresholds, band)
   if (mode === 'weight+distance+time') return rungForCarry(score, thresholds, band)
   return null
@@ -761,8 +773,8 @@ export function rungForCompound(mode: string, score: number, thresholds: readonl
 // rating later falls.
 //
 // The rating is NOT age-shifted. It already measures you against the people you
-// actually play, of every age; shifting it would turn a Masters player's 1,500
-// into a Taniwha.
+// actually play, of every age; shifting it would turn a 1,500 rating of a
+// player over 40 into a Taniwha.
 
 /** Kahurangi: the highest colour a drill can give on a Game-rung event. */
 export const DRILL_CAP = 6
@@ -913,21 +925,18 @@ export function bodyweightOn(
  * division name, and a division is only ever changed by hand: a player who
  * turned 40 kept the Open ladder until a kaiwhakawā moved them, and a junior
  * who turned 17 kept the U16 allowance. The division is only a fallback for a
- * player with no date of birth, who grades as they always did.
+ * player with no date of birth.
  */
 export function ageBand(division: string | null, ageYears: number | null): AgeBand {
   if (ageYears != null && Number.isFinite(ageYears)) {
     if (ageYears < 12) return 'U12'
     if (ageYears < 14) return 'U14'
     if (ageYears < 17) return 'U16'
-    if (ageYears >= 60) return 'Grandmaster'
-    if (ageYears >= 40) return 'Masters'
+    if (ageYears >= 60) return 'Over60'
+    if (ageYears >= 40) return 'Over40'
     return 'Open'
   }
-  const d = division ?? ''
-  if (/Grandmaster/.test(d)) return 'Grandmaster'
-  if (/Masters/.test(d)) return 'Masters'
-  // 'Youth' is the legacy value for Juniors and still appears on old rows.
-  if (/Junior|Youth/.test(d)) return 'U14'
-  return 'Open'
+  // No date of birth: a junior is taken as U14, everyone else as Open. The
+  // Masters and Grandmaster divisions this once read are gone (20261019214532).
+  return division === 'Juniors' ? 'U14' : 'Open'
 }

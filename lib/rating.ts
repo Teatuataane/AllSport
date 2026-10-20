@@ -34,22 +34,16 @@ export type RatingPlayerRow = { id: string; division: string | null }
  */
 export const WIN_MIN_FIELD = 3
 
-// Unified pools, matching the live session leaderboard
+// The three pools, matching the live session leaderboard. Since
+// 20261019214532 they are also the only three divisions: Masters, Grandmaster
+// and the legacy 'Youth' were folded in (Tāne, 20 Oct 2026). The SQL
+// division_pool() still lists the old values, which no row holds.
 export function divisionPool(division: string | null | undefined): 'men' | 'women' | 'juniors' | null {
   switch (division) {
-    case "Men's":
-    case 'Masters Men':
-    case 'Grandmaster Men':
-      return 'men'
-    case "Women's":
-    case 'Masters Women':
-    case 'Grandmaster Women':
-      return 'women'
-    case 'Juniors':
-    case 'Youth': // legacy value, treated as Juniors everywhere
-      return 'juniors'
-    default:
-      return null
+    case "Men's": return 'men'
+    case "Women's": return 'women'
+    case 'Juniors': return 'juniors'
+    default: return null
   }
 }
 

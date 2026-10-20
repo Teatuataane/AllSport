@@ -161,7 +161,7 @@ export default function Schedule() {
                 <div style={{ background: 'var(--dark)', border: '1px solid rgba(249,176,81,0.2)', borderRadius: '12px', padding: '28px 32px' }}>
                   <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555555', marginBottom: '8px' }}>Divisions</div>
                   <div style={{ color: 'var(--grey-light)', fontSize: '14px', lineHeight: 1.7 }}>
-                    Men · Women · Juniors (U17) · Masters (40+) · Grandmasters (60+)
+                    Men · Women · Juniors (U17)
                   </div>
                 </div>
               </div>
