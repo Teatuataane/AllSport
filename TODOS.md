@@ -2,6 +2,7 @@
 
 ## ✅ Done
 
+- **Age is not a division; age allowance by domain** (v0.42.0.0 and v0.43.0.0, 20 to 21 Oct 2026). Masters and Grandmaster folded into Men's and Women's; per domain table approved by Tāne; under 12s share the boys' list. Migrations applied 20 Oct; PR #203 merged 21 Oct, no migration.
 - **Season points by place in the game** (v0.22.0.0 → v0.22.1.0, 2026-09-28). Everyone in a game ranked on their colour total, 100/99/98 …, ties share. Migration `20260928011813` applied and verified, backfill wrote 27 players (149 game rows, 46 games). `player_season_points` and the page's fallback removed in v0.22.1.0 (`20260928015753`). Still open below: the Game-rung floor, which now decides places for everyone in a game.
 - **HOME player first, circle ladder, plain domain rows** (v0.21.2.0, 2026-09-28). Designed with Tāne from a demo. Name, division and one stats line open the page; the avatar is ringed in the overall colour; the next session is one slim line; the ladder is circles under the colour name; each colour has a headline, with the climb below Kahurangi and the population stat from Kahurangi up; domain rows are unpainted with a colour circle by the name; the radar and stat tiles are gone; one row of three links. No migration. **Not yet seen with a real login**: the visual check ran on a throwaway page with sample data.
 - **Best-six domain colours, games cap the overall, units retired from grading** (v0.21.0.0, 2026-09-26). Settled with Tāne against real production data. A domain colour is the average of the best six events (unplayed = Mā); the overall is the average of ten, capped by lifetime official games (`GAMES_REQUIRED`, counted by `lib/gameCounts.ts`, paged past the 1000-row cap); units no longer gate any colour and a domain can jump several colours in one run. `GRADING_RULES_VERSION` forces one full recheck per player. No migration. Run `scripts/refresh-leaderboard-scores.ts` after deploy to move every leaderboard best/worst domain at once.
@@ -363,6 +364,9 @@ now only reachable if Whānau's own art goes missing, and for Te Kāhui, which n
 ---
 
 ## P2 — Soon
+
+- **Family member profiles have no gender.** A junior added through a family account is inserted with `gender` null, so from 12 they grade on the boys' list and at 17 `roll_juniors()` moves them to Men's. Ask for it when a parent adds a profile (found 20 Oct 2026).
+- **Revisit the age allowance after play testing** (February 2027). Tāne kept it in colours on 21 Oct 2026. Check with `scripts/replay-colours.ts` whether the whole colour gift to beginners looks unfair; the middle option is the smaller of one colour or a percentage (`AGE_ALLOWANCE_REVIEW.md`).
 
 ### Freeze the level names of events added from now on
 **What:** `__tests__/levelNames.test.ts` only checks events already in `__tests__/fixtures/levelNames.json`, so a tiered event added later is not protected against a rename, and there is no script to regenerate the fixture. Add an assertion that every tiered event in `EVENTS` is in the fixture, and a small `scripts/freeze-level-names.ts`.
