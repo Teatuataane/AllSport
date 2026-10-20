@@ -44,9 +44,33 @@ export async function middleware(request: NextRequest) {
   // cookie is attacker-supplied and unverified, and this is also the call that
   // writes the refreshed cookie back. Client components read the refreshed
   // session locally via getSessionUser() instead of repeating this round trip.
-  await supabase.auth.getUser()
+  //
+  // It is raced against a time limit. getUser() only goes to Supabase Auth when
+  // the request carries a login cookie, so when Supabase is slow (21 Oct 2026:
+  // the project ran out of Disk IO and was throttled) every signed-in page hung
+  // until Vercel killed the middleware ("Routing middleware took too long"),
+  // while signed-out browsers loaded fine. Past the limit we serve the page
+  // without a refreshed cookie: the next request tries again, and the browser
+  // client refreshes its own session. A failed call is treated the same way;
+  // the page itself still decides what a signed-out visitor may see.
+  // Whatever setAll() does after we have returned only touches a response
+  // nobody will send, so it is harmless.
+  await withTimeout(supabase.auth.getUser(), GET_USER_TIMEOUT_MS)
 
   return supabaseResponse
+}
+
+// Well under Vercel's middleware limit, well over a healthy getUser() (~0.3s).
+const GET_USER_TIMEOUT_MS = 4000
+
+function withTimeout(work: Promise<unknown>, ms: number): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const limit = new Promise<void>((resolve) => {
+    timer = setTimeout(resolve, ms)
+  })
+  return Promise.race([work.then(() => undefined, () => undefined), limit]).finally(() =>
+    clearTimeout(timer)
+  )
 }
 
 export const config = {
