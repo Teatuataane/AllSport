@@ -42,6 +42,8 @@ Colours of allowance, by the age you turn this year.
 
 > Children trail adults most on strength, power and speed before puberty, and least on bodyweight endurance. Skills are still developing. Children are usually more flexible than adults, so Flexibility gets nothing. Under 12, boys and girls perform much the same, so they share one list: the boys' (Open) list (Tāne, 21 Oct 2026). From 12 the girls' list applies again.
 
-## Still open
+## Revisit after play testing
 
-1. Colours are 10 to 12% apart near the top of a ladder but up to double near the bottom (Deadlift Kiwikiwi 0.1× BW, Whero 0.2×). A whole-colour allowance is therefore a big gift to a beginner and fair to an elite player. Should the allowance become a percentage at the player's level? Not decided; test with `scripts/replay-colours.ts` before changing.
+1. **Decided 21 Oct 2026 (Tāne): keep colours for now**, through play testing (until February 2027). Revisit then with data. If the beginner gift looks unfair, the suggested middle option is the smaller of one colour or the percentage, keeping the colour shift on events with levels.
+
+   Background: colours are 10 to 12% apart near the top of a ladder but up to double near the bottom (Deadlift Kiwikiwi 0.1× BW, Whero 0.2×). A whole-colour allowance is therefore a big gift to a beginner and fair to an elite player. Should the allowance become a percentage at the player's level? Not decided; test with `scripts/replay-colours.ts` before changing.

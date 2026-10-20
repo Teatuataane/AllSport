@@ -82,7 +82,7 @@ Supabase (DB, Auth, Realtime, pg_cron), Vercel (hosting), Google OAuth, Google F
 - **Season leaderboard (`/leaderboard`):** every player in a finished, unvoided game is ranked together by their game colour total (sum of each official event's rung, up to 120); places pay 100, 99, 98 … never below 1, ties share. Totals are published per player per game to `player_game_colours`; the `season_points` view ranks and sums per NZ season year. One write path: `publishLeaderboardScores` in `lib/leaderboardData.ts`. Pure rule mirror: `lib/leaderboardScores.ts` (`seasonPointsFromGames`). `lib/colourBoard.ts` orders players by colour. The page has a tab per year (season points, colours and games cap of that year).
 - `leaderboard_page()` is one RPC returning the public board payload (and healing expired sessions). `player_dashboard(uuid[])` loads a whole household.
 - `lib/percentile.ts` computes best-score "Top X%" within a unified division pool (`divisionPool` in `lib/rating.ts`: men / women / juniors).
-- Divisions: Men's, Women's, Juniors (since v0.42.0.0; Masters and Grandmaster are gone). Juniors are players who turn 16 or under this NZ year; `roll_juniors()` moves them up daily. **Age is not read from the division**: the age allowance comes from the age a player turns in the year being graded (`ageInYear`, `playerInYear`, `ageBand` reads age first and the division only when there is no date of birth). **Since v0.43.0.0 the allowance is per domain** (`lib/ageAllowance.ts`, approved sheet `AGE_ALLOWANCE_REVIEW.md`, pinned by `__tests__/ageAllowance.test.ts`): Speed/Power most, skill domains least, none at 35, juniors' own table; a half allowance is the mean of the exact scores at the two whole steps (`eventGrade` in `lib/playerGrades.ts`). Changing a number means editing both the sheet and the code and bumping `GRADING_RULES_VERSION`.
+- Divisions: Men's, Women's, Juniors (since v0.42.0.0; Masters and Grandmaster are gone). Juniors are players who turn 16 or under this NZ year; `roll_juniors()` moves them up daily. **Age is not read from the division**: the age allowance comes from the age a player turns in the year being graded (`ageInYear`, `playerInYear`, `ageBand` reads age first and the division only when there is no date of birth). **Since v0.43.0.0 the allowance is per domain** (`lib/ageAllowance.ts`, approved sheet `AGE_ALLOWANCE_REVIEW.md`, pinned by `__tests__/ageAllowance.test.ts`): Speed/Power most, skill domains least, none at 35, juniors' own table; a half allowance is the mean of the exact scores at the two whole steps (`eventGrade` in `lib/playerGrades.ts`). Under 12s (turning 11 or younger) share the boys' list (`ladderFor`). The allowance stays counted in colours, not a percentage (Tāne, 21 Oct 2026; revisit after play testing ends in February 2027). Changing a number means editing both the sheet and the code and bumping `GRADING_RULES_VERSION`.
 
 ## 9. Important business rules
 
@@ -158,7 +158,7 @@ npx vitest run __tests__/grading.test.ts
 - New UI uses the canonical tokens and `components/ui.tsx` primitives; existing pages still use inline `style={{}}` heavily, so match the surrounding file.
 - Each new Supabase read of a possibly-missing table/column is its **own query** with PGRST205/42P01/42703 handled as "not live yet".
 - Dates: parse DATE columns with `lib/dates.ts` (`parseLocalDate`, `formatNZDate`, `sessionStart`), never `new Date('YYYY-MM-DD')`; all dates mean NZ time.
-- Commit/changelog: `VERSION` (currently `0.42.1.0`) and `CHANGELOG.md` are bumped per shipped change; open work is tracked in `TODOS.md`. Comments in this codebase explain *why* at length; match that density when you touch a risky area.
+- Commit/changelog: `VERSION` (currently `0.43.0.0`) and `CHANGELOG.md` are bumped per shipped change; open work is tracked in `TODOS.md`. Comments in this codebase explain *why* at length; match that density when you touch a risky area.
 - Event/standards/difficulty changes are made by editing the reviewed sheet and re-running the apply script, not by hand-editing generated output.
 
 ## 15. Important files and directories
@@ -188,4 +188,4 @@ npx vitest run __tests__/grading.test.ts
 | `*_PLAN.md`, `EVENT_*.md`, `design-canvas/` | Older design records and mockups; historical |
 | `.claude/` | Claude Code skills and launch config (tooling only) |
 
-*Last updated: 15 October 2026 (v0.36.0.0).*
+*Last updated: 21 October 2026 (v0.43.0.0).*
