@@ -28,6 +28,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase-browser'
+import { onResultsChanged } from '@/lib/liveSession'
 import { gradeForRung, DOMAIN_COUNT } from '@/lib/grading'
 import { rankBy, bestAndWorst } from '@/lib/leaderboardScores'
 import { colourStanding, displayOverall } from '@/lib/colourBoard'
@@ -342,11 +343,8 @@ export default function LeaderboardPage() {
       const { data } = await supabase.from('results').select('player_id, player_name, placement').eq('session_id', sessionId)
       setSessionLeader(computeLeader((data ?? []) as SessionResult[]))
     }
-    const channel = supabase
-      .channel(`leaderboard-session-${sessionId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'results', filter: `session_id=eq.${sessionId}` }, refresh)
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
+    // Broadcast ping from the scoring screens (lib/liveSession.ts).
+    return onResultsChanged(supabase, sessionId, refresh)
   }, [activeSession?.id])
 
   const tab = tabs.find(t => t.key === activeTab)!

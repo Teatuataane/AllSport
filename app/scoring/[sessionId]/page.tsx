@@ -36,6 +36,7 @@ import { ContestCard, ContestJudgeCard, type ContestName } from '@/components/pl
 import { loadGamePlace } from '@/lib/loadGamePlace'
 import type { GamePlace } from '@/lib/gameReport'
 import { useGameSwaps } from '@/lib/useGameSwaps'
+import { announceResultsChanged, onResultsChanged } from '@/lib/liveSession'
 import {
   formatPR, sportWDL, sectionLabel, ProgressSegments, INP, QES_LBL as SHEET_LBL,
 } from '@/components/play/chrome'
@@ -1473,16 +1474,19 @@ export default function SessionPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [judgePRsKey])
 
-  // ── Realtime subscriptions ─────────────────────────────────────────────────
-  useEffect(() => {
-    const ch = supabase.channel(`scoring-${sessionId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'results', filter: `session_id=eq.${sessionId}` }, () => loadResults())
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'sessions', filter: `id=eq.${sessionId}` }, p => {
-        const updated = p.new as Record<string, unknown>
-        if (updated.is_active === false) { setSessionEnded(true); setServerClosed(true) }
-      })
-      .subscribe()
-    return () => { supabase.removeChannel(ch) }
+  // ── Live updates ───────────────────────────────────────────────────────────
+  // Broadcast, not postgres_changes: see lib/liveSession.ts (Disk IO, Oct 2026).
+  // The old `sessions` UPDATE listener is gone too; `sessions` was never in the
+  // supabase_realtime publication, so it never fired. The countdown and the
+  // close check above are what notice a game closing.
+  useEffect(() => onResultsChanged(supabase, sessionId, () => { loadResults() }), [sessionId, loadResults])
+
+  // After this screen saves or deletes a score: tell the other screens, then
+  // re-read. Only ever called after our own write, never from a ping or the
+  // poll, so pings cannot echo.
+  const afterOwnWrite = useCallback(async () => {
+    announceResultsChanged(supabase, sessionId)
+    await loadResults()
   }, [sessionId, loadResults])
 
   // Polling fallback — refreshes every 15s in case realtime drops
@@ -1891,11 +1895,11 @@ export default function SessionPage() {
                     : prev)
                   setToast({ eventName: sheetEvent.event_name, label, isPR: meta.isPR, isNewEvent })
                   setTimeout(() => setToast(null), meta.isPR || isNewEvent ? 4000 : 3000)
-                  await loadResults()
+                  await afterOwnWrite()
                   reloadPlayerPRs()
                   sportRatings.reload()
                 }}
-                onDeleted={async () => { await loadResults(); reloadPlayerPRs() }}
+                onDeleted={async () => { await afterOwnWrite(); reloadPlayerPRs() }}
               />
             )}
           </div>
@@ -2209,11 +2213,11 @@ export default function SessionPage() {
                       setSheetEventId(null)
                       setToast({ eventName: sheetEvent.event_name, label, isPR: meta.isPR, isNewEvent: false, playerName: target.name })
                       setTimeout(() => setToast(null), meta.isPR ? 4000 : 3000)
-                      await loadResults()
+                      await afterOwnWrite()
                       reloadTargetPRs()
                       sportRatings.reload()
                     }}
-                    onDeleted={async () => { await loadResults(); reloadTargetPRs() }}
+                    onDeleted={async () => { await afterOwnWrite(); reloadTargetPRs() }}
                   />
                 )}
               </div>
@@ -2239,7 +2243,7 @@ export default function SessionPage() {
           events={events}
           results={results}
           playerInfoMap={playerInfoMap}
-          onScoreChanged={loadResults}
+          onScoreChanged={afterOwnWrite}
         />
       )}
 
