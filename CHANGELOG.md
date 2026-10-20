@@ -2,6 +2,12 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.43.1.0] - 2026-10-21
+
+### Fixed
+- **Supabase warned that the project was draining its Disk IO budget.** The database is only 22 MB and sits in memory; the load was Realtime `postgres_changes`, which made the Realtime server poll the replication slot several times a second while any game screen was open (3.35 million polls since April). The scoring screen, the live leader on /leaderboard and the kaiwhakawā's score count now use Realtime Broadcast (`lib/liveSession.ts`): the scoring screen sends a "results changed" ping after every save or delete, and the other screens re-read. A ping never touches Postgres. The scoring screen's 15-second poll stays as the fallback. The `sessions` listener on the scoring screen is removed; `sessions` was never in the publication, so it had never fired. `__tests__/liveSession.test.ts` stops `postgres_changes` coming back.
+- Migration `20261020212122_disk_io_broadcast_indexes.sql` takes `results` and `session_events` out of the `supabase_realtime` publication and adds the missing `session_id` indexes on both (`results` had been read by full scan 172,000 times). **Apply after the code deploys.** Rehearsed on 21 Oct 2026 in a rolled-back transaction: publication empty of both tables, both indexes created.
+
 ## [0.43.0.0] - 2026-10-20
 
 ### Changed

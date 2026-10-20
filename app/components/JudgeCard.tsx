@@ -4,6 +4,7 @@ import ActivityFitPanel from '@/components/ActivityFitPanel'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase-browser'
+import { onResultsChanged } from '@/lib/liveSession'
 import { QRCodeSVG } from 'qrcode.react'
 import Link from 'next/link'
 import { EVENTS } from '@/lib/eventData'
@@ -256,18 +257,19 @@ export default function JudgeCard({ playerRole, playerId }: JudgeCardProps) {
     return () => clearInterval(interval)
   }, [])
 
-  // Realtime: keep player count live during active sessions
+  // Keep the score count live during an active game. A broadcast ping (see
+  // lib/liveSession.ts) says only that something changed, so re-count rather
+  // than add or subtract.
   useEffect(() => {
     if (activeSessions.length === 0) return
     const sessionId = activeSessions[0].id
-    const ch = supabase
-      .channel(`judge-count-${sessionId}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'results', filter: `session_id=eq.${sessionId}` },
-        () => setPlayerCounts(prev => ({ ...prev, [sessionId]: (prev[sessionId] ?? 0) + 1 })))
-      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'results', filter: `session_id=eq.${sessionId}` },
-        () => setPlayerCounts(prev => ({ ...prev, [sessionId]: Math.max(0, (prev[sessionId] ?? 1) - 1) })))
-      .subscribe()
-    return () => { supabase.removeChannel(ch) }
+    return onResultsChanged(supabase, sessionId, async () => {
+      const { count } = await supabase
+        .from('results')
+        .select('*', { count: 'exact', head: true })
+        .eq('session_id', sessionId)
+      if (count !== null) setPlayerCounts(prev => ({ ...prev, [sessionId]: count }))
+    })
   }, [activeSessions.map(s => s.id).join(',')])
 
   // Two-tap end confirmation
