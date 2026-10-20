@@ -2723,6 +2723,16 @@ redefined trigger.
 `GRADING_STANDARDS_REVIEW.md`. The compiler learned `"BW · 20"` (weight+reps),
 `"40kg · 100m"` (carries) and `"≤ 4:05"` (predicted reference time).
 
+## Disk IO and Realtime Broadcast (21 October 2026) — v0.43.1.0 and v0.43.1.1, APPLIED 21 Oct 2026
+
+Supabase emailed that the project was depleting its Disk IO budget on the Micro compute. Diagnosis on the live database: 22 MB, almost no disk reads, 299 MB of WAL since April, so not the app's queries. The steady load was Realtime `postgres_changes`, which polled the replication slot several times a second while any game screen was open (3.35 million polls). `results` also had no `session_id` index and had been fully scanned 172,000 times. A lifetime total of 261 GB of temp files could not be traced to any current query and was not growing.
+
+Tāne decided against a paid compute upgrade. v0.43.1.0 (PR #205) moved the scoring screen, the /leaderboard live leader and JudgeCard's score count to Realtime Broadcast (`lib/liveSession.ts`); the scoring screen's `sessions` listener was dropped because `sessions` was never in the publication. Migration `20261020212122_disk_io_broadcast_indexes.sql` removes `results` and `session_events` from `supabase_realtime` and adds both `session_id` indexes.
+
+Minutes after the merge the database stopped answering (API 504/522, CLI login role timeouts) while Supabase's status page and the project status both read healthy. The #205 deploy failed because the build's prerender waited on Supabase. Tāne restarted the project from the dashboard. Another session's v0.43.1.1 (PR #206) put a 4s limit on middleware `getUser()` and a 5s limit on homepage counts so a slow Supabase cannot hang pages or builds; it deployed with #205's code included. The migration was then applied by `db query --linked` plus the ledger row. Verified 21 Oct 2026: allsport.nz serves the Broadcast code and no `postgres_changes` on results, the publication holds neither table, both indexes exist, ledger row present.
+
+Lesson: the Supabase "unresponsive" warning is real on Micro; a restart is free and brings it back. Keep Realtime on Broadcast.
+
 ## Distance estimates and the Endurance Uenuku (9 October 2026) — v0.32.0.0, APPLIED 10 Oct 2026
 
 Tāne reported two things on 9 Oct 2026.
