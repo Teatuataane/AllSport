@@ -124,7 +124,7 @@ export const TOP_RUNG = 12
  * conferred one. HOME forces one full recheck per player when this differs
  * from the version it last checked under (lib/useNewColours.ts).
  */
-export const GRADING_RULES_VERSION = '2026-10-20-age-table-by-domain'
+export const GRADING_RULES_VERSION = '2026-10-21-age-table-u12-one-list'
 export const DOMAIN_COUNT = 10
 
 /**

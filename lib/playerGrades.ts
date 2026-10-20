@@ -123,9 +123,15 @@ export type PlayerGrades = {
  *
  * A junior who answered "Other" has neither, and takes the boys' standards
  * (Tāne, 16 September 2026).
+ *
+ * Under 12 (turning 11 or younger in the year graded), boys and girls perform
+ * much the same, so they share one list: the boys' (Open) list, which the
+ * junior age allowance is measured against (Tāne, 21 Oct 2026). A junior with
+ * no date of birth keeps the list their answer gives.
  */
-export function ladderFor(p: Pick<GradePlayer, 'division' | 'gender'>): 'M' | 'F' {
+export function ladderFor(p: Pick<GradePlayer, 'division' | 'gender'> & { ageYears?: number | null }): 'M' | 'F' {
   const d = p.division ?? ''
+  if (p.ageYears != null && p.ageYears < 12) return 'M'
   if (/Women/.test(d)) return 'F'
   if (/Men/.test(d)) return 'M'
   return /^f/i.test(p.gender ?? '') ? 'F' : 'M'

@@ -32,6 +32,10 @@ describe('which ladder applies', () => {
   })
   it('gives a junior who answered Other the boys\' standards, as Tāne decided', () => {
     expect(ladderFor({ division: 'Juniors', gender: 'Other' })).toBe('M')
+    // Under 12 boys and girls share the one list (21 Oct 2026); 12 and up split.
+    expect(ladderFor({ division: 'Juniors', gender: 'Female', ageYears: 11 })).toBe('M')
+    expect(ladderFor({ division: 'Juniors', gender: 'Female', ageYears: 12 })).toBe('F')
+    expect(ladderFor({ division: 'Juniors', gender: 'Female', ageYears: null })).toBe('F')
   })
 })
 

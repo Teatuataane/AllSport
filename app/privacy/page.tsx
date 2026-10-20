@@ -413,7 +413,7 @@ export default function PrivacyPolicy() {
               A parent who holds the account sees and can change it. If it is left blank, the strength events
               count as not met and nothing else about the grade changes. Because every junior plays in one
               Juniors division, the answer given at registration is used privately to choose between the
-              boys&apos; and girls&apos; standards. It is never shown to anyone.
+              boys&apos; and girls&apos; standards from age 12 (under 12s share one list). It is never shown to anyone.
             </p>
             <p className="privacy-p">
               A junior&apos;s display name, age group, scores and placements appear on public leaderboards in the

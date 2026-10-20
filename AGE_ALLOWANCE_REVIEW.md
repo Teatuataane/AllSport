@@ -40,9 +40,8 @@ Colours of allowance, by the age you turn this year.
 | Stamina, Endurance | 1½ | 1 | ½ |
 | Flexibility | 0 | 0 | 0 |
 
-> Children trail adults most on strength, power and speed before puberty, and least on bodyweight endurance. Skills are still developing. Children are usually more flexible than adults, so Flexibility gets nothing. Under 12, boys and girls perform much the same, so the U12s could share one list (open question).
+> Children trail adults most on strength, power and speed before puberty, and least on bodyweight endurance. Skills are still developing. Children are usually more flexible than adults, so Flexibility gets nothing. Under 12, boys and girls perform much the same, so they share one list: the boys' (Open) list (Tāne, 21 Oct 2026). From 12 the girls' list applies again.
 
 ## Still open
 
-1. Should the U12s use one list for boys and girls? Not decided; they still use separate lists where an event has them.
-2. Colours are 10 to 12% apart near the top of a ladder but up to double near the bottom (Deadlift Kiwikiwi 0.1× BW, Whero 0.2×). A whole-colour allowance is therefore a big gift to a beginner and fair to an elite player. Should the allowance become a percentage at the player's level? Not decided; test with `scripts/replay-colours.ts` before changing.
+1. Colours are 10 to 12% apart near the top of a ladder but up to double near the bottom (Deadlift Kiwikiwi 0.1× BW, Whero 0.2×). A whole-colour allowance is therefore a big gift to a beginner and fair to an elite player. Should the allowance become a percentage at the player's level? Not decided; test with `scripts/replay-colours.ts` before changing.
