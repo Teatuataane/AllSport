@@ -26,7 +26,7 @@ import { EVENTS, getEventBySlug } from '@/lib/eventData'
 import { STANDARDS } from '@/lib/standards'
 import { RAINBOW_CONIC } from '@/lib/domainColours'
 import {
-  GRADES, MA, gradeForRung, gradeInk, gradeAccent, averageRung, formatExact, GAMES_REQUIRED, MIN_RATED_GAMES,
+  GRADES, MA, gradeForRung, gradeInk, gradeAccent, averageRung, formatExact, GAMES_REQUIRED, RATING_FLOOR,
 } from '@/lib/grading'
 import { eventCredit } from '@/lib/playerGrades'
 import { bestScoreLabel, colourBlurb, pastOverallRungs, shownDomainRungs, shownOverallRung, topSlotRungs } from '@/lib/colourDisplay'
@@ -331,7 +331,7 @@ function DomainEvents({ state, domainNumber }: { state: GradeState; domainNumber
           : eg.bodyweightBlocked
             ? 'Needs bodyweight'
             : STANDARDS[e.slug]?.kind === 'rating' && eg.rung === 0
-              ? `After ${MIN_RATED_GAMES} rated games`
+              ? `From a ${RATING_FLOOR.toLocaleString('en-NZ')} rating`
               : !eg.played
                 ? 'Not played'
                 : null
@@ -348,7 +348,7 @@ function DomainEvents({ state, domainNumber }: { state: GradeState; domainNumber
               {e.name}
               {waiting > 0 && (
                 // A disputed game counts for nothing until settled, so a player
-                // stuck short of ten games can see why.
+                // waiting on one can see why.
                 <span style={{ display: 'block', fontSize: 12, color: 'var(--amber)', marginTop: 1 }}>
                   {waiting} disputed game{waiting > 1 ? 's' : ''} waiting for a kaiwhakawā
                 </span>

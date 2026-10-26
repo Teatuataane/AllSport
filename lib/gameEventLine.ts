@@ -1,6 +1,6 @@
 // ─── What a win/draw/loss event's button says about the rating ───────────────
 // On an event topped by a Game rung (or graded on games alone) a button reads
-// either "7 games to a rating" or "Rating 1,148". Pure, so the wording and the
+// either "1 game to a rating" (none played yet) or "Rating 1,148". Pure, so the wording and the
 // threshold are tested; the games and ratings come from lib/headToHead.ts
 // (rateGames), which counts only games both players recorded or a kaiwhakawā
 // settled. A game only one side has recorded does not count yet, and nothing

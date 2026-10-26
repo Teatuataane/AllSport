@@ -329,7 +329,7 @@ export default function GradeReleasePanel() {
   const nameOf = (id: string) => disputeCtx?.names.get(id) ?? 'A player'
   const byId = new Map((matches ?? []).map(m => [m.id, m]))
   const heading = (g: Game) => {
-    const d = disputeCtx?.dates.get(g.session_id)
+    const d = g.session_id ? disputeCtx?.dates.get(g.session_id) : undefined
     return `${g.event_name}${d ? ` · ${formatNZDate(d)}` : ''}`
   }
 

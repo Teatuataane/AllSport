@@ -124,7 +124,7 @@ export const TOP_RUNG = 12
  * conferred one. HOME forces one full recheck per player when this differs
  * from the version it last checked under (lib/useNewColours.ts).
  */
-export const GRADING_RULES_VERSION = '2026-10-21-age-table-u12-one-list'
+export const GRADING_RULES_VERSION = '2026-10-27-rating-from-one-game'
 export const DOMAIN_COUNT = 10
 
 /**
@@ -767,8 +767,8 @@ export function rungForCompound(mode: string, score: number, thresholds: readonl
 // On an event topped by a Game rung, the drills grade Kiwikiwi to Kahurangi and
 // a head-to-head rating grades Poroporo to Taniwha: 1,100 to 1,600, one colour
 // per 100 points, so the colour above you wins about two games in three. A
-// rating colour needs ten games in that sport recorded by both sides (or settled by
-// a kaiwhakawā; see rateGames). The colour shown is the
+// rating counts from a player's first game in that sport recorded by both sides
+// (or settled by a kaiwhakawā; see rateGames). The colour shown is the
 // higher of the two, and like every colour it is never taken back when the
 // rating later falls.
 //
@@ -783,16 +783,23 @@ export const RATING_START = 1000
 export const RATING_FLOOR = 1100
 export const RATING_STEP = 100
 /**
- * Recorded games a player needs in a sport before its rating gives a colour.
- * Tāne, 14 September 2026. Simulated at AllSport's real volumes, a sport rating
- * tracks true skill at about 0.55 correlation after one to four games and about
- * 0.83 after ten to nineteen (scripts/sim-skill-rating.mjs). The games only make
- * a player ELIGIBLE; the colour still depends on winning them, so the grade
- * stays failable. Defined once, here, and re-exported by lib/matches.ts.
+ * Recorded games a player needs in a sport before its rating shows and gives a
+ * colour. ONE since 27 Oct 2026 (Tāne: ten games in every sport took far too
+ * long). It was ten from 14 Sept 2026, when the simulation
+ * (scripts/sim-skill-rating.mjs) put a rating's match to true skill at about
+ * 0.55 after one to four games and 0.83 after ten to nineteen.
+ *
+ * Why one game is still safe: every rating starts at RATING_START (1,000), a
+ * full colour below RATING_FLOOR (1,100), and one game moves a rating
+ * K_PROVISIONAL (40) at most. So no single game gives a colour; the first one
+ * takes about three wins over much stronger players or six over equals. The
+ * first ten games still move twice as far (lib/headToHead.ts kFactor), which
+ * is how a new rating finds its level, not this gate. Defined once, here, and
+ * re-exported by lib/matches.ts.
  */
-export const MIN_RATED_GAMES = 10
+export const MIN_RATED_GAMES = 1
 
-/** The colour a rating gives, or 0 below Poroporo or before ten games. */
+/** The colour a rating gives, or 0 below Poroporo or before the first game. */
 export function ratingRung(rating: number, games: number): number {
   if (games < MIN_RATED_GAMES || rating < RATING_FLOOR) return 0
   return Math.min(TOP_RUNG, DRILL_CAP + 1 + Math.floor((rating - RATING_FLOOR) / RATING_STEP))

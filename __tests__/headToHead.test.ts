@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  expectedScore, kFactor, ratingChange, rateGames, K_PROVISIONAL, K_SETTLED,
+  expectedScore, kFactor, ratingChange, rateGames, K_PROVISIONAL, K_SETTLED, PROVISIONAL_GAMES,
 } from '@/lib/headToHead'
 import { gamesBySport, type MatchRow } from '@/lib/matches'
 import { RATING_START, RATING_FLOOR, RATING_STEP, ratingRung } from '@/lib/grading'
@@ -38,6 +38,7 @@ describe('the model approved in review', () => {
     expect(kFactor(0)).toBe(K_PROVISIONAL)
     expect(kFactor(9)).toBe(K_PROVISIONAL)
     expect(kFactor(10)).toBe(K_SETTLED)
+    expect(PROVISIONAL_GAMES).toBe(10)
     expect(K_PROVISIONAL).toBe(2 * K_SETTLED)
   })
 
@@ -116,15 +117,19 @@ describe('rating the games match recording collects', () => {
     expect(rateGames([match('A', 'A', 'a', { players })]).get('Squash')).toBeUndefined()
   })
 
-  it('earns Poroporo only after ten games, and only by winning them', () => {
-    // A beats a string of new players: ten wins at K 40, then settles.
+  it('rates from the first game, but no single game gives a colour', () => {
+    // Since 27 Oct 2026 a rating counts from one game. It starts a colour
+    // below Poroporo and one game moves it 40 at most, so the floor, not a
+    // game count, is what keeps a single lucky win from earning a colour.
     const wins = Array.from({ length: 10 }, (_, i) => match('A', `P${i}`, 'a', { session_id: `s${i}` }))
+    const one = rateGames(both(wins.slice(0, 1))).get('Squash')!.get('A')!
+    expect(one.games).toBe(1)
+    expect(one.rating).toBe(1020)
+    expect(ratingRung(one.rating, one.games)).toBe(0)
+    expect(RATING_START + K_PROVISIONAL).toBeLessThan(RATING_FLOOR)
+    // Beating a string of new players, the colour comes only by winning on.
     const a = rateGames(both(wins)).get('Squash')!.get('A')!
-    expect(a.games).toBe(10)
     expect(a.rating).toBeGreaterThan(RATING_FLOOR)
     expect(ratingRung(a.rating, a.games)).toBeGreaterThanOrEqual(7)
-    // Nine of the same wins are not enough, however high the rating.
-    const nine = rateGames(both(wins.slice(0, 9))).get('Squash')!.get('A')!
-    expect(ratingRung(nine.rating, nine.games)).toBe(0)
   })
 })

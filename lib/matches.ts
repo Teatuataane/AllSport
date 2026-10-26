@@ -106,7 +106,11 @@ export function resolveOpponentId(name: string | null | undefined, rows: readonl
 
 export type MatchRow = {
   id: string
-  session_id: string
+  /**
+   * The official game, or null for a game played against the kaiwhakawā in a
+   * training session (20261026220347), which hangs off a workout entry.
+   */
+  session_id: string | null
   /** The sport — `session_events.event_name`, so games group across sessions. */
   event_name: string
   outcome: MatchOutcome
@@ -116,12 +120,16 @@ export type MatchRow = {
    * Set by a kaiwhakawā through settle_dispute() on the record of a disputed
    * game that is right. record_match() replaces the row on every edit, so an
    * edit by either player wipes it and the game is judged afresh.
+   *
+   * Also set by record_entry_match() on a TRAINING game (no session): the
+   * kaiwhakawā is the opponent and witnessed it, so it counts as agreed.
    */
   confirmed_at?: string | null
 }
 
 /**
- * `agreed`      — both sides recorded it and their outcomes match.
+ * `agreed`      — both sides recorded it and their outcomes match, or it is a
+ *                 training game the kaiwhakawā played and confirmed.
  * `disputed`    — both sides recorded it and their outcomes contradict.
  * `settled`     — disputed, and a kaiwhakawā has marked one record as right.
  * `unconfirmed` — only one side recorded it.
@@ -138,7 +146,7 @@ export type GameStatus = 'agreed' | 'disputed' | 'settled' | 'unconfirmed'
 export type Game = {
   matchIds: string[]
   event_name: string
-  session_id: string
+  session_id: string | null
   status: GameStatus
   players: string[]
   sides: { a: string[]; b: string[] }
@@ -149,7 +157,9 @@ const sideOf = (m: MatchRow, s: 'a' | 'b') => new Set(m.players.filter(p => p.si
 
 /** m2 is the same game recorded from the other side: each has the other's side as opponents. */
 function isReciprocal(m1: MatchRow, m2: MatchRow): boolean {
-  if (m1.session_id !== m2.session_id || m1.event_name !== m2.event_name) return false
+  // A training game has no session and only ever one record (the player's
+  // entry), so it never pairs, even with another training game.
+  if (!m1.session_id || m1.session_id !== m2.session_id || m1.event_name !== m2.event_name) return false
   const a1 = sideOf(m1, 'a'), b1 = sideOf(m1, 'b'), a2 = sideOf(m2, 'a'), b2 = sideOf(m2, 'b')
   const overlaps = (x: Set<string>, y: Set<string>) => [...x].some(v => y.has(v))
   return overlaps(b1, a2) && overlaps(a1, b2)
@@ -203,11 +213,15 @@ export function reconcileGames(matches: readonly MatchRow[]): Game[] {
     const confirmed = rows.filter(r => r.confirmed_at)
     const truth = p?.status === 'disputed' && confirmed.length === 1 ? confirmed[0] : null
     const from = truth ?? m
+    // A training game against the kaiwhakawā: one record, stamped confirmed by
+    // the kaiwhakawā who played it (record_entry_match). Only the server writes
+    // matches, so the stamp cannot be forged from the browser.
+    const training = !p && !m.session_id && !!m.confirmed_at
     games.push({
       matchIds: rows.map(r => r.id),
       event_name: m.event_name,
       session_id: m.session_id,
-      status: truth ? 'settled' : p ? p.status : 'unconfirmed',
+      status: truth ? 'settled' : p ? p.status : training ? 'agreed' : 'unconfirmed',
       players: [...new Set(rows.flatMap(r => r.players.map(x => x.player_id)))],
       sides: { a: [...sideOf(from, 'a')], b: [...sideOf(from, 'b')] },
       outcome: from.outcome,

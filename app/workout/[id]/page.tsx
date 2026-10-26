@@ -10,7 +10,10 @@
 //   · no division rank on a row and no leaderboard: a personal game is
 //     training, never ranked, and a solo score never ranks anyone in public;
 //   · a Game rung records no win or loss (the database refuses a logged game
-//     result), so playing one is recorded as training;
+//     result), so playing one is recorded as training. EXCEPT in a training
+//     session a kaiwhakawā runs (since 20261026220347): there the player may
+//     play the kaiwhakawā, the win/draw/loss is kept, and the game counts
+//     toward both ratings (record_entry_match);
 //   · it has a colour of its own (workoutColourRung): each event's best score
 //     graded as HOME grades it, averaged over the plan, a skipped event Mā.
 //     Every button is coloured by the grade it reaches, as on the game screen;
@@ -53,6 +56,8 @@ type Workout = {
   finished_at: string | null
   planned_events: string[] | null
   notes: string | null
+  /** Who created it. In a training session (witnessed), the kaiwhakawā running it. */
+  logged_by: string | null
 }
 
 /** A planned event as the play screen draws it. The slug IS the id here. */
@@ -82,18 +87,28 @@ export default function PersonalGamePage() {
   const [error, setError] = useState('')
   const { self } = useActivePlayer()
   const [clientName, setClientName] = useState<string | null>(null)
+  const [kaiwhakawaName, setKaiwhakawaName] = useState<string | null>(null)
   const [lastPlan, setLastPlan] = useState<string[]>([])
   const [notFound, setNotFound] = useState(false)
+  // Entries that carry a game against the kaiwhakawā, so editing one keeps its
+  // opponent instead of silently dropping the match.
+  const [matchedEntries, setMatchedEntries] = useState<ReadonlySet<string>>(new Set())
 
   const load = useCallback(async () => {
     const { data, error: e } = await supabase
       .from('workouts')
-      .select('id, player_id, performed_on, witnessed, finished_at, planned_events, notes, workout_entries(id, event_slug, raw_score, score_label, difficulty_tier, weight_kg, reps, time_seconds, distance_m, exercise_variation)')
+      .select('id, player_id, performed_on, witnessed, finished_at, planned_events, notes, logged_by, workout_entries(id, event_slug, raw_score, score_label, difficulty_tier, weight_kg, reps, time_seconds, distance_m, exercise_variation)')
       .eq('id', id)
       .maybeSingle()
     if (e || !data) { setNotFound(true); return }
     const w = data as Workout & { workout_entries: Entry[] }
     setWorkout(w)
+    const ids = (w.workout_entries ?? []).map(r => r.id)
+    if (w.witnessed && ids.length > 0) {
+      // Its own query: a failure only means an edit asks for the opponent again.
+      const { data: ms } = await supabase.from('matches').select('workout_entry_id').in('workout_entry_id', ids)
+      setMatchedEntries(new Set(((ms ?? []) as { workout_entry_id: string }[]).map(m => m.workout_entry_id)))
+    }
     setEntries((w.workout_entries ?? []).map(r => ({
       ...r,
       raw_score: Number(r.raw_score ?? 0),
@@ -115,6 +130,10 @@ export default function PersonalGamePage() {
     return scored.length > 0 ? Math.max(...scored) : null
   }
   const entriesFor = useCallback((slug: string) => entries.filter(e => e.event_slug === slug), [entries])
+  // What the sheet sees: a game against the kaiwhakawā names them, which the
+  // sheet resolves to their id, so an edit keeps the match.
+  const sheetEntriesFor = (slug: string) => entriesFor(slug).map(e =>
+    matchedEntries.has(e.id) && kaiwhakawaName ? { ...e, opponent_name: kaiwhakawaName } : e)
   const scoredSlugs = useMemo(
     () => new Set(entries.map(e => e.event_slug).filter((s): s is string => !!s)),
     [entries])
@@ -162,6 +181,22 @@ export default function PersonalGamePage() {
     return () => { cancelled = true }
   }, [coached, isJudge, workout?.player_id])
 
+  // The kaiwhakawā running a training session, the one opponent a game in it
+  // can name. Only while the session is open: the database refuses a game
+  // result in a finished one.
+  const kaiwhakawaId = coached && workout?.logged_by && workout.logged_by !== workout.player_id ? workout.logged_by : null
+  useEffect(() => {
+    if (!kaiwhakawaId) return
+    let cancelled = false
+    supabase.from('players_public').select('display_name').eq('id', kaiwhakawaId).maybeSingle()
+      .then(({ data }) => { if (!cancelled) setKaiwhakawaName((data as { display_name: string } | null)?.display_name ?? null) })
+    return () => { cancelled = true }
+  }, [kaiwhakawaId])
+  const playsKaiwhakawa = !!kaiwhakawaId && open
+  const opponents = useMemo(
+    () => playsKaiwhakawa ? [{ id: kaiwhakawaId!, name: kaiwhakawaName ?? 'Kaiwhakawā' }] : [],
+    [playsKaiwhakawa, kaiwhakawaId, kaiwhakawaName])
+
   // "Repeat last session": the previous session's events, offered on an empty one.
   const planIsEmpty = (workout?.planned_events?.length ?? 0) === 0
   useEffect(() => {
@@ -181,10 +216,12 @@ export default function PersonalGamePage() {
     setWorkout({ ...workout, planned_events: next })
   }
 
-  const submit = async (slug: string, v: EntryVals, editingId: string | null) => {
+  const submit = async (slug: string, v: EntryVals, editingId: string | null, matchOpponents: string[] | null) => {
     const ev = getEventBySlug(slug)
     if (!ev || !workout) return { error: 'That event is no longer on the roster', isPR: false }
-    const payload = entryPayload(ev, v)
+    // A win/draw/loss is kept only in an open training session, where the
+    // kaiwhakawā is in the room; anywhere else the Game rung stays training.
+    const payload = entryPayload(ev, v, { allowGameScore: playsKaiwhakawa })
     if (!payload) return { error: 'Enter a valid score first', isPR: false }
     // A short distance effort (no raw_score) can still set a record at its
     // own distance, so the whole row goes to the PR rule.
@@ -192,14 +229,26 @@ export default function PersonalGamePage() {
       raw_score: payload.raw_score ?? null, difficulty_tier: payload.difficulty_tier ?? null,
       distance_m: payload.distance_m, time_seconds: payload.time_seconds, weight_kg: payload.weight_kg,
     }, editingId ? `logged:${editingId}` : null)
-    const { error: e } = editingId
-      ? await supabase.from('workout_entries').update(payload).eq('id', editingId)
-      : await supabase.from('workout_entries').insert({ ...payload, workout_id: workout.id })
+    const written = editingId
+      ? await supabase.from('workout_entries').update(payload).eq('id', editingId).select('id').maybeSingle()
+      : await supabase.from('workout_entries').insert({ ...payload, workout_id: workout.id }).select('id').single()
+    const e = written.error
     if (e) {
       return {
         error: e.code === '23514' ? 'One of the numbers is out of range. Check the weight, time and distance.' : e.message,
         isPR: false,
       }
+    }
+    // A game against the kaiwhakawā hangs a match off the entry. Best-effort,
+    // as on a swap at a game: a failure must never turn a saved score into an
+    // error, and PGRST202 means the function is not deployed yet.
+    const entryId = (written.data as { id: string } | null)?.id ?? editingId
+    if (playsKaiwhakawa && entryId && matchOpponents !== null) {
+      const { error: me } = await supabase.rpc('record_entry_match', {
+        p_entry_id: entryId, p_opponent_ids: matchOpponents,
+      })
+      if (me && me.code !== 'PGRST202') console.warn('record_entry_match:', me.message)
+      sportRatings.reload()
     }
     await Promise.all([load(), reloadPRs()])
     return { error: null, isPR }
@@ -368,14 +417,14 @@ export default function PersonalGamePage() {
           key={sheetEvent.id}
           se={sheetEvent}
           eventData={getEventBySlug(sheetEvent.event_slug)}
-          myResults={entriesFor(sheetEvent.id)}
-          opponents={[]}
+          myResults={sheetEntriesFor(sheetEvent.id)}
+          opponents={opponents}
           seasonPR={bestRaw(sheetEvent.id)}
           prRows={prRows[sheetEvent.id] ?? []}
           locked={locked}
           bestLabel="Best today"
           prLabel="Your best"
-          allowGames={false}
+          allowGames={playsKaiwhakawa}
           natural
           standards={{
             player: gradeProfile.player, bodyweightKg: gradeProfile.bodyweightKg, reached: rungFor(sheetEvent.id),
@@ -383,7 +432,7 @@ export default function PersonalGamePage() {
               day={workout.performed_on} locked={locked} onSaved={gradeProfile.setBodyweightKg} />,
           }}
           onClose={() => setSheetSlug(null)}
-          onSubmit={(v, editingId) => submit(sheetEvent.id, v, editingId)}
+          onSubmit={(v, editingId, matchOpponents) => submit(sheetEvent.id, v, editingId, matchOpponents)}
           onDelete={remove}
           onSubmitted={(labelText) => {
             setSheetSlug(null)

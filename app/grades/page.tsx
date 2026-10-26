@@ -13,7 +13,7 @@
 import Link from 'next/link'
 import {
   GRADES, MA, GAMES_REQUIRED, DOMAIN_TOP_EVENTS,
-  DRILL_CAP, RATING_FLOOR, RATING_STEP, MIN_RATED_GAMES, gradeForRung, gradeInk, overallRung, averageRung,
+  DRILL_CAP, RATING_FLOOR, RATING_STEP, RATING_START, gradeForRung, gradeInk, overallRung, averageRung,
   domainGrade,
 } from '@/lib/grading'
 import { GradeDot } from '@/components/GradeDot'
@@ -245,8 +245,8 @@ export default function ColoursGuide() {
         <H2 n={5}>Sports and games</H2>
         <P>
           On events that end in a real game, the drills take you as far as {gradeForRung(DRILL_CAP).name}.
-          From {firstRatingColour.name} up, the colour comes from a head-to-head rating: after{' '}
-          {MIN_RATED_GAMES} games that both players recorded, a rating of {RATING_FLOOR.toLocaleString()} gives{' '}
+          From {firstRatingColour.name} up, the colour comes from a head-to-head rating, from your first game that both players recorded. Everyone starts at{' '}
+          {RATING_START.toLocaleString()}; a rating of {RATING_FLOOR.toLocaleString()} gives{' '}
           {firstRatingColour.name}, and every {RATING_STEP} more gives the next colour.
         </P>
       </section>

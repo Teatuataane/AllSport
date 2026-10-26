@@ -63,8 +63,8 @@ describe('exact rating colour', () => {
     expect(ratingExact(1399, 10)).toBe(9.99)
     expect(ratingExact(1700, 10)).toBe(12)
   })
-  it('is nothing before ten games or under Poroporo', () => {
-    expect(ratingExact(1500, 9)).toBe(0)
+  it('is nothing before the first game or under Poroporo', () => {
+    expect(ratingExact(1500, 0)).toBe(0)
     expect(ratingExact(1050, 20)).toBe(0)
   })
 })

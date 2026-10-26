@@ -5,13 +5,13 @@ import {
 } from '@/lib/matches'
 import { getEventByName } from '@/lib/eventData'
 
-describe('the ten-game minimum', () => {
-  it('is ten, as Tāne decided', () => {
-    expect(MIN_RATED_GAMES).toBe(10)
+describe('the game minimum', () => {
+  it('is one game, as Tāne decided on 27 Oct 2026 (it was ten)', () => {
+    expect(MIN_RATED_GAMES).toBe(1)
   })
-  it('is met at ten, not nine', () => {
-    expect(meetsGameMinimum(9)).toBe(false)
-    expect(meetsGameMinimum(10)).toBe(true)
+  it('is met at one, not none', () => {
+    expect(meetsGameMinimum(0)).toBe(false)
+    expect(meetsGameMinimum(1)).toBe(true)
   })
 })
 
@@ -217,11 +217,38 @@ describe('games toward the minimum', () => {
     expect(counts.get('Squash')?.games).toBe(1)
     expect(counts.get('Tennis')?.games).toBe(1)
   })
-  it('reaches the minimum at ten real games', () => {
-    const ten = Array.from({ length: 10 }, (_, i) => match('A', 'B', 'a', { session_id: `s${i}` }))
-    expect(meetsGameMinimum(gamesBySport(ten, 'A').get('Squash')!.games)).toBe(true)
+  it('reaches the minimum at one real game', () => {
+    expect(meetsGameMinimum(gamesBySport([match('A', 'B', 'a')], 'A').get('Squash')!.games)).toBe(true)
   })
   it('gives nothing to a player who played none', () => {
     expect(gamesBySport([match('A', 'B', 'a')], 'Z').size).toBe(0)
+  })
+})
+
+// ── A game against the kaiwhakawā in a training session ─────────────────────
+// 20261026220347: one record, no session, stamped confirmed by the kaiwhakawā
+// who played it. It counts as agreed; without the stamp it counts for nothing.
+describe('a training game against the kaiwhakawā', () => {
+  const training = (outcome: MatchRow['outcome'], extra: Partial<MatchRow> = {}) =>
+    match('P', 'K', outcome, { session_id: null, confirmed_at: '2026-10-27T05:00:00Z', ...extra })
+
+  it('is one agreed game', () => {
+    const [g] = reconcileGames([training('a')])
+    expect(g.status).toBe('agreed')
+    expect(g.sides).toEqual({ a: ['P'], b: ['K'] })
+    expect(gamesBySport([training('a')], 'K').get('Squash')).toEqual({ games: 1, agreed: 1 })
+  })
+
+  it('counts for nothing without the kaiwhakawā stamp', () => {
+    expect(reconcileGames([training('a', { confirmed_at: null })])[0].status).toBe('unconfirmed')
+  })
+
+  it('never pairs two training games, even ones that look like two sides of one', () => {
+    const games = reconcileGames([training('a'), match('K', 'P', 'b', { session_id: null, confirmed_at: '2026-10-27T05:00:00Z' })])
+    expect(games).toHaveLength(2)
+  })
+
+  it('leaves a lone confirmed record at an official game unconfirmed, as before', () => {
+    expect(reconcileGames([match('A', 'B', 'a', { confirmed_at: '2026-10-27T05:00:00Z' })])[0].status).toBe('unconfirmed')
   })
 })

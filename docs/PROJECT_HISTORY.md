@@ -2723,6 +2723,14 @@ redefined trigger.
 `GRADING_STANDARDS_REVIEW.md`. The compiler learned `"BW · 20"` (weight+reps),
 `"40kg · 100m"` (carries) and `"≤ 4:05"` (predicted reference time).
 
+## Ratings from one game, and playing the kaiwhakawā in training (27 October 2026) — v0.44.0.0, migration NOT YET APPLIED
+
+Tāne asked for two changes to improve the state of the game.
+
+**1. A rating from one game.** Ten agreed games in every sport took far too long. `MIN_RATED_GAMES` dropped from 10 to 1. The ten-game gate is no longer needed as a guard because every rating starts at 1,000, a full colour below Poroporo (1,100), and one game moves a rating 40 at most (K 40). So the first rating colour takes about three wins over much stronger players or six over equals, never a single win. The K-factor's ten provisional games are kept, now under their own constant (`PROVISIONAL_GAMES`). Colours are never withdrawn, so a lucky early streak keeps its colour; Tāne accepted that.
+
+**2. Playing the kaiwhakawā in training.** In an open training session (a witnessed workout the kaiwhakawā runs) the kaiwhakawā appears as the opponent on a Game rung or pure contest. Tāne chose that the game counts toward both ratings. The database previously refused a game result outside an official game and required a session on every match. Migration `20261026220347` makes `matches.session_id` nullable for entry matches, allows a game result in an open training session, and lets `record_entry_match` rate a training game only against the session's kaiwhakawā (`workouts.logged_by`, still a judge), stamped `confirmed_by` that kaiwhakawā. `lib/matches.ts` counts a confirmed match with no session as agreed and never pairs two training matches. Swiss performance ratings ignore training games.
+
 ## Disk IO and Realtime Broadcast (21 October 2026) — v0.43.1.0 and v0.43.1.1, APPLIED 21 Oct 2026
 
 Supabase emailed that the project was depleting its Disk IO budget on the Micro compute. Diagnosis on the live database: 22 MB, almost no disk reads, 299 MB of WAL since April, so not the app's queries. The steady load was Realtime `postgres_changes`, which polled the replication slot several times a second while any game screen was open (3.35 million polls). `results` also had no `session_id` index and had been fully scanned 172,000 times. A lifetime total of 261 GB of temp files could not be traced to any current query and was not growing.
