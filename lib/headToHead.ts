@@ -5,7 +5,8 @@
 // Approved in review, rounds three and four:
 //   · everyone starts at 1,000 in every sport;
 //   · K is 40 for a player's first ten games in a sport, so a new rating finds
-//     its level fast, then 20;
+//     its level fast, then 20 (PROVISIONAL_GAMES; once the same number as the
+//     colour minimum, which dropped to one game on 27 Oct 2026);
 //   · 100 points is one colour, so the colour above you wins about two games in
 //     three;
 //   · a disputed game does not count until a kaiwhakawā settles it, and is then
@@ -19,11 +20,13 @@
 //
 // Pure — no React, no Supabase — so it is unit tested and can run on a server.
 
-import { RATING_START, MIN_RATED_GAMES } from './grading'
+import { RATING_START } from './grading'
 import { reconcileGames, type MatchRow } from './matches'
 
 export const K_PROVISIONAL = 40
 export const K_SETTLED = 20
+/** Games in a sport that move at K_PROVISIONAL before K_SETTLED takes over. */
+export const PROVISIONAL_GAMES = 10
 /** The classic Elo scale: a 400-point gap is ten-to-one. */
 export const SCALE = 400
 
@@ -34,7 +37,7 @@ export function expectedScore(rating: number, opponent: number): number {
 
 /** A player's K for their next game, given how many games they have played before it. */
 export function kFactor(gamesBefore: number): number {
-  return gamesBefore < MIN_RATED_GAMES ? K_PROVISIONAL : K_SETTLED
+  return gamesBefore < PROVISIONAL_GAMES ? K_PROVISIONAL : K_SETTLED
 }
 
 /** How far one game moves a rating. `score` is 1 for a win, 0.5 a draw, 0 a loss. */
@@ -60,7 +63,7 @@ export function rateGames(matches: readonly MatchRow[]): Map<string, Map<string,
     // it, or a kaiwhakawā settled it. Colours now confer themselves, and a game
     // only one side recorded let a player enter wins against anyone at an open
     // game and reach the top rating colours in a sitting, with nobody looking.
-    // Decided with Tāne 2026-09-22. The 10-game minimum reads this count too.
+    // Decided with Tāne 2026-09-22. MIN_RATED_GAMES reads this count too.
     if (g.status !== 'agreed' && g.status !== 'settled') continue
     const { a, b } = g.sides
     // A side left empty, or one player on both sides, is not a game to rate.

@@ -28,7 +28,7 @@
 //   1,100 = Poroporo (7), 100 points a colour, 1,600 = Taniwha (12), and never
 //   below 4, the old loss. It replaces win 6 / draw 5 / loss 4 for any contest
 //   with at least one confirmed game; older games keep 6/5/4.
-//   Conferred rating colours are unchanged: lifetime rating, 10 games.
+//   Conferred rating colours are unchanged: lifetime rating (from one game since 27 Oct 2026).
 //
 // Pure: no React, no Supabase.
 
@@ -140,14 +140,16 @@ export function contestScores(
   swissNames: ReadonlySet<string> = SWISS_EVENT_NAMES,
 ): Map<string, Map<string, Map<string, number>>> {
   const games = reconcileGames(matches).filter(g =>
-    swissNames.has(g.event_name) && (g.status === 'agreed' || g.status === 'settled')
+    // A training game (no session) is not a contest day, so it has no
+    // game-day performance rating; it still counts in the lifetime rating.
+    !!g.session_id && swissNames.has(g.event_name) && (g.status === 'agreed' || g.status === 'settled')
     && g.sides.a.length === 1 && g.sides.b.length === 1 && g.sides.a[0] !== g.sides.b[0])
   const firstAt = new Map<string, string>()
   const byId = new Map(matches.map(m => [m.id, m]))
   for (const g of games) {
     const at = g.matchIds.map(id => byId.get(id)!.created_at).sort()[0]
-    const cur = firstAt.get(g.session_id)
-    if (!cur || at < cur) firstAt.set(g.session_id, at)
+    const cur = firstAt.get(g.session_id!)
+    if (!cur || at < cur) firstAt.set(g.session_id!, at)
   }
 
   const out = new Map<string, Map<string, Map<string, number>>>()

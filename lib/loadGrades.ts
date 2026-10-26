@@ -140,7 +140,7 @@ export type ResultRow = {
 
 type MatchQueryRow = {
   id: string
-  session_id: string
+  session_id: string | null
   outcome: MatchRow['outcome']
   created_at: string
   confirmed_at: string | null

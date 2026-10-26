@@ -11,12 +11,13 @@ const player = { division: "Men's", ageYears: 30, gender: null }
 const ratings = (r: SportRating) => new Map([[tennis.name, r]])
 
 describe('gameEventLine', () => {
-  it('counts the games still needed, ten minus the ones that count', () => {
-    expect(gameEventLine(tennis, ratings({ rating: 1040, games: 3 }))).toEqual({ gamesToRating: MIN_RATED_GAMES - 3 })
+  it('asks for one game before there is a rating', () => {
     expect(gameEventLine(tennis, new Map())).toEqual({ gamesToRating: MIN_RATED_GAMES })
+    expect(MIN_RATED_GAMES).toBe(1)
   })
 
-  it('shows the rating once ten games count, rounded, even below the first colour', () => {
+  it('shows the rating from the first game, rounded, even below the first colour', () => {
+    expect(gameEventLine(tennis, ratings({ rating: 1020, games: 1 }))).toEqual({ rating: 1020 })
     expect(gameEventLine(tennis, ratings({ rating: 1147.6, games: 10 }))).toEqual({ rating: 1148 })
     expect(gameEventLine(tennis, ratings({ rating: 1050, games: 12 }))).toEqual({ rating: 1050 })
   })
@@ -53,6 +54,7 @@ describe('the live button colour', () => {
     const game = tiers.findIndex(t => t.scoring === 'sport')
     const loss = [{ raw_score: game * 10000, weight_kg: null, difficulty_tier: tiers[game].name }]
     expect(liveEventRung(tennis, loss, player, null, { rating: 1250, games: 10 })).toBe(8.5)
-    expect(liveEventRung(tennis, loss, player, null, { rating: 1250, games: 4 })).toBe(4)
+    expect(liveEventRung(tennis, loss, player, null, { rating: 1250, games: 1 })).toBe(8.5)
+    expect(liveEventRung(tennis, loss, player, null, { rating: 1250, games: 0 })).toBe(4)
   })
 })

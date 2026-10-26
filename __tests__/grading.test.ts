@@ -336,10 +336,11 @@ describe('standards and the age shift', () => {
 })
 
 describe('Game-rung events', () => {
-  it('gives no rating colour below Poroporo or before ten games', () => {
-    expect(MIN_RATED_GAMES).toBe(10)
+  it('gives no rating colour below Poroporo or before the first game', () => {
+    expect(MIN_RATED_GAMES).toBe(1)
     expect(ratingRung(1099, 30)).toBe(0)
-    expect(ratingRung(1500, 9)).toBe(0)
+    expect(ratingRung(1500, 0)).toBe(0)
+    expect(ratingRung(1100, 1)).toBe(7)
   })
 
   it('gives Poroporo at 1,100 and a colour per 100 points up to Taniwha at 1,600', () => {
