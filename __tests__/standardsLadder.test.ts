@@ -63,6 +63,9 @@ describe('standardsLadder', () => {
     const rows = standardsLadder(ev('tennis'), open, null)
     expect(rows.slice(0, 6).every(r => r.kind === 'drill')).toBe(true)
     expect(rows[5].name).toBe('Kahurangi')
+    // The rating gives these colours too, since 28 Oct 2026.
+    expect(rows[0].label).toMatch(/ · or rating 500$/)
+    expect(rows[5].label).toMatch(/ · or rating 1,000$/)
     expect(rows.slice(6).map(r => [r.name, r.label])).toEqual([
       ['Poroporo', 'Rating 1,100'], ['Parahi', 'Rating 1,200'], ['Hiriwa', 'Rating 1,300'],
       ['Kōura', 'Rating 1,400'], ['Uenuku', 'Rating 1,500'], ['Taniwha', 'Rating 1,600'],
@@ -77,7 +80,11 @@ describe('standardsLadder', () => {
 
   it('gives a rating-only event just the rating rows', () => {
     const rows = standardsLadder(ev('wrestling'), open, null)
-    expect(rows.map(r => r.name)).toEqual(['Poroporo', 'Parahi', 'Hiriwa', 'Kōura', 'Uenuku', 'Taniwha'])
+    expect(rows.map(r => r.name)).toEqual([
+      'Kiwikiwi', 'Whero', 'Karaka', 'Kōwhai', 'Kākāriki', 'Kahurangi',
+      'Poroporo', 'Parahi', 'Hiriwa', 'Kōura', 'Uenuku', 'Taniwha',
+    ])
+    expect(rows[0].label).toBe('Rating 500')
     expect(rows.every(r => r.kind === 'rating')).toBe(true)
     expect(RATING_ONLY_NOTE).toMatch(/graded on games/)
   })

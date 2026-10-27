@@ -63,9 +63,14 @@ describe('exact rating colour', () => {
     expect(ratingExact(1399, 10)).toBe(9.99)
     expect(ratingExact(1700, 10)).toBe(12)
   })
-  it('is nothing before the first game or under Poroporo', () => {
+  it('is nothing before the first game or under Kiwikiwi', () => {
     expect(ratingExact(1500, 0)).toBe(0)
-    expect(ratingExact(1050, 20)).toBe(0)
+    expect(ratingExact(450, 20)).toBe(0)
+  })
+  it('runs on below Poroporo, a colour per 100 points', () => {
+    expect(ratingExact(1050, 20)).toBe(6.5)
+    expect(ratingExact(950, 1)).toBe(5.5)
+    expect(ratingExact(500, 1)).toBe(1)
   })
 })
 

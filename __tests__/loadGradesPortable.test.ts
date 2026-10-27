@@ -109,7 +109,9 @@ describe('the 42703 fallbacks', () => {
     script.results = [missingColumn, ok([])]
     const { db, log } = fakeDb(script)
     await loadGradeState(db, 'p1')
-    const asked = log.filter(c => c.table === 'results').map(c => c.cols)
+    // The player's own scores; the plain game results read (corroborate) asks
+    // results for every player's win, draw or loss, and is not under test here.
+    const asked = log.filter(c => c.table === 'results' && c.cols.includes('raw_score')).map(c => c.cols)
     expect(asked).toHaveLength(2)
     expect(asked[0]).toContain('bodyweight_band')
     expect(asked[1]).not.toContain('bodyweight_band')

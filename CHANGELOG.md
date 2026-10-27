@@ -2,6 +2,16 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.45.0.0] - 2026-10-28
+
+### Changed
+- **The head-to-head rating gives every colour, Kiwikiwi to Taniwha** (Tāne, 28 Oct 2026). It gave only Poroporo and above, so a player who only plays the game had no colour from it until 1,100. The scale is extended downwards, not moved: Kiwikiwi at 500, a colour per 100 points, Kahurangi at 1,000 (where everyone starts), Poroporo still at 1,100 and Taniwha at 1,600, so every existing rating keeps its colour. One agreed game now gives a colour: about Kahurangi for a first win, Kākāriki for a first loss. An event's colour is still the higher of the drill (capped at Kahurangi) and the rating. `RATING_FLOOR` is now 500 (Kiwikiwi); the 1,100 anchor is `RATING_POROPORO`, and `ratingForRung` gives each colour's rating. The standards ladder names the rating beside each drill colour, and Wrestling lists all twelve.
+- **Beat them, take their rating.** In a player's first ten games in a sport (`PROVISIONAL_GAMES`), a win over a higher-rated side lifts them to that side's rating: beat a Taniwha in your first game and you are a Taniwha (`nextRating` in `lib/headToHead.ts`). Plain Elo moved a newcomer about 39 points for it. Only a win does this; a draw or a loss is plain Elo, and the beaten player loses what Elo says against the newcomer's old rating.
+- `GRADING_RULES_VERSION` bumped, so every player is rechecked and the new colours confer themselves.
+
+### Fixed
+- **The 22 Oct Teqball games rated nobody.** The winner named both opponents; both logged a plain Loss without naming the winner, so each game rested on one side's word and was never rated. A plain win, draw or loss logged at an official game without an opponent now backs the other side's record of that game when it says the same thing (`corroborate` in `lib/matches.ts`, read by `loadMatchesChecked`): same game, same sport, one record per plain result. The score sheet now asks a player to pick their opponent when they have not. No migration.
+
 ## [0.44.0.0] - 2026-10-27
 
 ### Changed

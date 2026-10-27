@@ -25,7 +25,7 @@ import {
 import { bodyweightOn, bandMidpointKg, type ColourGate, type BodyweightDeclaration } from './grading'
 import { workoutEvidence, GAME_MINUTES, type WorkoutEntryRow } from './workouts'
 import { rateGames, type SportRating } from './headToHead'
-import { disputedBySport, type MatchRow } from './matches'
+import { corroborate, disputedBySport, type MatchRow, type PlainGameResult } from './matches'
 import { toNZDateString } from './dates'
 import { domainRungsOf, gameColourTotals, type SeasonRow } from './leaderboardScores'
 import { nzYear, yearOfDay, awardsInYear } from './seasonYear'
@@ -140,6 +140,8 @@ export type ResultRow = {
 
 type MatchQueryRow = {
   id: string
+  /** The recorder's result, on a match from an official game. */
+  result_id?: string | null
   session_id: string | null
   outcome: MatchRow['outcome']
   created_at: string
@@ -168,19 +170,49 @@ export async function loadMatchesChecked(db: GradeDb): Promise<{ rows: MatchRow[
     // event_name is stored on an entry match (a game played as a SWAP), which
     // has no session_events row to read it from. Asked for with a fallback,
     // because a missing COLUMN is 42703 and takes the whole request down.
-    .select('id, session_id, outcome, created_at, confirmed_at, event_name, session_events(event_name), match_players(player_id, side)')
+    // result_id is in the CREATE TABLE (20260914020739), so it adds no 42703 risk.
+    .select('id, result_id, session_id, outcome, created_at, confirmed_at, event_name, session_events(event_name), match_players(player_id, side)')
     .order('created_at', { ascending: true })
   if (error?.code === '42703') return loadMatchesLegacy(db)
   if (error) return { rows: [], failed: !missing(error) }
   if (!data) return { rows: [], failed: false }
-  const rows = (data as unknown as MatchQueryRow[])
+  const raw = data as unknown as MatchQueryRow[]
+  const rows = raw
     .map(m => ({ ...m, event_name: m.event_name ?? m.session_events?.event_name ?? '' }))
     .filter(m => m.event_name)
     .map(m => ({
       id: m.id, session_id: m.session_id, outcome: m.outcome, created_at: m.created_at,
       confirmed_at: m.confirmed_at, event_name: m.event_name, players: m.match_players ?? [],
     }))
-  return { rows, failed: false }
+  // A plain win, draw or loss backs the other side's record of the game
+  // (corroborate). Its own read: if it fails, games rest on named records
+  // alone, as they did before, rather than the whole rating failing.
+  const anchored = new Set(raw.map(m => m.result_id).filter((id): id is string => !!id))
+  const plain = await loadPlainGameResults(db, anchored)
+  return { rows: corroborate(rows, plain), failed: false }
+}
+
+/** Results rows with a win, draw or loss and no match anchored on them. */
+async function loadPlainGameResults(db: GradeDb, anchored: ReadonlySet<string>): Promise<PlainGameResult[]> {
+  type Row = { id: string; player_id: string | null; session_id: string | null; result_type: string | null; created_at: string; session_events: { event_name: string } | null }
+  const out: PlainGameResult[] = []
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await db.from('results')
+      .select('id, player_id, session_id, result_type, created_at, session_events(event_name)')
+      .not('result_type', 'is', null)
+      .order('id')
+      .range(from, from + PAGE - 1)
+    if (error || !data) return out
+    for (const r of data as unknown as Row[]) {
+      if (anchored.has(r.id) || !r.player_id || !r.session_id || !r.session_events?.event_name) continue
+      if (r.result_type !== 'win' && r.result_type !== 'draw' && r.result_type !== 'loss') continue
+      out.push({
+        id: r.id, player_id: r.player_id, session_id: r.session_id, created_at: r.created_at,
+        event_name: r.session_events.event_name, result_type: r.result_type as PlainGameResult['result_type'],
+      })
+    }
+    if (data.length < PAGE) return out
+  }
 }
 
 /** Before 20260920053207 a match had no event_name of its own. */

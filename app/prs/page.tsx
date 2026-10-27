@@ -18,7 +18,7 @@ import EventIcon from '@/components/EventIcon'
 import { ColourCircle } from '@/components/GradesCard'
 import { loadGradeState, type GradeState } from '@/lib/loadGrades'
 import { shownDomainRungs } from '@/lib/colourDisplay'
-import { gradeForRung, gradeInk, formatExact, RATING_FLOOR } from '@/lib/grading'
+import { gradeForRung, gradeInk, formatExact } from '@/lib/grading'
 import { eventCredit } from '@/lib/playerGrades'
 import { STANDARDS } from '@/lib/standards'
 import { NEUTRAL_ICON_TINT } from '@/lib/scoreColour'
@@ -110,7 +110,7 @@ function EventColour({ state, event }: { state: GradeState; event: EventData }) 
     : eg.bodyweightBlocked
       ? 'Needs bodyweight: declare it on the scoring screen'
       : STANDARDS[event.slug]?.kind === 'rating' && eg.rung === 0
-        ? `Colours come from a ${RATING_FLOOR.toLocaleString('en-NZ')} rating`
+        ? 'Colours come from head-to-head games'
         : !eg.gradeable
           ? 'No colour standard'
           : null

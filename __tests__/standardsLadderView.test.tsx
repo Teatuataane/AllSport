@@ -45,7 +45,7 @@ describe('StandardsLadderView', () => {
   it('says a rating-only event is graded on games', () => {
     render(<StandardsLadderView ev={getEventBySlug('wrestling')} player={player} bodyweightKg={null} />)
     expect(screen.getByText(/graded on games/)).toBeTruthy()
-    expect(screen.getAllByRole('listitem')).toHaveLength(6)
+    expect(screen.getAllByRole('listitem')).toHaveLength(12)
   })
 
   it('renders nothing without a player', () => {

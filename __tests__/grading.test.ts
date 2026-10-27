@@ -4,7 +4,7 @@ import {
   slotsForDomain, domainGrade, overallGrade, overallRung, averageRung, gamesCapRung,
   DOMAIN_TOP_EVENTS, GAMES_REQUIRED, colourGate,
   AGE_SHIFT, thresholdFor, rungForScore, ageBand,
-  DRILL_CAP, MIN_RATED_GAMES, ratingRung, gameEventRung,
+  DRILL_CAP, MIN_RATED_GAMES, ratingRung, gameEventRung, RATING_FLOOR, RATING_START, ratingForRung,
   BODYWEIGHT_BANDS, JUNIOR_BODYWEIGHT_KG, ratioThresholdsKg, bandMidpointKg, bodyweightOn,
   type DomainGradeResult,
 } from '@/lib/grading'
@@ -336,11 +336,22 @@ describe('standards and the age shift', () => {
 })
 
 describe('Game-rung events', () => {
-  it('gives no rating colour below Poroporo or before the first game', () => {
+  it('gives no rating colour below Kiwikiwi or before the first game', () => {
     expect(MIN_RATED_GAMES).toBe(1)
-    expect(ratingRung(1099, 30)).toBe(0)
+    expect(ratingRung(499, 30)).toBe(0)
     expect(ratingRung(1500, 0)).toBe(0)
     expect(ratingRung(1100, 1)).toBe(7)
+  })
+
+  it('reaches down to Kiwikiwi at 500, with the start at Kahurangi (Tāne, 28 Oct 2026)', () => {
+    expect(RATING_FLOOR).toBe(500)
+    expect(ratingRung(500, 1)).toBe(1)
+    expect(ratingRung(599, 1)).toBe(1)
+    expect(ratingRung(600, 1)).toBe(2)
+    expect(ratingRung(980, 1)).toBe(5)
+    expect(ratingRung(RATING_START, 1)).toBe(DRILL_CAP)
+    expect(ratingRung(1099, 30)).toBe(6)
+    for (let r = 1; r <= 12; r++) expect(ratingRung(ratingForRung(r), 1)).toBe(r)
   })
 
   it('gives Poroporo at 1,100 and a colour per 100 points up to Taniwha at 1,600', () => {

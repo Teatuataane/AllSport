@@ -1,8 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import {
   MIN_RATED_GAMES, outcomeFromResult, isGameEntry, opponentPicks, resolveOpponentId,
-  reconcileGames, gamesBySport, disputedBySport, meetsGameMinimum, agrees, type MatchRow,
+  reconcileGames, gamesBySport, disputedBySport, meetsGameMinimum, agrees, corroborate,
+  type MatchRow, type PlainGameResult,
 } from '@/lib/matches'
+import { rateGames } from '@/lib/headToHead'
 import { getEventByName } from '@/lib/eventData'
 
 describe('the game minimum', () => {
@@ -250,5 +252,51 @@ describe('a training game against the kaiwhakawā', () => {
 
   it('leaves a lone confirmed record at an official game unconfirmed, as before', () => {
     expect(reconcileGames([match('A', 'B', 'a', { confirmed_at: '2026-10-27T05:00:00Z' })])[0].status).toBe('unconfirmed')
+  })
+})
+
+describe('a plain result backs the other side\'s record (corroborate, 28 Oct 2026)', () => {
+  // The 22 Oct 2026 Teqball game: W named both opponents; L1 and L2 each
+  // logged a plain Loss without naming W.
+  const claim = (id: string, opp: string, outcome: MatchRow['outcome'] = 'a', session_id = 'g22'): MatchRow => ({
+    id, session_id, event_name: 'Teqball', outcome, created_at: `2026-10-22T03:54:${id.slice(-1)}0Z`,
+    players: [{ player_id: 'W', side: 'a' }, { player_id: opp, side: 'b' }],
+  })
+  const plain = (id: string, player_id: string, result_type: PlainGameResult['result_type'], session_id = 'g22'): PlainGameResult => ({
+    id, player_id, session_id, event_name: 'Teqball', result_type, created_at: '2026-10-22T03:50:00Z',
+  })
+
+  it('makes the 22 Oct Teqball games agreed, so all three are rated', () => {
+    const ms = corroborate([claim('m1', 'L1'), claim('m2', 'L2')], [plain('r1', 'L1', 'loss'), plain('r2', 'L2', 'loss')])
+    expect(reconcileGames(ms).map(g => g.status)).toEqual(['agreed', 'agreed'])
+    const rated = rateGames(ms).get('Teqball')!
+    expect(rated.get('W')!.games).toBe(2)
+    expect(rated.get('L1')!.games).toBe(1)
+    expect(rated.get('L2')!.games).toBe(1)
+  })
+
+  it('needs the plain result to say the same thing', () => {
+    // L1 says they WON: that is a disagreement, not backing.
+    const ms = corroborate([claim('m1', 'L1')], [plain('r1', 'L1', 'win')])
+    expect(reconcileGames(ms).map(g => g.status)).toEqual(['unconfirmed'])
+    // A draw backs a draw.
+    const d = corroborate([claim('m1', 'L1', 'draw')], [plain('r1', 'L1', 'draw')])
+    expect(reconcileGames(d).map(g => g.status)).toEqual(['agreed'])
+  })
+
+  it('needs the same game and sport, and backs one record per result', () => {
+    expect(reconcileGames(corroborate([claim('m1', 'L1')], [plain('r1', 'L1', 'loss', 'other')]))[0].status).toBe('unconfirmed')
+    expect(reconcileGames(corroborate([claim('m1', 'L1')], [{ ...plain('r1', 'L1', 'loss'), event_name: 'Tennis' }]))[0].status).toBe('unconfirmed')
+    // One logged loss cannot confirm two claimed wins over the same player.
+    const two = reconcileGames(corroborate([claim('m1', 'L1'), claim('m2', 'L1')], [plain('r1', 'L1', 'loss')]))
+    expect(two.map(g => g.status).sort()).toEqual(['agreed', 'unconfirmed'])
+  })
+
+  it('leaves a game both sides named, and a training game, alone', () => {
+    const named: MatchRow = { ...claim('m9', 'L1'), id: 'm9r', outcome: 'b', players: [{ player_id: 'L1', side: 'a' }, { player_id: 'W', side: 'b' }] }
+    const ms = corroborate([claim('m1', 'L1'), named], [plain('r1', 'L1', 'loss')])
+    expect(ms).toHaveLength(2)
+    const training: MatchRow = { ...claim('m1', 'L1'), session_id: null }
+    expect(corroborate([training], [plain('r1', 'L1', 'loss')])).toHaveLength(1)
   })
 })
