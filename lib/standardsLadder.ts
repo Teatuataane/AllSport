@@ -10,12 +10,13 @@
 // award it.
 //
 // A Game-rung event stops its drills at Kahurangi; Poroporo to Taniwha come from
-// a head-to-head rating, which is not age-shifted. A rating-only event (Wrestling)
-// has only those rows.
+// a head-to-head rating, which is not age-shifted. The rating gives Kiwikiwi to
+// Kahurangi too (since 28 Oct 2026), so those rows name both ways there. A
+// rating-only event (Wrestling) has only rating rows, Kiwikiwi to Taniwha.
 
 import { STANDARDS } from './standards'
 import {
-  DRILL_CAP, RATING_FLOOR, RATING_STEP, TOP_RUNG,
+  DRILL_CAP, TOP_RUNG, ratingForRung,
   gradeForRung, ratioThresholdsKg, thresholdFor, bwLoadKg,
 } from './grading'
 import { ladderFor, type GradePlayer } from './playerGrades'
@@ -123,12 +124,11 @@ export function standardsLadder(
   const row = (rung: number, label: string, kind: LadderRow['kind']) =>
     rows.push({ rung, name: gradeForRung(rung).name, label, kind })
 
-  const ratingRows = () => {
-    for (let r = DRILL_CAP + 1; r <= TOP_RUNG; r++) {
-      row(r, `Rating ${(RATING_FLOOR + (r - DRILL_CAP - 1) * RATING_STEP).toLocaleString('en-NZ')}`, 'rating')
-    }
+  const ratingLabel = (r: number) => `Rating ${ratingForRung(r).toLocaleString('en-NZ')}`
+  const ratingRows = (from: number) => {
+    for (let r = from; r <= TOP_RUNG; r++) row(r, ratingLabel(r), 'rating')
   }
-  if (s.kind === 'rating') { ratingRows(); return rows }
+  if (s.kind === 'rating') { ratingRows(1); return rows }
 
   const ladder = s.all ?? s[ladderFor(player)] ?? []
   if (ladder.length === 0) return []
@@ -150,8 +150,9 @@ export function standardsLadder(
     const t = thresholdFor(ladder, r - shift)
     // Below the Open floor the ladder is extrapolated; at or under zero that
     // is "any score".
-    row(r, t > 0 ? (s.bwLoad ? bwLoadLabel(ev, t, bodyweightKg) : drillLabel(ev, t)) : 'Any score', 'drill')
+    const drill = t > 0 ? (s.bwLoad ? bwLoadLabel(ev, t, bodyweightKg) : drillLabel(ev, t)) : 'Any score'
+    row(r, s.game ? `${drill} · or ${ratingLabel(r).toLowerCase()}` : drill, 'drill')
   }
-  if (s.game) ratingRows()
+  if (s.game) ratingRows(DRILL_CAP + 1)
   return rows
 }

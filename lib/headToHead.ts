@@ -1,6 +1,7 @@
 // ─── Head-to-head ratings ────────────────────────────────────────────────────
 // One rating per player per sport, from the games match recording collects. It
-// grades Poroporo and above on Game-rung events (lib/grading.ts ratingRung).
+// grades Kiwikiwi to Taniwha on Game-rung events (lib/grading.ts ratingRung;
+// Poroporo and above only, until 28 Oct 2026).
 //
 // Approved in review, rounds three and four:
 //   · everyone starts at 1,000 in every sport;
@@ -10,8 +11,19 @@
 //   · 100 points is one colour, so the colour above you wins about two games in
 //     three;
 //   · a disputed game does not count until a kaiwhakawā settles it, and is then
-//     rated on the record they marked as right; a game only one side logged
-//     counts; a game both sides logged counts once.
+//     rated on the record they marked as right; a game both sides logged
+//     counts once.
+//
+// And since 28 Oct 2026 (Tāne): a new player who beats someone rated above
+// them takes that rating. Beat a Taniwha in your first game and you are a
+// Taniwha. Plain Elo moved a 1,000 newcomer about 39 points for it, and a
+// rating that cannot see a result like that is not measuring the player.
+// It holds through a player's provisional games (PROVISIONAL_GAMES), the
+// stretch in which a rating is still finding its level, so a newcomer who lost
+// their first game to a friend and then beats a Taniwha gets there too. A
+// settled player wins points the usual way. Only a WIN does it: a draw, or a
+// loss to a strong player, says less, and moves the rating by Elo alone. The
+// opponent loses what Elo says they lose against the newcomer's old rating.
 //
 // Deliberately NOT lib/rating.ts. That file once held a multiplayer Elo from
 // session placements, deleted in August 2026 because nothing used it, and its
@@ -48,6 +60,16 @@ export function ratingChange(rating: number, gamesBefore: number, opponent: numb
 export type SportRating = { rating: number; games: number }
 
 /**
+ * A player's rating after one game: Elo, except that a provisional player who
+ * WINS takes the beaten side's rating when it is higher (see the header).
+ */
+export function nextRating(cur: SportRating, delta: number, score: number, opponent: number): number {
+  const elo = cur.rating + delta
+  if (score === 1 && cur.games < PROVISIONAL_GAMES) return Math.max(elo, opponent)
+  return elo
+}
+
+/**
  * Every player's rating in every sport, replaying games in the order they were
  * recorded. Keyed by sport (the event name), then player id.
  *
@@ -64,6 +86,8 @@ export function rateGames(matches: readonly MatchRow[]): Map<string, Map<string,
     // only one side recorded let a player enter wins against anyone at an open
     // game and reach the top rating colours in a sitting, with nobody looking.
     // Decided with Tāne 2026-09-22. MIN_RATED_GAMES reads this count too.
+    // The other side's plain win, draw or loss, logged without naming anyone,
+    // is their word too (corroborate in lib/matches.ts, 28 Oct 2026).
     if (g.status !== 'agreed' && g.status !== 'settled') continue
     const { a, b } = g.sides
     // A side left empty, or one player on both sides, is not a game to rate.
@@ -79,13 +103,13 @@ export function rateGames(matches: readonly MatchRow[]): Map<string, Map<string,
     // Every change is computed before any is applied, so a side's mean is the
     // same for all of its players.
     const updates = [
-      ...a.map(id => [id, ratingChange(ra, current(id).games, rb, scoreA)] as const),
-      ...b.map(id => [id, ratingChange(rb, current(id).games, ra, 1 - scoreA)] as const),
-    ].map(([id, delta]) => {
+      ...a.map(id => [id, ratingChange(ra, current(id).games, rb, scoreA), scoreA, rb] as const),
+      ...b.map(id => [id, ratingChange(rb, current(id).games, ra, 1 - scoreA), 1 - scoreA, ra] as const),
+    ].map(([id, delta, score, opponent]) => {
       // ratingChange takes the SIDE's rating but the PLAYER's games, so the
       // K comes from the player and the surprise from the side.
       const cur = current(id)
-      return [id, { rating: cur.rating + delta, games: cur.games + 1 }] as const
+      return [id, { rating: nextRating(cur, delta, score, opponent), games: cur.games + 1 }] as const
     })
     for (const [id, next] of updates) sport.set(id, next)
   }

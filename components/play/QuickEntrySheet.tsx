@@ -669,6 +669,13 @@ export default function QuickEntrySheet({
                           Typed names aren&apos;t recorded as a match. Pick your opponent above so this game counts.
                         </div>
                       )}
+                      {/* The 22 Oct 2026 Teqball losers skipped this, and nobody was rated
+                          until their plain loss was read as backing (lib/matches.ts corroborate). */}
+                      {!v.opponentName.trim() && !v.opponentId && opponentPicks.some(p => p.id) && (
+                        <div style={{ fontSize: '12px', color: '#888', marginTop: '6px', lineHeight: 1.4 }}>
+                          Pick your opponent above so this game counts toward both ratings.
+                        </div>
+                      )}
                       <input value={v.sportScore} onChange={e => set({ sportScore: e.target.value })} placeholder="Score e.g. 21–18 (optional)" style={{ ...INP, fontSize: '15px', marginTop: '8px' }} />
                       {showRaceTime && (
                         <>

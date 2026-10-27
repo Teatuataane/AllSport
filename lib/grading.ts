@@ -124,7 +124,7 @@ export const TOP_RUNG = 12
  * conferred one. HOME forces one full recheck per player when this differs
  * from the version it last checked under (lib/useNewColours.ts).
  */
-export const GRADING_RULES_VERSION = '2026-10-27-rating-from-one-game'
+export const GRADING_RULES_VERSION = '2026-10-28-rating-to-kiwikiwi'
 export const DOMAIN_COUNT = 10
 
 /**
@@ -763,14 +763,21 @@ export function rungForCompound(mode: string, score: number, thresholds: readonl
   return null
 }
 
-// ─── Game-rung events: drills below, the rating above ────────────────────────
+// ─── Game-rung events: drills and the rating ─────────────────────────────────
 // On an event topped by a Game rung, the drills grade Kiwikiwi to Kahurangi and
-// a head-to-head rating grades Poroporo to Taniwha: 1,100 to 1,600, one colour
-// per 100 points, so the colour above you wins about two games in three. A
-// rating counts from a player's first game in that sport recorded by both sides
-// (or settled by a kaiwhakawā; see rateGames). The colour shown is the
-// higher of the two, and like every colour it is never taken back when the
-// rating later falls.
+// a head-to-head rating grades Kiwikiwi to Taniwha: one colour per 100 points,
+// Kiwikiwi at 500, Kahurangi at 1,000 (where everyone starts), Poroporo at
+// 1,100 and Taniwha at 1,600, so the colour above you wins about two games in
+// three. A rating counts from a player's first game in that sport recorded by
+// both sides (or settled by a kaiwhakawā, or backed by the other side's own
+// result; see rateGames). The colour shown is the higher of the two, and like
+// every colour it is never taken back when the rating later falls.
+//
+// The rating gave only Poroporo and above until 28 Oct 2026, when Tāne asked
+// for it to reach down to Kiwikiwi: a player who only plays the game, and
+// never the drills, had no colour from it until 1,100. The scale was extended
+// downwards rather than moved, so 1,100 is still Poroporo and every existing
+// rating keeps its colour.
 //
 // The rating is NOT age-shifted. It already measures you against the people you
 // actually play, of every age; shifting it would turn a 1,500 rating of a
@@ -779,9 +786,15 @@ export function rungForCompound(mode: string, score: number, thresholds: readonl
 /** Kahurangi: the highest colour a drill can give on a Game-rung event. */
 export const DRILL_CAP = 6
 export const RATING_START = 1000
-/** Poroporo, the first colour a rating gives. */
-export const RATING_FLOOR = 1100
+/** Poroporo: the rating the scale is anchored on, 1,100. */
+export const RATING_POROPORO = 1100
 export const RATING_STEP = 100
+/** Kiwikiwi, the lowest colour a rating gives: 500. Below it, no colour. */
+export const RATING_FLOOR = RATING_POROPORO - DRILL_CAP * RATING_STEP
+/** The rating a colour starts at: 500 for Kiwikiwi, 1,100 for Poroporo, 1,600 for Taniwha. */
+export function ratingForRung(rung: number): number {
+  return RATING_POROPORO + (rung - DRILL_CAP - 1) * RATING_STEP
+}
 /**
  * Recorded games a player needs in a sport before its rating shows and gives a
  * colour. ONE since 27 Oct 2026 (Tāne: ten games in every sport took far too
@@ -789,31 +802,30 @@ export const RATING_STEP = 100
  * (scripts/sim-skill-rating.mjs) put a rating's match to true skill at about
  * 0.55 after one to four games and 0.83 after ten to nineteen.
  *
- * Why one game is still safe: every rating starts at RATING_START (1,000), a
- * full colour below RATING_FLOOR (1,100), and one game moves a rating
- * K_PROVISIONAL (40) at most. So no single game gives a colour; the first one
- * takes about three wins over much stronger players or six over equals. The
- * first ten games still move twice as far (lib/headToHead.ts kFactor), which
- * is how a new rating finds its level, not this gate. Defined once, here, and
- * re-exported by lib/matches.ts.
+ * Since 28 Oct 2026 one game always gives a colour: the start (1,000) is
+ * Kahurangi, so a first win sits at about Kahurangi and a first loss at about
+ * Kākāriki, and a first win over a stronger player takes their rating
+ * (lib/headToHead.ts). The guard is that only a game resting on both sides'
+ * word is rated, not a game count. Defined once, here, and re-exported by
+ * lib/matches.ts.
  */
 export const MIN_RATED_GAMES = 1
 
-/** The colour a rating gives, or 0 below Poroporo or before the first game. */
+/** The colour a rating gives, or 0 below Kiwikiwi or before the first game. */
 export function ratingRung(rating: number, games: number): number {
   if (games < MIN_RATED_GAMES || rating < RATING_FLOOR) return 0
-  return Math.min(TOP_RUNG, DRILL_CAP + 1 + Math.floor((rating - RATING_FLOOR) / RATING_STEP))
+  return Math.min(TOP_RUNG, DRILL_CAP + 1 + Math.floor((rating - RATING_POROPORO) / RATING_STEP))
 }
 
 /**
  * The exact score a rating gives (Scoring v2): 1,150 is Poroporo and a half,
- * 7.5. 0 wherever ratingRung is 0; Taniwha (12) at 1,600 and above.
+ * 7.5; 950 is Kākāriki and a half, 5.5. 0 wherever ratingRung is 0; Taniwha
+ * (12) at 1,600 and above.
  */
 export function ratingExact(rating: number, games: number): number {
   const rung = ratingRung(rating, games)
   if (rung === 0 || rung >= TOP_RUNG) return rung
-  const into = rating - RATING_FLOOR - (rung - DRILL_CAP - 1) * RATING_STEP
-  return exactFrom(rung, into / RATING_STEP)
+  return exactFrom(rung, (rating - ratingForRung(rung)) / RATING_STEP)
 }
 
 /** A Game-rung event's colour: the higher of the capped drill colour and the rating colour. */

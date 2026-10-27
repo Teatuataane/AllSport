@@ -32,7 +32,7 @@
 //
 // Pure: no React, no Supabase.
 
-import { RATING_START, RATING_FLOOR, RATING_STEP, DRILL_CAP, TOP_RUNG, exactFrom } from './grading'
+import { RATING_START, RATING_POROPORO, RATING_STEP, DRILL_CAP, TOP_RUNG, exactFrom } from './grading'
 import { rateGames, SCALE, type SportRating } from './headToHead'
 import { reconcileGames, type MatchRow } from './matches'
 import { getEventBySlug } from './eventData'
@@ -116,7 +116,7 @@ export const CONTEST_FLOOR = DRILL_CAP - 2
 
 /** A performance rating on the colour scale: 1,100 = 7, 100 a colour, 4 to 12. */
 export function performanceExact(perf: number): number {
-  const colours = DRILL_CAP + 1 + (perf - RATING_FLOOR) / RATING_STEP
+  const colours = DRILL_CAP + 1 + (perf - RATING_POROPORO) / RATING_STEP
   if (colours >= TOP_RUNG) return TOP_RUNG
   if (colours <= CONTEST_FLOOR) return CONTEST_FLOOR
   const rung = Math.floor(colours + 1e-9)

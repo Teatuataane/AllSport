@@ -231,6 +231,68 @@ export function reconcileGames(matches: readonly MatchRow[]): Game[] {
 }
 
 /**
+ * A win, draw or loss someone logged at an official game WITHOUT naming an
+ * opponent: a results row with a result_type and no match of its own.
+ */
+export type PlainGameResult = {
+  id: string
+  player_id: string
+  session_id: string
+  event_name: string
+  result_type: 'win' | 'draw' | 'loss'
+  created_at: string
+}
+
+/** What a player on side `side` of a match logged, if they agree with it. */
+const resultFor = (outcome: MatchOutcome, side: 'a' | 'b'): PlainGameResult['result_type'] =>
+  outcome === 'draw' ? 'draw' : outcome === side ? 'win' : 'loss'
+
+/**
+ * The matches, plus the other side's record of each game it is missing where
+ * that side's own result backs it up.
+ *
+ * Why (Tāne, 28 Oct 2026): at the 22 Oct game the Teqball winner named both
+ * opponents, and both logged a plain Loss without naming the winner. Each game
+ * rested on one side's word, so nobody was rated. But the loser DID say they
+ * lost: a plain loss in the same game and sport, against a record that says
+ * they lost, is the second word a game needs. It is not a way to beat someone
+ * without them: their own result has to say the same thing.
+ *
+ * One plain result backs at most one record, so a player who logged one loss
+ * cannot confirm two claimed wins over them. The record made for it is a
+ * mirror of the claim (sides swapped), so reconcileGames pairs the two as an
+ * agreed game exactly as if both sides had named each other. Its id starts
+ * "plain:" and it is never written anywhere.
+ */
+export function corroborate(matches: readonly MatchRow[], plain: readonly PlainGameResult[]): MatchRow[] {
+  const used = new Set<string>()
+  const mirrors: MatchRow[] = []
+  for (const g of reconcileGames(matches)) {
+    if (g.status !== 'unconfirmed' || !g.session_id) continue
+    // The opponent is side b: side a always holds the recorder.
+    const want = resultFor(g.outcome, 'b')
+    const backing = plain.find(r => !used.has(r.id) && r.session_id === g.session_id
+      && r.event_name === g.event_name && r.result_type === want && g.sides.b.includes(r.player_id)
+      && !g.sides.a.includes(r.player_id))
+    if (!backing) continue
+    used.add(backing.id)
+    mirrors.push({
+      id: `plain:${backing.id}`,
+      session_id: g.session_id,
+      event_name: g.event_name,
+      outcome: g.outcome === 'draw' ? 'draw' : g.outcome === 'a' ? 'b' : 'a',
+      created_at: backing.created_at,
+      confirmed_at: null,
+      players: [
+        ...g.sides.b.map(player_id => ({ player_id, side: 'a' as const })),
+        ...g.sides.a.map(player_id => ({ player_id, side: 'b' as const })),
+      ],
+    })
+  }
+  return mirrors.length ? [...matches, ...mirrors] : [...matches]
+}
+
+/**
  * Disputed games per sport for one player: the games a kaiwhakawā still has to
  * settle before they count. Shown to the player, so someone stuck on nine of
  * ten games can see why.

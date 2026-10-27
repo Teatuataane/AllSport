@@ -26,7 +26,7 @@ import { EVENTS, getEventBySlug } from '@/lib/eventData'
 import { STANDARDS } from '@/lib/standards'
 import { RAINBOW_CONIC } from '@/lib/domainColours'
 import {
-  GRADES, MA, gradeForRung, gradeInk, gradeAccent, averageRung, formatExact, GAMES_REQUIRED, RATING_FLOOR,
+  GRADES, MA, gradeForRung, gradeInk, gradeAccent, averageRung, formatExact, GAMES_REQUIRED,
 } from '@/lib/grading'
 import { eventCredit } from '@/lib/playerGrades'
 import { bestScoreLabel, colourBlurb, pastOverallRungs, shownDomainRungs, shownOverallRung, topSlotRungs } from '@/lib/colourDisplay'
@@ -331,7 +331,7 @@ function DomainEvents({ state, domainNumber }: { state: GradeState; domainNumber
           : eg.bodyweightBlocked
             ? 'Needs bodyweight'
             : STANDARDS[e.slug]?.kind === 'rating' && eg.rung === 0
-              ? `From a ${RATING_FLOOR.toLocaleString('en-NZ')} rating`
+              ? 'From games'
               : !eg.played
                 ? 'Not played'
                 : null

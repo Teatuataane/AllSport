@@ -14,8 +14,9 @@ import Link from 'next/link'
 import {
   GRADES, MA, GAMES_REQUIRED, DOMAIN_TOP_EVENTS,
   DRILL_CAP, RATING_FLOOR, RATING_STEP, RATING_START, gradeForRung, gradeInk, overallRung, averageRung,
-  domainGrade,
+  domainGrade, TOP_RUNG, ratingRung, ratingForRung,
 } from '@/lib/grading'
+import { PROVISIONAL_GAMES } from '@/lib/headToHead'
 import { GradeDot } from '@/components/GradeDot'
 import { ADULT_AGES, ADULT_ALLOWANCE, ADULT_ROWS, JUNIOR_ALLOWANCE, JUNIOR_ROWS, formatAllowance } from '@/lib/ageAllowance'
 
@@ -81,7 +82,6 @@ function P({ children }: { children: React.ReactNode }) {
 }
 
 export default function ColoursGuide() {
-  const firstRatingColour = gradeForRung(DRILL_CAP + 1)
   const exampleRungs = [5, 5, 5, 5, 5, 5, 5, 2, 2, 2]
   const exampleSum = exampleRungs.reduce((a, b) => a + b, 0)
   // The overall example, capped: its average needs more games than this.
@@ -245,9 +245,12 @@ export default function ColoursGuide() {
         <H2 n={5}>Sports and games</H2>
         <P>
           On events that end in a real game, the drills take you as far as {gradeForRung(DRILL_CAP).name}.
-          From {firstRatingColour.name} up, the colour comes from a head-to-head rating, from your first game that both players recorded. Everyone starts at{' '}
-          {RATING_START.toLocaleString()}; a rating of {RATING_FLOOR.toLocaleString()} gives{' '}
-          {firstRatingColour.name}, and every {RATING_STEP} more gives the next colour.
+          A head-to-head rating gives a colour too, from your first game that both players recorded, and
+          your colour is the higher of the two. Everyone starts at {RATING_START.toLocaleString()} ({gradeForRung(ratingRung(RATING_START, 1)).name});
+          every {RATING_STEP} points is one colour, from {gradeForRung(1).name} at {RATING_FLOOR.toLocaleString()} to{' '}
+          {gradeForRung(TOP_RUNG).name} at {ratingForRung(TOP_RUNG).toLocaleString()}, and above{' '}
+          {gradeForRung(DRILL_CAP).name} only the rating takes you. Beat someone rated above you in one of your
+          first {PROVISIONAL_GAMES} games and you take their rating.
         </P>
       </section>
 
