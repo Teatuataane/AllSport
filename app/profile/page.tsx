@@ -233,6 +233,11 @@ export default function ProfilePage() {
       username: memberForm.username,
       display_name: memberForm.username,
       date_of_birth: memberForm.date_of_birth,
+      // Saved as well as used for the division. A junior's division says nothing
+      // about sex, so grading, contest safety and the move up at 17 read this.
+      // Until 3 Nov 2026 it was dropped here, and every family-added junior was
+      // treated as a boy. The column's CHECK takes 'Male' or 'Female', capitalised.
+      gender: memberForm.gender === 'female' ? 'Female' : 'Male',
       division,
       parent_id: user.id,
       show_username: true,

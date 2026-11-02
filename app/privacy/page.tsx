@@ -94,7 +94,7 @@ const competitionData: Row[] = [
   },
   {
     what: 'Head-to-head ratings',
-    why: 'For game events, a rating per sport, worked out from the games you win, draw and lose against other players. Your higher colours in a game sport come from it.',
+    why: 'For game events, a rating per sport, worked out from the games you win, draw and lose against other players. Your higher colours in a game sport come from it. Your division and birth year, which are already public, set your handicap.',
     who: 'Public.',
   },
   {

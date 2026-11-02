@@ -8,7 +8,8 @@
 - **Events with a number ease by a percentage.** Loads, heights, distances and holds go down by it; times go up by it. Reps and a hold's time on a loaded event stay the same.
 - **Events with levels move in colours.** An allowance of 1 means you earn each colour at the listed standard for the colour below it.
 - **Sex and age multiply.** A 60-year-old woman on Deadlift lifts 80% × 85% = 68% of the list.
-- **Head-to-head ratings are never scaled.**
+- **Head-to-head games have a handicap,** in rating points. See the last section.
+- **A girl from 12 to 16 is never given an easier list than she had at 11.** The sex and junior numbers multiply, which took her Pause Bench from 70% of the list at 11 to 56% at 12. So her list is held at her list from 11 until her own numbers are harder than it: 70% on Pause Bench from 12 to 16, and on Deadlift 70% at 12 to 13, then 72% at 14 to 16.
 - **Half steps** (`½`) on events with levels: your exact score is worked out at the whole step below and the whole step above, and the two are averaged.
 
 > Why a percentage. A ladder is wide up to Kahurangi and tight to Taniwha, because players improve quickly and then slow down (Tāne). So a three colour shift on Pause Bench cuts 75% of the load at Kahurangi and 20% at Taniwha. A percentage is the same cut at every colour. It replaces the 21 Oct 2026 decision to keep colours until February 2027.
@@ -69,3 +70,21 @@ Events with levels, in colours.
 | Flexibility | 0 | 0 | 0 |
 
 > Children trail adults most on strength, power and speed before puberty, and least on bodyweight endurance. Children are usually more flexible than adults, so Flexibility gets nothing.
+
+## Head-to-head handicap
+
+Added 3 November 2026 at Tāne's request. A child beating an adult, a woman beating a man and the old beating the young should earn a bonus, and a loss should not put anyone off entering. **The women's row is a draft for Tāne to check.**
+
+A player's handicap in a sport is their colours for age (the two tables above, by the sport's domain) plus the women's row below. One colour is 100 rating points. The game is played on rating minus handicap, so a 10-year-old rated 1,000 in Tag plays as a 700. Beating an adult rated 1,000 pays nearly the full amount, and in the first ten games takes them to 1,300, which is the 1,000 they beat plus their handicap.
+
+| Domain with head-to-head events | Women (colours) |
+|---|---|
+| Power, Speed, Endurance | 2 |
+| Control, Coordination | 1 |
+| Aim | ½ |
+
+- **Speed Chess has no handicap.** It sits in Speed by its clock.
+- **A junior's sex is private,** and ratings are worked out in the browser from public data, so a junior's handicap is by age alone.
+- **A loss never lowers the rating you are shown.** You are shown your best rating since your first game. A working rating still moves, so beating you is worth what it should be. Your first game does set you: a first loss starts you just under 1,000.
+- **A rating cannot lower a domain colour.** A rated sport joins a domain's average only if it does not pull it down.
+- **Another game cannot lower a contest's game-day score.** The score is the best performance after any game that day.

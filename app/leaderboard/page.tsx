@@ -28,7 +28,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase-browser'
-import { onResultsChanged } from '@/lib/liveSession'
 import { gradeForRung, DOMAIN_COUNT } from '@/lib/grading'
 import { rankBy, bestAndWorst } from '@/lib/leaderboardScores'
 import { colourStanding, displayOverall } from '@/lib/colourBoard'
@@ -54,7 +53,6 @@ type ActiveSession = {
 }
 
 type SessionResult = { player_id: string | null; player_name: string | null; placement: number | null }
-type SessionLeader = { name: string; eventsCompleted: number; totalPlacement: number }
 
 // Shape returned by the `leaderboard_page(p_season)` RPC. Called for the
 // active game and because it heals expired sessions first (20260827211610);
@@ -165,13 +163,8 @@ function Banner() {
   )
 }
 
-function LiveGame({ session, leader }: { session: ActiveSession; leader: SessionLeader | null }) {
-  const stat = (label: string, value: React.ReactNode, color = '#fff') => (
-    <div>
-      <div style={{ fontFamily: 'var(--font-label)', fontSize: 11, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#5a7a5a', marginBottom: 2 }}>{label}</div>
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: 26, color, lineHeight: 1 }}>{value}</div>
-    </div>
-  )
+// No one is shown leading: a game's places come from colour scores when it closes.
+function LiveGame({ session }: { session: ActiveSession }) {
   return (
     <Link href={`/scoring/${session.id}`} style={{ display: 'block', background: '#0a1a0a', borderBottom: '1px solid #1e2e1e', padding: '18px 0', textDecoration: 'none' }}>
       <div className="container" style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
@@ -182,8 +175,6 @@ function LiveGame({ session, leader }: { session: ActiveSession; leader: Session
         <span style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: 13, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#4DB26E' }}>
           Game live{session.is_championship ? ' · Championship' : ''}
         </span>
-        {leader && stat('Leading', leader.name)}
-        {leader && stat('Events', `${leader.eventsCompleted} / 10`, '#888')}
         <span style={{ marginLeft: 'auto', fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: 13, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#4DB26E' }}>Watch →</span>
       </div>
     </Link>
@@ -262,27 +253,6 @@ function BoardList({ rows, showDivision }: { rows: (BoardRow & { rank: number })
   )
 }
 
-function computeLeader(sessionResults: SessionResult[]): SessionLeader | null {
-  if (sessionResults.length === 0) return null
-  const byPlayer = new Map<string, { name: string; events: number; total: number }>()
-  for (const r of sessionResults) {
-    const key = r.player_id ?? r.player_name ?? 'unknown'
-    const name = r.player_name ?? 'Unknown'
-    const cur = byPlayer.get(key) ?? { name, events: 0, total: 0 }
-    cur.events++
-    cur.total += r.placement ?? 99
-    byPlayer.set(key, cur)
-  }
-  let best: SessionLeader | null = null
-  for (const v of byPlayer.values()) {
-    if (!best || v.total < best.totalPlacement || (v.total === best.totalPlacement && v.events > best.eventsCompleted)) {
-      best = { name: v.name, eventsCompleted: v.events, totalPlacement: v.total }
-    }
-  }
-  return best
-}
-
-
 export default function LeaderboardPage() {
   const [activeTab, setActiveTab] = useState<typeof tabs[number]['key']>('all-divisions')
   const [loading, setLoading] = useState(true)
@@ -295,7 +265,6 @@ export default function LeaderboardPage() {
   // The season's official games per player, which cap the overall colour. Null = unknown.
   const [gamesPlayed, setGamesPlayed] = useState<Map<string, number> | null>(null)
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null)
-  const [sessionLeader, setSessionLeader] = useState<SessionLeader | null>(null)
   const [thisYear] = useState(() => nzYear())
   const [seasonYear, setSeasonYear] = useState(thisYear)
 
@@ -322,7 +291,6 @@ export default function LeaderboardPage() {
       const d = (page.data ?? null) as LeaderboardPayload | null
       setGrades(d?.grades ?? [])
       setActiveSession(d?.active_session ?? null)
-      setSessionLeader(d?.active_session ? computeLeader(d.active_session_results ?? []) : null)
       setRoster(((rosterRes.data ?? []) as RosterPlayer[]).filter(p => !p.is_guest && p.is_active !== false))
       // A missing table (PGRST205, before 20260924213359) reads as empty.
       setDomainColours(new Map(((domainRes.data ?? []) as DomainColoursRow[]).map(r => [r.player_id, r])))
@@ -333,19 +301,6 @@ export default function LeaderboardPage() {
     })()
     return () => { cancelled = true }
   }, [seasonYear])
-
-  // A score coming in refetches only the live leader, never the whole page.
-  useEffect(() => {
-    const sessionId = activeSession?.id
-    if (!sessionId) return
-    const supabase = createClient()
-    const refresh = async () => {
-      const { data } = await supabase.from('results').select('player_id, player_name, placement').eq('session_id', sessionId)
-      setSessionLeader(computeLeader((data ?? []) as SessionResult[]))
-    }
-    // Broadcast ping from the scoring screens (lib/liveSession.ts).
-    return onResultsChanged(supabase, sessionId, refresh)
-  }, [activeSession?.id])
 
   const tab = tabs.find(t => t.key === activeTab)!
 
@@ -452,7 +407,7 @@ export default function LeaderboardPage() {
 
       <Banner />
 
-      {activeSession && <LiveGame session={activeSession} leader={sessionLeader} />}
+      {activeSession && <LiveGame session={activeSession} />}
 
       <section className="section" style={{ background: '#0a0a0a', paddingTop: 40 }}>
         <div className="container">

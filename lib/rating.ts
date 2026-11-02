@@ -1,4 +1,4 @@
-// ─── AllSport division pools + session wins ──────────────────────────────────
+// ─── AllSport division pools ─────────────────────────────────────────────────
 // This file used to hold a multiplayer Elo engine. Session 24 replaced the
 // player-facing skill score with a literal best-score percentile (lib/percentile.ts)
 // and the Elo was kept "for sessionWins" — but sessionWins is a plain
@@ -10,6 +10,9 @@
 // second one without deciding which is authoritative: the old pair exported
 // `topDomain` from BOTH this file and percentile.ts, which is why the leaderboard
 // still imports the surviving one as `pctTopDomain`.
+//
+// sessionWins went on 3 Nov 2026: a game is won on colour score now, read from
+// lib/loadGamePlace.ts.
 //
 // The `Rating*` row-type names are kept because they are referenced across the
 // dashboard, leaderboard, percentile.ts and CLAUDE.md; they describe the shape
@@ -45,20 +48,4 @@ export function divisionPool(division: string | null | undefined): 'men' | 'wome
     case 'Juniors': return 'juniors'
     default: return null
   }
-}
-
-// ─── Wins ────────────────────────────────────────────────────────────────────
-// A win = 1st overall in your division for a session. results.placement stores
-// the division rank for the whole session on every row, so a session is won
-// when any row for that (player, session) has placement 1.
-export function sessionWins(
-  rows: { player_id: string | null; session_id: string; placement: number | null }[]
-): Map<string, number> {
-  const wonSessions = new Map<string, Set<string>>()
-  for (const r of rows) {
-    if (!r.player_id || r.placement !== 1) continue
-    if (!wonSessions.has(r.player_id)) wonSessions.set(r.player_id, new Set())
-    wonSessions.get(r.player_id)!.add(r.session_id)
-  }
-  return new Map([...wonSessions].map(([p, s]) => [p, s.size]))
 }

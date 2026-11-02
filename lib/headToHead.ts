@@ -25,6 +25,16 @@
 // loss to a strong player, says less, and moves the rating by Elo alone. The
 // opponent loses what Elo says they lose against the newcomer's old rating.
 //
+// And since 3 Nov 2026 (Tāne), two more rules, so that nobody is put off entering:
+//   · A LOSS NEVER COSTS A PLAYER ANYTHING THEY CAN SEE. The working rating still
+//     falls, because the next opponent's reward has to be honest, but the rating
+//     a player is shown and given a colour on is the best it has been since their
+//     first game. The working rating is never shown.
+//   · AGE AND SEX ARE IN THE GAME. A game is played on rating minus handicap
+//     (lib/contestHandicap.ts), so a child, a woman or an older player who beats
+//     someone with the natural edge gets a bigger reward, and "take their rating"
+//     takes the rating that means the same for who they are.
+//
 // Deliberately NOT lib/rating.ts. That file once held a multiplayer Elo from
 // session placements, deleted in August 2026 because nothing used it, and its
 // name now describes row shapes. This is a different engine on different data:
@@ -34,6 +44,8 @@
 
 import { RATING_START } from './grading'
 import { reconcileGames, type MatchRow } from './matches'
+import { contestProfilesOf, handicapPoints } from './contestHandicap'
+import { nzYear } from './seasonYear'
 
 export const K_PROVISIONAL = 40
 export const K_SETTLED = 20
@@ -69,17 +81,22 @@ export function nextRating(cur: SportRating, delta: number, score: number, oppon
   return elo
 }
 
+/** One player in one sport while games replay. `best` stays null until their first game. */
+type Working = { live: number; best: number | null; games: number }
+
 /**
- * Every player's rating in every sport, replaying games in the order they were
- * recorded. Keyed by sport (the event name), then player id.
+ * Replays every rated game in the order it was recorded. Keyed by sport (the
+ * event name), then player id.
  *
- * TEAMS: a side's strength is the mean of its players' ratings, and each player
- * on it moves by their own K times the side's surprise. A 1v1 is the one-player
- * case, and a player's first games on a team still move them twice as far as a
- * settled teammate's.
+ * TEAMS: a side's strength is the mean of its players' ratings less their
+ * handicaps, and each player on it moves by their own K times the side's
+ * surprise. A 1v1 is the one-player case, and a player's first games on a team
+ * still move them twice as far as a settled teammate's.
  */
-export function rateGames(matches: readonly MatchRow[]): Map<string, Map<string, SportRating>> {
-  const out = new Map<string, Map<string, SportRating>>()
+function replay(matches: readonly MatchRow[]): Map<string, Map<string, Working>> {
+  const profiles = contestProfilesOf(matches)
+  const byId = new Map(matches.map(m => [m.id, m]))
+  const out = new Map<string, Map<string, Working>>()
   for (const g of reconcileGames(matches)) {
     // Only games resting on more than one side's word: both players recorded
     // it, or a kaiwhakawā settled it. Colours now confer themselves, and a game
@@ -95,23 +112,52 @@ export function rateGames(matches: readonly MatchRow[]): Map<string, Map<string,
 
     let sport = out.get(g.event_name)
     if (!sport) { sport = new Map(); out.set(g.event_name, sport) }
-    const current = (id: string): SportRating => sport!.get(id) ?? { rating: RATING_START, games: 0 }
-    const mean = (ids: string[]) => ids.reduce((s, id) => s + current(id).rating, 0) / ids.length
+    const current = (id: string): Working => sport!.get(id) ?? { live: RATING_START, best: null, games: 0 }
+    // Aged as they turn in the year of the game, like every other score.
+    const year = nzYear(byId.get(g.matchIds[0])!.created_at)
+    const handicap = (id: string) => handicapPoints(profiles.get(id), g.event_name, year)
+    const level = (ids: string[]) => ids.reduce((s, id) => s + current(id).live - handicap(id), 0) / ids.length
 
-    const ra = mean(a), rb = mean(b)
+    const la = level(a), lb = level(b)
     const scoreA = g.outcome === 'a' ? 1 : g.outcome === 'b' ? 0 : 0.5
-    // Every change is computed before any is applied, so a side's mean is the
+    // Every change is computed before any is applied, so a side's level is the
     // same for all of its players.
     const updates = [
-      ...a.map(id => [id, ratingChange(ra, current(id).games, rb, scoreA), scoreA, rb] as const),
-      ...b.map(id => [id, ratingChange(rb, current(id).games, ra, 1 - scoreA), 1 - scoreA, ra] as const),
-    ].map(([id, delta, score, opponent]) => {
-      // ratingChange takes the SIDE's rating but the PLAYER's games, so the
+      ...a.map(id => [id, la, lb, scoreA] as const),
+      ...b.map(id => [id, lb, la, 1 - scoreA] as const),
+    ].map(([id, mine, theirs, score]) => {
+      // ratingChange takes the SIDE's level but the PLAYER's games, so the
       // K comes from the player and the surprise from the side.
       const cur = current(id)
-      return [id, { rating: nextRating(cur, delta, score, opponent), games: cur.games + 1 }] as const
+      const delta = ratingChange(mine, cur.games, theirs, score)
+      // Taking the beaten side's rating means taking the rating that plays at
+      // their level for this player: their level plus this player's handicap.
+      const live = nextRating({ rating: cur.live, games: cur.games }, delta, score, theirs + handicap(id))
+      return [id, { live, best: Math.max(cur.best ?? live, live), games: cur.games + 1 }] as const
     })
     for (const [id, next] of updates) sport.set(id, next)
   }
   return out
+}
+
+const shape = (matches: readonly MatchRow[], pick: (w: Working) => number): Map<string, Map<string, SportRating>> =>
+  new Map([...replay(matches)].map(([sport, players]) => [sport, new Map(
+    [...players].map(([id, w]) => [id, { rating: pick(w), games: w.games }]),
+  )]))
+
+/**
+ * Every player's rating in every sport: the best each has reached since their
+ * first game, the one number players see and colours are given on. A first loss
+ * sets it just under the start; no later game takes it down.
+ */
+export function rateGames(matches: readonly MatchRow[]): Map<string, Map<string, SportRating>> {
+  return shape(matches, w => w.best ?? w.live)
+}
+
+/**
+ * The working ratings, which do fall with a loss: how strong a player is right
+ * now, so what beating them is worth. Never shown to anyone.
+ */
+export function workingRatings(matches: readonly MatchRow[]): Map<string, Map<string, SportRating>> {
+  return shape(matches, w => w.live)
 }

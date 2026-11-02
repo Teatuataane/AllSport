@@ -2,6 +2,18 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.47.0.0] - 2026-11-03
+
+### Changed
+- **A game is ranked on colour score, one list for everyone** (Tāne, 3 Nov 2026). The game page, the Leaderboard tab of the scoring screen, the end of game screen, History, the kaiwhakawā's player card and "games won" on HOME all read the place from `player_game_colours`. Raw division places are gone from them. There is no overall place during a game, because a colour score needs a private bodyweight; the banner shows the player's own running colour score instead. Event lists still show raw scores by division.
+- **Head-to-head handicap for age and sex** (`lib/contestHandicap.ts`). A game is played on rating minus handicap, so a child, a woman or an older player who beats someone with the natural edge earns a relative bonus. Age comes from the existing colour tables; the women's row is a draft for Tāne to check.
+- **A loss never lowers a shown rating.** The rating shown is the best since the first game; a working rating still moves underneath it. A rated sport joins a domain only if it does not lower it, and another game never lowers a contest's game-day score.
+
+### Fixed
+- **The family form asked for sex and threw the answer away.** It now saves it, so a girl of 12 or over added by a parent gets the right list.
+- **A girl's list got easier from 11 to 12,** because the sex and junior numbers multiply. From 12 to 16 it is never easier than at 11.
+- **"Leading" on the live game strip is gone.** It ranked by placements that do not exist until a game closes, so whoever had played least led.
+
 ## [0.46.0.0] - 2026-11-03
 
 ### Changed

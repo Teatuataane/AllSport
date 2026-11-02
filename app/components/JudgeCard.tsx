@@ -14,6 +14,7 @@ import { rankByColours, displayOverall } from '@/lib/colourBoard'
 import { loadGameCounts } from '@/lib/gameCounts'
 import { loadAwardRows, heldInYear } from '@/lib/yearColours'
 import { nzYear } from '@/lib/seasonYear'
+import { loadMyGamePlaces } from '@/lib/loadGamePlace'
 import { GradeDot } from '@/components/GradeDot'
 import TrainingTab from '@/app/components/TrainingTab'
 
@@ -501,13 +502,20 @@ export default function JudgeCard({ playerRole, playerId }: JudgeCardProps) {
   const loadPlayerHistory = async (playerId: string) => {
     if (playerHistory[playerId]) return
     setPlayerHistoryLoading(prev => ({ ...prev, [playerId]: true }))
-    const { data } = await supabase
-      .from('session_player_summary')
-      .select('session_id, overall_placement, sessions(session_date, location)')
-      .eq('player_id', playerId)
-      .order('created_at', { ascending: false })
-      .limit(20)
-    setPlayerHistory(prev => ({ ...prev, [playerId]: data || [] }))
+    const [{ data }, places] = await Promise.all([
+      supabase
+        .from('session_player_summary')
+        .select('session_id, sessions(session_date, location)')
+        .eq('player_id', playerId)
+        .order('created_at', { ascending: false })
+        .limit(20),
+      // The place in the game, on colour score: the same one the player sees.
+      loadMyGamePlaces(supabase, playerId),
+    ])
+    setPlayerHistory(prev => ({
+      ...prev,
+      [playerId]: (data || []).map(r => ({ ...r, place: places.get(r.session_id)?.place ?? null })),
+    }))
     setPlayerHistoryLoading(prev => ({ ...prev, [playerId]: false }))
   }
 
@@ -1301,8 +1309,8 @@ export default function JudgeCard({ playerRole, playerId }: JudgeCardProps) {
                                         : ''}
                                     </div>
                                   </div>
-                                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', color: s.overall_placement === 1 ? '#F9B051' : '#ccc' }}>
-                                    {s.overall_placement ? ordinalJC(s.overall_placement) : '—'}
+                                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', color: s.place === 1 ? '#F9B051' : '#ccc' }}>
+                                    {s.place ? ordinalJC(s.place) : '—'}
                                   </div>
                                 </div>
                               )

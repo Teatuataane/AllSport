@@ -25,6 +25,7 @@ import {
 import { bodyweightOn, bandMidpointKg, type ColourGate, type BodyweightDeclaration } from './grading'
 import { workoutEvidence, GAME_MINUTES, type WorkoutEntryRow } from './workouts'
 import { rateGames, type SportRating } from './headToHead'
+import type { ContestProfile } from './contestHandicap'
 import { corroborate, disputedBySport, type MatchRow, type PlainGameResult } from './matches'
 import { toNZDateString } from './dates'
 import { domainRungsOf, gameColourTotals, type SeasonRow } from './leaderboardScores'
@@ -189,7 +190,24 @@ export async function loadMatchesChecked(db: GradeDb): Promise<{ rows: MatchRow[
   // alone, as they did before, rather than the whole rating failing.
   const anchored = new Set(raw.map(m => m.result_id).filter((id): id is string => !!id))
   const plain = await loadPlainGameResults(db, anchored)
-  return { rows: corroborate(rows, plain), failed: false }
+  return withContestProfiles(db, corroborate(rows, plain))
+}
+
+/**
+ * Attaches what the head-to-head handicap reads to each player of each match.
+ * A failed read fails the matches: ratings read without handicaps would look
+ * right and be wrong, and the recheck route would confer on them.
+ */
+async function withContestProfiles(db: GradeDb, rows: MatchRow[]): Promise<{ rows: MatchRow[]; failed: boolean }> {
+  const ids = [...new Set(rows.flatMap(m => m.players.map(p => p.player_id)))]
+  if (ids.length === 0) return { rows, failed: false }
+  const { data, error } = await db.from('players_public').select('id, division, birth_year').in('id', ids)
+  if (error || !data) return { rows, failed: true }
+  const byId = new Map((data as ({ id: string } & ContestProfile)[]).map(p => [p.id, { division: p.division, birth_year: p.birth_year }]))
+  return {
+    rows: rows.map(m => ({ ...m, players: m.players.map(p => ({ ...p, profile: byId.get(p.player_id) })) })),
+    failed: false,
+  }
 }
 
 /** Results rows with a win, draw or loss and no match anchored on them. */

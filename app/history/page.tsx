@@ -34,12 +34,14 @@ import { getEventBySlug } from '@/lib/eventData'
 import { GradeDot } from '@/components/GradeDot'
 import { ScoreTrend } from '@/components/GameReportParts'
 
+import { loadMyGamePlaces } from '@/lib/loadGamePlace'
+import type { GamePlace } from '@/lib/gameReport'
+
 const supabase = createClient()
 
 type Summary = {
   session_id: string
   player_id: string
-  overall_placement: number | null
   session_date: string
   location: string | null
 }
@@ -123,6 +125,20 @@ export default function HistoryPage() {
     // Keyed on the ids themselves, not the array identity.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [householdIds.join(',')])
+
+  // The place in each game, on colour score. Keyed by player, so a switch shows
+  // no places rather than the last player's.
+  const [gamePlaces, setGamePlaces] = useState<{ id: string; places: Map<string, GamePlace> } | null>(null)
+  useEffect(() => {
+    if (!activePlayerId) return
+    let cancelled = false
+    loadMyGamePlaces(supabase, activePlayerId).then(places => {
+      if (!cancelled) setGamePlaces({ id: activePlayerId, places })
+    })
+    return () => { cancelled = true }
+  }, [activePlayerId])
+  const placeOf = (s: { session_id: string }) =>
+    gamePlaces?.id === activePlayerId ? gamePlaces.places.get(s.session_id)?.place ?? null : null
 
   // Workouts: own query, so a missing column or table costs this block only.
   useEffect(() => {
@@ -209,13 +225,13 @@ export default function HistoryPage() {
                 <Row key={`g-${s.session_id}`}>
                   <div style={{
                     width: 38, height: 38, borderRadius: 11, flexShrink: 0,
-                    background: s.overall_placement === 1 ? 'rgba(249,176,81,0.13)' : '#1a1a1a',
-                    border: `1px solid ${s.overall_placement === 1 ? 'rgba(249,176,81,0.33)' : 'var(--border-strong)'}`,
+                    background: placeOf(s) === 1 ? 'rgba(249,176,81,0.13)' : '#1a1a1a',
+                    border: `1px solid ${placeOf(s) === 1 ? 'rgba(249,176,81,0.33)' : 'var(--border-strong)'}`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontFamily: 'var(--font-display)', fontSize: 17,
-                    color: s.overall_placement === 1 ? 'var(--amber)' : '#999',
+                    color: placeOf(s) === 1 ? 'var(--amber)' : '#999',
                   }}>
-                    {s.overall_placement ? ordinalShort(s.overall_placement) : '—'}
+                    {placeOf(s) ? ordinalShort(placeOf(s)!) : '—'}
                   </div>
                   <Link href={`/games/${s.session_id}`} style={{ flexGrow: 1, minWidth: 0, color: 'inherit' }}>
                     <div style={{ fontSize: 14, fontWeight: 600 }}>{formatNZDate(s.session_date)}</div>

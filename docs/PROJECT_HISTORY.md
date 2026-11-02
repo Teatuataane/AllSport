@@ -3790,6 +3790,12 @@ Decisions are in `ROSTER_151_PLAN.md`. Calls made in the build: Trampolining's s
 
 Applied and verified the same day after the deploy (PR #211), with the season board refreshed. The new colours confer themselves as each player's next recheck runs (`GRADING_RULES_VERSION` was bumped). Left for later: Tāne's second look at the scaling numbers, real icons for the 18 stand-ins and the four arm events, and a check of the logged-in scoring screen.
 
+## Fair competition across age and sex (3 Nov 2026, v0.47.0.0)
+
+Tāne asked for a review of whether v0.46.0.0 lets people of all ages and sexes compete fairly. A group-level read of production was too thin to prove anything (most age and sex groups hold two to five players, and missed events confound the totals), so the changes come from reading the rules, and the percentages were left alone until more women and older players have played. Four changes: the family form saved no sex, so a girl added by a parent graded as a boy; the sex and junior numbers multiplied, so a girl's list eased from 11 to 12; head-to-head ratings had no scaling and losses were punished, which Tāne said would put people off entering; and games were ranked on raw places by division while the season board ranked on colour.
+
+Decisions. "Not punished" is the best rating since the first game, not a ratchet from 1,000: the first game's result still counts, and a working rating still falls so that beating someone stays worth what it should. A handicap is rating points off the player's level in that game, and the take-their-rating rule adds it back. The women's row is my draft. Juniors are handicapped by age only, because their sex is private and ratings are worked out in the browser from public data. Places during a game went away, because nobody's colour score but your own can be worked out in the browser. The strip's "Leading" went too: placements are written at close, so it had been ranking on an empty column. No migration.
+
 ## What's Next (In Priority Order)
 
 1. ~~Apply the pending migrations~~ — **DONE, nothing pending (verified 2026-08-01).** Every migration through `20260801000000_roster_update_120.sql` is applied to prod. `supabase db push` offered only `20260801000000`, which means the three session-22 files (`20260713000000`, `20260713000001`, `20260714000000`) were already recorded as applied; `wellbeing_surveys` was confirmed to exist via the REST API, and `db push` applies in timestamp order, so they genuinely ran rather than being falsely baselined.

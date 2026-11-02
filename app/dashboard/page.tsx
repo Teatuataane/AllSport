@@ -35,10 +35,10 @@ import VoteCard from '@/app/components/VoteCard'
 import WellbeingSurvey from '@/app/components/WellbeingSurvey'
 import { bestEventByColour, shownOverallRung } from '@/lib/colourDisplay'
 import {
-  sessionWins,
   type RatingResultRow, type RatingEventRow, type RatingSessionRow, type RatingPlayerRow,
 } from '@/lib/rating'
 import { computePercentiles } from '@/lib/percentile'
+import { loadMyGamePlaces } from '@/lib/loadGamePlace'
 
 const supabase = createClient()
 
@@ -108,6 +108,17 @@ function DashboardInner() {
     // hook does not refire the request.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [householdIds.join(',')])
+
+  // ── Games won: first place on colour score. ────────────────────────────────
+  const [gamesWon, setGamesWon] = useState<{ id: string; count: number } | null>(null)
+  useEffect(() => {
+    if (!activePlayerId) return
+    let cancelled = false
+    loadMyGamePlaces(supabase, activePlayerId).then(places => {
+      if (!cancelled) setGamesWon({ id: activePlayerId, count: [...places.values()].filter(p => p.place === 1).length })
+    })
+    return () => { cancelled = true }
+  }, [activePlayerId])
 
   // ── Percentiles. One shared dataset for every player on the page. ───────────
   useEffect(() => {
@@ -256,12 +267,10 @@ function DashboardInner() {
     if (!stats || !activePlayerId) return null
     const allPct = computePercentiles(stats.results, stats.events, stats.players)
     const minePct = allPct.get(activePlayerId)
-    const myRows = stats.results.filter(r => r.player_id === activePlayerId)
     const eventPct = new Map<string, number | null>()
     for (const [name, ep] of minePct ?? []) eventPct.set(name, ep.topPct)
     return {
       eventPct,
-      gamesWon: sessionWins(myRows).get(activePlayerId) ?? 0,
     }
   }, [stats, activePlayerId])
 
@@ -353,7 +362,7 @@ function DashboardInner() {
               }}>
                 <Stat value={counts?.games} label="games" />
                 <Stat value={eventsWon} label="events won" dot />
-                <Stat value={derived?.gamesWon} label="games won" dot />
+                <Stat value={gamesWon?.id === activePlayerId ? gamesWon.count : undefined} label="games won" dot />
                 {/* This year's, worked out from the scores (lib/prCounts.ts).
                     The old lifetime count read results.is_pr, frozen since
                     lifts moved to estimated 1RM. */}

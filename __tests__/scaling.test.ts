@@ -164,3 +164,30 @@ describe('AGE_ALLOWANCE_REVIEW.md is the table the code runs', () => {
     expect(EVENTS).toHaveLength(154)
   })
 })
+
+describe('a girl is never given an easier list than she had at 11', () => {
+  const girl = (ageYears: number): GradePlayer => ({ division: 'Juniors', ageYears, gender: 'Female' })
+  const graded = EVENTS.filter(e => STANDARDS[e.slug])
+
+  it('holds on every event, at every age from 12 to 16', () => {
+    for (const e of graded) {
+      for (let age = 12; age <= 16; age++) {
+        expect(numberShare(girl(age), e), `${e.slug} ${age}`).toBeGreaterThanOrEqual(numberShare(girl(11), e))
+        expect(timeFactor(girl(age), e), `${e.slug} ${age}`).toBeLessThanOrEqual(timeFactor(girl(11), e))
+        expect(colourAllowance(girl(age), e), `${e.slug} ${age}`).toBeLessThanOrEqual(colourAllowance(girl(11), e))
+      }
+    }
+  })
+
+  it('no longer eases Pause Bench from 70% at 11 to 56% at 12', () => {
+    expect(numberShare(girl(11), ev('pause-bench'))).toBeCloseTo(0.7)
+    expect(numberShare(girl(12), ev('pause-bench'))).toBeCloseTo(0.7)
+    expect(numberShare(girl(14), ev('deadlift'))).toBeCloseTo(0.72)
+  })
+
+  it('leaves boys and adult women as they were', () => {
+    const boy = (ageYears: number): GradePlayer => ({ division: 'Juniors', ageYears, gender: 'Male' })
+    expect(numberShare(boy(12), ev('deadlift'))).toBeCloseTo(0.8)
+    expect(numberShare(woman(60), ev('deadlift'))).toBeCloseTo(0.68)
+  })
+})

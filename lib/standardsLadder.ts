@@ -9,7 +9,8 @@
 // award it.
 //
 // A Game-rung event stops its drills at Kahurangi; Poroporo to Taniwha come from
-// a head-to-head rating, which is not age-shifted. The rating gives Kiwikiwi to
+// a head-to-head rating, whose scale is not shifted (age and sex are in the
+// games behind it, lib/contestHandicap.ts). The rating gives Kiwikiwi to
 // Kahurangi too (since 28 Oct 2026), so those rows name both ways there. A
 // rating-only event (Wrestling) has only rating rows, Kiwikiwi to Taniwha.
 

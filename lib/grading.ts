@@ -124,7 +124,7 @@ export const TOP_RUNG = 12
  * conferred one. HOME forces one full recheck per player when this differs
  * from the version it last checked under (lib/useNewColours.ts).
  */
-export const GRADING_RULES_VERSION = '2026-11-03-one-list-scaled'
+export const GRADING_RULES_VERSION = '2026-11-03-fair-head-to-head'
 export const DOMAIN_COUNT = 10
 
 /**
@@ -794,9 +794,12 @@ export function rungForCompound(mode: string, score: number, thresholds: readonl
 // downwards rather than moved, so 1,100 is still Poroporo and every existing
 // rating keeps its colour.
 //
-// The rating is NOT age-shifted. It already measures you against the people you
-// actually play, of every age; shifting it would turn a 1,500 rating of a
-// player over 40 into a Taniwha.
+// The colour scale is not shifted for age or sex: 1,500 is Uenuku for everyone.
+// Age and sex are in the games that build the rating instead (a game is played
+// on rating minus handicap, lib/contestHandicap.ts, since 3 Nov 2026), so the
+// number already means "this good for who you are", and shifting the scale too
+// would count them twice. The rating read here is the best a player has reached
+// (rateGames), so a loss never lowers it.
 
 /** Kahurangi: the highest colour a drill can give on a Game-rung event. */
 export const DRILL_CAP = 6

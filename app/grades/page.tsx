@@ -254,7 +254,8 @@ export default function ColoursGuide() {
         <P>
           From age 12, women and girls have 80% of the load on lower body lifts and the Olympic lifts, 70%
           on upper body lifts and carries, 80% of the height or distance on jumps, and 12% more time on
-          timed Endurance. Sex and age multiply.
+          timed Endurance. Sex and age multiply, except that a girl from 12 to 16 never has an easier list
+          than she had at 11.
         </P>
         <P>
           On events with levels, you get a head start counted in colours instead: with one, you earn each
@@ -286,6 +287,11 @@ export default function ColoursGuide() {
           {gradeForRung(TOP_RUNG).name} at {ratingForRung(TOP_RUNG).toLocaleString()}, and above{' '}
           {gradeForRung(DRILL_CAP).name} only the rating takes you. Beat someone rated above you in one of your
           first {PROVISIONAL_GAMES} games and you take their rating.
+        </P>
+        <P>
+          A loss never lowers the rating you see, so there is no reason to stay out of a game. Age and sex
+          count too: a child, a woman or an older player plays with a handicap, so beating someone with the
+          natural edge pays a bonus, and losing to them costs next to nothing.
         </P>
       </section>
 

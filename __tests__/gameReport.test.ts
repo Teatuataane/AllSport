@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
-  gameColourRung, gameScores, gamesInOrder, eventFlags, averageBefore, awardsForGame,
+  boardOrder, gameBoard, gameColourRung, gameScores, gamesInOrder, eventFlags, averageBefore, awardsForGame,
   describeRawGap, nextStep, nextStepLine, placeInGame, AWARD_WINDOW_MS,
 } from '@/lib/gameReport'
 import { gradeStateFrom, leaderboardScoresFrom, type GradeInputs, type ResultRow, type GradeAward } from '@/lib/loadGrades'
@@ -188,5 +188,28 @@ describe('place in the whole game', () => {
 
   it('is null for a player with no published total', () => {
     expect(placeInGame(rows, all, 'z')).toBeNull()
+  })
+})
+
+describe('gameBoard and boardOrder', () => {
+  const rows = [
+    { player_id: 'a', colour_total: 40 },
+    { player_id: 'b', colour_total: 60 },
+    { player_id: 'c', colour_total: 60 },
+    { player_id: 'g', colour_total: 99 },
+  ]
+  const board = gameBoard(rows, id => id !== 'g')
+
+  it('ranks everyone eligible together, ties share, by the rule placeInGame uses', () => {
+    expect(board.map(b => [b.playerId, b.place, b.of, b.points])).toEqual([
+      ['b', 1, 3, 100], ['c', 1, 3, 100], ['a', 3, 3, 98],
+    ])
+    for (const b of board) expect(placeInGame(rows, id => id !== 'g', b.playerId)?.place).toBe(b.place)
+  })
+
+  it('lists places first, then anyone with none, by name', () => {
+    const people = [{ key: 'x', name: 'Xan' }, { key: 'a', name: 'Ana' }, { key: 'b', name: 'Bo' }, { key: 'c', name: 'Cy' }]
+    expect(boardOrder(people, board).map(p => [p.key, p.place])).toEqual([['b', 1], ['c', 1], ['a', 3], ['x', null]])
+    expect(boardOrder(people, null).map(p => p.key)).toEqual(['a', 'b', 'c', 'x'])
   })
 })
