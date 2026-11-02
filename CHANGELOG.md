@@ -2,6 +2,25 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.46.0.0] - 2026-11-03
+
+### Changed
+- **One list for everyone, scaled by sex and age** (Tāne, 3 Nov 2026). Women's lists are gone. `lib/scaling.ts` holds the numbers: from age 12, women have 80% of the load on lower body lifts and Olympic lifts, 70% on upper body lifts and carries, 80% on jumps, 12% more time on timed Endurance, and one colour on upper body events with levels. Age eases events with a number by a percentage, and sex and age multiply. Events with levels keep the colour table. `/grades` and the ladder note say so.
+- **All levels and standards re-set from Tāne's reviewed workbook**, on all 154 events. Rating colours stay 500 to 1,600.
+- **Distance events earn low colours on the metres alone**, in any time. The timed colours still need the full distance. Swim's reference is 400m, Burpee Broad Jump is an open distance on 100m, and Sandbag to Shoulder ranks on an estimated 1RM.
+- Domains renamed: Body Awareness is Control, Aim & Precision is Aim.
+- Renamed: Hollow Hold to Dragon Flag (moved to Calisthenics), Repeat Vault to Leapfrog (heights 25cm to 200cm), Steinborn to Steinborn Lift, Leg Ext Hold to Leg Extension Hold, Reverse Wrist Ext to Wrist Extension, Airsoft to Airsoft/Nerf.
+- Moved: Chinups and Pushups to Calisthenics, Windshield Wipers to Stamina, Table Tennis to Coordination.
+
+### Added
+- 19 events, 154 in all: Overhead Press, Wrestler Pullover, Plate Hold, Weighted Tuck, Nordic Curl, Discus, Sprint Race, Hurdles, Hang, Skipping Rope, Underwater Swim, Cobra Pose, Butterfly Pose, Deep Squat, Bent Wrist Stretch, Shoulder Dislocate (back), Cheststand, Tī Rākau, Goal Kicking. 18 icons are stand-ins copied from a similar event.
+
+### Removed
+- 13 events: Clean & Press, Pause Chinup, Pullover & Press, Skull Hang, Hamstring Curl, Plie Squat, both wrist stretches, Breath Hold, and the four sprints. Their results stay, and no colour citing them is withdrawn.
+
+### Fixed
+- A stored level on an event that no longer has levels no longer grades, so an old Sandbag to Shoulder row cannot read as a 20-tonne lift before its migration runs.
+
 ## [0.45.0.0] - 2026-10-28
 
 ### Changed

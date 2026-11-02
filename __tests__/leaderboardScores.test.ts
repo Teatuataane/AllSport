@@ -30,16 +30,16 @@ describe('domain colours', () => {
 describe('an event in one game', () => {
   it('scores the colour rung the result reached', () => {
     // Forward Fold 40060 (D5 · 1:00) is rung 6 on the Open ladder.
-    expect(eventRungInGame('Forward Fold', [row({})], open)).toBe(6)
+    expect(eventRungInGame('Forward Fold', [row({})], open)).toBe(6.99)
   })
 
   it('shifts for age, so the same result is worth more to an older player', () => {
     // This is what lets people who never meet compete: the ladder, not the score, moves.
-    expect(eventRungInGame('Forward Fold', [row({})], masters)).toBe(7)
+    expect(eventRungInGame('Forward Fold', [row({})], masters)).toBe(7.99)
   })
 
   it('takes the best of several rows in the same game', () => {
-    expect(eventRungInGame('Forward Fold', [row({ raw_score: 10 }), row({})], open)).toBe(6)
+    expect(eventRungInGame('Forward Fold', [row({ raw_score: 10 }), row({})], open)).toBe(6.99)
   })
 
   it('scores a retired event name as nothing rather than throwing', () => {
@@ -56,7 +56,7 @@ describe('an event in one game', () => {
   })
 
   it('lets a rating colour beat the result floor on a game event', () => {
-    const win = [row({ event_name: 'Tennis', difficulty_tier: 'Game', raw_score: 40002 })]
+    const win = [row({ event_name: 'Tennis', difficulty_tier: 'Game', raw_score: 10002 })]
     expect(eventRungInGame('Tennis', win, open, { rating: 1350, games: 12 })).toBe(9.5)
   })
 })
@@ -66,11 +66,11 @@ describe('colour total in a game', () => {
     const rows = [
       row({ session_id: 'a' }),
       row({ session_id: 'b', session_date: '2026-06-01' }),
-      row({ session_id: 'b', session_date: '2026-06-01', event_name: 'Tennis', difficulty_tier: 'Game', raw_score: 40002 }),
+      row({ session_id: 'b', session_date: '2026-06-01', event_name: 'Tennis', difficulty_tier: 'Game', raw_score: 10002 }),
     ]
     expect(gameColourTotals(rows, open)).toEqual([
-      { session_id: 'a', session_date: '2026-05-02', total: 6 },
-      { session_id: 'b', session_date: '2026-06-01', total: 6 + DRILL_CAP },
+      { session_id: 'a', session_date: '2026-05-02', total: 6.9 },
+      { session_id: 'b', session_date: '2026-06-01', total: 12.9 },
     ])
   })
 
@@ -80,13 +80,13 @@ describe('colour total in a game', () => {
 
   it('counts an event once per game however many times it was scored', () => {
     const rows = [row({ raw_score: 10 }), row({}), row({ raw_score: 30 })]
-    expect(gameColourTotals(rows, open).map(g => g.total)).toEqual([6])
+    expect(gameColourTotals(rows, open).map(g => g.total)).toEqual([6.9])
   })
 
   it('reads the rating as it stood at each game', () => {
     const rows = [
-      row({ session_id: 'early', event_name: 'Tennis', difficulty_tier: 'Game', raw_score: 40002 }),
-      row({ session_id: 'late', event_name: 'Tennis', difficulty_tier: 'Game', raw_score: 40002 }),
+      row({ session_id: 'early', event_name: 'Tennis', difficulty_tier: 'Game', raw_score: 10002 }),
+      row({ session_id: 'late', event_name: 'Tennis', difficulty_tier: 'Game', raw_score: 10002 }),
     ]
     const at = (id: string) => new Map(id === 'late' ? [['Tennis', { rating: 1250, games: 10 }]] : [])
     expect(gameColourTotals(rows, open, at).map(g => g.total)).toEqual([DRILL_CAP, 8.5])

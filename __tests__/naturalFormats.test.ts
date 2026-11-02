@@ -1,3 +1,4 @@
+import type { EventData } from '@/lib/eventData'
 import { describe, it, expect } from 'vitest'
 import {
   brzycki, bestSet, riegel, estimateFromSets, estimateFromDistance, paceLabel,
@@ -8,7 +9,9 @@ import { MAX_ESTIMATED_REPS } from '@/lib/scoring'
 
 // Running takes a distance natively since 5 Oct 2026; Burpee Broad Jump is
 // the one ladder of distances left for the natural format to convert onto.
-const running = getEventBySlug('burpee-broad-jump')!
+// No roster event races a ladder of distances since 3 Nov 2026, so this is the shape as it was.
+const running: EventData = { ...getEventBySlug('bronco')!, inputMode: 'difficulty+time', hasDifficultyTiers: true,
+  difficultyTiers: [{ level: 1, name: '25m' }, { level: 2, name: '50m' }, { level: 3, name: '100m' }, { level: 4, name: '200m' }] }
 const deadlift = getEventBySlug('deadlift')!
 
 describe('Brzycki', () => {

@@ -32,7 +32,7 @@ const std = (name: string) => {
   return s
 }
 const ladders = (s: (typeof STANDARDS)[string]) =>
-  Object.entries({ all: s.all, M: s.M, F: s.F }).filter(([, v]) => v) as [string, readonly number[]][]
+  Object.entries({ all: s.all }).filter(([, v]) => v) as [string, readonly number[]][]
 
 describe('the compiled standards', () => {
   it('match the reviewed sheet: re-running the compiler changes nothing', () => {
@@ -86,27 +86,27 @@ describe('the compiled standards', () => {
 
 describe('the standards approved in review come back out of the engine', () => {
   // 12 Oct 2026 review: men's Kōura is 40 push-ups, Uenuku 20 one-arm.
-  it('Pushups: one 1-arm push-up is Kōura, and Uenuku for a Master', () => {
-    const M = std('Pushups').M!
+  it('Pushups: one 1-arm push-up is Kōura, and Uenuku with a colour', () => {
+    const M = std('Pushups').all!
     const oneArmOne = 4 * 10000 + 1 // D5, one rep
     expect(rungForScore(oneArmOne, M, 'Open')).toBe(10)
     expect(rungForScore(oneArmOne, M, 'Over40')).toBe(11)
-    expect(rungForScore(3 * 10000 + 39, M, 'Open')).toBe(9) // 39 push-ups
-    expect(rungForScore(3 * 10000 + 40, M, 'Open')).toBe(10) // Kōura is forty
+    expect(rungForScore(3 * 10000 + 39, M, 'Open')).toBe(8) // 39 push-ups
+    expect(rungForScore(3 * 10000 + 40, M, 'Open')).toBe(9) // Hiriwa is forty
   })
 
-  it('Jump Rope: eight basic jumps is Kiwikiwi, and Karaka for an under-14', () => {
+  it('Jump Rope: eight jumps is Whero, and Kōwhai for an under-14', () => {
     const all = std('Jump Rope').all!
-    expect(rungForScore(8, all, 'Open', { cap: DRILL_CAP })).toBe(1)
-    expect(rungForScore(8, all, 'U14', { cap: DRILL_CAP })).toBe(3)
+    expect(rungForScore(8, all, 'Open', { cap: DRILL_CAP })).toBe(2)
+    expect(rungForScore(8, all, 'U14', { cap: DRILL_CAP })).toBe(4)
   })
 
   // 12 Oct 2026 review: Kahurangi is any D4 bridge, Poroporo 30s, Parahi 1:00.
-  it('Bridge: a 31-second D4 bridge is Poroporo, and Parahi for a Master', () => {
+  it('Bridge: a 31-second D4 bridge is Kōura, and Uenuku with a colour', () => {
     const all = std('Bridge').all!
-    expect(rungForScore(3 * 10000 + 1, all, 'Open')).toBe(6)
-    expect(rungForScore(3 * 10000 + 31, all, 'Open')).toBe(7)
-    expect(rungForScore(3 * 10000 + 31, all, 'Over40')).toBe(8)
+    expect(rungForScore(3 * 10000 + 1, all, 'Open')).toBe(9)
+    expect(rungForScore(3 * 10000 + 31, all, 'Open')).toBe(10)
+    expect(rungForScore(3 * 10000 + 31, all, 'Over40')).toBe(11)
   })
 
   // 12 Oct 2026: a carry colour is a share of bodyweight carried the official
@@ -114,7 +114,7 @@ describe('the standards approved in review come back out of the engine', () => {
   it('Sandbag Carry: a colour needs its load, the full 200m and its time', () => {
     const s = std('Sandbag Carry')
     expect(s.bwLoad).toBe(true)
-    const m = compoundLadderAt('weight+distance+time', s.M!, s.bwLoad, 80)! // Taniwha: 80kg in 2:00
+    const m = compoundLadderAt('weight+distance+time', s.all!, s.bwLoad, 80)! // Taniwha: 80kg in 2:00
     const carry = (kg: number, metres: number, secs: number) => Math.round(kg * 10) * 1e9 + metres * 1e4 + (1e4 - secs)
     expect(rungForCarry(carry(80, 200, 120), m, 'Open')).toBe(12)
     expect(rungForCarry(carry(80, 200, 121), m, 'Open')).toBe(11) // Uenuku: 80kg in 3:00
@@ -138,10 +138,10 @@ describe('the standards approved in review come back out of the engine', () => {
   })
 
   it('Running: the colour reads the predicted 1000m time', () => {
-    const m = std('Running').M!
-    expect(rungForScore(10000 - 210, m, 'Open')).toBe(12) // 3:30
-    expect(rungForScore(10000 - 211, m, 'Open')).toBe(11)
-    expect(rungForScore(10000 - 3600, m, 'Open')).toBe(1)
+    const m = std('Running').all!
+    expect(rungForScore(10000 - 240, m, 'Open')).toBe(12) // 4:00
+    expect(rungForScore(10000 - 241, m, 'Open')).toBe(11)
+    expect(rungForScore(10000 - 3600, m, 'Open')).toBe(5) // the full distance meets every step
   })
 
   it('Climbing: the Game rung makes it a game event with six drill colours', () => {
@@ -154,18 +154,16 @@ describe('the standards approved in review come back out of the engine', () => {
     expect(Math.max(...s.all!)).toBeLessThan(5 * 10000)
   })
 
-  it('Vertical Jump: Taniwha is 62cm for men and 48cm for women', () => {
+  it('Vertical Jump: Taniwha is 60cm on the one list', () => {
     const s = std('Vertical Jump')
-    expect(s.M!.at(-1)).toBe(62)
-    expect(s.F!.at(-1)).toBe(48)
-    expect(rungForScore(51, s.M!, 'Open')).toBe(7)
+    expect(s.all!.at(-1)).toBe(60)
+    expect(rungForScore(51, s.all!, 'Open')).toBe(8)
   })
 
   it('Pause Bench: the approved ratios, and a 15kg junior lift is Kākāriki for an under-14', () => {
     const s = std('Pause Bench')
-    expect(s.M!.slice(9)).toEqual([1.3, 1.4, 1.5])
-    expect(s.F!.at(-1)).toBe(1)
-    const junior = ratioThresholdsKg(s.M!.map(r => r || null), JUNIOR_BODYWEIGHT_KG)
+    expect(s.all!.slice(9)).toEqual([1.3, 1.4, 1.5])
+    const junior = ratioThresholdsKg(s.all!.map(r => r || null), JUNIOR_BODYWEIGHT_KG)
     expect(rungForScore(15, junior, 'U14')).toBe(5)
   })
 })

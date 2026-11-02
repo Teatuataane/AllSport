@@ -25,6 +25,8 @@ export type ScoreRow = {
   raw_score: number | null
   weight_kg: number | null
   difficulty_tier: string | null
+  /** Metres a distance effort covered, for the low colours that ask only that. */
+  distance_m?: number | null
 }
 
 /**
@@ -52,6 +54,7 @@ export function scoreRung(
     weight_kg: r.weight_kg,
     difficulty_tier: r.difficulty_tier,
     bodyweightKg,
+    distance_m: r.distance_m,
   })), player, rating).rung
 }
 

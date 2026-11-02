@@ -678,12 +678,14 @@ export function gradeStateFrom(
     // started_at (20260902020602); created_at is when the score was typed,
     // which for a late entry is a different day.
     bodyweightKg: kgOn(resultDay(r), r.bodyweight_band),
+    distance_m: r.distance_m ?? null,
   })))
   const logged = workoutEvidence(inputs.entries.filter(e => upTo(e.workouts?.created_at) && inYear(e.workouts?.performed_on)).map(e => ({
     ...e,
     // performed_on is the day it was TRAINED, which is what a bodyweight
     // describes. Backdating up to 7 days is allowed, so this is observable.
     bodyweightKg: kgOn(e.workouts?.performed_on, e.bodyweight_band),
+    distance_m: e.distance_m ?? null,
   })))
   const matches = asOfMs == null ? inputs.matches : inputs.matches.filter(m => upTo(m.created_at))
   // The rating is lifetime (Tāne, 13 Oct 2026): a year never resets it, so a

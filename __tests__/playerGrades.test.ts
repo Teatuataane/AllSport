@@ -45,7 +45,7 @@ describe('an event\'s colour', () => {
     // Pushups is Stamina, a whole colour of allowance from 55 (lib/ageAllowance.ts).
     const g = eventGrade(ev('Pushups'), [row('Pushups', 40001, { difficulty_tier: '1 Arm Pushup' })], { ...master, ageYears: 56 })
     expect(g).toEqual({
-      slug: ev('Pushups').slug, rung: 11, exact: 11.05, gradeable: true, played: true,
+      slug: ev('Pushups').slug, rung: 11, gradeable: true, played: true,
       best: { raw_score: 40001, weight_kg: null, difficulty_tier: '1 Arm Pushup' },
     })
   })
@@ -71,7 +71,7 @@ describe('an event\'s colour', () => {
 
   it('takes the best row, not the latest', () => {
     const rows = [row('Pushups', 30049), row('Pushups', 30010)]
-    expect(eventGrade(ev('Pushups'), rows, openMan).rung).toBe(10)
+    expect(eventGrade(ev('Pushups'), rows, openMan).rung).toBe(9)
   })
 
   it('never counts a Game-rung result as a drill', () => {
@@ -85,8 +85,8 @@ describe('an event\'s colour', () => {
 
   it('lets the rating lift a game event past the drill cap, from the first game', () => {
     const rope = ev('Jump Rope')
-    // Double Dutch is D3 since 5 Oct 2026; 10 reps there is Kahurangi, the drill cap.
-    const drills = [row('Jump Rope', 2 * 10000 + 10, { difficulty_tier: 'Double Dutch' })]
+    // 100 Single Dutch jumps is Kahurangi, the drill cap.
+    const drills = [row('Jump Rope', 100, { difficulty_tier: 'Single Dutch' })]
     expect(eventGrade(rope, drills, openMan).rung).toBe(6)
     expect(eventGrade(rope, drills, openMan, { rating: 1215, games: 12 }).rung).toBe(8)
     expect(eventGrade(rope, drills, openMan, { rating: 1215, games: 1 }).rung).toBe(8)
@@ -105,12 +105,11 @@ describe('an event\'s colour', () => {
 
   it('grades a junior against their own declaration, on their own ladder, then shifts it', () => {
     const lift = [row('Pause Bench', 15, { weight_kg: 15, bodyweightKg: 50 })]
-    // A boy: 15kg meets the men's third rung (0.2 x 50kg), so Karaka, then +2.
-    expect(eventGrade(ev('Pause Bench'), lift, { ...under14, gender: 'Male' }).rung).toBe(5)
+    // A boy under 14: 80% of the list, so Kōwhai's 0.4× asks 16kg, which rounds to 15kg.
+    expect(eventGrade(ev('Pause Bench'), lift, { ...under14, gender: 'Male' }).rung).toBe(4)
     // A girl: 15kg meets the women's fourth rung (0.26 x 50kg = 13kg), so Kōwhai, then +2.
-    // The review page graded every junior on the men's ladder only because
-    // public data carries no sex; the real grade reads the registration answer.
-    expect(eventGrade(ev('Pause Bench'), lift, under14).rung).toBe(6)
+    // A girl under 14: 70% × 80%, so Kōwhai's 0.4× asks 11kg and Kākāriki's 0.6× asks 17.5kg.
+    expect(eventGrade(ev('Pause Bench'), lift, under14).rung).toBe(4)
   })
 
   it('reads Wrestling from the rating alone', () => {

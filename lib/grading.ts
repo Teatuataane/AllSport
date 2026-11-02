@@ -124,7 +124,7 @@ export const TOP_RUNG = 12
  * conferred one. HOME forces one full recheck per player when this differs
  * from the version it last checked under (lib/useNewColours.ts).
  */
-export const GRADING_RULES_VERSION = '2026-10-28-rating-to-kiwikiwi'
+export const GRADING_RULES_VERSION = '2026-11-03-one-list-scaled'
 export const DOMAIN_COUNT = 10
 
 /**
@@ -722,6 +722,21 @@ export function compoundLadderAt(
   if (!bwLoad) return ladder
   if (bodyweightKg == null || !(bodyweightKg > 0)) return null
   return bwLoadThresholds(mode, ladder, bodyweightKg)
+}
+
+/**
+ * A ladder with a weighted level written as shares of bodyweight ("D4 · 0.2×
+ * BW", s.bwTier): that level's thresholds in the centi-kilograms a score holds,
+ * at this bodyweight. "D4 · any" stays, and with no bodyweight the shares cannot
+ * be met. Every other level stays as it is, so it needs no bodyweight.
+ */
+export function tierBwLadderAt(ladder: readonly number[], tier: number, bodyweightKg: number | null | undefined): number[] {
+  return ladder.map(t => {
+    const term = t % TIER_BAND
+    if (Math.floor(t / TIER_BAND) !== tier || term <= 1) return t
+    if (bodyweightKg == null || !(bodyweightKg > 0)) return Infinity
+    return tier * TIER_BAND + Math.round(bwLoadKg(term, bodyweightKg) * 100)
+  })
 }
 
 /** The load key of a bodyweight ladder: thousandths of bodyweight. */

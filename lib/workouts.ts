@@ -119,10 +119,14 @@ export function workoutEvidence(entries: readonly WorkoutEntryRow[]): { rows: Gr
     const ev = e.event_slug ? getEventBySlug(e.event_slug) : undefined
     // Postgres numeric accepts 'Infinity' and 'NaN'; either would grade as the
     // top rung (or break a comparison), so a non-finite score is never evidence.
-    if (ev && e.raw_score != null && Number.isFinite(Number(e.raw_score))) {
+    // A short distance effort has no score but may earn a distance step, so it
+    // comes through on its metres alone (lib/playerGrades.ts).
+    const shortEffort = e.raw_score == null && ev?.inputMode === 'distance+time' && Number(e.distance_m) > 0
+    if (ev && (shortEffort || (e.raw_score != null && Number.isFinite(Number(e.raw_score))))) {
       rows.push({
         event_name: ev.name,
-        raw_score: Number(e.raw_score),
+        raw_score: shortEffort ? null : Number(e.raw_score),
+        distance_m: e.distance_m == null ? null : Number(e.distance_m),
         weight_kg: e.weight_kg == null ? null : Number(e.weight_kg),
         difficulty_tier: e.difficulty_tier,
         // An entry made AT a game is `game` evidence: official scores are

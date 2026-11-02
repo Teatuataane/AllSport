@@ -28,7 +28,7 @@ describe('logged workouts as evidence', () => {
 
   it('turns a best split into a grading row', () => {
     const { rows } = workoutEvidence([entry({ raw_score: 29900, difficulty_tier: '1000m' })])
-    expect(rows).toEqual([{ event_name: 'Cycling', raw_score: 29900, weight_kg: null, difficulty_tier: '1000m', source: 'solo' }])
+    expect(rows).toEqual([{ event_name: 'Cycling', raw_score: 29900, weight_kg: null, difficulty_tier: '1000m', distance_m: null, source: 'solo' }])
   })
 
   it('marks a kaiwhakawā-logged entry as witnessed', () => {

@@ -59,10 +59,6 @@ const MODE_OVERRIDES = {
   // Crawl styles are the levels; distance and time are open (5 Oct 2026), ranked
   // on the time the effort predicts over the event's reference distance.
   'Animal Crawl': 'distance+time',
-  // A level is the bar height against the body (12 Oct 2026); the score is the
-  // successful jumps at it. Its old mode was distance (cm), which would default
-  // to a distance ladder.
-  'High Jump': 'difficulty+reps',
   // Pure contests that gained a drill under their Game rung (Sept 2026 grading
   // rebuild). Their old mode is `sport`, which would default to reps, but these
   // drills are raced, and Arm Wrestling's is a hold. Kabaddi, Speed Chess,
@@ -93,6 +89,9 @@ const LADDERLESS_MODES = {
   'Weighted Drag': 'weight+distance+time',
   // Any load and reps: heaviest, then most reps.
   'Tibialis Curl': 'weight+reps',
+  // Levels gone in the 3 Nov 2026 review: the score is the height, the 1RM, or
+  // an open effort compared over 100m.
+  'High Jump': 'distance', 'Sandbag to Shoulder': 'strength', 'Burpee Broad Jump': 'distance+time',
 }
 
 // Events whose ladder is the implement thrown, while the score stays the distance.

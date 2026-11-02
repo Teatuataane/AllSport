@@ -11,15 +11,16 @@ const SQL = readFileSync('supabase/migrations/20261005222950_roster_144.sql', 'u
 
 describe('the 6 Oct 2026 roster migration', () => {
   it('moves Cornhole games onto the band of its Game rung', () => {
-    const tiers = getEventBySlug('cornhole')!.difficultyTiers!
-    const game = tiers.findIndex(t => t.scoring === 'sport')
-    expect(tiers[game].name).toBe('Game')
-    expect(SQL).toContain(`SET raw_score = ${game * DT_CAP} + r.raw_score, difficulty_tier = 'Game'`)
+    // Frozen: Game was D4 then. 20261102211504 moved it to D2 with the rest.
+    expect(SQL).toContain(`SET raw_score = ${3 * DT_CAP} + r.raw_score, difficulty_tier = 'Game'`)
+    expect(getEventBySlug('cornhole')!.difficultyTiers!.findIndex(t => t.scoring === 'sport')).toBe(1)
   })
 
   it('lists every plain win/draw/loss event as a pure contest in both functions', () => {
     const want = EVENTS.filter(e => e.inputMode === 'sport').map(e => e.slug).sort()
-    const lists = [...SQL.matchAll(/event_slug IN \(([^)]*)\)/g)].map(m => [...m[1].matchAll(/'([^']+)'/g)].map(x => x[1]).sort())
+    const newest = readFileSync('supabase/migrations/20261102211504_roster_154.sql', 'utf8')
+    const lists = [...newest.matchAll(/event_slug IN \(([^)]*)\)/g)].map(m => [...m[1].matchAll(/'([^']+)'/g)].map(x => x[1]).sort())
+      .filter(l => l.includes('wrestling'))
     expect(lists).toHaveLength(2)
     for (const l of lists) expect(l).toEqual(want)
   })

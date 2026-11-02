@@ -39,9 +39,9 @@ export const DOMAIN_COLORS = [
   '#2371BB', // 5  Stamina              Kahurangi  blue
   '#B87DB5', // 6  Endurance            Poroporo   purple
   '#F397C0', // 7  Flexibility          Māwhero    pink
-  '#B87333', // 8  Body Awareness       Kōkōwai    brown / red ochre
+  '#B87333', // 8  Control       Kōkōwai    brown / red ochre
   '#F2F2F2', // 9  Coordination         Mā         white
-  '#8C9199', // 10 Aim & Precision      Pango      black (see note above)
+  '#8C9199', // 10 Aim      Pango      black (see note above)
 ]
 
 export function domainColor(domainNumber: number): string {

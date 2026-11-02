@@ -359,7 +359,7 @@ describe('Game rungs', () => {
 
 describe('weight rungs', () => {
   it('are declared on the tier, not matched by event name', () => {
-    const ev = getEventBySlug('pause-chin-up')!
+    const ev = getEventBySlug('pause-dips')!
     const idx = ev.difficultyTiers!.findIndex(t => t.scoring === 'weight')
     expect(idx).toBeGreaterThan(-1)
     expect(tierScoring(ev, idx)).toBe('weight')
@@ -399,7 +399,7 @@ describe('difficulty+distance (throw ladders)', () => {
   })
 })
 
-describe('weight+time (Leg Ext Hold)', () => {
+describe('weight+time (Leg Extension Hold)', () => {
   const ev = () => getEventBySlug('leg-extension')!
   const mk = (kg: string, mins: string, secs: string) =>
     computeScoreVals('weight+time', ev(), vals({ weightKg: kg, timeMins: mins, timeSecs: secs }))!
@@ -554,29 +554,29 @@ describe('Climbing: a Game rung on top of a raced ladder (Sept 2026)', () => {
   const mk = (res: 'win' | 'draw' | 'loss') =>
     computeScoreVals('difficulty+time', ev, vals({ difficultyTier: game, sportResult: res }))!
 
-  // The pegboard and L-sit rungs went on 5 Oct 2026, so the Game is D6.
-  it('tops the ladder at D6 and is a timed effort in Body Awareness', () => {
+  // The climb is one time trial since 3 Nov 2026, so the Game is D2.
+  it('tops the ladder at D2 and is a timed effort in Control', () => {
     expect(ev.domainNumber).toBe(8)
     expect(isTimedEffort(ev.slug)).toBe(true)
-    expect(idx).toBe(5)
+    expect(idx).toBe(1)
     expect(idx).toBe(ev.difficultyTiers!.length - 1)
   })
 
-  it('encodes the result un-inverted: win 5*10000+2, draw +1, loss +0', () => {
-    expect(mk('win').raw_score).toBe(5 * 10000 + 2)
-    expect(mk('draw').raw_score).toBe(5 * 10000 + 1)
-    expect(mk('loss').raw_score).toBe(5 * 10000 + 0)
+  it('encodes the result un-inverted: win 1*10000+2, draw +1, loss +0', () => {
+    expect(mk('win').raw_score).toBe(1 * 10000 + 2)
+    expect(mk('draw').raw_score).toBe(1 * 10000 + 1)
+    expect(mk('loss').raw_score).toBe(1 * 10000 + 0)
   })
 
-  it('a loss still outranks the fastest possible D5 No Feet Climb', () => {
+  it('a loss still outranks the fastest possible time trial', () => {
     const d5 = ev.difficultyTiers![idx - 1].name
     const fastest = computeScoreVals('difficulty+time', ev, vals({ difficultyTier: d5, timeMins: '0', timeSecs: '1' }))!
-    expect(fastest.raw_score).toBe(4 * 10000 + (10000 - 1))
+    expect(fastest.raw_score).toBe(0 * 10000 + (10000 - 1))
     expect(mk('loss').raw_score).toBeGreaterThan(fastest.raw_score)
   })
 
   it('prefills a stored win as a result, not a 9998-second climb', () => {
-    const p = _vfr('difficulty+time', ev, 5 * 10000 + 2)
+    const p = _vfr('difficulty+time', ev, 1 * 10000 + 2)
     expect(p.sportResult).toBe('win')
     expect(p.timeSecs).toBeUndefined()
   })

@@ -24,7 +24,9 @@ const NEWEST_TRIGGER = (() => {
 
 // Lifts added after the 29 Sept 2026 history re-encode. They had no rows to
 // re-encode, so that migration rightly does not name them.
-const LIFTS_ADDED_LATER = new Set(['steinborn'])
+const LIFTS_ADDED_LATER = new Set(['steinborn', 'overhead-press', 'weighted-tuck', 'sandbag-to-shoulder'])
+// Lifts the history migration re-encoded that have since left the roster.
+const LIFTS_REMOVED_LATER = { names: ['Clean & Press', 'Pullover & Press'], slugs: ['clean-and-press', 'pullover-and-press'] }
 
 /** Postgres numeric: exact w × 36 / (37 − r), rounded half away from zero to 0.1. */
 function exactSql(weightKg: number, reps: number): number {
@@ -111,7 +113,7 @@ describe('the history migration', () => {
   it('re-encodes exactly the strength events, and never Shoulder Dislocate', () => {
     const lifts = EVENTS.filter(e => e.inputMode === 'strength' && !LIFTS_ADDED_LATER.has(e.slug))
     for (const e of lifts) {
-      expect(MIGRATION).toContain(`'${e.name}'`)
+      expect(MIGRATION).toContain(`'${e.name === 'Steinborn Lift' ? 'Steinborn' : e.name}'`)
       expect(MIGRATION).toContain(`'${e.slug}'`)
     }
     expect(MIGRATION).not.toContain('shoulder-dislocate')
@@ -125,8 +127,8 @@ describe('the history migration', () => {
       const body = MIGRATION.slice(MIGRATION.indexOf('IN (', from) + 4, MIGRATION.indexOf(')', MIGRATION.indexOf('IN (', from)))
       return [...body.matchAll(/'((?:[^']|'')*)'/g)].map(m => m[1]).sort()
     }
-    expect(listAfter('WHERE se.event_name IN (')).toEqual(lifts.map(e => e.name).sort())
-    expect(listAfter('WHERE e.event_slug IN (')).toEqual(lifts.map(e => e.slug).sort())
+    expect(listAfter('WHERE se.event_name IN (')).toEqual([...lifts.map(e => e.name), ...LIFTS_REMOVED_LATER.names].sort())
+    expect(listAfter('WHERE e.event_slug IN (')).toEqual([...lifts.map(e => e.slug), ...LIFTS_REMOVED_LATER.slugs].sort())
   })
 
   it('writes the same label liftLabel does', () => {
@@ -174,15 +176,15 @@ describe('Toe Lift and Tibialis Curl', () => {
     expect(STANDARDS['tibialis-curl'].kind).toBe('raw')
   })
 
-  it('Stamina (was Anaerobic Endurance) no longer needs a bodyweight', () => {
+  it('Stamina keeps one lift on an estimated 1RM: Sandbag to Shoulder', () => {
     const ratio = EVENTS.filter(e => e.domainNumber === 5 && STANDARDS[e.slug]?.kind === 'ratio')
-    expect(ratio).toEqual([])
+    expect(ratio.map(e => e.slug)).toEqual(['sandbag-to-shoulder'])
   })
 })
 
 describe('Stamina is a 2-minute contest', () => {
   it('every rep event states the 2 minutes; holds run as long as possible', () => {
-    for (const e of EVENTS.filter(e => e.domainNumber === 5)) {
+    for (const e of EVENTS.filter(e => e.domainNumber === 5 && e.inputMode !== 'strength')) {
       const isHold = e.inputMode === 'hold' || e.inputMode === 'weight+time'
         || (e.inputMode === 'difficulty+time' && !isTimedEffort(e.slug))
       if (isHold) expect(e.rules, e.name).toMatch(/longest hold/i)

@@ -53,7 +53,7 @@ if (!hasServiceKey()) {
 
 const db = createSupabaseAdminClient()
 const DOMAINS = ['Maximal Strength', 'Calisthenics', 'Power', 'Speed', 'Stamina',
-  'Endurance', 'Flexibility', 'Body Awareness', 'Coordination', 'Aim & Precision']
+  'Endurance', 'Flexibility', 'Control', 'Coordination', 'Aim']
 const when = (iso: string) => new Date(iso).toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland', dateStyle: 'medium', timeStyle: 'short' })
 const inWindow = (iso: string) => { const t = Date.parse(iso); return t >= from && t < to }
 const REASON = 'Conferred in error on 5–6 Oct 2026, while old distance scores were read against the new 1km standards.'

@@ -12,9 +12,9 @@ const DOMAINS = [
   { number: 5, name: 'Stamina' },
   { number: 6, name: 'Endurance' },
   { number: 7, name: 'Flexibility' },
-  { number: 8, name: 'Body Awareness' },
+  { number: 8, name: 'Control' },
   { number: 9, name: 'Coordination' },
-  { number: 10, name: 'Aim & Precision' },
+  { number: 10, name: 'Aim' },
 ]
 
 type Vote = {

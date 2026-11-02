@@ -47,12 +47,12 @@ describe('liftKg', () => {
 describe('the colour a lift reaches', () => {
   it('grades the estimate: 130kg for reps (est. 140kg) is Parahi at 100kg bodyweight', () => {
     // 1.4× is 140kg. The load alone (130kg) would not clear it; the estimate does.
-    expect(scoreRung(deadlift, [liftRow(140, 130)], man, 100)).toBe(8)
+    expect(scoreRung(deadlift, [liftRow(140, 130)], man, 100)).toBe(6)
     expect(scoreRung(deadlift, [liftRow(130, 130)], man, 100)).toBeLessThan(8)
   })
 
   it('grades on the load when the score is unusable (0), rather than dropping the lift', () => {
-    expect(scoreRung(deadlift, [liftRow(0, 140)], man, 100)).toBe(8)
+    expect(scoreRung(deadlift, [liftRow(0, 140)], man, 100)).toBe(6)
   })
 
   it('never grades a row with no score at all: eventGrade drops it before liftKg sees it', () => {
@@ -64,7 +64,7 @@ describe('liveEventRung: this game\'s colour on the game screen', () => {
   it('is the rung the game report counts for the same rows', () => {
     const rows = [liftRow(140, 130)]
     const live = liveEventRung(deadlift, rows, man, 100)
-    expect(live).toBe(8)
+    expect(live).toBe(6.5)
     expect(live).toBe(eventRungInGame('Deadlift', rows.map(r => ({ ...r, event_name: 'Deadlift', bodyweightKg: 100 })), man))
   })
 
@@ -107,7 +107,7 @@ describe('next time, for a lift', () => {
     }
     const step = nextStep(['Deadlift'], gradeStateFrom('p', i).grades, { ...man, gender: 'Male' }, i.bodyweights!, '2026-03-01')!
     expect(getEventByName('Deadlift')).toBeTruthy()
-    expect(nextStepLine(step)).toBe('Deadlift: est. 1RM 12.5kg higher for Parahi')
+    expect(nextStepLine(step)).toBe('Deadlift: est. 1RM 5kg higher for Kahurangi')
   })
 })
 
@@ -155,7 +155,8 @@ afterEach(() => { vi.useRealTimers() })
 const toeLift = getEventBySlug('toe-lift')!
 const hold = (kg: number, secs: number) =>
   computeScoreVals('weight+time', toeLift, { ...EMPTY_VALS, weightKg: String(kg), timeMins: '0', timeSecs: String(secs) })!.raw_score
-const toeLadder = STANDARDS['toe-lift'].all!
+// Frozen kilograms: the live Toe Lift is shares of bodyweight since 3 Nov 2026.
+const toeLadder = [5, 15, 1250005, 1250015, 2500005, 2500015, 5000005, 5000015, 7500015, 10000015, 12500015, 15000015]
 
 describe('load-and-hold colours', () => {
   it('a heavier load held for one second earns nothing the load alone would', () => {
@@ -183,9 +184,9 @@ describe('load-and-hold colours', () => {
 
   it('is what the live colour and HOME use (eventGrade)', () => {
     const row = (raw: number) => ({ raw_score: raw, weight_kg: null, difficulty_tier: null })
-    expect(scoreRung(toeLift, [row(hold(15, 1))], man, null)).toBe(rungForLoadHold(hold(15, 1), toeLadder, 'Open'))
+    expect(scoreRung(toeLift, [row(hold(15, 1))], man, 100)).toBe(0)
     // The best row is the one reaching the highest colour, not the heaviest.
-    expect(scoreRung(toeLift, [row(hold(15, 1)), row(hold(5, 60))], man, null)).toBe(8)
+    expect(scoreRung(toeLift, [row(hold(15, 1)), row(hold(5, 60))], man, 100)).toBe(6)
   })
 
   it('names both halves when the load must go up, and only the time when it need not', () => {
@@ -197,15 +198,15 @@ describe('load-and-hold colours', () => {
 
 describe('the live game colour', () => {
   const row = (raw: number) => ({ raw_score: raw, weight_kg: null, difficulty_tier: null })
-  const ten = Array.from({ length: 10 }, () => ({ official: true, ev: toeLift, rows: [row(hold(15, 30))] }))
+  const ten = Array.from({ length: 10 }, () => ({ official: true, ev: toeLift, rows: [row(hold(20, 30))] }))
 
   it('is the official events’ rungs summed and divided by ten', () => {
-    expect(liveGameColourRung(ten, man, null)).toBe(12)
+    expect(liveGameColourRung(ten, man, 100)).toBe(12)
   })
 
   it('never counts an added or swapped event', () => {
     const added = ten.map((s, i) => (i === 0 ? { ...s, official: false } : s))
-    expect(liveGameColourRung(added, man, null)).toBe(Math.floor((12 * 9) / 10))
+    expect(liveGameColourRung(added, man, 100)).toBe(Math.floor((12 * 9) / 10))
   })
 
   it('is 0 for a guest', () => {

@@ -55,21 +55,23 @@ describe('the approved table', () => {
 
 describe('a half allowance', () => {
   // Wall Sit (Stamina, one ladder): 10, 20, 30, 45, 60, 90 … seconds.
-  const wallSit = getEventByName('Wall Sit')!
-  const hold = (secs: number): GradeResultRow => ({ event_name: 'Wall Sit', raw_score: secs, weight_kg: null, difficulty_tier: null })
+  // A half is only read on an event with levels since 3 Nov 2026. D2 is Back
+  // Extension's second level: 1:00 is Kōwhai, 2:00 the next colour.
+  const wallSit = getEventByName('Back Extension')!
+  const hold = (secs: number): GradeResultRow => ({ event_name: 'Back Extension', raw_score: 10000 + secs, weight_kg: null, difficulty_tier: wallSit.difficultyTiers![1].name })
   const p = (ageYears: number): GradePlayer => ({ division: "Men's", ageYears, gender: 'Male' })
 
   it('is the mean of the exact scores at the whole steps either side', () => {
-    // 60s: 5.0 on the Open ladder, 6.0 with one colour: 5.5 with half.
+    // 60s: 4.0 on the list, 5.0 with one colour: 4.5 with half.
     const g = eventGrade(wallSit, [hold(60)], p(45))
-    expect(g.rung).toBe(5)
-    expect(g.exact).toBe(5.5)
+    expect(g.rung).toBe(4)
+    expect(g.exact).toBe(4.5)
   })
 
   it('earns the colour itself past the middle of one', () => {
-    // 75s: 5.5 Open, 6.5 with one colour, so 6.0 with half: Kākāriki is held.
-    const g = eventGrade(wallSit, [hold(75)], p(45))
-    expect(g.rung).toBe(6)
+    // 90s: 4.5 on the list, 5.5 with one colour, so 5.0 with half: Kākāriki is held.
+    const g = eventGrade(wallSit, [hold(90)], p(45))
+    expect(g.rung).toBe(5)
     expect(g.exact).toBeUndefined()
   })
 
@@ -95,11 +97,11 @@ describe('AGE_ALLOWANCE_REVIEW.md is the table the code runs', () => {
   }
 
   it('matches the adult rows', () => {
-    for (const { label, group } of ADULT_ROWS) expect(rowOf(label, 'Adults')).toEqual([...ADULT_ALLOWANCE[group]])
+    for (const { label, group } of ADULT_ROWS) expect(rowOf(label, 'Colours: adults')).toEqual([...ADULT_ALLOWANCE[group]])
     expect(ADULT_AGES).toEqual([35, 40, 45, 50, 55, 60, 65, 70, 75])
   })
 
   it('matches the junior rows', () => {
-    for (const { label, group } of JUNIOR_ROWS) expect(rowOf(label, 'Juniors')).toEqual([...JUNIOR_ALLOWANCE[group]])
+    for (const { label, group } of JUNIOR_ROWS) expect(rowOf(label, 'Colours: juniors')).toEqual([...JUNIOR_ALLOWANCE[group]])
   })
 })

@@ -1,8 +1,7 @@
 // ─── The colour standards, as one player reads them ──────────────────────────
-// Which score earns which colour on one event, on the PLAYER'S OWN ladder: their
-// sex's thresholds, moved up the ladder by their age allowance for the event's
-// domain exactly as grading moves them (rungForScore; a half shows as the whole
-// step below). No switching between divisions (Tāne, 5 Oct 2026).
+// Which score earns which colour on one event, on the PLAYER'S OWN ladder: the
+// one list scaled for their sex and age, or moved up by their colours, exactly
+// as grading does it (lib/scaling.ts; a half shows as the whole step below). No switching between divisions (Tāne, 5 Oct 2026).
 //
 // Pure, with no React or Supabase, and it reads STANDARDS and the lib/grading.ts
 // helpers rather than copying a threshold, so it cannot drift from grading. The
@@ -19,8 +18,9 @@ import {
   DRILL_CAP, TOP_RUNG, ratingForRung,
   gradeForRung, ratioThresholdsKg, thresholdFor, bwLoadKg,
 } from './grading'
-import { ladderFor, type GradePlayer } from './playerGrades'
-import { ageAllowance, formatAllowance } from './ageAllowance'
+import { type GradePlayer } from './playerGrades'
+import { formatAllowance } from './ageAllowance'
+import { colourAllowance, scaledLadder, scalingNote, usesPercent } from './scaling'
 import { formatPR } from './scoreFormat'
 import { decodeCarry, fmtDistance, fmtTime } from './scoring'
 import { isTimedEffort, type EventData } from './eventData'
@@ -50,21 +50,22 @@ export const RATING_ONLY_NOTE = 'No drill colours: this event is graded on games
  */
 export function ageAllowanceNote(ev: EventData, player: GradePlayer): string | null {
   if (STANDARDS[ev.slug]?.kind === 'rating') return null
-  const a = ageAllowance(player, ev.domainNumber)
+  if (usesPercent(ev)) return scalingNote(ev, player)
+  const a = colourAllowance(player, ev)
   if (!a) return null
   const age = player.ageYears != null ? ` at ${player.ageYears} this year` : ''
   const colours = `+${formatAllowance(a)} colour${a > 1 ? 's' : ''}`
-  if (a === Math.floor(a)) return `Includes your ${ev.domain} age allowance: ${colours}${age}.`
+  if (a === Math.floor(a)) return `Includes your ${ev.domain} allowance: ${colours}${age}.`
   const shown = Math.floor(a)
-  return `Your ${ev.domain} age allowance is ${colours}${age}. `
+  return `Your ${ev.domain} allowance is ${colours}${age}. `
     + (shown ? `These are the +${shown} standards; the extra half counts in your exact score.`
-             : 'These are the Open standards; the half counts in your exact score.')
+             : 'These are the listed standards; the half counts in your exact score.')
 }
 
 /** Does this event's ladder need a bodyweight to read in kilograms? */
 export function needsBodyweight(ev: EventData): boolean {
   const s = STANDARDS[ev.slug]
-  return s?.kind === 'ratio' || !!s?.bwLoad
+  return s?.kind === 'ratio' || !!s?.bwLoad || s?.bwTier != null
 }
 
 /**
@@ -77,7 +78,8 @@ function bwLoadLabel(ev: EventData, t: number, bodyweightKg: number | null): str
   const key = carry ? 1e9 : 10000
   const share = Math.floor(t / key) / 1000, rest = t % key
   const kg = bodyweightKg != null && bodyweightKg > 0 && share > 0 ? ` (${trim(bwLoadKg(share * 1000, bodyweightKg))} kg)` : ''
-  const load = share > 0 ? `${trim(share)}× bodyweight${kg}` : 'Bodyweight'
+  // A zero load is a bodyweight hold on Glute Thrust and any load at all elsewhere.
+  const load = share > 0 ? `${trim(share)}× bodyweight${kg}` : ev.slug === 'glute-thrust' ? 'Bodyweight' : 'Any load'
   if (carry) {
     const metres = Math.floor(rest / 10000), term = rest % 10000
     return `${load} · ${fmtDistance(metres)} · ${term > 1 ? `≤ ${fmtTime(10000 - term)}` : 'any time'}`
@@ -101,7 +103,11 @@ function drillLabel(ev: EventData, t: number): string {
   const tiered = !!ev.difficultyTiers?.length && ev.inputMode.startsWith('difficulty+')
   if (tiered && t % 10000 === 1) {
     const idx = Math.floor(t / 10000)
-    if (ev.difficultyTiers![idx]?.scoring !== 'weight') return `D${idx + 1} · any`
+    return `D${idx + 1} · any`
+  }
+  if (tiered && ev.difficultyTiers![Math.floor(t / 10000)]?.unit === 'secs') {
+    const secs = t % 10000
+    return `D${Math.floor(t / 10000) + 1} · ${secs >= 60 ? fmtTime(secs) : `${secs}s`}`
   }
   if (ev.inputMode === 'weight+distance+time') {
     // A loaded carry's time is raced too: 10000 minus the seconds, so a floor
@@ -109,6 +115,8 @@ function drillLabel(ev: EventData, t: number): string {
     const d = decodeCarry(t)
     if (d.secs >= 6000) return `${d.weightKg}kg · ${fmtDistance(d.metres)} · any time`
   }
+  if (t <= 1 && ev.inputMode === 'distance') return 'Any distance'
+  if (t <= 1 && ev.inputMode === 'hold') return 'Any hold'
   return formatPR(t, ev.inputMode, ev.slug, ev)
 }
 
@@ -119,7 +127,7 @@ export function standardsLadder(
 ): LadderRow[] {
   const s = STANDARDS[ev.slug]
   if (!s) return []
-  const shift = Math.floor(ageAllowance(player, ev.domainNumber))
+  const shift = Math.floor(colourAllowance(player, ev))
   const rows: LadderRow[] = []
   const row = (rung: number, label: string, kind: LadderRow['kind']) =>
     rows.push({ rung, name: gradeForRung(rung).name, label, kind })
@@ -130,7 +138,7 @@ export function standardsLadder(
   }
   if (s.kind === 'rating') { ratingRows(1); return rows }
 
-  const ladder = s.all ?? s[ladderFor(player)] ?? []
+  const ladder = scaledLadder(ev, s, player)
   if (ladder.length === 0) return []
   const top = Math.min(s.game ? DRILL_CAP : TOP_RUNG, ladder.length + shift, TOP_RUNG)
 
@@ -146,8 +154,24 @@ export function standardsLadder(
     return rows
   }
 
+  // A weighted level in shares of bodyweight reads as the share, and its
+  // kilograms once a bodyweight is known.
+  const bwTierLabel = (t: number) => {
+    const share = (t % 10000) / 1000
+    const at = bodyweightKg != null && bodyweightKg > 0 ? ` · ${trim(bwLoadKg(t % 10000, bodyweightKg))} kg` : ''
+    return `D${s.bwTier! + 1} · ${trim(share)}× bodyweight${at}`
+  }
   for (let r = 1; r <= top; r++) {
     const t = thresholdFor(ladder, r - shift)
+    const metres = s.steps && r - shift >= 1 ? s.steps[r - shift - 1] : undefined
+    if (metres !== undefined) {
+      row(r, metres > 0 ? `${fmtDistance(metres)} · any time` : 'Any distance', 'drill')
+      continue
+    }
+    if (s.bwTier != null && Math.floor(t / 10000) === s.bwTier && t % 10000 > 1) {
+      row(r, bwTierLabel(t), 'drill')
+      continue
+    }
     // Below the Open floor the ladder is extrapolated; at or under zero that
     // is "any score".
     const drill = t > 0 ? (s.bwLoad ? bwLoadLabel(ev, t, bodyweightKg) : drillLabel(ev, t)) : 'Any score'

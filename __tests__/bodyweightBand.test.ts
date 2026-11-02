@@ -113,16 +113,16 @@ describe('grading against the bodyweight of the day', () => {
   // for a 45kg one. That gap is why the number is per-row and not per-profile.
 
   it('grades a lift against the bodyweight on the row', () => {
-    expect(rungOf([lift(100, 95)], lifter())).toBe(6)
-    expect(rungOf([lift(100, 45)], lifter())).toBe(11)
+    expect(rungOf([lift(100, 95)], lifter())).toBe(4)
+    expect(rungOf([lift(100, 45)], lifter())).toBe(12)
   })
 
   it('cannot be re-priced by a later declaration', () => {
     // The exploit, closed by construction: nothing about the player is read,
     // so there is no "current" bodyweight for a new entry to re-grade with.
     const honest = [lift(100, 95)]
-    expect(rungOf(honest, lifter())).toBe(6)
-    expect(rungOf(honest, lifter())).toBe(6)
+    expect(rungOf(honest, lifter())).toBe(4)
+    expect(rungOf(honest, lifter())).toBe(4)
   })
 
   it('takes the best RUNG, not the heaviest lift', () => {
@@ -134,7 +134,7 @@ describe('grading against the bodyweight of the day', () => {
   })
 
   it('ignores a row with no bodyweight, and grades the ones that have it', () => {
-    expect(rungOf([lift(100, null), lift(100, 45)], lifter())).toBe(11)
+    expect(rungOf([lift(100, null), lift(100, 45)], lifter())).toBe(12)
   })
 
   it('counts as UNMET, not absent, when nothing they lifted carries a bodyweight', () => {

@@ -3782,6 +3782,12 @@ real host is `evil.com`. `safeNext()` now rejects that plus the `//` and `/\` va
 
 ---
 
+## The 154-event roster and one list (3 Nov 2026, v0.46.0.0)
+
+Tāne reviewed every level and standard in a workbook and removed the women's lists: "everybody operates off the same standards and the level required is scaled by age and sex". The ladders are deliberately wide to Kahurangi and tight to Taniwha, because players improve quickly and then slow down. That shape broke the colour shift (three colours on Pause Bench cut 75% at Kahurangi and 20% at Taniwha), so numbers moved to percentages (`lib/scaling.ts`) and colours stayed only on events with levels. This replaces the 21 Oct decision to keep colours until February 2027. Tāne has said he will check the scaling numbers again.
+
+Decisions are in `ROSTER_151_PLAN.md`. Calls made in the build: Trampolining's sixth drill colour is D4 · 20, and Diving's are D3 · 10 and D3 · 15, because their sheet values sat on the Game level. Rows whose level is gone stay as history and do not grade; same-movement renames were mapped (for example the three assisted Rear Hand Clasps to one, Shoulders to Floor to Backbend Seiza). A colour replay on 3 Nov found 32 new colours for 17 players, 31 domains falling below the colour held (they stay until January), and no overall colour moving.
+
 ## What's Next (In Priority Order)
 
 1. ~~Apply the pending migrations~~ — **DONE, nothing pending (verified 2026-08-01).** Every migration through `20260801000000_roster_update_120.sql` is applied to prod. `supabase db push` offered only `20260801000000`, which means the three session-22 files (`20260713000000`, `20260713000001`, `20260714000000`) were already recorded as applied; `wellbeing_surveys` was confirmed to exist via the REST API, and `db push` applies in timestamp order, so they genuinely ran rather than being falsely baselined.

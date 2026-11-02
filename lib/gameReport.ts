@@ -27,9 +27,9 @@ import { getEventByName, isTimedEffort, decodeDistanceEffort, DT_CAP, type Event
 import { STANDARDS } from './standards'
 import { tierScoring, fmtTime } from './scoring'
 import { eventRungInGame, placePoints, gameTotalOf } from './leaderboardScores'
-import { ladderFor, liftKg, playerInYear, type PlayerGrades, type GradePlayer } from './playerGrades'
+import { liftKg, playerInYear, type PlayerGrades, type GradePlayer } from './playerGrades'
 import { yearOfDay } from './seasonYear'
-import { ageAllowance } from './ageAllowance'
+import { colourAllowance, scaledLadder } from './scaling'
 import {
   rungForScore, rungForCompound, thresholdFor, ratioThresholdsKg, bodyweightOn, gradeForRung, compoundLadderAt,
   DOMAIN_COUNT, DRILL_CAP, TOP_RUNG, type BodyweightDeclaration,
@@ -291,13 +291,16 @@ export function nextStep(
     const s = STANDARDS[ev.slug]
     const eg = grades.events.get(ev.slug)
     if (!s || s.kind === 'rating' || !eg?.best) continue
-    const ladder = s.all ?? s[ladderFor(player)] ?? []
+    // A distance step or a share-of-bodyweight level has no gap to show in the
+    // event's units, so those players see their next colour on the ladder instead.
+    if (s.steps || s.bwTier != null) continue
+    const ladder = scaledLadder(ev, s, player)
     if (ladder.length === 0) continue
     const cap = s.game ? DRILL_CAP : TOP_RUNG
     // The age allowance is per domain (lib/ageAllowance.ts). A half reads as
     // the whole step below: the gap shown is one the player is sure to close
     // the colour with, never one that falls short.
-    const shift = Math.floor(ageAllowance(player, ev.domainNumber))
+    const shift = Math.floor(colourAllowance(player, ev))
     const band = shift
 
     let cur: number, from: number, to: number, bestVal: number, gap: string | null

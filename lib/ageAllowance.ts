@@ -1,6 +1,8 @@
 // ─── The age allowance, by domain ────────────────────────────────────────────
 // Approved by Tāne on 20 October 2026 (AGE_ALLOWANCE_REVIEW.md). It replaces
 // the flat allowance (U12 and U14 +2, U16 +1, 40+ +1, 60+ +2 in every domain).
+// Since 3 Nov 2026 it is read for events with levels only; events with a number
+// ease by a percentage instead (lib/scaling.ts).
 //
 // An allowance is a number of colours the ladder moves for the player: with 1
 // they earn each colour at the Open standard for the colour below it
@@ -29,9 +31,9 @@ const GROUP_BY_DOMAIN: Record<number, { adult: AllowanceGroup; junior: Allowance
   5: { adult: 'stamina', junior: 'stamina' },         // Stamina
   6: { adult: 'stamina', junior: 'stamina' },         // Endurance
   7: { adult: 'skill', junior: 'flexibility' },       // Flexibility
-  8: { adult: 'skill', junior: 'skill' },             // Body Awareness
+  8: { adult: 'skill', junior: 'skill' },             // Control
   9: { adult: 'skill', junior: 'skill' },             // Coordination
-  10: { adult: 'skill', junior: 'skill' },            // Aim & Precision
+  10: { adult: 'skill', junior: 'skill' },            // Aim
 }
 
 /** Adults: the first age of each step, and the allowance from it. Under 35 is 0. */
@@ -48,7 +50,7 @@ export const ADULT_ALLOWANCE: Record<Exclude<AllowanceGroup, 'flexibility'>, rea
 export const JUNIOR_ALLOWANCE: Record<AllowanceGroup, readonly [number, number, number]> = {
   speedPower:  [3, 2, 1],     // Maximal Strength, Power, Speed
   strength:    [2, 1.5, 0.5], // Calisthenics
-  skill:       [2, 1.5, 0.5], // Body Awareness, Coordination, Aim & Precision
+  skill:       [2, 1.5, 0.5], // Control, Coordination, Aim
   stamina:     [1.5, 1, 0.5], // Stamina, Endurance
   flexibility: [0, 0, 0],     // Flexibility
 }
@@ -58,13 +60,13 @@ export const ADULT_ROWS: readonly { label: string; group: keyof typeof ADULT_ALL
   { label: 'Speed, Power', group: 'speedPower' },
   { label: 'Maximal Strength, Calisthenics', group: 'strength' },
   { label: 'Stamina, Endurance', group: 'stamina' },
-  { label: 'Flexibility, Body Awareness, Coordination, Aim & Precision', group: 'skill' },
+  { label: 'Flexibility, Control, Coordination, Aim', group: 'skill' },
 ]
 
 export const JUNIOR_ROWS: readonly { label: string; group: AllowanceGroup }[] = [
   { label: 'Maximal Strength, Power, Speed', group: 'speedPower' },
   { label: 'Calisthenics', group: 'strength' },
-  { label: 'Body Awareness, Coordination, Aim & Precision', group: 'skill' },
+  { label: 'Control, Coordination, Aim', group: 'skill' },
   { label: 'Stamina, Endurance', group: 'stamina' },
   { label: 'Flexibility', group: 'flexibility' },
 ]

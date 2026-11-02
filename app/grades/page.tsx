@@ -19,6 +19,7 @@ import {
 import { PROVISIONAL_GAMES } from '@/lib/headToHead'
 import { GradeDot } from '@/components/GradeDot'
 import { ADULT_AGES, ADULT_ALLOWANCE, ADULT_ROWS, JUNIOR_ALLOWANCE, JUNIOR_ROWS, formatAllowance } from '@/lib/ageAllowance'
+import { ADULT_PERCENT, JUNIOR_PERCENT } from '@/lib/scaling'
 
 export const metadata = {
   title: 'Colours · AllSport',
@@ -53,7 +54,11 @@ function H2({ n, children }: { n: number; children: React.ReactNode }) {
 }
 
 /** One allowance table, read straight from lib/ageAllowance.ts so it cannot drift. */
-function AllowanceTable({ head, rows }: { head: readonly string[]; rows: readonly { label: string; values: readonly number[] }[] }) {
+function AllowanceTable({ head, rows, format = formatAllowance }: {
+  head: readonly string[]
+  rows: readonly { label: string; values: readonly number[] }[]
+  format?: (v: number) => string
+}) {
   const cell = { padding: '6px 6px', textAlign: 'center' as const, borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' as const }
   return (
     <div style={{ overflowX: 'auto', margin: '0 0 12px' }}>
@@ -68,7 +73,7 @@ function AllowanceTable({ head, rows }: { head: readonly string[]; rows: readonl
           {rows.map(r => (
             <tr key={r.label}>
               <td style={{ ...cell, textAlign: 'left', whiteSpace: 'normal', minWidth: 140 }}>{r.label}</td>
-              {r.values.map((v, i) => <td key={i} style={{ ...cell, color: v ? 'var(--white)' : 'var(--text-muted)' }}>{v ? formatAllowance(v) : '0'}</td>)}
+              {r.values.map((v, i) => <td key={i} style={{ ...cell, color: v ? 'var(--white)' : 'var(--text-muted)' }}>{v ? format(v) : '0'}</td>)}
             </tr>
           ))}
         </tbody>
@@ -221,10 +226,40 @@ export default function ColoursGuide() {
       <section style={card}>
         <H2 n={4}>Fair at every age and size</H2>
         <P>
-          Younger and older players get a head start, counted in colours: with one, you earn each colour at
-          the standard for the colour below it. It depends on the domain, because age takes speed and power
-          first and skill last, and on the age you turn this year, so it moves with you on 1 January.
-          A half counts half a colour toward your score. Men and women have their own standards.
+          Everyone plays off the same list, and the level you need is scaled for your age and sex. It
+          depends on the domain, because age takes speed and power first and skill last, and on the age
+          you turn this year, so it moves with you on 1 January.
+        </P>
+        <P>
+          On events with a number, the standard eases by a percentage: loads, heights and distances go
+          down by this much, and times go up.
+        </P>
+        <AllowanceTable
+          head={ADULT_AGES.map((a, i) => (i === ADULT_AGES.length - 1 ? `${a}+` : String(a)))}
+          rows={[
+            { label: 'Power', values: ADULT_PERCENT.power },
+            { label: 'Maximal Strength', values: ADULT_PERCENT.strength },
+            { label: 'Stamina, Endurance', values: ADULT_PERCENT.stamina },
+          ]}
+          format={v => `${v}%`}
+        />
+        <AllowanceTable
+          head={['Under 12', '12 to 13', '14 to 16']}
+          rows={[
+            { label: 'Maximal Strength, Power', values: JUNIOR_PERCENT.strength },
+            { label: 'Stamina, Endurance', values: JUNIOR_PERCENT.stamina },
+          ]}
+          format={v => `${v}%`}
+        />
+        <P>
+          From age 12, women and girls have 80% of the load on lower body lifts and the Olympic lifts, 70%
+          on upper body lifts and carries, 80% of the height or distance on jumps, and 12% more time on
+          timed Endurance. Sex and age multiply.
+        </P>
+        <P>
+          On events with levels, you get a head start counted in colours instead: with one, you earn each
+          colour at the standard for the colour below it. A half counts half a colour toward your score.
+          From age 12, women and girls also get one colour on upper body events with levels.
         </P>
         <AllowanceTable
           head={ADULT_AGES.map((a, i) => (i === ADULT_AGES.length - 1 ? `${a}+` : String(a)))}

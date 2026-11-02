@@ -140,7 +140,7 @@ describe('scoreColumns writes exactly what the live session used to write', () =
   })
 
   it('matches in every mode, including the ones only historical rows still use (time, sprint, score, reps)', () => {
-    const sample = ['Deadlift', 'Tennis', 'Pause Dips', 'Javelin', 'Cycling', '100m Sprint', 'Leg Ext Hold', 'Golf', 'Wrestling', 'Wall Sit', 'High Jump']
+    const sample = ['Deadlift', 'Tennis', 'Pause Dips', 'Javelin', 'Cycling', 'Sprint Race', 'Leg Extension Hold', 'Golf', 'Wrestling', 'Wall Sit', 'High Jump']
       .map(ev)
     // No roster event carries weightVariations any more; the reps branch still reads them.
     const withVariation = { ...ev('Deadlift'), inputMode: 'reps', weightVariations: ['Weighted'] } as EventData
@@ -211,7 +211,7 @@ describe('the source behind an event colour', () => {
   })
 
   it('carries no source when nothing earns a colour, or when the rows carry none', () => {
-    expect(eventGrade(tennis, [row(1, 'solo')], adult)).not.toHaveProperty('source')
+    expect(eventGrade(tennis, [row(0, 'solo')], adult)).not.toHaveProperty('source')
     const g = eventGrade(tennis, [row(15, undefined)], adult)
     expect(g.rung).toBeGreaterThan(0)
     expect(g).not.toHaveProperty('source')
@@ -259,7 +259,7 @@ describe('event kinds', () => {
     // 5 Oct 2026 six of them TAKE a distance and a time natively
     // ('distance+time'), so only Burpee Broad Jump still needs the natural
     // "distance + time" entry format converted onto a rung.
-    expect(EVENTS.filter(isDistanceEvent).map(e => e.slug).sort()).toEqual(['burpee-broad-jump'])
+    expect(EVENTS.filter(isDistanceEvent).map(e => e.slug).sort()).toEqual([])
   })
 
   it('does not count a ladder of loads over one distance, or a ladder with an unreadable rung', () => {
@@ -308,7 +308,7 @@ describe('fitting and suggesting activities', () => {
     expect(suggestEvents('jog', new Map([['jog', 'running']]))[0].slug).toBe('running')
     expect(suggestEvents('running', new Map())[0].slug).toBe('running')
     const sprints = suggestEvents('sprint', new Map()).map(e => e.slug)
-    expect(sprints.indexOf('100m-sprint')).toBeLessThan(sprints.indexOf('200m-sprint'))
+    expect(sprints).toContain('sprint-race')
   })
 
   it('respects the limit and drops aliases that name no event', () => {

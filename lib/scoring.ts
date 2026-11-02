@@ -350,15 +350,20 @@ export function computeScoreVals(
     if (special === 'weight') {
       const w = parseFloat(v.weightKg) || 0
       if (w <= 0) return null
-      const term = weightTerm(w)
-      if (term === null) return null
       const r = parseInt(v.repCount) || 0
+      const rung = eventData?.difficultyTiers?.[tierIdx]
+      // A rung on an estimated 1RM needs the reps it estimates from.
+      if (rung?.estimate && r <= 0) return null
+      const term = weightTerm(rung?.estimate ? estimatedOneRm(w, r) : w)
+      if (term === null) return null
       const reps = r > 0 ? ` × ${r}` : ''
-      return { raw_score: tierIdx * TIER_BAND + term, score_label: `${label} · ${w}kg${reps}` }
+      const est = rung?.estimate ? ` · est. 1RM ${estimatedOneRm(w, r)}kg` : ''
+      return { raw_score: tierIdx * TIER_BAND + term, score_label: `${label} · ${w}kg${reps}${est}` }
     }
     const r = parseInt(v.repCount) || 0
     if (r <= 0 || r >= TIER_BAND) return null
-    return { raw_score: tierIdx * TIER_BAND + r, score_label: `${label} · ${r} reps` }
+    const secs = eventData?.difficultyTiers?.[tierIdx]?.unit === 'secs'
+    return { raw_score: tierIdx * TIER_BAND + r, score_label: `${label} · ${r}${secs ? 's' : ' reps'}` }
   }
   if (mode === 'difficulty+distance') {
     if (!v.difficultyTier) return null

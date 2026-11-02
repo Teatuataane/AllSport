@@ -15,8 +15,8 @@ import {
 // ─── EVENTS array integrity ───────────────────────────────────────────────────
 
 describe('EVENTS array', () => {
-  it('contains exactly 148 events', () => {
-    expect(EVENTS).toHaveLength(148)
+  it('contains exactly 154 events', () => {
+    expect(EVENTS).toHaveLength(154)
   })
 
   it('every event has a unique slug', () => {
@@ -65,8 +65,8 @@ describe('DOMAIN_ORDER', () => {
     expect(DOMAIN_ORDER[0]).toBe('Maximal Strength')
   })
 
-  it('last domain is Aim & Precision', () => {
-    expect(DOMAIN_ORDER[9]).toBe('Aim & Precision')
+  it('last domain is Aim', () => {
+    expect(DOMAIN_ORDER[9]).toBe('Aim')
   })
 
   it('matches the domain names present in EVENTS', () => {
@@ -97,7 +97,7 @@ describe('getEventBySlug', () => {
     expect(getEventBySlug('animal-crawl')).toBeDefined()
     // Duck Walk was REPLACED, not renamed — its slug must not resolve.
     expect(getEventBySlug('duck-walk')).toBeUndefined()
-    expect(getEventBySlug('breath-hold')).toBeDefined()
+    expect(getEventBySlug('skipping-rope')).toBeDefined()
     expect(getEventBySlug('bronco')).toBeDefined()
   })
 
@@ -146,13 +146,16 @@ describe('getEventByName', () => {
   // Renames keep their slug so historical results stay linked.
   it.each([
     ['Pause Back Squat', 'pause-squat'],
-    ['Pause Chinup', 'pause-chin-up'],
     ['Turkish Getup', 'turkish-get-up'],
     ['Human Flag', 'flag'],
     ['Finger Pushup', 'finger-push-up'],
-    ['Hamstring Curl', 'hamstring-curl'],
     ['Foot Behind Head Pose', 'foot-behind-head'],
-    ['Leg Ext Hold', 'leg-extension'],
+    ['Leg Extension Hold', 'leg-extension'],
+    ['Steinborn Lift', 'steinborn'],
+    ['Dragon Flag', 'hollow-hold'],
+    ['Leapfrog', 'repeat-high-jump'],
+    ['Wrist Extension', 'wrist-extension'],
+    ['Airsoft/Nerf', 'airsoft'],
   ])('renamed %s keeps slug %s', (name, slug) => {
     const e = getEventByName(name)
     expect(e).toBeDefined()
@@ -178,13 +181,17 @@ describe('getEventByName', () => {
     'Arm Wrestling', 'Tug of War', 'Capture the Flag', 'Kabaddi',
     'Farmer Carry', 'Weighted Drag', 'Kubb',
     // Added Sept 2026
-    'Pullover & Press', 'Loaded Lunge', 'Skull Hang', 'Calf Raises',
-    'Plie Squat', 'Seiza', 'Internal Wrist Stretch', 'External Wrist Stretch',
-    'Back Extension', 'Hollow Hold', 'Reverse Maltese',
+    'Loaded Lunge', 'Calf Raises',
+    'Seiza',
+    'Back Extension', 'Dragon Flag', 'Reverse Maltese',
     // Added 6 Oct 2026
-    'Steinborn', 'Glute Thrust', 'Reverse Wrist Ext', 'Clap Pushups', 'Triple Jump',
-    'Mas Wrestling', '400m Sprint', '800m Sprint', 'Obstacle Course', 'Swim', 'Walking',
-    'Diving', 'Poi', 'Water Polo', 'Cornhole', 'Airsoft',
+    'Steinborn Lift', 'Glute Thrust', 'Wrist Extension', 'Clap Pushups', 'Triple Jump',
+    'Mas Wrestling', 'Obstacle Course', 'Swim', 'Walking',
+    'Diving', 'Poi', 'Water Polo', 'Cornhole', 'Airsoft/Nerf',
+    // Added 3 Nov 2026
+    'Overhead Press', 'Wrestler Pullover', 'Plate Hold', 'Weighted Tuck', 'Nordic Curl', 'Discus', 'Sprint Race',
+    'Hurdles', 'Hang', 'Skipping Rope', 'Underwater Swim', 'Cobra Pose', 'Butterfly Pose', 'Deep Squat',
+    'Bent Wrist Stretch', 'Shoulder Dislocate', 'Cheststand', 'Tī Rākau', 'Goal Kicking',
   ])('new event %s is defined with real content', (name) => {
     const e = getEventByName(name)
     expect(e).toBeDefined()
@@ -200,7 +207,10 @@ describe('getEventByName', () => {
     // deliberately NOT swept onto the new slug — see the Lunges test below.
     'Toe Squat',
     // Removed 30 Sept 2026. Their scores stay as orphan name strings.
-    'Lunges', 'Ab Rollout', 'Shoulder Dislocate',
+    'Lunges', 'Ab Rollout',
+    // Removed 3 Nov 2026. Their scores and colours stay.
+    'Clean & Press', 'Pause Chinup', 'Pullover & Press', 'Skull Hang', 'Hamstring Curl', 'Plie Squat',
+    'Internal Wrist Stretch', 'External Wrist Stretch', 'Breath Hold', '100m Sprint', '200m Sprint', '400m Sprint', '800m Sprint',
   ])('removed event %s is gone from the roster', (name) => {
     expect(getEventByName(name)).toBeUndefined()
   })
@@ -211,21 +221,19 @@ describe('getEventByName', () => {
     // L-Sit Hold -> Compression (30 Sept) -> L-Sit (5 Oct 2026), one slug throughout.
     ['L-Sit', 'l-sit-hold', 'Compression'],
     ['Pushups', 'push-up-contest', 'Pushup Contest'],
-    ['Internal Wrist Stretch', 'wrist-stretch', 'Wrist Stretch'],
-    ['External Wrist Stretch', 'reverse-wrist-stretch', 'Reverse Wrist Stretch'],
     // 5 Oct 2026, same ladders.
-    ['Repeat Vault', 'repeat-high-jump', 'Repeat High Jump'],
+    ['Leapfrog', 'repeat-high-jump', 'Repeat Vault'],
     ['Chinups', 'chin-up-contest', 'Chinup Contest'],
   ])('%s keeps the slug %s, and %s is gone', (name, slug, old) => {
     expect(getEventByName(name)!.slug).toBe(slug)
     expect(getEventByName(old)).toBeUndefined()
   })
 
-  it('Leg Ext Hold is a loaded hold with no ladder', () => {
+  it('Leg Extension Hold is a loaded hold with no ladder', () => {
     // The Sept 2026 difficulty review removed the load ladder: the weight IS the
     // difficulty, so it is entered rather than picked. Heavier wins, hold time
     // breaks the tie.
-    const e = getEventByName('Leg Ext Hold')!
+    const e = getEventByName('Leg Extension Hold')!
     expect(e.inputMode).toBe('weight+time')
     expect(e.hasDifficultyTiers).toBe(false)
     expect(e.difficultyTiers).toBeUndefined()
@@ -235,7 +243,7 @@ describe('getEventByName', () => {
   // The Sept 2026 additions are HOLDS: longer wins. A hold wrongly listed in
   // TIMED_EFFORT_SLUGS would be encoded inverted and rank the shortest hold
   // first, which is the Climbing bug of June 2026 in the other direction.
-  it.each(['skull-hang', 'plie-squat', 'seiza', 'wrist-stretch', 'reverse-wrist-stretch'])(
+  it.each(['hang', 'cheststand', 'seiza', 'bent-wrist-stretch'])(
     '%s is a hold, not a timed effort', (slug) => {
       const faster = isTimedEffort(slug)
       expect(faster).toBe(false)
@@ -269,9 +277,9 @@ describe('getEventsByDomain', () => {
     expect(Object.keys(map)).toHaveLength(10)
   })
 
-  it('Maximal Strength has 16 events', () => {
+  it('Maximal Strength has 17 events', () => {
     const map = getEventsByDomain()
-    expect(map['Maximal Strength']).toHaveLength(16)
+    expect(map['Maximal Strength']).toHaveLength(17)
   })
 
   it('every event appears in exactly one domain bucket', () => {
@@ -288,9 +296,9 @@ describe('getEventsByDomain', () => {
   it('holds at least 12 events in every domain, and the expected count in each', () => {
     const map = getEventsByDomain()
     const expected: Record<string, number> = {
-      'Maximal Strength': 16, 'Calisthenics': 13, 'Power': 15, 'Speed': 15,
-      'Stamina': 18, 'Endurance': 15, 'Flexibility': 15,
-      'Body Awareness': 14, 'Coordination': 13, 'Aim & Precision': 14,
+      'Maximal Strength': 17, 'Calisthenics': 15, 'Power': 16, 'Speed': 13,
+      'Stamina': 16, 'Endurance': 16, 'Flexibility': 18,
+      'Control': 15, 'Coordination': 14, 'Aim': 14,
     }
     for (const [domain, events] of Object.entries(map)) {
       expect(events.length, `${domain} should hold at least 12 events`).toBeGreaterThanOrEqual(12)
@@ -313,7 +321,7 @@ describe('getEventsByDomain', () => {
     expect(slugs).toContain('running')
     expect(slugs).toContain('animal-crawl')
     expect(slugs).not.toContain('duck-walk')
-    expect(slugs).toContain('breath-hold')
+    expect(slugs).toContain('skipping-rope')
     expect(slugs).toContain('bronco')
     expect(slugs).toContain('farmer-carry')
     expect(slugs).toContain('weighted-drag')
@@ -358,7 +366,7 @@ describe('getEventsByDomain', () => {
     expect(walking.referenceMetres).toBe(1000)
     expect(isTimedEffort('walking')).toBe(false)
     // 200m, the official race, since 12 Oct 2026.
-    expect(getEventBySlug('swim')!.referenceMetres).toBe(200)
+    expect(getEventBySlug('swim')!.referenceMetres).toBe(400)
   })
 })
 
@@ -390,7 +398,7 @@ describe('effectiveScore logic', () => {
 
 describe('getBonusTargets', () => {
   const deadlift = EVENTS.find(e => e.slug === 'deadlift')!
-  const sprint100 = EVENTS.find(e => e.slug === '100m-sprint')!
+  const sprint100 = EVENTS.find(e => e.slug === 'sprint-race')!
   const lSitHold = EVENTS.find(e => e.slug === 'l-sit-hold')!
   const tennis = EVENTS.find(e => e.slug === 'tennis')!
   const chinupContest = EVENTS.find(e => e.slug === 'chin-up-contest')!
@@ -406,9 +414,9 @@ describe('getBonusTargets', () => {
     const wrestling = EVENTS.find(e => e.slug === 'wrestling')!
     expect(wrestling.inputMode).toBe('sport')
     expect(EVENTS.filter(e => e.inputMode === 'sport').map(e => e.slug).sort()).toEqual([
-      '100m-sprint', '200m-sprint', '400m-sprint', '800m-sprint', 'arm-wrestling', 'beach-flags',
-      'capture-the-flag', 'fencing', 'kabaddi', 'mas-wrestling', 'obstacle-course', 'rats-and-rabbits',
-      'speed-chess', 't-race', 'tae-kwon-do', 'tag', 'tug-of-war', 'wrestling',
+      'arm-wrestling', 'beach-flags', 'capture-the-flag', 'fencing', 'hurdles', 'kabaddi', 'mas-wrestling',
+      'obstacle-course', 'rats-and-rabbits', 'speed-chess', 'sprint-race', 't-race', 'tae-kwon-do', 'tag',
+      'tug-of-war', 'wrestling',
     ])
     const targets = getBonusTargets(wrestling, null)
     expect(targets).toHaveLength(1)
@@ -452,7 +460,7 @@ describe('getBonusTargets', () => {
     expect(getBonusTargets(deadlift, 0)).toEqual([])
   })
 
-  it('100m Sprint is plain win/draw/loss again (5 Oct 2026), a time recorded alongside', () => {
+  it('Sprint Race is plain win/draw/loss, a time recorded alongside', () => {
     expect(sprint100.inputMode).toBe('sport')
     expect(sprint100.recordsTime).toBe(true)
     expect(sprint100.hasDifficultyTiers).toBe(false)
