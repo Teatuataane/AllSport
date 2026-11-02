@@ -588,3 +588,9 @@ from `main` and this is a review branch.
 ### Approach first club partner
 **What:** Identify 2–3 local clubs whose sport overlaps with AllSport events (e.g. a volleyball club, a track & field club). Pitch the partnership model: AllSport runs a session for their community, their sport is one of the 10 events, AllSport gains ongoing access to their facility.
 **When:** After /supporters page is live (gives you something to show them).
+
+## Roster 154 follow-ups (3 Nov 2026)
+
+- [ ] Tāne to check the sex and age scaling numbers again (`lib/scaling.ts`, `AGE_ALLOWANCE_REVIEW.md`). Maximal Strength at 15% at age 60 may be low against about 19%.
+- [ ] Real icons for the 18 stand-ins copied on 3 Nov, and the four arm events with none (Skullcrusher, Strict Curl, OH Tricep Extension, Overhead Raise).
+- [ ] Check on the logged-in scoring screen: seconds levels (Nordic Curl, Wrestler Pullover) and weighted levels (GHD Situp, Wrestler Pullover).

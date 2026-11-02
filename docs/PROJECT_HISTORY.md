@@ -3788,6 +3788,8 @@ Tāne reviewed every level and standard in a workbook and removed the women's li
 
 Decisions are in `ROSTER_151_PLAN.md`. Calls made in the build: Trampolining's sixth drill colour is D4 · 20, and Diving's are D3 · 10 and D3 · 15, because their sheet values sat on the Game level. Rows whose level is gone stay as history and do not grade; same-movement renames were mapped (for example the three assisted Rear Hand Clasps to one, Shoulders to Floor to Backbend Seiza). A colour replay on 3 Nov found 32 new colours for 17 players, 31 domains falling below the colour held (they stay until January), and no overall colour moving.
 
+Applied and verified the same day after the deploy (PR #211), with the season board refreshed. The new colours confer themselves as each player's next recheck runs (`GRADING_RULES_VERSION` was bumped). Left for later: Tāne's second look at the scaling numbers, real icons for the 18 stand-ins and the four arm events, and a check of the logged-in scoring screen.
+
 ## What's Next (In Priority Order)
 
 1. ~~Apply the pending migrations~~ — **DONE, nothing pending (verified 2026-08-01).** Every migration through `20260801000000_roster_update_120.sql` is applied to prod. `supabase db push` offered only `20260801000000`, which means the three session-22 files (`20260713000000`, `20260713000001`, `20260714000000`) were already recorded as applied; `wellbeing_surveys` was confirmed to exist via the REST API, and `db push` applies in timestamp order, so they genuinely ran rather than being falsely baselined.
