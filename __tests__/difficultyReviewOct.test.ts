@@ -16,7 +16,7 @@ const running = getEventBySlug('running')!
 const crawl = getEventBySlug('animal-crawl')!
 const tib = getEventBySlug('tibialis-curl')!
 const farmer = getEventBySlug('farmer-carry')!
-const sprint = getEventBySlug('100m-sprint')!
+const sprint = getEventBySlug('sprint-race')!
 
 describe('distance + time: the best effort wins', () => {
   it('ranks a 4:00 km above a 15:00 3km, which predicts about 4:41 (the review example)', () => {
@@ -143,9 +143,11 @@ describe('20261005012108 redefines the functions it must', () => {
     // The lifts as they stood on 5 Oct 2026. Steinborn joined on 6 Oct, in
     // 20261005222950, which redefines this trigger (estimatedOneRm.test.ts
     // pins the newest definition to the full roster).
-    const lifts = EVENTS.filter(e => e.inputMode === 'strength' && e.slug !== 'steinborn')
-    expect(list('IF v_name IN')).toEqual(lifts.map(e => e.name).sort())
-    expect(list('OR v_slug IN')).toEqual(lifts.map(e => e.slug).sort())
+    // Frozen too: the 3 Nov 2026 roster took two out and put three in.
+    const later = ['steinborn', 'overhead-press', 'weighted-tuck', 'sandbag-to-shoulder']
+    const lifts = EVENTS.filter(e => e.inputMode === 'strength' && !later.includes(e.slug))
+    expect(list('IF v_name IN')).toEqual([...lifts.map(e => e.name), 'Clean & Press', 'Pullover & Press'].sort())
+    expect(list('OR v_slug IN')).toEqual([...lifts.map(e => e.slug), 'clean-and-press', 'pullover-and-press'].sort())
     expect(body).toContain("(v_name = 'Tibialis Curl' OR v_slug = 'tibialis-curl') AND NEW.difficulty_tier IS NOT NULL")
   })
 

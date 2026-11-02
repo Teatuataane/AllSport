@@ -528,7 +528,7 @@ export default function QuickEntrySheet({
                   {/* Reps stepper */}
                   {showReps && !setMode && (
                     <>
-                      <div style={QES_LBL}>Reps</div>
+                      <div style={QES_LBL}>{rung?.unit === 'secs' ? 'Seconds' : 'Reps'}</div>
                       <div style={{ display: 'flex', gap: '10px' }}>
                         <StepBtn onClick={() => bumpNum('repCount', -1, 0)}>−</StepBtn>
                         <input type="number" inputMode="numeric" value={v.repCount} onChange={e => set({ repCount: e.target.value })} placeholder="0" style={QES_INP} />

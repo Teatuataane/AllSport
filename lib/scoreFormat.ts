@@ -35,6 +35,7 @@ export function formatPR(rawScore: number, inputMode: string, slug?: string, eve
       const scoring = tierScoring(eventData, tierIdx)
       if (scoring === 'weight') return `D${tierIdx + 1} · ${term / 100}kg`
       if (scoring === 'sport') return `D${tierIdx + 1} · ${term === 2 ? 'Win' : term === 1 ? 'Draw' : 'Loss'}`
+      if (eventData?.difficultyTiers?.[tierIdx]?.unit === 'secs') return `D${tierIdx + 1} · ${term}s`
       return `D${tierIdx + 1} · ${term} reps`
     }
     case 'difficulty+distance': {

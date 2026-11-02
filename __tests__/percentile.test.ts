@@ -31,7 +31,7 @@ const EVENT_DOMAIN = new Map<string, number>([
 ])
 const DOMAIN_NAMES = Array.from({ length: 10 }, (_, i) =>
   ['Maximal Strength', 'Calisthenics', 'Power', 'Speed', 'Stamina',
-   'Aerobic Endurance', 'Flexibility', 'Body Awareness', 'Coordination', 'Aim & Precision'][i])
+   'Aerobic Endurance', 'Flexibility', 'Control', 'Coordination', 'Aim'][i])
 
 const results: PctResultRow[] = [
   // Deadlift men's pool best: m1=200, m2=180, m3=160, m4=160 (m3/m4 tie at bottom)

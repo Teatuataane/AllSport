@@ -19,9 +19,9 @@ const DOMAIN_SLUGS: Record<string, string> = {
   'Endurance': 'aerobic-endurance',
   'Aerobic Endurance': 'aerobic-endurance',
   'Flexibility': 'flexibility',
-  'Body Awareness': 'body-awareness',
+  'Control': 'body-awareness',
   'Coordination': 'coordination',
-  'Aim & Precision': 'aim-and-precision',
+  'Aim': 'aim-and-precision',
 }
 
 export function domainSlug(domainName: string): string {

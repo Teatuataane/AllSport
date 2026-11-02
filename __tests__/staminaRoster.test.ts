@@ -12,6 +12,7 @@ const section = (from: string, to: string) => sql.slice(sql.indexOf(from), sql.i
 // This migration is applied and frozen, so it names events as they were on
 // 30 Sept 2026. A later rename (slug kept) is mapped onto today's name here.
 const RENAMED_LATER: Record<string, string> = { Compression: 'L-Sit' } // 20261005032653
+const RETIRED = new Set(['wrist-stretch', 'reverse-wrist-stretch']) // 20261102211504
 const today = (name: string) => RENAMED_LATER[name] ?? name
 // Ladders this migration set that a LATER migration re-levelled, as they stood
 // after this one: the frozen file is checked against these, the newest guard
@@ -32,7 +33,9 @@ describe('stamina roster migration', () => {
     const slugs = [...new Set(newLevels.map(l => l.slug))].sort()
     expect(slugs).toEqual(['calf-raises', 'l-sit-hold', 'push-up-contest', 'reverse-wrist-stretch', 'wrist-stretch'])
     for (const slug of slugs) {
-      const ev = getEventBySlug(slug)!
+      // Both wrist stretches left the roster on 3 Nov 2026.
+      const ev = getEventBySlug(slug)
+      if (!ev) continue
       const rows = newLevels.filter(l => l.slug === slug)
       expect(rows.every(r => today(r.name) === ev.name), slug).toBe(true)
       expect(rows.map(r => r.tier), slug).toEqual(tiersThen(slug))
@@ -72,6 +75,7 @@ describe('stamina roster migration', () => {
     expect(repoints.map(m => m[2]).sort()).toEqual(['l-sit-hold', 'push-up-contest', 'reverse-wrist-stretch', 'wrist-stretch'])
     for (const [, name, slug, whereSlug] of repoints) {
       expect(whereSlug).toBe(slug)
+      if (RETIRED.has(slug)) continue
       expect(getEventBySlug(slug)?.name, slug).toBe(today(name))
       expect(getEventByName(today(name))?.slug).toBe(slug)
     }
@@ -105,12 +109,17 @@ describe('stamina roster migration', () => {
     const slugs = [...new Set(guarded.map(g => g.slug))].sort()
     // Stated, not derived: dropping an event from both lists must still fail.
     expect(slugs).toEqual([
-      'american-football', 'animal-crawl', 'baseball', 'breakdancing', 'calf-raises', 'chin-hang', 'clap-pushups', 'cricket',
-      'darts', 'disc-golf', 'diving', 'finger-push-up', 'foot-juggling', 'forward-fold', 'full-bound-twist',
-      'ghd-situp', 'golf', 'gymnastics', 'high-jump', 'iron-cross', 'jump-rope', 'l-sit-hold', 'middle-split',
-      'netball', 'pancake', 'plie-squat', 'push-up-contest', 'repeat-high-jump', 'reverse-wrist-stretch',
-      'rope-climb', 'seiza', 'side-bend', 'skate', 'skull-hang', 'slackline', 'table-tennis', 'tennis', 'teqball',
-      'touch-rugby', 'trampolining', 'volleyball', 'wrist-stretch',
+      'airsoft', 'american-football', 'animal-crawl', 'archery', 'australian-football', 'back-lever',
+      'badminton', 'balance-ball', 'baseball', 'basketball', 'bent-wrist-stretch', 'bocce', 'bowling',
+      'breakdancing', 'bridge', 'butterfly-pose', 'calf-raises', 'carrom', 'cheststand', 'chin-hang',
+      'clap-pushups', 'cobra-pose', 'cornhole', 'cricket', 'darts', 'deep-squat', 'disc-golf', 'diving',
+      'finger-push-up', 'flag', 'foot-juggling', 'football', 'forward-fold', 'front-split',
+      'full-bound-twist', 'ghd-situp', 'goal-kicking', 'golf', 'gymnastics', 'handball', 'hang', 'hockey',
+      'iron-cross', 'jump-rope', 'kubb', 'l-sit-hold', 'lacrosse', 'middle-split', 'needle-pose', 'netball',
+      'nordic-curl', 'pancake', 'planche', 'push-up-contest', 'rear-hand-clasp', 'repeat-high-jump',
+      'rope-climb', 'seiza', 'shoulder-dislocate', 'side-bend', 'skate', 'skipping-rope', 'slackline',
+      'squash', 'table-tennis', 'tennis', 'teqball', 'ti-rakau', 'touch-rugby', 'trampolining',
+      'ultimate-frisbee', 'volleyball', 'water-polo', 'wrestler-pullover',
     ])
     for (const slug of slugs) {
       const ev = getEventBySlug(slug)!
@@ -127,8 +136,8 @@ describe('stamina roster migration', () => {
   })
 
   it('names every event it resolves by name correctly', () => {
-    const REMOVED: Record<string, string> = { Lunges: 'lunges', 'Ab Rollout': 'ab-wheel-rollout', 'Shoulder Dislocate': 'shoulder-dislocate' }
-    const OLD_NAMES: Record<string, string> = { 'L-Sit Hold': 'l-sit-hold', Compression: 'l-sit-hold', 'Pushup Contest': 'push-up-contest', 'Wrist Stretch': 'wrist-stretch', 'Reverse Wrist Stretch': 'reverse-wrist-stretch' }
+    const REMOVED: Record<string, string> = { Lunges: 'lunges', 'Ab Rollout': 'ab-wheel-rollout', 'Pause Chinup': 'pause-chin-up' }
+    const OLD_NAMES: Record<string, string> = { 'L-Sit Hold': 'l-sit-hold', Compression: 'l-sit-hold', 'Pushup Contest': 'push-up-contest', 'Wrist Stretch': 'wrist-stretch', 'Internal Wrist Stretch': 'wrist-stretch', 'External Wrist Stretch': 'reverse-wrist-stretch', 'Reverse Wrist Stretch': 'reverse-wrist-stretch' }
     const whens = [...guardSql.matchAll(/WHEN event_name (?:IN \(([^)]*)\)|= ('[^']*')) THEN '([^']+)'/g)]
     expect(whens.length).toBeGreaterThan(0)
     for (const w of whens) {
@@ -137,7 +146,8 @@ describe('stamina roster migration', () => {
         expect(slug, n).toBe(w[3])
       }
     }
-    expect(guardSql).toMatch(/TG_OP = 'INSERT' AND v_slug IN \('lunges', 'ab-wheel-rollout', 'shoulder-dislocate'\)/)
+    expect(guardSql).toMatch(/TG_OP = 'INSERT' AND v_slug IN \('lunges', 'ab-wheel-rollout', 'pause-chin-up'/)
+    expect(guardSql.slice(guardSql.indexOf("TG_OP = 'INSERT'"), guardSql.indexOf('RAISE EXCEPTION'))).not.toContain('shoulder-dislocate')
   })
 
   it('checks an UPDATE only when the score or the event changes, so a game can always close', () => {

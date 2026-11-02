@@ -20,7 +20,7 @@ export function generateStaticParams() {
   return EVENTS.map(e => ({ slug: e.slug }))
 }
 
-// Each event page names itself. Without this all 148 carried the home page's
+// Each event page names itself. Without this all 154 carried the home page's
 // title and no canonical, and Google filed them as duplicates (Search Console,
 // Oct 2026: "Duplicate without user-selected canonical").
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {

@@ -81,7 +81,7 @@ function roster() {
 }
 
 const DOMAINS = ['', 'Maximal Strength', 'Calisthenics', 'Power', 'Speed', 'Stamina',
-  'Endurance', 'Flexibility', 'Body Awareness', 'Coordination', 'Aim & Precision']
+  'Endurance', 'Flexibility', 'Control', 'Coordination', 'Aim']
 // The rule is IMPORTED, not restated. This script used to keep its own copy of
 // the (since retired) half-the-domain rule, and it drifted: when Flexibility went to sixteen
 // events the copy reported a threshold of 8 while the engine asked for 6.
@@ -117,7 +117,7 @@ console.log(
   blocked === 0
     ? '\n  Every domain can be graded. The launch gate is CLEAR.\n' +
       '  Before the September 2026 overhaul, eight of ten domains were blocked —\n' +
-      '  Coordination and Aim & Precision could not be graded at all.'
+      '  Coordination and Aim could not be graded at all.'
     : `\n  ${blocked} of 10 domains cannot be graded. Grading cannot ship: the overall\n` +
       '  grade is the average of ten domains, so a blocked domain drags every player down.'
 )

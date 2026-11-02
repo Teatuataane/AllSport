@@ -13,13 +13,13 @@ const lift = (kg: number) => ({ raw_score: kg, weight_kg: kg, difficulty_tier: n
 describe('the colour a score reaches', () => {
   it('grades a lift against the day’s bodyweight', () => {
     // 140kg at 100kg bodyweight clears 1.4× (140kg) but not 1.6× (160kg): Parahi.
-    expect(scoreRung(deadlift, [lift(140)], man, 100)).toBe(8)
+    expect(scoreRung(deadlift, [lift(140)], man, 100)).toBe(6)
     // The same lift at a heavier bodyweight is worth less.
     expect(scoreRung(deadlift, [lift(140)], man, 120)).toBeLessThan(8)
   })
 
   it('takes the best of the day’s rows', () => {
-    expect(scoreRung(deadlift, [lift(60), lift(140), lift(100)], man, 100)).toBe(8)
+    expect(scoreRung(deadlift, [lift(60), lift(140), lift(100)], man, 100)).toBe(6)
   })
 
   it('gives no colour to a lift with no bodyweight declared', () => {
@@ -76,7 +76,7 @@ describe('a workout’s colour', () => {
   const lunge = getEventBySlug('loaded-lunge')
 
   it('is the event’s colour when it holds one event', () => {
-    expect(workoutColourRung([{ ev: deadlift, rows: [lift(140)] }], man, 100)).toBe(8)
+    expect(workoutColourRung([{ ev: deadlift, rows: [lift(140)] }], man, 100)).toBe(6)
   })
 
   it('averages over every planned event, a skipped one counting as Mā', () => {
@@ -84,7 +84,7 @@ describe('a workout’s colour', () => {
     expect(workoutColourRung([
       { ev: deadlift, rows: [lift(140)] },
       { ev: lunge, rows: [] },
-    ], man, 100)).toBe(4)
+    ], man, 100)).toBe(3)
   })
 
   it('is Mā for an unknown player or an empty plan', () => {

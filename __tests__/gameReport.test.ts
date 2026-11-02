@@ -56,9 +56,9 @@ describe('colour score', () => {
     const scores = gameScores('p', i)
     const published = leaderboardScoresFrom('p', i, gradeStateFrom('p', i)).games
     expect(published.map(g => [g.session_id, g.total])).toEqual([...scores.values()].map(g => [g.sessionId, g.points]))
-    expect(scores.get('a')!.points).toBe(6)
-    // 100kg sits 28% of the way from Poroporo's line to Parahi's (Scoring v2).
-    expect(scores.get('b')!.rungs.get('Deadlift')).toBe(7.28)
+    expect(scores.get('a')!.points).toBe(6.9)
+    // 100kg sits 71% of the way from one line to the next (Scoring v2).
+    expect(scores.get('b')!.rungs.get('Deadlift')).toBe(5.71)
   })
 
   it('includes a game still in progress, marked open', () => {
@@ -66,7 +66,7 @@ describe('colour score', () => {
     live.sessions!.is_active = true
     const g = gameScores('p', inputs([live])).get('live')!
     expect(g.closed).toBe(false)
-    expect(g.points).toBe(6)
+    expect(g.points).toBe(6.9)
   })
 
   it('plays at the score over ten events, rounded down, never past Taniwha', () => {
@@ -129,7 +129,7 @@ describe('next time', () => {
   it('puts the gap in the event\'s own units', () => {
     const fold = getEventByName('Forward Fold')!
     expect(describeRawGap(fold, 20020, 20030)).toBe('10s longer')
-    expect(describeRawGap(fold, 20030, 30010)).toBe('move up to Elbows to Legs')
+    expect(describeRawGap(fold, 20030, 30010)).toBe('move up to Hands to Feet')
     // Bronco is raced: the within-tier term is 10000 minus the seconds.
     expect(describeRawGap(getEventByName('Bronco')!, 19860, 19875)).toBe('15s faster')
     // Running is an open distance (5 Oct 2026), ranked on its predicted 1000m.
@@ -149,7 +149,7 @@ describe('next time', () => {
     // stated to the next 2.5kg plate step.
     const i = inputs([row('a', JAN, 'Deadlift', 100, { weight_kg: 100 })])
     const step = nextStep(['Deadlift'], gradeStateFrom('p', i).grades, MEN, i.bodyweights!, '2026-03-01')!
-    expect(nextStepLine(step)).toBe('Deadlift: est. 1RM 12.5kg higher for Parahi')
+    expect(nextStepLine(step)).toBe('Deadlift: est. 1RM 5kg higher for Kahurangi')
   })
 
   it('leaves a lift out when no bodyweight has been declared', () => {
@@ -162,7 +162,7 @@ describe('next time', () => {
     const i = inputs([row('a', JAN, 'Forward Fold', 20059), row('a', JAN, 'Bridge', 60)])
     const step = nextStep(['Forward Fold', 'Bridge'], gradeStateFrom('p', i).grades, MEN, [], '2026-03-01')!
     expect(step.eventName).toBe('Forward Fold')
-    expect(step.gap).toBe('1s longer')
+    expect(step.gap).toBe('move up to Hands to Feet')
   })
 })
 

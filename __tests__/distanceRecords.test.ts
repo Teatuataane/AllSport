@@ -38,7 +38,7 @@ const at = (recs: DistanceRecord[], metres: number, open = false, level: number 
 describe('the roster', () => {
   it('gives every open distance event and carry its set of record distances', () => {
     const long = ['running', 'cycling', 'ski-erg', 'row-erg', 'scooting', 'walking']
-    const short = ['swim', 'animal-crawl', 'sandbag-carry', 'farmer-carry', 'weighted-drag']
+    const short = ['swim', 'animal-crawl', 'sandbag-carry', 'farmer-carry', 'weighted-drag', 'burpee-broad-jump']
     for (const s of long) expect(getEventBySlug(s)!.recordDistances, s).toBe(LONG_RECORD_DISTANCES)
     for (const s of short) expect(getEventBySlug(s)!.recordDistances, s).toBe(SHORT_RECORD_DISTANCES)
     // Nothing else, and none missed.

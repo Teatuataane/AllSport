@@ -16,7 +16,10 @@ const tib = getEventBySlug('tibialis-curl')!
 const glute = getEventBySlug('glute-thrust')!
 /** A bodyweight for the ladders written as shares of it (12 Oct 2026). */
 const BW = 80
-const ladder = (slug: string) => compoundLadderAt(getEventBySlug(slug)!.inputMode, STANDARDS[slug].all!, STANDARDS[slug].bwLoad, BW)!
+// Frozen kilograms, with 5s and 15s holds at each load: the half step reads this shape
+// best, and the live Toe Lift is shares of bodyweight for 30s since 3 Nov 2026.
+const TOE_KG = [5, 15, 1250005, 1250015, 2500005, 2500015, 5000005, 5000015, 7500015, 10000015, 12500015, 15000015]
+const ladder = (slug: string) => slug === 'toe-lift' ? TOE_KG : compoundLadderAt(getEventBySlug(slug)!.inputMode, STANDARDS[slug].all!, STANDARDS[slug].bwLoad, BW)!
 const adult: GradePlayer = { division: "Men's", ageYears: 30, gender: 'male' }
 /** A load-and-hold or load-and-reps score: round(kg × 100) × 10000 + seconds or reps. */
 const packed = (kg: number, n: number) => Math.round(kg * 100) * 10000 + n
@@ -92,11 +95,11 @@ describe('a half is credit, never a colour', () => {
   })
 
   it('no credit field when it adds nothing', () => {
-    expect(eventGrade(toe, [row(toe.name, packed(5, 20))], adult).exact).toBeUndefined()
+    expect(eventGrade(toe, [row(toe.name, packed(4, 30))], adult).exact).toBeUndefined()
   })
 
   it('counts in a game colour total', () => {
-    expect(eventRungInGame(toe.name, [row(toe.name, packed(5, 10))], adult)).toBe(7.5)
+    expect(eventRungInGame(toe.name, [row(toe.name, packed(5.5, 15))], adult)).toBe(6.5)
     expect(eventRungInGame(glute.name, [row(glute.name, packed(160, 25))], adult)).toBe(11.5)
   })
 

@@ -58,6 +58,7 @@ export function parseRoster(src) {
       tiers: [...b.matchAll(/\{ level: \d+, name: '((?:[^'\\]|\\.)*)'([^}]*)\}/g)].map(m => ({
         name: m[1].replace(/\\'/g, "'"),
         scoring: (m[2].match(/scoring: '(\w+)'/) || [])[1] ?? null,
+        unit: (m[2].match(/unit: '(\w+)'/) || [])[1] ?? null,
       })),
     })
   }
@@ -107,7 +108,7 @@ function effortThreshold(base, rest, bad) {
 }
 
 /** One sheet value to its threshold. Throws with the event and value named. */
-export function threshold(ev, value, load) {
+export function threshold(ev, value, load, steps) {
   const bad = why => new Error(`${ev.name}: "${value}" — ${why}`)
   const v = value.trim()
 
@@ -153,7 +154,13 @@ export function threshold(ev, value, load) {
     load?.('bw')
     return Math.round(Number(b[1]) * 1000) * 1e9 + CARRY_METRES * BAND + effortThreshold(0, b[2], bad)
   }
-  if (ev.mode === 'distance+time' && ev.tiers.length === 0) return effortThreshold(0, v, bad)
+  if (ev.mode === 'distance+time' && ev.tiers.length === 0) {
+    // "100m" (3 Nov 2026): a low colour for covering the distance, any time.
+    const step = v.match(/^(\d+)m$/)
+    if (step) { steps?.(Number(step[1])); return null }
+    if (v === 'any') steps?.(0)
+    return effortThreshold(0, v, bad)
+  }
 
   // Tiered: "D3 · …"
   const t = v.match(/^D(\d+) · (.+)$/)
@@ -168,14 +175,23 @@ export function threshold(ev, value, load) {
   // hold, any time. Every scored row on a level sits at base + 1 or above, so
   // this is the lowest threshold on that level. Not on a weighted rung, where
   // the number is the load.
-  if (rest === 'any' && tier.scoring !== 'weight') return base + 1
+  if (rest === 'any') return base + 1
 
   if (tier.scoring === 'weight') {
+    // "D4 · 0.2× BW" (3 Nov 2026): a share of bodyweight, in thousandths until
+    // lib/grading.ts tierBwLadderAt reads it at the row's bodyweight.
+    const share = rest.match(BW_SHARE)
+    if (share) { load?.(`tier:${idx}`); return base + Math.round(Number(share[1]) * 1000) }
     const m = rest.match(/^\+(\d+(?:\.\d+)?)kg$/)
-    if (!m) throw bad(`D${idx + 1} is the weighted level: expected "+10kg"`)
+    if (!m) throw bad(`D${idx + 1} is the weighted level: expected "+10kg" or "0.2× BW"`)
     return base + Math.round(Number(m[1]) * 100)
   }
   if (ev.mode === 'difficulty+reps') {
+    if (tier.unit === 'secs') {
+      const secs = secsOf(rest)
+      if (secs == null) throw bad(`D${idx + 1} counts seconds: expected "30s" or "1:00"`)
+      return base + secs
+    }
     if (!/^\d+$/.test(rest)) throw bad('expected a rep count')
     return base + Number(rest)
   }
@@ -229,7 +245,8 @@ export function compile(sheetText, rosterSrc) {
     const keys = Object.keys(s.lists)
     if (!keys.length) { errors.push(`${ev.name}: no standards`); continue }
     if (s.lists.E && keys.length > 1) { errors.push(`${ev.name}: has an Everyone list and a Men or Women list`); continue }
-    if (!s.lists.E && !(s.lists.M && s.lists.F)) { errors.push(`${ev.name}: needs both a Men and a Women list`); continue }
+    // One list for everyone since 3 Nov 2026: lib/scaling.ts scales it.
+    if (!s.lists.E) { errors.push(`${ev.name}: needs an Everyone list`); continue }
 
     const want = game ? DRILL_COLOURS : TOP
     const entry = { slug: ev.slug, kind: ev.mode === 'strength' ? 'ratio' : 'raw', game }
@@ -237,9 +254,17 @@ export function compile(sheetText, rosterSrc) {
       const label = { E: 'Everyone', M: 'Men', F: 'Women' }[key]
       let nums
       const loads = new Set()
-      try { nums = s.lists[key].map(v => threshold(ev, v, l => loads.add(l))) } catch (e) { errors.push(e.message); continue }
+      const steps = []
+      try { nums = s.lists[key].map(v => threshold(ev, v, l => loads.add(l), m => steps.push(m))) } catch (e) { errors.push(e.message); continue }
+      for (const l of loads) if (l.startsWith('tier:')) { entry.bwTier = Number(l.slice(5)); loads.delete(l) }
       if (loads.size > 1) { errors.push(`${ev.name} (${label}): mixes kilograms and shares of bodyweight`); continue }
       if (loads.has('bw')) entry.bwLoad = true
+      // Distance steps sit under the timed colours: each is its own small number,
+      // which every covered effort beats. The metres are checked in eventGrade.
+      if (steps.length > 1) {
+        entry.steps = steps
+        nums = nums.map((n, i) => (i < steps.length ? i + 1 : n))
+      }
       if (nums.length > want) errors.push(`${ev.name} (${label}): ${nums.length} colours; a ${game ? 'Game-rung event lists six' : 'ladder lists twelve'}`)
       if (nums.length < want) partial.push(`${ev.name} (${label}): ${nums.length} of ${want}`)
       for (let i = 1; i < nums.length; i++) {
@@ -270,9 +295,9 @@ export function render({ standards }) {
   L.push('// Do not edit: change the sheet and re-run the script. __tests__/standards.test.ts')
   L.push('// fails if this file and the sheet ever disagree.')
   L.push('//')
-  L.push('// Thresholds are the Open standard for each colour, Kiwikiwi first, on a scale')
-  L.push('// where higher is always better (see scripts/standards-sheet.mjs). Age is applied')
-  L.push('// by lib/grading.ts shifting the ladder, never by a number written here.')
+  L.push('// Thresholds are the listed standard for each colour, Kiwikiwi first, on a scale')
+  L.push('// where higher is always better (see scripts/standards-sheet.mjs). Sex and age are')
+  L.push('// applied by lib/scaling.ts, never by a number written here.')
   L.push('')
   L.push("export type StandardKind = 'raw' | 'ratio' | 'rating'")
   L.push('')
@@ -281,21 +306,23 @@ export function render({ standards }) {
   L.push('  kind: StandardKind')
   L.push('  /** Topped by a Game rung: the drills stop at Kahurangi and the rating gives the rest. */')
   L.push('  game: boolean')
-  L.push('  /** One ladder for everyone, or one per sex. */')
+  L.push('  /** The one list. lib/scaling.ts scales it for sex and age. */')
   L.push('  all?: readonly number[]')
-  L.push('  M?: readonly number[]')
-  L.push('  F?: readonly number[]')
   L.push('  /** Loads are thousandths of bodyweight, not kilograms (lib/grading.ts bwLoadThresholds). */')
   L.push('  bwLoad?: true')
+  L.push('  /** This level of a ladder is a weighted rung whose loads are thousandths of bodyweight (lib/grading.ts tierBwLadderAt). */')
+  L.push('  bwTier?: number')
+  L.push('  /** Metres for each low colour of a distance event, any time. The timed colours follow. */')
+  L.push('  steps?: readonly number[]')
   L.push('}')
   L.push('')
   L.push('export const STANDARDS: Readonly<Record<string, EventStandards>> = {')
   for (const s of [...standards].sort((a, b) => a.slug.localeCompare(b.slug))) {
     const parts = [`kind: '${s.kind}'`, `game: ${s.game}`]
     if (s.all) parts.push(`all: ${arr(s.all)}`)
-    if (s.M) parts.push(`M: ${arr(s.M)}`)
-    if (s.F) parts.push(`F: ${arr(s.F)}`)
     if (s.bwLoad) parts.push('bwLoad: true')
+    if (s.bwTier != null) parts.push(`bwTier: ${s.bwTier}`)
+    if (s.steps) parts.push(`steps: ${arr(s.steps)}`)
     L.push(`  '${s.slug}': { ${parts.join(', ')} },`)
   }
   L.push('}')

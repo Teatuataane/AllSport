@@ -18,7 +18,16 @@ const byName = new Map(spec.map(r => [r.name, r]))
 // tier itself, so nothing downstream matches on a name again.
 const WEIGHT_RUNGS = {
   'Pause Dips': 'Weighted RTO Dip',
-  'Pause Chinup': 'Weighted Chinup',
+  // Weighted by share of bodyweight on an estimated one-rep max (3 Nov 2026).
+  'GHD Situp': 'Weighted GHD Situp',
+  'Wrestler Pullover': 'Wrestler Pullover',
+}
+// Weight rungs whose score is the estimated one-rep max of the load and reps.
+const ESTIMATE_RUNGS = new Set(['GHD Situp', 'Wrestler Pullover'])
+// Levels of a rep event that count seconds instead (Tāne, 3 Nov 2026).
+const SECONDS_RUNGS = {
+  'Nordic Curl': ['Band Assisted', 'Isometric Hold'],
+  'Wrestler Pullover': ['Wall Assisted Neck Bridge', 'Elevated Assisted Wrestler Bridge', 'Assisted Wrestler Bridge'],
 }
 // Golf and Disc Golf top out in a real round: win/draw/loss, with the stroke
 // count recorded alongside it.
@@ -30,7 +39,11 @@ const q = v => `'${String(v).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`
 function tierLine(t, evName) {
   const parts = [`level: ${t.level}`, `name: ${q(t.name)}`]
   if (t.detail) parts.push(`detail: ${q(t.detail)}`)
-  if (WEIGHT_RUNGS[evName] === t.name) { parts.push(`scoring: 'weight'`, `records: 'reps'`) }
+  if (WEIGHT_RUNGS[evName] === t.name) {
+    parts.push(`scoring: 'weight'`, `records: 'reps'`)
+    if (ESTIMATE_RUNGS.has(evName)) parts.push(`estimate: true`)
+  }
+  else if (SECONDS_RUNGS[evName]?.includes(t.name)) parts.push(`unit: 'secs'`)
   else if (isGameRung(t.name)) {
     parts.push(`scoring: 'sport'`)
     if (STROKE_GAME.has(evName)) parts.push(`records: 'strokes'`)

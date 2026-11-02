@@ -11,13 +11,13 @@ import { STANDARDS } from './standards'
 import { isGameTier } from './eventKinds'
 import {
   ageBand, rungForScore, rungForCompound, isCompoundMode, ratioThresholdsKg, ratingRung, gameEventRung, compoundLadderAt,
-  exactForScore, exactForCompound, ratingExact,
+  exactForScore, exactForCompound, ratingExact, tierBwLadderAt,
   domainGrade, overallGrade, colourGate, DRILL_CAP, DOMAIN_COUNT,
   type AgeBand, type DomainGradeResult, type OverallGradeResult, type ColourGate,
 } from './grading'
 import type { SportRating } from './headToHead'
 import { ageInYear } from './seasonYear'
-import { ageAllowance } from './ageAllowance'
+import { colourAllowance, scaledLadder } from './scaling'
 
 export type GradePlayer = {
   division: string | null
@@ -69,6 +69,8 @@ export type GradeResultRow = {
    * natural-format entry raw_score is a CONVERSION and must read as one.
    */
   score_label?: string | null
+  /** Metres a distance effort covered: the low colours of a distance event ask only this. */
+  distance_m?: number | null
 }
 
 export type EventGrade = {
@@ -158,6 +160,10 @@ const onCurrentLadder = (ev: EventData, row: GradeResultRow) => {
   // one the current encoding wrote, so it does not grade.
   if (ev.inputMode === 'distance+time' && row.raw_score != null &&
     row.raw_score >= Math.max(1, ev.difficultyTiers?.length ?? 0) * DT_CAP) return false
+  // A level on an event that has none (3 Nov 2026): Sandbag to Shoulder lost its
+  // levels to an estimated 1RM, so an old "25kg · 18 reps" row at 20,018 would read
+  // as a 20-tonne lift in the gap before its migration re-encodes it.
+  if (!ev.difficultyTiers?.length && row.difficulty_tier != null && row.raw_score != null) return false
   if (!ev.difficultyTiers?.length || row.difficulty_tier == null || row.raw_score == null) return true
   return ev.difficultyTiers[Math.floor(row.raw_score / 10000)]?.name === row.difficulty_tier
 }
@@ -186,7 +192,7 @@ export function eventGrade(
   p: GradePlayer,
   rating?: SportRating,
 ): EventGrade {
-  const allowance = ageAllowance(p, ev.domainNumber)
+  const allowance = colourAllowance(p, ev)
   const low = Math.floor(allowance)
   const lower = eventGradeAt(ev, rows, p, low, rating)
   if (allowance === low) return lower
@@ -231,7 +237,7 @@ function eventGradeAt(
     return { slug: ev.slug, rung: rated, ...(ex > rated ? { exact: ex } : {}), gradeable: true, played, ...withRating, ...(rated ? { source: 'game' as const } : {}) }
   }
 
-  const ladder = s.all ?? s[ladderFor(p)] ?? []
+  const ladder = scaledLadder(ev, s, p)
   let drill = 0
   let exact = 0
   let bestRow: GradeResultRow | undefined
@@ -292,7 +298,17 @@ function eventGradeAt(
     if (s.bwLoad && !anyBw && drillRows.length > 0) {
       return { slug: ev.slug, rung: 0, gradeable: true, bodyweightBlocked: true, played, ...pick(topRow) }
     }
-  } else if (drillRows.length) {
+  } else if (s.bwTier != null) {
+    // A weighted level written as shares of bodyweight (3 Nov 2026): each row
+    // reads it at its own day's bodyweight, as a lift does. The levels under it
+    // need no bodyweight, so nothing here is ever blocked.
+    for (const r of drillRows) {
+      const rowLadder = tierBwLadderAt(ladder, s.bwTier, r.bodyweightKg)
+      const rung = rungForScore(r.raw_score!, rowLadder, band)
+      if (rung > drill || !bestRow) { drill = rung; bestRow = rung > 0 ? r : bestRow }
+      exact = Math.max(exact, exactForScore(r.raw_score!, rowLadder, band, { tiered: true }))
+    }
+  } else if (drillRows.length || s.steps) {
     // An effort short of a distance event's reference ranks on its estimate
     // but never earns a colour (Tāne, 9 Oct 2026): the colour needs the full
     // distance. estimateRung in lib/scoreColour.ts says what it points to.
@@ -306,6 +322,20 @@ function eventGradeAt(
       tiered: !!ev.difficultyTiers?.length,
       timed: ev.inputMode === 'distance+time' || isTimedEffort(ev.slug),
     }) : 0
+    // Distance steps (3 Nov 2026): a low colour asks only for the metres, in any
+    // time, so even a short effort with no score earns one. The full distance
+    // meets every step, and the timed colours above them still need its time.
+    if (s.steps) {
+      if (bestRow) drill = Math.max(drill, s.steps.length)
+      for (const r of rows) {
+        if (isGameRow(ev, r) || !onCurrentLadder(ev, r)) continue
+        const metres = r.distance_m ?? 0
+        if (!(metres > 0)) continue
+        const step = s.steps.filter(m => metres >= m).length
+        if (step > drill) { drill = step; bestRow = r }
+      }
+      if (drill <= s.steps.length) exact = drill
+    }
   }
 
   const rung = s.game ? gameEventRung(drill, rated) : drill
@@ -364,7 +394,7 @@ export function computePlayerGrades(input: {
     // An event leaves the denominator when this player cannot be graded in it
     // (a lift with no band), or when it is rating-only and the player holds no
     // rating colour there yet: without that, a player who never wrestles would
-    // carry a zero in Body Awareness that no drill could ever lift.
+    // carry a zero in Control that no drill could ever lift.
     const ungradeable = new Set(inDomain.filter(e => {
       const g = events.get(e.slug)!
       return !g.gradeable || (STANDARDS[e.slug]?.kind === 'rating' && g.rung === 0)
@@ -456,6 +486,8 @@ export type GameResultRow = {
   score_label?: string | null
   /** The player's declared bodyweight on this game's day. See GradeResultRow. */
   bodyweightKg?: number | null
+  /** Metres a distance effort covered. See GradeResultRow. */
+  distance_m?: number | null
   /** The session has finished. A game still in progress is not yet a game. */
   closed: boolean
 }
@@ -474,7 +506,7 @@ export function gameEvidence(rows: readonly GameResultRow[]): { rows: GradeResul
   for (const r of rows) {
     out.push({
       event_name: r.event_name, raw_score: r.raw_score, weight_kg: r.weight_kg,
-      difficulty_tier: r.difficulty_tier, source: 'game', bodyweightKg: r.bodyweightKg,
+      difficulty_tier: r.difficulty_tier, source: 'game', bodyweightKg: r.bodyweightKg, distance_m: r.distance_m,
       ...(r.score_label ? { score_label: r.score_label } : {}),
     })
     if (r.closed) games.add(r.session_id)

@@ -8,7 +8,7 @@ import { standardsLadder, needsBodyweight, RATING_ONLY_NOTE } from '@/lib/standa
 import { getEventBySlug, EVENTS } from '@/lib/eventData'
 import { STANDARDS } from '@/lib/standards'
 import { AGE_SHIFT, ageBand, rungForScore } from '@/lib/grading'
-import { ladderFor, type GradePlayer } from '@/lib/playerGrades'
+import { type GradePlayer } from '@/lib/playerGrades'
 
 const open: GradePlayer = { division: "Men's", ageYears: 30, gender: null }
 const ev = (slug: string) => getEventBySlug(slug)!
@@ -19,25 +19,25 @@ describe('standardsLadder', () => {
     const rows = standardsLadder(ev('vertical-jump'), open, null)
     expect(rows.map(r => r.rung)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
     expect(rows[0].name).toBe('Kiwikiwi')
-    expect(rows[0].label).toBe('10cm')
+    expect(rows[0].label).toBe('Any distance')
     expect(rows[11].name).toBe('Taniwha')
   })
 
   it("reads the player's own sex ladder", () => {
-    const m = standardsLadder(ev('vertical-jump'), open, null)[0].label
-    const f = standardsLadder(ev('vertical-jump'), { division: "Women's", ageYears: 30, gender: null }, null)[0].label
+    const m = standardsLadder(ev('vertical-jump'), open, null)[1].label
+    const f = standardsLadder(ev('vertical-jump'), { division: "Women's", ageYears: 30, gender: null }, null)[1].label
     expect(m).toBe('10cm')
     expect(f).toBe('8cm')
   })
 
-  it('moves the ladder up for age, so a 45-year-old needs the Open Power threshold one colour later', () => {
+  it('eases a number for age: a 45-year-old needs 90% of the Power list, a 13-year-old 80%', () => {
     const o = standardsLadder(ev('vertical-jump'), open, null)
     const m = standardsLadder(ev('vertical-jump'), { division: "Men's", ageYears: 45, gender: null }, null)
-    // Vertical Jump is Power: +1 at 45, so rung r is the Open threshold for rung r - 1.
-    expect(m[1].label).toBe(o[0].label)
-    expect(m[5].label).toBe(o[4].label)
+    expect(o[1].label).toBe('10cm')
+    expect(m[1].label).toBe('9cm')
+    expect(m[11].label).toBe('54cm')
     const u14 = standardsLadder(ev('vertical-jump'), { division: 'Junior', ageYears: 13, gender: 'M' }, null)
-    expect(u14[2].label).toBe(o[0].label)
+    expect(u14[1].label).toBe('8cm')
   })
 
   it('says "any score" below the Open floor', () => {
@@ -49,12 +49,12 @@ describe('standardsLadder', () => {
 
   it('shows strength as a ratio always, and in kilograms once a bodyweight is known', () => {
     const noBw = standardsLadder(ev('deadlift'), open, null)
-    expect(noBw[1].label).toBe('0.2× bodyweight')
+    expect(noBw[1].label).toBe('0.5× bodyweight')
     expect(noBw.every(r => r.kind === 'ratio')).toBe(true)
     const bw = standardsLadder(ev('deadlift'), open, 80)
-    expect(bw[1].label).toBe('0.2× bodyweight · 15 kg')
+    expect(bw[1].label).toBe('0.5× bodyweight · 40 kg')
     // Since the 12 Oct 2026 review the men's Kiwikiwi asks for a load too.
-    expect(bw[0].label).toBe('0.1× bodyweight · 7.5 kg')
+    expect(bw[0].label).toBe('0.3× bodyweight · 25 kg')
     expect(needsBodyweight(ev('deadlift'))).toBe(true)
     expect(needsBodyweight(ev('high-jump'))).toBe(false)
   })
@@ -107,7 +107,7 @@ describe('standardsLadder', () => {
     for (const e of EVENTS) {
       const s = STANDARDS[e.slug]
       if (!s || s.kind !== 'raw') continue
-      const ladder = s.all ?? s[ladderFor(open)] ?? []
+      const ladder = s.all ?? []
       const rows = standardsLadder(e, open, null)
       const top = s.game ? 6 : 12
       expect(rows.filter(r => r.kind === 'drill')).toHaveLength(Math.min(top, ladder.length))

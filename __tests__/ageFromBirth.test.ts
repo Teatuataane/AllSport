@@ -35,12 +35,12 @@ describe('ageBand reads the age, not the division', () => {
   })
 
   it('gives the allowance by age to a player still filed under an adult division', () => {
-    // Wall Sit is Stamina, one ladder for everyone: 60s is the Open fifth
-    // colour, and Stamina's whole-colour allowance from 55 makes it the sixth.
+    // Wall Sit is Stamina, a number: 72s is the eighth colour on the list, and
+    // Stamina's 10% at 55 makes the ninth colour's 80s a 72s hold.
     const open: GradePlayer = { division: "Women's", ageYears: 39, gender: 'Female' }
     const older: GradePlayer = { division: "Women's", ageYears: 55, gender: 'Female' }
-    expect(eventGrade(wallSit, [hold(60)], open).rung).toBe(5)
-    expect(eventGrade(wallSit, [hold(60)], older).rung).toBe(6)
+    expect(eventGrade(wallSit, [hold(72)], open).rung).toBe(8)
+    expect(eventGrade(wallSit, [hold(72)], older).rung).toBe(9)
   })
 })
 
@@ -66,31 +66,32 @@ describe('one age for the whole colour year', () => {
 
 describe('a game is priced on the age turned in its own year', () => {
   it('never re-prices last year\'s game when a band is crossed on 1 January', () => {
-    // Born 1971: 54 through 2025 (Stamina +½), 55 through 2026 (Stamina +1).
+    // Born 1971: 54 through 2025 (Stamina 5%), 55 through 2026 (Stamina 10%).
     const p: GradePlayer = { division: "Men's", ageYears: 55, birthYear: 1971, gender: 'Male' }
     const row = (session_id: string, session_date: string): SeasonRow =>
-      ({ ...hold(60), session_id, session_date, closed: true })
+      ({ ...hold(72), session_id, session_date, closed: true })
     const totals = gameColourTotals([row('g25', '2025-12-02'), row('g26', '2026-02-03')], p)
     const by = new Map(totals.map(t => [t.session_id, t.total]))
-    expect(by.get('g25')).toBe(5.5)
-    expect(by.get('g26')).toBe(6)
+    expect(by.get('g25')).toBeLessThan(9)
+    expect(by.get('g26')).toBe(9)
   })
 })
 
 describe('the ladder says when it is shifted for age', () => {
   it('names the domain allowance and the age it is for', () => {
     expect(ageAllowanceNote(wallSit, { division: "Men's", ageYears: 57, gender: null }))
-      .toBe('Includes your Stamina age allowance: +1 colour at 57 this year.')
+      .toBe('Includes your scaling: 90% of the listed standard at 57 this year.')
     expect(ageAllowanceNote(wallSit, { division: "Women's", ageYears: 71, gender: null }))
-      .toBe('Includes your Stamina age allowance: +2 colours at 71 this year.')
+      .toBe('Includes your scaling: 80% of the listed standard at 71 this year.')
     expect(ageAllowanceNote(wallSit, { division: "Men's", ageYears: 30, gender: null })).toBeNull()
   })
 
-  it('says where a half goes', () => {
-    expect(ageAllowanceNote(wallSit, { division: "Men's", ageYears: 45, gender: null }))
-      .toBe('Your Stamina age allowance is +½ colour at 45 this year. These are the Open standards; the half counts in your exact score.')
-    expect(ageAllowanceNote(wallSit, { division: "Men's", ageYears: 66, gender: null }))
-      .toBe('Your Stamina age allowance is +1½ colours at 66 this year. These are the +1 standards; the extra half counts in your exact score.')
+  it('says where a half goes, on an event with levels', () => {
+    const backExt = getEventByName('Back Extension')!
+    expect(ageAllowanceNote(backExt, { division: "Men's", ageYears: 45, gender: null }))
+      .toBe('Your Stamina allowance is +½ colour at 45 this year. These are the listed standards; the half counts in your exact score.')
+    expect(ageAllowanceNote(backExt, { division: "Men's", ageYears: 66, gender: null }))
+      .toBe('Your Stamina allowance is +1½ colours at 66 this year. These are the +1 standards; the extra half counts in your exact score.')
   })
 
   it('says nothing on a rating-only event, whose colours are never shifted', () => {

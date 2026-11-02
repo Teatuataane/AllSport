@@ -122,7 +122,8 @@ describe('the backfill migration', () => {
     // Frozen when applied: Swim's reference was 100m until 12 Oct 2026 (no swim
     // had been scored, so nothing was re-encoded when it became 200m).
     const THEN: Record<string, number> = { swim: 100 }
-    for (const e of OPEN_DISTANCE) expect(sql, e.slug).toContain(`('${e.slug}', ${THEN[e.slug] ?? e.referenceMetres},`)
+    // Burpee Broad Jump joined the open distances on 3 Nov 2026 (20261102211504).
+    for (const e of OPEN_DISTANCE.filter(o => o.slug !== 'burpee-broad-jump')) expect(sql, e.slug).toContain(`('${e.slug}', ${THEN[e.slug] ?? e.referenceMetres},`)
     const crawl = ev('animal-crawl')
     crawl.difficultyTiers!.forEach((t, i) => expect(sql).toContain(`('animal-crawl', '${t.name}', ${i})`))
   })
