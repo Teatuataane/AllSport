@@ -120,8 +120,6 @@ function Tag({ children, colour }: { children: ReactNode; colour: string }) {
 export type ReportEventLine = {
   eventName: string
   scoreLabel: string | null
-  /** Division rank in the event, or null when there is none to show. */
-  placement: number | null
   /** The exact score reached (Scoring v2): the colour plus progress toward the next. */
   rung: number
   isPR?: boolean
@@ -135,7 +133,7 @@ const ord = (n: number) => {
   return n + (s[(v - 20) % 10] || s[v] || s[0])
 }
 
-/** One event of the player's game: icon, name, score, colour, placement and what was new. */
+/** One event of the player's game: icon, name, score, colour and what was new. */
 export function ReportEventRow({ line }: { line: ReportEventLine }) {
   const ev = getEventByName(line.eventName)
   const played = line.scoreLabel != null
@@ -154,7 +152,7 @@ export function ReportEventRow({ line }: { line: ReportEventLine }) {
           {line.colourUp && <Tag colour="#4DB26E">Colour up</Tag>}
         </div>
         <div style={{ fontSize: 12.5, color: '#888', marginTop: 2 }}>
-          {played ? line.scoreLabel : 'Not played · ranked last'}
+          {played ? line.scoreLabel : 'Not played · no colour score'}
         </div>
       </div>
       <div style={{ textAlign: 'right', flexShrink: 0 }}>
@@ -164,9 +162,6 @@ export function ReportEventRow({ line }: { line: ReportEventLine }) {
             {g.name}{played && line.rung > 0 && <span style={{ color: '#888' }}> {formatExact(line.rung)}</span>}
           </span>
         </div>
-        {line.placement != null && (
-          <div style={{ fontFamily: 'var(--font-label)', fontSize: 12, color: '#666', marginTop: 2 }}>{ord(line.placement)}</div>
-        )}
       </div>
     </div>
   )
@@ -208,29 +203,18 @@ export function ScoreTrend({ points }: { points: number[] }) {
 }
 
 /**
- * The placement that leads the report. With a whole-game place: that place,
- * out of everyone, and the season points it paid, with the division place
- * under it. Without one (not published yet): the division place alone.
+ * The place that leads the report: out of everyone in the game, on colour score,
+ * and the season points it paid. Without one (not published yet): no place.
  */
-export function PlacementHeader({ game, division }: {
-  game: GamePlace | null
-  division: { rank: number; of: number | null; name: string } | null
-}) {
-  const big = game ? game.place : division?.rank ?? null
-  const divLine = division
-    ? `${ord(division.rank)}${division.of ? ` of ${division.of}` : ''} · ${division.name}`
-    : null
+export function PlacementHeader({ game }: { game: GamePlace | null }) {
   return (
     <div data-testid="placement" style={{ textAlign: 'center', padding: '14px 0 18px' }}>
       <div style={{ fontFamily: 'var(--font-display)', fontSize: 72, lineHeight: 1, color: '#fff', letterSpacing: '0.02em' }}>
-        {big != null ? ord(big) : '—'}
+        {game ? ord(game.place) : '—'}
       </div>
       <div style={{ fontFamily: 'var(--font-label)', fontSize: 13, color: '#888', textTransform: 'uppercase', letterSpacing: '0.14em', marginTop: 6 }}>
-        {game ? `of ${game.of} in the game · +${game.points} season points` : divLine ?? 'This game'}
+        {game ? `of ${game.of} in the game · +${game.points} season points` : 'This game'}
       </div>
-      {game && divLine && (
-        <div style={{ fontSize: 13, color: '#666', marginTop: 4 }}>{divLine}</div>
-      )}
     </div>
   )
 }

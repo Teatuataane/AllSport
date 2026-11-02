@@ -392,25 +392,39 @@ export function computePlayerGrades(input: {
   for (let d = 1; d <= DOMAIN_COUNT; d++) {
     const inDomain = EVENTS.filter(e => e.domainNumber === d)
     // An event leaves the denominator when this player cannot be graded in it
-    // (a lift with no band), or when it is rating-only and the player holds no
-    // rating colour there yet: without that, a player who never wrestles would
-    // carry a zero in Control that no drill could ever lift.
-    const ungradeable = new Set(inDomain.filter(e => {
-      const g = events.get(e.slug)!
-      return !g.gradeable || (STANDARDS[e.slug]?.kind === 'rating' && g.rung === 0)
-    }).map(e => e.slug))
+    // (a lift with no band). A rating-only event starts out of it too: without
+    // that, a player who never wrestles would carry a zero in Control that no
+    // drill could ever lift. It joins below only where it helps.
+    const ratingOnly = (slug: string) => STANDARDS[slug]?.kind === 'rating'
+    const ungradeable = new Set(inDomain.filter(e => !events.get(e.slug)!.gradeable || ratingOnly(e.slug)).map(e => e.slug))
     // Kept OUT of `ungradeable` on purpose: these stay in the denominator.
     const bodyweightBlocked = new Set(
       inDomain.filter(e => events.get(e.slug)!.bodyweightBlocked).map(e => e.slug),
     )
-    domains.push(domainGrade({
+    const rungByEvent = new Map(inDomain.map(e => [e.slug, eventCredit(events.get(e.slug)!)]))
+    const gradeWithout = (out: ReadonlySet<string>) => domainGrade({
       domainNumber: d,
       eventSlugs: inDomain.map(e => e.slug),
-      ungradeable,
+      ungradeable: out,
       bodyweightBlocked,
       unavailable: input.exemptions,
-      rungByEvent: new Map(inDomain.map(e => [e.slug, eventCredit(events.get(e.slug)!)])),
-    }))
+      rungByEvent,
+    })
+    // A rating-only event counts only if it does not pull the average down, so
+    // playing a game and losing can never lower a domain (Tāne, 3 Nov 2026). In
+    // Speed, with four events open to everyone, a rated Tag game made it five
+    // and took four Kahurangi from a colour of 6 to 5. Best rating first.
+    let domain = gradeWithout(ungradeable)
+    const rated = inDomain
+      .filter(e => ratingOnly(e.slug) && events.get(e.slug)!.gradeable && events.get(e.slug)!.rung > 0)
+      .sort((x, y) => rungByEvent.get(y.slug)! - rungByEvent.get(x.slug)!)
+    for (const e of rated) {
+      ungradeable.delete(e.slug)
+      const trial = gradeWithout(ungradeable)
+      if (trial.average >= domain.average) domain = trial
+      else ungradeable.add(e.slug)
+    }
+    domains.push(domain)
   }
 
   return {

@@ -28,12 +28,18 @@
 //   1,100 = Poroporo (7), 100 points a colour, 1,600 = Taniwha (12), and never
 //   below 4, the old loss. It replaces win 6 / draw 5 / loss 4 for any contest
 //   with at least one confirmed game; older games keep 6/5/4.
+//   Since 3 Nov 2026 (Tāne) entering another game can never lower it: the score
+//   is the player's best performance after any game that day. An opponent is
+//   rated for this player's age and sex (lib/contestHandicap.ts), so a child or
+//   woman who beats someone with the natural edge scores higher for it.
 //   Conferred rating colours are unchanged: lifetime rating (from one game since 27 Oct 2026).
 //
 // Pure: no React, no Supabase.
 
 import { RATING_START, RATING_POROPORO, RATING_STEP, DRILL_CAP, TOP_RUNG, exactFrom } from './grading'
-import { rateGames, SCALE, type SportRating } from './headToHead'
+import { workingRatings, SCALE, type SportRating } from './headToHead'
+import { contestProfilesOf, handicapPoints } from './contestHandicap'
+import { nzYear } from './seasonYear'
 import { reconcileGames, type MatchRow } from './matches'
 import { getEventBySlug } from './eventData'
 
@@ -123,6 +129,13 @@ export function performanceExact(perf: number): number {
   return exactFrom(rung, colours - rung)
 }
 
+/** The day's score: the best performance after any of its games, so one more game never lowers it. */
+export function bestPerformanceExact(games: readonly ContestGame[]): number {
+  let best = CONTEST_FLOOR
+  for (let n = 1; n <= games.length; n++) best = Math.max(best, performanceExact(performanceRating(games.slice(0, n))!))
+  return best
+}
+
 /** Is this event a Swiss one-on-one contest? */
 export function isSwissContest(slug: string | null | undefined): boolean {
   return !!slug && slug in SWISS_CONTESTS
@@ -152,9 +165,11 @@ export function contestScores(
     if (!cur || at < cur) firstAt.set(g.session_id!, at)
   }
 
+  const profiles = contestProfilesOf(matches)
   const out = new Map<string, Map<string, Map<string, number>>>()
   for (const [sessionId, start] of firstAt) {
-    const before = rateGames(matches.filter(m => m.session_id !== sessionId && m.created_at < start))
+    const before = workingRatings(matches.filter(m => m.session_id !== sessionId && m.created_at < start))
+    const year = nzYear(start)
     const ratingOf = (sport: string, id: string): number =>
       (before.get(sport)?.get(id) as SportRating | undefined)?.rating ?? RATING_START
     const played = new Map<string, Map<string, ContestGame[]>>()
@@ -163,13 +178,16 @@ export function contestScores(
       const [a, b] = [g.sides.a[0], g.sides.b[0]]
       const scoreA = g.outcome === 'a' ? 1 : g.outcome === 'b' ? 0 : 0.5
       const ev = played.get(g.event_name) ?? new Map<string, ContestGame[]>()
-      ev.set(a, [...(ev.get(a) ?? []), { opponentRating: ratingOf(g.event_name, b), score: scoreA }])
-      ev.set(b, [...(ev.get(b) ?? []), { opponentRating: ratingOf(g.event_name, a), score: 1 - scoreA }])
+      // The opponent's rating as it reads for me: their level, plus my handicap.
+      const handicap = (id: string) => handicapPoints(profiles.get(id), g.event_name, year)
+      const asRead = (me: string, them: string) => ratingOf(g.event_name, them) - handicap(them) + handicap(me)
+      ev.set(a, [...(ev.get(a) ?? []), { opponentRating: asRead(a, b), score: scoreA }])
+      ev.set(b, [...(ev.get(b) ?? []), { opponentRating: asRead(b, a), score: 1 - scoreA }])
       played.set(g.event_name, ev)
     }
     const session = new Map<string, Map<string, number>>()
     for (const [event, players] of played) {
-      session.set(event, new Map([...players].map(([id, list]) => [id, performanceExact(performanceRating(list)!)])))
+      session.set(event, new Map([...players].map(([id, list]) => [id, bestPerformanceExact(list)])))
     }
     out.set(sessionId, session)
   }

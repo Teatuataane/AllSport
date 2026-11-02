@@ -97,6 +97,19 @@ export function usesPercent(ev: Pick<EventData, 'domainNumber' | 'difficultyTier
   return !ev.difficultyTiers?.length && PERCENT_GROUP[ev.domainNumber] != null
 }
 
+/**
+ * The last age on the shared under 12 list. A girl from 12 to 16 is never given
+ * an easier list than she had at this age: the women's scaling starts at 12 and
+ * multiplies with the junior percentage, which took her Pause Bench from 70% of
+ * the list at 11 to 56% at 12, just as she was getting stronger (Tāne, 3 Nov 2026).
+ */
+const LAST_SHARED_AGE = 11
+
+/** The same player at 11, when a girl from 12 to 16 is held to that list. Otherwise null. */
+function sharedListSelf<P extends ScalePlayer>(p: P): P | null {
+  return scaledAsWoman(p) && p.ageYears != null && p.ageYears < 17 ? { ...p, ageYears: LAST_SHARED_AGE } : null
+}
+
 /** The percent the standard eases for age on this event. 0 with no date of birth. */
 export function agePercent(p: Pick<ScalePlayer, 'ageYears'>, ev: Pick<EventData, 'domainNumber' | 'difficultyTiers'>): number {
   if (!usesPercent(ev)) return 0
@@ -124,12 +137,16 @@ export function sexShare(p: ScalePlayer, slug: string): number {
 /** How many times the listed time, for sex and age together. Only timed Endurance has one. */
 export function timeFactor(p: ScalePlayer, ev: Pick<EventData, 'slug' | 'domainNumber' | 'difficultyTiers'>): number {
   const sex = scaledAsWoman(p) && TIMED_ENDURANCE_SLUGS.has(ev.slug) ? TIME_EXTRA : 1
-  return sex * (1 + agePercent(p, ev) / 100)
+  const factor = sex * (1 + agePercent(p, ev) / 100)
+  const at11 = sharedListSelf(p)
+  return at11 ? Math.min(factor, timeFactor(at11, ev)) : factor
 }
 
 /** The share of the listed number, for sex and age together. */
 export function numberShare(p: ScalePlayer, ev: Pick<EventData, 'slug' | 'domainNumber' | 'difficultyTiers'>): number {
-  return sexShare(p, ev.slug) * (1 - agePercent(p, ev) / 100)
+  const share = sexShare(p, ev.slug) * (1 - agePercent(p, ev) / 100)
+  const at11 = sharedListSelf(p)
+  return at11 ? Math.max(share, numberShare(at11, ev)) : share
 }
 
 /**
@@ -139,7 +156,9 @@ export function numberShare(p: ScalePlayer, ev: Pick<EventData, 'slug' | 'domain
  */
 export function colourAllowance(p: ScalePlayer, ev: EventData): number {
   const age = usesPercent(ev) && p.ageYears != null ? 0 : ageAllowance(p, ev.domainNumber)
-  return age + (scaledAsWoman(p) && UPPER_LEVEL_SLUGS.has(ev.slug) ? UPPER_LEVEL_COLOURS : 0)
+  const colours = age + (scaledAsWoman(p) && UPPER_LEVEL_SLUGS.has(ev.slug) ? UPPER_LEVEL_COLOURS : 0)
+  const at11 = sharedListSelf(p)
+  return at11 ? Math.min(colours, colourAllowance(at11, ev)) : colours
 }
 
 const TIME_BAND = 10000

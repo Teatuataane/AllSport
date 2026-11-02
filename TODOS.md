@@ -594,3 +594,11 @@ from `main` and this is a review branch.
 - [ ] Tāne to check the sex and age scaling numbers again (`lib/scaling.ts`, `AGE_ALLOWANCE_REVIEW.md`). Maximal Strength at 15% at age 60 may be low against about 19%.
 - [ ] Real icons for the 18 stand-ins copied on 3 Nov, and the four arm events with none (Skullcrusher, Strict Curl, OH Tricep Extension, Overhead Raise).
 - [ ] Check on the logged-in scoring screen: seconds levels (Nordic Curl, Wrestler Pullover) and weighted levels (GHD Situp, Wrestler Pullover).
+
+## Fair competition follow-ups (3 Nov 2026, v0.47.0.0)
+
+- **Tāne to check the women's handicap row** in `lib/contestHandicap.ts` and `AGE_ALLOWANCE_REVIEW.md`: my draft, not his numbers.
+- **Seven juniors have no sex on file.** Ask parents, then set it from the SQL Editor (`players.gender`, 'Male' or 'Female'). The form only covers new family members.
+- **Timed route for Sprint Race and Hurdles not built.** Speed has 12 head-to-head events and few drills, so a fast runner with no opponent is capped. Needs Tāne's times.
+- **Events won are still raw,** per division, from `compute_event_placements`. Decide if they should stay.
+- **Recheck the percentages** once more women and older players have played. The 3 Nov read was too thin.

@@ -5,8 +5,9 @@
 // place they are seen in a test.
 
 import { describe, it, expect, afterEach } from 'vitest'
-import { render, cleanup, screen } from '@testing-library/react'
+import { fireEvent, render, cleanup, screen } from '@testing-library/react'
 import { ColourScore, NextTime, ReportEventRow, ScoreTrend, EarnedColours, PlacementHeader } from '@/components/GameReportParts'
+import { GameBoardList } from '@/components/GameBoardList'
 import { gradeForRung } from '@/lib/grading'
 import { gameColourRung } from '@/lib/gameReport'
 
@@ -41,23 +42,22 @@ describe('ColourScore', () => {
 
 describe('ReportEventRow', () => {
   it('shows the exact score beside the colour (Scoring v2)', () => {
-    render(<ReportEventRow line={{ eventName: 'Deadlift', scoreLabel: '100kg', placement: null, rung: 7.28 }} />)
+    render(<ReportEventRow line={{ eventName: 'Deadlift', scoreLabel: '100kg', rung: 7.28 }} />)
     const el = screen.getByTestId('report-event')
     expect(el.textContent).toContain('Poroporo 7.2')
     expect(el.textContent).not.toContain('½')
   })
 
   it('flags a PR and names the colour reached', () => {
-    render(<ReportEventRow line={{ eventName: 'Deadlift', scoreLabel: '100kg', placement: 2, rung: 6, isPR: true }} />)
+    render(<ReportEventRow line={{ eventName: 'Deadlift', scoreLabel: '100kg', rung: 6, isPR: true }} />)
     const el = screen.getByTestId('report-event')
     expect(el.textContent).toContain('PR')
     expect(el.textContent).toContain('Kahurangi')
-    expect(el.textContent).toContain('2nd')
   })
 
-  it('says a missed event was ranked last', () => {
-    render(<ReportEventRow line={{ eventName: 'Tennis', scoreLabel: null, placement: null, rung: 0 }} />)
-    expect(screen.getByTestId('report-event').textContent).toContain('Not played · ranked last')
+  it('says a missed event scored nothing', () => {
+    render(<ReportEventRow line={{ eventName: 'Tennis', scoreLabel: null, rung: 0 }} />)
+    expect(screen.getByTestId('report-event').textContent).toContain('Not played · no colour score')
   })
 })
 
@@ -88,18 +88,39 @@ describe('the rest', () => {
 })
 
 describe('PlacementHeader', () => {
-  it('leads with the whole-game place and its points, the division place under it', () => {
-    render(<PlacementHeader game={{ place: 3, of: 14, points: 98 }} division={{ rank: 2, of: 6, name: "Men's" }} />)
+  it('leads with the whole-game place and its points, and no division place', () => {
+    render(<PlacementHeader game={{ place: 3, of: 14, points: 98 }} />)
     const el = screen.getByTestId('placement')
     expect(el.textContent).toContain('3rd')
     expect(el.textContent).toContain('of 14 in the game · +98 season points')
-    expect(el.textContent).toContain("2nd of 6 · Men's")
+    expect(el.textContent).not.toContain("Men's")
   })
 
-  it('falls back to the division place alone', () => {
-    render(<PlacementHeader game={null} division={{ rank: 2, of: 6, name: "Men's" }} />)
+  it('shows no place until the colour scores are in', () => {
+    render(<PlacementHeader game={null} />)
     const el = screen.getByTestId('placement')
-    expect(el.textContent).toContain('2nd')
+    expect(el.textContent).toContain('—')
     expect(el.textContent).not.toContain('season points')
+  })
+})
+
+describe('GameBoardList', () => {
+  const entries = [
+    { key: 'a', name: 'Aroha', place: 1, isMe: true, events: [{ eventName: 'Deadlift', scoreLabel: '120kg' }] },
+    { key: 'g', name: 'Guest', place: null },
+  ]
+
+  it('shows places and no one\'s colour score, and a guest holds no place', () => {
+    render(<GameBoardList entries={entries} />)
+    const rows = screen.getAllByTestId('game-board-row')
+    expect(rows[0].textContent).toContain('1st')
+    expect(rows[1].textContent).toContain('—')
+    expect(screen.getByTestId('game-board').textContent).not.toMatch(/colour|season points/i)
+  })
+
+  it('opens a row to what the player did', () => {
+    render(<GameBoardList entries={entries} />)
+    fireEvent.click(screen.getByText('Aroha'))
+    expect(screen.getByTestId('game-board').textContent).toContain('120kg')
   })
 })

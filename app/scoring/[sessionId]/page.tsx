@@ -18,6 +18,8 @@ import AddEventsSheet from '@/components/play/AddEventsSheet'
 import GameEventList from '@/components/play/GameEventList'
 import { playList, domainsCovered, type PlaySlot, type DomainGroup } from '@/lib/gameSwaps'
 import { liveEventRung, rungSegment, liveGameColourRung } from '@/lib/scoreColour'
+import { gameTotalOf } from '@/lib/leaderboardScores'
+import { boardOrder, type BoardPlace } from '@/lib/gameReport'
 import { GradeDot } from '@/components/GradeDot'
 import { gradeForRung } from '@/lib/grading'
 import { useGradeProfile } from '@/lib/useGradeProfile'
@@ -33,7 +35,8 @@ import { prMoments, prsAtGame } from '@/lib/prCounts'
 import { isSwissContest, suggestNext, unbeaten } from '@/lib/swiss'
 import { useContest } from '@/lib/useContest'
 import { ContestCard, ContestJudgeCard, type ContestName } from '@/components/play/ContestCard'
-import { loadGamePlace } from '@/lib/loadGamePlace'
+import { loadGameBoard, loadGamePlace } from '@/lib/loadGamePlace'
+import { GameBoardList } from '@/components/GameBoardList'
 import type { GamePlace } from '@/lib/gameReport'
 import { useGameSwaps } from '@/lib/useGameSwaps'
 import { announceResultsChanged, onResultsChanged } from '@/lib/liveSession'
@@ -312,37 +315,22 @@ function JudgeSummaryTab({
     const playerIds = [...new Set(poolResults.map(r => r.player_id).filter(Boolean))] as string[]
     if (playerIds.length === 0) return []
 
+    // By name: this tab is for checking and correcting scores. Places come from
+    // colour scores, on the Leaderboard tab, once the game closes.
     const rows = playerIds.map(pid => {
-      let totalPlacement = 0
       const eventDetails = events.map(ev => {
-        const evRes = poolResults.filter(r => r.event_id === ev.id)
-        const best: Record<string, { rawScore: number; scoreLabel: string }> = {}
-        evRes.forEach(r => {
-          if (!r.player_id) return
-          const ex = best[r.player_id]
-          if (!ex || r.raw_score > ex.rawScore) best[r.player_id] = { rawScore: r.raw_score, scoreLabel: r.score_label }
-        })
-        const scorerCount = Object.keys(best).length
-        const myBest = best[pid]
+        const mine = poolResults.filter(r => r.event_id === ev.id && r.player_id === pid)
         const evData = getEventByName(ev.event_name)
-        const isSport = evData?.inputMode === 'sport'
-        if (!myBest) {
-          totalPlacement += scorerCount + 1
-          return { eventId: ev.id, eventName: ev.event_name, emoji: evData?.emoji ?? '🏅', displayLabel: null as string | null, placement: scorerCount + 1, hasScore: false }
-        }
-        const placement = 1 + Object.values(best).filter(b => b.rawScore > myBest.rawScore).length
-        totalPlacement += placement
-        const displayLabel = isSport
-          ? sportWDL(poolResults.filter(r => r.player_id === pid && r.event_id === ev.id))
-          : myBest.scoreLabel
-        return { eventId: ev.id, eventName: ev.event_name, emoji: evData?.emoji ?? '🏅', displayLabel, placement, hasScore: true }
+        const emoji = evData?.emoji ?? '🏅'
+        if (mine.length === 0) return { eventId: ev.id, eventName: ev.event_name, emoji, displayLabel: null as string | null }
+        const myBest = mine.reduce((b, r) => (r.raw_score > b.raw_score ? r : b))
+        const displayLabel = evData?.inputMode === 'sport' ? sportWDL(mine) : myBest.score_label
+        return { eventId: ev.id, eventName: ev.event_name, emoji, displayLabel }
       })
       const sample = poolResults.find(r => r.player_id === pid)!
-      const division = playerInfoMap[pid]?.division ?? ''
-      return { playerId: pid, playerName: sample.player_name, totalPlacement, eventDetails, division }
+      return { playerId: pid, playerName: sample.player_name, eventDetails }
     })
-    rows.sort((a, b) => a.totalPlacement - b.totalPlacement)
-    return rows.map((e, _, arr) => ({ ...e, rank: 1 + arr.filter(x => x.totalPlacement < e.totalPlacement).length }))
+    return rows.sort((a, b) => a.playerName.localeCompare(b.playerName))
   }
 
   async function handleDelete(resultId: string) {
@@ -377,17 +365,8 @@ function JudgeSummaryTab({
                     cursor: 'pointer',
                   }}
                 >
-                  <div style={{
-                    width: '26px', height: '26px', borderRadius: '50%', flexShrink: 0,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '12px', fontWeight: 700,
-                    background: medalBg(entry.rank), color: medalColor(entry.rank),
-                  }}>{entry.rank}</div>
                   <div style={{ flex: 1, textAlign: 'left' }}>
                     <div style={{ fontSize: '14px', fontWeight: 700, color: '#fff' }}>{entry.playerName}</div>
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#555', fontFamily: 'var(--font-label)', flexShrink: 0, marginRight: '4px' }}>
-                    {entry.totalPlacement} total
                   </div>
                   <span style={{ color: isExpanded ? '#2371BB' : '#444', fontSize: '12px' }}>{isExpanded ? '▲' : '▼'}</span>
                 </button>
@@ -408,9 +387,6 @@ function JudgeSummaryTab({
                             <div style={{ flex: 1, fontSize: '11px', color: '#666', fontFamily: 'var(--font-label)' }}>{ed.eventName}</div>
                             <div style={{ fontSize: '12px', color: ed.displayLabel ? '#ccc' : '#333', minWidth: '60px', textAlign: 'right' }}>
                               {ed.displayLabel ?? '—'}
-                            </div>
-                            <div style={{ fontSize: '11px', fontWeight: 700, minWidth: '28px', textAlign: 'right', color: ed.hasScore ? '#F9B051' : '#333', fontFamily: 'var(--font-label)' }}>
-                              {ordinal(ed.placement)}
                             </div>
                             <button
                               onClick={() => setEditingKey(isEditingThis ? null : editKey)}
@@ -482,20 +458,38 @@ function JudgeSummaryTab({
 }
 
 // ─── LeaderboardTab ───────────────────────────────────────────────────────────
+// The whole game is one list on colour score, from the totals published when it
+// closes (Tāne, 3 Nov 2026). There is no overall place during a game: a colour
+// score needs the player's bodyweight, which is private, so only the server can
+// work out anyone else's. Pick an event to see its scores, best first; that list
+// is what was done, by division, not a place in the game.
 
 function LeaderboardTab({
-  events, results, playerInfoMap, currentPlayerId, currentPlayerDivision,
+  sessionId, closed, events, results, playerInfoMap, currentPlayerId,
 }: {
+  sessionId: string
+  closed: boolean
   events: SessionEvent[]
   results: Result[]
   playerInfoMap: Record<string, PlayerInfo>
   currentPlayerId: string | null
-  currentPlayerDivision: string | null
 }) {
   const [juniorAge, setJuniorAge] = useState<number | null>(null)
   const [eventFilterId, setEventFilterId] = useState<string | null>(null)
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({})
-  const [expandedPlayerKey, setExpandedPlayerKey] = useState<string | null>(null)
+  const [board, setBoard] = useState<BoardPlace[] | null>(null)
+
+  useEffect(() => {
+    if (!closed) return
+    let cancelled = false
+    loadGameBoard(supabase, sessionId).then(rows => { if (!cancelled) setBoard(rows) })
+    return () => { cancelled = true }
+  }, [sessionId, closed])
+
+  const everyone = useMemo(() => {
+    const names = new Map<string, string>()
+    for (const r of results) if (r.player_id) names.set(r.player_id, r.player_name)
+    return boardOrder([...names].map(([key, name]) => ({ key, name })), closed ? board : null)
+  }, [results, board, closed])
 
   const juniorAges = useMemo(() => {
     const ages = new Set<number>()
@@ -508,99 +502,21 @@ function LeaderboardTab({
     return [...ages].sort((a, b) => a - b)
   }, [results, playerInfoMap])
 
-  function getPoolResults(pool: 'mens' | 'womens' | 'juniors', filter: string | null, ageFilter: number | null) {
+  function getPoolResults(pool: 'mens' | 'womens' | 'juniors', ageFilter: number | null) {
     return results.filter(r => {
       if (!r.player_id) return false
       const info = playerInfoMap[r.player_id]
       if (!info) return false
-      if (pool === 'mens') return filter ? info.division === filter : MENS_DIVS.includes(info.division)
-      if (pool === 'womens') return filter ? info.division === filter : WOMENS_DIVS.includes(info.division)
-      if (pool === 'juniors') {
-        if (info.division !== 'Juniors') return false
-        if (ageFilter !== null) return info.age_years != null ? info.age_years === ageFilter : true
-        return true
-      }
-      return false
+      if (pool === 'mens') return MENS_DIVS.includes(info.division)
+      if (pool === 'womens') return WOMENS_DIVS.includes(info.division)
+      if (info.division !== 'Juniors') return false
+      if (ageFilter !== null) return info.age_years != null ? info.age_years === ageFilter : true
+      return true
     })
   }
 
-  type EventDetail = {
-    eventId: string; eventName: string; emoji: string
-    scoreLabel: string | null; displayLabel: string | null; placement: number
-  }
-  type CompRow = {
-    playerKey: string; playerName: string; playerId: string
-    totalPlacement: number; rank: number
-    subDivision?: string; subDivisionRank?: number
-    eventDetails: EventDetail[]
-  }
-
-  function computeRows(pool: 'mens' | 'womens' | 'juniors', filter: string | null, ageFilter: number | null): CompRow[] {
-    const poolResults = getPoolResults(pool, filter, ageFilter)
-    const playerIds = [...new Set(poolResults.map(r => r.player_id).filter(Boolean))] as string[]
-    if (playerIds.length === 0) return []
-
-    const rows = playerIds.map(pid => {
-      let totalPlacement = 0
-      const eventDetails: EventDetail[] = events.map(ev => {
-        const evPoolRes = poolResults.filter(r => r.event_id === ev.id)
-        const best: Record<string, { rawScore: number; scoreLabel: string }> = {}
-        evPoolRes.forEach(r => {
-          if (!r.player_id) return
-          const ex = best[r.player_id]
-          if (!ex || r.raw_score > ex.rawScore) best[r.player_id] = { rawScore: r.raw_score, scoreLabel: r.score_label }
-        })
-        const scorerCount = Object.keys(best).length
-        const myBest = best[pid]
-        const evData = getEventByName(ev.event_name)
-        const isSport = evData?.inputMode === 'sport'
-        if (!myBest) {
-          totalPlacement += scorerCount + 1
-          return { eventId: ev.id, eventName: ev.event_name, emoji: evData?.emoji ?? '🏅', scoreLabel: null, displayLabel: null, placement: scorerCount + 1 }
-        }
-        const placement = 1 + Object.values(best).filter(b => b.rawScore > myBest.rawScore).length
-        totalPlacement += placement
-        const displayLabel = isSport
-          ? sportWDL(poolResults.filter(r => r.player_id === pid && r.event_id === ev.id))
-          : myBest.scoreLabel
-        return { eventId: ev.id, eventName: ev.event_name, emoji: evData?.emoji ?? '🏅', scoreLabel: myBest.scoreLabel, displayLabel, placement }
-      })
-      const sample = poolResults.find(r => r.player_id === pid)!
-      return { playerKey: pid, playerName: sample.player_name, playerId: pid, totalPlacement, eventDetails }
-    })
-
-    rows.sort((a, b) => a.totalPlacement - b.totalPlacement)
-    const ranked: CompRow[] = rows.map((e, _, arr) => ({
-      ...e,
-      rank: 1 + arr.filter(x => x.totalPlacement < e.totalPlacement).length,
-    }))
-
-    // No "1st Masters" badge any more: adults of every age are one field,
-    // and the age allowance is in the colour standards (Tāne, 20 Oct 2026).
-    if (!ageFilter && pool === 'juniors') {
-      // age_group comes ready-made from the players_public view (U10 0-9,
-      // U12 10-11, U14 12-13, U16 14-16). One behaviour change from the
-      // pre-v0.5.6.0 code: the old local helper returned 'U16' for ANY age from
-      // 14 up, so a player who turned 17 but is still flagged Juniors used to
-      // get a U16 badge. The view returns NULL past 16, matching the documented
-      // brackets, so they now get no badge, same as a null-DOB junior.
-      for (const group of ['U10', 'U12', 'U14', 'U16']) {
-        const groupRows = ranked.filter(r => (playerInfoMap[r.playerId]?.age_group ?? null) === group)
-        groupRows.sort((a, b) => a.totalPlacement - b.totalPlacement)
-        groupRows.forEach((r, _, arr) => {
-          r.subDivision = group
-          r.subDivisionRank = 1 + arr.filter(x => x.totalPlacement < r.totalPlacement).length
-        })
-      }
-    }
-
-    return ranked
-  }
-
-  type EventRow = { playerKey: string; playerName: string; playerId: string | null; rawScore: number; label: string; rank: number }
-
-  function computeEventRows(eventId: string, pool: 'mens' | 'womens' | 'juniors', filter: string | null, ageFilter: number | null): EventRow[] {
-    const poolResults = getPoolResults(pool, filter, ageFilter).filter(r => r.event_id === eventId)
+  function computeEventRows(eventId: string, pool: 'mens' | 'womens' | 'juniors', ageFilter: number | null) {
+    const poolResults = getPoolResults(pool, ageFilter).filter(r => r.event_id === eventId)
     const best: Record<string, { name: string; rawScore: number; label: string; playerId: string | null }> = {}
     poolResults.forEach(r => {
       const key = String(r.player_id ?? r.player_name)
@@ -622,142 +538,37 @@ function LeaderboardTab({
     }
   }
 
-  function renderCompRow(entry: CompRow, isMe: boolean) {
-    const isEx = expandedPlayerKey === entry.playerKey && entry.rank <= 3
-    const canExpand = entry.rank <= 3
+  function renderEventSection(eventId: string, pool: 'mens' | 'womens' | 'juniors', ageFilter: number | null) {
+    const evRows = computeEventRows(eventId, pool, ageFilter)
+    if (evRows.length === 0) return null
     return (
-      <div key={entry.playerKey} style={{
-        background: isMe ? '#0d1020' : entry.rank === 1 ? '#0d1a0d' : '#111',
-        borderRadius: '10px', overflow: 'hidden', marginBottom: '6px',
-        border: `1px solid ${isEx ? '#2371BB' : isMe ? '#2371BB33' : entry.rank === 1 ? '#4DB26E33' : '#1e1e1e'}`,
-      }}>
-        <button
-          disabled={!canExpand}
-          onClick={() => canExpand && setExpandedPlayerKey(isEx ? null : entry.playerKey)}
-          style={{
-            display: 'flex', alignItems: 'center', gap: '10px', width: '100%',
-            padding: '10px 14px', background: 'transparent', border: 'none',
-            cursor: canExpand ? 'pointer' : 'default',
-          }}
-        >
-          <div style={{
-            width: '26px', height: '26px', borderRadius: '50%', flexShrink: 0,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '12px', fontWeight: 700,
-            background: medalBg(entry.rank), color: medalColor(entry.rank),
-          }}>{entry.rank}</div>
-          <div style={{ flex: 1, textAlign: 'left' }}>
-            <div style={{ fontSize: '14px', fontWeight: entry.rank <= 3 ? 700 : 400, color: isMe ? '#7ab4ff' : entry.rank <= 3 ? '#fff' : '#aaa' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        {evRows.map(entry => (
+          <div key={entry.playerKey} style={{
+            display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px',
+            background: '#111', borderRadius: '10px', border: '1px solid #1e1e1e',
+          }}>
+            <div style={{
+              width: '26px', height: '26px', borderRadius: '50%', flexShrink: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '12px', fontWeight: 700, background: medalBg(entry.rank), color: medalColor(entry.rank),
+            }}>{entry.rank}</div>
+            <div style={{ flex: 1, fontSize: '14px', color: entry.playerId === currentPlayerId ? '#7ab4ff' : '#aaa' }}>
               {entry.playerName}
-              {isMe && <span style={{ fontSize: '10px', color: '#555', marginLeft: '6px', fontFamily: 'var(--font-label)' }}>YOU</span>}
+              {entry.playerId === currentPlayerId && <span style={{ fontSize: '10px', color: '#555', marginLeft: '6px', fontFamily: 'var(--font-label)' }}>YOU</span>}
             </div>
-            {entry.subDivision && entry.subDivisionRank && (
-              <div style={{ fontSize: '10px', color: '#B87DB5', fontFamily: 'var(--font-label)', marginTop: '1px' }}>
-                {ordinal(entry.subDivisionRank)} {entry.subDivision}
-              </div>
-            )}
-          </div>
-          <div style={{ fontSize: '12px', color: '#555', fontFamily: 'var(--font-label)', flexShrink: 0, marginRight: canExpand ? '4px' : '0' }}>
-            {entry.totalPlacement} total
-          </div>
-          {canExpand && <span style={{ color: isEx ? '#2371BB' : '#444', fontSize: '12px' }}>{isEx ? '▲' : '▼'}</span>}
-        </button>
-
-        {isEx && (
-          <div style={{ borderTop: '1px solid #1e1e1e', padding: '4px 0' }}>
-            {entry.eventDetails.map((ed, i) => (
-              <div key={ed.eventId} style={{
-                display: 'flex', alignItems: 'center', gap: '8px', padding: '7px 14px',
-                background: i % 2 === 0 ? '#0a0a0a' : 'transparent',
-              }}>
-                <span style={{ fontSize: '14px', flexShrink: 0 }}>{ed.emoji}</span>
-                <div style={{ flex: 1, fontSize: '11px', color: '#666' }}>{ed.eventName}</div>
-                <div style={{ fontSize: '12px', color: ed.displayLabel ? '#ccc' : '#444' }}>
-                  {ed.displayLabel ?? 'No score'}
-                </div>
-                <div style={{ fontSize: '11px', fontWeight: 700, minWidth: '32px', textAlign: 'right', color: ed.scoreLabel ? '#F9B051' : '#444', fontFamily: 'var(--font-label)' }}>
-                  {ordinal(ed.placement)}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  function renderSection(pool: 'mens' | 'womens' | 'juniors', filter: string | null, ageFilter: number | null, sectionId: string) {
-    const isExpanded = expandedSections[sectionId] ?? false
-    const isMyPool = pool === 'mens'
-      ? MENS_DIVS.includes(currentPlayerDivision ?? '')
-      : pool === 'womens'
-        ? WOMENS_DIVS.includes(currentPlayerDivision ?? '')
-        : currentPlayerDivision === 'Juniors'
-
-    if (eventFilterId) {
-      const evRows = computeEventRows(eventFilterId, pool, filter, ageFilter)
-      if (evRows.length === 0) return null
-      return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          {evRows.map(entry => (
-            <div key={entry.playerKey} style={{
-              display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px',
-              background: '#111', borderRadius: '10px', border: '1px solid #1e1e1e',
-            }}>
-              <div style={{
-                width: '26px', height: '26px', borderRadius: '50%', flexShrink: 0,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '12px', fontWeight: 700, background: medalBg(entry.rank), color: medalColor(entry.rank),
-              }}>{entry.rank}</div>
-              <div style={{ flex: 1, fontSize: '14px', color: entry.playerId === currentPlayerId ? '#7ab4ff' : '#aaa' }}>
-                {entry.playerName}
-                {entry.playerId === currentPlayerId && <span style={{ fontSize: '10px', color: '#555', marginLeft: '6px', fontFamily: 'var(--font-label)' }}>YOU</span>}
-              </div>
-              <div style={{ fontSize: '14px', fontWeight: 700, color: '#4DB26E', fontFamily: 'var(--font-display)' }}>
-                {entry.label}
-              </div>
+            <div style={{ fontSize: '14px', fontWeight: 700, color: '#4DB26E', fontFamily: 'var(--font-display)' }}>
+              {entry.label}
             </div>
-          ))}
-        </div>
-      )
-    }
-
-    const rows = computeRows(pool, filter, ageFilter)
-    if (rows.length === 0) return null
-
-    const top3 = rows.slice(0, 3)
-    const rest = rows.slice(3)
-    const myRow = isMyPool && currentPlayerId ? rows.find(r => r.playerId === currentPlayerId) : undefined
-    const myRowIsBelow = myRow && myRow.rank > 3 && !isExpanded
-
-    return (
-      <div>
-        {top3.map(e => renderCompRow(e, e.playerId === currentPlayerId))}
-        {rest.length > 0 && (
-          <button
-            onClick={() => setExpandedSections(s => ({ ...s, [sectionId]: !s[sectionId] }))}
-            style={{
-              width: '100%', padding: '7px', background: 'none',
-              border: '1px solid #1e1e1e', borderRadius: '8px', color: '#555',
-              fontSize: '12px', cursor: 'pointer', marginBottom: '6px',
-              fontFamily: 'var(--font-label)',
-            }}
-          >
-            {isExpanded ? '▲ Show less' : `▼ Show all (${rest.length} more)`}
-          </button>
-        )}
-        {isExpanded && rest.map(e => renderCompRow(e, e.playerId === currentPlayerId))}
-        {myRowIsBelow && (
-          <>
-            <div style={{ textAlign: 'center', color: '#333', fontSize: '11px', margin: '4px 0', letterSpacing: '3px' }}>• • •</div>
-            {renderCompRow(myRow, true)}
-          </>
-        )}
+          </div>
+        ))}
       </div>
     )
   }
 
   const selectedEvent = eventFilterId ? events.find(e => e.id === eventFilterId) : null
+  const titleStyle: React.CSSProperties = { fontSize: '15px', fontWeight: 700, color: '#fff', fontFamily: 'var(--font-display)', letterSpacing: '0.08em', marginBottom: '10px' }
+  const noScores = <div style={{ color: '#555', fontSize: '13px', padding: '12px 0', fontFamily: 'var(--font-label)' }}>No scores yet</div>
 
   return (
     <div style={{ padding: '12px 16px' }}>
@@ -766,7 +577,7 @@ function LeaderboardTab({
       <div style={{ marginBottom: '16px' }}>
         <select
           value={eventFilterId ?? ''}
-          onChange={e => { setEventFilterId(e.target.value || null); setExpandedPlayerKey(null) }}
+          onChange={e => setEventFilterId(e.target.value || null)}
           style={{
             width: '100%', background: eventFilterId ? '#0d1a2e' : '#0d0d0d',
             border: `1px solid ${eventFilterId ? '#2371BB' : '#222'}`,
@@ -775,61 +586,55 @@ function LeaderboardTab({
             fontSize: '14px', fontFamily: 'var(--font-body)',
           }}
         >
-          <option value="">Overall ranking</option>
+          <option value="">Whole game</option>
           {events.map(ev => <option key={ev.id} value={ev.id}>{ev.event_name}</option>)}
         </select>
         {selectedEvent && (
           <div style={{ fontSize: '11px', color: '#555', marginTop: '6px', fontFamily: 'var(--font-label)', letterSpacing: '0.06em' }}>
-            SHOWING SCORES FOR: {selectedEvent.event_name.toUpperCase()}
+            SCORES FOR: {selectedEvent.event_name.toUpperCase()}, NOT A PLACE IN THE GAME
           </div>
         )}
       </div>
 
-      {/* Men's section — always shown */}
-      <div style={{ marginBottom: '24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-          <div style={{ fontSize: '15px', fontWeight: 700, color: '#fff', fontFamily: 'var(--font-display)', letterSpacing: '0.08em' }}>
-            Men&apos;s
+      {!eventFilterId && (
+        <>
+          <div style={{ color: '#666', fontSize: '13px', lineHeight: 1.5, marginBottom: '14px' }}>
+            {closed
+              ? 'One list for the whole game, ranked on colour score, which is scaled for age and sex.'
+              : 'Places come from colour scores when the game closes. Pick an event above to see its scores.'}
           </div>
-        </div>
-        {renderSection('mens', null, null, 'mens') ?? (
-          <div style={{ color: '#555', fontSize: '13px', padding: '12px 0', fontFamily: 'var(--font-label)' }}>No scores yet</div>
-        )}
-      </div>
-
-      {/* Women's section — always shown */}
-      <div style={{ marginBottom: '24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-          <div style={{ fontSize: '15px', fontWeight: 700, color: '#fff', fontFamily: 'var(--font-display)', letterSpacing: '0.08em' }}>
-            Women&apos;s
-          </div>
-        </div>
-        {renderSection('womens', null, null, 'womens') ?? (
-          <div style={{ color: '#555', fontSize: '13px', padding: '12px 0', fontFamily: 'var(--font-label)' }}>No scores yet</div>
-        )}
-      </div>
-
-      {/* Juniors section — always shown */}
-      <div style={{ marginBottom: '24px' }}>
-        <div style={{ marginBottom: '10px' }}>
-          <div style={{ fontSize: '15px', fontWeight: 700, color: '#fff', fontFamily: 'var(--font-display)', letterSpacing: '0.08em', marginBottom: '8px' }}>
-            {juniorAge !== null ? `Juniors — Age ${juniorAge}` : 'Juniors'}
-          </div>
-          {juniorAges.length > 0 && (
-            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-              <button onClick={() => { setJuniorAge(null); setExpandedPlayerKey(null) }} style={chipStyle(juniorAge === null)}>All</button>
-              {juniorAges.map(age => (
-                <button key={age} onClick={() => { setJuniorAge(age === juniorAge ? null : age); setExpandedPlayerKey(null) }} style={chipStyle(juniorAge === age)}>
-                  Age {age}
-                </button>
-              ))}
-            </div>
+          {everyone.length === 0 ? noScores : closed && (
+            <GameBoardList entries={everyone.map(p => ({ key: p.key, name: p.name, place: p.place, isMe: p.key === currentPlayerId }))} />
           )}
-        </div>
-        {renderSection('juniors', null, juniorAge, 'juniors') ?? (
-          <div style={{ color: '#555', fontSize: '13px', padding: '12px 0', fontFamily: 'var(--font-label)' }}>No scores yet</div>
-        )}
-      </div>
+        </>
+      )}
+
+      {eventFilterId && (
+        <>
+          <div style={{ marginBottom: '24px' }}>
+            <div style={titleStyle}>Men&apos;s</div>
+            {renderEventSection(eventFilterId, 'mens', null) ?? noScores}
+          </div>
+          <div style={{ marginBottom: '24px' }}>
+            <div style={titleStyle}>Women&apos;s</div>
+            {renderEventSection(eventFilterId, 'womens', null) ?? noScores}
+          </div>
+          <div style={{ marginBottom: '24px' }}>
+            <div style={titleStyle}>{juniorAge !== null ? `Juniors, age ${juniorAge}` : 'Juniors'}</div>
+            {juniorAges.length > 0 && (
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '10px' }}>
+                <button onClick={() => setJuniorAge(null)} style={chipStyle(juniorAge === null)}>All</button>
+                {juniorAges.map(age => (
+                  <button key={age} onClick={() => setJuniorAge(age === juniorAge ? null : age)} style={chipStyle(juniorAge === age)}>
+                    Age {age}
+                  </button>
+                ))}
+              </div>
+            )}
+            {renderEventSection(eventFilterId, 'juniors', juniorAge) ?? noScores}
+          </div>
+        </>
+      )}
     </div>
   )
 }
@@ -838,10 +643,10 @@ function LeaderboardTab({
 
 const RAINBOW_G = 'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)'
 
-type EndSummary = { overall_placement: number }
+type EndSummary = { session_id: string }
 
 function SessionEndTakeover({
-  sessionId, playerId, events, myResults, registeredPlayers, divisionPlacement, onDismiss,
+  sessionId, playerId, events, myResults, registeredPlayers, onDismiss,
 }: {
   sessionId: string
   playerId: string
@@ -849,12 +654,10 @@ function SessionEndTakeover({
   myResults: Result[]
   /** Registered players with a result in this game, to tell a complete field from a partial one. */
   registeredPlayers: number
-  divisionPlacement: { rank: number; divisionName: string; playerCount: number } | null
   onDismiss: () => void
 }) {
   const [summary, setSummary] = useState<EndSummary | null>(null)
   const [sessionCount, setSessionCount] = useState<number | null>(null)
-  const [loaded, setLoaded] = useState(false)
   const [newColours, setNewColours] = useState<ConferredColour[]>([])
   // Bumped once the recheck answers, so the colours it conferred are in the
   // awards the game's colour section reads.
@@ -883,7 +686,7 @@ function SessionEndTakeover({
     async function load() {
       const [sumRes, cntRes] = await Promise.all([
         supabase.from('session_player_summary')
-          .select('overall_placement')
+          .select('session_id')
           .eq('session_id', sessionId).eq('player_id', playerId).maybeSingle(),
         supabase.from('session_player_summary')
           .select('*', { count: 'exact', head: true })
@@ -892,7 +695,6 @@ function SessionEndTakeover({
 
       setSummary((sumRes.data as EndSummary | null) ?? null)
       setSessionCount(cntRes.count ?? 0)
-      setLoaded(true)
     }
     load()
   }, [sessionId, playerId])
@@ -913,7 +715,6 @@ function SessionEndTakeover({
 
   // What a game gives a player: its placement, its colour score, the PRs set
   // and any colour it earned (Tāne, 2026-09-28).
-  const rank = summary?.overall_placement ?? divisionPlacement?.rank ?? null
   const score = games?.scores.get(sessionId) ?? null
   const average = games ? averageBefore(games.scores, sessionId) : null
   const next = games
@@ -967,18 +768,17 @@ function SessionEndTakeover({
         {/* Body */}
         <div style={{ overflowY: 'auto', padding: '0 18px 24px', flex: 1 }}>
 
-          {/* Placement: the whole game first, the division under it */}
-          <PlacementHeader game={wholeGame}
-            division={rank !== null ? { rank, of: divisionPlacement?.playerCount ?? null, name: divisionPlacement?.divisionName ?? 'This game' } : null} />
+          {/* The place in the whole game, on colour score */}
+          <PlacementHeader game={wholeGame} />
 
           {/* The game's colour score */}
           {score ? <ColourScore points={score.points} average={average} prs={prCount} /> : (
             <div style={{ height: '76px', background: '#161616', border: '1px solid #1e1e1e', borderRadius: '14px' }} />
           )}
           {next && <NextTime step={next} />}
-          {loaded && !summary && (
+          {rechecked > 0 && !wholeGame && (
             <div style={{ fontSize: '11.5px', color: '#555', marginTop: '6px', textAlign: 'center' }}>
-              Provisional placement — confirmed when the game is closed off
+              Your place shows once everyone&apos;s colour score is in
             </div>
           )}
 
@@ -1103,7 +903,6 @@ export default function SessionPage() {
 
   const allPlayers = player ? [player, ...familyMembers] : []
   const activePlayer = allPlayers.find(p => p.id === activePlayerId) ?? player
-  const activePlayerDivision = activePlayer ? (activePlayer as Record<string, unknown>).division as string | null : null
 
   // ── Kaiwhakawā roster ──────────────────────────────────────────────────────
   const judgeRoster = useMemo(
@@ -1198,57 +997,29 @@ export default function SessionPage() {
     setJudgeGuestDraft('')
   }
 
-  // ── Division placement for banner ──────────────────────────────────────────
-  const myDivisionPlacement = useMemo(() => {
-    if (!activePlayerId) return null
-    const myInfo = playerInfoMap[activePlayerId]
-    if (!myInfo) return null
-    const myDivision = myInfo.division
-    if (!myDivision) return null
+  // ── This player's colour score for the banner ───────────────────────────
+  // Their own only: anyone else's needs a bodyweight this screen cannot read. A
+  // contest game-day score is added when the game closes, so this can rise then.
+  const myColourScore = useMemo(() => {
+    if (!activePlayerId || swapPlayerId !== activePlayerId || !gradeProfile.player) return null
+    const mine = results.filter(r => r.player_id === activePlayerId)
+    if (mine.length === 0) return null
+    return gameTotalOf(events.reduce((t, ev) => t + liveEventRung(
+      getEventByName(ev.event_name), mine.filter(r => r.event_id === ev.id), gradeProfile.player, gradeProfile.bodyweightKg,
+    ), 0))
+  }, [activePlayerId, swapPlayerId, gradeProfile.player, gradeProfile.bodyweightKg, results, events])
 
-    const myResults = results.filter(r => r.player_id === activePlayerId)
-    if (myResults.length === 0) return null
-
-    const divResults = results.filter(r => r.player_id && playerInfoMap[r.player_id]?.division === myDivision)
-    const playerIds = [...new Set(divResults.map(r => r.player_id).filter(Boolean))] as string[]
-    if (!playerIds.includes(activePlayerId)) return null
-
-    const placements = playerIds.map(pid => {
-      let total = 0
-      events.forEach(ev => {
-        const evDivRes = divResults.filter(r => r.event_id === ev.id)
-        const best: Record<string, number> = {}
-        evDivRes.forEach(r => {
-          if (!r.player_id) return
-          const ex = best[r.player_id]
-          if (ex === undefined || r.raw_score > ex) best[r.player_id] = r.raw_score
-        })
-        const scorerCount = Object.keys(best).length
-        const myBest = best[pid]
-        if (myBest === undefined) total += scorerCount + 1
-        else total += 1 + Object.values(best).filter(b => b > myBest).length
-      })
-      return { pid, total }
-    })
-    placements.sort((a, b) => a.total - b.total)
-    const myEntry = placements.find(p => p.pid === activePlayerId)
-    if (!myEntry) return null
-    const rank = 1 + placements.filter(p => p.total < myEntry.total).length
-    return { rank, divisionName: myDivision, playerCount: playerIds.length }
-  }, [activePlayerId, results, events, playerInfoMap])
-
-  // ── DR-10: flash the banner ordinal when a new result improves division rank ─
-  // No flash on first paint, on player switch, or on rank drops.
-  // The previous rank is tracked in state and compared during render (React's
+  // ── DR-10: flash the banner number when a new result lifts the colour score ─
+  // No flash on first paint, on player switch, or on a drop.
+  // The previous score is tracked in state and compared during render (React's
   // "storing information from previous renders" pattern), not in an effect.
-  const currentRank = myDivisionPlacement?.rank ?? null
-  const [rankSeen, setRankSeen] = useState<{ pid: string | null; rank: number | null }>({ pid: activePlayerId, rank: currentRank })
+  const [scoreSeen, setScoreSeen] = useState<{ pid: string | null; score: number | null }>({ pid: activePlayerId, score: myColourScore })
   const [rankFlash, setRankFlash] = useState<{ from: number; to: number } | null>(null)
-  if (rankSeen.pid !== activePlayerId || rankSeen.rank !== currentRank) {
-    setRankSeen({ pid: activePlayerId, rank: currentRank })
-    const improved = rankSeen.pid === activePlayerId && rankSeen.rank !== null && currentRank !== null && currentRank < rankSeen.rank
+  if (scoreSeen.pid !== activePlayerId || scoreSeen.score !== myColourScore) {
+    setScoreSeen({ pid: activePlayerId, score: myColourScore })
+    const improved = scoreSeen.pid === activePlayerId && scoreSeen.score !== null && myColourScore !== null && myColourScore > scoreSeen.score
     // A switch, a drop or a sideways change clears any flash still up.
-    setRankFlash(improved ? { from: rankSeen.rank!, to: currentRank! } : null)
+    setRankFlash(improved ? { from: scoreSeen.score!, to: myColourScore! } : null)
   }
   useEffect(() => {
     if (!rankFlash) return
@@ -1603,8 +1374,8 @@ export default function SessionPage() {
     ? 'SESSION ENDED'
     : preSessionSecsLeft !== null
       ? 'STARTING SOON'
-      : activePlayerDivision
-        ? activePlayerDivision.toUpperCase()
+      : myColourScore !== null
+        ? 'COLOUR SCORE'
         : 'LIVE SESSION'
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -1617,7 +1388,7 @@ export default function SessionPage() {
         @keyframes rankImprove { 0% { transform: translateY(45%); opacity: 0; } 40% { transform: translateY(0); opacity: 1; } 55% { color: #F9E051; } 100% { color: #fff; } }
       `}</style>
 
-      {/* Top banner — Placement + Timer */}
+      {/* Top banner — Colour score + Timer */}
       <div style={{ background: '#2371BB', padding: '12px 16px', position: 'sticky', top: 0, zIndex: 10 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
@@ -1627,12 +1398,12 @@ export default function SessionPage() {
             <div style={{ fontSize: '32px', fontWeight: 700, fontFamily: 'var(--font-display)', letterSpacing: '0.05em', lineHeight: 1 }}>
               {rankFlash ? (
                 <span style={{ display: 'inline-block', animation: 'rankImprove 1.4s cubic-bezier(0.16,1,0.3,1)' }}>
-                  <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: '22px' }}>{ordinal(rankFlash.from)}</span>
+                  <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: '22px' }}>{rankFlash.from}</span>
                   <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: '22px', margin: '0 6px' }}>→</span>
-                  {ordinal(rankFlash.to)}
+                  {rankFlash.to}
                 </span>
               ) : (
-                myDivisionPlacement ? ordinal(myDivisionPlacement.rank) : '—'
+                myColourScore ?? '—'
               )}
             </div>
           </div>
@@ -1722,7 +1493,7 @@ export default function SessionPage() {
           : swaps.entriesFor(slot.se.id)
         // A swapped domain fills its segment: the bar is the player's own
         // progress. The placement banner is untouched, because a swapped event
-        // is still ranked last.
+        // still scores nothing.
         const covered = domainsCovered(events, scoredIds, swaps.scoredSlugs)
         const barScored = new Set(events.filter(ev => covered.has(ev.domain_number)).map(ev => ev.id))
         const sheetSlot = sheetEventId ? slots.find(sl => sl.se.id === sheetEventId) : undefined
@@ -1915,7 +1686,6 @@ export default function SessionPage() {
           events={events}
           myResults={results.filter(r => r.player_id === activePlayerId)}
           registeredPlayers={new Set(results.map(r => r.player_id).filter(Boolean)).size}
-          divisionPlacement={myDivisionPlacement}
           onDismiss={() => {
             localStorage.setItem(`allsport_postgame_${sessionId}_${activePlayerId}`, '1')
             setTakeoverDismissedKey(`allsport_postgame_${sessionId}_${activePlayerId}`)
@@ -2229,11 +1999,12 @@ export default function SessionPage() {
       {/* Leaderboard tab */}
       {activeTab === 'leaderboard' && (
         <LeaderboardTab
+          sessionId={sessionId as string}
+          closed={sessionEnded}
           events={events}
           results={results}
           playerInfoMap={playerInfoMap}
           currentPlayerId={activePlayerId}
-          currentPlayerDivision={activePlayerDivision}
         />
       )}
 

@@ -21,6 +21,7 @@
 import type { EventData } from './eventData'
 import { tierScoring } from './scoring'
 import { MIN_RATED_GAMES } from './grading'
+import type { ContestProfile } from './contestHandicap'
 
 /**
  * Recorded games a player needs in a sport before a colour can be awarded on
@@ -115,7 +116,8 @@ export type MatchRow = {
   event_name: string
   outcome: MatchOutcome
   created_at: string
-  players: { player_id: string; side: 'a' | 'b' }[]
+  /** `profile` is what the head-to-head handicap reads; attached by loadMatchesChecked. */
+  players: { player_id: string; side: 'a' | 'b'; profile?: ContestProfile }[]
   /**
    * Set by a kaiwhakawā through settle_dispute() on the record of a disputed
    * game that is right. record_match() replaces the row on every edit, so an

@@ -154,7 +154,8 @@ describe('beat them, take their rating (Tāne, 28 Oct 2026)', () => {
     expect(n.rating).toBeCloseTo(before.rating, 6)
     expect(ratingRung(n.rating, n.games)).toBe(ratingRung(before.rating, before.games))
     // The beaten player loses what Elo says, against the newcomer's 1,000.
-    expect(after.get('T')!.rating).toBeCloseTo(before.rating + ratingChange(before.rating, before.games, RATING_START, 0), 6)
+    // Their shown rating stays; their working rating takes it (Tāne, 3 Nov 2026).
+    expect(after.get('T')!.rating).toBe(before.rating)
   })
 
   it('holds through the provisional games, after a first loss too', () => {

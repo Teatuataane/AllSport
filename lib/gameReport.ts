@@ -363,7 +363,9 @@ export function nextStepLine(step: NextStep): string {
 // Since v0.22.0.0 season points come from a player's place among EVERYONE in
 // the game, ranked on colour total (player_game_colours, ranked by the
 // season_points view). The report leads with that place and the points it
-// paid, with the division place under it (Tāne, 2026-09-28).
+// paid (Tāne, 2026-09-28). Since 3 Nov 2026 it is the only place a game gives:
+// the raw place in a division ranked a 70-year-old against a 20-year-old on
+// kilos and seconds, with none of the scaling the colour score carries.
 
 export type GamePlace = { place: number; of: number; points: number }
 
@@ -383,4 +385,33 @@ export function placeInGame(
   if (!mine) return null
   const place = 1 + field.filter(r => r.colour_total > mine.colour_total).length
   return { place, of: field.length, points: placePoints(place) }
+}
+
+/** One player's place on the whole-game board. */
+export type BoardPlace = { playerId: string; place: number; of: number; points: number }
+
+/** Everyone's place in one game, by the placeInGame rule, best first. */
+export function gameBoard(
+  rows: readonly { player_id: string; colour_total: number }[],
+  eligible: (playerId: string) => boolean,
+): BoardPlace[] {
+  const field = rows.filter(r => eligible(r.player_id))
+  return field.map(r => {
+    const place = 1 + field.filter(o => o.colour_total > r.colour_total).length
+    return { playerId: r.player_id, place, of: field.length, points: placePoints(place) }
+  }).sort((a, b) => a.place - b.place)
+}
+
+/**
+ * People in the order a game's board lists them: by place, ties and everyone
+ * with no place (a guest, or a total not published yet) by name.
+ */
+export function boardOrder<T extends { key: string; name: string }>(
+  people: readonly T[],
+  board: readonly Pick<BoardPlace, 'playerId' | 'place'>[] | null,
+): (T & { place: number | null })[] {
+  const placeOf = new Map((board ?? []).map(b => [b.playerId, b.place]))
+  return people
+    .map(p => ({ ...p, place: placeOf.get(p.key) ?? null }))
+    .sort((a, b) => (a.place ?? Infinity) - (b.place ?? Infinity) || a.name.localeCompare(b.name))
 }
