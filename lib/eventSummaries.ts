@@ -64,7 +64,7 @@ export const EVENT_SUMMARIES: Record<string, EventSummary> = {
   'pancake': { how: 'Sit with legs wide and fold forward to your level’s depth.', rules: 'Legs straight, no bouncing. Longest hold at the highest level wins.' },
   'side-bend': { how: 'Bend to the side into your level’s position and hold still.', rules: 'Hips square; leaning forward or twisting ends it. Longest hold at the highest level wins.' },
   'full-bound-twist': { how: 'Twist your spine into your level’s position and hold still.', rules: 'Hips stay down; the turn comes from the spine. Longest hold at the highest level wins.' },
-  'kelly-snatch': { how: 'Pull a dumbbell or kettlebell from the floor to overhead in one move.', rules: 'One motion, no press-out, finish standing tall. Ranks on estimated one-rep max.' },
+  'kelly-snatch': { how: 'Snatch a barbell up behind your back, then fold hips high, head low to catch it.', rules: 'One motion, bar behind you, arms locked straight at the catch. Ranks on estimated one-rep max.' },
   'one-arm-snatch': { how: 'Snatch a dumbbell or kettlebell from the floor to overhead with one arm.', rules: 'One motion, no pause or press-out. Ranks on estimated one-rep max.' },
   'javelin-throw': { how: 'Throw the javelin overarm after a short run-up.', rules: 'Release behind the line, land in the sector. Furthest throw wins.' },
   'shot-put': { how: 'Push the shot from your neck as far as you can.', rules: 'One hand, from the neck, stay behind the line. Furthest put wins.' },

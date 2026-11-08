@@ -652,8 +652,8 @@ export const EVENTS: EventData[] = [
     domainNumber: 3,
     inputMode: 'strength',
     hasDifficultyTiers: false,
-    howToPerform: "Start with a single dumbbell or kettlebell on the floor between your feet. In one explosive motion, drive through the floor and pull the weight overhead to a locked-out finish, catching it with a stable arm. Lower under control between attempts.",
-    rules: "One continuous motion from floor to overhead lockout — no pressing out from the shoulder. Finish standing tall with the arm locked and the weight stable. Either arm allowed. Score is your estimated one-rep max: more reps at a weight score higher, counted up to 10 reps.",
+    howToPerform: "A barbell snatch done behind your back. Stand in front of the bar with it on the floor behind your heels and take an overhand grip behind you. Drive it off the floor and pull it up the back of your legs until it is past your hips. Then keep your hips high, drop your head and chest low, and straighten your arms to catch the bar above your back.",
+    rules: "Floor to catch in one continuous movement, with the bar behind the body the whole way. The catch counts when your arms are straight and locked and the bar is still and under control, hips high and head low. Bending the arms to press it up, or resting the bar on your back, is a failed attempt. Score is your estimated one-rep max: more reps at a weight score higher, counted up to 10 reps.",
 
     videoPlaceholder: true,
     emoji: '💥',
