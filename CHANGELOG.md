@@ -2,6 +2,13 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.47.0.1] - 2026-11-09
+
+### Fixed
+- **New icons for Zercher Dead, Kelly Snatch, Steinborn Lift and Arthur Lift.** Zercher was showing a pangolin. Kelly Snatch now shows the behind-the-back catch (hips high, head low, arms straight), Steinborn the bar tipping onto the back from its end, Arthur a split jerk with the bar behind the head.
+- **Every event has its own icon.** Skullcrusher, Strict Curl, OH Tricep Extension and Overhead Raise had none and showed their emoji. Thirteen pairs of events shared one picture; one of each pair is redrawn (Butterfly Pose, Pancake, Cheststand, Cobra Pose, Deep Squat, Discus, Goal Kicking, Jump Rope, Nordic Curl, Plate Hold, Tī Rākau, Weighted Tuck, Underwater Swim, Repeat High Jump).
+- **Kelly Snatch how-to and rules described the wrong lift** (a one-arm dumbbell or kettlebell snatch). They now describe the barbell snatched up behind the back and caught with hips high and head low (Tāne, 9 Nov 2026).
+
 ## [0.47.0.0] - 2026-11-03
 
 ### Changed
