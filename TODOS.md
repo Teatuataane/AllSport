@@ -174,7 +174,10 @@
 **Why:** `event_domains` is the write gate for workout entries and the evidence check in `confer_grade`, so until it runs the four new events can be drawn at a game but not logged or added on top, and no Stamina colour can cite them.
 
 ### Review the drafts for the four Stamina arm events added 15 Oct 2026
-**What:** Skullcrusher, Strict Curl, OH Tricep Extension and Overhead Raise standards in `GRADING_STANDARDS_REVIEW.md`, marked UNREVIEWED (bodyweight shares, men and women split, women about two thirds of the men's loads). Re-run `node scripts/apply-standards-sheet.mjs` after editing. Also: icons for the four (`skullcrusher`, `strict-curl`, `overhead-tricep-extension`, `overhead-raise`).
+**What:** Skullcrusher, Strict Curl, OH Tricep Extension and Overhead Raise standards in `GRADING_STANDARDS_REVIEW.md`, marked UNREVIEWED (bodyweight shares, men and women split, women about two thirds of the men's loads). Re-run `node scripts/apply-standards-sheet.mjs` after editing. (Their icons shipped in v0.47.0.1.)
+
+### Recheck the Kelly Snatch standards for the barbell lift
+**What:** Kelly Snatch is the barbell snatched up behind the back and caught hips high, head low (wording fixed in v0.47.0.1, Tāne 9 Nov 2026). Its colour list (0.005 to 0.6 x bodyweight in `GRADING_STANDARDS_REVIEW.md`) was set for a one-arm dumbbell snatch (`scripts/gen-standards-sheet.mjs`: "one arm, about 0.4 times a bench press"). Tāne to decide whether the numbers suit the two-hand barbell lift; any change goes through the sheet, `apply-standards-sheet.mjs`, and a `GRADING_RULES_VERSION` bump.
 
 - **Colours per calendar year: the December notice and the 1 January check.** Built in v0.35.0.0; both migrations (`20261012230318`, `20261012231444`) applied and verified 13 Oct 2026. Left: a WhatsApp notice to players in December that colours start again on 1 January, and one real account checked on HOME and /leaderboard in the first week of January (HOME on Mā with a "2026: …" line, a 2026 tab on the board, a 31 December game typed in late still conferring its 2026 colour).
 
@@ -437,11 +440,6 @@ now only reachable if Whānau's own art goes missing, and for Te Kāhui, which n
 **Options:** a floor label ("Still climbing", "No wins yet"), or suppress the percentage below some threshold and show coverage instead. Copy call, not a bug.
 **Noticed:** session 35 audit, 2026-08-29 (Amanda, 2 games)
 **Effort:** S
-
-### Ten events have no icon
-**What:** no PNG in `public/event-icons/` for `lunges`, `animal-crawl`, and the eight v0.15.0.0 events: `pullover-and-press`, `loaded-lunge`, `skull-hang`, `calf-raises`, `plie-squat`, `seiza`, `wrist-stretch`, `reverse-wrist-stretch`. Each shows an empty tile for one round trip, then its emoji. `toe-balance.png` is an orphan (harmless — nine others already are).
-**Reminder:** the filename must be the exact slug, or it silently falls back to emoji.
-**Effort:** S (ten Canva exports)
 
 ### Fold lifetime points into `leaderboard_page()` (needs a migration)
 **What:** The board's Taniwha column shows PIECES, because nobody has a crown yet and a
