@@ -3796,6 +3796,14 @@ Tāne asked for a review of whether v0.46.0.0 lets people of all ages and sexes 
 
 Decisions. "Not punished" is the best rating since the first game, not a ratchet from 1,000: the first game's result still counts, and a working rating still falls so that beating someone stays worth what it should. A handicap is rating points off the player's level in that game, and the take-their-rating rule adds it back. The women's row is my draft. Juniors are handicapped by age only, because their sex is private and ratings are worked out in the browser from public data. Places during a game went away, because nobody's colour score but your own can be worked out in the browser. The strip's "Leading" went too: placements are written at close, so it had been ranking on an empty column. No migration.
 
+## Every event has its own icon (9 Nov 2026, v0.47.0.1, PR #214)
+
+An icon audit against the 154 slugs found four events with no icon (the Stamina arm events), thirteen pairs of events sharing one image, and Zercher Dead showing a pangolin. Claude drew Zercher, Kelly Snatch, Steinborn, Arthur, Underwater Swim and Repeat High Jump as SVG pictograms rendered with sharp (a transparent gap is cut wherever a bar or limb crosses the body, so the single-colour mask stays readable); Tāne exported the other sixteen from Canva. All went through `scripts/optimize-icons.mjs`. Verified on allsport.nz after the deploy: all 22 changed icons match the repo byte for byte.
+
+Kelly Snatch had been described as a one-arm dumbbell or kettlebell snatch since the 94-event content draft. Tāne's definition: a barbell snatched from the floor up the back until it is past the hips, then hips stay high, head goes low and the arms straighten to catch it. The how-to, rules and summary now say so. Its colour standards were set for the one-arm lift and are left for Tāne to recheck (TODOS.md).
+
+Twenty-three icon files for events no longer on the roster remain in `public/event-icons/`; they are harmless and left alone.
+
 ## What's Next (In Priority Order)
 
 1. ~~Apply the pending migrations~~ — **DONE, nothing pending (verified 2026-08-01).** Every migration through `20260801000000_roster_update_120.sql` is applied to prod. `supabase db push` offered only `20260801000000`, which means the three session-22 files (`20260713000000`, `20260713000001`, `20260714000000`) were already recorded as applied; `wellbeing_surveys` was confirmed to exist via the REST API, and `db push` applies in timestamp order, so they genuinely ran rather than being falsely baselined.
