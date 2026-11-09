@@ -2,6 +2,14 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.50.1.0] - 2026-11-10
+
+### Changed
+- **Workouts and training sessions score as fast as a game.** The sheet closes as soon as the score is stored; the workout and your records catch up behind it instead of being re-read first. Deleting a score takes it off the list at once.
+- **"Next" and NEW PR on the workout toast,** as in a game: a record pops in gold, and the next event you have not scored is one tap away.
+- **One "Tap to score" on a workout,** on the next event to play, as in a game.
+- **The new workout page and the kaiwhakawā Training tab** use the design tokens, a 12px minimum for labels, and the pressed state on their buttons.
+
 ## [0.50.0.0] - 2026-11-10
 
 ### Changed

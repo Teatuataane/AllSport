@@ -37,12 +37,12 @@ const label: React.CSSProperties = {
   fontFamily: 'var(--font-label)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700,
 }
 const card: React.CSSProperties = {
-  background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 14, marginBottom: 12,
+  background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: 14, marginBottom: 12,
 }
 const chip = (on: boolean, colour = 'var(--blue)'): React.CSSProperties => ({
-  minHeight: 44, padding: '0 14px', borderRadius: 999, cursor: 'pointer', fontSize: 13,
+  minHeight: 44, padding: '0 14px', borderRadius: 'var(--radius-pill)', cursor: 'pointer', fontSize: 13,
   fontFamily: 'var(--font-label)', letterSpacing: '0.04em', flexShrink: 0,
-  background: on ? colour : '#151515', color: on ? '#fff' : 'var(--grey-light)',
+  background: on ? colour : 'var(--surface-2)', color: on ? 'var(--white)' : 'var(--grey-light)',
   border: `1px solid ${on ? colour : 'var(--border)'}`,
 })
 
@@ -139,7 +139,7 @@ export default function NewWorkoutPage() {
   }
 
   if (loading || !activePlayer) {
-    return <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555' }}>Loading…</div>
+    return <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--grey)' }}>Loading…</div>
   }
 
   return (
@@ -167,9 +167,9 @@ export default function NewWorkoutPage() {
         <div style={card}>
           {isJudge && (
             <div style={{ marginBottom: 12 }}>
-              <div style={{ ...label, fontSize: 11, color: 'var(--text-muted)', marginBottom: 6 }}>Logging for</div>
+              <div style={{ ...label, fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>Logging for</div>
               <select value={forPlayer ?? ''} onChange={e => setForPlayer(e.target.value || null)} aria-label="Logging for"
-                style={{ width: '100%', background: '#0d0d0d', color: 'var(--white)', border: '1px solid var(--border)', borderRadius: 10, padding: '11px 12px', fontSize: 16, minHeight: 44 }}>
+                style={{ width: '100%', background: 'var(--dark)', color: 'var(--white)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '11px 12px', fontSize: 16, minHeight: 44 }}>
                 <option value="">{playerLabel(activePlayer)} (you{activePlayerId !== userId ? ', active profile' : ''})</option>
                 {players.filter(p => p.id !== activePlayerId).map(p => <option key={p.id} value={p.id}>{p.display_name}</option>)}
               </select>
@@ -178,29 +178,29 @@ export default function NewWorkoutPage() {
               )}
             </div>
           )}
-          <div style={{ ...label, fontSize: 11, color: 'var(--text-muted)', marginBottom: 6 }}>Trained</div>
+          <div style={{ ...label, fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>Trained</div>
           <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2 }}>
             {days.map(d => (
-              <button key={d} type="button" onClick={() => setDay(d)} style={chip(day === d)}>{dayLabel(d, today)}</button>
+              <button key={d} type="button" className="press" onClick={() => setDay(d)} style={chip(day === d)}>{dayLabel(d, today)}</button>
             ))}
           </div>
         </div>
 
         {/* ── The plan ─────────────────────────────────────────────────── */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-          <button type="button" onClick={() => setPlan(drawPlan())} style={chip(false, 'var(--blue)')}>Draw me ten</button>
+          <button type="button" className="press" onClick={() => setPlan(drawPlan())} style={chip(false, 'var(--blue)')}>Draw me ten</button>
           {officialTen && (
-            <button type="button" onClick={() => setPlan(officialTen)} style={chip(false, 'var(--blue)')}>Copy today&apos;s game</button>
+            <button type="button" className="press" onClick={() => setPlan(officialTen)} style={chip(false, 'var(--blue)')}>Copy today&apos;s game</button>
           )}
           {plan.length > 0 && (
-            <button type="button" onClick={() => setPlan([])} style={{ ...chip(false), background: 'none', color: 'var(--text-muted)' }}>Clear</button>
+            <button type="button" className="press" onClick={() => setPlan([])} style={{ ...chip(false), background: 'none', color: 'var(--text-muted)' }}>Clear</button>
           )}
         </div>
 
         {events.length > 0 && (
           <div style={{ ...card, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {events.map(e => (
-              <span key={e.slug} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#ccc' }}>
+              <span key={e.slug} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--grey-light)' }}>
                 <EventIcon slug={e.slug} emoji={e.emoji} domainNumber={e.domainNumber} size={22} />
                 {e.name}
               </span>
@@ -212,31 +212,31 @@ export default function NewWorkoutPage() {
 
         {/* ── How hard ─────────────────────────────────────────────────── */}
         <div style={{ ...card, marginTop: 16 }}>
-          <div style={{ ...label, fontSize: 11, color: 'var(--text-muted)', marginBottom: 6 }}>How hard (optional)</div>
+          <div style={{ ...label, fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>How hard (optional)</div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
-              <button key={n} type="button" onClick={() => setEffort(effort === n ? null : n)}
+              <button key={n} type="button" className="press" onClick={() => setEffort(effort === n ? null : n)}
                 aria-label={`${n} — ${EFFORT_WORDS[n]}`} style={{ ...chip(effort === n, 'var(--purple)'), minWidth: 44, padding: '0 10px' }}>{n}</button>
             ))}
           </div>
           {effort && <div style={{ fontSize: 12.5, color: 'var(--purple)', marginTop: 6 }}>{EFFORT_WORDS[effort]}</div>}
-          <div style={{ ...label, fontSize: 11, color: 'var(--text-muted)', margin: '12px 0 6px' }}>Notes (optional)</div>
+          <div style={{ ...label, fontSize: 12, color: 'var(--text-muted)', margin: '12px 0 6px' }}>Notes (optional)</div>
           <input value={notes} onChange={e => setNotes(e.target.value)} maxLength={500} placeholder="Anything worth remembering"
             aria-label="Notes"
-            style={{ width: '100%', boxSizing: 'border-box', background: '#0d0d0d', color: 'var(--white)', border: '1px solid var(--border)', borderRadius: 10, padding: '11px 12px', fontSize: 16, minHeight: 44 }} />
+            style={{ width: '100%', boxSizing: 'border-box', background: 'var(--dark)', color: 'var(--white)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '11px 12px', fontSize: 16, minHeight: 44 }} />
         </div>
 
         {error && (
-          <div style={{ background: '#2e0d0d', border: '1px solid var(--red)', borderRadius: 10, padding: '12px 14px', color: 'var(--red)', fontSize: 14, marginBottom: 12 }}>
+          <div style={{ background: 'var(--red-tint)', border: '1px solid var(--red)', borderRadius: 'var(--radius-md)', padding: '12px 14px', color: 'var(--red)', fontSize: 14, marginBottom: 12 }}>
             {error}
           </div>
         )}
 
-        <button onClick={start} disabled={busy || plan.length === 0} style={{
-          width: '100%', minHeight: 58, borderRadius: 999, border: 'none',
+        <button className="press" onClick={start} disabled={busy || plan.length === 0} style={{
+          width: '100%', minHeight: 58, borderRadius: 'var(--radius-pill)', border: 'none',
           cursor: plan.length > 0 && !busy ? 'pointer' : 'not-allowed',
-          background: plan.length > 0 ? 'var(--rainbow)' : '#1a1a1a',
-          color: plan.length > 0 ? '#0a0a0a' : '#555',
+          background: plan.length > 0 ? 'var(--rainbow)' : 'var(--surface-2)',
+          color: plan.length > 0 ? 'var(--dark)' : 'var(--grey)',
           fontFamily: 'var(--font-label)', textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: 16, fontWeight: 600,
         }}>
           {busy ? 'Starting…'

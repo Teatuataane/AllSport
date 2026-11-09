@@ -21,7 +21,7 @@ const supabase = createClient()
 type Person = { id: string; display_name: string; username: string | null }
 
 const LBL: React.CSSProperties = {
-  fontFamily: 'var(--font-label)', fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#666',
+  fontFamily: 'var(--font-label)', fontSize: 12, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--grey)',
   margin: '18px 0 8px',
 }
 
@@ -65,15 +65,15 @@ export default function TrainingTab({ kaiwhakawaId }: { kaiwhakawaId: string }) 
   }
 
   const row = (p: Person, note?: string) => (
-    <button key={p.id} type="button" onClick={() => start(p.id)} disabled={busy !== null}
+    <button key={p.id} type="button" className="press" onClick={() => start(p.id)} disabled={busy !== null}
       style={{
         display: 'flex', alignItems: 'center', gap: 10, width: '100%', minHeight: 48, padding: '8px 14px',
-        background: '#111', border: '1px solid #1e1e1e', borderRadius: 12, cursor: 'pointer', textAlign: 'left',
-        color: '#fff', opacity: busy && busy !== p.id ? 0.5 : 1,
+        background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', cursor: 'pointer', textAlign: 'left',
+        color: 'var(--white)', opacity: busy && busy !== p.id ? 0.5 : 1,
       }}>
       <span style={{ flex: 1, fontSize: 15 }}>{p.display_name}</span>
-      {note && <span style={{ fontFamily: 'var(--font-label)', fontSize: 11, color: '#777', letterSpacing: '0.06em' }}>{note}</span>}
-      <span style={{ color: '#555' }}>›</span>
+      {note && <span style={{ fontFamily: 'var(--font-label)', fontSize: 12, color: 'var(--grey)', letterSpacing: '0.06em' }}>{note}</span>}
+      <span style={{ color: 'var(--grey)' }}>›</span>
     </button>
   )
 
@@ -84,10 +84,10 @@ export default function TrainingTab({ kaiwhakawaId }: { kaiwhakawaId: string }) 
           <div style={{ ...LBL, marginTop: 4 }}>Open now</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {open.map(w => (
-              <button key={w.id} type="button" onClick={() => router.push(`/workout/${w.id}`)}
+              <button key={w.id} type="button" className="press" onClick={() => router.push(`/workout/${w.id}`)}
                 style={{
-                  minHeight: 44, padding: '8px 16px', borderRadius: 999, cursor: 'pointer',
-                  background: '#0d2e1a', border: '1px solid #4DB26E', color: '#fff', fontSize: 14,
+                  minHeight: 44, padding: '8px 16px', borderRadius: 'var(--radius-pill)', cursor: 'pointer',
+                  background: 'var(--green-tint)', border: '1px solid var(--green)', color: 'var(--white)', fontSize: 14,
                 }}>
                 {byId.get(w.player_id)?.display_name ?? 'Player'}
               </button>
@@ -101,8 +101,8 @@ export default function TrainingTab({ kaiwhakawaId }: { kaiwhakawaId: string }) 
         value={query} onChange={e => setQuery(e.target.value)}
         placeholder="Name or username" aria-label="Search players"
         style={{
-          width: '100%', boxSizing: 'border-box', minHeight: 48, padding: '0 14px', borderRadius: 12,
-          background: '#0d0d0d', border: '1px solid #2a2a2a', color: '#fff', fontSize: 16,
+          width: '100%', boxSizing: 'border-box', minHeight: 48, padding: '0 14px', borderRadius: 'var(--radius-md)',
+          background: 'var(--dark)', border: '1px solid var(--border-strong)', color: 'var(--white)', fontSize: 16,
         }}
       />
 
@@ -112,7 +112,7 @@ export default function TrainingTab({ kaiwhakawaId }: { kaiwhakawaId: string }) 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 10 }}>
           {matches.map(p => row(p))}
           {people && matches.length === 0 && (
-            <div style={{ color: '#666', fontSize: 14, padding: '10px 4px' }}>No player matches “{query.trim()}”.</div>
+            <div style={{ color: 'var(--grey)', fontSize: 14, padding: '10px 4px' }}>No player matches “{query.trim()}”.</div>
           )}
         </div>
       ) : (
@@ -124,7 +124,7 @@ export default function TrainingTab({ kaiwhakawaId }: { kaiwhakawaId: string }) 
               return p ? row(p, `last ${formatNZDate(r.last)}`) : null
             })}
             {recent.length === 0 && (
-              <div style={{ color: '#666', fontSize: 14, padding: '4px 4px' }}>
+              <div style={{ color: 'var(--grey)', fontSize: 14, padding: '4px 4px' }}>
                 Nobody yet. Search for a player above to start their first session.
               </div>
             )}
