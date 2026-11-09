@@ -233,6 +233,8 @@ Goal: a kaiwhakawā running one station can score a line of players without choo
 
 ## Phase 4: finish
 
+**Done (v0.50.0.0), and carried to the workout and training screens in v0.50.1.0. The plan is complete.**
+
 Goal: the screen is easy to read in a gym and looks like one design. This is a polish pass, not a redesign. Load the `allsport-design` skill before starting.
 
 - **Contrast and size.** Small text in `#555` on near black is hard to read (the tab labels, several 10 to 11px labels). Secondary text should be no darker than `var(--grey)` and labels no smaller than 12px.

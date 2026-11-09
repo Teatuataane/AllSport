@@ -24,7 +24,8 @@ import { usePRRows } from '@/lib/usePRRows'
 import { isNewPR } from '@/lib/prBoard'
 import { useActivePlayer } from '@/lib/useActivePlayer'
 import { lastTrainingPlan } from '@/lib/training'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { nextUnscored } from '@/lib/nextEvent'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase-browser'
@@ -36,7 +37,7 @@ import EventListRow from '@/components/play/EventListRow'
 import { ProgressSegments, type PlayEvent, type EntryRow } from '@/components/play/chrome'
 import BodyweightField from '@/components/play/BodyweightField'
 import EventPlanPicker from '@/components/play/EventPlanPicker'
-import Toast, { ToastText } from '@/components/play/Toast'
+import Toast, { ToastButton, ToastText } from '@/components/play/Toast'
 import { GradeDot } from '@/components/GradeDot'
 import { useGradeProfile } from '@/lib/useGradeProfile'
 import { useSportRatings } from '@/lib/useSportRatings'
@@ -48,6 +49,14 @@ import type { EntryVals } from '@/lib/scoring'
 const supabase = createClient()
 
 type Entry = EntryRow & { event_slug: string | null }
+
+/** The entry columns this screen reads, on a load and back from each write. */
+const ENTRY_COLS = 'id, event_slug, raw_score, score_label, difficulty_tier, weight_kg, reps, time_seconds, distance_m, exercise_variation'
+
+/** A stored entry as the play screen draws it. A workout entry holds no game result. */
+const asEntry = (r: Entry): Entry => ({
+  ...r, raw_score: Number(r.raw_score ?? 0), result_type: null, opponent_name: null, match_score: null,
+})
 
 type Workout = {
   id: string
@@ -84,7 +93,6 @@ export default function PersonalGamePage() {
   const [entries, setEntries] = useState<Entry[]>([])
   const [sheetSlug, setSheetSlug] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
-  const [toast, setToast] = useState<{ eventName: string; label: string } | null>(null)
   const [error, setError] = useState('')
   const { self } = useActivePlayer()
   const [clientName, setClientName] = useState<string | null>(null)
@@ -98,7 +106,7 @@ export default function PersonalGamePage() {
   const load = useCallback(async () => {
     const { data, error: e } = await supabase
       .from('workouts')
-      .select('id, player_id, performed_on, witnessed, finished_at, planned_events, notes, logged_by, workout_entries(id, event_slug, raw_score, score_label, difficulty_tier, weight_kg, reps, time_seconds, distance_m, exercise_variation)')
+      .select(`id, player_id, performed_on, witnessed, finished_at, planned_events, notes, logged_by, workout_entries(${ENTRY_COLS})`)
       .eq('id', id)
       .maybeSingle()
     if (e || !data) { setNotFound(true); return }
@@ -110,13 +118,7 @@ export default function PersonalGamePage() {
       const { data: ms } = await supabase.from('matches').select('workout_entry_id').in('workout_entry_id', ids)
       setMatchedEntries(new Set(((ms ?? []) as { workout_entry_id: string }[]).map(m => m.workout_entry_id)))
     }
-    setEntries((w.workout_entries ?? []).map(r => ({
-      ...r,
-      raw_score: Number(r.raw_score ?? 0),
-      result_type: null,
-      opponent_name: null,
-      match_score: null,
-    })))
+    setEntries((w.workout_entries ?? []).map(asEntry))
   }, [id])
 
   useEffect(() => { load() }, [load])
@@ -230,9 +232,12 @@ export default function PersonalGamePage() {
       raw_score: payload.raw_score ?? null, difficulty_tier: payload.difficulty_tier ?? null,
       distance_m: payload.distance_m, time_seconds: payload.time_seconds, weight_kg: payload.weight_kg,
     }, editingId ? `logged:${editingId}` : null)
+    // The write hands back the stored row, which is drawn at once. Until v0.51
+    // the sheet waited for the write AND a re-read of the whole workout and
+    // the player's records before it closed: two round trips on gym signal.
     const written = editingId
-      ? await supabase.from('workout_entries').update(payload).eq('id', editingId).select('id').maybeSingle()
-      : await supabase.from('workout_entries').insert({ ...payload, workout_id: workout.id }).select('id').single()
+      ? await supabase.from('workout_entries').update(payload).eq('id', editingId).select(ENTRY_COLS).maybeSingle()
+      : await supabase.from('workout_entries').insert({ ...payload, workout_id: workout.id }).select(ENTRY_COLS).single()
     const e = written.error
     if (e) {
       return {
@@ -240,10 +245,15 @@ export default function PersonalGamePage() {
         isPR: false,
       }
     }
+    const stored = written.data as Entry | null
+    if (stored) {
+      const row = asEntry(stored)
+      setEntries(cur => cur.some(x => x.id === row.id) ? cur.map(x => x.id === row.id ? row : x) : [...cur, row])
+    }
     // A game against the kaiwhakawā hangs a match off the entry. Best-effort,
     // as on a swap at a game: a failure must never turn a saved score into an
     // error, and PGRST202 means the function is not deployed yet.
-    const entryId = (written.data as { id: string } | null)?.id ?? editingId
+    const entryId = stored?.id ?? editingId
     if (playsKaiwhakawa && entryId && matchOpponents !== null) {
       const { error: me } = await supabase.rpc('record_entry_match', {
         p_entry_id: entryId, p_opponent_ids: matchOpponents,
@@ -251,16 +261,35 @@ export default function PersonalGamePage() {
       if (me && me.code !== 'PGRST202') console.warn('record_entry_match:', me.message)
       sportRatings.reload()
     }
-    await Promise.all([load(), reloadPRs()])
+    // The records (for the next PR check) and the workout catch up behind the
+    // sheet; nothing on screen waits for them. A row the write did not return
+    // (an update RLS hid) still arrives with the re-read.
+    void reloadPRs()
+    void load()
     return { error: null, isPR }
   }
 
   const remove = async (entryId: string): Promise<string | null> => {
     const { error: e } = await supabase.from('workout_entries').delete().eq('id', entryId)
     if (e) return e.message
-    await load()
+    setEntries(cur => cur.filter(x => x.id !== entryId))
+    void reloadPRs()
     return null
   }
+
+  // ── The toast after a score: a PR pops, and the next event is one tap away ──
+  const [toast, setToast] = useState<{ id: number; eventName: string; label: string; isPR: boolean; next: { id: string; name: string } | null } | null>(null)
+  const toastSeq = useRef(0)
+  const showToast = (eventName: string, label: string, isPR: boolean, justId: string) => {
+    const nextId = locked ? null : nextUnscored(events.map(e => e.id), scoredSlugs, justId)
+    const next = nextId ? { id: nextId, name: events.find(e => e.id === nextId)?.event_name ?? '' } : null
+    const tid = ++toastSeq.current
+    setToast({ id: tid, eventName, label, isPR, next })
+    // Each toast clears only itself; one with a Next button stays long enough to tap.
+    setTimeout(() => setToast(cur => (cur?.id === tid ? null : cur)), next ? 6000 : isPR ? 4000 : 3000)
+  }
+  // One "Tap to score" on the list: the first event still to score, as in a game.
+  const nextToScore = events.find(e => !scoredSlugs.has(e.id))?.id ?? null
 
   const finish = async () => {
     if (!workout) return
@@ -355,6 +384,7 @@ export default function PersonalGamePage() {
           myResults={entriesFor(ev.id)}
           gradeRung={rungFor(ev.id)}
           gameLine={gameLineFor(ev.id)}
+          quiet={ev.id !== nextToScore}
           onOpen={() => setSheetSlug(ev.id)}
         />
       ))}
@@ -367,7 +397,7 @@ export default function PersonalGamePage() {
 
       {/* Repeat last session */}
       {!locked && canRun && coached && lastPlan.length > 0 && planIsEmpty && (
-        <button type="button" onClick={() => setPlan(sortPlan(lastPlan).slice(0, PLAN_MAX))} style={{
+        <button type="button" className="press" onClick={() => setPlan(sortPlan(lastPlan).slice(0, PLAN_MAX))} style={{
           width: '100%', minHeight: 48, marginTop: 16, borderRadius: 'var(--radius-pill)', cursor: 'pointer',
           background: 'var(--blue-tint)', border: '1px solid var(--blue)', color: 'var(--white)',
           fontFamily: 'var(--font-label)', fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase',
@@ -377,7 +407,7 @@ export default function PersonalGamePage() {
       {/* Add more */}
       {!locked && canRun && (
         <div style={{ marginTop: 16 }}>
-          <button type="button" onClick={() => setAdding(a => !a)} style={{
+          <button type="button" className="press" onClick={() => setAdding(a => !a)} style={{
             width: '100%', minHeight: 48, borderRadius: 'var(--radius-pill)', cursor: 'pointer',
             background: 'none', border: '1px dashed var(--border-strong)', color: 'var(--text-muted)',
             fontFamily: 'var(--font-label)', fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase',
@@ -396,7 +426,7 @@ export default function PersonalGamePage() {
 
       {/* Finish */}
       {!locked && canRun && (
-        <button onClick={finish} style={{
+        <button className="press" onClick={finish} style={{
           width: '100%', minHeight: 56, marginTop: 20, borderRadius: 'var(--radius-pill)', border: 'none', cursor: 'pointer',
           background: entries.length > 0 ? 'var(--rainbow)' : 'var(--surface-2)',
           color: entries.length > 0 ? 'var(--dark)' : 'var(--text-muted)',
@@ -435,17 +465,26 @@ export default function PersonalGamePage() {
           onClose={() => setSheetSlug(null)}
           onSubmit={(v, editingId, matchOpponents) => submit(sheetEvent.id, v, editingId, matchOpponents)}
           onDelete={remove}
-          onSubmitted={(labelText) => {
+          onSubmitted={(labelText, meta) => {
             setSheetSlug(null)
-            setToast({ eventName: sheetEvent.event_name, label: labelText })
-            setTimeout(() => setToast(null), 3000)
+            showToast(sheetEvent.event_name, labelText, meta.isPR, sheetEvent.id)
           }}
-          onDeleted={() => { /* load() already ran */ }}
+          onDeleted={() => { /* the row is already gone from the list */ }}
         />
       )}
 
       {toast && (
-        <Toast tone="done"><ToastText>Score in — {toast.eventName} — {toast.label}</ToastText></Toast>
+        <Toast tone={toast.isPR ? 'pr' : 'done'}
+          actions={toast.next && (() => {
+            const next = toast.next
+            return <ToastButton onClick={() => { setSheetSlug(next.id); setToast(null) }}>Next: {next.name}</ToastButton>
+          })()}>
+          <ToastText>
+            {toast.isPR
+              ? <><span style={{ color: 'var(--amber)' }}>NEW PR</span> — {toast.eventName} — {toast.label}</>
+              : <>Score in — {toast.eventName} — {toast.label}</>}
+          </ToastText>
+        </Toast>
       )}
     </div>
   )

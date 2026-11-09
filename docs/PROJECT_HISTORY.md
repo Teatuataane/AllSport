@@ -3830,6 +3830,10 @@ The plan said to take the tab bar's offset from the banner's height. The preview
 
 Checked at 375 by 812 on a temporary page with a dummy database address (removed before commit): the list, ring markers, toast and sticky stack. Not checked: the logged-in screen and the Summary tab in a real game. No migration.
 
+## Workout screens catch up (10 Nov 2026, v0.50.1.0)
+
+The four phases were built on the live game; `/workout/[id]` (personal games and kaiwhakawā training sessions) shared the sheet but not the screen around it. It now draws the row the write returns (`select(ENTRY_COLS)`) and re-reads the workout and records behind the sheet (`void load()`, `void reloadPRs()`), so a save is one round trip, not three; a delete is taken off the list without a re-read. This is not the live game's pending-row model (`lib/pendingResults.ts`): a workout has one writer at a time and no broadcast, so drawing the stored row is enough and a failed write never draws anything. The toast gains the PR tone and "Next" (`nextUnscored`), and the list marks only the next unscored row (`EventListRow quiet`). `/workout/new` and `app/components/TrainingTab.tsx` moved to tokens and the `press` class. Not checked logged in. No migration.
+
 ## What's Next (In Priority Order)
 
 1. ~~Apply the pending migrations~~ — **DONE, nothing pending (verified 2026-08-01).** Every migration through `20260801000000_roster_update_120.sql` is applied to prod. `supabase db push` offered only `20260801000000`, which means the three session-22 files (`20260713000000`, `20260713000001`, `20260714000000`) were already recorded as applied; `wellbeing_surveys` was confirmed to exist via the REST API, and `db push` applies in timestamp order, so they genuinely ran rather than being falsely baselined.
