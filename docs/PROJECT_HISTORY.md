@@ -3820,6 +3820,16 @@ Decisions. A pre-filled game sheet needs one change before it submits (`needsTou
 
 Checked at 375 by 667 in the browser pane on a temporary page with a dummy database address (removed before commit): deadlift, Pause Dips and L-Sit show every field and Submit without scrolling, the chosen level centres and is spelled out, and delete confirms in the row. Not checked: the keyboard lift on a real iPhone and Android phone, and the logged-in screen. No migration.
 
+## Finish pass (10 Nov 2026, v0.50.0.0)
+
+Phase 4 of SCORING_UX_BUILD_PLAN.md. Phase 3 (kaiwhakawā scoring by event) was dropped by Tāne the same day: not needed for how games run now.
+
+Every hex colour and corner radius in the scoring page, `components/play/` and the workout page is now a token. Colours with no token got one in `globals.css` rather than an inline mix: `--blue-light`, `--blue-tint`, `--blue-edge`, `--red-tint`, `--amber-tint`, `--green-tint`, `--medal-silver`, `--medal-bronze`. Alpha shades are `color-mix`, because a token cannot take a hex alpha suffix; places that append one to a colour variable (`PRBoardView`, `EventPlanPicker`) are still handed hex from `lib/domainColours.ts`, so their callers must not pass a token. Text greys darker than `--grey` became `--grey`, and every size under 12px became 12px.
+
+The plan said to take the tab bar's offset from the banner's height. The preview showed the real fault: the site bar is fixed, so the banner (sticky at 0) slid under it on scroll and the 60px was standing in for the site bar. `Navbar` now publishes `--site-bar-h`, `GameBanner` measures itself into `--game-banner-h`, and the tabs stick at their sum. This keeps the clock in view at the cost of about 77px more fixed chrome on a phone; Tāne may prefer the old behaviour.
+
+Checked at 375 by 812 on a temporary page with a dummy database address (removed before commit): the list, ring markers, toast and sticky stack. Not checked: the logged-in screen and the Summary tab in a real game. No migration.
+
 ## What's Next (In Priority Order)
 
 1. ~~Apply the pending migrations~~ — **DONE, nothing pending (verified 2026-08-01).** Every migration through `20260801000000_roster_update_120.sql` is applied to prod. `supabase db push` offered only `20260801000000`, which means the three session-22 files (`20260713000000`, `20260713000001`, `20260714000000`) were already recorded as applied; `wellbeing_surveys` was confirmed to exist via the REST API, and `db push` applies in timestamp order, so they genuinely ran rather than being falsely baselined.

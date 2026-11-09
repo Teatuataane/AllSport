@@ -336,6 +336,9 @@ export default function Navbar() {
       {/* Spacer. Logged in this is 53px, against the old 65 — and nothing is
           buried behind a hamburger any more. */}
       <div style={{ height: (isLoggedIn ? TOP_BAR_HEIGHT : 60) + RAINBOW_HEIGHT }} />
+      {/* The bar's height for anything that sticks below it, such as the live
+          game's banner and tabs, which used to guess it (v0.50.0.0). */}
+      <style>{`:root { --site-bar-h: ${(isLoggedIn ? TOP_BAR_HEIGHT : 60) + RAINBOW_HEIGHT}px; }`}</style>
     </>
   )
 }

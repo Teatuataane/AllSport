@@ -36,20 +36,20 @@ export default function AddEventsSheet({
       <div role="dialog" aria-label={`Add ${domainName} events`} style={{
         position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)',
         width: 'min(640px, 100vw)', maxHeight: '80dvh', display: 'flex', flexDirection: 'column',
-        background: '#141414', border: '1px solid #2a2a2a', borderBottom: 'none',
-        borderRadius: '24px 24px 0 0', overflow: 'hidden',
+        background: 'var(--surface)', border: '1px solid var(--border-strong)', borderBottom: 'none',
+        borderRadius: 'var(--radius-xl) var(--radius-xl) 0 0', overflow: 'hidden',
       }}>
         <div style={{ height: 4, flexShrink: 0, background: 'var(--rainbow)' }} />
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px 10px' }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 24, letterSpacing: '0.03em', lineHeight: 1 }}>{domainName}</div>
-            <div style={{ fontFamily: 'var(--font-label)', fontSize: 11, color: '#777', textTransform: 'uppercase', letterSpacing: '0.12em', marginTop: 3 }}>
+            <div style={{ fontFamily: 'var(--font-label)', fontSize: 12, color: 'var(--grey)', textTransform: 'uppercase', letterSpacing: '0.12em', marginTop: 3 }}>
               Counts toward your colours, not your placement
             </div>
           </div>
           <button className="press" onClick={onClose} aria-label="Close" style={{
-            width: 44, height: 44, borderRadius: 12, cursor: 'pointer', flexShrink: 0,
-            background: '#181818', border: '1px solid #2a2a2a', color: '#999', fontSize: 15,
+            width: 44, height: 44, borderRadius: 'var(--radius-md)', cursor: 'pointer', flexShrink: 0,
+            background: 'var(--surface-2)', border: '1px solid var(--border-strong)', color: 'var(--grey)', fontSize: 15,
           }}>✕</button>
         </div>
 
@@ -59,21 +59,21 @@ export default function AddEventsSheet({
             return (
               <button className="press" key={e.slug} onClick={() => toggle(e.slug)} aria-pressed={on} style={{
                 display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left',
-                minHeight: 56, padding: '8px 12px', borderRadius: 14, cursor: 'pointer',
-                background: on ? '#0f1a26' : '#111', border: `1px solid ${on ? '#2371BB' : '#1e1e1e'}`, color: '#fff',
+                minHeight: 56, padding: '8px 12px', borderRadius: 'var(--radius-lg)', cursor: 'pointer',
+                background: on ? 'var(--blue-tint)' : 'var(--surface)', border: `1px solid ${on ? 'var(--blue)' : 'var(--border)'}`, color: 'var(--white)',
               }}>
                 <EventIcon slug={e.slug} emoji={e.emoji} domainNumber={e.domainNumber} size={34} tint={NEUTRAL_ICON_TINT} />
                 <span style={{ flex: 1, minWidth: 0, fontFamily: 'var(--font-display)', fontSize: 18, letterSpacing: '0.03em' }}>{e.name}</span>
                 <span aria-hidden="true" style={{
-                  width: 22, height: 22, borderRadius: 6, flexShrink: 0, boxSizing: 'border-box',
+                  width: 22, height: 22, borderRadius: 'var(--radius-sm)', flexShrink: 0, boxSizing: 'border-box',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14,
-                  border: `1.5px solid ${on ? '#2371BB' : '#444'}`, background: on ? '#2371BB' : 'none',
+                  border: `1.5px solid ${on ? 'var(--blue)' : 'var(--border-strong)'}`, background: on ? 'var(--blue)' : 'none',
                 }}>{on ? '✓' : ''}</span>
               </button>
             )
           })}
           {pool.length === 0 && (
-            <div style={{ color: '#777', fontSize: 14, padding: '20px 4px', textAlign: 'center' }}>
+            <div style={{ color: 'var(--grey)', fontSize: 14, padding: '20px 4px', textAlign: 'center' }}>
               Nothing left to add in this domain.
             </div>
           )}
@@ -81,8 +81,8 @@ export default function AddEventsSheet({
 
         <div style={{ padding: '4px 16px 20px', flexShrink: 0 }}>
           <button className="press" onClick={() => { if (n) onAdd(picked) }} style={{
-            width: '100%', minHeight: 48, borderRadius: 999, border: 'none',
-            cursor: n ? 'pointer' : 'default', background: n ? '#2371BB' : '#1a2a3a', color: n ? '#fff' : '#8aa4bd',
+            width: '100%', minHeight: 48, borderRadius: 'var(--radius-pill)', border: 'none',
+            cursor: n ? 'pointer' : 'default', background: n ? 'var(--blue)' : 'var(--blue-tint)', color: n ? 'var(--white)' : 'var(--grey-light)',
             fontFamily: 'var(--font-label)', fontSize: 13, letterSpacing: '0.12em', textTransform: 'uppercase',
           }}>{n ? `Add ${n} event${n === 1 ? '' : 's'}` : 'Choose events to add'}</button>
         </div>

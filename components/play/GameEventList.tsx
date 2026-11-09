@@ -39,6 +39,10 @@ export default function GameEventList({
   // One flat list, domain 1 to 10, so every button shares a left edge and a
   // height. The domain is named inside each button instead of by a heading.
   const groups = domainGroups(events, chosen)
+  // One call to action: only the first unscored row, in list order, keeps the
+  // "Tap to score" pill; the other unscored rows wear a quiet ring.
+  const nextId = groups.flatMap(g => [...(g.official ? [g.official] : []), ...g.added])
+    .find(slot => rowsFor(slot).length === 0)?.se.id
   return (
     <div>
       {groups.map(g => (
@@ -51,6 +55,7 @@ export default function GameEventList({
               note={noteFor(g.official)}
               gradeRung={rungFor(g.official)}
               gameLine={gameLineFor?.(g.official)}
+              quiet={g.official.se.id !== nextId}
               onOpen={() => onOpen(g.official!.se.id)}
               corner={canAdd
                 ? <RowCorner variant="add" label={`Add ${g.domainName} events`} onClick={() => onAdd(g)} />
@@ -63,10 +68,11 @@ export default function GameEventList({
               se={slot.se}
               eventData={eventDataFor(slot)}
               myResults={rowsFor(slot)}
-              note={{ label: 'Not placed', color: '#888' }}
+              note={{ label: 'Not placed', color: 'var(--grey)' }}
               gradeRung={rungFor(slot)}
               gameLine={gameLineFor?.(slot)}
               tag="Added"
+              quiet={slot.se.id !== nextId}
               onOpen={() => onOpen(slot.se.id)}
               corner={canAdd && !scoredSlugs.has(slot.se.id)
                 ? <RowCorner variant="remove" label={`Remove ${slot.se.event_name}`} onClick={() => onRemove(slot.se.id)} />

@@ -30,6 +30,19 @@
   --grey: #888888;
   --grey-light: #b5b5b5;
 
+  /* Quiet tints for a chosen or flagged surface on the dark play screens, and
+     the light blue that reads as "selected" text on them (v0.50.0.0). */
+  --blue-light: #7ab4ff;
+  --blue-tint: #0d1a2e;
+  --blue-edge: #1c3a5e;
+  --red-tint: #2e0d0d;
+  --amber-tint: #1f1608;
+  --green-tint: #1e3a28;
+
+  /* Medal colours for 2nd and 3rd on a game board; 1st is amber. */
+  --medal-silver: #C0C0C0;
+  --medal-bronze: #CD7F32;
+
   /* Semantic */
   --text: var(--white);
   --text-muted: var(--grey);
@@ -204,6 +217,14 @@ button, a, input, select, textarea, [role="button"] { touch-action: manipulation
   transition: transform 80ms var(--ease), filter 80ms var(--ease);
 }
 .press:active:not(:disabled) { transform: scale(0.96); filter: brightness(1.25); }
+/* The play screens' toast (components/play/Toast.tsx) pops in for a PR or a
+   new event. Here rather than in one page so every screen that shows it has it. */
+@keyframes toastPop {
+  0% { transform: translateX(-50%) scale(0.92); opacity: 0; }
+  60% { transform: translateX(-50%) scale(1.04); }
+  100% { transform: translateX(-50%) scale(1); opacity: 1; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .press { transition: none; }
   .press:active:not(:disabled) { transform: none; }

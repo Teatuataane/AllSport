@@ -59,10 +59,27 @@ export default function GameBanner({ startedAt, isActive, ended, colourScore, fl
     return () => clearInterval(iv)
   }, [startedAt, isActive])
 
+  // The banner sticks under the site bar (--site-bar-h, from Navbar) and the
+  // tab bar sticks under the banner, so the tabs need the banner's real height.
+  // A fixed 60px used to stand in for both, and the banner slid out of sight
+  // under the site bar on scroll (v0.50.0.0). Published as a CSS variable on the page root,
+  // not as page state, so a resize never redraws the page.
+  const bar = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = bar.current
+    if (!el) return
+    const root = document.documentElement
+    const publish = () => root.style.setProperty('--game-banner-h', `${el.offsetHeight}px`)
+    publish()
+    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(publish)
+    ro?.observe(el)
+    return () => { ro?.disconnect(); root.style.removeProperty('--game-banner-h') }
+  }, [])
+
   const clock = clockAt(startedAt, now)
-  const timerColour = clock.kind === 'before' ? '#B87DB5'
-    : clock.kind === 'live' ? (clock.secs < 600 ? '#EA4742' : clock.secs < 1800 ? '#F9B051' : '#4DB26E')
-    : '#4DB26E'
+  const timerColour = clock.kind === 'before' ? 'var(--purple)'
+    : clock.kind === 'live' ? (clock.secs < 600 ? 'var(--red)' : clock.secs < 1800 ? 'var(--amber)' : 'var(--green)')
+    : 'var(--green)'
   const timerDisplay = ended ? 'ENDED' : clock.kind === 'none' ? '--:--' : fmtCountdown(clock.secs)
   const statusLabel = ended ? 'SESSION ENDED'
     : clock.kind === 'before' ? 'STARTING SOON'
@@ -71,10 +88,10 @@ export default function GameBanner({ startedAt, isActive, ended, colourScore, fl
 
   return (
     <>
-      <div style={{ background: '#2371BB', padding: '12px 16px', position: 'sticky', top: 0, zIndex: 10 }}>
+      <div ref={bar} style={{ background: 'var(--blue)', padding: '12px 16px', position: 'sticky', top: 'var(--site-bar-h, 0px)', zIndex: 10 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '2px', fontFamily: 'var(--font-label)' }}>
+            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '2px', fontFamily: 'var(--font-label)' }}>
               {statusLabel}
             </div>
             <div style={{ fontSize: '32px', fontWeight: 700, fontFamily: 'var(--font-display)', letterSpacing: '0.05em', lineHeight: 1 }}>
@@ -90,7 +107,7 @@ export default function GameBanner({ startedAt, isActive, ended, colourScore, fl
             </div>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '2px', fontFamily: 'var(--font-label)' }}>
+            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '2px', fontFamily: 'var(--font-label)' }}>
               Time Left
             </div>
             <div style={{ fontSize: '32px', fontWeight: 700, color: timerColour, fontVariantNumeric: 'tabular-nums', fontFamily: 'var(--font-display)', lineHeight: 1 }}>
@@ -99,7 +116,7 @@ export default function GameBanner({ startedAt, isActive, ended, colourScore, fl
           </div>
         </div>
       </div>
-      <div style={{ height: '3px', background: 'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)' }} />
+      <div style={{ height: '3px', background: 'linear-gradient(90deg, var(--red), var(--amber), var(--pink), var(--purple), var(--blue), var(--green))' }} />
     </>
   )
 }

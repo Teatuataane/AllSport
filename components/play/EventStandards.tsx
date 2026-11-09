@@ -19,7 +19,7 @@ import type { EventData } from '@/lib/eventData'
 
 function Open({ ev, playerId, today, rows }: { ev: EventData; playerId: string; today: string; rows: readonly ScoreRow[] }) {
   const gp = useGradeProfile(playerId, today)
-  if (!gp.player) return <p style={{ fontSize: 13, color: '#777', margin: '8px 0 0' }}>Loading your standards…</p>
+  if (!gp.player) return <p style={{ fontSize: 13, color: 'var(--grey)', margin: '8px 0 0' }}>Loading your standards…</p>
   // The colour reached on the player's best scores, read against the latest
   // bodyweight. A heavier past self can read a rung off, which only moves a highlight.
   const reached = scoreRung(ev, rows, gp.player, gp.bodyweightKg)
@@ -50,7 +50,7 @@ export default function EventStandards({
     <div>
       <button className="press" type="button" onClick={() => setOpen(o => !o)} aria-expanded={open} style={{
         background: 'none', border: 'none', padding: '4px 0', cursor: 'pointer',
-        fontFamily: 'var(--font-label)', fontSize: '11px', color: '#888', letterSpacing: '0.1em', textTransform: 'uppercase',
+        fontFamily: 'var(--font-label)', fontSize: '12px', color: 'var(--grey)', letterSpacing: '0.1em', textTransform: 'uppercase',
       }}>
         Standards {open ? '▴' : '▾'}
       </button>
