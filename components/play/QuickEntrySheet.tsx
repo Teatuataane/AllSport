@@ -9,6 +9,8 @@
 'use client'
 
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import type React from 'react'
+import { useKeyboardInset } from '@/lib/useKeyboardInset'
 import EventIcon from '@/components/EventIcon'
 import { domainColor } from '@/components/EventIcon'
 import { isGameEntry } from '@/lib/matches'
@@ -24,7 +26,7 @@ import {
   takesSets, takesDistance, estimateFromSets, estimateFromDistance, paceLabel,
 } from '@/lib/naturalFormats'
 import {
-  formatPR, sportWDL, StepBtn, INP, QES_LBL, QES_CHIP, QES_INP,
+  formatPR, sportWDL, StepBtn, StepChips, INP, QES_LBL, QES_CHIP, QES_INP,
   type PlayEvent, type EntryRow,
 } from './chrome'
 
@@ -91,6 +93,13 @@ type QuickEntrySheetProps = {
   onDeleted: () => void
 }
 
+/** Edit, Delete and Keep on a score row: 44px to the thumb, with room between. */
+const ROW_BTN: React.CSSProperties = {
+  minHeight: '44px', minWidth: '64px', padding: '0 12px', flexShrink: 0, cursor: 'pointer',
+  borderRadius: 'var(--radius-pill)', background: 'none', border: '1px solid #333', color: '#bbb',
+  fontFamily: 'var(--font-label)', fontSize: '13px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase',
+}
+
 // What a training effort too short to estimate from does: no rank or colour.
 // Records start at a quarter of the reference too, so it sets none.
 function shortRecordHint(ref: number): string {
@@ -144,7 +153,21 @@ export default function QuickEntrySheet({
   // match the player never meant to touch.
   const keepExistingMatch = useRef(false)
 
-  const set = (patch: Partial<EntryVals>) => setV(prev => ({ ...prev, ...patch }))
+  // In a game, a sheet that opens filled in (today's best, the season PR) is
+  // not ready until the player changes something: one stray tap used to save a
+  // duplicate (v0.49.0.0). The pre-fill stays, because stepping up from the
+  // last score is the fastest way to enter the next. A training log (natural)
+  // is exempt: the same set twice is normal there.
+  const [touched, setTouched] = useState(false)
+  const [prefilled] = useState(() => !!myBestResult || seasonPRNum !== null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const keyboardInset = useKeyboardInset()
+  const levelRow = useRef<HTMLDivElement>(null)
+
+  const set = (patch: Partial<EntryVals>) => {
+    setTouched(true)
+    setV(prev => ({ ...prev, ...patch }))
+  }
 
   // Lock body scroll while the sheet is open
   useEffect(() => {
@@ -153,15 +176,31 @@ export default function QuickEntrySheet({
     return () => { document.body.style.overflow = prev }
   }, [])
 
+  // From the previous value, not this render's: a held stepper steps faster
+  // than the screen redraws.
   function bumpNum(field: 'weightKg' | 'repCount' | 'distanceVal' | 'scoreInput', delta: number, min = 0) {
-    const cur = parseFloat(v[field]) || 0
-    const next = Math.max(min, Math.round((cur + delta) * 100) / 100)
-    set({ [field]: String(next) } as Partial<EntryVals>)
+    setTouched(true)
+    setV(prev => {
+      const cur = parseFloat(prev[field]) || 0
+      return { ...prev, [field]: String(Math.max(min, Math.round((cur + delta) * 100) / 100)) }
+    })
   }
   function bumpTime(delta: number) {
-    const t = Math.max(0, (parseFloat(v.timeMins) || 0) * 60 + (parseFloat(v.timeSecs) || 0) + delta)
-    set({ timeMins: String(Math.floor(t / 60)), timeSecs: String(Math.round(t % 60)) })
+    setTouched(true)
+    setV(prev => {
+      const t = Math.max(0, (parseFloat(prev.timeMins) || 0) * 60 + (parseFloat(prev.timeSecs) || 0) + delta)
+      return { ...prev, timeMins: String(Math.floor(t / 60)), timeSecs: String(Math.round(t % 60)) }
+    })
   }
+
+  // The chosen level, scrolled into the middle of its row when the sheet
+  // opens and whenever it changes. Sideways only: the body does not jump.
+  useEffect(() => {
+    const row = levelRow.current
+    const chip = row?.querySelector<HTMLElement>('[aria-pressed="true"]')
+    if (!row || !chip) return
+    row.scrollLeft = chip.offsetLeft - row.clientWidth / 2 + chip.offsetWidth / 2
+  }, [v.difficultyTier, showHow])
 
   const setMode = natural && !!eventData && takesSets(eventData)
   const distanceMode = natural && !!eventData && takesDistance(eventData)
@@ -190,7 +229,8 @@ export default function QuickEntrySheet({
     : `Colours need the full ${fullRef}.`
   // A contest opponent who is not safe to meet today cannot be saved against.
   const unsafeOpponent = !!v.opponentId && !!opponentBlocked?.(v.opponentId)
-  const canSubmit = (scored !== null || shortEffort !== null) && !submitting && !locked && !unsafeOpponent
+  const needsTouch = !natural && prefilled && !touched
+  const canSubmit = (scored !== null || shortEffort !== null) && !submitting && !locked && !unsafeOpponent && !needsTouch
 
   const setRows = v.setRows ?? []
   const setSet = (i: number, patch: Partial<{ weightKg: string; reps: string }>) =>
@@ -225,6 +265,18 @@ export default function QuickEntrySheet({
     if (outcome.error) { setError(outcome.error); return }
     setEditingResult(null)
     onSubmitted(submittedLabel, { isPR: outcome.isPR })
+  }
+
+  // Every number field: typing replaces the pre-fill, and the keyboard's
+  // Done/Enter submits a valid score.
+  const numProps = {
+    enterKeyHint: 'done' as const,
+    onFocus: (e: React.FocusEvent<HTMLInputElement>) => e.currentTarget.select(),
+    onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key !== 'Enter') return
+      e.preventDefault()
+      void handleSheetSubmit()
+    },
   }
 
   async function handleSheetDelete(resultId: string) {
@@ -289,13 +341,18 @@ export default function QuickEntrySheet({
   const myResultsSorted = [...myResults].sort((a, b) => b.raw_score - a.raw_score)
 
   // zIndex above the top bar (1000–1010), so nothing ever sits over Submit.
+  // Three parts: header, a body that scrolls, and a footer that does not, so
+  // Submit is always under the thumb (v0.49.0.0). The sheet rides up on the
+  // on-screen keyboard (lib/useKeyboardInset.ts), or the footer would sit
+  // under it.
+  const footer = showHow || !locked
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 1100 }}>
       <style>{`@keyframes qesUp { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>
       <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.8)' }} />
       <div style={{
-        position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)',
-        width: 'min(640px, 100vw)', maxHeight: '88dvh', display: 'flex', flexDirection: 'column',
+        position: 'absolute', bottom: keyboardInset, left: '50%', transform: 'translateX(-50%)',
+        width: 'min(640px, 100vw)', maxHeight: `calc(88dvh - ${keyboardInset}px)`, display: 'flex', flexDirection: 'column',
         background: '#141414', border: '1px solid #2a2a2a', borderBottom: 'none',
         borderRadius: '24px 24px 0 0', overflow: 'hidden', animation: 'qesUp 0.28s cubic-bezier(0.16,1,0.3,1)',
       }}>
@@ -323,7 +380,7 @@ export default function QuickEntrySheet({
         </div>
 
         {/* Body */}
-        <div style={{ overflowY: 'auto', padding: '0 16px calc(20px + env(safe-area-inset-bottom, 0px))' }}>
+        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: footer ? '0 16px 14px' : '0 16px calc(20px + env(safe-area-inset-bottom, 0px))' }}>
           {showHow ? (
             <div>
               <div style={{ ...QES_LBL, color: '#F9B051' }}>How to perform</div>
@@ -355,58 +412,21 @@ export default function QuickEntrySheet({
                     reached={standards.reached} bodyweightPrompt={standards.bodyweightPrompt} />
                 </>
               )}
-              <button className="press" onClick={() => setShowHow(false)} style={{
-                width: '100%', marginTop: '18px', height: '50px', borderRadius: '999px',
-                border: '1px solid #2a2a2a', background: '#181818', color: '#fff', cursor: 'pointer',
-                fontFamily: 'var(--font-label)', textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '14px',
-              }}>Back to scoring</button>
             </div>
           ) : (
             <div>
-              {/* Session best + PR hints */}
-              <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
-                <div style={{ flex: 1, background: '#101010', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '9px 12px' }}>
-                  <div style={{ fontFamily: 'var(--font-label)', fontSize: '10.5px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.12em' }}>{bestLabel}</div>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '19px', color: myBestResult ? '#4DB26E' : '#444', marginTop: '2px' }}>
-                    {myBestResult ? (mode === 'sport' ? sportWDL(myResults) : myBestResult.score_label) : '—'}
+              {/* Today's best and the record to beat, one compact row */}
+              <div style={{ display: 'flex', gap: '8px', marginTop: '2px' }}>
+                {[
+                  { label: bestLabel, value: myBestResult ? (mode === 'sport' ? sportWDL(myResults) : myBestResult.score_label) : null, colour: '#4DB26E' },
+                  { label: prLabel, value: seasonPRNum !== null ? formatPR(seasonPRNum, mode, eventData?.slug, eventData) : null, colour: '#F9B051' },
+                ].map(t => (
+                  <div key={t.label} style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'baseline', gap: '8px', background: '#101010', border: '1px solid #1e1e1e', borderRadius: '10px', padding: '7px 10px' }}>
+                    <div style={{ fontFamily: 'var(--font-label)', fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.1em', flexShrink: 0 }}>{t.label}</div>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '17px', color: t.value ? t.colour : '#555', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.value ?? '—'}</div>
                   </div>
-                </div>
-                <div style={{ flex: 1, background: '#101010', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '9px 12px' }}>
-                  <div style={{ fontFamily: 'var(--font-label)', fontSize: '10.5px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.12em' }}>{prLabel}</div>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '19px', color: seasonPRNum !== null ? '#F9B051' : '#444', marginTop: '2px' }}>
-                    {seasonPRNum !== null ? formatPR(seasonPRNum, mode, eventData?.slug, eventData) : '—'}
-                  </div>
-                </div>
+                ))}
               </div>
-
-              {prRows.length > 0 && (
-                <>
-                  <div style={QES_LBL}>{eventData?.recordDistances?.length ? 'Your records by distance' : eventData?.hasDifficultyTiers ? 'Your records by level' : 'Your top scores'}</div>
-                  <PRBoardView
-                    ev={eventData}
-                    rows={prRows}
-                    currentLevel={tiers.length > 0 && v.difficultyTier ? tiers.findIndex(t => t.name === v.difficultyTier) : null}
-                    colour={domainColor(se.domain_number)}
-                    onPick={locked ? undefined : row => {
-                      keepExistingMatch.current = false
-                      setEditingResult(null)
-                      // A distance record pre-fills what was actually done;
-                      // the rest decode their one number.
-                      setV({
-                        ...EMPTY_VALS,
-                        ...(row.distance_m && row.time_seconds
-                          ? valsFromResult(mode, {
-                              raw_score: row.raw_score ?? 0, difficulty_tier: row.difficulty_tier,
-                              result_type: null, opponent_name: null, match_score: null,
-                              weight_kg: row.weight_kg ?? null, reps: null,
-                              time_seconds: row.time_seconds, distance_m: row.distance_m,
-                            })
-                          : row.raw_score !== null ? valsFromRaw(mode, eventData, row.raw_score) : {}),
-                      })
-                    }}
-                  />
-                </>
-              )}
 
               {locked ? (
                 <div style={{ background: '#2e0d0d', border: '1px solid #EA4742', borderRadius: '10px', padding: '12px 14px', marginTop: '14px', color: '#EA4742', fontSize: '13px' }}>
@@ -415,9 +435,9 @@ export default function QuickEntrySheet({
               ) : (
                 <>
                   {editingResult && (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#0d1a2d', border: '1px solid #2371BB55', borderRadius: '10px', padding: '8px 12px', marginTop: '14px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#0d1a2d', border: '1px solid #2371BB55', borderRadius: '10px', padding: '8px 12px', marginTop: '12px' }}>
                       <span style={{ fontSize: '12.5px', color: '#2371BB', fontFamily: 'var(--font-label)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Editing: {editingResult.score_label}</span>
-                      <button className="press" onClick={() => { keepExistingMatch.current = false; setEditingResult(null); setV({ ...EMPTY_VALS }) }} style={{ fontSize: '12px', color: '#888', background: 'none', border: '1px solid #333', borderRadius: '6px', padding: '3px 10px', cursor: 'pointer' }}>Cancel</button>
+                      <button className="press" onClick={() => { keepExistingMatch.current = false; setEditingResult(null); setTouched(true); setV({ ...EMPTY_VALS }) }} style={{ fontSize: '12px', color: '#aaa', background: 'none', border: '1px solid #333', borderRadius: 'var(--radius-pill)', minHeight: '36px', padding: '0 14px', cursor: 'pointer' }}>Cancel</button>
                     </div>
                   )}
 
@@ -434,24 +454,36 @@ export default function QuickEntrySheet({
                     </>
                   )}
 
-                  {/* Difficulty tier chips — the ladder is derived in a natural entry */}
+                  {/* Levels. The row stays (a ladder can be twelve long); the
+                      chosen one is scrolled into view, names wrap instead of
+                      being cut off, and the chosen level is spelled out under
+                      the row so nobody has to open How To to read it. */}
                   {showTierChips && !distanceMode && (
                     <>
-                      <div style={QES_LBL}>Difficulty tier — tap How To for descriptions</div>
-                      <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px' }}>
+                      <div style={QES_LBL}>Level</div>
+                      <div ref={levelRow} className="no-scrollbar" style={{ position: 'relative', display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px' }}>
                         {tiers.map(t => {
                           const sel = v.difficultyTier === t.name
                           return (
-                            <button className="press" key={t.level} onClick={() => set({ difficultyTier: t.name })} style={{
-                              flexShrink: 0, minWidth: '64px', padding: '8px 11px', borderRadius: '12px', cursor: 'pointer', textAlign: 'center',
+                            <button className="press" key={t.level} aria-pressed={sel} onClick={() => set({ difficultyTier: t.name })} style={{
+                              flexShrink: 0, minWidth: '64px', maxWidth: '120px', minHeight: '56px', padding: '8px 11px', borderRadius: '12px', cursor: 'pointer', textAlign: 'center',
                               background: sel ? '#4DB26E1f' : '#161616', border: `1px solid ${sel ? '#4DB26E' : '#2a2a2a'}`,
                             }}>
                               <div style={{ fontFamily: 'var(--font-label)', fontSize: '14px', fontWeight: 600, color: sel ? '#4DB26E' : '#fff' }}>D{t.level}</div>
-                              <div style={{ fontFamily: 'var(--font-label)', fontSize: '11px', color: sel ? '#4DB26E' : '#888', textTransform: 'uppercase', letterSpacing: '0.04em', maxWidth: '110px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.name}</div>
+                              <div style={{
+                                fontFamily: 'var(--font-label)', fontSize: '11px', lineHeight: 1.2, color: sel ? '#4DB26E' : '#999', textTransform: 'uppercase', letterSpacing: '0.04em',
+                                display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+                              }}>{t.name}</div>
                             </button>
                           )
                         })}
                       </div>
+                      {rung && (
+                        <div style={{ fontSize: '13px', color: '#999', marginTop: '6px', lineHeight: 1.4 }}>
+                          <span style={{ color: '#fff' }}>D{rung.level} {rung.name}</span>
+                          {rung.detail && <> · {rung.detail}</>}
+                        </div>
+                      )}
                     </>
                   )}
 
@@ -467,11 +499,11 @@ export default function QuickEntrySheet({
                       {setRows.map((r, i) => (
                         <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
                           <span style={{ width: 22, color: '#555', fontFamily: 'var(--font-label)', fontSize: 13 }}>{i + 1}</span>
-                          <input type="number" inputMode="decimal" value={r.weightKg} aria-label={`Set ${i + 1} weight`}
+                          <input type="number" {...numProps} inputMode="decimal" value={r.weightKg} aria-label={`Set ${i + 1} weight`}
                             onChange={e => setSet(i, { weightKg: e.target.value })} placeholder="kg"
                             style={{ ...QES_INP, fontSize: 22 }} />
                           <span style={{ color: '#555' }}>×</span>
-                          <input type="number" inputMode="numeric" value={r.reps} aria-label={`Set ${i + 1} reps`}
+                          <input type="number" {...numProps} inputMode="numeric" value={r.reps} aria-label={`Set ${i + 1} reps`}
                             onChange={e => setSet(i, { reps: e.target.value })} placeholder="reps"
                             style={{ ...QES_INP, fontSize: 22 }} />
                           <button className="press" onClick={() => set({ setRows: setRows.filter((_, j) => j !== i) })}
@@ -497,12 +529,12 @@ export default function QuickEntrySheet({
                     <>
                       <div style={QES_LBL}>Distance and time</div>
                       <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                        <input type="number" inputMode="decimal" value={v.distanceKm ?? ''} aria-label="Distance in kilometres"
+                        <input type="number" {...numProps} inputMode="decimal" value={v.distanceKm ?? ''} aria-label="Distance in kilometres"
                           onChange={e => set({ distanceKm: e.target.value })} placeholder="km" style={QES_INP} />
-                        <input type="number" inputMode="numeric" value={v.timeMins} aria-label="Minutes"
+                        <input type="number" {...numProps} inputMode="numeric" value={v.timeMins} aria-label="Minutes"
                           onChange={e => set({ timeMins: e.target.value })} placeholder="min" style={QES_INP} />
                         <span style={{ color: '#555', fontSize: 26, fontFamily: 'var(--font-display)' }}>:</span>
-                        <input type="number" inputMode="numeric" value={v.timeSecs} aria-label="Seconds"
+                        <input type="number" {...numProps} inputMode="numeric" value={v.timeSecs} aria-label="Seconds"
                           onChange={e => set({ timeSecs: e.target.value })} placeholder="sec" style={QES_INP} />
                       </div>
                       <div style={{ fontSize: 12.5, color: '#777', marginTop: 8, lineHeight: 1.5 }}>
@@ -518,10 +550,11 @@ export default function QuickEntrySheet({
                     <>
                       <div style={QES_LBL}>{mode === 'weight+reps' ? 'Weight (kg, 0 for bodyweight)' : 'Weight (kg)'}</div>
                       <div style={{ display: 'flex', gap: '10px' }}>
-                        <StepBtn onClick={() => bumpNum('weightKg', -2.5)}>−</StepBtn>
-                        <input type="number" inputMode="decimal" value={v.weightKg} onChange={e => set({ weightKg: e.target.value })} placeholder="0" style={QES_INP} />
-                        <StepBtn onClick={() => bumpNum('weightKg', 2.5)}>+</StepBtn>
+                        <StepBtn label="2.5kg less" onClick={() => bumpNum('weightKg', -2.5)}>−</StepBtn>
+                        <input type="number" {...numProps} inputMode="decimal" value={v.weightKg} onChange={e => set({ weightKg: e.target.value })} placeholder="0" style={QES_INP} />
+                        <StepBtn label="2.5kg more" onClick={() => bumpNum('weightKg', 2.5)}>+</StepBtn>
                       </div>
+                      <StepChips steps={[-5, -1, 1, 5]} unit="kg" onStep={d => bumpNum('weightKg', d)} />
                     </>
                   )}
 
@@ -530,10 +563,11 @@ export default function QuickEntrySheet({
                     <>
                       <div style={QES_LBL}>{rung?.unit === 'secs' ? 'Seconds' : 'Reps'}</div>
                       <div style={{ display: 'flex', gap: '10px' }}>
-                        <StepBtn onClick={() => bumpNum('repCount', -1, 0)}>−</StepBtn>
-                        <input type="number" inputMode="numeric" value={v.repCount} onChange={e => set({ repCount: e.target.value })} placeholder="0" style={QES_INP} />
-                        <StepBtn onClick={() => bumpNum('repCount', 1)}>+</StepBtn>
+                        <StepBtn label="One less" onClick={() => bumpNum('repCount', -1, 0)}>−</StepBtn>
+                        <input type="number" {...numProps} inputMode="numeric" value={v.repCount} onChange={e => set({ repCount: e.target.value })} placeholder="0" style={QES_INP} />
+                        <StepBtn label="One more" onClick={() => bumpNum('repCount', 1)}>+</StepBtn>
                       </div>
+                      <StepChips steps={[5, 10]} onStep={d => bumpNum('repCount', d)} />
                       {mode === 'strength' && (() => {
                         const w = parseFloat(v.weightKg) || 0
                         const r = parseInt(v.repCount) || 0
@@ -552,12 +586,13 @@ export default function QuickEntrySheet({
                     <>
                       <div style={QES_LBL}>{mode === 'time' || openDistance || isTimedEffort(eventData?.slug) ? 'Time' : 'Hold time'}</div>
                       <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                        <StepBtn onClick={() => bumpTime(-5)}>−</StepBtn>
-                        <input type="number" inputMode="numeric" value={v.timeMins} onChange={e => set({ timeMins: e.target.value })} placeholder="min" style={QES_INP} />
+                        <StepBtn label="5 seconds less" onClick={() => bumpTime(-5)}>−</StepBtn>
+                        <input type="number" {...numProps} inputMode="numeric" value={v.timeMins} onChange={e => set({ timeMins: e.target.value })} placeholder="min" style={QES_INP} />
                         <span style={{ color: '#555', fontSize: '26px', fontFamily: 'var(--font-display)' }}>:</span>
-                        <input type="number" inputMode="numeric" value={v.timeSecs} onChange={e => set({ timeSecs: e.target.value })} placeholder="sec" style={QES_INP} />
-                        <StepBtn onClick={() => bumpTime(5)}>+</StepBtn>
+                        <input type="number" {...numProps} inputMode="numeric" value={v.timeSecs} onChange={e => set({ timeSecs: e.target.value })} placeholder="sec" style={QES_INP} />
+                        <StepBtn label="5 seconds more" onClick={() => bumpTime(5)}>+</StepBtn>
                       </div>
+                      <StepChips steps={[-1, 1]} unit="s" onStep={bumpTime} />
                     </>
                   )}
 
@@ -566,9 +601,9 @@ export default function QuickEntrySheet({
                     <>
                       <div style={QES_LBL}>Time (seconds . centiseconds)</div>
                       <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                        <input type="number" inputMode="numeric" value={v.timeSecs} onChange={e => set({ timeSecs: e.target.value })} placeholder="sec" style={QES_INP} />
+                        <input type="number" {...numProps} inputMode="numeric" value={v.timeSecs} onChange={e => set({ timeSecs: e.target.value })} placeholder="sec" style={QES_INP} />
                         <span style={{ color: '#555', fontSize: '26px', fontFamily: 'var(--font-display)' }}>.</span>
-                        <input type="number" inputMode="numeric" value={v.sprintCs} onChange={e => set({ sprintCs: e.target.value })} placeholder="cs" min={0} max={99} style={QES_INP} />
+                        <input type="number" {...numProps} inputMode="numeric" value={v.sprintCs} onChange={e => set({ sprintCs: e.target.value })} placeholder="cs" min={0} max={99} style={QES_INP} />
                       </div>
                     </>
                   )}
@@ -578,7 +613,7 @@ export default function QuickEntrySheet({
                     <>
                       <div style={QES_LBL}>Distance</div>
                       <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                        <input type="number" inputMode="decimal" value={v.distanceVal} aria-label="Distance" onChange={e => set({ distanceVal: e.target.value })} placeholder="0" style={QES_INP} />
+                        <input type="number" {...numProps} inputMode="decimal" value={v.distanceVal} aria-label="Distance" onChange={e => set({ distanceVal: e.target.value })} placeholder="0" style={QES_INP} />
                         <div style={{ display: 'flex', borderRadius: '12px', overflow: 'hidden', flexShrink: 0 }} hidden={mode !== 'distance' && !openDistance}>
                           {(openDistance ? (['m', 'km'] as const) : (['m', 'cm'] as const)).map(u => (
                             <button className="press" key={u} onClick={() => set({ distanceUnit: u })} aria-pressed={v.distanceUnit === u} style={{
@@ -681,10 +716,10 @@ export default function QuickEntrySheet({
                         <>
                           <div style={QES_LBL}>Time (optional)</div>
                           <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                            <input type="number" inputMode="numeric" value={v.timeMins} aria-label="Minutes"
+                            <input type="number" {...numProps} inputMode="numeric" value={v.timeMins} aria-label="Minutes"
                               onChange={e => set({ timeMins: e.target.value })} placeholder="min" style={QES_INP} />
                             <span style={{ color: '#555', fontSize: '26px', fontFamily: 'var(--font-display)' }}>:</span>
-                            <input type="number" inputMode="decimal" value={v.timeSecs} aria-label="Seconds"
+                            <input type="number" {...numProps} inputMode="decimal" value={v.timeSecs} aria-label="Seconds"
                               onChange={e => set({ timeSecs: e.target.value })} placeholder="sec" style={QES_INP} />
                           </div>
                           <div style={{ fontSize: 12, color: '#777', marginTop: 6, lineHeight: 1.4 }}>
@@ -700,9 +735,9 @@ export default function QuickEntrySheet({
                     <>
                       <div style={QES_LBL}>Stroke count</div>
                       <div style={{ display: 'flex', gap: '10px' }}>
-                        <StepBtn onClick={() => bumpNum('scoreInput', -1, 1)}>−</StepBtn>
-                        <input type="number" inputMode="numeric" value={v.scoreInput} onChange={e => set({ scoreInput: e.target.value })} placeholder="e.g. 18" style={QES_INP} />
-                        <StepBtn onClick={() => bumpNum('scoreInput', 1)}>+</StepBtn>
+                        <StepBtn label="One stroke less" onClick={() => bumpNum('scoreInput', -1, 1)}>−</StepBtn>
+                        <input type="number" {...numProps} inputMode="numeric" value={v.scoreInput} onChange={e => set({ scoreInput: e.target.value })} placeholder="e.g. 18" style={QES_INP} />
+                        <StepBtn label="One stroke more" onClick={() => bumpNum('scoreInput', 1)}>+</StepBtn>
                       </div>
                     </>
                   )}
@@ -719,18 +754,6 @@ export default function QuickEntrySheet({
                     </>
                   )}
 
-                  {error && <div style={{ color: '#EA4742', fontSize: '13px', marginTop: '12px' }}>{error}</div>}
-
-                  <button className="press" onClick={handleSheetSubmit} disabled={!canSubmit} style={{
-                    width: '100%', marginTop: '18px', height: '58px', border: 'none', borderRadius: '999px',
-                    cursor: canSubmit ? 'pointer' : 'default',
-                    background: canSubmit ? 'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)' : '#1a1a1a',
-                    color: canSubmit ? '#0a0a0a' : '#555',
-                    fontFamily: 'var(--font-label)', textTransform: 'uppercase',
-                    letterSpacing: '0.12em', fontSize: '16px', fontWeight: 600,
-                  }}>
-                    {submitting ? 'Saving...' : scored || shortEffort ? `${editingResult ? 'Save' : 'Submit'} — ${(scored ?? shortEffort)!.score_label}` : 'Enter your score'}
-                  </button>
                 </>
               )}
 
@@ -746,7 +769,7 @@ export default function QuickEntrySheet({
                       <div key={r.id} style={{
                         background: editingResult?.id === r.id ? '#0d1a2d' : '#101010',
                         border: `1px solid ${editingResult?.id === r.id ? '#2371BB55' : '#1e1e1e'}`,
-                        borderRadius: '10px', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '10px',
+                        borderRadius: '10px', padding: '6px 6px 6px 14px', display: 'flex', alignItems: 'center', gap: '8px', minHeight: '56px',
                       }}>
                         <div style={{ fontSize: '15px', color: '#fff', flex: 1 }}>{r.score_label}</div>
                         {r.is_pr && (
@@ -755,28 +778,95 @@ export default function QuickEntrySheet({
                         {r.pending && (
                           <div style={{ fontSize: '11px', color: '#888', fontFamily: 'var(--font-label)', letterSpacing: '0.08em', textTransform: 'uppercase', flexShrink: 0 }}>Saving</div>
                         )}
-                        {!locked && !r.pending && (
+                        {!locked && !r.pending && (confirmDeleteId === r.id ? (
+                          <>
+                            <span style={{ fontFamily: 'var(--font-label)', fontSize: '13px', color: '#EA4742', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Delete?</span>
+                            <button className="press" onClick={() => { setConfirmDeleteId(null); void handleSheetDelete(r.id) }}
+                              style={{ ...ROW_BTN, background: '#EA4742', borderColor: '#EA4742', color: '#fff' }}>Delete</button>
+                            <button className="press" onClick={() => setConfirmDeleteId(null)} style={ROW_BTN}>Keep</button>
+                          </>
+                        ) : (
                           <>
                             <button className="press" onClick={() => {
                               const opp = opponentIdFor(r.opponent_name)
                               keepExistingMatch.current = !!r.opponent_name && !opp
                               setEditingResult(r)
+                              setTouched(true)
                               setV({ ...EMPTY_VALS, ...valsFromResult(mode, r), opponentId: opp ?? '' })
-                            }}
-                              style={{ background: 'none', border: '1px solid #2371BB44', borderRadius: '4px', color: '#2371BB', cursor: 'pointer', fontSize: '11px', padding: '2px 8px', flexShrink: 0, fontFamily: 'var(--font-label)', fontWeight: 700 }}>Edit</button>
-                            <button className="press" onClick={() => handleSheetDelete(r.id)}
-                              style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: '14px', padding: '2px 6px', flexShrink: 0 }}>✕</button>
+                            }} style={{ ...ROW_BTN, color: '#7ab4ff', borderColor: '#2371BB66' }}>Edit</button>
+                            <button className="press" onClick={() => setConfirmDeleteId(r.id)} aria-label={`Delete ${r.score_label}`}
+                              style={{ ...ROW_BTN, color: '#aaa' }}>Delete</button>
                           </>
-                        )}
+                        ))}
                       </div>
                     ))}
                   </div>
                 </>
               )}
 
+              {prRows.length > 0 && (
+                <>
+                  <div style={QES_LBL}>{eventData?.recordDistances?.length ? 'Your records by distance' : eventData?.hasDifficultyTiers ? 'Your records by level' : 'Your top scores'}</div>
+                  <PRBoardView
+                    ev={eventData}
+                    rows={prRows}
+                    currentLevel={tiers.length > 0 && v.difficultyTier ? tiers.findIndex(t => t.name === v.difficultyTier) : null}
+                    colour={domainColor(se.domain_number)}
+                    onPick={locked ? undefined : row => {
+                      keepExistingMatch.current = false
+                      setTouched(true)
+                      setEditingResult(null)
+                      // A distance record pre-fills what was actually done;
+                      // the rest decode their one number.
+                      setV({
+                        ...EMPTY_VALS,
+                        ...(row.distance_m && row.time_seconds
+                          ? valsFromResult(mode, {
+                              raw_score: row.raw_score ?? 0, difficulty_tier: row.difficulty_tier,
+                              result_type: null, opponent_name: null, match_score: null,
+                              weight_kg: row.weight_kg ?? null, reps: null,
+                              time_seconds: row.time_seconds, distance_m: row.distance_m,
+                            })
+                          : row.raw_score !== null ? valsFromRaw(mode, eventData, row.raw_score) : {}),
+                      })
+                    }}
+                  />
+                </>
+              )}
+
             </div>
           )}
         </div>
+
+        {/* Footer: pinned, never scrolls */}
+        {footer && (
+          <div style={{ flexShrink: 0, padding: '10px 16px calc(12px + env(safe-area-inset-bottom, 0px))', borderTop: '1px solid #1e1e1e', background: '#141414' }}>
+            {showHow ? (
+              <button className="press" onClick={() => setShowHow(false)} style={{
+                width: '100%', height: '52px', borderRadius: '999px',
+                border: '1px solid #2a2a2a', background: '#181818', color: '#fff', cursor: 'pointer',
+                fontFamily: 'var(--font-label)', textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '14px',
+              }}>Back to scoring</button>
+            ) : (
+              <>
+                {error && <div role="alert" style={{ color: '#EA4742', fontSize: '13px', marginBottom: '8px' }}>{error}</div>}
+                <button className="press" onClick={handleSheetSubmit} disabled={!canSubmit} style={{
+                  width: '100%', height: '58px', border: 'none', borderRadius: '999px',
+                  cursor: canSubmit ? 'pointer' : 'default',
+                  background: canSubmit ? 'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)' : '#1a1a1a',
+                  color: canSubmit ? '#0a0a0a' : '#777',
+                  fontFamily: 'var(--font-label)', textTransform: 'uppercase',
+                  letterSpacing: '0.12em', fontSize: '16px', fontWeight: 600,
+                }}>
+                  {submitting ? 'Saving...'
+                    : needsTouch ? 'Change something to submit'
+                    : scored || shortEffort ? `${editingResult ? 'Save' : 'Submit'} — ${(scored ?? shortEffort)!.score_label}`
+                    : 'Enter your score'}
+                </button>
+              </>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
