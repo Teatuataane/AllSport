@@ -1,10 +1,11 @@
 'use client'
 import { opponentPicks as pickOpponents } from '@/lib/matches'
-import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient, getSessionUser } from '@/lib/supabase-browser'
 import { getEventByName, getEventBySlug, type EventData } from '@/lib/eventData'
-import { parseLocalDate, toNZDateString } from '@/lib/dates'
+import { toNZDateString } from '@/lib/dates'
+import { nzYear } from '@/lib/seasonYear'
 import EventIcon, { domainColor } from '@/components/EventIcon'
 import { type EntryVals, scoreColumns } from '@/lib/scoring'
 import {
@@ -13,7 +14,7 @@ import {
 } from '@/lib/judgeRoster'
 // The play screen's shared pieces. A personal game (app/workout/[id]) draws
 // with exactly these, so scoring keeps ONE code path.
-import QuickEntrySheet, { type SubmitOutcome } from '@/components/play/QuickEntrySheet'
+import QuickEntrySheet from '@/components/play/QuickEntrySheet'
 import AddEventsSheet from '@/components/play/AddEventsSheet'
 import GameEventList from '@/components/play/GameEventList'
 import { playList, domainsCovered, type PlaySlot, type DomainGroup } from '@/lib/gameSwaps'
@@ -28,7 +29,9 @@ import { gameEventLine, gameEventLineText } from '@/lib/gameEventLine'
 import { recheckGrades, type ConferredColour } from '@/lib/recheckGrades'
 import { usePlayerGames } from '@/lib/usePlayerGames'
 import { usePRRows } from '@/lib/usePRRows'
-import { isNewPR, mergeRows, type PRRow } from '@/lib/prBoard'
+import { hasGameRow, isNewPR, mergeRows, seasonGameBest, type PRRow } from '@/lib/prBoard'
+import { useSessionResults, type SaveJob, type SessionResult } from '@/lib/useSessionResults'
+import GameBanner from '@/components/play/GameBanner'
 import { averageBefore, awardsForGame, nextStep } from '@/lib/gameReport'
 import { ColourScore, EarnedColours, NextTime, PlacementHeader } from '@/components/GameReportParts'
 import { prMoments, prsAtGame } from '@/lib/prCounts'
@@ -39,7 +42,6 @@ import { loadGameBoard, loadGamePlace } from '@/lib/loadGamePlace'
 import { GameBoardList } from '@/components/GameBoardList'
 import type { GamePlace } from '@/lib/gameReport'
 import { useGameSwaps } from '@/lib/useGameSwaps'
-import { announceResultsChanged, onResultsChanged } from '@/lib/liveSession'
 import {
   formatPR, sportWDL, sectionLabel, ProgressSegments, INP, QES_LBL as SHEET_LBL,
 } from '@/components/play/chrome'
@@ -58,25 +60,7 @@ type SessionEvent = {
   display_order: number
 }
 
-type Result = {
-  id: string
-  player_id: string | null
-  player_name: string
-  event_id: string
-  raw_score: number
-  score_label: string
-  placement: number | null
-  points_earned: number | null
-  difficulty_tier: string | null
-  result_type: string | null
-  opponent_name: string | null
-  match_score: string | null
-  weight_kg: number | null
-  reps: number | null
-  time_seconds: number | null
-  distance_m?: number | null
-  is_pr: boolean
-}
+type Result = SessionResult
 
 // Age arrives pre-derived from the players_public view rather than as a raw
 // date_of_birth: the live session only ever needs the Junior age chips and the
@@ -88,12 +72,14 @@ type PlayerInfo = { division: string; age_years?: number | null; age_group?: str
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function fmtCountdown(secs: number): string {
-  const m = Math.floor(secs / 60)
-  const s = secs % 60
-  return `${m}:${s.toString().padStart(2, '0')}`
+/** The profile the rest of the app is showing, or null (blocked site data included). */
+function storedActivePlayerId(): string | null {
+  try {
+    return window.localStorage.getItem('allsport_active_player_id')
+  } catch {
+    return null
+  }
 }
-
 
 function ordinal(n: number): string {
   const s = ['th', 'st', 'nd', 'rd']
@@ -101,12 +87,31 @@ function ordinal(n: number): string {
   return n + (s[(v - 20) % 10] ?? s[v] ?? s[0])
 }
 
-// Builds the results payload and inserts (or updates) it, including the PR flag.
-// Returns { error } on failure; on success error is null and isPR describes the
-// submission so the caller can pick the right toast.
-async function submitEntry(args: {
+/** This game's own scores on one event as records rows, for the PR rule and the
+    records list. The loaded rows are as of page load, so these are merged in
+    (lib/prBoard.ts `mergeRows`): today's score shows without a re-read. */
+function liveRows(myResults: readonly Result[]): PRRow[] {
+  const today = toNZDateString(new Date())
+  return myResults.map(r => ({
+    id: r.id, raw_score: r.raw_score, score_label: r.score_label,
+    difficulty_tier: r.difficulty_tier, date: today, source: 'game',
+    distance_m: r.distance_m ?? null, time_seconds: r.time_seconds, weight_kg: r.weight_kg,
+  }))
+}
+
+const BLANK_RESULT: Omit<Result, 'id' | 'player_id' | 'player_name' | 'event_id' | 'raw_score' | 'score_label' | 'is_pr'> = {
+  placement: null, points_earned: null, difficulty_tier: null, result_type: null, opponent_name: null,
+  match_score: null, weight_kg: null, reps: null, time_seconds: null, distance_m: null,
+}
+
+// Works out everything a save writes, including the PR flag, BEFORE any
+// request, so the screen can draw the score at once (v0.48.0.0). Nothing here
+// waits: an invalid score comes back as an error for the sheet, a valid one as
+// the job lib/useSessionResults.ts writes behind the screen.
+function prepareEntry(args: {
   sessionId: string
   eventId: string
+  eventName: string
   playerId: string | null
   playerName: string
   mode: string
@@ -119,71 +124,39 @@ async function submitEntry(args: {
   // Opponent player ids to record as a match, or null to leave matches alone.
   // Decided by the sheet, which knows whether an edit touched the opponent.
   matchOpponents: string[] | null
-}): Promise<SubmitOutcome> {
-  const { sessionId, eventId, playerId, playerName, mode, eventData, v, myResults, prRows, editingResultId, matchOpponents } = args
+}): { error: string; isPR: false } | { error: null; isPR: boolean; job: SaveJob } {
+  const { sessionId, eventId, eventName, playerId, playerName, mode, eventData, v, myResults, prRows, editingResultId, matchOpponents } = args
   // One encoder for a game score and a logged best effort (lib/scoring.ts).
   const scored = scoreColumns(mode, eventData, v)
   if (!scored) return { error: 'Enter a valid score first', isPR: false }
-  try {
-    const payload: Record<string, unknown> = {
-      session_id: sessionId, event_id: eventId, player_id: playerId || null,
-      player_name: playerName, ...scored,
-    }
-
-    // A PR is a new best at this level (or a new number one on an event with no
-    // levels): lib/prBoard.ts owns the rule. The loaded rows are as of page
-    // load, so this session's own scores are merged in, and the row being
-    // edited is left out of its own comparison.
-    const live: PRRow[] = myResults.map(r => ({
-      id: r.id, raw_score: r.raw_score, score_label: r.score_label,
-      difficulty_tier: r.difficulty_tier, date: new Date().toISOString().slice(0, 10), source: 'game',
-      distance_m: r.distance_m ?? null, time_seconds: r.time_seconds, weight_kg: r.weight_kg,
-    }))
-    // A distance event keeps a record per distance, read off what was done.
-    const newIsPR = playerId !== null && isNewPR(eventData, mergeRows(prRows, live), {
-      raw_score: scored.raw_score, difficulty_tier: scored.difficulty_tier ?? null,
-      distance_m: scored.distance_m ?? null, time_seconds: scored.time_seconds ?? null, weight_kg: scored.weight_kg ?? null,
-    }, editingResultId)
-    payload.is_pr = newIsPR
-    // Effort tasks are retired, so effort_task_completions is no longer
-    // written: a new row takes the column default (0), and an edit leaves a
-    // row's earlier credit alone rather than wiping it mid-season.
-
-    let resultId: string
-    if (editingResultId) {
-      const { data, error: dbErr } = await supabase.from('results').update(payload).eq('id', editingResultId).select('id')
-      if (dbErr) throw dbErr
-      if (!data || data.length === 0) throw new Error('This score was deleted by a kaiwhakawā — close and submit it as a new score')
-      resultId = editingResultId
-    } else {
-      // The new row's id anchors its match, so ask for it back.
-      const { data: inserted, error: dbErr } = await supabase.from('results').insert(payload).select('id').single()
-      if (dbErr) throw dbErr
-      if (!inserted) throw new Error('The score did not save — try again')
-      resultId = inserted.id
-    }
-    // The score is the record; the match hangs off it. It is written only once
-    // the score has saved, and a failure here must never turn a saved score into
-    // an error toast. Guests have no stable identity, so they are never matched.
-    if (playerId && matchOpponents !== null) await recordMatch(resultId, matchOpponents)
-    // An edit replaces a completion, it does not add one.
-    return { error: null, isPR: newIsPR }
-  } catch (e: unknown) {
-    return { error: e instanceof Error ? e.message : 'Submission failed', isPR: false }
+  // A PR is a new best at this level (or a new number one on an event with no
+  // levels): lib/prBoard.ts owns the rule. This game's own scores are merged
+  // in, and the row being edited is left out of its own comparison. A distance
+  // event keeps a record per distance, read off what was done.
+  const isPR = playerId !== null && isNewPR(eventData, mergeRows(prRows, liveRows(myResults)), {
+    raw_score: scored.raw_score, difficulty_tier: scored.difficulty_tier ?? null,
+    distance_m: scored.distance_m ?? null, time_seconds: scored.time_seconds ?? null, weight_kg: scored.weight_kg ?? null,
+  }, editingResultId)
+  // Effort tasks are retired, so effort_task_completions is no longer
+  // written: a new row takes the column default (0), and an edit leaves a
+  // row's earlier credit alone rather than wiping it mid-season.
+  const payload: Record<string, unknown> = {
+    session_id: sessionId, event_id: eventId, player_id: playerId || null,
+    player_name: playerName, ...scored, is_pr: isPR,
   }
-}
-
-// Records the head-to-head match behind one game result (migration
-// 20260914020739). The server reads session, event, player and outcome off the
-// result row itself, so all this sends is who the opponents were — the match
-// cannot claim an outcome the score does not.
-//
-// Best-effort by design. PGRST202 means the function does not exist yet: the
-// code shipped before the migration was applied, so recording simply has not
-// started, and that is not an error worth showing a player mid-game.
-async function recordMatch(resultId: string, opponentIds: string[]): Promise<void> {
-  const { error } = await supabase.rpc('record_match', { p_result_id: resultId, p_opponent_ids: opponentIds })
-  if (error && error.code !== 'PGRST202') console.warn('record_match:', error.message)
+  // An edit writes only these columns, so the row it draws is the old row
+  // with them laid over. The score is the record and the match hangs off it,
+  // written once the score has saved; guests are never matched.
+  const base = editingResultId ? myResults.find(r => r.id === editingResultId) : undefined
+  const row = { ...BLANK_RESULT, ...base, ...payload, id: editingResultId ?? '' } as Result
+  return {
+    error: null, isPR,
+    job: {
+      payload, row, editingId: editingResultId,
+      matchOpponents: playerId ? matchOpponents : null,
+      what: `${eventName} ${scored.score_label}`,
+    },
+  }
 }
 
 // ─── Event list row (player redesign) ─────────────────────────────────────────
@@ -191,12 +164,6 @@ async function recordMatch(resultId: string, opponentIds: string[]): Promise<voi
 /** The best raw score in a set of rows, or null when there are none. */
 function bestRaw(rows: readonly Result[]): number | null {
   return rows.length === 0 ? null : rows.reduce((b, r) => Math.max(b, r.raw_score), -Infinity)
-}
-
-/** Deleting a score is this page's job; the sheet only asks for it. */
-async function deleteResult(id: string): Promise<string | null> {
-  const { error } = await supabase.from('results').delete().eq('id', id)
-  return error?.message ?? null
 }
 
 function eventDivisionRank(
@@ -233,7 +200,7 @@ function JudgeChip({ label, active, tone = 'player', onClick }: {
   const idleColor = tone === 'guest' ? '#F9B051' : tone === 'add' ? '#888' : '#ccc'
   const idleBorder = tone === 'guest' ? '#F9B05144' : tone === 'add' ? '#2a2a2a' : '#333'
   return (
-    <button onClick={onClick} style={{
+    <button className="press" onClick={onClick} style={{
       fontFamily: 'var(--font-label)', textTransform: 'uppercase', letterSpacing: '0.08em',
       fontSize: '13px', fontWeight: 600, flexShrink: 0, cursor: 'pointer',
       borderRadius: '999px', padding: '0 15px', minHeight: '44px',
@@ -255,7 +222,7 @@ function JudgeRosterRow({ name, isGuest, scoredIds, events, onOpen }: {
   const done = events.filter(ev => scoredIds.has(ev.id)).length
   const complete = events.length > 0 && done === events.length
   return (
-    <button onClick={onOpen} style={{
+    <button className="press" onClick={onOpen} style={{
       width: '100%', textAlign: 'left', display: 'block', padding: '12px 14px', marginBottom: '8px',
       borderRadius: '16px', cursor: 'pointer', background: '#111',
       border: `1px solid ${complete ? '#1e3a28' : '#1e1e1e'}`, color: '#fff', fontFamily: 'var(--font-body)',
@@ -289,12 +256,13 @@ function medalColor(rank: number): string { return rank <= 3 ? '#000' : '#aaa' }
 // ─── JudgeSummaryTab ──────────────────────────────────────────────────────────
 
 function JudgeSummaryTab({
-  events, results, playerInfoMap, onScoreChanged,
+  events, results, playerInfoMap, onDelete,
 }: {
   events: SessionEvent[]
   results: Result[]
   playerInfoMap: Record<string, PlayerInfo>
-  onScoreChanged: () => void
+  /** The page's one delete path: hides the row now, restores it with an error if it fails. */
+  onDelete: (id: string, what: string) => void
 }) {
   const [expandedPlayerId, setExpandedPlayerId] = useState<string | null>(null)
   const [editingKey, setEditingKey] = useState<string | null>(null)
@@ -333,10 +301,9 @@ function JudgeSummaryTab({
     return rows.sort((a, b) => a.playerName.localeCompare(b.playerName))
   }
 
-  async function handleDelete(resultId: string) {
-    await supabase.from('results').delete().eq('id', resultId)
+  function handleDelete(r: Result, eventName: string) {
+    onDelete(r.id, `${eventName} ${r.score_label}`)
     setEditingKey(null)
-    onScoreChanged()
   }
 
   function renderSummarySection(pool: 'mens' | 'womens' | 'juniors', title: string) {
@@ -354,7 +321,7 @@ function JudgeSummaryTab({
             const isExpanded = expandedPlayerId === entry.playerId
             return (
               <div key={entry.playerId} style={{ marginBottom: '6px' }}>
-                <button
+                <button className="press"
                   onClick={() => setExpandedPlayerId(isExpanded ? null : entry.playerId)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: '10px', width: '100%',
@@ -388,7 +355,7 @@ function JudgeSummaryTab({
                             <div style={{ fontSize: '12px', color: ed.displayLabel ? '#ccc' : '#333', minWidth: '60px', textAlign: 'right' }}>
                               {ed.displayLabel ?? '—'}
                             </div>
-                            <button
+                            <button className="press"
                               onClick={() => setEditingKey(isEditingThis ? null : editKey)}
                               style={{
                                 background: 'none',
@@ -412,15 +379,15 @@ function JudgeSummaryTab({
                                       {r.difficulty_tier && (
                                         <div style={{ fontSize: '10px', color: '#B87DB5', fontFamily: 'var(--font-label)' }}>{r.difficulty_tier}</div>
                                       )}
-                                      <button
-                                        onClick={() => handleDelete(r.id)}
+                                      {!r.pending && <button className="press"
+                                        onClick={() => handleDelete(r, ed.eventName)}
                                         style={{
                                           background: '#EA474222', border: '1px solid #EA474244',
                                           borderRadius: '4px', color: '#EA4742', cursor: 'pointer',
                                           fontSize: '11px', padding: '3px 10px',
                                           fontFamily: 'var(--font-label)', fontWeight: 700,
                                         }}
-                                      >Delete</button>
+                                      >Delete</button>}
                                     </div>
                                   ))}
                                 </div>
@@ -623,9 +590,9 @@ function LeaderboardTab({
             <div style={titleStyle}>{juniorAge !== null ? `Juniors, age ${juniorAge}` : 'Juniors'}</div>
             {juniorAges.length > 0 && (
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '10px' }}>
-                <button onClick={() => setJuniorAge(null)} style={chipStyle(juniorAge === null)}>All</button>
+                <button className="press" onClick={() => setJuniorAge(null)} style={chipStyle(juniorAge === null)}>All</button>
                 {juniorAges.map(age => (
-                  <button key={age} onClick={() => setJuniorAge(age === juniorAge ? null : age)} style={chipStyle(juniorAge === age)}>
+                  <button className="press" key={age} onClick={() => setJuniorAge(age === juniorAge ? null : age)} style={chipStyle(juniorAge === age)}>
                     Age {age}
                   </button>
                 ))}
@@ -759,7 +726,7 @@ function SessionEndTakeover({
           <div style={{ flex: 1, fontFamily: 'var(--font-label)', fontSize: '12px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.16em' }}>
             Session complete
           </div>
-          <button onClick={onDismiss} style={{
+          <button className="press" onClick={onDismiss} style={{
             width: '38px', height: '38px', borderRadius: '10px', cursor: 'pointer', flexShrink: 0,
             background: '#181818', border: '1px solid #2a2a2a', color: '#999', fontSize: '15px',
           }}>✕</button>
@@ -832,7 +799,7 @@ function SessionEndTakeover({
             textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '14px',
           }}>Full game report →</a>
 
-          <button onClick={onDismiss} style={{
+          <button className="press" onClick={onDismiss} style={{
             width: '100%', marginTop: '10px', height: '54px', border: 'none', borderRadius: '999px',
             cursor: 'pointer', background: RAINBOW_G, color: '#0a0a0a',
             fontFamily: 'var(--font-label)', textTransform: 'uppercase',
@@ -847,14 +814,18 @@ function SessionEndTakeover({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 // One stable empty map, so a not-yet-loaded PR set keeps the same identity across renders.
-const NO_PRS: Record<string, number | string | null> = {}
 
 export default function SessionPage() {
   const { sessionId } = useParams<{ sessionId: string }>()
 
   const [session, setSession] = useState<Record<string, unknown> | null>(null)
   const [events, setEvents] = useState<SessionEvent[]>([])
-  const [results, setResults] = useState<Result[]>([])
+  // Every score in the game. `results` is what the screen draws, including a
+  // score still on its way to the server; `confirmedResults` is only what the
+  // server has confirmed (lib/useSessionResults.ts).
+  const live = useSessionResults(sessionId as string)
+  const results = live.results
+  const confirmedResults = live.confirmed
   const [player, setPlayer] = useState<Record<string, unknown> | null>(null)
   const [familyMembers, setFamilyMembers] = useState<Record<string, unknown>[]>([])
   const [activePlayerId, setActivePlayerId] = useState<string | null>(null)
@@ -862,21 +833,12 @@ export default function SessionPage() {
   // Distinct from activePlayerId, which is whose tab is open: a parent scoring
   // for their child writes the child's workout under their own id.
   const [authUserId, setAuthUserId] = useState<string | null>(null)
-  // Keyed by the player and events they were loaded for (see prsKey below), so a
-  // family-tab switch never shows the previous player's PRs, without resetting
-  // state inside the loading effect.
-  const [seasonPRsLoaded, setSeasonPRsLoaded] = useState<{ key: string; prs: Record<string, number | string | null> } | null>(null)
   const [activeTab, setActiveTab] = useState<string>('leaderboard')
   const [sheetEventId, setSheetEventId] = useState<string | null>(null)
   const [toast, setToast] = useState<{ eventName: string; label: string; isPR: boolean; isNewEvent: boolean; playerName?: string } | null>(null)
-  // All-time played event names, for "new event unlocked". Keyed by player, so a
-  // switch reads as "not loaded yet" (null) until that player's set arrives.
-  const [playedLoaded, setPlayedLoaded] = useState<{ id: string; names: Set<string> } | null>(null)
   const [fullHousePulseId, setFullHousePulseId] = useState<string | null>(null)
   // The takeover key this page dismissed; localStorage covers earlier visits.
   const [takeoverDismissedKey, setTakeoverDismissedKey] = useState<string | null>(null)
-  const [timeLeft, setTimeLeft] = useState<number | null>(null)
-  const [preSessionSecsLeft, setPreSessionSecsLeft] = useState<number | null>(null)
   const [sessionEnded, setSessionEnded] = useState(false)
   // The database has CONFIRMED the game is closed. sessionEnded flips the
   // moment the clock runs out, before close_expired_sessions() has run, and a
@@ -890,16 +852,6 @@ export default function SessionPage() {
   const [judgeGuestDraft, setJudgeGuestDraft] = useState('') // "+ Guest" name field; '' = field hidden
   const [judgeGuestOpen, setJudgeGuestOpen] = useState(false)
   const [sessionPlayers, setSessionPlayers] = useState<{ id: string; name: string }[]>([])
-  // Keyed like seasonPRsLoaded: switching target is one chip tap, so the previous
-  // player's PRs must never linger as the new player's "Season PR".
-  const [judgePRsLoaded, setJudgePRsLoaded] = useState<{ key: string; prs: Record<string, number | string | null> } | null>(null)
-
-  const eventsKey = events.map(e => e.id).join(',')
-  const seasonPRsKey = activePlayerId && events.length > 0 ? `${activePlayerId}|${eventsKey}` : null
-  const seasonPRs = seasonPRsKey && seasonPRsLoaded?.key === seasonPRsKey ? seasonPRsLoaded.prs : NO_PRS
-  const judgePRsKey = isJudge && judgeTargetId && events.length > 0 ? `${judgeTargetId}|${eventsKey}` : null
-  const judgePRs = judgePRsKey && judgePRsLoaded?.key === judgePRsKey ? judgePRsLoaded.prs : NO_PRS
-  const playedEventNames = activePlayerId && playedLoaded?.id === activePlayerId ? playedLoaded.names : null
 
   const allPlayers = player ? [player, ...familyMembers] : []
   const activePlayer = allPlayers.find(p => p.id === activePlayerId) ?? player
@@ -935,8 +887,9 @@ export default function SessionPage() {
   // target). At page level for the same reason as the swaps. It re-reads
   // whenever the game's results change, since a match is recorded with them.
   const contestSe = events.find(e => e.id === sheetEventId && isSwissContest(e.event_slug)) ?? null
+  // Keyed on confirmed rows: a score still on its way has no match yet.
   const contest = useContest(contestSe && !sessionEnded ? sessionId as string : null, contestSe?.event_name ?? null,
-    swapPlayerId, `${results.length}|${results.reduce((m, r) => (r.id > m ? r.id : m), '')}`)
+    swapPlayerId, `${confirmedResults.length}|${confirmedResults.reduce((m, r) => (r.id > m ? r.id : m), '')}`)
   const contestNames = (ids: readonly string[]): ContestName[] => ids.flatMap(id => {
     const record = contest.table.get(id)
     const name = results.find(r => r.player_id === id)?.player_name
@@ -957,8 +910,19 @@ export default function SessionPage() {
   // Lifetime scores on the events in this game, for the records list and the PR
   // rule: the viewed player's, and (on the kaiwhakawā tab) the scored player's.
   const prSlugs = [...events.map(e => e.event_slug), ...swaps.chosen]
-  const { rows: playerPRRows, reload: reloadPlayerPRs } = usePRRows(activePlayerId, prSlugs)
-  const { rows: targetPRRows, reload: reloadTargetPRs } = usePRRows(isJudge ? (judgeTarget?.id ?? null) : null, prSlugs)
+  // One read each, and everything else about a player's history on today's
+  // events is derived from it: the records list, the PR rule, the Season PR
+  // tile and "new event unlocked" (v0.48.0.0; three more loaders used to read
+  // the same results again). Not re-read after a save: today's scores are
+  // merged in from `results` (`prRowsFor` below).
+  const { rows: playerPRRows, loaded: playerPRsLoaded } = usePRRows(activePlayerId, prSlugs)
+  const { rows: targetPRRows } = usePRRows(isJudge ? (judgeTarget?.id ?? null) : null, prSlugs)
+  const thisYear = nzYear()
+  /** A player's records on an event with this game's scores merged in. */
+  const prRowsFor = (rowsBySlug: Record<string, PRRow[]>, slug: string, today: readonly Result[]) =>
+    mergeRows((rowsBySlug[slug] ?? []).filter(r => !live.removedIds.has(r.id)), liveRows(today))
+  /** The Season PR tile: their best game score on the event this NZ year. */
+  const seasonPRFor = (rowsBySlug: Record<string, PRRow[]>, slug: string) => seasonGameBest(rowsBySlug[slug] ?? [], thisYear)
   // The domain whose + was tapped: its sheet of events to add is open.
   const [addingDomain, setAddingDomain] = useState<DomainGroup | null>(null)
 
@@ -1028,11 +992,6 @@ export default function SessionPage() {
   }, [rankFlash])
 
   // ── Load initial data ──────────────────────────────────────────────────────
-  const loadResults = useCallback(async () => {
-    const { data } = await supabase.from('results').select('*').eq('session_id', sessionId)
-    if (data) setResults(data as Result[])
-  }, [sessionId])
-
   useEffect(() => {
     const load = async () => {
       // Reads the locally stored session — no network round trip. See the note
@@ -1061,8 +1020,7 @@ export default function SessionPage() {
           : Promise.resolve({ data: null }),
         supabase.from('sessions').select('*').eq('id', sessionId).single(),
         supabase.from('session_events').select('*').eq('session_id', sessionId).order('domain_number'),
-        // Sets its own state; it is in the wave for the round trip, not a value.
-        loadResults(),
+        // The game's results load in the same wave, from lib/useSessionResults.ts.
       ])
 
       // `authUser &&` is redundant at runtime — playerRes.data is only non-null
@@ -1083,15 +1041,8 @@ export default function SessionPage() {
         // the one place where landing on the wrong tab could mis-attribute a
         // score. Attribution itself is unchanged: a submission still belongs to
         // whichever tab you are on.
-        let landOn = authUser.id
-        try {
-          const stored = window.localStorage.getItem('allsport_active_player_id')
-          if (stored && (children ?? []).some(c => (c as { id: string }).id === stored)) {
-            landOn = stored
-          }
-        } catch {
-          // Blocked site data. Fall back to the account holder.
-        }
+        const stored = storedActivePlayerId()
+        const landOn = stored && (children ?? []).some(c => (c as { id: string }).id === stored) ? stored : authUser.id
         setActivePlayerId(landOn)
         setActiveTab(`player-${landOn}`) // leaderboard stays one tap away
         if ((p as Record<string, unknown>).role === 'judge') setIsJudge(true)
@@ -1104,13 +1055,16 @@ export default function SessionPage() {
       setEvents((eventsRes.data ?? []) as SessionEvent[])
     }
     load()
-  }, [sessionId, loadResults])
+  }, [sessionId])
 
   // ── Load player info for leaderboard ──────────────────────────────────────
+  // Keyed on WHO is in the game, not on the results themselves: it used to
+  // re-read on every save and every 15 second poll on every phone. Now it
+  // reads again only when a new player appears.
+  const playerIdsKey = [...new Set(confirmedResults.map(r => r.player_id).filter((id): id is string => !!id))].sort().join(',')
   useEffect(() => {
-    if (results.length === 0) return
-    const ids = [...new Set(results.map(r => r.player_id).filter(Boolean))] as string[]
-    if (ids.length === 0) return
+    if (!playerIdsKey) return
+    const ids = playerIdsKey.split(',')
     supabase.from('players_public').select('id, division, age_years, age_group, show_division').in('id', ids).then(({ data }) => {
       if (!data) return
       const map: Record<string, PlayerInfo> = {}
@@ -1124,7 +1078,7 @@ export default function SessionPage() {
       })
       setPlayerInfoMap(map)
     })
-  }, [results])
+  }, [playerIdsKey])
 
   // ── Load ALL registered players for judge dropdown ─────────────────────────
   useEffect(() => {
@@ -1161,7 +1115,8 @@ export default function SessionPage() {
       const { data } = await supabase.from('sessions').select('is_active').eq('id', sessionId).maybeSingle()
       if (cancelled) return
       if (data && data.is_active === false) { setServerClosed(true); return }
-      if (++tries < 60) timer = setTimeout(check, 5000)
+      tries = tries + 1
+      if (tries < 60) timer = setTimeout(check, 5000)
     }
     void check()
     return () => { cancelled = true; if (timer) clearTimeout(timer) }
@@ -1170,7 +1125,7 @@ export default function SessionPage() {
   const refreshedBoardFor = useRef<string | null>(null)
   useEffect(() => {
     if (!serverClosed || !isJudge || refreshedBoardFor.current === sessionId) return
-    const ids = [...new Set(results.map(r => r.player_id).filter((id): id is string => !!id))]
+    const ids = [...new Set(confirmedResults.map(r => r.player_id).filter((id): id is string => !!id))]
     if (ids.length === 0) return
     refreshedBoardFor.current = sessionId
     void (async () => {
@@ -1178,115 +1133,7 @@ export default function SessionPage() {
         await Promise.all(ids.slice(i, i + 5).map(id => recheckGrades({ playerId: id, force: true })))
       }
     })()
-  }, [serverClosed, isJudge, results, sessionId])
-
-  // ── Load season PRs for active player ─────────────────────────────────────
-  useEffect(() => {
-    if (!activePlayerId || !seasonPRsKey) return
-    const key = seasonPRsKey
-    let cancelled = false // a fast A→B→A switch can resolve out of order
-    const year = new Date().getFullYear()
-    async function loadPRs() {
-      const { data } = await supabase
-        .from('results')
-        .select('raw_score, session_events!inner(event_name, input_mode), sessions!inner(session_date)')
-        .eq('player_id', activePlayerId)
-        .not('raw_score', 'is', null)
-      const byName: Record<string, number> = {}
-      for (const r of (data ?? []) as any[]) {
-        if (!r.sessions?.session_date || parseLocalDate(r.sessions.session_date).getFullYear() !== year) continue
-        const evName = r.session_events?.event_name
-        if (!evName || r.raw_score === null) continue
-        // Higher raw_score is always better — time/sprint store negative seconds,
-        // so max still picks the fastest (min would pick the SLOWEST as "PR")
-        const existing = byName[evName]
-        if (existing === undefined || r.raw_score > existing) byName[evName] = r.raw_score
-      }
-      const prs: Record<string, number | string | null> = {}
-      events.forEach(ev => { prs[ev.id] = byName[ev.event_name] ?? null })
-      if (!cancelled) setSeasonPRsLoaded({ key, prs })
-    }
-    loadPRs()
-    return () => { cancelled = true }
-    // seasonPRsKey already carries activePlayerId and the event ids.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [seasonPRsKey])
-
-  // ── Load PRs for judge's selected player ──────────────────────────────────
-  useEffect(() => {
-    // judgePRs is derived from judgePRsKey, so a switch already shows nothing
-    // until this target's PRs arrive.
-    if (!judgePRsKey) return
-    const key = judgePRsKey
-    let cancelled = false // a fast A→B→A switch can resolve out of order
-    const year = new Date().getFullYear()
-    async function loadJudgePRs() {
-      const { data } = await supabase
-        .from('results')
-        .select('raw_score, session_events!inner(event_name, input_mode), sessions!inner(session_date)')
-        .eq('player_id', judgeTargetId)
-        .not('raw_score', 'is', null)
-      const byName: Record<string, number> = {}
-      for (const r of (data ?? []) as any[]) {
-        if (!r.sessions?.session_date || parseLocalDate(r.sessions.session_date).getFullYear() !== year) continue
-        const evName = r.session_events?.event_name
-        if (!evName || r.raw_score === null) continue
-        // Higher raw_score is always better (see player PR loader above)
-        const existing = byName[evName]
-        if (existing === undefined || r.raw_score > existing) byName[evName] = r.raw_score
-      }
-      const prs: Record<string, number | string | null> = {}
-      events.forEach(ev => { prs[ev.id] = byName[ev.event_name] ?? null })
-      if (!cancelled) setJudgePRsLoaded({ key, prs })
-    }
-    loadJudgePRs()
-    return () => { cancelled = true }
-    // judgePRsKey already carries isJudge, judgeTargetId and the event ids.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [judgePRsKey])
-
-  // ── Live updates ───────────────────────────────────────────────────────────
-  // Broadcast, not postgres_changes: see lib/liveSession.ts (Disk IO, Oct 2026).
-  // The old `sessions` UPDATE listener is gone too; `sessions` was never in the
-  // supabase_realtime publication, so it never fired. The countdown and the
-  // close check above are what notice a game closing.
-  useEffect(() => onResultsChanged(supabase, sessionId, () => { loadResults() }), [sessionId, loadResults])
-
-  // After this screen saves or deletes a score: tell the other screens, then
-  // re-read. Only ever called after our own write, never from a ping or the
-  // poll, so pings cannot echo.
-  const afterOwnWrite = useCallback(async () => {
-    announceResultsChanged(supabase, sessionId)
-    await loadResults()
-  }, [sessionId, loadResults])
-
-  // Polling fallback — refreshes every 15s in case realtime drops
-  useEffect(() => {
-    const id = setInterval(loadResults, 15000)
-    return () => clearInterval(id)
-  }, [loadResults])
-
-  // ── All-time played events for the active player (new-event-unlocked toast) ─
-  // Loaded once per player; includes this session's earlier submissions, so only
-  // a genuinely first-ever score for an event counts as "new".
-  useEffect(() => {
-    if (!activePlayerId) return
-    const id = activePlayerId
-    let cancelled = false
-    supabase
-      .from('results')
-      .select('session_events!inner(event_name)')
-      .eq('player_id', activePlayerId)
-      .then(({ data }) => {
-        const names = new Set<string>()
-        for (const r of (data ?? []) as any[]) {
-          const n = r.session_events?.event_name
-          if (n) names.add(n)
-        }
-        if (!cancelled) setPlayedLoaded({ id, names })
-      })
-    return () => { cancelled = true }
-  }, [activePlayerId])
+  }, [serverClosed, isJudge, confirmedResults, sessionId])
 
   // ── Session-end takeover: dismissed per player per session via localStorage ─
   const takeoverKey = sessionEnded && activePlayerId ? `allsport_postgame_${sessionId}_${activePlayerId}` : null
@@ -1300,7 +1147,9 @@ export default function SessionPage() {
   // Each fires once per player per session, guarded via localStorage.
   useEffect(() => {
     if (!activePlayerId || events.length === 0 || sessionEnded) return
-    const mine = results.filter(r => r.player_id === activePlayerId)
+    // Confirmed rows only: this fires once ever, and a score still on its way
+    // could yet fail.
+    const mine = confirmedResults.filter(r => r.player_id === activePlayerId)
     if (mine.length === 0) return
 
     const allScored = events.every(ev => mine.some(r => r.event_id === ev.id))
@@ -1316,67 +1165,43 @@ export default function SessionPage() {
         setTimeout(() => setFullHousePulseId(null), 3200)
       }
     }
-  }, [results, events, activePlayerId, sessionId, sessionEnded])
+  }, [confirmedResults, events, activePlayerId, sessionId, sessionEnded])
+
+  // ── Saving a score on an official event ────────────────────────────────────
+  // The sheet hears back at once: the score is drawn now and written behind
+  // (lib/useSessionResults.ts). A failure shows the error toast below, with
+  // Try again. One path for the player tab and the kaiwhakawā tab.
+  const submitOfficial = (args: Parameters<typeof prepareEntry>[0]) => {
+    const prep = prepareEntry(args)
+    if (prep.error !== null) return Promise.resolve({ error: prep.error, isPR: false })
+    // The rating reads the match, so it is re-read only after one is
+    // recorded, which is only ever for a game (or an edit that clears one).
+    live.save({ ...prep.job, onMatched: sportRatings.reload })
+    return Promise.resolve({ error: null, isPR: prep.isPR })
+  }
+  const deleteOfficial = (id: string) => {
+    const r = results.find(x => x.id === id)
+    const ev = r ? events.find(e => e.id === r.event_id) : undefined
+    live.remove(id, [ev?.event_name, r?.score_label].filter(Boolean).join(' '))
+    return Promise.resolve(null)
+  }
 
   // ── Timer ──────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    const s = session as Record<string, unknown> | null
-    if (!s?.started_at) return
-    const startTs = new Date(s.started_at as string).getTime()
-    const endTs = startTs + 100 * 60 * 1000
-    let closedByTimer = false
-    const tick = () => {
-      const now = Date.now()
-      if (now < startTs) {
-        setPreSessionSecsLeft(Math.ceil((startTs - now) / 1000))
-        setTimeLeft(null)
-      } else {
-        setPreSessionSecsLeft(null)
-        const remaining = Math.max(0, Math.floor((endTs - now) / 1000))
-        setTimeLeft(remaining)
-        if (remaining === 0 && !closedByTimer && s.is_active) {
-          closedByTimer = true
-          setSessionEnded(true)
-          // RPC, not a direct update. `sessions_update_judge` is the only UPDATE
-          // policy on sessions, so the old `.update()` here silently affected
-          // zero rows for every player — the session only ever closed if a
-          // kaiwhakawā happened to have this screen open at the exact minute the
-          // clock ran out, and otherwise stayed open forever awarding nobody
-          // anything. close_expired_sessions() derives expiry from started_at
-          // server-side, so it is safe for any viewer to call.
-          supabase.rpc('close_expired_sessions').then(({ error }) => {
-            if (error) console.error('close_expired_sessions failed', error)
-          })
-        }
-      }
-    }
-    tick()
-    const iv = setInterval(tick, 1000)
-    return () => clearInterval(iv)
-  }, [session, sessionId])
-
-  // ── Derived ────────────────────────────────────────────────────────────────
-  const timerColour = preSessionSecsLeft !== null
-    ? '#B87DB5'
-    : timeLeft !== null
-      ? timeLeft < 600 ? '#EA4742' : timeLeft < 1800 ? '#F9B051' : '#4DB26E'
-      : '#4DB26E'
-
-  const timerDisplay = sessionEnded
-    ? 'ENDED'
-    : preSessionSecsLeft !== null
-      ? fmtCountdown(preSessionSecsLeft)
-      : timeLeft !== null
-        ? fmtCountdown(timeLeft)
-        : '--:--'
-
-  const bannerStatusLabel = sessionEnded
-    ? 'SESSION ENDED'
-    : preSessionSecsLeft !== null
-      ? 'STARTING SOON'
-      : myColourScore !== null
-        ? 'COLOUR SCORE'
-        : 'LIVE SESSION'
+  // The clock ticks inside GameBanner, so this page no longer redraws every
+  // second. It hears once, when the clock reaches zero on an open game.
+  const onClockExpired = () => {
+    setSessionEnded(true)
+    // RPC, not a direct update. `sessions_update_judge` is the only UPDATE
+    // policy on sessions, so the old `.update()` here silently affected
+    // zero rows for every player — the session only ever closed if a
+    // kaiwhakawā happened to have this screen open at the exact minute the
+    // clock ran out, and otherwise stayed open forever awarding nobody
+    // anything. close_expired_sessions() derives expiry from started_at
+    // server-side, so it is safe for any viewer to call.
+    supabase.rpc('close_expired_sessions').then(({ error }) => {
+      if (error) console.error('close_expired_sessions failed', error)
+    })
+  }
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -1389,36 +1214,14 @@ export default function SessionPage() {
       `}</style>
 
       {/* Top banner — Colour score + Timer */}
-      <div style={{ background: '#2371BB', padding: '12px 16px', position: 'sticky', top: 0, zIndex: 10 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '2px', fontFamily: 'var(--font-label)' }}>
-              {bannerStatusLabel}
-            </div>
-            <div style={{ fontSize: '32px', fontWeight: 700, fontFamily: 'var(--font-display)', letterSpacing: '0.05em', lineHeight: 1 }}>
-              {rankFlash ? (
-                <span style={{ display: 'inline-block', animation: 'rankImprove 1.4s cubic-bezier(0.16,1,0.3,1)' }}>
-                  <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: '22px' }}>{rankFlash.from}</span>
-                  <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: '22px', margin: '0 6px' }}>→</span>
-                  {rankFlash.to}
-                </span>
-              ) : (
-                myColourScore ?? '—'
-              )}
-            </div>
-          </div>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '2px', fontFamily: 'var(--font-label)' }}>
-              Time Left
-            </div>
-            <div style={{ fontSize: '32px', fontWeight: 700, color: timerColour, fontVariantNumeric: 'tabular-nums', fontFamily: 'var(--font-display)', lineHeight: 1 }}>
-              {timerDisplay}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div style={{ height: '3px', background: 'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)' }} />
+      <GameBanner
+        startedAt={(session?.started_at as string | undefined) ?? null}
+        isActive={!!session?.is_active}
+        ended={sessionEnded}
+        colourScore={myColourScore}
+        flash={rankFlash}
+        onExpired={onClockExpired}
+      />
 
       {/* Tab bar */}
       <div style={{ display: 'flex', borderBottom: '1px solid #1e1e1e', overflowX: 'auto', background: '#0a0a0a', position: 'sticky', top: '60px', zIndex: 9 }}>
@@ -1428,7 +1231,7 @@ export default function SessionPage() {
           const tabId = `player-${pid}`
           const active = activeTab === tabId
           return (
-            <button key={pid} onClick={() => { setActiveTab(tabId); setActivePlayerId(pid); setSheetEventId(null) }}
+            <button className="press" key={pid} onClick={() => { setActiveTab(tabId); setActivePlayerId(pid); setSheetEventId(null) }}
               style={{
                 padding: '12px 16px', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
                 fontSize: '13px', fontWeight: active ? 700 : 400, flexShrink: 0,
@@ -1440,7 +1243,7 @@ export default function SessionPage() {
             </button>
           )
         })}
-        <button onClick={() => { setActiveTab('leaderboard'); setSheetEventId(null) }}
+        <button className="press" onClick={() => { setActiveTab('leaderboard'); setSheetEventId(null) }}
           style={{
             padding: '12px 16px', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
             fontSize: '13px', fontWeight: activeTab === 'leaderboard' ? 700 : 400, flexShrink: 0,
@@ -1451,7 +1254,7 @@ export default function SessionPage() {
           Leaderboard
         </button>
         {isJudge && (
-          <button onClick={() => { setActiveTab('judge-mode'); setSheetEventId(null) }}
+          <button className="press" onClick={() => { setActiveTab('judge-mode'); setSheetEventId(null) }}
             style={{
               padding: '12px 16px', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
               fontSize: '13px', fontWeight: activeTab === 'judge-mode' ? 700 : 400, flexShrink: 0,
@@ -1463,7 +1266,7 @@ export default function SessionPage() {
           </button>
         )}
         {isJudge && (
-          <button onClick={() => setActiveTab('judge-summary')}
+          <button className="press" onClick={() => setActiveTab('judge-summary')}
             style={{
               padding: '12px 16px', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
               fontSize: '13px', fontWeight: activeTab === 'judge-summary' ? 700 : 400, flexShrink: 0,
@@ -1638,8 +1441,8 @@ export default function SessionPage() {
                 eventData={getEventByName(sheetEvent.event_name)}
                 myResults={results.filter(r => r.event_id === sheetEvent.id && r.player_id === pid)}
                 opponents={pickOpponents(results, { id: pid, name: pName })}
-                seasonPR={seasonPRs[sheetEvent.id] ?? null}
-                prRows={playerPRRows[sheetEvent.event_slug] ?? []}
+                seasonPR={seasonPRFor(playerPRRows, sheetEvent.event_slug)}
+                prRows={prRowsFor(playerPRRows, sheetEvent.event_slug, results.filter(r => r.event_id === sheetEvent.id && r.player_id === pid))}
                 locked={sessionEnded}
                 standards={{
                   player: gradeProfile.player, bodyweightKg: gradeProfile.bodyweightKg, reached: rungFor(sheetSlot!),
@@ -1648,29 +1451,27 @@ export default function SessionPage() {
                 }}
                 contest={contestSe?.id === sheetEvent.id ? contestCard(pid) : undefined}
                 opponentBlocked={contestSe?.id === sheetEvent.id ? contestBlocked : undefined}
-                onSubmit={(v, editingId, matchOpponents) => submitEntry({
-                  sessionId: sessionId as string, eventId: sheetEvent.id, playerId: pid, playerName: pName,
+                onSubmit={(v, editingId, matchOpponents) => submitOfficial({
+                  sessionId: sessionId as string, eventId: sheetEvent.id, eventName: sheetEvent.event_name, playerId: pid, playerName: pName,
                   mode: getEventByName(sheetEvent.event_name)?.inputMode || sheetEvent.input_mode,
                   eventData: getEventByName(sheetEvent.event_name),
                   v, myResults: results.filter(r => r.event_id === sheetEvent.id && r.player_id === pid),
-                  prRows: playerPRRows[sheetEvent.event_slug] ?? [],
+                  prRows: prRowsFor(playerPRRows, sheetEvent.event_slug, []),
                   editingResultId: editingId, matchOpponents,
                 })}
-                onDelete={deleteResult}
+                onDelete={deleteOfficial}
                 onClose={() => setSheetEventId(null)}
-                onSubmitted={async (label, meta) => {
+                onSubmitted={(label, meta) => {
                   setSheetEventId(null)
-                  const isNewEvent = playedEventNames !== null && !playedEventNames.has(sheetEvent.event_name)
-                  if (isNewEvent) setPlayedLoaded(prev => prev && prev.id === pid
-                    ? { id: prev.id, names: new Set(prev.names).add(sheetEvent.event_name) }
-                    : prev)
+                  // A first-ever game score on this event. Not until the
+                  // records have loaded, or every first score of the day would
+                  // announce one; and not a second score today.
+                  const isNewEvent = playerPRsLoaded && !hasGameRow(playerPRRows[sheetEvent.event_slug] ?? [])
+                    && !results.some(r => r.event_id === sheetEvent.id && r.player_id === pid)
                   setToast({ eventName: sheetEvent.event_name, label, isPR: meta.isPR, isNewEvent })
                   setTimeout(() => setToast(null), meta.isPR || isNewEvent ? 4000 : 3000)
-                  await afterOwnWrite()
-                  reloadPlayerPRs()
-                  sportRatings.reload()
                 }}
-                onDeleted={async () => { await afterOwnWrite(); reloadPlayerPRs() }}
+                onDeleted={() => { /* drawn at once by lib/useSessionResults.ts */ }}
               />
             )}
           </div>
@@ -1679,13 +1480,13 @@ export default function SessionPage() {
 
       {/* Session-end takeover — shows once per player per session, only if they played */}
       {sessionEnded && !endTakeoverDismissed && activePlayerId &&
-        results.some(r => r.player_id === activePlayerId) && (
+        confirmedResults.some(r => r.player_id === activePlayerId) && (
         <SessionEndTakeover
           sessionId={sessionId as string}
           playerId={activePlayerId}
           events={events}
-          myResults={results.filter(r => r.player_id === activePlayerId)}
-          registeredPlayers={new Set(results.map(r => r.player_id).filter(Boolean)).size}
+          myResults={confirmedResults.filter(r => r.player_id === activePlayerId)}
+          registeredPlayers={new Set(confirmedResults.map(r => r.player_id).filter(Boolean)).size}
           onDismiss={() => {
             localStorage.setItem(`allsport_postgame_${sessionId}_${activePlayerId}`, '1')
             setTakeoverDismissedKey(`allsport_postgame_${sessionId}_${activePlayerId}`)
@@ -1693,8 +1494,9 @@ export default function SessionPage() {
         />
       )}
 
-      {/* Score-submitted toast — PR (gold/rainbow pop) beats new-event-unlocked beats normal green */}
-      {toast && (
+      {/* Score-submitted toast — PR (gold/rainbow pop) beats new-event-unlocked beats normal green.
+          A save that failed after it was shown replaces it with the error. */}
+      {toast && !live.failure && (
         <div style={{
           position: 'fixed', bottom: '20px', left: '50%', transform: 'translateX(-50%)',
           width: 'min(600px, calc(100vw - 32px))', zIndex: 200, overflow: 'hidden',
@@ -1715,6 +1517,34 @@ export default function SessionPage() {
                 ? <><span style={{ color: '#7ab4ff' }}>New event unlocked</span> — {toast.eventName}! <span style={{ color: '#aaa' }}>{toast.label}</span></>
                 : <>Score in — {toast.eventName} — {toast.label}</>}
           </div>
+        </div>
+      )}
+
+      {/* A score that did not save. It stays until dismissed: the row was
+          drawn and then taken away, and the player must not miss why. */}
+      {live.failure && (
+        <div role="alert" style={{
+          position: 'fixed', bottom: '20px', left: '50%', transform: 'translateX(-50%)',
+          width: 'min(600px, calc(100vw - 32px))', zIndex: 201, boxSizing: 'border-box',
+          background: '#161616', border: '1px solid #EA474255', borderLeft: '4px solid #EA4742',
+          borderRadius: 'var(--radius-md)', padding: '12px 12px 12px 16px', boxShadow: '0 24px 60px rgba(0,0,0,0.6)',
+          display: 'flex', alignItems: 'center', gap: '10px',
+        }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', color: '#fff', letterSpacing: '0.02em' }}>
+              Not saved: {live.failure.what}
+            </div>
+            <div style={{ fontSize: '13px', color: '#aaa', marginTop: '2px', lineHeight: 1.4 }}>{live.failure.message}</div>
+          </div>
+          <button className="press" onClick={live.failure.retry} style={{
+            flexShrink: 0, minHeight: '44px', padding: '0 16px', borderRadius: 'var(--radius-pill)', cursor: 'pointer',
+            background: '#EA4742', border: 'none', color: '#fff',
+            fontFamily: 'var(--font-label)', fontSize: '13px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase',
+          }}>Try again</button>
+          <button className="press" onClick={live.dismissFailure} aria-label="Dismiss" style={{
+            flexShrink: 0, width: '44px', height: '44px', borderRadius: 'var(--radius-pill)', cursor: 'pointer',
+            background: 'none', border: '1px solid #333', color: '#aaa', fontSize: '14px',
+          }}>✕</button>
         </div>
       )}
 
@@ -1805,7 +1635,7 @@ export default function SessionPage() {
                     fontSize: '15px', fontFamily: 'var(--font-body)', boxSizing: 'border-box',
                   }}
                 />
-                <button onClick={addGuest} disabled={!guestDraft} style={{
+                <button className="press" onClick={addGuest} disabled={!guestDraft} style={{
                   flexShrink: 0, borderRadius: '12px', padding: '0 18px', cursor: guestDraft ? 'pointer' : 'default',
                   background: guestDraft ? '#F9B051' : '#1a1a1a', color: guestDraft ? '#000' : '#555',
                   border: 'none', fontFamily: 'var(--font-label)', fontSize: '14px',
@@ -1849,7 +1679,7 @@ export default function SessionPage() {
                     {target.name}
                     {target.isGuest && <span style={{ fontFamily: 'var(--font-label)', fontSize: '12px', color: '#F9B051', marginLeft: '10px', letterSpacing: '0.1em' }}>GUEST</span>}
                   </div>
-                  <button onClick={() => selectJudgeTarget(null)} style={{
+                  <button className="press" onClick={() => selectJudgeTarget(null)} style={{
                     flexShrink: 0, background: 'none', border: '1px solid #333', borderRadius: '999px',
                     color: '#888', cursor: 'pointer', padding: '0 16px', minHeight: '44px',
                     fontFamily: 'var(--font-label)', fontSize: '12px', letterSpacing: '0.08em', textTransform: 'uppercase',
@@ -1961,33 +1791,30 @@ export default function SessionPage() {
                     eventData={getEventByName(sheetEvent.event_name)}
                     myResults={targetResults.filter(r => r.event_id === sheetEvent.id)}
                     opponents={pickOpponents(results, { id: target.id, name: target.name })}
-                    seasonPR={target.id ? (judgePRs[sheetEvent.id] ?? null) : null}
-                    prRows={target.id ? (targetPRRows[sheetEvent.event_slug] ?? []) : []}
+                    seasonPR={target.id ? seasonPRFor(targetPRRows, sheetEvent.event_slug) : null}
+                    prRows={target.id ? prRowsFor(targetPRRows, sheetEvent.event_slug, targetResults.filter(r => r.event_id === sheetEvent.id)) : []}
                     locked={sessionEnded}
                     standards={{
                       player: gradeProfile.player, bodyweightKg: gradeProfile.bodyweightKg, reached: judgeRungFor(judgeSheetSlot!),
                       bodyweightPrompt: <BodyweightField playerId={target.isGuest ? null : (target.id ?? null)} eventSlugs={[sheetEvent.event_slug]} day={sessionDay}
                         locked={sessionEnded} onSaved={kg => { gradeProfile.setBodyweightKg(kg); contest.refresh() }} />,
                     }}
-                    onSubmit={(v, editingId, matchOpponents) => submitEntry({
-                      sessionId: sessionId as string, eventId: sheetEvent.id, playerId: target.id, playerName: target.name,
+                    onSubmit={(v, editingId, matchOpponents) => submitOfficial({
+                      sessionId: sessionId as string, eventId: sheetEvent.id, eventName: sheetEvent.event_name, playerId: target.id, playerName: target.name,
                       mode: getEventByName(sheetEvent.event_name)?.inputMode || sheetEvent.input_mode,
                       eventData: getEventByName(sheetEvent.event_name),
                       v, myResults: targetResults.filter(r => r.event_id === sheetEvent.id),
-                      prRows: target.id ? (targetPRRows[sheetEvent.event_slug] ?? []) : [],
+                      prRows: target.id ? prRowsFor(targetPRRows, sheetEvent.event_slug, []) : [],
                       editingResultId: editingId, matchOpponents,
                     })}
-                    onDelete={deleteResult}
+                    onDelete={deleteOfficial}
                     onClose={() => setSheetEventId(null)}
-                    onSubmitted={async (label, meta) => {
+                    onSubmitted={(label, meta) => {
                       setSheetEventId(null)
                       setToast({ eventName: sheetEvent.event_name, label, isPR: meta.isPR, isNewEvent: false, playerName: target.name })
                       setTimeout(() => setToast(null), meta.isPR ? 4000 : 3000)
-                      await afterOwnWrite()
-                      reloadTargetPRs()
-                      sportRatings.reload()
                     }}
-                    onDeleted={async () => { await afterOwnWrite(); reloadTargetPRs() }}
+                    onDeleted={() => { /* drawn at once by lib/useSessionResults.ts */ }}
                   />
                 )}
               </div>
@@ -2014,7 +1841,7 @@ export default function SessionPage() {
           events={events}
           results={results}
           playerInfoMap={playerInfoMap}
-          onScoreChanged={afterOwnWrite}
+          onDelete={live.remove}
         />
       )}
 

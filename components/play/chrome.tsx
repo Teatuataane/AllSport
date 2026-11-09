@@ -49,6 +49,9 @@ export type EntryRow = {
   opponent_name: string | null
   match_score: string | null
   is_pr?: boolean
+  /** Drawn before the server confirmed it (lib/pendingResults.ts): it has no
+      real id yet, so it cannot be edited or deleted. */
+  pending?: boolean
 }
 
 export function sportWDL(results: readonly { raw_score: number }[]): string {
@@ -87,7 +90,7 @@ export const QES_CHIP: React.CSSProperties = {
 
 export function StepBtn({ children, onClick, disabled }: { children: React.ReactNode; onClick: () => void; disabled?: boolean }) {
   return (
-    <button onClick={onClick} disabled={disabled} style={{
+    <button className="press" onClick={onClick} disabled={disabled} style={{
       width: '56px', minHeight: '56px', flexShrink: 0, borderRadius: '14px',
       background: '#181818', border: '1px solid #2a2a2a', color: disabled ? '#444' : '#fff',
       fontSize: '26px', fontFamily: 'var(--font-display)', cursor: disabled ? 'default' : 'pointer',

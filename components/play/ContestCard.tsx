@@ -77,7 +77,7 @@ export function ContestCard({ me, suggestions, unbeaten, needsBodyweight, picked
             {suggestions.map(s => {
               const on = pickedId === s.id
               return (
-                <button key={s.id} type="button" disabled={locked} data-testid="contest-suggestion"
+                <button className="press" key={s.id} type="button" disabled={locked} data-testid="contest-suggestion"
                   aria-pressed={on} onClick={() => onPick(s.id, s.name)} style={{
                     padding: '10px 14px', borderRadius: 12, cursor: 'pointer', textAlign: 'left',
                     border: `2px solid ${on ? '#2371BB' : '#333'}`, background: on ? '#2371BB' : '#1a1a1a', color: '#fff',

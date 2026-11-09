@@ -22,6 +22,7 @@
 import type { EventData } from '@/lib/eventData'
 import { DT_CAP, RIEGEL_EXPONENT, decodeDistanceEffort } from '@/lib/eventData'
 import { decodeCarry, fmtDistance, fmtTime } from '@/lib/scoring'
+import { yearOfDay } from '@/lib/seasonYear'
 
 export const TOP_N = 5
 
@@ -281,4 +282,24 @@ export function mergeRows(loaded: readonly PRRow[], live: readonly PRRow[]): PRR
   for (const r of loaded) byId.set(r.id, r)
   for (const r of live) byId.set(r.id, r)
   return [...byId.values()]
+}
+
+/**
+ * The best game score on an event in one NZ year: the "Season PR" tile and the
+ * quick pick on the live game. Game results only, as the loaders it replaces
+ * read (v0.48.0.0): a logged training best is not a season PR at a game.
+ * Null when there is none, including a training effort with no score.
+ */
+export function seasonGameBest(rows: readonly PRRow[], year: number): number | null {
+  let best: number | null = null
+  for (const r of rows) {
+    if (r.source !== 'game' || r.raw_score == null || yearOfDay(r.date) !== year) continue
+    if (best === null || r.raw_score > best) best = r.raw_score
+  }
+  return best
+}
+
+/** Whether the player has ever scored this event at a game: a first is "new event unlocked". */
+export function hasGameRow(rows: readonly PRRow[]): boolean {
+  return rows.some(r => r.source === 'game')
 }

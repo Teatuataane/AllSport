@@ -3804,6 +3804,14 @@ Kelly Snatch had been described as a one-arm dumbbell or kettlebell snatch since
 
 Twenty-three icon files for events no longer on the roster remain in `public/event-icons/`; they are harmless and left alone.
 
+## Scoring screen speed (10 Nov 2026, v0.48.0.0)
+
+Tāne asked for a UI/UX review of entering scores in a live game, aimed at no lag and responsive buttons. The review (SCORING_UX_BUILD_PLAN.md, four phases) found the lag was mostly network waits, not drawing: a save awaited the insert, sometimes `record_match`, then a re-read of the whole game before the row changed, and set off about six more reads (records, every match in the database, `players_public`, the contest table). The page also redrew every second for the clock, and the React Compiler skipped the whole page because of two lint suppressions. Measured colour work per redraw was 0.05ms, so the redraw was the smaller cost. This is phase 1.
+
+Decisions. Optimistic saves keep two lists, confirmed rows and writes in flight (`lib/pendingResults.ts`, `lib/useSessionResults.ts`), so a poll that lands mid-write cannot drop the new score; a re-read that already holds the server's copy is matched to the pending write by player, event and label so it is not drawn twice. Ids are not made in the browser, because whether RLS allows a client id on `results` was not checked against the live database. One-time moments (full house, end-of-game recheck, the takeover, the contest refresh) read confirmed rows only. Added events and personal workouts are not optimistic, since they may have to create the workout first; added events now patch their state from the returned row instead of re-reading. The workout page still re-reads after a save. No migration.
+
+Not verified on a real game: nobody could sign in from the build session, and the dev server writes to production, so no score was saved to test it. The network count per save is from the code, not a network panel.
+
 ## What's Next (In Priority Order)
 
 1. ~~Apply the pending migrations~~ — **DONE, nothing pending (verified 2026-08-01).** Every migration through `20260801000000_roster_update_120.sql` is applied to prod. `supabase db push` offered only `20260801000000`, which means the three session-22 files (`20260713000000`, `20260713000001`, `20260714000000`) were already recorded as applied; `wellbeing_surveys` was confirmed to exist via the REST API, and `db push` applies in timestamp order, so they genuinely ran rather than being falsely baselined.

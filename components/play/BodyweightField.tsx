@@ -127,7 +127,7 @@ export default function BodyweightField({ playerId, eventSlugs, day, locked, for
           }}
         />
         {!locked && dirty && (
-          <button
+          <button className="press"
             onClick={save}
             disabled={state === 'saving' || !kg}
             style={{

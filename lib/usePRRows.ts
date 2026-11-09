@@ -36,15 +36,23 @@ export function usePRRows(playerId: string | null, slugs: readonly string[]) {
   const slugKey = [...slugs].sort().join(',')
   const key = playerId && slugKey ? `${playerId}|${slugKey}` : null
   const [loaded, setLoaded] = useState<{ key: string; rows: PRRowsBySlug } | null>(null)
+  // The key of the latest ask, so a fast player switch that resolves out of
+  // order lands only the newest. Set in an effect, not during render: writing
+  // a ref during render stops the React Compiler compiling this hook.
   const latest = useRef(key)
-  latest.current = key
+  useEffect(() => { latest.current = key }, [key])
 
   const load = useCallback(async () => {
     if (!key || !playerId) return
     const asked = key
     const names = slugKey.split(',').map(s => getEventBySlug(s)?.name).filter((n): n is string => !!n)
     const out: PRRowsBySlug = {}
-    const push = (slug: string, r: PRRow) => { (out[slug] ||= []).push(r) }
+    // Not `||=`: the React Compiler cannot compile that operator yet.
+    const push = (slug: string, r: PRRow) => {
+      const list = out[slug] ?? []
+      list.push(r)
+      out[slug] = list
+    }
 
     const [games, entries] = await Promise.all([
       supabase
@@ -97,6 +105,9 @@ export function usePRRows(playerId: string | null, slugs: readonly string[]) {
 
   // Derived, so a switch shows nothing until the new player's rows arrive
   // instead of the previous player's records.
-  const rows = key && loaded?.key === key ? loaded.rows : NONE
-  return { rows, reload: load }
+  const ready = !!key && loaded?.key === key
+  const rows = ready ? loaded.rows : NONE
+  // `loaded` tells "no scores" from "not read yet": a first score is only "new
+  // event unlocked" once the player's history has actually arrived.
+  return { rows, loaded: ready, reload: load }
 }

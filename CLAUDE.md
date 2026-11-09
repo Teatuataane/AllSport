@@ -33,7 +33,7 @@ Language: te reo Māori is used in display text — *Kaiwhakawā* (judge; the DB
 | `app/` | Routes. Public: `/`, `how-to-play`, `events`, `events/[slug]`, `schedule`, `koha`, `grades` (public colours guide, server component), `privacy`, `supporters`. Auth: `login`, `register`, `play`, `auth/callback`. Player: `dashboard` (called HOME), `leaderboard`, `hapu` (groups: schools, clubs, whānau; `/groups` redirects), `prs` (My Events), `history`, `profile`, `my-koha`, `games/[sessionId]`, `workout/new`, `workout/[id]`, `vote/[voteId]` (+ `/results`). `log` is a redirect to `workout/new`. Admin: `judge`. Live scoring: `scoring`, `scoring/[sessionId]` (~2,200 lines). |
 | `app/components/` | Judge/vote/wellbeing panels: `JudgeCard`, `TrainingTab`, `ActivityReport`, `WellbeingSurvey`, `WellbeingReport`, `VoteBanner`, `VoteCard`. |
 | `components/` | Shared UI: `Navbar`, `NavTabs` (phone tab strip + `MoreMenu`), `Footer`, `ui.tsx` (brand UI kit), `EventIcon`, `DomainIcon`, `GradesCard`, `HomeParts`, `PlayerTabs`, `GradeReleasePanel`, etc. |
-| `components/play/` | The shared scoring UI used by both official games and personal workouts: `QuickEntrySheet`, `GameEventList`, `EventListRow`, `AddEventsSheet`, `EventPlanPicker`, `PRBoardView`, `BodyweightField`, `chrome.tsx`. The sheet does not write to a table; the host screen passes `onSubmit`/`onDelete`. |
+| `components/play/` | The shared scoring UI used by both official games and personal workouts: `QuickEntrySheet`, `GameEventList`, `EventListRow`, `AddEventsSheet`, `EventPlanPicker`, `PRBoardView`, `BodyweightField`, `GameBanner` (the live clock, kept out of the page so the page does not redraw every second), `chrome.tsx`. The sheet does not write to a table; the host screen passes `onSubmit`/`onDelete`. **The live game saves optimistically (v0.48.0.0):** `lib/useSessionResults.ts` draws a score at once and writes behind it, with the pure rule in `lib/pendingResults.ts`; it is the only place the scoring screen writes `results`, and it never re-reads the game after its own write. Keep `node scripts/check-react-compiler.cjs` printing nothing: the compiler silently skips a component with a hooks lint suppression, `||=`, a ref written during render or a throw inside try/catch. Buttons on the play screens carry `className="press"` (pressed state in `globals.css`). |
 | `public/` | `event-icons/{slug}.png` and `domain-icons/{slug}.png` (silhouettes rendered as CSS masks, tinted in the domain colour; **filename must be the exact slug** or it silently falls back to an emoji; since v0.47.0.1 every roster event has its own icon and no two share a file), `taniwha/` art, logo assets. |
 | `app/globals.css` | Design tokens in `:root` (single source of truth), global `:focus-visible` rule, `.phone-nav` / `.brand-word` responsive rules. |
 
@@ -160,7 +160,7 @@ npx vitest run __tests__/grading.test.ts
 - New UI uses the canonical tokens and `components/ui.tsx` primitives; existing pages still use inline `style={{}}` heavily, so match the surrounding file.
 - Each new Supabase read of a possibly-missing table/column is its **own query** with PGRST205/42P01/42703 handled as "not live yet".
 - Dates: parse DATE columns with `lib/dates.ts` (`parseLocalDate`, `formatNZDate`, `sessionStart`), never `new Date('YYYY-MM-DD')`; all dates mean NZ time.
-- Commit/changelog: `VERSION` (currently `0.47.0.1`) and `CHANGELOG.md` are bumped per shipped change; open work is tracked in `TODOS.md`. Comments in this codebase explain *why* at length; match that density when you touch a risky area.
+- Commit/changelog: `VERSION` (currently `0.48.0.0`) and `CHANGELOG.md` are bumped per shipped change; open work is tracked in `TODOS.md`. Comments in this codebase explain *why* at length; match that density when you touch a risky area.
 - Event/standards/difficulty changes are made by editing the reviewed sheet and re-running the apply script, not by hand-editing generated output.
 
 ## 15. Important files and directories
@@ -190,4 +190,4 @@ npx vitest run __tests__/grading.test.ts
 | `*_PLAN.md`, `EVENT_*.md`, `design-canvas/` | Older design records and mockups; historical |
 | `.claude/` | Claude Code skills and launch config (tooling only) |
 
-*Last updated: 9 November 2026 (v0.47.0.1).*
+*Last updated: 10 November 2026 (v0.48.0.0).*

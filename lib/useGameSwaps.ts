@@ -103,8 +103,10 @@ export function useGameSwaps(args: {
 
   const state = loaded && loaded.playerId === playerId ? loaded : null
 
-  /** The workout that holds this player's swaps, created on first use. */
-  const ensureWorkout = useCallback(async (): Promise<{ id: string | null; error: string | null }> => {
+  /** The workout that holds this player's swaps, created on first use. Plain
+      functions, not useCallback: the React Compiler memoises this hook itself,
+      and the hand-written deps stopped it compiling at all. */
+  const ensureWorkout = async (): Promise<{ id: string | null; error: string | null }> => {
     if (state?.workoutId) return { id: state.workoutId, error: null }
     if (!playerId || !userId) return { id: null, error: 'Sign in to swap an event' }
     const { data, error } = await supabase.from('workouts')
@@ -128,16 +130,16 @@ export function useGameSwaps(args: {
     const id = (data as { id: string }).id
     setLoaded(prev => (prev && prev.playerId === playerId ? { ...prev, workoutId: id } : prev))
     return { id, error: null }
-  }, [state?.workoutId, playerId, userId, sessionId])
+  }
 
-  const writeChosen = useCallback(async (next: string[]): Promise<string | null> => {
+  const writeChosen = async (next: string[]): Promise<string | null> => {
     const { id, error } = await ensureWorkout()
     if (!id) return error
     const { error: e } = await supabase.from('workouts').update({ planned_events: next }).eq('id', id)
     if (e) return e.message
     setLoaded(prev => (prev && prev.playerId === playerId ? { ...prev, chosen: next } : prev))
     return null
-  }, [ensureWorkout, playerId])
+  }
 
   const scoredSlugs = new Set(
     (state?.entries ?? []).map(e => e.event_slug).filter((s): s is string => !!s))
@@ -161,8 +163,8 @@ export function useGameSwaps(args: {
       const { id, error } = await ensureWorkout()
       if (!id) return { error: error ?? 'Could not save', isPR: false }
       const written = editingId
-        ? await supabase.from('workout_entries').update(payload).eq('id', editingId).select('id').maybeSingle()
-        : await supabase.from('workout_entries').insert({ ...payload, workout_id: id }).select('id').single()
+        ? await supabase.from('workout_entries').update(payload).eq('id', editingId).select(ENTRY_COLS).maybeSingle()
+        : await supabase.from('workout_entries').insert({ ...payload, workout_id: id }).select(ENTRY_COLS).single()
       const e = written.error
       if (e) {
         return {
@@ -183,7 +185,17 @@ export function useGameSwaps(args: {
         })
         if (me && me.code !== 'PGRST202') console.warn('record_entry_match:', me.message)
       }
-      await load()
+      // The row the write returned goes straight into local state, shaped as
+      // `load` shapes it: one round trip per save, not a write and a re-read.
+      const saved = written.data as SwapEntry | null
+      if (saved) {
+        const entry: SwapEntry = { ...saved, raw_score: Number(saved.raw_score ?? 0), result_type: null, opponent_name: null, match_score: null }
+        setLoaded(prev => prev && prev.playerId === playerId
+          ? { ...prev, workoutId: id, entries: [...prev.entries.filter(x => x.id !== entry.id), entry] }
+          : prev)
+      } else {
+        await load()
+      }
       // A swap never sets a PR badge here: the badge on this screen means a
       // season best on an official event, and these are not ranked.
       return { error: null, isPR: false }
@@ -192,7 +204,9 @@ export function useGameSwaps(args: {
     deleteEntry: async (id: string) => {
       const { error } = await supabase.from('workout_entries').delete().eq('id', id)
       if (error) return error.message
-      await load()
+      setLoaded(prev => prev && prev.playerId === playerId
+        ? { ...prev, entries: prev.entries.filter(x => x.id !== id) }
+        : prev)
       return null
     },
   }
