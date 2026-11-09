@@ -172,7 +172,7 @@ describe('GradesCard — the ladder and the domain rows', () => {
     expect(c[2].dataset.colour).toBe('reached')
     expect(c[4].dataset.colour).toBe('ahead')
     // A colour ahead is a ring in its OWN colour, not a dimmed grey.
-    expect(c[4].style.border).toMatch(/2px solid (#F9E051|rgb\(249, 224, 81\))/i)
+    expect(c[4].style.border).toMatch(/2px solid (#F6E73A|rgb\(246, 231, 58\))/i)
     // Mā is a solid white rung on the ladder, never the empty outline.
     expect(c[0].style.background).not.toBe('transparent')
     // Every circle is round.
@@ -220,6 +220,8 @@ describe('GradesCard — the ladder and the domain rows', () => {
     topSlotRungs(d, st.grades.events).forEach((r, i) => {
       const bg = (circles[i] as HTMLElement).style.background
       if (r === 0) expect(bg).toBe('transparent')
+      // The metals (Parahi, Hiriwa, Kōura) are drawn as a sheen, not flat.
+      else if (gradeForRung(r).metal) expect(bg).toMatch(/^linear-gradient\(135deg/)
       else expect(bg).toBe(rgb(gradeForRung(r).hex))
     })
   })
@@ -349,5 +351,29 @@ describe('GradesCard ghost marker (Scoring v2 step 2)', () => {
   it('shows nothing without a last year', () => {
     render(<GradesCard state={state()} />)
     expect(screen.queryAllByTestId('ghost-marker')).toHaveLength(0)
+  })
+})
+
+describe('colour rework (v0.51.0.0): the metals read apart from Karaka and Kōwhai', () => {
+  // CIELAB (D65) distance, enough to pin that the two confusable pairs stay apart.
+  const lab = (h: string) => {
+    const [r, g, b] = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255)
+      .map(c => (c > 0.04045 ? ((c + 0.055) / 1.055) ** 2.4 : c / 12.92))
+    const x = (r * 0.4124 + g * 0.3576 + b * 0.1805) / 0.95047
+    const y = r * 0.2126 + g * 0.7152 + b * 0.0722
+    const z = (r * 0.0193 + g * 0.1192 + b * 0.9505) / 1.08883
+    const f = (t: number) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116)
+    return [116 * f(y) - 16, 500 * (f(x) - f(y)), 200 * (f(y) - f(z))]
+  }
+  const dist = (a: string, b: string) => Math.hypot(...lab(a).map((v, i) => v - lab(b)[i]))
+
+  it('keeps Karaka and Parahi, and Kōwhai and Kōura, at least 35 apart', () => {
+    expect(dist(gradeForRung(3).hex, gradeForRung(8).hex)).toBeGreaterThan(35)
+    expect(dist(gradeForRung(4).hex, gradeForRung(10).hex)).toBeGreaterThan(35)
+  })
+
+  it('draws exactly the three metals with a sheen', () => {
+    const metals = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].filter(r => gradeForRung(r).metal)
+    expect(metals).toEqual([8, 9, 10])
   })
 })

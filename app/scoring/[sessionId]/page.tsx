@@ -184,7 +184,7 @@ function eventDivisionRank(
     if (ex === undefined || r.raw_score > ex) bestPerDiv[r.player_id] = r.raw_score
   })
   const rank = 1 + Object.values(bestPerDiv).filter(b => b > myBestRaw).length
-  const color = rank === 1 ? 'var(--amber)' : rank === 2 ? 'var(--medal-silver)' : rank === 3 ? 'var(--medal-bronze)' : 'var(--grey)'
+  const color = rank === 1 ? 'var(--medal-gold)' : rank === 2 ? 'var(--medal-silver)' : rank === 3 ? 'var(--medal-bronze)' : 'var(--grey)'
   return { label: `${ordinal(rank)} in event`, color }
 }
 
@@ -252,7 +252,7 @@ const MENS_DIVS = ["Men's"]
 const WOMENS_DIVS = ["Women's"]
 
 function medalBg(rank: number): string {
-  return rank === 1 ? 'var(--amber)' : rank === 2 ? 'var(--medal-silver)' : rank === 3 ? 'var(--medal-bronze)' : 'var(--border-strong)'
+  return rank === 1 ? 'var(--medal-gold)' : rank === 2 ? 'var(--medal-silver)' : rank === 3 ? 'var(--medal-bronze)' : 'var(--border-strong)'
 }
 function medalColor(rank: number): string { return rank <= 3 ? 'var(--black)' : 'var(--grey-light)' }
 

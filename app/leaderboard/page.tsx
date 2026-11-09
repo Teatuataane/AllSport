@@ -181,10 +181,11 @@ function LiveGame({ session }: { session: ActiveSession }) {
   )
 }
 
+// The medal inks (globals.css --medal-*), as hex because the card border appends alpha.
 const PODIUM = [
-  { place: 2, color: '#c0c0c0', lift: 24 },
-  { place: 1, color: '#F9B051', lift: 0 },
-  { place: 3, color: '#cd7f32', lift: 40 },
+  { place: 2, color: '#C9D0D9', lift: 24 },
+  { place: 1, color: '#D9B84A', lift: 0 },
+  { place: 3, color: '#C08A5A', lift: 40 },
 ] as const
 
 function Podium({ rows }: { rows: (BoardRow & { rank: number })[] }) {
@@ -224,7 +225,7 @@ function BoardList({ rows, showDivision }: { rows: (BoardRow & { rank: number })
         const { best, worst } = bestAndWorst(p.domainRungs)
         return (
           <div key={p.playerId} className="lb-row" style={{ borderColor: p.rank <= 3 ? '#F9B05126' : '#1a1a1a' }}>
-            <div className="lb-rank" style={{ color: p.rank === 1 ? '#F9B051' : p.rank === 2 ? '#c0c0c0' : p.rank === 3 ? '#cd7f32' : '#3a3a3a' }}>{p.rank}</div>
+            <div className="lb-rank" style={{ color: p.rank === 1 ? 'var(--medal-gold)' : p.rank === 2 ? 'var(--medal-silver)' : p.rank === 3 ? 'var(--medal-bronze)' : '#3a3a3a' }}>{p.rank}</div>
             <div style={{ minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flexWrap: 'wrap' }}>
                 <span className="lb-name">{p.name}</span>

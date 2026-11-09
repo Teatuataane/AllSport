@@ -33,8 +33,8 @@
 // with on a dark ground.
 export const DOMAIN_COLORS = [
   '#EA4742', // 1  Maximal Strength     Whero      red
-  '#F9B051', // 2  Calisthenics         Karaka     orange
-  '#F9E051', // 3  Power                Kōwhai     yellow
+  '#F2852B', // 2  Calisthenics         Karaka     orange (truer orange since v0.51.0.0)
+  '#F6E73A', // 3  Power                Kōwhai     yellow (cleaner lemon since v0.51.0.0)
   '#4DB26E', // 4  Speed                Kākāriki   green
   '#2371BB', // 5  Stamina              Kahurangi  blue
   '#B87DB5', // 6  Endurance            Poroporo   purple

@@ -6,7 +6,7 @@
 import Link from 'next/link'
 import { EVENTS, DOMAIN_ORDER } from '@/lib/eventData'
 import { DOMAIN_COLORS } from '@/lib/domainColours'
-import { GRADES } from '@/lib/grading'
+import { GRADES, gradeFill } from '@/lib/grading'
 import { loadCommunityStats } from '@/lib/communityStats'
 import HeroVideo from './HeroVideo'
 import NextGame from './NextGame'
@@ -241,8 +241,8 @@ export default async function Home() {
                 <div key={g.rung} className="lp-rank">
                   <span style={{
                     width: '12px', height: '12px', borderRadius: '50%', flexShrink: 0,
-                    background: g.rainbow ? RAINBOW : g.hex,
-                    border: g.inverted ? '1px solid #555' : 'none',
+                    background: g.rainbow ? RAINBOW : gradeFill(g),
+                    border: g.inverted ? '1px solid #555' : g.metal ? `1px solid ${g.metal.rim}` : 'none',
                   }} />
                   <span className="lp-rank-name" style={{ fontFamily: 'var(--font-display)', fontSize: '19px', letterSpacing: '0.04em', color: '#fff' }}>
                     {g.name}

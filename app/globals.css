@@ -39,9 +39,12 @@
   --amber-tint: #1f1608;
   --green-tint: #1e3a28;
 
-  /* Medal colours for 2nd and 3rd on a game board; 1st is amber. */
-  --medal-silver: #C0C0C0;
-  --medal-bronze: #CD7F32;
+  /* Medal colours for 1st, 2nd and 3rd on a game board: the inks of Kōura,
+     Hiriwa and Parahi, so a place medal and a metal colour look the same
+     (colour rework, v0.51.0.0). */
+  --medal-gold: #D9B84A;
+  --medal-silver: #C9D0D9;
+  --medal-bronze: #C08A5A;
 
   /* Semantic */
   --text: var(--white);
@@ -59,11 +62,14 @@
   --grade-ma: #ffffff;         /* Mā / White */
   --grade-kiwikiwi: #888888;   /* Kiwikiwi / Grey */
   --grade-whero: #EA4742;      /* Whero / Red */
-  --grade-karaka: #F9B051;     /* Karaka / Orange */
-  --grade-kowhai: #F9E051;     /* Kōwhai / Yellow */
+  --grade-karaka: #F2852B;     /* Karaka / Orange (truer orange since v0.51.0.0) */
+  --grade-kowhai: #F6E73A;     /* Kōwhai / Yellow (cleaner lemon since v0.51.0.0) */
   --grade-kakariki: #4DB26E;   /* Kākāriki / Green */
   --grade-kahurangi: #2371BB;  /* Kahurangi / Blue */
   --grade-poroporo: #B87DB5;   /* Poroporo / Purple */
+  --grade-parahi: #A0683A;     /* Parahi / Bronze, mid tone; swatches draw the sheen from lib/grading.ts */
+  --grade-hiriwa: #B8C0CC;     /* Hiriwa / Silver */
+  --grade-koura: #C29A30;      /* Kōura / Gold */
   --grade-uenuku: linear-gradient(90deg,#EA4742,#F9B051,#F397C0,#B87DB5,#2371BB,#4DB26E); /* Uenuku / Rainbow */
   --grade-taniwha: #000000;    /* Taniwha / Black — peak */
 

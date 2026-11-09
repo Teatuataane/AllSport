@@ -83,6 +83,16 @@ export type GradeRung = {
   rainbow?: boolean
   /** Rendered as an inverted (black) card rather than a colour fill. */
   inverted?: boolean
+  /**
+   * Parahi, Hiriwa and Kōura are drawn as metal: a sheen across the swatch and
+   * a darker rim. Flat bronze and gold were only darker copies of Karaka and
+   * Kōwhai (CIELAB distance 19, where neighbouring colours sit at 50 or more),
+   * so the eye could not tell a Karaka score from a Parahi one at chip size.
+   * The sheen makes the metals read as their own group. Draw any swatch
+   * through `gradeFill`, never `hex` alone. `hex` stays the mid tone, for
+   * borders, tints and bar segments.
+   */
+  metal?: { sheen: string; rim: string }
 }
 
 /** The starting state. Not an award — every player begins here. */
@@ -98,17 +108,36 @@ export const MA: GradeRung = {
 // with it (the globals.css --grade-* tokens), and bronze, silver and gold from
 // the standards review for the three rungs the old ladder never had. Uenuku is
 // drawn as the rainbow and Taniwha as a black card, so their hex is the fallback.
+//
+// Colour rework (v0.51.0.0, Tāne 10 Nov 2026): Karaka moved to a truer orange
+// and Kōwhai to a cleaner lemon, and the metals were deepened (copper, antique
+// gold) and drawn with a sheen, because bronze and gold read as Karaka and
+// Kōwhai. Pairwise CIELAB distance went from 19 to about 37 on both pairs.
+/** A metal's sheen: light corner, body, a highlight band, body again. */
+function metalSheen(light: string, body: string, highlight: string): string {
+  return `linear-gradient(135deg, ${light} 0%, ${body} 48%, ${highlight} 62%, ${body} 100%)`
+}
+
 export const GRADES: GradeRung[] = [
   { rung: 1, name: 'Kiwikiwi', colour: 'grey', hex: '#888888', populationTarget: null },
   { rung: 2, name: 'Whero', colour: 'red', hex: '#EA4742', ink: '#EE625D', populationTarget: 90 },
-  { rung: 3, name: 'Karaka', colour: 'orange', hex: '#F9B051', populationTarget: 80 },
-  { rung: 4, name: 'Kōwhai', colour: 'yellow', hex: '#F9E051', populationTarget: 70 },
+  { rung: 3, name: 'Karaka', colour: 'orange', hex: '#F2852B', populationTarget: 80 },
+  { rung: 4, name: 'Kōwhai', colour: 'yellow', hex: '#F6E73A', populationTarget: 70 },
   { rung: 5, name: 'Kākāriki', colour: 'green', hex: '#4DB26E', populationTarget: 60 },
   { rung: 6, name: 'Kahurangi', colour: 'blue', hex: '#2371BB', ink: '#5A9BE0', populationTarget: 50 },
   { rung: 7, name: 'Poroporo', colour: 'purple', hex: '#B87DB5', populationTarget: 40 },
-  { rung: 8, name: 'Parahi', colour: 'bronze', hex: '#CD7F32', populationTarget: 30 },
-  { rung: 9, name: 'Hiriwa', colour: 'silver', hex: '#B8C0CC', populationTarget: 20 },
-  { rung: 10, name: 'Kōura', colour: 'gold', hex: '#D4AF37', populationTarget: 10 },
+  {
+    rung: 8, name: 'Parahi', colour: 'bronze', hex: '#A0683A', ink: '#C08A5A', populationTarget: 30,
+    metal: { sheen: metalSheen('#C08A58', '#7A4A26', '#B37A48'), rim: '#4E2E16' },
+  },
+  {
+    rung: 9, name: 'Hiriwa', colour: 'silver', hex: '#B8C0CC', ink: '#C9D0D9', populationTarget: 20,
+    metal: { sheen: metalSheen('#F2F4F7', '#9AA3AE', '#DDE2E8'), rim: '#6B737D' },
+  },
+  {
+    rung: 10, name: 'Kōura', colour: 'gold', hex: '#C29A30', ink: '#D9B84A', populationTarget: 10,
+    metal: { sheen: metalSheen('#F0D46A', '#A8862A', '#E2C052'), rim: '#6E5714' },
+  },
   { rung: 11, name: 'Uenuku', colour: 'rainbow', hex: '#B87DB5', populationTarget: 5, rainbow: true },
   { rung: 12, name: 'Taniwha', colour: 'black', hex: '#000000', populationTarget: 1, inverted: true },
 ]
@@ -134,6 +163,19 @@ export const DOMAIN_COUNT = 10
  */
 export function gradeInk(g: GradeRung): string {
   return g.rung === 0 ? '#777' : g.inverted ? '#ffffff' : g.ink ?? g.hex
+}
+
+/**
+ * A swatch's fill: the metal's sheen for Parahi, Hiriwa and Kōura, otherwise
+ * the flat hex. Uenuku's rainbow is the caller's (it lives in domainColours).
+ */
+export function gradeFill(g: GradeRung): string {
+  return g.metal ? g.metal.sheen : g.hex
+}
+
+/** A swatch's rim: the metal's darker edge, or null for none. */
+export function gradeRim(g: GradeRung): string | null {
+  return g.metal ? g.metal.rim : null
 }
 
 /**
