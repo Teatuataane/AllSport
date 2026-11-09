@@ -34,6 +34,7 @@ import { hasGameRow, isNewPR, mergeRows, seasonGameBest, type PRRow } from '@/li
 import { useSessionResults, type SaveJob, type SessionResult } from '@/lib/useSessionResults'
 import { nextUnscored } from '@/lib/nextEvent'
 import GameBanner from '@/components/play/GameBanner'
+import Toast, { ToastButton, ToastText } from '@/components/play/Toast'
 import { averageBefore, awardsForGame, nextStep } from '@/lib/gameReport'
 import { ColourScore, EarnedColours, NextTime, PlacementHeader } from '@/components/GameReportParts'
 import { prMoments, prsAtGame } from '@/lib/prCounts'
@@ -172,7 +173,7 @@ function eventDivisionRank(
   seId: string, allResults: Result[], playerInfoMap: Record<string, PlayerInfo>,
   playerDivision: string | null | undefined, myBestRaw: number | null
 ): { label: string; color: string } {
-  if (!playerDivision || myBestRaw === null) return { label: '', color: '#555' }
+  if (!playerDivision || myBestRaw === null) return { label: '', color: 'var(--grey)' }
   const divEventResults = allResults.filter(r =>
     r.event_id === seId && r.player_id && playerInfoMap[r.player_id]?.division === playerDivision
   )
@@ -183,7 +184,7 @@ function eventDivisionRank(
     if (ex === undefined || r.raw_score > ex) bestPerDiv[r.player_id] = r.raw_score
   })
   const rank = 1 + Object.values(bestPerDiv).filter(b => b > myBestRaw).length
-  const color = rank === 1 ? '#F9B051' : rank === 2 ? '#C0C0C0' : rank === 3 ? '#CD7F32' : '#888'
+  const color = rank === 1 ? 'var(--amber)' : rank === 2 ? 'var(--medal-silver)' : rank === 3 ? 'var(--medal-bronze)' : 'var(--grey)'
   return { label: `${ordinal(rank)} in event`, color }
 }
 
@@ -198,17 +199,17 @@ function JudgeChip({ label, active, tone = 'player', onClick }: {
   tone?: 'player' | 'guest' | 'add'
   onClick: () => void
 }) {
-  const accent = tone === 'guest' ? '#F9B051' : '#EA4742'
-  const idleColor = tone === 'guest' ? '#F9B051' : tone === 'add' ? '#888' : '#ccc'
-  const idleBorder = tone === 'guest' ? '#F9B05144' : tone === 'add' ? '#2a2a2a' : '#333'
+  const accent = tone === 'guest' ? 'var(--amber)' : 'var(--red)'
+  const idleColor = tone === 'guest' ? 'var(--amber)' : tone === 'add' ? 'var(--grey)' : 'var(--grey-light)'
+  const idleBorder = tone === 'guest' ? 'color-mix(in srgb, var(--amber) 27%, transparent)' : tone === 'add' ? 'var(--border-strong)' : 'var(--border-strong)'
   return (
     <button className="press" onClick={onClick} style={{
       fontFamily: 'var(--font-label)', textTransform: 'uppercase', letterSpacing: '0.08em',
       fontSize: '13px', fontWeight: 600, flexShrink: 0, cursor: 'pointer',
-      borderRadius: '999px', padding: '0 15px', minHeight: '44px',
+      borderRadius: 'var(--radius-pill)', padding: '0 15px', minHeight: '44px',
       display: 'inline-flex', alignItems: 'center',
-      background: active ? accent : '#161616',
-      color: active ? (tone === 'guest' ? '#000' : '#fff') : idleColor,
+      background: active ? accent : 'var(--surface-2)',
+      color: active ? (tone === 'guest' ? 'var(--black)' : 'var(--white)') : idleColor,
       border: `1px ${tone === 'add' ? 'dashed' : 'solid'} ${active ? accent : idleBorder}`,
     }}>{label}</button>
   )
@@ -226,15 +227,15 @@ function JudgeRosterRow({ name, isGuest, scoredIds, events, onOpen }: {
   return (
     <button className="press" onClick={onOpen} style={{
       width: '100%', textAlign: 'left', display: 'block', padding: '12px 14px', marginBottom: '8px',
-      borderRadius: '16px', cursor: 'pointer', background: '#111',
-      border: `1px solid ${complete ? '#1e3a28' : '#1e1e1e'}`, color: '#fff', fontFamily: 'var(--font-body)',
+      borderRadius: 'var(--radius-lg)', cursor: 'pointer', background: 'var(--surface)',
+      border: `1px solid ${complete ? 'var(--green-tint)' : 'var(--border)'}`, color: 'var(--white)', fontFamily: 'var(--font-body)',
     }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '10px', marginBottom: '8px' }}>
         <div style={{ fontFamily: 'var(--font-display)', fontSize: '19px', letterSpacing: '0.03em', lineHeight: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {name}
-          {isGuest && <span style={{ fontFamily: 'var(--font-label)', fontSize: '11px', color: '#F9B051', marginLeft: '8px', letterSpacing: '0.1em' }}>GUEST</span>}
+          {isGuest && <span style={{ fontFamily: 'var(--font-label)', fontSize: '12px', color: 'var(--amber)', marginLeft: '8px', letterSpacing: '0.1em' }}>GUEST</span>}
         </div>
-        <div style={{ fontFamily: 'var(--font-label)', fontSize: '12px', letterSpacing: '0.08em', textTransform: 'uppercase', flexShrink: 0, color: complete ? '#4DB26E' : '#888' }}>
+        <div style={{ fontFamily: 'var(--font-label)', fontSize: '12px', letterSpacing: '0.08em', textTransform: 'uppercase', flexShrink: 0, color: complete ? 'var(--green)' : 'var(--grey)' }}>
           {done}/{events.length} scored
         </div>
       </div>
@@ -251,11 +252,24 @@ const MENS_DIVS = ["Men's"]
 const WOMENS_DIVS = ["Women's"]
 
 function medalBg(rank: number): string {
-  return rank === 1 ? '#F9B051' : rank === 2 ? '#C0C0C0' : rank === 3 ? '#CD7F32' : '#2a2a2a'
+  return rank === 1 ? 'var(--amber)' : rank === 2 ? 'var(--medal-silver)' : rank === 3 ? 'var(--medal-bronze)' : 'var(--border-strong)'
 }
-function medalColor(rank: number): string { return rank <= 3 ? '#000' : '#aaa' }
+function medalColor(rank: number): string { return rank <= 3 ? 'var(--black)' : 'var(--grey-light)' }
 
 // ─── JudgeSummaryTab ──────────────────────────────────────────────────────────
+
+// A drawn chevron for an open or closed row; the ▲ ▼ characters it replaces
+// render at a different size and weight on every phone font (v0.50.0.0).
+function Chevron({ open }: { open: boolean }) {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" style={{
+      flexShrink: 0, color: open ? 'var(--blue)' : 'var(--grey)',
+      transform: open ? 'rotate(180deg)' : 'none', transition: 'transform var(--dur) var(--ease)',
+    }}>
+      <path d="M3 5.5 7 9.5 11 5.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
 
 function JudgeSummaryTab({
   events, results, playerInfoMap, onDelete,
@@ -297,11 +311,10 @@ function JudgeSummaryTab({
       const eventDetails = events.map(ev => {
         const mine = poolResults.filter(r => r.event_id === ev.id && r.player_id === pid)
         const evData = getEventByName(ev.event_name)
-        const emoji = evData?.emoji ?? '🏅'
-        if (mine.length === 0) return { eventId: ev.id, eventName: ev.event_name, emoji, displayLabel: null as string | null }
+        if (mine.length === 0) return { eventId: ev.id, eventName: ev.event_name, slug: ev.event_slug, domain: ev.domain_number, displayLabel: null as string | null }
         const myBest = mine.reduce((b, r) => (r.raw_score > b.raw_score ? r : b))
         const displayLabel = evData?.inputMode === 'sport' ? sportWDL(mine) : myBest.score_label
-        return { eventId: ev.id, eventName: ev.event_name, emoji, displayLabel }
+        return { eventId: ev.id, eventName: ev.event_name, slug: ev.event_slug, domain: ev.domain_number, displayLabel }
       })
       const sample = poolResults.find(r => r.player_id === pid)!
       return { playerId: pid, playerName: sample.player_name, eventDetails }
@@ -319,11 +332,11 @@ function JudgeSummaryTab({
     const poolResults = getPoolResults(pool)
     return (
       <div style={{ marginBottom: '28px' }}>
-        <div style={{ fontSize: '16px', fontWeight: 700, color: '#fff', fontFamily: 'var(--font-display)', letterSpacing: '0.08em', marginBottom: '10px', borderBottom: '1px solid #1e1e1e', paddingBottom: '8px' }}>
+        <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--white)', fontFamily: 'var(--font-display)', letterSpacing: '0.08em', marginBottom: '10px', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
           {title}
         </div>
         {rows.length === 0 ? (
-          <div style={{ color: '#555', fontSize: '13px', padding: '8px 0', fontFamily: 'var(--font-label)' }}>No scores submitted</div>
+          <div style={{ color: 'var(--grey)', fontSize: '13px', padding: '8px 0', fontFamily: 'var(--font-label)' }}>No scores submitted</div>
         ) : (
           rows.map(entry => {
             const isExpanded = expandedPlayerId === entry.playerId
@@ -334,42 +347,42 @@ function JudgeSummaryTab({
                   style={{
                     display: 'flex', alignItems: 'center', gap: '10px', width: '100%',
                     padding: '10px 14px',
-                    background: isExpanded ? '#0d1a2e' : '#111',
-                    border: `1px solid ${isExpanded ? '#2371BB' : '#1e1e1e'}`,
-                    borderRadius: isExpanded ? '10px 10px 0 0' : '10px',
+                    background: isExpanded ? 'var(--blue-tint)' : 'var(--surface)',
+                    border: `1px solid ${isExpanded ? 'var(--blue)' : 'var(--border)'}`,
+                    borderRadius: isExpanded ? 'var(--radius-md) var(--radius-md) 0 0' : 'var(--radius-md)',
                     cursor: 'pointer',
                   }}
                 >
                   <div style={{ flex: 1, textAlign: 'left' }}>
-                    <div style={{ fontSize: '14px', fontWeight: 700, color: '#fff' }}>{entry.playerName}</div>
+                    <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--white)' }}>{entry.playerName}</div>
                   </div>
-                  <span style={{ color: isExpanded ? '#2371BB' : '#444', fontSize: '12px' }}>{isExpanded ? '▲' : '▼'}</span>
+                  <Chevron open={isExpanded} />
                 </button>
 
                 {isExpanded && (
-                  <div style={{ background: '#0a0a0a', border: '1px solid #2371BB', borderTop: 'none', borderRadius: '0 0 10px 10px', overflow: 'hidden' }}>
+                  <div style={{ background: 'var(--dark)', border: '1px solid var(--blue)', borderTop: 'none', borderRadius: '0 0 var(--radius-md) var(--radius-md)', overflow: 'hidden' }}>
                     {entry.eventDetails.map((ed, i) => {
                       const editKey = `${entry.playerId}-${ed.eventId}`
                       const isEditingThis = editingKey === editKey
                       const eventResults = poolResults.filter(r => r.player_id === entry.playerId && r.event_id === ed.eventId)
                       return (
-                        <div key={ed.eventId} style={{ borderBottom: i < entry.eventDetails.length - 1 ? '1px solid #111' : 'none' }}>
+                        <div key={ed.eventId} style={{ borderBottom: i < entry.eventDetails.length - 1 ? '1px solid var(--surface)' : 'none' }}>
                           <div style={{
                             display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 14px',
-                            background: isEditingThis ? '#0d1a2e' : i % 2 === 0 ? '#0a0a0a' : '#0d0d0d',
+                            background: isEditingThis ? 'var(--blue-tint)' : i % 2 === 0 ? 'var(--dark)' : 'var(--surface)',
                           }}>
-                            <span style={{ fontSize: '14px', flexShrink: 0 }}>{ed.emoji}</span>
-                            <div style={{ flex: 1, fontSize: '11px', color: '#666', fontFamily: 'var(--font-label)' }}>{ed.eventName}</div>
-                            <div style={{ fontSize: '12px', color: ed.displayLabel ? '#ccc' : '#333', minWidth: '60px', textAlign: 'right' }}>
+                            <EventIcon slug={ed.slug} domainNumber={ed.domain} size={22} />
+                            <div style={{ flex: 1, fontSize: '12px', color: 'var(--grey)', fontFamily: 'var(--font-label)' }}>{ed.eventName}</div>
+                            <div style={{ fontSize: '12px', color: ed.displayLabel ? 'var(--grey-light)' : 'var(--grey)', minWidth: '60px', textAlign: 'right' }}>
                               {ed.displayLabel ?? '—'}
                             </div>
                             <button className="press"
                               onClick={() => setEditingKey(isEditingThis ? null : editKey)}
                               style={{
                                 background: 'none',
-                                border: `1px solid ${isEditingThis ? '#EA474244' : '#2371BB33'}`,
-                                borderRadius: '4px', color: isEditingThis ? '#EA4742' : '#2371BB',
-                                cursor: 'pointer', fontSize: '11px', padding: '2px 8px',
+                                border: `1px solid ${isEditingThis ? 'color-mix(in srgb, var(--red) 27%, transparent)' : 'color-mix(in srgb, var(--blue) 20%, transparent)'}`,
+                                borderRadius: 'var(--radius-sm)', color: isEditingThis ? 'var(--red)' : 'var(--blue)',
+                                cursor: 'pointer', fontSize: '12px', padding: '2px 8px',
                                 fontFamily: 'var(--font-label)', fontWeight: 700, flexShrink: 0,
                               }}
                             >
@@ -377,35 +390,35 @@ function JudgeSummaryTab({
                             </button>
                           </div>
                           {isEditingThis && (
-                            <div style={{ padding: '12px 14px', background: '#0d1020', borderTop: '1px solid #1e1e1e' }}>
+                            <div style={{ padding: '12px 14px', background: 'var(--blue-tint)', borderTop: '1px solid var(--border)' }}>
                               {eventResults.length > 0 ? (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '10px' }}>
-                                  <div style={{ fontSize: '10px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.08em', marginBottom: '4px' }}>SUBMITTED SCORES</div>
+                                  <div style={{ fontSize: '12px', color: 'var(--grey)', fontFamily: 'var(--font-label)', letterSpacing: '0.08em', marginBottom: '4px' }}>SUBMITTED SCORES</div>
                                   {eventResults.map(r => (
-                                    <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#111', borderRadius: '8px', padding: '8px 12px' }}>
-                                      <div style={{ flex: 1, fontSize: '14px', color: '#fff' }}>{r.score_label}</div>
+                                    <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'var(--surface)', borderRadius: 'var(--radius-md)', padding: '8px 12px' }}>
+                                      <div style={{ flex: 1, fontSize: '14px', color: 'var(--white)' }}>{r.score_label}</div>
                                       {r.difficulty_tier && (
-                                        <div style={{ fontSize: '10px', color: '#B87DB5', fontFamily: 'var(--font-label)' }}>{r.difficulty_tier}</div>
+                                        <div style={{ fontSize: '12px', color: 'var(--purple)', fontFamily: 'var(--font-label)' }}>{r.difficulty_tier}</div>
                                       )}
                                       {!r.pending && (confirmId === r.id ? (
                                         <>
-                                          <span style={{ fontFamily: 'var(--font-label)', fontSize: '13px', color: '#EA4742', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Delete?</span>
+                                          <span style={{ fontFamily: 'var(--font-label)', fontSize: '13px', color: 'var(--red)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Delete?</span>
                                           <button className="press" onClick={() => { setConfirmId(null); handleDelete(r, ed.eventName) }}
-                                            style={{ ...smallBtn, background: '#EA4742', border: '1px solid #EA4742', color: '#fff' }}>Delete</button>
+                                            style={{ ...smallBtn, background: 'var(--red)', border: '1px solid var(--red)', color: 'var(--white)' }}>Delete</button>
                                           <button className="press" onClick={() => setConfirmId(null)}
-                                            style={{ ...smallBtn, background: 'none', border: '1px solid #333', color: '#aaa' }}>Keep</button>
+                                            style={{ ...smallBtn, background: 'none', border: '1px solid var(--border-strong)', color: 'var(--grey-light)' }}>Keep</button>
                                         </>
                                       ) : (
                                         <button className="press" onClick={() => setConfirmId(r.id)} aria-label={`Delete ${r.score_label}`}
-                                          style={{ ...smallBtn, background: 'none', border: '1px solid #EA474266', color: '#EA4742' }}>Delete</button>
+                                          style={{ ...smallBtn, background: 'none', border: '1px solid color-mix(in srgb, var(--red) 40%, transparent)', color: 'var(--red)' }}>Delete</button>
                                       ))}
                                     </div>
                                   ))}
                                 </div>
                               ) : (
-                                <div style={{ fontSize: '13px', color: '#555', marginBottom: '10px' }}>No score submitted yet</div>
+                                <div style={{ fontSize: '13px', color: 'var(--grey)', marginBottom: '10px' }}>No score submitted yet</div>
                               )}
-                              <div style={{ fontSize: '11px', color: '#444', fontFamily: 'var(--font-label)' }}>
+                              <div style={{ fontSize: '12px', color: 'var(--grey)', fontFamily: 'var(--font-label)' }}>
                                 To add or update a score, use the Kaiwhakawā tab and select {entry.playerName}.
                               </div>
                             </div>
@@ -425,7 +438,7 @@ function JudgeSummaryTab({
 
   return (
     <div style={{ padding: '12px 16px' }}>
-      <div style={{ fontSize: '11px', color: '#EA4742', fontFamily: 'var(--font-label)', letterSpacing: '0.1em', marginBottom: '16px', fontWeight: 700 }}>
+      <div style={{ fontSize: '12px', color: 'var(--red)', fontFamily: 'var(--font-label)', letterSpacing: '0.1em', marginBottom: '16px', fontWeight: 700 }}>
         GAME SUMMARY — ALL PLAYERS
       </div>
       {renderSummarySection('mens', "Men's")}
@@ -508,10 +521,10 @@ function LeaderboardTab({
 
   function chipStyle(active: boolean): React.CSSProperties {
     return {
-      padding: '0 14px', minHeight: '44px', borderRadius: '999px', border: `1px solid ${active ? '#2371BB' : '#222'}`,
+      padding: '0 14px', minHeight: '44px', borderRadius: 'var(--radius-pill)', border: `1px solid ${active ? 'var(--blue)' : 'var(--border)'}`,
       display: 'inline-flex', alignItems: 'center',
       fontSize: '12px', fontWeight: active ? 700 : 400, cursor: 'pointer',
-      background: active ? '#0d1a2e' : '#111', color: active ? '#7ab4ff' : '#555',
+      background: active ? 'var(--blue-tint)' : 'var(--surface)', color: active ? 'var(--blue-light)' : 'var(--grey)',
       fontFamily: 'var(--font-label)', flexShrink: 0,
     }
   }
@@ -524,18 +537,18 @@ function LeaderboardTab({
         {evRows.map(entry => (
           <div key={entry.playerKey} style={{
             display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px',
-            background: '#111', borderRadius: '10px', border: '1px solid #1e1e1e',
+            background: 'var(--surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)',
           }}>
             <div style={{
               width: '26px', height: '26px', borderRadius: '50%', flexShrink: 0,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: '12px', fontWeight: 700, background: medalBg(entry.rank), color: medalColor(entry.rank),
             }}>{entry.rank}</div>
-            <div style={{ flex: 1, fontSize: '14px', color: entry.playerId === currentPlayerId ? '#7ab4ff' : '#aaa' }}>
+            <div style={{ flex: 1, fontSize: '14px', color: entry.playerId === currentPlayerId ? 'var(--blue-light)' : 'var(--grey-light)' }}>
               {entry.playerName}
-              {entry.playerId === currentPlayerId && <span style={{ fontSize: '10px', color: '#555', marginLeft: '6px', fontFamily: 'var(--font-label)' }}>YOU</span>}
+              {entry.playerId === currentPlayerId && <span style={{ fontSize: '12px', color: 'var(--grey)', marginLeft: '6px', fontFamily: 'var(--font-label)' }}>YOU</span>}
             </div>
-            <div style={{ fontSize: '14px', fontWeight: 700, color: '#4DB26E', fontFamily: 'var(--font-display)' }}>
+            <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--green)', fontFamily: 'var(--font-display)' }}>
               {entry.label}
             </div>
           </div>
@@ -545,8 +558,8 @@ function LeaderboardTab({
   }
 
   const selectedEvent = eventFilterId ? events.find(e => e.id === eventFilterId) : null
-  const titleStyle: React.CSSProperties = { fontSize: '15px', fontWeight: 700, color: '#fff', fontFamily: 'var(--font-display)', letterSpacing: '0.08em', marginBottom: '10px' }
-  const noScores = <div style={{ color: '#555', fontSize: '13px', padding: '12px 0', fontFamily: 'var(--font-label)' }}>No scores yet</div>
+  const titleStyle: React.CSSProperties = { fontSize: '15px', fontWeight: 700, color: 'var(--white)', fontFamily: 'var(--font-display)', letterSpacing: '0.08em', marginBottom: '10px' }
+  const noScores = <div style={{ color: 'var(--grey)', fontSize: '13px', padding: '12px 0', fontFamily: 'var(--font-label)' }}>No scores yet</div>
 
   return (
     <div style={{ padding: '12px 16px' }}>
@@ -557,10 +570,10 @@ function LeaderboardTab({
           value={eventFilterId ?? ''}
           onChange={e => setEventFilterId(e.target.value || null)}
           style={{
-            width: '100%', background: eventFilterId ? '#0d1a2e' : '#0d0d0d',
-            border: `1px solid ${eventFilterId ? '#2371BB' : '#222'}`,
-            borderRadius: '8px', padding: '10px 14px',
-            color: eventFilterId ? '#7ab4ff' : '#666',
+            width: '100%', background: eventFilterId ? 'var(--blue-tint)' : 'var(--surface)',
+            border: `1px solid ${eventFilterId ? 'var(--blue)' : 'var(--border)'}`,
+            borderRadius: 'var(--radius-md)', padding: '10px 14px',
+            color: eventFilterId ? 'var(--blue-light)' : 'var(--grey)',
             fontSize: '14px', fontFamily: 'var(--font-body)',
           }}
         >
@@ -568,7 +581,7 @@ function LeaderboardTab({
           {events.map(ev => <option key={ev.id} value={ev.id}>{ev.event_name}</option>)}
         </select>
         {selectedEvent && (
-          <div style={{ fontSize: '11px', color: '#555', marginTop: '6px', fontFamily: 'var(--font-label)', letterSpacing: '0.06em' }}>
+          <div style={{ fontSize: '12px', color: 'var(--grey)', marginTop: '6px', fontFamily: 'var(--font-label)', letterSpacing: '0.06em' }}>
             SCORES FOR: {selectedEvent.event_name.toUpperCase()}, NOT A PLACE IN THE GAME
           </div>
         )}
@@ -576,7 +589,7 @@ function LeaderboardTab({
 
       {!eventFilterId && (
         <>
-          <div style={{ color: '#666', fontSize: '13px', lineHeight: 1.5, marginBottom: '14px' }}>
+          <div style={{ color: 'var(--grey)', fontSize: '13px', lineHeight: 1.5, marginBottom: '14px' }}>
             {closed
               ? 'One list for the whole game, ranked on colour score, which is scaled for age and sex.'
               : 'Places come from colour scores when the game closes. Pick an event above to see its scores.'}
@@ -619,7 +632,7 @@ function LeaderboardTab({
 
 // ─── Session-end takeover (DR-1) + session milestones (DR-7) ──────────────────
 
-const RAINBOW_G = 'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)'
+const RAINBOW_G = 'linear-gradient(90deg, var(--red), var(--amber), var(--pink), var(--purple), var(--blue), var(--green))'
 
 type EndSummary = { session_id: string }
 
@@ -726,20 +739,20 @@ function SessionEndTakeover({
       <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)' }} />
       <div style={{
         position: 'absolute', inset: 0, margin: '0 auto', width: 'min(640px, 100vw)',
-        display: 'flex', flexDirection: 'column', background: '#101010',
-        borderLeft: '1px solid #1e1e1e', borderRight: '1px solid #1e1e1e',
+        display: 'flex', flexDirection: 'column', background: 'var(--surface)',
+        borderLeft: '1px solid var(--border)', borderRight: '1px solid var(--border)',
         animation: 'takeoverUp 0.34s cubic-bezier(0.16,1,0.3,1)',
       }}>
         <div style={{ height: '4px', flexShrink: 0, background: RAINBOW_G }} />
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px 18px 8px', flexShrink: 0 }}>
-          <div style={{ flex: 1, fontFamily: 'var(--font-label)', fontSize: '12px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.16em' }}>
+          <div style={{ flex: 1, fontFamily: 'var(--font-label)', fontSize: '12px', color: 'var(--grey)', textTransform: 'uppercase', letterSpacing: '0.16em' }}>
             Session complete
           </div>
           <button className="press" onClick={onDismiss} style={{
-            width: '38px', height: '38px', borderRadius: '10px', cursor: 'pointer', flexShrink: 0,
-            background: '#181818', border: '1px solid #2a2a2a', color: '#999', fontSize: '15px',
+            width: '38px', height: '38px', borderRadius: 'var(--radius-md)', cursor: 'pointer', flexShrink: 0,
+            background: 'var(--surface-2)', border: '1px solid var(--border-strong)', color: 'var(--grey)', fontSize: '15px',
           }}>✕</button>
         </div>
 
@@ -751,11 +764,11 @@ function SessionEndTakeover({
 
           {/* The game's colour score */}
           {score ? <ColourScore points={score.points} average={average} prs={prCount} /> : (
-            <div style={{ height: '76px', background: '#161616', border: '1px solid #1e1e1e', borderRadius: '14px' }} />
+            <div style={{ height: '76px', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)' }} />
           )}
           {next && <NextTime step={next} />}
           {rechecked > 0 && !wholeGame && (
-            <div style={{ fontSize: '11.5px', color: '#555', marginTop: '6px', textAlign: 'center' }}>
+            <div style={{ fontSize: '12px', color: 'var(--grey)', marginTop: '6px', textAlign: 'center' }}>
               Your place shows once everyone&apos;s colour score is in
             </div>
           )}
@@ -763,12 +776,12 @@ function SessionEndTakeover({
           {/* PRs set today */}
           {prs.length > 0 && (
             <>
-              <div style={{ ...SHEET_LBL, color: '#F9B051' }}>PRs set today</div>
+              <div style={{ ...SHEET_LBL, color: 'var(--amber)' }}>PRs set today</div>
               {prs.map(r => (
-                <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#161616', border: '1px solid #F9B05133', borderRadius: '12px', padding: '10px 14px', marginBottom: '6px' }}>
-                  <span style={{ fontSize: '10px', fontWeight: 700, color: '#F9B051', background: '#F9B05122', borderRadius: '4px', padding: '2px 6px', fontFamily: 'var(--font-label)', letterSpacing: '0.05em', flexShrink: 0 }}>PR</span>
-                  <span style={{ flex: 1, fontSize: '14px', color: '#fff' }}>{eventNameFor(r.event_id)}</span>
-                  <span style={{ fontFamily: 'var(--font-display)', fontSize: '17px', color: '#F9B051' }}>{r.score_label}</span>
+                <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'var(--surface-2)', border: '1px solid color-mix(in srgb, var(--amber) 20%, transparent)', borderRadius: 'var(--radius-md)', padding: '10px 14px', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--amber)', background: 'color-mix(in srgb, var(--amber) 13%, transparent)', borderRadius: 'var(--radius-sm)', padding: '2px 6px', fontFamily: 'var(--font-label)', letterSpacing: '0.05em', flexShrink: 0 }}>PR</span>
+                  <span style={{ flex: 1, fontSize: '14px', color: 'var(--white)' }}>{eventNameFor(r.event_id)}</span>
+                  <span style={{ fontFamily: 'var(--font-display)', fontSize: '17px', color: 'var(--amber)' }}>{r.score_label}</span>
                 </div>
               ))}
             </>
@@ -779,22 +792,22 @@ function SessionEndTakeover({
           <EarnedColours colours={colours} />
 
           <a href="/dashboard" style={{
-            display: 'block', marginTop: '18px', background: '#161616', border: '1px solid #1e1e1e',
-            borderRadius: '14px', padding: '14px 16px', color: '#fff', textDecoration: 'none',
+            display: 'block', marginTop: '18px', background: 'var(--surface-2)', border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-lg)', padding: '14px 16px', color: 'var(--white)', textDecoration: 'none',
           }}>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '20px', letterSpacing: '0.04em' }}>Your colours</div>
-            <div style={{ fontSize: '13px', color: '#888', marginTop: '3px', lineHeight: 1.5 }}>
+            <div style={{ fontSize: '13px', color: 'var(--grey)', marginTop: '3px', lineHeight: 1.5 }}>
               See what today&apos;s scores did for your colour in each domain →
             </div>
           </a>
 
           {/* Session-count milestone */}
           {milestone !== null && (
-            <div style={{ marginTop: '14px', background: '#1f1608', border: '1px solid #F9B051', borderRadius: '14px', padding: '14px 16px' }}>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: '20px', color: '#F9B051', letterSpacing: '0.04em' }}>
+            <div style={{ marginTop: '14px', background: 'var(--amber-tint)', border: '1px solid var(--amber)', borderRadius: 'var(--radius-lg)', padding: '14px 16px' }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '20px', color: 'var(--amber)', letterSpacing: '0.04em' }}>
                 Milestone — your {ordinal(milestone)} session
               </div>
-              <div style={{ fontSize: '13px', color: '#ccc', marginTop: '4px', lineHeight: 1.5 }}>
+              <div style={{ fontSize: '13px', color: 'var(--grey-light)', marginTop: '4px', lineHeight: 1.5 }}>
                 {milestone === 10
                   ? 'Ten AllSport sessions played. If a friend invited you, their referral just qualified — you count towards their koha tier now.'
                   : `${milestone} AllSport sessions played. Ka rawe — keep showing up.`}
@@ -805,14 +818,14 @@ function SessionEndTakeover({
           {/* Full report link */}
           <a href={`/games/${sessionId}`} style={{
             display: 'block', textAlign: 'center', marginTop: '18px', padding: '13px 0',
-            borderRadius: '999px', border: '1px solid #2a2a2a', background: '#181818',
-            color: '#fff', textDecoration: 'none', fontFamily: 'var(--font-label)',
+            borderRadius: 'var(--radius-pill)', border: '1px solid var(--border-strong)', background: 'var(--surface-2)',
+            color: 'var(--white)', textDecoration: 'none', fontFamily: 'var(--font-label)',
             textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '14px',
           }}>Full game report →</a>
 
           <button className="press" onClick={onDismiss} style={{
-            width: '100%', marginTop: '10px', height: '54px', border: 'none', borderRadius: '999px',
-            cursor: 'pointer', background: RAINBOW_G, color: '#0a0a0a',
+            width: '100%', marginTop: '10px', height: '54px', border: 'none', borderRadius: 'var(--radius-pill)',
+            cursor: 'pointer', background: RAINBOW_G, color: 'var(--dark)',
             fontFamily: 'var(--font-label)', textTransform: 'uppercase',
             letterSpacing: '0.12em', fontSize: '16px', fontWeight: 600,
           }}>Done</button>
@@ -1237,12 +1250,11 @@ export default function SessionPage() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div style={{ minHeight: '100vh', background: '#0a0a0a', color: '#fff', maxWidth: '640px', margin: '0 auto', fontFamily: 'var(--font-body)' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--dark)', color: 'var(--white)', maxWidth: '640px', margin: '0 auto', fontFamily: 'var(--font-body)' }}>
       <style>{`
-        @keyframes toastPop { 0% { transform: translateX(-50%) scale(0.92); opacity: 0; } 60% { transform: translateX(-50%) scale(1.04); } 100% { transform: translateX(-50%) scale(1); opacity: 1; } }
         @keyframes barShimmer { from { left: -45%; } to { left: 105%; } }
         @keyframes takeoverUp { from { transform: translateY(6%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        @keyframes rankImprove { 0% { transform: translateY(45%); opacity: 0; } 40% { transform: translateY(0); opacity: 1; } 55% { color: #F9E051; } 100% { color: #fff; } }
+        @keyframes rankImprove { 0% { transform: translateY(45%); opacity: 0; } 40% { transform: translateY(0); opacity: 1; } 55% { color: var(--grade-kowhai); } 100% { color: var(--white); } }
       `}</style>
 
       {/* Top banner — Colour score + Timer */}
@@ -1256,7 +1268,7 @@ export default function SessionPage() {
       />
 
       {/* Tab bar */}
-      <div style={{ display: 'flex', borderBottom: '1px solid #1e1e1e', overflowX: 'auto', background: '#0a0a0a', position: 'sticky', top: '60px', zIndex: 9 }}>
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', overflowX: 'auto', background: 'var(--dark)', position: 'sticky', top: 'calc(var(--site-bar-h, 0px) + var(--game-banner-h, 76px))', zIndex: 9 }}>
         {allPlayers.map(p => {
           const pid = p.id as string
           const label = (p.display_name || p.username || p.full_name) as string
@@ -1267,9 +1279,9 @@ export default function SessionPage() {
               style={{
                 padding: '12px 16px', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
                 fontSize: '13px', fontWeight: active ? 700 : 400, flexShrink: 0,
-                background: active ? '#111' : 'transparent',
-                color: active ? '#fff' : '#555',
-                borderBottom: `2px solid ${active ? '#2371BB' : 'transparent'}`,
+                background: active ? 'var(--surface)' : 'transparent',
+                color: active ? 'var(--white)' : 'var(--grey)',
+                borderBottom: `2px solid ${active ? 'var(--blue)' : 'transparent'}`,
               }}>
               {label}
             </button>
@@ -1279,9 +1291,9 @@ export default function SessionPage() {
           style={{
             padding: '12px 16px', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
             fontSize: '13px', fontWeight: activeTab === 'leaderboard' ? 700 : 400, flexShrink: 0,
-            background: activeTab === 'leaderboard' ? '#111' : 'transparent',
-            color: activeTab === 'leaderboard' ? '#fff' : '#555',
-            borderBottom: `2px solid ${activeTab === 'leaderboard' ? '#2371BB' : 'transparent'}`,
+            background: activeTab === 'leaderboard' ? 'var(--surface)' : 'transparent',
+            color: activeTab === 'leaderboard' ? 'var(--white)' : 'var(--grey)',
+            borderBottom: `2px solid ${activeTab === 'leaderboard' ? 'var(--blue)' : 'transparent'}`,
           }}>
           Leaderboard
         </button>
@@ -1290,9 +1302,9 @@ export default function SessionPage() {
             style={{
               padding: '12px 16px', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
               fontSize: '13px', fontWeight: activeTab === 'judge-mode' ? 700 : 400, flexShrink: 0,
-              background: activeTab === 'judge-mode' ? '#111' : 'transparent',
-              color: activeTab === 'judge-mode' ? '#EA4742' : '#555',
-              borderBottom: `2px solid ${activeTab === 'judge-mode' ? '#EA4742' : 'transparent'}`,
+              background: activeTab === 'judge-mode' ? 'var(--surface)' : 'transparent',
+              color: activeTab === 'judge-mode' ? 'var(--red)' : 'var(--grey)',
+              borderBottom: `2px solid ${activeTab === 'judge-mode' ? 'var(--red)' : 'transparent'}`,
             }}>
             Kaiwhakawā
           </button>
@@ -1302,9 +1314,9 @@ export default function SessionPage() {
             style={{
               padding: '12px 16px', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
               fontSize: '13px', fontWeight: activeTab === 'judge-summary' ? 700 : 400, flexShrink: 0,
-              background: activeTab === 'judge-summary' ? '#111' : 'transparent',
-              color: activeTab === 'judge-summary' ? '#EA4742' : '#555',
-              borderBottom: `2px solid ${activeTab === 'judge-summary' ? '#EA4742' : 'transparent'}`,
+              background: activeTab === 'judge-summary' ? 'var(--surface)' : 'transparent',
+              color: activeTab === 'judge-summary' ? 'var(--red)' : 'var(--grey)',
+              borderBottom: `2px solid ${activeTab === 'judge-summary' ? 'var(--red)' : 'transparent'}`,
             }}>
             Summary
           </button>
@@ -1338,7 +1350,7 @@ export default function SessionPage() {
           sportRatings.ratings?.get(eventDataFor(slot)?.name ?? ''))
         // A domain's segment takes the best colour reached anywhere in it.
         const domainFill = (ev: { domain_number: number }) =>
-          rungSegment(Math.max(0, ...slots.filter(sl => sl.se.domain_number === ev.domain_number).map(rungFor))) ?? '#666'
+          rungSegment(Math.max(0, ...slots.filter(sl => sl.se.domain_number === ev.domain_number).map(rungFor))) ?? 'var(--grey)'
         // This game's colour so far: the official events' rungs summed and
         // divided by ten, exactly as the game report and /history count it.
         // Swapped and added events never count, as on the Season board.
@@ -1353,9 +1365,9 @@ export default function SessionPage() {
         return (
           <div key={pid} style={{ padding: '16px' }}>
             {sessionEnded && (
-              <div style={{ background: '#2e0d0d', border: '1px solid #EA4742', borderRadius: '8px', padding: '12px 16px', marginBottom: '16px', textAlign: 'center' }}>
-                <div style={{ color: '#EA4742', fontWeight: 700, fontFamily: 'var(--font-display)', fontSize: '18px' }}>Session Ended</div>
-                <div style={{ color: '#888', fontSize: '13px', marginTop: '4px' }}>Score submission is locked</div>
+              <div style={{ background: 'var(--red-tint)', border: '1px solid var(--red)', borderRadius: 'var(--radius-md)', padding: '12px 16px', marginBottom: '16px', textAlign: 'center' }}>
+                <div style={{ color: 'var(--red)', fontWeight: 700, fontFamily: 'var(--font-display)', fontSize: '18px' }}>Session Ended</div>
+                <div style={{ color: 'var(--grey)', fontSize: '13px', marginTop: '4px' }}>Score submission is locked</div>
               </div>
             )}
 
@@ -1375,27 +1387,27 @@ export default function SessionPage() {
             {/* Session progress */}
             <div style={{ marginBottom: '4px' }}>
               <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'baseline', gap: '4px 12px', marginBottom: '6px' }}>
-                <div style={{ fontFamily: 'var(--font-label)', fontSize: '11.5px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.12em' }}>
-                  <span style={{ color: '#fff', fontWeight: 600 }}>{doneEvents.length}</span> of {events.length} events scored
+                <div style={{ fontFamily: 'var(--font-label)', fontSize: '12px', color: 'var(--grey)', textTransform: 'uppercase', letterSpacing: '0.12em' }}>
+                  <span style={{ color: 'var(--white)', fontWeight: 600 }}>{doneEvents.length}</span> of {events.length} events scored
                   {doneEvents.length === events.length && events.length > 0 && (
-                    <span style={{ color: '#4DB26E', fontWeight: 600 }}> — All {events.length} events played</span>
+                    <span style={{ color: 'var(--green)', fontWeight: 600 }}> — All {events.length} events played</span>
                   )}
                 </div>
                 {gameColour && (
                   <div data-testid="game-colour" title="This game's colour so far" style={{
                     display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
-                    fontFamily: 'var(--font-label)', fontSize: '11.5px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.12em',
+                    fontFamily: 'var(--font-label)', fontSize: '12px', color: 'var(--grey)', textTransform: 'uppercase', letterSpacing: '0.12em',
                   }}>
                     This game
                     <GradeDot grade={gameColour} size={10} />
-                    <span style={{ color: '#fff', fontWeight: 600 }}>{gameColour.name}</span>
+                    <span style={{ color: 'var(--white)', fontWeight: 600 }}>{gameColour.name}</span>
                   </div>
                 )}
               </div>
               <div style={{ position: 'relative' }}>
                 <ProgressSegments events={events} scoredIds={barScored} fillFor={domainFill} />
                 {fullHousePulseId === pid && (
-                  <div style={{ position: 'absolute', inset: 0, borderRadius: '99px', overflow: 'hidden', pointerEvents: 'none' }}>
+                  <div style={{ position: 'absolute', inset: 0, borderRadius: 'var(--radius-pill)', overflow: 'hidden', pointerEvents: 'none' }}>
                     <div style={{
                       position: 'absolute', top: 0, bottom: 0, width: '40%', left: '-45%',
                       background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.85), transparent)',
@@ -1527,66 +1539,35 @@ export default function SessionPage() {
       {/* Score-submitted toast — PR (gold/rainbow pop) beats new-event-unlocked beats normal green.
           A save that failed after it was shown replaces it with the error. */}
       {toast && !live.failure && (
-        <div role="status" style={{
-          position: 'fixed', bottom: '20px', left: '50%', transform: 'translateX(-50%)',
-          width: 'min(600px, calc(100vw - 32px))', zIndex: 200, overflow: 'hidden',
-          background: '#161616',
-          border: `1px solid ${toast.isPR ? '#F9B05155' : toast.isNewEvent ? '#2371BB55' : '#2a2a2a'}`,
-          borderLeft: `4px solid ${toast.isPR ? '#F9B051' : toast.isNewEvent ? '#2371BB' : '#4DB26E'}`,
-          borderRadius: '12px', padding: toast.next ? '10px 10px 10px 16px' : '13px 16px', boxShadow: '0 24px 60px rgba(0,0,0,0.6)',
-          animation: toast.isPR || toast.isNewEvent ? 'toastPop 0.45s cubic-bezier(0.16,1,0.3,1)' : undefined,
-          display: 'flex', alignItems: 'center', gap: '10px', boxSizing: 'border-box',
-        }}>
-          {toast.isPR && (
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)' }} />
-          )}
-          <div style={{ flex: 1, minWidth: 0, fontFamily: 'var(--font-display)', fontSize: '18px', color: '#fff' }}>
-            {toast.playerName && <span style={{ color: '#EA4742' }}>{toast.playerName} — </span>}
-            {toast.isPR
-              ? <><span style={{ color: '#F9B051' }}>NEW PR</span> — {toast.eventName} — {toast.label}</>
-              : toast.isNewEvent
-                ? <><span style={{ color: '#7ab4ff' }}>New event unlocked</span> — {toast.eventName}! <span style={{ color: '#aaa' }}>{toast.label}</span></>
-                : <>Score in — {toast.eventName} — {toast.label}</>}
-          </div>
-          {toast.next && (() => {
+        <Toast tone={toast.isPR ? 'pr' : toast.isNewEvent ? 'new' : 'done'}
+          actions={toast.next && (() => {
             const next = toast.next
-            return (
-              <button className="press" onClick={() => { setSheetEventId(next.id); setToast(null) }} style={{
-                flexShrink: 0, maxWidth: '45%', minHeight: '44px', padding: '0 14px', borderRadius: 'var(--radius-pill)', cursor: 'pointer',
-                background: '#2371BB', border: 'none', color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                fontFamily: 'var(--font-label)', fontSize: '13px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase',
-              }}>Next: {next.name}</button>
-            )
-          })()}
-        </div>
+            return <ToastButton onClick={() => { setSheetEventId(next.id); setToast(null) }}>Next: {next.name}</ToastButton>
+          })()}>
+          <ToastText>
+            {toast.playerName && <span style={{ color: 'var(--red)' }}>{toast.playerName} — </span>}
+            {toast.isPR
+              ? <><span style={{ color: 'var(--amber)' }}>NEW PR</span> — {toast.eventName} — {toast.label}</>
+              : toast.isNewEvent
+                ? <><span style={{ color: 'var(--blue-light)' }}>New event unlocked</span> — {toast.eventName}! <span style={{ color: 'var(--grey-light)' }}>{toast.label}</span></>
+                : <>Score in — {toast.eventName} — {toast.label}</>}
+          </ToastText>
+        </Toast>
       )}
 
       {/* A score that did not save. It stays until dismissed: the row was
           drawn and then taken away, and the player must not miss why. */}
       {live.failure && (
-        <div role="alert" style={{
-          position: 'fixed', bottom: '20px', left: '50%', transform: 'translateX(-50%)',
-          width: 'min(600px, calc(100vw - 32px))', zIndex: 201, boxSizing: 'border-box',
-          background: '#161616', border: '1px solid #EA474255', borderLeft: '4px solid #EA4742',
-          borderRadius: 'var(--radius-md)', padding: '12px 12px 12px 16px', boxShadow: '0 24px 60px rgba(0,0,0,0.6)',
-          display: 'flex', alignItems: 'center', gap: '10px',
-        }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', color: '#fff', letterSpacing: '0.02em' }}>
-              Not saved: {live.failure.what}
-            </div>
-            <div style={{ fontSize: '13px', color: '#aaa', marginTop: '2px', lineHeight: 1.4 }}>{live.failure.message}</div>
-          </div>
-          <button className="press" onClick={live.failure.retry} style={{
-            flexShrink: 0, minHeight: '44px', padding: '0 16px', borderRadius: 'var(--radius-pill)', cursor: 'pointer',
-            background: '#EA4742', border: 'none', color: '#fff',
-            fontFamily: 'var(--font-label)', fontSize: '13px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase',
-          }}>Try again</button>
+        <Toast tone="error" actions={<>
+          <ToastButton tone="retry" onClick={live.failure.retry}>Try again</ToastButton>
           <button className="press" onClick={live.dismissFailure} aria-label="Dismiss" style={{
             flexShrink: 0, width: '44px', height: '44px', borderRadius: 'var(--radius-pill)', cursor: 'pointer',
-            background: 'none', border: '1px solid #333', color: '#aaa', fontSize: '14px',
+            background: 'none', border: '1px solid var(--border-strong)', color: 'var(--grey-light)', fontSize: '14px',
           }}>✕</button>
-        </div>
+        </>}>
+          <ToastText>Not saved: {live.failure.what}</ToastText>
+          <div style={{ fontSize: '13px', color: 'var(--grey-light)', marginTop: '2px', lineHeight: 1.4 }}>{live.failure.message}</div>
+        </Toast>
       )}
 
       {/* Judge mode tab */}
@@ -1609,7 +1590,7 @@ export default function SessionPage() {
           : liveEventRung(judgeEventDataFor(slot), judgeSlotRows(slot), gradeProfile.player, gradeProfile.bodyweightKg,
             sportRatings.ratings?.get(judgeEventDataFor(slot)?.name ?? ''))
         const judgeDomainFill = (ev: { domain_number: number }) =>
-          rungSegment(Math.max(0, ...judgeSlots.filter(sl => sl.se.domain_number === ev.domain_number).map(judgeRungFor))) ?? '#666'
+          rungSegment(Math.max(0, ...judgeSlots.filter(sl => sl.se.domain_number === ev.domain_number).map(judgeRungFor))) ?? 'var(--grey)'
         const unlistedPlayers = sessionPlayers.filter(sp => !judgeRoster.registeredIds.has(sp.id))
         const canPickMore = unlistedPlayers.length > 0
         const guestDraft = judgeGuestDraft.trim()
@@ -1617,13 +1598,13 @@ export default function SessionPage() {
 
         return (
           <div style={{ padding: '16px' }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', color: '#EA4742', letterSpacing: '0.05em', lineHeight: 1 }}>Kaiwhakawā</div>
-            <div style={{ fontSize: '11px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.08em', marginBottom: '12px' }}>SCORE FOR ANY PLAYER</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', color: 'var(--red)', letterSpacing: '0.05em', lineHeight: 1 }}>Kaiwhakawā</div>
+            <div style={{ fontSize: '12px', color: 'var(--grey)', fontFamily: 'var(--font-label)', letterSpacing: '0.08em', marginBottom: '12px' }}>SCORE FOR ANY PLAYER</div>
 
             {sessionEnded && (
-              <div style={{ background: '#2e0d0d', border: '1px solid #EA4742', borderRadius: '12px', padding: '12px 16px', marginBottom: '14px', textAlign: 'center' }}>
-                <div style={{ color: '#EA4742', fontWeight: 700, fontFamily: 'var(--font-display)', fontSize: '18px' }}>Session Ended</div>
-                <div style={{ color: '#888', fontSize: '13px', marginTop: '4px' }}>Score submission is locked</div>
+              <div style={{ background: 'var(--red-tint)', border: '1px solid var(--red)', borderRadius: 'var(--radius-md)', padding: '12px 16px', marginBottom: '14px', textAlign: 'center' }}>
+                <div style={{ color: 'var(--red)', fontWeight: 700, fontFamily: 'var(--font-display)', fontSize: '18px' }}>Session Ended</div>
+                <div style={{ color: 'var(--grey)', fontSize: '13px', marginTop: '4px' }}>Score submission is locked</div>
               </div>
             )}
 
@@ -1647,8 +1628,8 @@ export default function SessionPage() {
 
             {/* Full registered-player picker */}
             {judgeShowAll && (
-              <div style={{ background: '#0d0d0d', border: '1px solid #1e1e1e', borderRadius: '14px', padding: '12px', marginBottom: '12px' }}>
-                <div style={{ fontFamily: 'var(--font-label)', fontSize: '11px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: '10px' }}>
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '12px', marginBottom: '12px' }}>
+                <div style={{ fontFamily: 'var(--font-label)', fontSize: '12px', color: 'var(--grey)', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: '10px' }}>
                   All registered players
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', maxHeight: '220px', overflowY: 'auto' }}>
@@ -1671,14 +1652,14 @@ export default function SessionPage() {
                   onChange={e => setJudgeGuestDraft(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') addGuest() }}
                   style={{
-                    flex: 1, minWidth: 0, background: '#0d0d0d', border: '1px solid #F9B05144',
-                    borderRadius: '12px', padding: '12px 14px', color: '#fff',
+                    flex: 1, minWidth: 0, background: 'var(--surface)', border: '1px solid color-mix(in srgb, var(--amber) 27%, transparent)',
+                    borderRadius: 'var(--radius-md)', padding: '12px 14px', color: 'var(--white)',
                     fontSize: '15px', fontFamily: 'var(--font-body)', boxSizing: 'border-box',
                   }}
                 />
                 <button className="press" onClick={addGuest} disabled={!guestDraft} style={{
-                  flexShrink: 0, borderRadius: '12px', padding: '0 18px', cursor: guestDraft ? 'pointer' : 'default',
-                  background: guestDraft ? '#F9B051' : '#1a1a1a', color: guestDraft ? '#000' : '#555',
+                  flexShrink: 0, borderRadius: 'var(--radius-md)', padding: '0 18px', cursor: guestDraft ? 'pointer' : 'default',
+                  background: guestDraft ? 'var(--amber)' : 'var(--surface-2)', color: guestDraft ? 'var(--black)' : 'var(--grey)',
                   border: 'none', fontFamily: 'var(--font-label)', fontSize: '14px',
                   fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
                 }}>Score</button>
@@ -1688,11 +1669,11 @@ export default function SessionPage() {
             {/* No player selected — session roster */}
             {!target && (
               judgeRoster.registered.length + judgeRoster.guests.length === 0 ? (
-                <div style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: '16px', padding: '32px 20px', textAlign: 'center' }}>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '20px', color: '#fff', letterSpacing: '0.03em' }}>No scores yet</div>
-                  <div style={{ fontSize: '13px', color: '#777', marginTop: '6px', lineHeight: 1.5 }}>
-                    Tap {canPickMore && <><span style={{ color: '#aaa' }}>+ Player</span> to pick a registered player, or </>}
-                    <span style={{ color: '#F9B051' }}>+ Guest</span> to score someone by name.
+                <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '32px 20px', textAlign: 'center' }}>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '20px', color: 'var(--white)', letterSpacing: '0.03em' }}>No scores yet</div>
+                  <div style={{ fontSize: '13px', color: 'var(--grey)', marginTop: '6px', lineHeight: 1.5 }}>
+                    Tap {canPickMore && <><span style={{ color: 'var(--grey-light)' }}>+ Player</span> to pick a registered player, or </>}
+                    <span style={{ color: 'var(--amber)' }}>+ Guest</span> to score someone by name.
                   </div>
                 </div>
               ) : (
@@ -1716,13 +1697,13 @@ export default function SessionPage() {
             {target && (
               <div>
                 <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '10px', marginBottom: '10px' }}>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '26px', color: '#fff', letterSpacing: '0.03em', lineHeight: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '26px', color: 'var(--white)', letterSpacing: '0.03em', lineHeight: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {target.name}
-                    {target.isGuest && <span style={{ fontFamily: 'var(--font-label)', fontSize: '12px', color: '#F9B051', marginLeft: '10px', letterSpacing: '0.1em' }}>GUEST</span>}
+                    {target.isGuest && <span style={{ fontFamily: 'var(--font-label)', fontSize: '12px', color: 'var(--amber)', marginLeft: '10px', letterSpacing: '0.1em' }}>GUEST</span>}
                   </div>
                   <button className="press" onClick={() => selectJudgeTarget(null)} style={{
-                    flexShrink: 0, background: 'none', border: '1px solid #333', borderRadius: '999px',
-                    color: '#888', cursor: 'pointer', padding: '0 16px', minHeight: '44px',
+                    flexShrink: 0, background: 'none', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-pill)',
+                    color: 'var(--grey)', cursor: 'pointer', padding: '0 16px', minHeight: '44px',
                     fontFamily: 'var(--font-label)', fontSize: '12px', letterSpacing: '0.08em', textTransform: 'uppercase',
                   }}>Roster</button>
                 </div>
@@ -1743,10 +1724,10 @@ export default function SessionPage() {
                 {/* Session progress */}
                 <div style={{ marginBottom: '4px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '6px' }}>
-                    <div style={{ fontFamily: 'var(--font-label)', fontSize: '11.5px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.12em' }}>
-                      <span style={{ color: '#fff', fontWeight: 600 }}>{doneEvents.length}</span> of {events.length} events scored
+                    <div style={{ fontFamily: 'var(--font-label)', fontSize: '12px', color: 'var(--grey)', textTransform: 'uppercase', letterSpacing: '0.12em' }}>
+                      <span style={{ color: 'var(--white)', fontWeight: 600 }}>{doneEvents.length}</span> of {events.length} events scored
                       {doneEvents.length === events.length && events.length > 0 && (
-                        <span style={{ color: '#4DB26E', fontWeight: 600 }}> — All {events.length} events played</span>
+                        <span style={{ color: 'var(--green)', fontWeight: 600 }}> — All {events.length} events played</span>
                       )}
                     </div>
                   </div>
@@ -1887,8 +1868,8 @@ export default function SessionPage() {
       {/* Not logged in */}
       {!player && (
         <div style={{ padding: '48px 24px', textAlign: 'center' }}>
-          <div style={{ color: '#555', marginBottom: '16px' }}>Log in to submit scores</div>
-          <a href="/login" style={{ color: '#2371BB', fontWeight: 700, textDecoration: 'none' }}>Log in →</a>
+          <div style={{ color: 'var(--grey)', marginBottom: '16px' }}>Log in to submit scores</div>
+          <a href="/login" style={{ color: 'var(--blue)', fontWeight: 700, textDecoration: 'none' }}>Log in →</a>
         </div>
       )}
     </div>

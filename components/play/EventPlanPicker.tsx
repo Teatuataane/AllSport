@@ -77,8 +77,8 @@ export default function EventPlanPicker({
           placeholder="Search events — deadlift, tennis, ride…"
           aria-label="Search events"
           style={{
-            width: '100%', boxSizing: 'border-box', background: '#0d0d0d', border: '1px solid #2a2a2a',
-            borderRadius: 10, padding: '11px 12px', color: '#fff', fontSize: 16,
+            width: '100%', boxSizing: 'border-box', background: 'var(--surface)', border: '1px solid var(--border-strong)',
+            borderRadius: 'var(--radius-md)', padding: '11px 12px', color: 'var(--white)', fontSize: 16,
             fontFamily: 'var(--font-body)', minHeight: 44, marginBottom: 12,
           }}
         />
@@ -90,10 +90,10 @@ export default function EventPlanPicker({
             const on = plan.includes(e.slug)
             return (
               <button className="press" key={e.slug} type="button" onClick={() => pick(e.slug, e.domainNumber)} style={{
-                display: 'flex', alignItems: 'center', gap: 8, minHeight: 44, padding: '0 12px', borderRadius: 999,
-                cursor: 'pointer', background: on ? DOMAIN_COLORS[e.domainNumber - 1] : '#131313',
-                border: `1px solid ${on ? DOMAIN_COLORS[e.domainNumber - 1] : '#2a2a2a'}`,
-                color: '#fff', fontFamily: 'var(--font-label)', fontSize: 13,
+                display: 'flex', alignItems: 'center', gap: 8, minHeight: 44, padding: '0 12px', borderRadius: 'var(--radius-pill)',
+                cursor: 'pointer', background: on ? DOMAIN_COLORS[e.domainNumber - 1] : 'var(--surface)',
+                border: `1px solid ${on ? DOMAIN_COLORS[e.domainNumber - 1] : 'var(--border-strong)'}`,
+                color: 'var(--white)', fontFamily: 'var(--font-label)', fontSize: 13,
               }}>
                 <EventIcon slug={e.slug} emoji={e.emoji} domainNumber={e.domainNumber} size={22} />
                 {e.name}
@@ -110,8 +110,8 @@ export default function EventPlanPicker({
           const isOpen = open === d.number
           return (
             <div key={d.number} style={{
-              background: '#111', border: `1px solid ${chosen.length ? colour + '44' : '#1a1a1a'}`,
-              borderRadius: 12, overflow: 'hidden',
+              background: 'var(--surface)', border: `1px solid ${chosen.length ? colour + '44' : 'var(--surface-2)'}`,
+              borderRadius: 'var(--radius-md)', overflow: 'hidden',
             }}>
               <button className="press"
                 type="button"
@@ -119,23 +119,23 @@ export default function EventPlanPicker({
                 aria-expanded={isOpen}
                 style={{
                   width: '100%', minHeight: 52, display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '8px 12px', background: 'none', border: 'none', cursor: 'pointer', color: '#fff', textAlign: 'left',
+                  padding: '8px 12px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--white)', textAlign: 'left',
                 }}
               >
                 <DomainIcon domainName={d.name} domainNumber={d.number} size={26} />
-                <span style={{ ...label, fontSize: 13, color: chosen.length ? '#fff' : '#888', flex: 1, minWidth: 0 }}>
+                <span style={{ ...label, fontSize: 13, color: chosen.length ? 'var(--white)' : 'var(--grey)', flex: 1, minWidth: 0 }}>
                   {d.number}. {d.name}
                 </span>
                 {chosen.length > 0 && (
                   <span style={{
                     ...label, fontSize: 12, color: colour, background: colour + '22',
-                    padding: '3px 10px', borderRadius: 6, maxWidth: 160,
+                    padding: '3px 10px', borderRadius: 'var(--radius-sm)', maxWidth: 160,
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                   }}>
                     {chosen.length === 1 ? getEventBySlug(chosen[0])?.name : `${chosen.length} events`}
                   </span>
                 )}
-                <span style={{ color: '#555', transform: isOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}>›</span>
+                <span style={{ color: 'var(--grey)', transform: isOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}>›</span>
               </button>
               {isOpen && (
                 <div style={{ padding: '4px 10px 12px', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -143,9 +143,9 @@ export default function EventPlanPicker({
                     const on = plan.includes(e.slug)
                     return (
                       <button className="press" key={e.slug} type="button" onClick={() => pick(e.slug, d.number)} style={{
-                        minHeight: 44, padding: '0 12px', borderRadius: 999, cursor: 'pointer',
-                        background: on ? colour : '#0d0d0d', border: `1px solid ${on ? colour : '#222'}`,
-                        color: on ? '#fff' : '#888', fontFamily: 'var(--font-label)', fontSize: 13,
+                        minHeight: 44, padding: '0 12px', borderRadius: 'var(--radius-pill)', cursor: 'pointer',
+                        background: on ? colour : 'var(--surface)', border: `1px solid ${on ? colour : 'var(--border)'}`,
+                        color: on ? 'var(--white)' : 'var(--grey)', fontFamily: 'var(--font-label)', fontSize: 13,
                         fontWeight: on ? 700 : 400, letterSpacing: '0.03em',
                       }}>
                         {e.name}

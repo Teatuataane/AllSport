@@ -2,6 +2,16 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.50.0.0] - 2026-11-10
+
+### Changed
+- **Easier to read in a gym.** Grey text on the scoring screens is never darker than the brand grey, and no label is smaller than 12px. The kaiwhakawā tab labels, "YOU", "SUBMITTED SCORES" and the level names were the worst.
+- **One look.** The scoring screens, the entry sheet and the workout page use the design tokens for every colour and corner, so the same thing looks the same everywhere.
+- **One "Tap to score".** Only the next event to play carries the pill; the other unscored events show a small ring.
+- **The banner and tabs stay put.** On scroll the colour score and clock stay under the site bar and the tabs stay under the banner. The banner used to slide out of sight under the site bar.
+- **No emoji on the kaiwhakawā Summary tab.** It shows the event icons, and a drawn arrow opens a player.
+- **One toast.** The workout page's "score in" message now looks like the live game's.
+
 ## [0.49.0.0] - 2026-11-10
 
 ### Changed

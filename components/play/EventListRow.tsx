@@ -11,6 +11,7 @@
 
 'use client'
 
+import type React from 'react'
 import type { ReactNode } from 'react'
 import EventIcon from '@/components/EventIcon'
 import { NEUTRAL_ICON_TINT, rungPaint } from '@/lib/scoreColour'
@@ -19,7 +20,7 @@ import type { EventData } from '@/lib/eventData'
 import { sportWDL, type PlayEvent, type EntryRow } from './chrome'
 
 export default function EventListRow({
-  se, eventData, myResults, note, onOpen, gradeRung, gameLine, tag, corner,
+  se, eventData, myResults, note, onOpen, gradeRung, gameLine, tag, corner, quiet = false,
 }: {
   se: PlayEvent
   eventData: EventData | undefined
@@ -38,6 +39,10 @@ export default function EventListRow({
   /** A control pinned to the top-right corner (the + or the ✕). A sibling of
       the row, never inside it: a button inside a button is invalid HTML. */
   corner?: ReactNode
+  /** An unscored row that is not the next one to play: a small ring instead of
+      the "Tap to score" pill, so the list has one call to action (v0.50.0.0).
+      Opt-in, so a row rendered alone keeps the pill. */
+  quiet?: boolean
 }) {
   const mode = (eventData?.inputMode || se.input_mode || 'strength') as string
   const myBestResult = myResults.length > 0
@@ -48,19 +53,19 @@ export default function EventListRow({
   const paint = graded && !todo ? rungPaint(gradeRung) : null
 
   const background = paint ? paint.background
-    : graded ? '#111'
-    : todo ? 'linear-gradient(180deg, rgba(35,113,187,0.10), #111 70%)' : '#111'
+    : graded ? 'var(--surface)'
+    : todo ? 'linear-gradient(180deg, rgba(35,113,187,0.10), var(--surface) 70%)' : 'var(--surface)'
   const border = paint ? paint.border
-    : graded ? `1px solid ${todo ? '#262626' : '#1e1e1e'}`
-    : `1px solid ${todo ? '#1c3a5e' : '#1e1e1e'}`
-  const scoreInk = paint ? paint.ink : graded ? '#fff' : '#4DB26E'
+    : graded ? `1px solid ${todo ? 'var(--border-strong)' : 'var(--border)'}`
+    : `1px solid ${todo ? 'var(--blue-edge)' : 'var(--border)'}`
+  const scoreInk = paint ? paint.ink : graded ? 'var(--white)' : 'var(--green)'
 
   return (
     <div style={{ position: 'relative', marginBottom: '8px' }}>
       <button className="press" onClick={onOpen} style={{
         width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '12px',
-        padding: '12px 14px', borderRadius: '16px', cursor: 'pointer',
-        background, border, color: '#fff', fontFamily: 'var(--font-body)',
+        padding: '12px 14px', borderRadius: 'var(--radius-lg)', cursor: 'pointer',
+        background, border, color: 'var(--white)', fontFamily: 'var(--font-body)',
       }}>
         <EventIcon slug={se.event_slug || eventData?.slug || ''} emoji={eventData?.emoji} domainNumber={se.domain_number}
           size={46} tint={graded ? NEUTRAL_ICON_TINT : undefined} />
@@ -69,18 +74,23 @@ export default function EventListRow({
           {/* The domain rides inside the button, in the same grey as the rest of
               the secondary text, so every button is the same height and the
               colour a score reaches stays the only colour on it. */}
-          <div style={{ fontFamily: 'var(--font-label)', fontSize: '11px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <div style={{ fontFamily: 'var(--font-label)', fontSize: '12px', color: 'var(--grey)', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             {se.domain_number} · {se.domain_name}
             {todo && gameLine && <span>· {gameLine}</span>}
             {tag && (
-              <span style={{ fontSize: '10.5px', color: '#aaa', border: '1px solid #444', borderRadius: '999px', padding: '0 7px' }}>{tag}</span>
+              <span style={{ fontSize: '12px', color: 'var(--grey-light)', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-pill)', padding: '0 7px' }}>{tag}</span>
             )}
           </div>
         </div>
-        {todo ? (
+        {todo && quiet ? (
+          <span style={{ flexShrink: 0, display: 'flex', alignItems: 'center', marginRight: corner ? '8px' : 0 }}>
+            <span aria-hidden="true" style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid var(--border-strong)', boxSizing: 'border-box' }} />
+            <span style={SR_ONLY}>Not scored</span>
+          </span>
+        ) : todo ? (
           <span style={{
             fontFamily: 'var(--font-label)', textTransform: 'uppercase', letterSpacing: '0.1em',
-            fontSize: '12px', color: '#fff', background: '#2371BB', borderRadius: '999px', padding: '6px 12px', flexShrink: 0, fontWeight: 500,
+            fontSize: '12px', color: 'var(--white)', background: 'var(--blue)', borderRadius: 'var(--radius-pill)', padding: '6px 12px', flexShrink: 0, fontWeight: 500,
           }}>Tap to score</span>
         ) : (
           <div style={{ textAlign: 'right', flexShrink: 1, maxWidth: '58%', marginRight: corner ? '8px' : 0 }}>
@@ -88,16 +98,16 @@ export default function EventListRow({
               {mode === 'sport' ? sportWDL(myResults) : myBestResult!.score_label}
             </div>
             {(paint || note || gameLine) && (
-              <div style={{ fontFamily: 'var(--font-label)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: '2px' }}>
+              <div style={{ fontFamily: 'var(--font-label)', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: '2px' }}>
                 {paint && (
                   <span style={paint.rainbow
                     ? { background: RAINBOW, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }
                     : { color: paint.ink }}>{paint.name}</span>
                 )}
-                {paint && (gameLine || note) && <span style={{ color: '#aaa' }}> · </span>}
+                {paint && (gameLine || note) && <span style={{ color: 'var(--grey-light)' }}> · </span>}
                 {gameLine
-                  ? <span style={{ color: '#aaa' }}>{gameLine}</span>
-                  : note && <span style={{ color: paint ? '#aaa' : note.color }}>{note.label}</span>}
+                  ? <span style={{ color: 'var(--grey-light)' }}>{gameLine}</span>
+                  : note && <span style={{ color: paint ? 'var(--grey-light)' : note.color }}>{note.label}</span>}
               </div>
             )}
           </div>
@@ -106,6 +116,12 @@ export default function EventListRow({
       {corner}
     </div>
   )
+}
+
+// Read by a screen reader, drawn as nothing.
+const SR_ONLY: React.CSSProperties = {
+  position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden',
+  clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap', border: 0,
 }
 
 /**
@@ -123,8 +139,8 @@ export function RowCorner({ label, onClick, variant }: { label: string; onClick:
       <span aria-hidden="true" style={{
         width: 26, height: 26, borderRadius: '50%', boxSizing: 'border-box',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: add ? '#2371BB' : '#181818', border: `1px solid ${add ? '#2371BB' : '#3a3a3a'}`,
-        color: add ? '#fff' : '#aaa', fontSize: add ? 18 : 12, lineHeight: 1, fontFamily: 'var(--font-body)',
+        background: add ? 'var(--blue)' : 'var(--surface-2)', border: `1px solid ${add ? 'var(--blue)' : 'var(--border-strong)'}`,
+        color: add ? 'var(--white)' : 'var(--grey-light)', fontSize: add ? 18 : 12, lineHeight: 1, fontFamily: 'var(--font-body)',
       }}>{add ? '+' : '✕'}</span>
     </button>
   )

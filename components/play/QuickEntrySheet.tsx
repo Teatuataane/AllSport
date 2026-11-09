@@ -96,7 +96,7 @@ type QuickEntrySheetProps = {
 /** Edit, Delete and Keep on a score row: 44px to the thumb, with room between. */
 const ROW_BTN: React.CSSProperties = {
   minHeight: '44px', minWidth: '64px', padding: '0 12px', flexShrink: 0, cursor: 'pointer',
-  borderRadius: 'var(--radius-pill)', background: 'none', border: '1px solid #333', color: '#bbb',
+  borderRadius: 'var(--radius-pill)', background: 'none', border: '1px solid var(--border-strong)', color: 'var(--grey-light)',
   fontFamily: 'var(--font-label)', fontSize: '13px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase',
 }
 
@@ -353,29 +353,29 @@ export default function QuickEntrySheet({
       <div style={{
         position: 'absolute', bottom: keyboardInset, left: '50%', transform: 'translateX(-50%)',
         width: 'min(640px, 100vw)', maxHeight: `calc(88dvh - ${keyboardInset}px)`, display: 'flex', flexDirection: 'column',
-        background: '#141414', border: '1px solid #2a2a2a', borderBottom: 'none',
-        borderRadius: '24px 24px 0 0', overflow: 'hidden', animation: 'qesUp 0.28s cubic-bezier(0.16,1,0.3,1)',
+        background: 'var(--surface)', border: '1px solid var(--border-strong)', borderBottom: 'none',
+        borderRadius: 'var(--radius-xl) var(--radius-xl) 0 0', overflow: 'hidden', animation: 'qesUp 0.28s cubic-bezier(0.16,1,0.3,1)',
       }}>
-        <div style={{ height: '4px', flexShrink: 0, background: 'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)' }} />
+        <div style={{ height: '4px', flexShrink: 0, background: 'linear-gradient(90deg, var(--red), var(--amber), var(--pink), var(--purple), var(--blue), var(--green))' }} />
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '14px 16px 10px', flexShrink: 0 }}>
           <EventIcon slug={se.event_slug || eventData?.slug || ''} emoji={eventData?.emoji} domainNumber={se.domain_number} size={46} />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: '26px', lineHeight: 1, color: '#fff', letterSpacing: '0.03em' }}>{se.event_name}</div>
-            <div style={{ fontFamily: 'var(--font-label)', fontSize: '11px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.12em', marginTop: '3px' }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '26px', lineHeight: 1, color: 'var(--white)', letterSpacing: '0.03em' }}>{se.event_name}</div>
+            <div style={{ fontFamily: 'var(--font-label)', fontSize: '12px', color: 'var(--grey)', textTransform: 'uppercase', letterSpacing: '0.12em', marginTop: '3px' }}>
               {se.domain_name}
             </div>
           </div>
           <button className="press" onClick={() => setShowHow(h => !h)} style={{
-            height: '38px', padding: '0 12px', borderRadius: '10px', cursor: 'pointer',
-            background: showHow ? '#2371BB26' : '#181818', border: `1px solid ${showHow ? '#2371BB' : '#2a2a2a'}`,
-            color: showHow ? '#fff' : '#999', fontFamily: 'var(--font-label)',
+            height: '38px', padding: '0 12px', borderRadius: 'var(--radius-md)', cursor: 'pointer',
+            background: showHow ? 'color-mix(in srgb, var(--blue) 15%, transparent)' : 'var(--surface-2)', border: `1px solid ${showHow ? 'var(--blue)' : 'var(--border-strong)'}`,
+            color: showHow ? 'var(--white)' : 'var(--grey)', fontFamily: 'var(--font-label)',
             fontSize: '13px', letterSpacing: '0.1em', fontWeight: 600,
           }}>HOW TO</button>
           <button className="press" onClick={onClose} style={{
-            width: '38px', height: '38px', borderRadius: '10px', cursor: 'pointer', flexShrink: 0,
-            background: '#181818', border: '1px solid #2a2a2a', color: '#999', fontSize: '15px',
+            width: '38px', height: '38px', borderRadius: 'var(--radius-md)', cursor: 'pointer', flexShrink: 0,
+            background: 'var(--surface-2)', border: '1px solid var(--border-strong)', color: 'var(--grey)', fontSize: '15px',
           }}>✕</button>
         </div>
 
@@ -383,23 +383,23 @@ export default function QuickEntrySheet({
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: footer ? '0 16px 14px' : '0 16px calc(20px + env(safe-area-inset-bottom, 0px))' }}>
           {showHow ? (
             <div>
-              <div style={{ ...QES_LBL, color: '#F9B051' }}>How to perform</div>
-              <p style={{ fontSize: '14.5px', lineHeight: 1.6, color: '#ccc', fontWeight: 300, margin: 0 }}>
+              <div style={{ ...QES_LBL, color: 'var(--amber)' }}>How to perform</div>
+              <p style={{ fontSize: '14.5px', lineHeight: 1.6, color: 'var(--grey-light)', fontWeight: 300, margin: 0 }}>
                 {contentMissing ? 'Content coming soon — ask your kaiwhakawā for a demo.' : eventData!.howToPerform}
               </p>
-              <div style={{ ...QES_LBL, color: '#F9B051' }}>Rules</div>
-              <p style={{ fontSize: '14.5px', lineHeight: 1.6, color: '#ccc', fontWeight: 300, margin: 0 }}>
+              <div style={{ ...QES_LBL, color: 'var(--amber)' }}>Rules</div>
+              <p style={{ fontSize: '14.5px', lineHeight: 1.6, color: 'var(--grey-light)', fontWeight: 300, margin: 0 }}>
                 {contentMissing || eventData!.rules === 'Content coming soon.' ? 'Content coming soon.' : eventData!.rules}
               </p>
               {tiers.length > 0 && (
                 <>
-                  <div style={{ ...QES_LBL, color: '#F9B051' }}>Difficulty tiers</div>
+                  <div style={{ ...QES_LBL, color: 'var(--amber)' }}>Difficulty tiers</div>
                   {tiers.map(t => (
-                    <div key={t.level} style={{ display: 'flex', gap: '10px', padding: '8px 0', borderBottom: '1px solid #1e1e1e', fontSize: '13.5px' }}>
-                      <span style={{ fontFamily: 'var(--font-label)', color: '#4DB26E', width: '30px', flexShrink: 0, fontWeight: 600 }}>D{t.level}</span>
-                      <span style={{ color: '#ccc', fontWeight: 300 }}>
+                    <div key={t.level} style={{ display: 'flex', gap: '10px', padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: '13.5px' }}>
+                      <span style={{ fontFamily: 'var(--font-label)', color: 'var(--green)', width: '30px', flexShrink: 0, fontWeight: 600 }}>D{t.level}</span>
+                      <span style={{ color: 'var(--grey-light)', fontWeight: 300 }}>
                         {t.name}
-                        {t.detail && <span style={{ display: 'block', color: '#777', fontSize: '12.5px' }}>{t.detail}</span>}
+                        {t.detail && <span style={{ display: 'block', color: 'var(--grey)', fontSize: '12.5px' }}>{t.detail}</span>}
                       </span>
                     </div>
                   ))}
@@ -407,7 +407,7 @@ export default function QuickEntrySheet({
               )}
               {standards?.player && (
                 <>
-                  <div style={{ ...QES_LBL, color: '#F9B051' }}>Standards</div>
+                  <div style={{ ...QES_LBL, color: 'var(--amber)' }}>Standards</div>
                   <StandardsLadderView ev={eventData} player={standards.player} bodyweightKg={standards.bodyweightKg}
                     reached={standards.reached} bodyweightPrompt={standards.bodyweightPrompt} />
                 </>
@@ -418,26 +418,26 @@ export default function QuickEntrySheet({
               {/* Today's best and the record to beat, one compact row */}
               <div style={{ display: 'flex', gap: '8px', marginTop: '2px' }}>
                 {[
-                  { label: bestLabel, value: myBestResult ? (mode === 'sport' ? sportWDL(myResults) : myBestResult.score_label) : null, colour: '#4DB26E' },
-                  { label: prLabel, value: seasonPRNum !== null ? formatPR(seasonPRNum, mode, eventData?.slug, eventData) : null, colour: '#F9B051' },
+                  { label: bestLabel, value: myBestResult ? (mode === 'sport' ? sportWDL(myResults) : myBestResult.score_label) : null, colour: 'var(--green)' },
+                  { label: prLabel, value: seasonPRNum !== null ? formatPR(seasonPRNum, mode, eventData?.slug, eventData) : null, colour: 'var(--amber)' },
                 ].map(t => (
-                  <div key={t.label} style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'baseline', gap: '8px', background: '#101010', border: '1px solid #1e1e1e', borderRadius: '10px', padding: '7px 10px' }}>
-                    <div style={{ fontFamily: 'var(--font-label)', fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.1em', flexShrink: 0 }}>{t.label}</div>
-                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '17px', color: t.value ? t.colour : '#555', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.value ?? '—'}</div>
+                  <div key={t.label} style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'baseline', gap: '8px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '7px 10px' }}>
+                    <div style={{ fontFamily: 'var(--font-label)', fontSize: '12px', color: 'var(--grey)', textTransform: 'uppercase', letterSpacing: '0.1em', flexShrink: 0 }}>{t.label}</div>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '17px', color: t.value ? t.colour : 'var(--grey)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.value ?? '—'}</div>
                   </div>
                 ))}
               </div>
 
               {locked ? (
-                <div style={{ background: '#2e0d0d', border: '1px solid #EA4742', borderRadius: '10px', padding: '12px 14px', marginTop: '14px', color: '#EA4742', fontSize: '13px' }}>
+                <div style={{ background: 'var(--red-tint)', border: '1px solid var(--red)', borderRadius: 'var(--radius-md)', padding: '12px 14px', marginTop: '14px', color: 'var(--red)', fontSize: '13px' }}>
                   Scoring is closed
                 </div>
               ) : (
                 <>
                   {editingResult && (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#0d1a2d', border: '1px solid #2371BB55', borderRadius: '10px', padding: '8px 12px', marginTop: '12px' }}>
-                      <span style={{ fontSize: '12.5px', color: '#2371BB', fontFamily: 'var(--font-label)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Editing: {editingResult.score_label}</span>
-                      <button className="press" onClick={() => { keepExistingMatch.current = false; setEditingResult(null); setTouched(true); setV({ ...EMPTY_VALS }) }} style={{ fontSize: '12px', color: '#aaa', background: 'none', border: '1px solid #333', borderRadius: 'var(--radius-pill)', minHeight: '36px', padding: '0 14px', cursor: 'pointer' }}>Cancel</button>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--blue-tint)', border: '1px solid color-mix(in srgb, var(--blue) 33%, transparent)', borderRadius: 'var(--radius-md)', padding: '8px 12px', marginTop: '12px' }}>
+                      <span style={{ fontSize: '12.5px', color: 'var(--blue)', fontFamily: 'var(--font-label)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Editing: {editingResult.score_label}</span>
+                      <button className="press" onClick={() => { keepExistingMatch.current = false; setEditingResult(null); setTouched(true); setV({ ...EMPTY_VALS }) }} style={{ fontSize: '12px', color: 'var(--grey-light)', background: 'none', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-pill)', minHeight: '36px', padding: '0 14px', cursor: 'pointer' }}>Cancel</button>
                     </div>
                   )}
 
@@ -466,12 +466,12 @@ export default function QuickEntrySheet({
                           const sel = v.difficultyTier === t.name
                           return (
                             <button className="press" key={t.level} aria-pressed={sel} onClick={() => set({ difficultyTier: t.name })} style={{
-                              flexShrink: 0, minWidth: '64px', maxWidth: '120px', minHeight: '56px', padding: '8px 11px', borderRadius: '12px', cursor: 'pointer', textAlign: 'center',
-                              background: sel ? '#4DB26E1f' : '#161616', border: `1px solid ${sel ? '#4DB26E' : '#2a2a2a'}`,
+                              flexShrink: 0, minWidth: '64px', maxWidth: '120px', minHeight: '56px', padding: '8px 11px', borderRadius: 'var(--radius-md)', cursor: 'pointer', textAlign: 'center',
+                              background: sel ? 'color-mix(in srgb, var(--green) 12%, transparent)' : 'var(--surface-2)', border: `1px solid ${sel ? 'var(--green)' : 'var(--border-strong)'}`,
                             }}>
-                              <div style={{ fontFamily: 'var(--font-label)', fontSize: '14px', fontWeight: 600, color: sel ? '#4DB26E' : '#fff' }}>D{t.level}</div>
+                              <div style={{ fontFamily: 'var(--font-label)', fontSize: '14px', fontWeight: 600, color: sel ? 'var(--green)' : 'var(--white)' }}>D{t.level}</div>
                               <div style={{
-                                fontFamily: 'var(--font-label)', fontSize: '11px', lineHeight: 1.2, color: sel ? '#4DB26E' : '#999', textTransform: 'uppercase', letterSpacing: '0.04em',
+                                fontFamily: 'var(--font-label)', fontSize: '12px', lineHeight: 1.2, color: sel ? 'var(--green)' : 'var(--grey)', textTransform: 'uppercase', letterSpacing: '0.04em',
                                 display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
                               }}>{t.name}</div>
                             </button>
@@ -479,8 +479,8 @@ export default function QuickEntrySheet({
                         })}
                       </div>
                       {rung && (
-                        <div style={{ fontSize: '13px', color: '#999', marginTop: '6px', lineHeight: 1.4 }}>
-                          <span style={{ color: '#fff' }}>D{rung.level} {rung.name}</span>
+                        <div style={{ fontSize: '13px', color: 'var(--grey)', marginTop: '6px', lineHeight: 1.4 }}>
+                          <span style={{ color: 'var(--white)' }}>D{rung.level} {rung.name}</span>
                           {rung.detail && <> · {rung.detail}</>}
                         </div>
                       )}
@@ -492,31 +492,31 @@ export default function QuickEntrySheet({
                     <>
                       <div style={QES_LBL}>Sets</div>
                       {setRows.length === 0 && (
-                        <div style={{ fontSize: 13, color: '#777', marginBottom: 8 }}>
+                        <div style={{ fontSize: 13, color: 'var(--grey)', marginBottom: 8 }}>
                           Add the sets you did. The best one counts toward your colours.
                         </div>
                       )}
                       {setRows.map((r, i) => (
                         <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
-                          <span style={{ width: 22, color: '#555', fontFamily: 'var(--font-label)', fontSize: 13 }}>{i + 1}</span>
+                          <span style={{ width: 22, color: 'var(--grey)', fontFamily: 'var(--font-label)', fontSize: 13 }}>{i + 1}</span>
                           <input type="number" {...numProps} inputMode="decimal" value={r.weightKg} aria-label={`Set ${i + 1} weight`}
                             onChange={e => setSet(i, { weightKg: e.target.value })} placeholder="kg"
                             style={{ ...QES_INP, fontSize: 22 }} />
-                          <span style={{ color: '#555' }}>×</span>
+                          <span style={{ color: 'var(--grey)' }}>×</span>
                           <input type="number" {...numProps} inputMode="numeric" value={r.reps} aria-label={`Set ${i + 1} reps`}
                             onChange={e => setSet(i, { reps: e.target.value })} placeholder="reps"
                             style={{ ...QES_INP, fontSize: 22 }} />
                           <button className="press" onClick={() => set({ setRows: setRows.filter((_, j) => j !== i) })}
                             aria-label={`Remove set ${i + 1}`}
-                            style={{ minWidth: 44, minHeight: 44, borderRadius: 12, background: '#181818', border: '1px solid #2a2a2a', color: '#777', cursor: 'pointer' }}>✕</button>
+                            style={{ minWidth: 44, minHeight: 44, borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border-strong)', color: 'var(--grey)', cursor: 'pointer' }}>✕</button>
                         </div>
                       ))}
                       <button className="press" onClick={addSet} style={{
-                        width: '100%', minHeight: 48, borderRadius: 999, cursor: 'pointer', marginBottom: 6,
-                        background: 'none', border: '1px dashed #2a2a2a', color: '#999',
+                        width: '100%', minHeight: 48, borderRadius: 'var(--radius-pill)', cursor: 'pointer', marginBottom: 6,
+                        background: 'none', border: '1px dashed var(--border-strong)', color: 'var(--grey)',
                         fontFamily: 'var(--font-label)', fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase',
                       }}>+ Set</button>
-                      <div style={{ fontSize: 12.5, color: '#777', lineHeight: 1.5 }}>
+                      <div style={{ fontSize: 12.5, color: 'var(--grey)', lineHeight: 1.5 }}>
                         {estimate
                           ? `Best set — ${estimate.score_label}`
                           : `Add each set you did. Your best set, by estimated 1RM, is what grades. Reps past ${MAX_ESTIMATED_REPS} count as ${MAX_ESTIMATED_REPS}.`}
@@ -533,11 +533,11 @@ export default function QuickEntrySheet({
                           onChange={e => set({ distanceKm: e.target.value })} placeholder="km" style={QES_INP} />
                         <input type="number" {...numProps} inputMode="numeric" value={v.timeMins} aria-label="Minutes"
                           onChange={e => set({ timeMins: e.target.value })} placeholder="min" style={QES_INP} />
-                        <span style={{ color: '#555', fontSize: 26, fontFamily: 'var(--font-display)' }}>:</span>
+                        <span style={{ color: 'var(--grey)', fontSize: 26, fontFamily: 'var(--font-display)' }}>:</span>
                         <input type="number" {...numProps} inputMode="numeric" value={v.timeSecs} aria-label="Seconds"
                           onChange={e => set({ timeSecs: e.target.value })} placeholder="sec" style={QES_INP} />
                       </div>
-                      <div style={{ fontSize: 12.5, color: '#777', marginTop: 8, lineHeight: 1.5 }}>
+                      <div style={{ fontSize: 12.5, color: 'var(--grey)', marginTop: 8, lineHeight: 1.5 }}>
                         {naturalMetres > 0 && naturalSecs > 0
                           ? `${paceLabel(naturalMetres, naturalSecs)}${estimate ? ` · ${estimate.score_label}` : ' · too short to compare to a rung, so it is recorded but does not grade'}`
                           : 'Everything you cover counts as training.'}
@@ -572,8 +572,8 @@ export default function QuickEntrySheet({
                         const w = parseFloat(v.weightKg) || 0
                         const r = parseInt(v.repCount) || 0
                         return (
-                          <div style={{ fontSize: 12.5, color: '#888', lineHeight: 1.5, marginTop: 8 }}>
-                            {w > 0 && r > 1 && <span style={{ color: '#ccc' }}>Est. 1RM {estimatedOneRm(w, r)}kg. </span>}
+                          <div style={{ fontSize: 12.5, color: 'var(--grey)', lineHeight: 1.5, marginTop: 8 }}>
+                            {w > 0 && r > 1 && <span style={{ color: 'var(--grey-light)' }}>Est. 1RM {estimatedOneRm(w, r)}kg. </span>}
                             Your lift ranks on its estimated 1RM, so more reps score higher. Reps past {MAX_ESTIMATED_REPS} count as {MAX_ESTIMATED_REPS}.
                           </div>
                         )
@@ -588,7 +588,7 @@ export default function QuickEntrySheet({
                       <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                         <StepBtn label="5 seconds less" onClick={() => bumpTime(-5)}>−</StepBtn>
                         <input type="number" {...numProps} inputMode="numeric" value={v.timeMins} onChange={e => set({ timeMins: e.target.value })} placeholder="min" style={QES_INP} />
-                        <span style={{ color: '#555', fontSize: '26px', fontFamily: 'var(--font-display)' }}>:</span>
+                        <span style={{ color: 'var(--grey)', fontSize: '26px', fontFamily: 'var(--font-display)' }}>:</span>
                         <input type="number" {...numProps} inputMode="numeric" value={v.timeSecs} onChange={e => set({ timeSecs: e.target.value })} placeholder="sec" style={QES_INP} />
                         <StepBtn label="5 seconds more" onClick={() => bumpTime(5)}>+</StepBtn>
                       </div>
@@ -602,7 +602,7 @@ export default function QuickEntrySheet({
                       <div style={QES_LBL}>Time (seconds . centiseconds)</div>
                       <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                         <input type="number" {...numProps} inputMode="numeric" value={v.timeSecs} onChange={e => set({ timeSecs: e.target.value })} placeholder="sec" style={QES_INP} />
-                        <span style={{ color: '#555', fontSize: '26px', fontFamily: 'var(--font-display)' }}>.</span>
+                        <span style={{ color: 'var(--grey)', fontSize: '26px', fontFamily: 'var(--font-display)' }}>.</span>
                         <input type="number" {...numProps} inputMode="numeric" value={v.sprintCs} onChange={e => set({ sprintCs: e.target.value })} placeholder="cs" min={0} max={99} style={QES_INP} />
                       </div>
                     </>
@@ -614,12 +614,12 @@ export default function QuickEntrySheet({
                       <div style={QES_LBL}>Distance</div>
                       <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                         <input type="number" {...numProps} inputMode="decimal" value={v.distanceVal} aria-label="Distance" onChange={e => set({ distanceVal: e.target.value })} placeholder="0" style={QES_INP} />
-                        <div style={{ display: 'flex', borderRadius: '12px', overflow: 'hidden', flexShrink: 0 }} hidden={mode !== 'distance' && !openDistance}>
+                        <div style={{ display: 'flex', borderRadius: 'var(--radius-md)', overflow: 'hidden', flexShrink: 0 }} hidden={mode !== 'distance' && !openDistance}>
                           {(openDistance ? (['m', 'km'] as const) : (['m', 'cm'] as const)).map(u => (
                             <button className="press" key={u} onClick={() => set({ distanceUnit: u })} aria-pressed={v.distanceUnit === u} style={{
                               padding: '14px 18px', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '15px',
-                              background: v.distanceUnit === u ? '#2371BB' : '#1a1a1a',
-                              color: v.distanceUnit === u ? '#fff' : '#666',
+                              background: v.distanceUnit === u ? 'var(--blue)' : 'var(--surface-2)',
+                              color: v.distanceUnit === u ? 'var(--white)' : 'var(--grey)',
                             }}>{u}</button>
                           ))}
                         </div>
@@ -629,7 +629,7 @@ export default function QuickEntrySheet({
 
                   {/* What an open distance effort predicts, so the player sees what ranks */}
                   {mode === 'distance+time' && refMetres > 0 && (
-                    <div style={{ fontSize: 12.5, color: '#777', marginTop: 8, lineHeight: 1.5 }}>
+                    <div style={{ fontSize: 12.5, color: 'var(--grey)', marginTop: 8, lineHeight: 1.5 }}>
                       {enteredMetres > 0 && enteredMetres < minEstimateMetres(refMetres)
                         ? natural
                           ? shortRecordHint(refMetres)
@@ -641,7 +641,7 @@ export default function QuickEntrySheet({
                     </div>
                   )}
                   {mode === 'weight+distance+time' && (
-                    <div style={{ fontSize: 12.5, color: '#777', marginTop: 8, lineHeight: 1.5 }}>
+                    <div style={{ fontSize: 12.5, color: 'var(--grey)', marginTop: 8, lineHeight: 1.5 }}>
                       Heaviest wins, then the furthest distance, then the fastest time.
                     </div>
                   )}
@@ -657,14 +657,14 @@ export default function QuickEntrySheet({
                       <div style={QES_LBL}>Result</div>
                       <div style={{ display: 'flex', gap: '10px' }}>
                         {(['win', 'draw', 'loss'] as const).map(r => {
-                          const colors = { win: '#4DB26E', draw: '#F9B051', loss: '#EA4742' }
+                          const colors = { win: 'var(--green)', draw: 'var(--amber)', loss: 'var(--red)' }
                           const active = v.sportResult === r
                           return (
                             <button className="press" key={r} onClick={() => set({ sportResult: r })} style={{
-                              flex: 1, padding: '18px 0', border: `2px solid ${active ? colors[r] : '#222'}`,
-                              borderRadius: '14px', cursor: 'pointer', fontFamily: 'var(--font-display)', fontSize: '20px',
-                              letterSpacing: '0.05em', background: active ? colors[r] + '22' : '#111',
-                              color: active ? colors[r] : '#555',
+                              flex: 1, padding: '18px 0', border: `2px solid ${active ? colors[r] : 'var(--border)'}`,
+                              borderRadius: 'var(--radius-lg)', cursor: 'pointer', fontFamily: 'var(--font-display)', fontSize: '20px',
+                              letterSpacing: '0.05em', background: active ? `color-mix(in srgb, ${colors[r]} 13%, transparent)` : 'var(--surface)',
+                              color: active ? colors[r] : 'var(--grey)',
                             }}>{r.toUpperCase()}</button>
                           )
                         })}
@@ -678,8 +678,8 @@ export default function QuickEntrySheet({
                               <button className="press" key={p.id ?? `guest:${p.name}`} disabled={blocked} title={blocked ? 'Not a safe match today' : undefined}
                                 onClick={() => { keepExistingMatch.current = false; set({ opponentName: p.name, opponentId: p.id ?? '' }) }} style={{
                                 ...QES_CHIP,
-                                borderColor: opponentPickActive(p) ? '#2371BB' : '#2a2a2a',
-                                background: opponentPickActive(p) ? '#2371BB' : '#161616',
+                                borderColor: opponentPickActive(p) ? 'var(--blue)' : 'var(--border-strong)',
+                                background: opponentPickActive(p) ? 'var(--blue)' : 'var(--surface-2)',
                                 ...(blocked ? { opacity: 0.35, cursor: 'not-allowed', textDecoration: 'line-through' } : {}),
                               }}>{p.name}</button>
                             )
@@ -687,12 +687,12 @@ export default function QuickEntrySheet({
                         </div>
                       )}
                       {opponentBlocked && opponentPicks.some(p => p.id && opponentBlocked(p.id)) && (
-                        <div style={{ fontSize: '12px', color: '#888', marginBottom: '8px', lineHeight: 1.4 }}>
+                        <div style={{ fontSize: '12px', color: 'var(--grey)', marginBottom: '8px', lineHeight: 1.4 }}>
                           Crossed out: not a safe match today (age group, bodyweight or sex).
                         </div>
                       )}
                       {unsafeOpponent && (
-                        <div role="alert" style={{ fontSize: '12.5px', color: '#EA4742', marginBottom: '8px', lineHeight: 1.4 }}>
+                        <div role="alert" style={{ fontSize: '12.5px', color: 'var(--red)', marginBottom: '8px', lineHeight: 1.4 }}>
                           {v.opponentName || 'This player'} is not a safe match for you today. Pick someone else.
                         </div>
                       )}
@@ -700,14 +700,14 @@ export default function QuickEntrySheet({
                       {/* A typed name cannot be rated — only a picked player records the match. */}
                       {v.opponentName.trim() && !v.opponentId && opponentPicks.some(p => p.id) &&
                         !opponentPicks.some(p => p.id === null && p.name === v.opponentName.trim()) && (
-                        <div style={{ fontSize: '12px', color: '#888', marginTop: '6px', lineHeight: 1.4 }}>
+                        <div style={{ fontSize: '12px', color: 'var(--grey)', marginTop: '6px', lineHeight: 1.4 }}>
                           Typed names aren&apos;t recorded as a match. Pick your opponent above so this game counts.
                         </div>
                       )}
                       {/* The 22 Oct 2026 Teqball losers skipped this, and nobody was rated
                           until their plain loss was read as backing (lib/matches.ts corroborate). */}
                       {!v.opponentName.trim() && !v.opponentId && opponentPicks.some(p => p.id) && (
-                        <div style={{ fontSize: '12px', color: '#888', marginTop: '6px', lineHeight: 1.4 }}>
+                        <div style={{ fontSize: '12px', color: 'var(--grey)', marginTop: '6px', lineHeight: 1.4 }}>
                           Pick your opponent above so this game counts toward both ratings.
                         </div>
                       )}
@@ -718,11 +718,11 @@ export default function QuickEntrySheet({
                           <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                             <input type="number" {...numProps} inputMode="numeric" value={v.timeMins} aria-label="Minutes"
                               onChange={e => set({ timeMins: e.target.value })} placeholder="min" style={QES_INP} />
-                            <span style={{ color: '#555', fontSize: '26px', fontFamily: 'var(--font-display)' }}>:</span>
+                            <span style={{ color: 'var(--grey)', fontSize: '26px', fontFamily: 'var(--font-display)' }}>:</span>
                             <input type="number" {...numProps} inputMode="decimal" value={v.timeSecs} aria-label="Seconds"
                               onChange={e => set({ timeSecs: e.target.value })} placeholder="sec" style={QES_INP} />
                           </div>
-                          <div style={{ fontSize: 12, color: '#777', marginTop: 6, lineHeight: 1.4 }}>
+                          <div style={{ fontSize: 12, color: 'var(--grey)', marginTop: 6, lineHeight: 1.4 }}>
                             Recorded with the result. The win, draw or loss is what counts.
                           </div>
                         </>
@@ -748,7 +748,7 @@ export default function QuickEntrySheet({
                       <div style={QES_LBL}>Quick pick</div>
                       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                         {quickPicks.map(qp => (
-                          <button className="press" key={qp.label} onClick={() => set(qp.patch)} style={{ ...QES_CHIP, borderColor: '#F9B05155', color: '#F9B051' }}>{qp.label}</button>
+                          <button className="press" key={qp.label} onClick={() => set(qp.patch)} style={{ ...QES_CHIP, borderColor: 'color-mix(in srgb, var(--amber) 33%, transparent)', color: 'var(--amber)' }}>{qp.label}</button>
                         ))}
                       </div>
                     </>
@@ -762,27 +762,27 @@ export default function QuickEntrySheet({
                 <>
                   <div style={{ ...QES_LBL, display: 'flex', justifyContent: 'space-between' }}>
                     <span>{bestLabel === "Today's best" ? "Today's scores" : 'Scores so far'}</span>
-                    {mode === 'sport' && <span style={{ color: '#4DB26E' }}>{sportWDL(myResults)}</span>}
+                    {mode === 'sport' && <span style={{ color: 'var(--green)' }}>{sportWDL(myResults)}</span>}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     {myResultsSorted.map(r => (
                       <div key={r.id} style={{
-                        background: editingResult?.id === r.id ? '#0d1a2d' : '#101010',
-                        border: `1px solid ${editingResult?.id === r.id ? '#2371BB55' : '#1e1e1e'}`,
-                        borderRadius: '10px', padding: '6px 6px 6px 14px', display: 'flex', alignItems: 'center', gap: '8px', minHeight: '56px',
+                        background: editingResult?.id === r.id ? 'var(--blue-tint)' : 'var(--surface)',
+                        border: `1px solid ${editingResult?.id === r.id ? 'color-mix(in srgb, var(--blue) 33%, transparent)' : 'var(--border)'}`,
+                        borderRadius: 'var(--radius-md)', padding: '6px 6px 6px 14px', display: 'flex', alignItems: 'center', gap: '8px', minHeight: '56px',
                       }}>
-                        <div style={{ fontSize: '15px', color: '#fff', flex: 1 }}>{r.score_label}</div>
+                        <div style={{ fontSize: '15px', color: 'var(--white)', flex: 1 }}>{r.score_label}</div>
                         {r.is_pr && (
-                          <div style={{ fontSize: '10px', fontWeight: 700, color: '#F9B051', background: '#F9B05122', borderRadius: '4px', padding: '2px 6px', fontFamily: 'var(--font-label)', letterSpacing: '0.05em' }}>PR</div>
+                          <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--amber)', background: 'color-mix(in srgb, var(--amber) 13%, transparent)', borderRadius: 'var(--radius-sm)', padding: '2px 6px', fontFamily: 'var(--font-label)', letterSpacing: '0.05em' }}>PR</div>
                         )}
                         {r.pending && (
-                          <div style={{ fontSize: '11px', color: '#888', fontFamily: 'var(--font-label)', letterSpacing: '0.08em', textTransform: 'uppercase', flexShrink: 0 }}>Saving</div>
+                          <div style={{ fontSize: '12px', color: 'var(--grey)', fontFamily: 'var(--font-label)', letterSpacing: '0.08em', textTransform: 'uppercase', flexShrink: 0 }}>Saving</div>
                         )}
                         {!locked && !r.pending && (confirmDeleteId === r.id ? (
                           <>
-                            <span style={{ fontFamily: 'var(--font-label)', fontSize: '13px', color: '#EA4742', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Delete?</span>
+                            <span style={{ fontFamily: 'var(--font-label)', fontSize: '13px', color: 'var(--red)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Delete?</span>
                             <button className="press" onClick={() => { setConfirmDeleteId(null); void handleSheetDelete(r.id) }}
-                              style={{ ...ROW_BTN, background: '#EA4742', borderColor: '#EA4742', color: '#fff' }}>Delete</button>
+                              style={{ ...ROW_BTN, background: 'var(--red)', borderColor: 'var(--red)', color: 'var(--white)' }}>Delete</button>
                             <button className="press" onClick={() => setConfirmDeleteId(null)} style={ROW_BTN}>Keep</button>
                           </>
                         ) : (
@@ -793,9 +793,9 @@ export default function QuickEntrySheet({
                               setEditingResult(r)
                               setTouched(true)
                               setV({ ...EMPTY_VALS, ...valsFromResult(mode, r), opponentId: opp ?? '' })
-                            }} style={{ ...ROW_BTN, color: '#7ab4ff', borderColor: '#2371BB66' }}>Edit</button>
+                            }} style={{ ...ROW_BTN, color: 'var(--blue-light)', borderColor: 'color-mix(in srgb, var(--blue) 40%, transparent)' }}>Edit</button>
                             <button className="press" onClick={() => setConfirmDeleteId(r.id)} aria-label={`Delete ${r.score_label}`}
-                              style={{ ...ROW_BTN, color: '#aaa' }}>Delete</button>
+                              style={{ ...ROW_BTN, color: 'var(--grey-light)' }}>Delete</button>
                           </>
                         ))}
                       </div>
@@ -840,21 +840,21 @@ export default function QuickEntrySheet({
 
         {/* Footer: pinned, never scrolls */}
         {footer && (
-          <div style={{ flexShrink: 0, padding: '10px 16px calc(12px + env(safe-area-inset-bottom, 0px))', borderTop: '1px solid #1e1e1e', background: '#141414' }}>
+          <div style={{ flexShrink: 0, padding: '10px 16px calc(12px + env(safe-area-inset-bottom, 0px))', borderTop: '1px solid var(--border)', background: 'var(--surface)' }}>
             {showHow ? (
               <button className="press" onClick={() => setShowHow(false)} style={{
-                width: '100%', height: '52px', borderRadius: '999px',
-                border: '1px solid #2a2a2a', background: '#181818', color: '#fff', cursor: 'pointer',
+                width: '100%', height: '52px', borderRadius: 'var(--radius-pill)',
+                border: '1px solid var(--border-strong)', background: 'var(--surface-2)', color: 'var(--white)', cursor: 'pointer',
                 fontFamily: 'var(--font-label)', textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '14px',
               }}>Back to scoring</button>
             ) : (
               <>
-                {error && <div role="alert" style={{ color: '#EA4742', fontSize: '13px', marginBottom: '8px' }}>{error}</div>}
+                {error && <div role="alert" style={{ color: 'var(--red)', fontSize: '13px', marginBottom: '8px' }}>{error}</div>}
                 <button className="press" onClick={handleSheetSubmit} disabled={!canSubmit} style={{
-                  width: '100%', height: '58px', border: 'none', borderRadius: '999px',
+                  width: '100%', height: '58px', border: 'none', borderRadius: 'var(--radius-pill)',
                   cursor: canSubmit ? 'pointer' : 'default',
-                  background: canSubmit ? 'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)' : '#1a1a1a',
-                  color: canSubmit ? '#0a0a0a' : '#777',
+                  background: canSubmit ? 'linear-gradient(90deg, var(--red), var(--amber), var(--pink), var(--purple), var(--blue), var(--green))' : 'var(--surface-2)',
+                  color: canSubmit ? 'var(--dark)' : 'var(--grey)',
                   fontFamily: 'var(--font-label)', textTransform: 'uppercase',
                   letterSpacing: '0.12em', fontSize: '16px', fontWeight: 600,
                 }}>

@@ -36,6 +36,7 @@ import EventListRow from '@/components/play/EventListRow'
 import { ProgressSegments, type PlayEvent, type EntryRow } from '@/components/play/chrome'
 import BodyweightField from '@/components/play/BodyweightField'
 import EventPlanPicker from '@/components/play/EventPlanPicker'
+import Toast, { ToastText } from '@/components/play/Toast'
 import { GradeDot } from '@/components/GradeDot'
 import { useGradeProfile } from '@/lib/useGradeProfile'
 import { useSportRatings } from '@/lib/useSportRatings'
@@ -161,7 +162,7 @@ export default function PersonalGamePage() {
           .map(slug => ({ ev: getEventBySlug(slug), rows: entriesFor(slug) })),
         gradeProfile.player, gradeProfile.bodyweightKg))
     : null
-  const segmentFill = (ev: PlayEvent) => rungSegment(rungFor(ev.id)) ?? '#666'
+  const segmentFill = (ev: PlayEvent) => rungSegment(rungFor(ev.id)) ?? 'var(--grey)'
 
   const open = workout ? isOpen(workout) : false
   const locked = !open
@@ -284,13 +285,13 @@ export default function PersonalGamePage() {
     )
   }
   if (!workout) {
-    return <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555' }}>Loading…</div>
+    return <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--grey)' }}>Loading…</div>
   }
 
   return (
     <div style={{ maxWidth: 640, margin: '0 auto', padding: '14px 16px 120px', color: 'var(--white)' }}>
       {/* Header */}
-      <div style={{ background: '#111', border: '1px solid var(--border)', borderRadius: 16, padding: 14, marginBottom: 14 }}>
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: 14, marginBottom: 14 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, letterSpacing: '0.03em', lineHeight: 1 }}>
             {coached ? (isJudge && clientName ? clientName.toUpperCase() : 'TRAINING SESSION') : 'MY WORKOUT'}
@@ -315,7 +316,7 @@ export default function PersonalGamePage() {
             }}>
               This workout
               <GradeDot grade={workoutColour} size={10} />
-              <span style={{ color: '#fff', fontWeight: 600 }}>{workoutColour.name}</span>
+              <span style={{ color: 'var(--white)', fontWeight: 600 }}>{workoutColour.name}</span>
             </span>
           )}
         </div>
@@ -367,8 +368,8 @@ export default function PersonalGamePage() {
       {/* Repeat last session */}
       {!locked && canRun && coached && lastPlan.length > 0 && planIsEmpty && (
         <button type="button" onClick={() => setPlan(sortPlan(lastPlan).slice(0, PLAN_MAX))} style={{
-          width: '100%', minHeight: 48, marginTop: 16, borderRadius: 999, cursor: 'pointer',
-          background: '#0d1a2d', border: '1px solid #2371BB', color: '#fff',
+          width: '100%', minHeight: 48, marginTop: 16, borderRadius: 'var(--radius-pill)', cursor: 'pointer',
+          background: 'var(--blue-tint)', border: '1px solid var(--blue)', color: 'var(--white)',
           fontFamily: 'var(--font-label)', fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase',
         }}>Repeat last session ({lastPlan.length} event{lastPlan.length === 1 ? '' : 's'})</button>
       )}
@@ -377,8 +378,8 @@ export default function PersonalGamePage() {
       {!locked && canRun && (
         <div style={{ marginTop: 16 }}>
           <button type="button" onClick={() => setAdding(a => !a)} style={{
-            width: '100%', minHeight: 48, borderRadius: 999, cursor: 'pointer',
-            background: 'none', border: '1px dashed #2a2a2a', color: 'var(--text-muted)',
+            width: '100%', minHeight: 48, borderRadius: 'var(--radius-pill)', cursor: 'pointer',
+            background: 'none', border: '1px dashed var(--border-strong)', color: 'var(--text-muted)',
             fontFamily: 'var(--font-label)', fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase',
           }}>{adding ? 'Done adding' : '+ Add an event'}</button>
           {adding && (
@@ -396,9 +397,9 @@ export default function PersonalGamePage() {
       {/* Finish */}
       {!locked && canRun && (
         <button onClick={finish} style={{
-          width: '100%', minHeight: 56, marginTop: 20, borderRadius: 999, border: 'none', cursor: 'pointer',
-          background: entries.length > 0 ? 'var(--rainbow)' : '#151515',
-          color: entries.length > 0 ? '#0a0a0a' : 'var(--text-muted)',
+          width: '100%', minHeight: 56, marginTop: 20, borderRadius: 'var(--radius-pill)', border: 'none', cursor: 'pointer',
+          background: entries.length > 0 ? 'var(--rainbow)' : 'var(--surface-2)',
+          color: entries.length > 0 ? 'var(--dark)' : 'var(--text-muted)',
           fontFamily: 'var(--font-label)', textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: 15, fontWeight: 600,
         }}>
           {entries.length > 0 ? (coached ? 'Finish session' : 'Finish workout') : (coached ? 'Cancel session' : 'Cancel workout')}
@@ -406,7 +407,7 @@ export default function PersonalGamePage() {
       )}
 
       {error && (
-        <div style={{ background: '#2e0d0d', border: '1px solid var(--red)', borderRadius: 10, padding: '12px 14px', color: 'var(--red)', fontSize: 14, marginTop: 12 }}>
+        <div style={{ background: 'var(--red-tint)', border: '1px solid var(--red)', borderRadius: 'var(--radius-md)', padding: '12px 14px', color: 'var(--red)', fontSize: 14, marginTop: 12 }}>
           {error}
         </div>
       )}
@@ -444,15 +445,7 @@ export default function PersonalGamePage() {
       )}
 
       {toast && (
-        <div style={{
-          position: 'fixed', left: '50%', bottom: 90, transform: 'translateX(-50%)', zIndex: 120,
-          background: '#111', border: '1px solid var(--green)', borderRadius: 14, padding: '12px 18px',
-          maxWidth: 'calc(100vw - 32px)', boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
-        }}>
-          <span style={{ fontFamily: 'var(--font-label)', fontSize: 13, color: '#fff' }}>
-            {toast.eventName} — {toast.label}
-          </span>
-        </div>
+        <Toast tone="done"><ToastText>Score in — {toast.eventName} — {toast.label}</ToastText></Toast>
       )}
     </div>
   )

@@ -11,13 +11,13 @@ import { formatNZDate } from '@/lib/dates'
 
 const ROW: React.CSSProperties = {
   display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px',
-  borderRadius: '10px', border: '1px solid #1e1e1e', background: '#101010', width: '100%',
+  borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'var(--surface)', width: '100%',
   textAlign: 'left',
 }
-const MUTED: React.CSSProperties = { fontFamily: 'var(--font-label)', fontSize: '11px', color: '#777', letterSpacing: '0.06em' }
+const MUTED: React.CSSProperties = { fontFamily: 'var(--font-label)', fontSize: '12px', color: 'var(--grey)', letterSpacing: '0.06em' }
 const CHIP: React.CSSProperties = {
-  fontFamily: 'var(--font-label)', fontSize: '9.5px', fontWeight: 700, letterSpacing: '0.05em',
-  color: '#bbb', border: '1px solid #555', borderRadius: '4px', padding: '1px 5px', whiteSpace: 'nowrap',
+  fontFamily: 'var(--font-label)', fontSize: '12px', fontWeight: 700, letterSpacing: '0.05em',
+  color: 'var(--grey-light)', border: '1px solid var(--grey)', borderRadius: 'var(--radius-sm)', padding: '1px 5px', whiteSpace: 'nowrap',
 }
 
 function Source({ row }: { row: PRRow }) {
@@ -51,20 +51,20 @@ export default function PRBoardView({
         {...(onPick && row ? { type: 'button' as const, onClick: () => onPick(row) } : {})}
         style={{
           ...ROW, cursor: onPick && row ? 'pointer' : 'default',
-          borderColor: active ? colour + '66' : '#1e1e1e',
-          background: active ? colour + '11' : '#101010',
+          borderColor: active ? colour + '66' : 'var(--border)',
+          background: active ? colour + '11' : 'var(--surface)',
         }}
       >
-        <span style={{ ...MUTED, color: active ? colour : '#999', minWidth: '28px' }}>{left}</span>
-        {name && <span style={{ ...MUTED, color: active ? colour : '#999', whiteSpace: 'nowrap' }}>{name}</span>}
+        <span style={{ ...MUTED, color: active ? colour : 'var(--grey)', minWidth: '28px' }}>{left}</span>
+        {name && <span style={{ ...MUTED, color: active ? colour : 'var(--grey)', whiteSpace: 'nowrap' }}>{name}</span>}
         {row ? (
           <>
-            <span style={{ flex: 1, fontSize: '14px', color: '#fff', fontFamily: 'var(--font-body)' }}>{text ?? row.score_label}</span>
+            <span style={{ flex: 1, fontSize: '14px', color: 'var(--white)', fontFamily: 'var(--font-body)' }}>{text ?? row.score_label}</span>
             <Source row={row} />
             <span style={MUTED}>{formatNZDate(row.date)}</span>
           </>
         ) : (
-          <span style={{ flex: 1, fontSize: '13px', color: '#444', textAlign: name ? 'right' : 'left' }}>No record yet</span>
+          <span style={{ flex: 1, fontSize: '13px', color: 'var(--grey)', textAlign: name ? 'right' : 'left' }}>No record yet</span>
         )}
       </Tag>
     )

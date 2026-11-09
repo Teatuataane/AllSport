@@ -73,19 +73,19 @@ export function ordinal(n: number): string {
 }
 
 export const INP: React.CSSProperties = {
-  background: '#0d0d0d', border: '1px solid #2a2a2a', borderRadius: '8px',
-  padding: '14px', color: '#fff', fontSize: '20px', fontWeight: 'bold',
+  background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-md)',
+  padding: '14px', color: 'var(--white)', fontSize: '20px', fontWeight: 'bold',
   width: '100%', boxSizing: 'border-box',
 }
 
 export const QES_LBL: React.CSSProperties = {
-  fontSize: '11px', color: '#777', letterSpacing: '0.14em', textTransform: 'uppercase',
+  fontSize: '12px', color: 'var(--grey)', letterSpacing: '0.14em', textTransform: 'uppercase',
   fontFamily: 'var(--font-label)', margin: '16px 2px 8px',
 }
 export const QES_CHIP: React.CSSProperties = {
   fontFamily: 'var(--font-label)', textTransform: 'uppercase', letterSpacing: '0.08em',
-  fontSize: '13px', color: '#fff', background: '#161616', border: '1px solid #2a2a2a',
-  borderRadius: '999px', padding: '0 14px', minHeight: '44px', cursor: 'pointer', flexShrink: 0,
+  fontSize: '13px', color: 'var(--white)', background: 'var(--surface-2)', border: '1px solid var(--border-strong)',
+  borderRadius: 'var(--radius-pill)', padding: '0 14px', minHeight: '44px', cursor: 'pointer', flexShrink: 0,
   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
 }
 
@@ -142,8 +142,8 @@ export function StepBtn({ children, onClick, disabled, label }: {
         if (!disabled) onClick()
       }}
       style={{
-        width: '56px', minHeight: '56px', flexShrink: 0, borderRadius: '14px',
-        background: '#181818', border: '1px solid #2a2a2a', color: disabled ? '#444' : '#fff',
+        width: '56px', minHeight: '56px', flexShrink: 0, borderRadius: 'var(--radius-lg)',
+        background: 'var(--surface-2)', border: '1px solid var(--border-strong)', color: disabled ? 'var(--grey)' : 'var(--white)',
         fontSize: '26px', fontFamily: 'var(--font-display)', cursor: disabled ? 'default' : 'pointer',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>{children}</button>
@@ -164,7 +164,7 @@ export function StepChips({ steps, onStep, unit = '' }: {
       {steps.map(d => (
         <button key={d} className="press" onClick={() => onStep(d)} style={{
           minWidth: '52px', minHeight: '40px', padding: '0 10px', borderRadius: 'var(--radius-pill)', cursor: 'pointer',
-          background: '#161616', border: '1px solid #2a2a2a', color: '#bbb',
+          background: 'var(--surface-2)', border: '1px solid var(--border-strong)', color: 'var(--grey-light)',
           fontFamily: 'var(--font-label)', fontSize: '14px', fontWeight: 600, letterSpacing: '0.04em',
         }}>{d > 0 ? '+' : '−'}{Math.abs(d)}{unit}</button>
       ))}
@@ -173,8 +173,8 @@ export function StepChips({ steps, onStep, unit = '' }: {
 }
 
 export const QES_INP: React.CSSProperties = {
-  flex: 1, minWidth: 0, background: '#0d0d0d', border: '1px solid #2a2a2a', borderRadius: '14px',
-  color: '#fff', fontSize: '30px', fontFamily: 'var(--font-display)', textAlign: 'center',
+  flex: 1, minWidth: 0, background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-lg)',
+  color: 'var(--white)', fontSize: '30px', fontFamily: 'var(--font-display)', textAlign: 'center',
   padding: '10px 4px', boxSizing: 'border-box',
 }
 
@@ -182,8 +182,8 @@ export const QES_INP: React.CSSProperties = {
 
 export function sectionLabel(text: string) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '16px 4px 8px', fontFamily: 'var(--font-label)', fontSize: '11.5px', color: '#777', textTransform: 'uppercase', letterSpacing: '0.14em' }}>
-      <span style={{ width: '14px', height: '3px', borderRadius: '2px', background: 'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)' }} />
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '16px 4px 8px', fontFamily: 'var(--font-label)', fontSize: '12px', color: 'var(--grey)', textTransform: 'uppercase', letterSpacing: '0.14em' }}>
+      <span style={{ width: '14px', height: '3px', borderRadius: 'var(--radius-sm)', background: 'linear-gradient(90deg, var(--red), var(--amber), var(--pink), var(--purple), var(--blue), var(--green))' }} />
       {text}
     </div>
   )
@@ -200,8 +200,8 @@ export function ProgressSegments({ events, scoredIds, height = 8, fillFor }: {
     <div style={{ display: 'flex', gap: '3px' }}>
       {events.map(ev => (
         <div key={ev.id} style={{
-          flex: 1, height: `${height}px`, borderRadius: '99px',
-          background: scoredIds.has(ev.id) ? (fillFor ? fillFor(ev) : domainColor(ev.domain_number)) : '#1e1e1e',
+          flex: 1, height: `${height}px`, borderRadius: 'var(--radius-pill)',
+          background: scoredIds.has(ev.id) ? (fillFor ? fillFor(ev) : domainColor(ev.domain_number)) : 'var(--border)',
           transition: 'background 0.3s',
         }} />
       ))}

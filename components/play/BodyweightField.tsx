@@ -102,11 +102,11 @@ export default function BodyweightField({ playerId, eventSlugs, day, locked, for
 
   return (
     <div style={{
-      background: '#0d0d0d', border: '1px solid var(--border)', borderRadius: 12,
+      background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)',
       padding: '10px 12px', marginBottom: 12,
     }}>
       <div style={{
-        fontFamily: 'var(--font-label)', fontSize: 11, color: '#777',
+        fontFamily: 'var(--font-label)', fontSize: 12, color: 'var(--grey)',
         textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6,
       }}>
         {label}
@@ -121,9 +121,9 @@ export default function BodyweightField({ playerId, eventSlugs, day, locked, for
           placeholder="kg"
           aria-label={label}
           style={{
-            width: 96, minHeight: 44, boxSizing: 'border-box', background: '#000',
-            border: '1px solid #2a2a2a', borderRadius: 10, padding: '10px 12px',
-            color: '#fff', fontSize: 16, fontFamily: 'var(--font-body)',
+            width: 96, minHeight: 44, boxSizing: 'border-box', background: 'var(--black)',
+            border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-md)', padding: '10px 12px',
+            color: 'var(--white)', fontSize: 16, fontFamily: 'var(--font-body)',
           }}
         />
         {!locked && dirty && (
@@ -131,8 +131,8 @@ export default function BodyweightField({ playerId, eventSlugs, day, locked, for
             onClick={save}
             disabled={state === 'saving' || !kg}
             style={{
-              minHeight: 44, padding: '0 16px', borderRadius: 10, border: 'none',
-              background: kg ? 'var(--blue)' : '#1a1a1a', color: '#fff', cursor: kg ? 'pointer' : 'default',
+              minHeight: 44, padding: '0 16px', borderRadius: 'var(--radius-md)', border: 'none',
+              background: kg ? 'var(--blue)' : 'var(--surface-2)', color: 'var(--white)', cursor: kg ? 'pointer' : 'default',
               fontFamily: 'var(--font-label)', fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.08em',
             }}
           >
@@ -144,7 +144,7 @@ export default function BodyweightField({ playerId, eventSlugs, day, locked, for
         )}
       </div>
 
-      <div style={{ fontSize: 11.5, color: '#555', fontFamily: 'var(--font-body)', marginTop: 6, lineHeight: 1.5 }}>
+      <div style={{ fontSize: 12, color: 'var(--grey)', fontFamily: 'var(--font-body)', marginTop: 6, lineHeight: 1.5 }}>
         {msg
           ? <span style={{ color: 'var(--red)' }}>{msg}</span>
           : carried

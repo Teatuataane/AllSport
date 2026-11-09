@@ -201,6 +201,8 @@ The "Score in" toast gains a "Next: {event}" button that opens the sheet for the
 
 ## Phase 3: kaiwhakawā, by event
 
+**Dropped (Tāne, 10 Nov 2026): not needed for how games run now.** Kept here in case it comes back.
+
 Goal: a kaiwhakawā running one station can score a line of players without choosing the event again for each.
 
 **Ask Tāne before you build this phase.** It is a new feature, not a fix. Confirm that scoring a group on one event is how kaiwhakawā work at a game, and whether "By event" or "By player" should be the default.

@@ -14,10 +14,10 @@
 import { recordLabel, type ContestRecord } from '@/lib/swiss'
 
 const card = {
-  background: '#141414', border: '1px solid #262626', borderRadius: 14, padding: '14px 16px', marginBottom: 14,
+  background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-lg)', padding: '14px 16px', marginBottom: 14,
 } as const
 const lbl = {
-  fontFamily: 'var(--font-label)', fontSize: 11, fontWeight: 600, color: '#888',
+  fontFamily: 'var(--font-label)', fontSize: 12, fontWeight: 600, color: 'var(--grey)',
   textTransform: 'uppercase' as const, letterSpacing: '0.14em',
 }
 
@@ -32,8 +32,8 @@ function Unbeaten({ list }: { list: readonly ContestName[] }) {
   if (list.length === 0) return null
   const shown = list.slice(0, 3)
   return (
-    <div data-testid="contest-unbeaten" style={{ fontSize: 13, color: '#ccc', marginTop: 10 }}>
-      <span style={{ color: '#F9B051' }}>Unbeaten today: </span>
+    <div data-testid="contest-unbeaten" style={{ fontSize: 13, color: 'var(--grey-light)', marginTop: 10 }}>
+      <span style={{ color: 'var(--amber)' }}>Unbeaten today: </span>
       {shown.map(u => `${firstName(u.name)} (${recordLabel(u.record)})`).join(', ')}
       {list.length > shown.length ? ` and ${list.length - shown.length} more` : ''}
     </div>
@@ -56,19 +56,19 @@ export function ContestCard({ me, suggestions, unbeaten, needsBodyweight, picked
     <div data-testid="contest-card" style={card}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
         <span style={lbl}>{first ? 'Contest' : 'Play next'}</span>
-        {me && me.games > 0 && <span style={{ fontSize: 12.5, color: '#888' }}>You: {recordLabel(me)}</span>}
+        {me && me.games > 0 && <span style={{ fontSize: 12.5, color: 'var(--grey)' }}>You: {recordLabel(me)}</span>}
       </div>
 
       {needsBodyweight ? (
-        <div style={{ fontSize: 13.5, color: '#F9B051', marginTop: 8, lineHeight: 1.4 }}>
+        <div style={{ fontSize: 13.5, color: 'var(--amber)', marginTop: 8, lineHeight: 1.4 }}>
           This contest is matched by bodyweight. Enter today&apos;s bodyweight to see who is safe to play.
         </div>
       ) : first ? (
-        <div data-testid="contest-first" style={{ fontSize: 13.5, color: '#ccc', marginTop: 8, lineHeight: 1.4 }}>
+        <div data-testid="contest-first" style={{ fontSize: 13.5, color: 'var(--grey-light)', marginTop: 8, lineHeight: 1.4 }}>
           Play anyone for your first match. After that, this shows who to play next: winners play winners.
         </div>
       ) : suggestions.length === 0 ? (
-        <div data-testid="contest-none" style={{ fontSize: 13.5, color: '#ccc', marginTop: 8, lineHeight: 1.4 }}>
+        <div data-testid="contest-none" style={{ fontSize: 13.5, color: 'var(--grey-light)', marginTop: 8, lineHeight: 1.4 }}>
           Nobody to suggest yet. Play anyone the list below allows.
         </div>
       ) : (
@@ -79,16 +79,16 @@ export function ContestCard({ me, suggestions, unbeaten, needsBodyweight, picked
               return (
                 <button className="press" key={s.id} type="button" disabled={locked} data-testid="contest-suggestion"
                   aria-pressed={on} onClick={() => onPick(s.id, s.name)} style={{
-                    padding: '10px 14px', borderRadius: 12, cursor: 'pointer', textAlign: 'left',
-                    border: `2px solid ${on ? '#2371BB' : '#333'}`, background: on ? '#2371BB' : '#1a1a1a', color: '#fff',
+                    padding: '10px 14px', borderRadius: 'var(--radius-md)', cursor: 'pointer', textAlign: 'left',
+                    border: `2px solid ${on ? 'var(--blue)' : 'var(--border-strong)'}`, background: on ? 'var(--blue)' : 'var(--surface-2)', color: 'var(--white)',
                   }}>
                   <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, lineHeight: 1 }}>{firstName(s.name)}</div>
-                  <div style={{ fontSize: 12, color: on ? '#dce9f7' : '#888', marginTop: 3 }}>{recordLabel(s.record)}</div>
+                  <div style={{ fontSize: 12, color: on ? 'var(--white)' : 'var(--grey)', marginTop: 3 }}>{recordLabel(s.record)}</div>
                 </button>
               )
             })}
           </div>
-          <div style={{ fontSize: 12.5, color: '#888', marginTop: 8, lineHeight: 1.4 }}>
+          <div style={{ fontSize: 12.5, color: 'var(--grey)', marginTop: 8, lineHeight: 1.4 }}>
             Find whoever is free, tap their name, then record the result.
           </div>
         </>
@@ -113,7 +113,7 @@ export function ContestJudgeCard({ table, unbeaten, contact, mixed, error, onMix
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={lbl}>Contest today</span>
         {contact && (
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13.5, color: '#ccc' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13.5, color: 'var(--grey-light)' }}>
             <input type="checkbox" checked={mixed} onChange={e => onMixed(e.target.checked)} />
             Mixed allowed
           </label>
@@ -121,17 +121,17 @@ export function ContestJudgeCard({ table, unbeaten, contact, mixed, error, onMix
       </div>
       <Unbeaten list={unbeaten} />
       {table.length === 0
-        ? <div style={{ fontSize: 13, color: '#666', marginTop: 8 }}>No matches recorded yet.</div>
+        ? <div style={{ fontSize: 13, color: 'var(--grey)', marginTop: 8 }}>No matches recorded yet.</div>
         : (
           <div data-testid="contest-table" style={{ marginTop: 8 }}>
             {table.map(t => (
-              <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: '#ccc', padding: '3px 0' }}>
-                <span>{t.name}</span><span style={{ color: '#888' }}>{recordLabel(t.record)}</span>
+              <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: 'var(--grey-light)', padding: '3px 0' }}>
+                <span>{t.name}</span><span style={{ color: 'var(--grey)' }}>{recordLabel(t.record)}</span>
               </div>
             ))}
           </div>
         )}
-      {error && <div role="alert" style={{ color: '#EA4742', fontSize: 13, marginTop: 8 }}>{error}</div>}
+      {error && <div role="alert" style={{ color: 'var(--red)', fontSize: 13, marginTop: 8 }}>{error}</div>}
     </div>
   )
 }

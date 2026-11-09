@@ -39,38 +39,38 @@ export default function StandardsLadderView({
 
   return (
     <div>
-      {ratingOnly && <p style={{ fontSize: 13, color: '#999', margin: '0 0 8px' }}>{RATING_ONLY_NOTE}</p>}
-      {allowance && <p style={{ fontSize: 12.5, color: '#777', margin: '0 0 8px' }}>{allowance}</p>}
+      {ratingOnly && <p style={{ fontSize: 13, color: 'var(--grey)', margin: '0 0 8px' }}>{RATING_ONLY_NOTE}</p>}
+      {allowance && <p style={{ fontSize: 12.5, color: 'var(--grey)', margin: '0 0 8px' }}>{allowance}</p>}
       {ratio && bodyweightKg == null && (
         <div style={{ margin: '0 0 8px' }}>
-          <p style={{ fontSize: 13, color: '#999', margin: '0 0 6px' }}>
+          <p style={{ fontSize: 13, color: 'var(--grey)', margin: '0 0 6px' }}>
             Strength is graded as a multiple of your bodyweight. Add yours to see the weights.
           </p>
           {bodyweightPrompt}
         </div>
       )}
       {ratio && bodyweightKg != null && bodyweightNote && (
-        <p style={{ fontSize: 12.5, color: '#777', margin: '0 0 8px' }}>Weights are an estimated one-rep max {bodyweightNote}.</p>
+        <p style={{ fontSize: 12.5, color: 'var(--grey)', margin: '0 0 8px' }}>Weights are an estimated one-rep max {bodyweightNote}.</p>
       )}
       <div role="list" aria-label={`${ev.name} standards`}>
         {rows.map(r => {
           const g = gradeForRung(r.rung)
           const have = r.rung <= reached
-          const ink = have ? gradeInk(g) : '#777'
+          const ink = have ? gradeInk(g) : 'var(--grey)'
           return (
             <div key={r.rung} role="listitem" style={{
-              display: 'flex', alignItems: 'center', gap: 10, padding: '7px 8px', borderBottom: '1px solid #1e1e1e',
-              borderRadius: r.rung === next ? 8 : 0,
-              outline: r.rung === next ? '1px solid #444' : 'none',
+              display: 'flex', alignItems: 'center', gap: 10, padding: '7px 8px', borderBottom: '1px solid var(--border)',
+              borderRadius: r.rung === next ? 'var(--radius-md)' : 0,
+              outline: r.rung === next ? '1px solid var(--border-strong)' : 'none',
             }}>
               <span style={{
                 width: 84, flexShrink: 0, fontFamily: 'var(--font-label)', fontSize: 12.5, fontWeight: 600,
                 letterSpacing: '0.08em', textTransform: 'uppercase',
                 ...(have && g.rainbow ? { background: RAINBOW, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' } : { color: ink }),
               }}>{r.name}</span>
-              <span style={{ flex: 1, fontSize: 13.5, color: have ? '#fff' : '#bbb' }}>{r.label}</span>
+              <span style={{ flex: 1, fontSize: 13.5, color: have ? 'var(--white)' : 'var(--grey-light)' }}>{r.label}</span>
               {r.rung === next && (
-                <span style={{ fontFamily: 'var(--font-label)', fontSize: 10.5, color: '#aaa', border: '1px solid #444', borderRadius: 999, padding: '0 7px', letterSpacing: '0.08em' }}>NEXT</span>
+                <span style={{ fontFamily: 'var(--font-label)', fontSize: 12, color: 'var(--grey-light)', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-pill)', padding: '0 7px', letterSpacing: '0.08em' }}>NEXT</span>
               )}
             </div>
           )
