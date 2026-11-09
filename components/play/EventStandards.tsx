@@ -48,7 +48,7 @@ export default function EventStandards({
   const [open, setOpen] = useState(false)
   return (
     <div>
-      <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open} style={{
+      <button className="press" type="button" onClick={() => setOpen(o => !o)} aria-expanded={open} style={{
         background: 'none', border: 'none', padding: '4px 0', cursor: 'pointer',
         fontFamily: 'var(--font-label)', fontSize: '11px', color: '#888', letterSpacing: '0.1em', textTransform: 'uppercase',
       }}>

@@ -191,6 +191,24 @@ button { font-family: inherit; }
 .btn:hover { transform: translateY(-2px); }
 .btn:active { transform: translateY(0) scale(0.97); }
 
+/* Taps that feel instant (v0.48.0.0). `manipulation` turns off double-tap to
+   zoom, so fast taps on a stepper are taps, and drops the old tap delay. */
+button, a, input, select, textarea, [role="button"] { touch-action: manipulation; }
+
+/* A pressed state for the inline-styled buttons on the play screens, which
+   cannot express :active themselves. Short, so a fast tap still shows it. */
+.press {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+  transition: transform 80ms var(--ease), filter 80ms var(--ease);
+}
+.press:active:not(:disabled) { transform: scale(0.96); filter: brightness(1.25); }
+@media (prefers-reduced-motion: reduce) {
+  .press { transition: none; }
+  .press:active:not(:disabled) { transform: none; }
+}
+
 .btn-primary { background: var(--red); color: var(--white); box-shadow: var(--glow-red); }
 .btn-blue { background: var(--blue); color: var(--white); box-shadow: var(--glow-blue); }
 .btn-rainbow { background: var(--rainbow); color: var(--white); }

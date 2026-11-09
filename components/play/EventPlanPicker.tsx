@@ -89,7 +89,7 @@ export default function EventPlanPicker({
           {hits.map(e => {
             const on = plan.includes(e.slug)
             return (
-              <button key={e.slug} type="button" onClick={() => pick(e.slug, e.domainNumber)} style={{
+              <button className="press" key={e.slug} type="button" onClick={() => pick(e.slug, e.domainNumber)} style={{
                 display: 'flex', alignItems: 'center', gap: 8, minHeight: 44, padding: '0 12px', borderRadius: 999,
                 cursor: 'pointer', background: on ? DOMAIN_COLORS[e.domainNumber - 1] : '#131313',
                 border: `1px solid ${on ? DOMAIN_COLORS[e.domainNumber - 1] : '#2a2a2a'}`,
@@ -113,7 +113,7 @@ export default function EventPlanPicker({
               background: '#111', border: `1px solid ${chosen.length ? colour + '44' : '#1a1a1a'}`,
               borderRadius: 12, overflow: 'hidden',
             }}>
-              <button
+              <button className="press"
                 type="button"
                 onClick={() => setOpen(isOpen ? null : d.number)}
                 aria-expanded={isOpen}
@@ -142,7 +142,7 @@ export default function EventPlanPicker({
                   {d.events.map(e => {
                     const on = plan.includes(e.slug)
                     return (
-                      <button key={e.slug} type="button" onClick={() => pick(e.slug, d.number)} style={{
+                      <button className="press" key={e.slug} type="button" onClick={() => pick(e.slug, d.number)} style={{
                         minHeight: 44, padding: '0 12px', borderRadius: 999, cursor: 'pointer',
                         background: on ? colour : '#0d0d0d', border: `1px solid ${on ? colour : '#222'}`,
                         color: on ? '#fff' : '#888', fontFamily: 'var(--font-label)', fontSize: 13,

@@ -32,7 +32,7 @@ export default function AddEventsSheet({
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 1110 }}>
-      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(3px)' }} />
+      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.8)' }} />
       <div role="dialog" aria-label={`Add ${domainName} events`} style={{
         position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)',
         width: 'min(640px, 100vw)', maxHeight: '80dvh', display: 'flex', flexDirection: 'column',
@@ -47,7 +47,7 @@ export default function AddEventsSheet({
               Counts toward your colours, not your placement
             </div>
           </div>
-          <button onClick={onClose} aria-label="Close" style={{
+          <button className="press" onClick={onClose} aria-label="Close" style={{
             width: 44, height: 44, borderRadius: 12, cursor: 'pointer', flexShrink: 0,
             background: '#181818', border: '1px solid #2a2a2a', color: '#999', fontSize: 15,
           }}>✕</button>
@@ -57,7 +57,7 @@ export default function AddEventsSheet({
           {pool.map(e => {
             const on = picked.includes(e.slug)
             return (
-              <button key={e.slug} onClick={() => toggle(e.slug)} aria-pressed={on} style={{
+              <button className="press" key={e.slug} onClick={() => toggle(e.slug)} aria-pressed={on} style={{
                 display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left',
                 minHeight: 56, padding: '8px 12px', borderRadius: 14, cursor: 'pointer',
                 background: on ? '#0f1a26' : '#111', border: `1px solid ${on ? '#2371BB' : '#1e1e1e'}`, color: '#fff',
@@ -80,7 +80,7 @@ export default function AddEventsSheet({
         </div>
 
         <div style={{ padding: '4px 16px 20px', flexShrink: 0 }}>
-          <button onClick={() => { if (n) onAdd(picked) }} style={{
+          <button className="press" onClick={() => { if (n) onAdd(picked) }} style={{
             width: '100%', minHeight: 48, borderRadius: 999, border: 'none',
             cursor: n ? 'pointer' : 'default', background: n ? '#2371BB' : '#1a2a3a', color: n ? '#fff' : '#8aa4bd',
             fontFamily: 'var(--font-label)', fontSize: 13, letterSpacing: '0.12em', textTransform: 'uppercase',

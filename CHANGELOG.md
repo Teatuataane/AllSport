@@ -2,6 +2,16 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.48.0.0] - 2026-11-10
+
+### Changed
+- **A score is on screen the moment Submit is tapped.** The live game no longer waits for the server before closing the sheet and painting the row. The save runs behind it; the row says "Saving" until the server answers, and if it fails the row comes back off with a message and Try again. Closing the tab while a score is still on its way asks first. Deleting a score works the same way, on the player tab, the kaiwhakawā tab and the Summary tab (which used to ignore a failed delete).
+- **A save costs one request, not about seven.** It no longer re-reads the whole game, the player's records, every match in the database and the player list after each score. The rating is re-read only after a game result. Added events save in one round trip too.
+- **Less load while nobody is scoring.** The 15 second check pauses while the phone is locked or the tab is hidden, and reads once the moment it is shown again. A check that finds nothing new no longer redraws the screen. The player list is read again only when a new player appears.
+- **One read of a player's history, not three.** The Season PR, "new event unlocked" and the records list all come from it.
+- **The screen no longer redraws every second.** The clock lives in the banner on its own, and the React Compiler now compiles the whole scoring screen. `node scripts/check-react-compiler.cjs` checks this and prints nothing when it holds.
+- **Buttons show a press, and fast taps no longer zoom the page on an iPhone.** The sheets no longer blur the page behind them, which was slow on older Android phones.
+
 ## [0.47.0.1] - 2026-11-09
 
 ### Fixed

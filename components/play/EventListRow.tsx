@@ -57,7 +57,7 @@ export default function EventListRow({
 
   return (
     <div style={{ position: 'relative', marginBottom: '8px' }}>
-      <button onClick={onOpen} style={{
+      <button className="press" onClick={onOpen} style={{
         width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '12px',
         padding: '12px 14px', borderRadius: '16px', cursor: 'pointer',
         background, border, color: '#fff', fontFamily: 'var(--font-body)',
@@ -115,7 +115,7 @@ export default function EventListRow({
 export function RowCorner({ label, onClick, variant }: { label: string; onClick: () => void; variant: 'add' | 'remove' }) {
   const add = variant === 'add'
   return (
-    <button onClick={onClick} aria-label={label} title={label} style={{
+    <button className="press" onClick={onClick} aria-label={label} title={label} style={{
       position: 'absolute', top: -18, right: -14, width: 44, height: 44, padding: 0,
       background: 'none', border: 'none', cursor: 'pointer',
       display: 'flex', alignItems: 'center', justifyContent: 'center',

@@ -292,7 +292,7 @@ export default function QuickEntrySheet({
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 1100 }}>
       <style>{`@keyframes qesUp { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>
-      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(3px)' }} />
+      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.8)' }} />
       <div style={{
         position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)',
         width: 'min(640px, 100vw)', maxHeight: '88dvh', display: 'flex', flexDirection: 'column',
@@ -310,13 +310,13 @@ export default function QuickEntrySheet({
               {se.domain_name}
             </div>
           </div>
-          <button onClick={() => setShowHow(h => !h)} style={{
+          <button className="press" onClick={() => setShowHow(h => !h)} style={{
             height: '38px', padding: '0 12px', borderRadius: '10px', cursor: 'pointer',
             background: showHow ? '#2371BB26' : '#181818', border: `1px solid ${showHow ? '#2371BB' : '#2a2a2a'}`,
             color: showHow ? '#fff' : '#999', fontFamily: 'var(--font-label)',
             fontSize: '13px', letterSpacing: '0.1em', fontWeight: 600,
           }}>HOW TO</button>
-          <button onClick={onClose} style={{
+          <button className="press" onClick={onClose} style={{
             width: '38px', height: '38px', borderRadius: '10px', cursor: 'pointer', flexShrink: 0,
             background: '#181818', border: '1px solid #2a2a2a', color: '#999', fontSize: '15px',
           }}>✕</button>
@@ -355,7 +355,7 @@ export default function QuickEntrySheet({
                     reached={standards.reached} bodyweightPrompt={standards.bodyweightPrompt} />
                 </>
               )}
-              <button onClick={() => setShowHow(false)} style={{
+              <button className="press" onClick={() => setShowHow(false)} style={{
                 width: '100%', marginTop: '18px', height: '50px', borderRadius: '999px',
                 border: '1px solid #2a2a2a', background: '#181818', color: '#fff', cursor: 'pointer',
                 fontFamily: 'var(--font-label)', textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '14px',
@@ -417,7 +417,7 @@ export default function QuickEntrySheet({
                   {editingResult && (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#0d1a2d', border: '1px solid #2371BB55', borderRadius: '10px', padding: '8px 12px', marginTop: '14px' }}>
                       <span style={{ fontSize: '12.5px', color: '#2371BB', fontFamily: 'var(--font-label)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Editing: {editingResult.score_label}</span>
-                      <button onClick={() => { keepExistingMatch.current = false; setEditingResult(null); setV({ ...EMPTY_VALS }) }} style={{ fontSize: '12px', color: '#888', background: 'none', border: '1px solid #333', borderRadius: '6px', padding: '3px 10px', cursor: 'pointer' }}>Cancel</button>
+                      <button className="press" onClick={() => { keepExistingMatch.current = false; setEditingResult(null); setV({ ...EMPTY_VALS }) }} style={{ fontSize: '12px', color: '#888', background: 'none', border: '1px solid #333', borderRadius: '6px', padding: '3px 10px', cursor: 'pointer' }}>Cancel</button>
                     </div>
                   )}
 
@@ -442,7 +442,7 @@ export default function QuickEntrySheet({
                         {tiers.map(t => {
                           const sel = v.difficultyTier === t.name
                           return (
-                            <button key={t.level} onClick={() => set({ difficultyTier: t.name })} style={{
+                            <button className="press" key={t.level} onClick={() => set({ difficultyTier: t.name })} style={{
                               flexShrink: 0, minWidth: '64px', padding: '8px 11px', borderRadius: '12px', cursor: 'pointer', textAlign: 'center',
                               background: sel ? '#4DB26E1f' : '#161616', border: `1px solid ${sel ? '#4DB26E' : '#2a2a2a'}`,
                             }}>
@@ -474,12 +474,12 @@ export default function QuickEntrySheet({
                           <input type="number" inputMode="numeric" value={r.reps} aria-label={`Set ${i + 1} reps`}
                             onChange={e => setSet(i, { reps: e.target.value })} placeholder="reps"
                             style={{ ...QES_INP, fontSize: 22 }} />
-                          <button onClick={() => set({ setRows: setRows.filter((_, j) => j !== i) })}
+                          <button className="press" onClick={() => set({ setRows: setRows.filter((_, j) => j !== i) })}
                             aria-label={`Remove set ${i + 1}`}
                             style={{ minWidth: 44, minHeight: 44, borderRadius: 12, background: '#181818', border: '1px solid #2a2a2a', color: '#777', cursor: 'pointer' }}>✕</button>
                         </div>
                       ))}
-                      <button onClick={addSet} style={{
+                      <button className="press" onClick={addSet} style={{
                         width: '100%', minHeight: 48, borderRadius: 999, cursor: 'pointer', marginBottom: 6,
                         background: 'none', border: '1px dashed #2a2a2a', color: '#999',
                         fontFamily: 'var(--font-label)', fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase',
@@ -581,7 +581,7 @@ export default function QuickEntrySheet({
                         <input type="number" inputMode="decimal" value={v.distanceVal} aria-label="Distance" onChange={e => set({ distanceVal: e.target.value })} placeholder="0" style={QES_INP} />
                         <div style={{ display: 'flex', borderRadius: '12px', overflow: 'hidden', flexShrink: 0 }} hidden={mode !== 'distance' && !openDistance}>
                           {(openDistance ? (['m', 'km'] as const) : (['m', 'cm'] as const)).map(u => (
-                            <button key={u} onClick={() => set({ distanceUnit: u })} aria-pressed={v.distanceUnit === u} style={{
+                            <button className="press" key={u} onClick={() => set({ distanceUnit: u })} aria-pressed={v.distanceUnit === u} style={{
                               padding: '14px 18px', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '15px',
                               background: v.distanceUnit === u ? '#2371BB' : '#1a1a1a',
                               color: v.distanceUnit === u ? '#fff' : '#666',
@@ -625,7 +625,7 @@ export default function QuickEntrySheet({
                           const colors = { win: '#4DB26E', draw: '#F9B051', loss: '#EA4742' }
                           const active = v.sportResult === r
                           return (
-                            <button key={r} onClick={() => set({ sportResult: r })} style={{
+                            <button className="press" key={r} onClick={() => set({ sportResult: r })} style={{
                               flex: 1, padding: '18px 0', border: `2px solid ${active ? colors[r] : '#222'}`,
                               borderRadius: '14px', cursor: 'pointer', fontFamily: 'var(--font-display)', fontSize: '20px',
                               letterSpacing: '0.05em', background: active ? colors[r] + '22' : '#111',
@@ -640,7 +640,7 @@ export default function QuickEntrySheet({
                           {opponentPicks.map(p => {
                             const blocked = !!p.id && !!opponentBlocked?.(p.id)
                             return (
-                              <button key={p.id ?? `guest:${p.name}`} disabled={blocked} title={blocked ? 'Not a safe match today' : undefined}
+                              <button className="press" key={p.id ?? `guest:${p.name}`} disabled={blocked} title={blocked ? 'Not a safe match today' : undefined}
                                 onClick={() => { keepExistingMatch.current = false; set({ opponentName: p.name, opponentId: p.id ?? '' }) }} style={{
                                 ...QES_CHIP,
                                 borderColor: opponentPickActive(p) ? '#2371BB' : '#2a2a2a',
@@ -713,7 +713,7 @@ export default function QuickEntrySheet({
                       <div style={QES_LBL}>Quick pick</div>
                       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                         {quickPicks.map(qp => (
-                          <button key={qp.label} onClick={() => set(qp.patch)} style={{ ...QES_CHIP, borderColor: '#F9B05155', color: '#F9B051' }}>{qp.label}</button>
+                          <button className="press" key={qp.label} onClick={() => set(qp.patch)} style={{ ...QES_CHIP, borderColor: '#F9B05155', color: '#F9B051' }}>{qp.label}</button>
                         ))}
                       </div>
                     </>
@@ -721,7 +721,7 @@ export default function QuickEntrySheet({
 
                   {error && <div style={{ color: '#EA4742', fontSize: '13px', marginTop: '12px' }}>{error}</div>}
 
-                  <button onClick={handleSheetSubmit} disabled={!canSubmit} style={{
+                  <button className="press" onClick={handleSheetSubmit} disabled={!canSubmit} style={{
                     width: '100%', marginTop: '18px', height: '58px', border: 'none', borderRadius: '999px',
                     cursor: canSubmit ? 'pointer' : 'default',
                     background: canSubmit ? 'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)' : '#1a1a1a',
@@ -752,16 +752,19 @@ export default function QuickEntrySheet({
                         {r.is_pr && (
                           <div style={{ fontSize: '10px', fontWeight: 700, color: '#F9B051', background: '#F9B05122', borderRadius: '4px', padding: '2px 6px', fontFamily: 'var(--font-label)', letterSpacing: '0.05em' }}>PR</div>
                         )}
-                        {!locked && (
+                        {r.pending && (
+                          <div style={{ fontSize: '11px', color: '#888', fontFamily: 'var(--font-label)', letterSpacing: '0.08em', textTransform: 'uppercase', flexShrink: 0 }}>Saving</div>
+                        )}
+                        {!locked && !r.pending && (
                           <>
-                            <button onClick={() => {
+                            <button className="press" onClick={() => {
                               const opp = opponentIdFor(r.opponent_name)
                               keepExistingMatch.current = !!r.opponent_name && !opp
                               setEditingResult(r)
                               setV({ ...EMPTY_VALS, ...valsFromResult(mode, r), opponentId: opp ?? '' })
                             }}
                               style={{ background: 'none', border: '1px solid #2371BB44', borderRadius: '4px', color: '#2371BB', cursor: 'pointer', fontSize: '11px', padding: '2px 8px', flexShrink: 0, fontFamily: 'var(--font-label)', fontWeight: 700 }}>Edit</button>
-                            <button onClick={() => handleSheetDelete(r.id)}
+                            <button className="press" onClick={() => handleSheetDelete(r.id)}
                               style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: '14px', padding: '2px 6px', flexShrink: 0 }}>✕</button>
                           </>
                         )}
