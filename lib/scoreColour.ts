@@ -15,7 +15,7 @@
 
 import { decodeDistanceEffort, encodeDistanceEffort, type EventData } from './eventData'
 import { eventGrade, type GradePlayer } from './playerGrades'
-import { GRADES, gradeForRung, gradeInk } from './grading'
+import { GRADES, gradeForRung, gradeInk, gradeFill } from './grading'
 import { RAINBOW } from './domainColours'
 import { eventRungInGame } from './leaderboardScores'
 import { gameColourRung } from './gameReport'
@@ -117,7 +117,7 @@ export function rungPaint(rung: number): RungPaint | null {
 export function rungSegment(rung: number): string | null {
   if (rung < 1 || rung > GRADES.length) return null
   const g = gradeForRung(rung)
-  return g.rainbow ? RAINBOW : g.inverted ? '#ffffff' : g.hex
+  return g.rainbow ? RAINBOW : g.inverted ? '#ffffff' : gradeFill(g)
 }
 
 /**

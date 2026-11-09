@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { RainbowText, SectionLabel } from '@/components/ui'
 import DomainIcon from '@/components/DomainIcon'
 import { DOMAIN_ORDER, EVENTS } from '@/lib/eventData'
-import { GRADES, MA } from '@/lib/grading'
+import { GRADES, MA, gradeFill } from '@/lib/grading'
 import { MAX_GAME_COLOUR_TOTAL } from '@/lib/leaderboardScores'
 import { domainColor, RAINBOW } from '@/lib/domainColours'
 
@@ -21,7 +21,7 @@ const firstGame = ['Training gear', 'Water', 'Arrive 10 min early', 'Koha, no fe
 
 function rungFill(rung: number): string {
   const g = ladder[rung]
-  return g.rainbow ? RAINBOW : g.hex
+  return g.rainbow ? RAINBOW : gradeFill(g)
 }
 
 export const metadata = {
@@ -146,10 +146,10 @@ export default function HowToPlay() {
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 height: 26, padding: '0 12px', borderRadius: 4,
                 background: rungFill(g.rung),
-                border: g.inverted ? '1px solid var(--border-strong)' : 'none',
+                border: g.inverted ? '1px solid var(--border-strong)' : g.metal ? `1px solid ${g.metal.rim}` : 'none',
                 width: `${55 + g.rung * 3.75}%`,
               }}>
-                <span style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '13px', letterSpacing: '0.04em', color: g.inverted || g.rung === 1 || g.rung === 6 ? '#fff' : '#111' }}>{g.name}</span>
+                <span style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '13px', letterSpacing: '0.04em', color: g.inverted || g.rung === 1 || g.rung === 6 || g.rung === 8 ? '#fff' : '#111' }}>{g.name}</span>
               </div>
             ))}
           </div>

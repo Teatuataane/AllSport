@@ -2,6 +2,14 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.51.0.0] - 2026-11-10
+
+### Changed
+- **Bronze and gold no longer look like orange and yellow.** Parahi, Hiriwa and Kōura are drawn as metal, with a sheen and a darker rim, and bronze and gold are deeper (copper and antique gold). Karaka is a truer orange and Kōwhai a cleaner lemon. The two pairs were a CIELAB distance of 19 apart; they are now about 37, and a test keeps them above 35.
+- **Calisthenics and Power** take the new orange and lemon as their domain colours.
+- **Place medals match the metals.** 1st, 2nd and 3rd on the leaderboard, the game board and the scoring screen use the Kōura, Hiriwa and Parahi inks (`--medal-gold`, `--medal-silver`, `--medal-bronze`).
+- The brand amber accent, the rainbow stripe and the retired colours on /history are unchanged.
+
 ## [0.50.1.0] - 2026-11-10
 
 ### Changed

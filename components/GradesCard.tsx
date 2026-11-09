@@ -26,7 +26,7 @@ import { EVENTS, getEventBySlug } from '@/lib/eventData'
 import { STANDARDS } from '@/lib/standards'
 import { RAINBOW_CONIC } from '@/lib/domainColours'
 import {
-  GRADES, MA, gradeForRung, gradeInk, gradeAccent, averageRung, formatExact, GAMES_REQUIRED,
+  GRADES, MA, gradeForRung, gradeInk, gradeAccent, gradeFill, averageRung, formatExact, GAMES_REQUIRED,
 } from '@/lib/grading'
 import { eventCredit } from '@/lib/playerGrades'
 import { bestScoreLabel, colourBlurb, pastOverallRungs, shownDomainRungs, shownOverallRung, topSlotRungs } from '@/lib/colourDisplay'
@@ -244,8 +244,8 @@ export function ColourCircle({ rung, size, reached = true, ma = 'empty' }: {
   }
   return <span data-colour="reached" style={{
     ...base,
-    background: g.rainbow ? RAINBOW_CONIC : g.hex,
-    border: g.inverted ? '1.5px solid #fff' : 'none',
+    background: g.rainbow ? RAINBOW_CONIC : gradeFill(g),
+    border: g.inverted ? '1.5px solid #fff' : g.metal ? `${size >= 20 ? 2 : 1}px solid ${g.metal.rim}` : 'none',
   }} />
 }
 

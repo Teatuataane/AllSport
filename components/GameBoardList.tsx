@@ -26,7 +26,7 @@ const ord = (n: number) => {
   return n + (s[(v - 20) % 10] || s[v] || s[0])
 }
 const medal = (place: number | null) =>
-  place === 1 ? '#F9B051' : place === 2 ? '#C0C0C0' : place === 3 ? '#CD7F32' : '#555'
+  place === 1 ? 'var(--medal-gold)' : place === 2 ? 'var(--medal-silver)' : place === 3 ? 'var(--medal-bronze)' : '#555'
 
 export function GameBoardList({ entries }: { entries: readonly GameBoardEntry[] }) {
   const [open, setOpen] = useState<string | null>(null)
