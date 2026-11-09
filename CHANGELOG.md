@@ -2,6 +2,17 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.49.0.0] - 2026-11-10
+
+### Changed
+- **Submit is always under your thumb.** The entry sheet has a footer that never scrolls, holding Submit (or Back to scoring in How To). The sheet rides up on the phone keyboard so Submit stays visible above it.
+- **The number comes first.** Today's best and the record to beat are one small row at the top; then the level, the fields, the hint and the quick picks; today's scores and your records sit below. On a 375 by 667 screen a lift and a hold with levels show every field and Submit without scrolling.
+- **A filled-in game sheet must be changed before it submits.** It still opens on your last score so you can step up from it, but one stray tap no longer saves a duplicate. Training logs are not affected.
+- **Faster number entry.** Tapping a field selects it, so typing replaces the old number. Done on the keyboard submits. Holding − or + repeats. Small steps sit under the fields: −5, −1, +1, +5kg on a weight, +5 and +10 on reps, −1s and +1s on a time.
+- **Levels are easier to read.** The section is called Level, the chosen level scrolls into view, names wrap instead of being cut off, and the chosen level's full name and description show under the row.
+- **Delete asks first,** in the row, on the sheet and on the kaiwhakawā's Summary tab. Edit and Delete are bigger and further apart.
+- **"Next" on the score toast** opens the next event you have not scored, so you do not have to hunt for it. The toast stays long enough to tap it.
+
 ## [0.48.0.0] - 2026-11-10
 
 ### Changed

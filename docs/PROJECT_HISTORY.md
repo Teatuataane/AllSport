@@ -3812,6 +3812,14 @@ Decisions. Optimistic saves keep two lists, confirmed rows and writes in flight 
 
 Not verified on a real game: nobody could sign in from the build session, and the dev server writes to production, so no score was saved to test it. The network count per save is from the code, not a network panel.
 
+## Entry sheet (10 Nov 2026, v0.49.0.0)
+
+Phase 2 of SCORING_UX_BUILD_PLAN.md, the same day phase 1 merged. The sheet is now header, scrolling body and pinned footer; `lib/useKeyboardInset.ts` lifts it by the height the keyboard covers, read from `visualViewport`, because a fixed sheet does not move for the keyboard on iOS or current Android Chrome. The body order puts the fields first and records last.
+
+Decisions. A pre-filled game sheet needs one change before it submits (`needsTouch`), but the pre-fill stays, since stepping up from the last score is the quickest next entry; training logs (`natural`) are exempt because the same set twice is normal. Delete confirms inline rather than undoing later, so every host of the sheet behaves the same with no extra state. The level row was kept rather than replaced by a list: ladders run to twelve levels and the row keeps the fields on the first screen. Steppers repeat after 400ms at 90ms a step and update from the previous value, not the render's, so a fast hold cannot drop steps. "Next" takes the next unscored official event in list order, wrapping round (`lib/nextEvent.ts`).
+
+Checked at 375 by 667 in the browser pane on a temporary page with a dummy database address (removed before commit): deadlift, Pause Dips and L-Sit show every field and Submit without scrolling, the chosen level centres and is spelled out, and delete confirms in the row. Not checked: the keyboard lift on a real iPhone and Android phone, and the logged-in screen. No migration.
+
 ## What's Next (In Priority Order)
 
 1. ~~Apply the pending migrations~~ — **DONE, nothing pending (verified 2026-08-01).** Every migration through `20260801000000_roster_update_120.sql` is applied to prod. `supabase db push` offered only `20260801000000`, which means the three session-22 files (`20260713000000`, `20260713000001`, `20260714000000`) were already recorded as applied; `wellbeing_surveys` was confirmed to exist via the REST API, and `db push` applies in timestamp order, so they genuinely ran rather than being falsely baselined.

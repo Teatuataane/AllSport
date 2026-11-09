@@ -1,6 +1,7 @@
 'use client'
 import { opponentPicks as pickOpponents } from '@/lib/matches'
 import { useEffect, useState, useMemo, useRef } from 'react'
+import type React from 'react'
 import { useParams } from 'next/navigation'
 import { createClient, getSessionUser } from '@/lib/supabase-browser'
 import { getEventByName, getEventBySlug, type EventData } from '@/lib/eventData'
@@ -31,6 +32,7 @@ import { usePlayerGames } from '@/lib/usePlayerGames'
 import { usePRRows } from '@/lib/usePRRows'
 import { hasGameRow, isNewPR, mergeRows, seasonGameBest, type PRRow } from '@/lib/prBoard'
 import { useSessionResults, type SaveJob, type SessionResult } from '@/lib/useSessionResults'
+import { nextUnscored } from '@/lib/nextEvent'
 import GameBanner from '@/components/play/GameBanner'
 import { averageBefore, awardsForGame, nextStep } from '@/lib/gameReport'
 import { ColourScore, EarnedColours, NextTime, PlacementHeader } from '@/components/GameReportParts'
@@ -266,6 +268,12 @@ function JudgeSummaryTab({
 }) {
   const [expandedPlayerId, setExpandedPlayerId] = useState<string | null>(null)
   const [editingKey, setEditingKey] = useState<string | null>(null)
+  // The score whose Delete was tapped once: it asks before it goes.
+  const [confirmId, setConfirmId] = useState<string | null>(null)
+  const smallBtn: React.CSSProperties = {
+    minHeight: '44px', minWidth: '64px', padding: '0 12px', borderRadius: 'var(--radius-pill)', cursor: 'pointer', flexShrink: 0,
+    fontFamily: 'var(--font-label)', fontSize: '13px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase',
+  }
 
   function getPoolResults(pool: 'mens' | 'womens' | 'juniors') {
     return results.filter(r => {
@@ -379,15 +387,18 @@ function JudgeSummaryTab({
                                       {r.difficulty_tier && (
                                         <div style={{ fontSize: '10px', color: '#B87DB5', fontFamily: 'var(--font-label)' }}>{r.difficulty_tier}</div>
                                       )}
-                                      {!r.pending && <button className="press"
-                                        onClick={() => handleDelete(r, ed.eventName)}
-                                        style={{
-                                          background: '#EA474222', border: '1px solid #EA474244',
-                                          borderRadius: '4px', color: '#EA4742', cursor: 'pointer',
-                                          fontSize: '11px', padding: '3px 10px',
-                                          fontFamily: 'var(--font-label)', fontWeight: 700,
-                                        }}
-                                      >Delete</button>}
+                                      {!r.pending && (confirmId === r.id ? (
+                                        <>
+                                          <span style={{ fontFamily: 'var(--font-label)', fontSize: '13px', color: '#EA4742', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Delete?</span>
+                                          <button className="press" onClick={() => { setConfirmId(null); handleDelete(r, ed.eventName) }}
+                                            style={{ ...smallBtn, background: '#EA4742', border: '1px solid #EA4742', color: '#fff' }}>Delete</button>
+                                          <button className="press" onClick={() => setConfirmId(null)}
+                                            style={{ ...smallBtn, background: 'none', border: '1px solid #333', color: '#aaa' }}>Keep</button>
+                                        </>
+                                      ) : (
+                                        <button className="press" onClick={() => setConfirmId(r.id)} aria-label={`Delete ${r.score_label}`}
+                                          style={{ ...smallBtn, background: 'none', border: '1px solid #EA474266', color: '#EA4742' }}>Delete</button>
+                                      ))}
                                     </div>
                                   ))}
                                 </div>
@@ -835,7 +846,28 @@ export default function SessionPage() {
   const [authUserId, setAuthUserId] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<string>('leaderboard')
   const [sheetEventId, setSheetEventId] = useState<string | null>(null)
-  const [toast, setToast] = useState<{ eventName: string; label: string; isPR: boolean; isNewEvent: boolean; playerName?: string } | null>(null)
+  type Toast = {
+    eventName: string; label: string; isPR: boolean; isNewEvent: boolean; playerName?: string
+    /** The next official event still to score, offered as a button. */
+    next?: { id: string; name: string } | null
+  }
+  const [toast, setToast] = useState<(Toast & { id: number }) | null>(null)
+  const toastSeq = useRef(0)
+  // Each toast clears only itself, so an earlier one's timer never cuts a
+  // later one short. One with a Next button stays long enough to tap it.
+  const showToast = (t: Toast) => {
+    const id = ++toastSeq.current
+    setToast({ ...t, id })
+    const ms = t.next ? 6000 : t.isPR || t.isNewEvent ? 4000 : 3000
+    setTimeout(() => setToast(cur => (cur?.id === id ? null : cur)), ms)
+  }
+  /** The next official event `rows` has not scored, after `justId`, wrapping round. */
+  const nextFor = (rows: readonly Result[], justId: string) => {
+    const scored = new Set(rows.map(r => r.event_id))
+    const id = nextUnscored(events.map(e => e.id), scored, justId)
+    const ev = id ? events.find(e => e.id === id) : undefined
+    return ev ? { id: ev.id, name: ev.event_name } : null
+  }
   const [fullHousePulseId, setFullHousePulseId] = useState<string | null>(null)
   // The takeover key this page dismissed; localStorage covers earlier visits.
   const [takeoverDismissedKey, setTakeoverDismissedKey] = useState<string | null>(null)
@@ -1415,8 +1447,7 @@ export default function SessionPage() {
                 onDelete={swaps.deleteEntry}
                 onSubmitted={(labelText) => {
                   setSheetEventId(null)
-                  setToast({ eventName: sheetSlot.se.event_name, label: labelText, isPR: false, isNewEvent: false })
-                  setTimeout(() => setToast(null), 3000)
+                  showToast({ eventName: sheetSlot.se.event_name, label: labelText, isPR: false, isNewEvent: false })
                 }}
                 onDeleted={() => { /* the store reloaded itself */ }}
               />
@@ -1468,8 +1499,7 @@ export default function SessionPage() {
                   // announce one; and not a second score today.
                   const isNewEvent = playerPRsLoaded && !hasGameRow(playerPRRows[sheetEvent.event_slug] ?? [])
                     && !results.some(r => r.event_id === sheetEvent.id && r.player_id === pid)
-                  setToast({ eventName: sheetEvent.event_name, label, isPR: meta.isPR, isNewEvent })
-                  setTimeout(() => setToast(null), meta.isPR || isNewEvent ? 4000 : 3000)
+                  showToast({ eventName: sheetEvent.event_name, label, isPR: meta.isPR, isNewEvent, next: nextFor(myResults, sheetEvent.id) })
                 }}
                 onDeleted={() => { /* drawn at once by lib/useSessionResults.ts */ }}
               />
@@ -1497,19 +1527,20 @@ export default function SessionPage() {
       {/* Score-submitted toast — PR (gold/rainbow pop) beats new-event-unlocked beats normal green.
           A save that failed after it was shown replaces it with the error. */}
       {toast && !live.failure && (
-        <div style={{
+        <div role="status" style={{
           position: 'fixed', bottom: '20px', left: '50%', transform: 'translateX(-50%)',
           width: 'min(600px, calc(100vw - 32px))', zIndex: 200, overflow: 'hidden',
           background: '#161616',
           border: `1px solid ${toast.isPR ? '#F9B05155' : toast.isNewEvent ? '#2371BB55' : '#2a2a2a'}`,
           borderLeft: `4px solid ${toast.isPR ? '#F9B051' : toast.isNewEvent ? '#2371BB' : '#4DB26E'}`,
-          borderRadius: '12px', padding: '13px 16px', boxShadow: '0 24px 60px rgba(0,0,0,0.6)',
+          borderRadius: '12px', padding: toast.next ? '10px 10px 10px 16px' : '13px 16px', boxShadow: '0 24px 60px rgba(0,0,0,0.6)',
           animation: toast.isPR || toast.isNewEvent ? 'toastPop 0.45s cubic-bezier(0.16,1,0.3,1)' : undefined,
+          display: 'flex', alignItems: 'center', gap: '10px', boxSizing: 'border-box',
         }}>
           {toast.isPR && (
             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'linear-gradient(90deg, #EA4742, #F9B051, #F397C0, #B87DB5, #2371BB, #4DB26E)' }} />
           )}
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', color: '#fff' }}>
+          <div style={{ flex: 1, minWidth: 0, fontFamily: 'var(--font-display)', fontSize: '18px', color: '#fff' }}>
             {toast.playerName && <span style={{ color: '#EA4742' }}>{toast.playerName} — </span>}
             {toast.isPR
               ? <><span style={{ color: '#F9B051' }}>NEW PR</span> — {toast.eventName} — {toast.label}</>
@@ -1517,6 +1548,16 @@ export default function SessionPage() {
                 ? <><span style={{ color: '#7ab4ff' }}>New event unlocked</span> — {toast.eventName}! <span style={{ color: '#aaa' }}>{toast.label}</span></>
                 : <>Score in — {toast.eventName} — {toast.label}</>}
           </div>
+          {toast.next && (() => {
+            const next = toast.next
+            return (
+              <button className="press" onClick={() => { setSheetEventId(next.id); setToast(null) }} style={{
+                flexShrink: 0, maxWidth: '45%', minHeight: '44px', padding: '0 14px', borderRadius: 'var(--radius-pill)', cursor: 'pointer',
+                background: '#2371BB', border: 'none', color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                fontFamily: 'var(--font-label)', fontSize: '13px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase',
+              }}>Next: {next.name}</button>
+            )
+          })()}
         </div>
       )}
 
@@ -1754,8 +1795,7 @@ export default function SessionPage() {
                     onDelete={swaps.deleteEntry}
                     onSubmitted={(labelText) => {
                       setSheetEventId(null)
-                      setToast({ eventName: judgeSheetSlot.se.event_name, label: labelText, isPR: false, isNewEvent: false, playerName: target?.name })
-                      setTimeout(() => setToast(null), 3000)
+                      showToast({ eventName: judgeSheetSlot.se.event_name, label: labelText, isPR: false, isNewEvent: false, playerName: target?.name })
                     }}
                     onDeleted={() => { /* the store reloaded itself */ }}
                   />
@@ -1811,8 +1851,7 @@ export default function SessionPage() {
                     onClose={() => setSheetEventId(null)}
                     onSubmitted={(label, meta) => {
                       setSheetEventId(null)
-                      setToast({ eventName: sheetEvent.event_name, label, isPR: meta.isPR, isNewEvent: false, playerName: target.name })
-                      setTimeout(() => setToast(null), meta.isPR ? 4000 : 3000)
+                      showToast({ eventName: sheetEvent.event_name, label, isPR: meta.isPR, isNewEvent: false, playerName: target.name, next: nextFor(targetResults, sheetEvent.id) })
                     }}
                     onDeleted={() => { /* drawn at once by lib/useSessionResults.ts */ }}
                   />

@@ -9,6 +9,7 @@
 'use client'
 
 import type React from 'react'
+import { useEffect, useRef } from 'react'
 import EventIcon, { domainColor } from '@/components/EventIcon'
 import { type EventData } from '@/lib/eventData'
 // formatPR lives in lib/scoreFormat.ts so server code and pure libs can use it
@@ -88,14 +89,86 @@ export const QES_CHIP: React.CSSProperties = {
   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
 }
 
-export function StepBtn({ children, onClick, disabled }: { children: React.ReactNode; onClick: () => void; disabled?: boolean }) {
+/** How long a stepper is held before it starts repeating, and how fast it then goes. */
+export const HOLD_DELAY_MS = 400
+export const HOLD_REPEAT_MS = 90
+
+/**
+ * A big − or + beside a number. One step on press; held, it waits a moment
+ * and then repeats until released, the finger slides off, or the browser
+ * cancels the touch (v0.49.0.0). A click that did not start with a pointer
+ * (the keyboard, a screen reader) is still one step.
+ */
+export function StepBtn({ children, onClick, disabled, label }: {
+  children: React.ReactNode
+  onClick: () => void
+  disabled?: boolean
+  /** What the button does, for a screen reader: "Add 2.5kg". */
+  label?: string
+}) {
+  // The latest step, so a long hold reads the newest value on every repeat.
+  const step = useRef(onClick)
+  useEffect(() => { step.current = onClick }, [onClick])
+  const delay = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const repeat = useRef<ReturnType<typeof setInterval> | null>(null)
+  // A pointer press already stepped; the click the browser fires after it
+  // must not step again.
+  const pressed = useRef(false)
+  const stop = () => {
+    if (delay.current) clearTimeout(delay.current)
+    if (repeat.current) clearInterval(repeat.current)
+    delay.current = null
+    repeat.current = null
+  }
+  useEffect(() => stop, [])
+
   return (
-    <button className="press" onClick={onClick} disabled={disabled} style={{
-      width: '56px', minHeight: '56px', flexShrink: 0, borderRadius: '14px',
-      background: '#181818', border: '1px solid #2a2a2a', color: disabled ? '#444' : '#fff',
-      fontSize: '26px', fontFamily: 'var(--font-display)', cursor: disabled ? 'default' : 'pointer',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-    }}>{children}</button>
+    <button className="press" disabled={disabled} aria-label={label}
+      onPointerDown={e => {
+        if (disabled || e.button !== 0) return
+        pressed.current = true
+        stop()
+        step.current()
+        delay.current = setTimeout(() => {
+          repeat.current = setInterval(() => step.current(), HOLD_REPEAT_MS)
+        }, HOLD_DELAY_MS)
+      }}
+      onPointerUp={stop}
+      onPointerLeave={stop}
+      onPointerCancel={() => { stop(); pressed.current = false }}
+      onContextMenu={e => e.preventDefault()}
+      onClick={() => {
+        if (pressed.current) { pressed.current = false; return }
+        if (!disabled) onClick()
+      }}
+      style={{
+        width: '56px', minHeight: '56px', flexShrink: 0, borderRadius: '14px',
+        background: '#181818', border: '1px solid #2a2a2a', color: disabled ? '#444' : '#fff',
+        fontSize: '26px', fontFamily: 'var(--font-display)', cursor: disabled ? 'default' : 'pointer',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>{children}</button>
+  )
+}
+
+/**
+ * Small steps under a field, for when one stepper size does not fit: −5, −1,
+ * +1, +5 on a weight beside the 2.5kg buttons. Each chip is one step.
+ */
+export function StepChips({ steps, onStep, unit = '' }: {
+  steps: readonly number[]
+  onStep: (delta: number) => void
+  unit?: string
+}) {
+  return (
+    <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', marginTop: '8px' }}>
+      {steps.map(d => (
+        <button key={d} className="press" onClick={() => onStep(d)} style={{
+          minWidth: '52px', minHeight: '40px', padding: '0 10px', borderRadius: 'var(--radius-pill)', cursor: 'pointer',
+          background: '#161616', border: '1px solid #2a2a2a', color: '#bbb',
+          fontFamily: 'var(--font-label)', fontSize: '14px', fontWeight: 600, letterSpacing: '0.04em',
+        }}>{d > 0 ? '+' : '−'}{Math.abs(d)}{unit}</button>
+      ))}
+    </div>
   )
 }
 
