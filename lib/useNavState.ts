@@ -7,6 +7,7 @@
 
 import { useEffect, useState } from 'react'
 import { useActivePlayer } from '@/lib/useActivePlayer'
+import { isLiveSession, pollWhileVisible } from '@/lib/livePoll'
 
 // Dynamic, not module scope: this hook is what Navbar and NavTabs call, so a
 // static import would drag the Supabase client into every page's bundle. See
@@ -43,24 +44,21 @@ export function useNavState(): NavState {
       if (cancelled) return
       const supabase = createClient()
 
-      // A session whose 100 minutes ran out while the app was closed never fires
-      // award_session_points, so nobody in it gets placements or points. This RPC
-      // derives expiry from started_at server-side, so a caller can only ask it to
-      // check, never choose the outcome.
-      await supabase.rpc('close_expired_sessions')
-      const { data } = await supabase
-        .from('sessions').select('id').eq('is_active', true).maybeSingle()
-      if (!cancelled) setLiveSessionId(data?.id ?? null)
+      // No close_expired_sessions() first (it was a write on every check, and
+      // pg_cron runs it every 5 minutes): a game past its 100 minutes reads as
+      // over from started_at instead. See lib/livePoll.ts.
+      const { data, error } = await supabase
+        .from('sessions').select('id, started_at').eq('is_active', true).maybeSingle()
+      if (!cancelled && !error) setLiveSessionId(isLiveSession(data) ? data!.id : null)
     }
 
-    // Swallowed on purpose: the interval below retries every 60s, so a failed
-    // import or a dropped request self-heals. Without the catch it is an
-    // unhandled rejection on every flaky load.
-    const run = () => { check().catch(() => {}) }
-
-    run()
-    const t = setInterval(run, 60_000)
-    return () => { cancelled = true; clearInterval(t) }
+    // Swallowed on purpose: the next check retries, so a failed import or a
+    // dropped request self-heals. Without the catch it is an unhandled
+    // rejection on every flaky load. Every minute while the page is visible,
+    // and once when it comes back; a hidden tab (a phone in a pocket) used to
+    // ask every minute all day.
+    const stop = pollWhileVisible(() => { check().catch(() => {}) }, 60_000)
+    return () => { cancelled = true; stop() }
   }, [userId])
 
   // Derived, not cleared in the effect above: signing out must not leave a stale
