@@ -1018,7 +1018,7 @@ export const EVENTS: EventData[] = [
     inputMode: 'difficulty+reps',
     hasDifficultyTiers: true,
     difficultyTiers: [
-      { level: 1, name: 'Passing Drill', detail: 'Count clean passes with a partner; a dropped pass ends the count' },
+      { level: 1, name: 'Passing Drill', detail: 'Drop kick 20m to a partner, or into a wall, and catch it on the full; count how many in a row, and a drop or a miss ends the count' },
       { level: 2, name: 'Game', scoring: 'sport' },
     ],
     howToPerform: "Play a short-format game built on Australian Football skills — kicking, marking, and handballing. The kaiwhakawā sets the format on the day to suit numbers and space (kick-to-kick marking contests, or a small-sided game).",
@@ -2520,7 +2520,7 @@ export const EVENTS: EventData[] = [
     inputMode: 'difficulty+reps',
     hasDifficultyTiers: true,
     difficultyTiers: [
-      { level: 1, name: 'Shooting Drill', detail: 'Shots at the target from a set distance; count the ones that land' },
+      { level: 1, name: 'Shooting Drill', detail: 'Darts at the target from a set distance; count how many land in a row, and a miss ends the count. Six in a row is the top' },
       { level: 2, name: 'Game', scoring: 'sport' },
     ],
     howToPerform: "Play a darts match from the oche — 301 or 501, as set on the day. Score with each three-dart visit and work your way down to a finish.",
@@ -2537,7 +2537,7 @@ export const EVENTS: EventData[] = [
     inputMode: 'difficulty+reps',
     hasDifficultyTiers: true,
     difficultyTiers: [
-      { level: 1, name: 'Shooting Drill', detail: 'Shots at the target from a set distance; count the ones that land' },
+      { level: 1, name: 'Shooting Drill', detail: 'Throws at the target from a set distance; count how many land in a row, and a miss ends the count. Six in a row is the top' },
       { level: 2, name: 'Game', scoring: 'sport', records: 'strokes' },
     ],
     howToPerform: "Play a round of disc golf. Tee off from the marked tee, throw from where the disc lands, and finish each hole by hitting the basket or target. Count every throw.",
@@ -2553,7 +2553,7 @@ export const EVENTS: EventData[] = [
     inputMode: 'difficulty+reps',
     hasDifficultyTiers: true,
     difficultyTiers: [
-      { level: 1, name: 'Shooting Drill', detail: 'Shots at the target from a set distance; count the ones that land' },
+      { level: 1, name: 'Shooting Drill', detail: 'Shots at the target from a set distance; count how many land in a row, and a miss ends the count. Six in a row is the top' },
       { level: 2, name: 'Game', scoring: 'sport', records: 'strokes' },
     ],
     howToPerform: "Play a round of golf on the course set out for the session. Tee off, play the ball as it lies, and hole out on each green. Count every stroke.",

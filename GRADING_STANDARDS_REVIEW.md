@@ -977,11 +977,11 @@ Each colour must be harder than the one before. Game events list six colours; th
 **Everyone**
 
 - Kiwikiwi: D1 · any
-- Whero: D1 · 5
-- Karaka: D1 · 10
-- Kōwhai: D1 · 20
-- Kākāriki: D1 · 30
-- Kahurangi: D1 · 50
+- Whero: D1 · 2
+- Karaka: D1 · 4
+- Kōwhai: D1 · 6
+- Kākāriki: D1 · 10
+- Kahurangi: D1 · 15
 
 ### 12. Sprint Race
 
@@ -1563,11 +1563,11 @@ Each colour must be harder than the one before. Game events list six colours; th
 **Everyone**
 
 - Kiwikiwi: D1 · any
-- Whero: D1 · 1:00
-- Karaka: D1 · 1:30
-- Kōwhai: D1 · 2:00
-- Kākāriki: D1 · 2:30
-- Kahurangi: D1 · 3:00
+- Whero: D1 · 15s
+- Karaka: D1 · 30s
+- Kōwhai: D1 · 45s
+- Kākāriki: D1 · 1:15
+- Kahurangi: D1 · 2:00
 - Poroporo: D2 · any
 - Parahi: D2 · 15s
 - Hiriwa: D2 · 30s
@@ -2397,12 +2397,12 @@ Each colour must be harder than the one before. Game events list six colours; th
 
 **Everyone**
 
-- Kiwikiwi: D1 · any
-- Whero: D1 · 5
-- Karaka: D1 · 10
-- Kōwhai: D1 · 20
-- Kākāriki: D1 · 50
-- Kahurangi: D1 · 100
+- Kiwikiwi: D1 · 1
+- Whero: D1 · 2
+- Karaka: D1 · 3
+- Kōwhai: D1 · 4
+- Kākāriki: D1 · 5
+- Kahurangi: D1 · 6
 
 ### 8. Disc Golf
 
@@ -2410,12 +2410,12 @@ Each colour must be harder than the one before. Game events list six colours; th
 
 **Everyone**
 
-- Kiwikiwi: D1 · any
-- Whero: D1 · 5
-- Karaka: D1 · 10
-- Kōwhai: D1 · 20
-- Kākāriki: D1 · 50
-- Kahurangi: D1 · 100
+- Kiwikiwi: D1 · 1
+- Whero: D1 · 2
+- Karaka: D1 · 3
+- Kōwhai: D1 · 4
+- Kākāriki: D1 · 5
+- Kahurangi: D1 · 6
 
 ### 9. Golf
 
@@ -2423,12 +2423,12 @@ Each colour must be harder than the one before. Game events list six colours; th
 
 **Everyone**
 
-- Kiwikiwi: D1 · any
-- Whero: D1 · 5
-- Karaka: D1 · 10
-- Kōwhai: D1 · 20
-- Kākāriki: D1 · 50
-- Kahurangi: D1 · 100
+- Kiwikiwi: D1 · 1
+- Whero: D1 · 2
+- Karaka: D1 · 3
+- Kōwhai: D1 · 4
+- Kākāriki: D1 · 5
+- Kahurangi: D1 · 6
 
 ### 10. Handball
 

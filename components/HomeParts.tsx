@@ -35,7 +35,7 @@ export function ColourAvatar({ rung, icon, initial }: { rung: number | null; ico
   return (
     <div
       role="img"
-      data-ring={g.rainbow ? 'rainbow' : g.inverted ? 'inverted' : 'solid'}
+      data-ring={g.rainbow ? 'rainbow' : g.inverted ? 'inverted' : g.metal ? 'metal' : 'solid'}
       aria-label={rung == null ? 'Your avatar' : `Your avatar, overall colour ${g.name}`}
       style={{
         width: 58, height: 58, borderRadius: '50%', flexShrink: 0, boxSizing: 'border-box',
@@ -48,7 +48,11 @@ export function ColourAvatar({ rung, icon, initial }: { rung: number | null; ico
           // The tint is translucent, so an opaque base sits under it inside the
           // padding box; without it the solid ring layer shows through the
           // whole avatar and hides the initial.
-          : `linear-gradient(${fill}, ${fill}) padding-box, linear-gradient(var(--dark), var(--dark)) padding-box, linear-gradient(${ring}, ${ring}) border-box`,
+          : g.metal
+            // Parahi, Hiriwa and Kōura: the ring is the metal's sheen and the
+            // face its faint tint, as on the score buttons.
+            ? `${g.metal.tint} padding-box, linear-gradient(var(--dark), var(--dark)) padding-box, ${g.metal.sheen} border-box`
+            : `linear-gradient(${fill}, ${fill}) padding-box, linear-gradient(var(--dark), var(--dark)) padding-box, linear-gradient(${ring}, ${ring}) border-box`,
         boxShadow: `0 0 0 4px ${ring}1c`,
         fontSize: icon ? 26 : 28,
         fontFamily: icon ? undefined : 'var(--font-display)',

@@ -92,7 +92,7 @@ export type GradeRung = {
    * through `gradeFill`, never `hex` alone. `hex` stays the mid tone, for
    * borders, tints and bar segments.
    */
-  metal?: { sheen: string; rim: string }
+  metal?: { sheen: string; rim: string; tint: string }
 }
 
 /** The starting state. Not an award — every player begins here. */
@@ -118,6 +118,20 @@ function metalSheen(light: string, body: string, highlight: string): string {
   return `linear-gradient(135deg, ${light} 0%, ${body} 48%, ${highlight} 62%, ${body} 100%)`
 }
 
+/**
+ * The same sheen, faint, for the inside of a scored button or an avatar: the
+ * flat colours tint those at about 12%, so a metal does too, but across the
+ * sheen's bands so the face still reads as metal (v0.51.1.0; the buttons on
+ * the game and workout screens showed the metals flat).
+ */
+function metalTint(light: string, body: string, highlight: string): string {
+  return `linear-gradient(135deg, ${light}33 0%, ${body}1f 48%, ${highlight}33 62%, ${body}1f 100%)`
+}
+
+function metal(light: string, body: string, highlight: string, rim: string) {
+  return { sheen: metalSheen(light, body, highlight), tint: metalTint(light, body, highlight), rim }
+}
+
 export const GRADES: GradeRung[] = [
   { rung: 1, name: 'Kiwikiwi', colour: 'grey', hex: '#888888', populationTarget: null },
   { rung: 2, name: 'Whero', colour: 'red', hex: '#EA4742', ink: '#EE625D', populationTarget: 90 },
@@ -128,15 +142,15 @@ export const GRADES: GradeRung[] = [
   { rung: 7, name: 'Poroporo', colour: 'purple', hex: '#B87DB5', populationTarget: 40 },
   {
     rung: 8, name: 'Parahi', colour: 'bronze', hex: '#A0683A', ink: '#C08A5A', populationTarget: 30,
-    metal: { sheen: metalSheen('#C08A58', '#7A4A26', '#B37A48'), rim: '#4E2E16' },
+    metal: metal('#C08A58', '#7A4A26', '#B37A48', '#4E2E16'),
   },
   {
     rung: 9, name: 'Hiriwa', colour: 'silver', hex: '#B8C0CC', ink: '#C9D0D9', populationTarget: 20,
-    metal: { sheen: metalSheen('#F2F4F7', '#9AA3AE', '#DDE2E8'), rim: '#6B737D' },
+    metal: metal('#F2F4F7', '#9AA3AE', '#DDE2E8', '#6B737D'),
   },
   {
     rung: 10, name: 'Kōura', colour: 'gold', hex: '#C29A30', ink: '#D9B84A', populationTarget: 10,
-    metal: { sheen: metalSheen('#F0D46A', '#A8862A', '#E2C052'), rim: '#6E5714' },
+    metal: metal('#F0D46A', '#A8862A', '#E2C052', '#6E5714'),
   },
   { rung: 11, name: 'Uenuku', colour: 'rainbow', hex: '#B87DB5', populationTarget: 5, rainbow: true },
   { rung: 12, name: 'Taniwha', colour: 'black', hex: '#000000', populationTarget: 1, inverted: true },
@@ -153,7 +167,7 @@ export const TOP_RUNG = 12
  * conferred one. HOME forces one full recheck per player when this differs
  * from the version it last checked under (lib/useNewColours.ts).
  */
-export const GRADING_RULES_VERSION = '2026-11-03-fair-head-to-head'
+export const GRADING_RULES_VERSION = '2026-11-11-solo-drills-skipping'
 export const DOMAIN_COUNT = 10
 
 /**

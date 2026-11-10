@@ -1,3 +1,4 @@
+import { gradeForRung } from '@/lib/grading'
 import { describe, it, expect } from 'vitest'
 import { getEventBySlug } from '@/lib/eventData'
 import { scoreRung, rungPaint, rungSegment, workoutColourRung, workoutSlugs } from '@/lib/scoreColour'
@@ -60,6 +61,21 @@ describe('how a colour is drawn', () => {
     expect(rungPaint(11)!.background).toContain(RAINBOW)
     expect(rungPaint(12)!.background).toBe('#000')
     expect(rungPaint(12)!.border).toContain('#ffffff')
+  })
+
+  // v0.51.1.0: the score buttons on the game and workout screens drew the
+  // metals flat, so Parahi read as Karaka. Each metal's button carries its
+  // sheen on the border and a faint sheen on its face.
+  it('draws Parahi, Hiriwa and Kōura buttons with their sheen', () => {
+    for (const rung of [8, 9, 10]) {
+      const g = gradeForRung(rung)
+      const p = rungPaint(rung)!
+      expect(p.background).toContain(g.metal!.sheen)
+      expect(p.background).toContain(g.metal!.tint)
+      expect(p.border).toContain('transparent')
+    }
+    // The flat colours keep their flat tint.
+    expect(rungPaint(3)!.background).not.toContain('gradient')
   })
 
   it('never fills a progress segment black, which would vanish on the dark theme', () => {
