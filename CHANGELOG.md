@@ -2,6 +2,15 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.51.1.0] - 2026-11-11
+
+### Changed
+- **The metals shine on the score buttons.** A Parahi, Hiriwa or Kōura score on the game, workout and training screens now has the metal's sheen on its border and a faint sheen on its face, as on the colour dots. They were drawn flat, so Parahi read as Karaka again. The HOME avatar ring does the same for an overall metal colour.
+- **Darts, Golf and Disc Golf drills count in a row.** Land as many as you can in a row; a miss ends the count. One in a row is Kiwikiwi, six is Kahurangi (was 5 to 100 shots landed).
+- **Australian Football's drill** is a 20m drop kick to a partner, or into a wall, caught on the full, counted in a row. Whero 2, Karaka 4, Kōwhai 6, Kākāriki 10, Kahurangi 15 (was 5 to 50).
+- **Skipping Rope is easier at the start.** Two-Foot Skip unbroken: Whero 15s, Karaka 30s, Kōwhai 45s, Kākāriki 1:15, Kahurangi 2:00 (was 1:00 to 3:00). Double Unders are unchanged.
+- Rules version bumped, so every player is rechecked.
+
 ## [0.51.0.0] - 2026-11-10
 
 ### Changed

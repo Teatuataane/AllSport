@@ -110,6 +110,16 @@ export function rungPaint(rung: number): RungPaint | null {
     }
   }
   if (g.inverted) return { name: g.name, rainbow: false, ink: '#ffffff', background: '#000', border: '1.5px solid #ffffff' }
+  // A metal's border is its sheen, drawn the same way as Uenuku's rainbow, and
+  // its face a faint sheen over an opaque base so the border layer stays
+  // under the padding box. A flat `${hex}1f` made Parahi read as Karaka again.
+  if (g.metal) {
+    return {
+      name: g.name, rainbow: false, ink: gradeInk(g),
+      background: `${g.metal.tint} padding-box, linear-gradient(var(--surface), var(--surface)) padding-box, ${g.metal.sheen} border-box`,
+      border: '1.5px solid transparent',
+    }
+  }
   return { name: g.name, rainbow: false, ink: gradeInk(g), background: `${g.hex}1f`, border: `1.5px solid ${g.hex}` }
 }
 
