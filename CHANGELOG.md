@@ -2,6 +2,11 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.51.0.1] - 2026-11-11
+
+### Changed
+- **Less load on the database between games** (second Supabase Disk IO warning). The server has about 430 MB of memory and was swapping; every request wakes services out of swap. The "is a game on?" check in the top bar now stops while the tab is hidden (a phone in a pocket used to ask every minute all day), and neither it nor HOME calls `close_expired_sessions()` any more: pg_cron already closes games every 5 minutes, and a game past its 100 minutes reads as over from its start time. HOME's game and training checks run every minute instead of every 30 seconds, only while the page is visible. Shared helper `lib/livePoll.ts`.
+
 ## [0.51.0.0] - 2026-11-10
 
 ### Changed
