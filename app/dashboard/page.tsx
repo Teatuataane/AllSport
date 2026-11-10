@@ -25,6 +25,7 @@ import PlayerTabs, { ViewingAsBanner } from '@/components/PlayerTabs'
 import GradesCard from '@/components/GradesCard'
 import { ColourAvatar, GameOnCard, TrainingOnCard, NextSessionLine, HomeLink } from '@/components/HomeParts'
 import { loadOpenTraining } from '@/lib/training'
+import { isLiveSession, pollWhileVisible } from '@/lib/livePoll'
 import { loadGradeInputs, gradeStateFrom, type GradeState } from '@/lib/loadGrades'
 import { nzYear } from '@/lib/seasonYear'
 import { ghostAverages } from '@/lib/honours'
@@ -41,6 +42,10 @@ import { computePercentiles } from '@/lib/percentile'
 import { loadMyGamePlaces } from '@/lib/loadGamePlace'
 
 const supabase = createClient()
+
+// HOME's "is a game / training session on?" checks. Was 30s each; a minute is
+// soon enough to see a JOIN button appear, and halves the requests.
+const HOME_POLL_MS = 60_000
 
 
 type StatsBundle = {
@@ -193,28 +198,23 @@ function DashboardInner() {
       if (running) return
       running = true
       try {
-        await supabase.rpc('close_expired_sessions')
+        // No close_expired_sessions() first: pg_cron closes games every 5
+        // minutes, and a game past its 100 minutes reads as over here anyway
+        // (isLiveSession). The RPC was a write on every poll (lib/livePoll.ts).
         const { data, error } = await supabase.from('sessions').select('*').eq('is_active', true).maybeSingle()
         // A failed poll keeps the last known answer: one flaky request must not
         // take the JOIN button away mid-game.
-        if (!cancelled && !error) setActiveSession(data ?? null)
+        if (!cancelled && !error) setActiveSession(isLiveSession(data) ? data : null)
       } finally {
         running = false
       }
     }
-    check()
     // The JOIN button is now the only way in from HOME (no code box), so a
     // player who opened the page before the game started must see it appear
-    // without reloading: re-check on an interval and when the tab comes back.
-    // Hidden tabs skip the poll; visibilitychange catches them up on return.
-    const timer = setInterval(() => { if (document.visibilityState === 'visible') check() }, 30_000)
-    const onVisible = () => { if (document.visibilityState === 'visible') check() }
-    document.addEventListener('visibilitychange', onVisible)
-    return () => {
-      cancelled = true
-      clearInterval(timer)
-      document.removeEventListener('visibilitychange', onVisible)
-    }
+    // without reloading: re-check every minute while the page is visible and
+    // when the tab comes back. Hidden tabs make no requests.
+    const stop = pollWhileVisible(() => { void check() }, HOME_POLL_MS)
+    return () => { cancelled = true; stop() }
   }, [userId])
 
   // ── A training session your kaiwhakawā has opened for the viewed player ─────
@@ -230,11 +230,8 @@ function DashboardInner() {
       const w = rows[0]
       setTraining(w ? { id: w.id, events: w.planned_events?.length ?? 0 } : null)
     }).catch(() => {})
-    check()
-    const timer = setInterval(() => { if (document.visibilityState === 'visible') check() }, 30_000)
-    const onVisible = () => { if (document.visibilityState === 'visible') check() }
-    document.addEventListener('visibilitychange', onVisible)
-    return () => { cancelled = true; clearInterval(timer); document.removeEventListener('visibilitychange', onVisible) }
+    const stop = pollWhileVisible(check, HOME_POLL_MS)
+    return () => { cancelled = true; stop() }
   }, [activePlayerId])
 
   // Silent auto-join from the QR code. The typed code box is gone (home

@@ -11,6 +11,11 @@ All notable changes to AllSport are documented here.
 - **Skipping Rope is easier at the start.** Two-Foot Skip unbroken: Whero 15s, Karaka 30s, Kōwhai 45s, Kākāriki 1:15, Kahurangi 2:00 (was 1:00 to 3:00). Double Unders are unchanged.
 - Rules version bumped, so every player is rechecked.
 
+## [0.51.0.1] - 2026-11-11
+
+### Changed
+- **Less load on the database between games** (second Supabase Disk IO warning). The server has about 430 MB of memory and was swapping; every request wakes services out of swap. The "is a game on?" check in the top bar now stops while the tab is hidden (a phone in a pocket used to ask every minute all day), and neither it nor HOME calls `close_expired_sessions()` any more: pg_cron already closes games every 5 minutes, and a game past its 100 minutes reads as over from its start time. HOME's game and training checks run every minute instead of every 30 seconds, only while the page is visible. Shared helper `lib/livePoll.ts`.
+
 ## [0.51.0.0] - 2026-11-10
 
 ### Changed
