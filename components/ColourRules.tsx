@@ -1,12 +1,11 @@
-// ─── The colours guide ───────────────────────────────────────────────────────
-// What the COLOURS tab opens. Since the home colours rework (24 September 2026,
-// docs/designs/home-colours-rework-spec.md) this page explains the system and
-// shows NO personal data: a player's own colours, event by event, live on HOME
-// (components/GradesCard.tsx). Public, like How to Play, so a newcomer or a
-// parent can read it before signing up.
+// ─── The full colour rules ───────────────────────────────────────────────────
+// Was its own page, /grades (the COLOURS tab), until v0.52.0.0 (Tāne, 18 Nov
+// 2026): the tab became HOW TO PLAY and these rules now open from that page's
+// colours section. /grades redirects there (next.config.ts). No personal data:
+// a player's own colours live on HOME (components/GradesCard.tsx).
 //
 // A server component: nothing here depends on who is looking. Every number is
-// read from lib/grading.ts, never typed, so the guide cannot drift from the
+// read from lib/grading.ts, never typed, so the rules cannot drift from the
 // engine that awards the colours. The worked examples are computed by the
 // engine itself (domainGrade, overallRung).
 
@@ -20,12 +19,6 @@ import { PROVISIONAL_GAMES } from '@/lib/headToHead'
 import { GradeDot } from '@/components/GradeDot'
 import { ADULT_AGES, ADULT_ALLOWANCE, ADULT_ROWS, JUNIOR_ALLOWANCE, JUNIOR_ROWS, formatAllowance } from '@/lib/ageAllowance'
 import { ADULT_PERCENT, JUNIOR_PERCENT } from '@/lib/scaling'
-
-export const metadata = {
-  title: 'Colours · AllSport',
-  description: 'Mā to Taniwha: how AllSport colours are earned, domain by domain.',
-  alternates: { canonical: '/grades' },
-}
 
 const label = {
   fontFamily: 'var(--font-label)', textTransform: 'uppercase' as const,
@@ -86,7 +79,7 @@ function P({ children }: { children: React.ReactNode }) {
   return <p style={{ color: 'var(--grey-light)', fontSize: 14.5, lineHeight: 1.6, margin: '0 0 10px' }}>{children}</p>
 }
 
-export default function ColoursGuide() {
+export default function ColourRules() {
   const exampleRungs = [5, 5, 5, 5, 5, 5, 5, 2, 2, 2]
   const exampleSum = exampleRungs.reduce((a, b) => a + b, 0)
   // The overall example, capped: its average needs more games than this.
@@ -105,33 +98,7 @@ export default function ColoursGuide() {
   const domainSum = domainExample.reduce((a, b) => a + b, 0)
 
   return (
-    <div style={{ maxWidth: 620, margin: '0 auto', padding: '22px 16px 56px', color: 'var(--white)' }}>
-
-      {/* ── Hero ─────────────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', gap: 3, marginBottom: 14 }} aria-hidden>
-        {[MA, ...GRADES].map(g => <GradeDot key={g.rung} grade={g} size={14} />)}
-      </div>
-      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 52, lineHeight: 0.95, margin: 0, letterSpacing: '0.02em' }}>
-        MĀ TO TANIWHA
-      </h1>
-      <p style={{ fontSize: 17, lineHeight: 1.5, margin: '12px 0 22px', color: 'var(--grey-light)' }}>
-        Every event has twelve standards. A domain&apos;s colour is the average of your best{' '}
-        {DOMAIN_TOP_EVENTS} events there. Your colour is the average of all ten.
-      </p>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 26, flexWrap: 'wrap' }}>
-        <Link href="/dashboard" style={{
-          minHeight: 44, display: 'inline-flex', alignItems: 'center', padding: '0 18px',
-          borderRadius: 999, background: 'var(--blue)', color: 'var(--white)', ...label, fontSize: 13,
-        }}>
-          See your colours →
-        </Link>
-        <Link href="/workout/new" style={{
-          minHeight: 44, display: 'inline-flex', alignItems: 'center', padding: '0 18px',
-          borderRadius: 999, background: 'var(--purple)', color: '#0a0a0a', ...label, fontSize: 13,
-        }}>
-          + Log a workout
-        </Link>
-      </div>
+    <div style={{ color: 'var(--white)' }}>
 
       {/* ── 1. The ladder ────────────────────────────────────────────────── */}
       <section style={card}>

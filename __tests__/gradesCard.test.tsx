@@ -9,12 +9,14 @@
 //      the games cap is holding it back. Domain rows carry almost no text.
 //   4. No provisional note and no separate bodyweight prompt: grading is live,
 //      and a blocked lift says so on its own row (redesign, 2026-09-28).
-// And that /grades is a plain server component carrying the whole ladder.
+// And that the colour rules (once /grades, now inside How to Play) are a plain
+// server component carrying the whole ladder.
 
 import { describe, it, expect, afterEach } from 'vitest'
 import { render, cleanup, fireEvent, screen, within } from '@testing-library/react'
 import GradesCard from '@/components/GradesCard'
-import ColoursGuide from '@/app/grades/page'
+import ColourRules from '@/components/ColourRules'
+import HowToPlay from '@/app/how-to-play/page'
 import { computePlayerGrades, colourGates, type GradePlayer, type GradeResultRow } from '@/lib/playerGrades'
 import { GRADES, gradeForRung } from '@/lib/grading'
 import { topSlotRungs, colourBlurb } from '@/lib/colourDisplay'
@@ -329,13 +331,17 @@ describe('GradesCard — the ladder track and the colours ahead', () => {
   })
 })
 
-describe('the colours guide (/grades)', () => {
-  it('renders as a plain server component with the headline and all twelve colours', () => {
-    const { container } = render(ColoursGuide())
-    expect(container.textContent).toContain('MĀ TO TANIWHA')
+describe('the colour rules (How to Play, once /grades)', () => {
+  it('renders as a plain server component with all twelve colours', () => {
+    const { container } = render(ColourRules())
     for (const g of GRADES) expect(container.textContent).toContain(g.name)
     expect(container.textContent).toContain('the average of your best 6 events')
     expect(container.textContent).not.toMatch(/training units|What is a unit/i)
+  })
+
+  it('opens from How to Play, so the separate page is not needed', () => {
+    const { container } = render(HowToPlay())
+    expect(container.querySelector('details#colour-rules')?.textContent).toContain('A domain colour')
   })
 })
 

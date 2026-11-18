@@ -1,10 +1,12 @@
 // Server component. Reworked 14 Oct 2026 (Tāne): the old page ran to thirteen
 // phone screens of copy and still described the pre-v0.22 rule (lowest total
-// placement wins). This one is four pictures. The full colour rules live on
-// /grades and the roster on /events; this page only gives the shape of it.
+// placement wins). This one is four pictures. The roster lives on /events.
+// Since v0.52.0.0 (18 Nov 2026) this is also the logged-in HOW TO PLAY tab, and
+// the full colour rules (the old /grades page) open here under the ladder.
 import Link from 'next/link'
 import { RainbowText, SectionLabel } from '@/components/ui'
 import DomainIcon from '@/components/DomainIcon'
+import ColourRules from '@/components/ColourRules'
 import { DOMAIN_ORDER, EVENTS } from '@/lib/eventData'
 import { GRADES, MA, gradeFill } from '@/lib/grading'
 import { MAX_GAME_COLOUR_TOTAL } from '@/lib/leaderboardScores'
@@ -39,6 +41,10 @@ export default function HowToPlay() {
         .htp-arrow { align-self: center; color: var(--grey); font-family: var(--font-display); font-size: 32px; }
         .htp-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
         .htp-domains { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+        .htp-rules > summary { cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; padding: 0 18px; border: 1px solid var(--border-strong); border-radius: 12px; font-family: var(--font-label); font-weight: 700; font-size: 15px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--white); }
+        .htp-rules > summary::-webkit-details-marker { display: none; }
+        .htp-rules > summary::after { content: '+'; font-family: var(--font-display); font-size: 26px; color: var(--grey); }
+        .htp-rules[open] > summary::after { content: '−'; }
         @media (max-width: 720px) {
           .htp-steps { grid-template-columns: 1fr; }
           .htp-arrow { justify-self: center; transform: rotate(90deg); line-height: 1; }
@@ -124,8 +130,8 @@ export default function HowToPlay() {
         </div>
       </section>
 
-      {/* 3. The colour ladder, as a picture. */}
-      <section className="section" style={{ background: '#0d0d0d', borderTop: '1px solid var(--border)' }}>
+      {/* 3. The colour ladder, as a picture. `id` is where /grades redirects. */}
+      <section id="colours" className="section" style={{ background: '#0d0d0d', borderTop: '1px solid var(--border)' }}>
         <div className="container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '40px', alignItems: 'center' }}>
           <div>
             <SectionLabel style={{ marginBottom: 12 }}>Between games</SectionLabel>
@@ -136,9 +142,9 @@ export default function HowToPlay() {
             <p style={{ color: 'var(--grey)', fontSize: '15px', lineHeight: 1.6, marginBottom: '20px' }}>
               Measured against a standard, not the room. Coming last costs you nothing.
             </p>
-            <Link href="/grades" style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '14px', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--blue)' }}>
-              How colours work →
-            </Link>
+            <a href="#colour-rules" style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '14px', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--blue)' }}>
+              How colours work ↓
+            </a>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column-reverse', gap: '4px', maxWidth: 360, width: '100%', justifySelf: 'center' }}>
             {ladder.map(g => (
@@ -153,6 +159,14 @@ export default function HowToPlay() {
               </div>
             ))}
           </div>
+        </div>
+        {/* The full rules, closed by default so the page stays four pictures.
+            A plain <details>: no client JS, and it opens on Ctrl+F. */}
+        <div className="container" style={{ maxWidth: 680, marginTop: '40px' }}>
+          <details id="colour-rules" className="htp-rules">
+            <summary>The full colour rules</summary>
+            <div style={{ paddingTop: '16px' }}><ColourRules /></div>
+          </details>
         </div>
       </section>
 

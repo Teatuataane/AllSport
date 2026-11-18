@@ -154,7 +154,7 @@ export default function NewWorkoutPage() {
         <p style={{ color: 'var(--text-muted)', fontSize: 14.5, lineHeight: 1.6, margin: '0 0 16px' }}>
           Plan what you are doing, then score it the same way you would at a game. What you do counts as training
           toward your next colour, and your best efforts count toward the standards.{' '}
-          <Link href="/grades" style={{ color: 'var(--blue)' }}>What each colour asks →</Link>
+          <Link href="/how-to-play#colour-rules" style={{ color: 'var(--blue)' }}>What each colour asks →</Link>
         </p>
 
         {!live && (

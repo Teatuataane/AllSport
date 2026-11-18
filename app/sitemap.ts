@@ -11,7 +11,6 @@ const PUBLIC_PATHS = [
   '/how-to-play',
   '/events',
   '/schedule',
-  '/grades',
   '/koha',
   '/supporters',
   '/privacy',

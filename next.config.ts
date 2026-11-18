@@ -79,6 +79,9 @@ const nextConfig: NextConfig = {
       // Groups were renamed hapū on 15 Oct 2026, the day they shipped; an
       // early link to /groups still lands.
       { source: '/groups', destination: '/hapu', permanent: true },
+      // The colours guide folded into How to Play (v0.52.0.0). Temporary, not
+      // permanent, so a browser does not cache it if the page ever comes back.
+      { source: '/grades', destination: '/how-to-play#colours', permanent: false },
       { source: '/groups/:id', destination: '/hapu/:id', permanent: true },
     ]
   },

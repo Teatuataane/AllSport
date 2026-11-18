@@ -3,7 +3,7 @@
 // ── The menu, on both widths ─────────────────────────────────────────────────
 // September 2026 simplification. Two things this pins:
 //
-//   1. The tabs are PLAY · HOME · COLOURS · BOARD · MORE, and MORE holds only
+//   1. The tabs are PLAY · HOME · HOW TO PLAY · LEADERBOARD · MORE, and MORE holds only
 //      the player's own things. Public website pages live in the footer.
 //   2. The DESKTOP top bar opens the same MORE menu. Before this it rendered the
 //      tabs alone, so a signed-in player on a laptop could not sign out or
@@ -39,12 +39,12 @@ const MENU_ROWS = ['Log a workout', 'My events', 'Play history', 'Profile & fami
 const PUBLIC_PAGES = ['Schedule', 'Give koha', 'Event guide', 'How to play', 'Supporters']
 
 describe('phone tabs', () => {
-  it('has five tabs, with Colours as one of them', async () => {
+  it('has five tabs, with How to play as one of them', async () => {
     const Navbar = (await import('@/components/Navbar')).default
     const { container, findByText } = render(<Navbar />)
     await findByText('MORE')
     const tabs = [...container.querySelectorAll('.phone-nav [aria-label="Main"] > *')].map(t => t.textContent)
-    expect(tabs).toEqual(['Play', 'Home', 'Colours', 'Board', 'More'])
+    expect(tabs).toEqual(['Play', 'Home', 'How to play', 'Leaderboard', 'More'])
   })
 
   // Value: protects=the phone MORE menu dims the page and closes on an outside tap; fails_when=the menu is rendered inside <nav>, whose backdrop-filter shrinks its fixed backdrop to the 48px bar; why_new=caught in review, nothing tested where the menu mounts; seam=none
@@ -88,17 +88,17 @@ describe('desktop top bar', () => {
 // shows with no game running; why_new=PhoneTabStrip is new and the PhoneTabs test above only
 // checks labels; seam=none
 describe('phone tab strip', () => {
-  const none = { play: false, home: false, colours: false, board: false, more: false }
+  const none = { play: false, home: false, guide: false, board: false, more: false }
 
   it('marks only the active tab as the current page, and More toggles through onMore', async () => {
     const { PhoneTabStrip } = await import('@/components/NavTabs')
     const onMore = vi.fn()
     const { container, getByText } = render(
       <PhoneTabStrip playHref="/scoring/s1" playLabel="Play" playColour="#EA4742" live={false}
-        active={{ ...none, colours: true }} onMore={onMore} />,
+        active={{ ...none, guide: true }} onMore={onMore} />,
     )
     const current = [...container.querySelectorAll('[aria-current="page"]')].map(e => e.textContent)
-    expect(current).toEqual(['Colours'])
+    expect(current).toEqual(['How to play'])
     expect(container.querySelector('a[href="/scoring/s1"]')?.textContent).toBe('Play')
     fireEvent.click(getByText('More'))
     expect(onMore).toHaveBeenCalledTimes(1)
