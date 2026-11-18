@@ -2,6 +2,15 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.54.0.0] - 2026-11-19
+
+### Changed
+- **The colour board is one strip of cards that scrolls right to the top hundred** (Tāne). Every player now gets the podium card: rank, name, colour, division, colour score, games, average and best game, best and worst domain. The top three keep their medal colours. Arrows page it on a computer and a phone swipes it; a fade on the right shows there is more.
+- **Your card is ringed in orange,** and a "Me" button jumps to it. Below the hundred, it is added at the end.
+
+### Removed
+- The "Colours" heading and its explainer, the four season numbers (games, players, best game, most games) and the top ten button. The section now reads SEASON, the division chips, then the cards. `seasonHighlights` is deleted.
+
 ## [0.53.1.0] - 2026-11-18
 
 ### Changed
