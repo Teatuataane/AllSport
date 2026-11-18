@@ -2,6 +2,11 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.53.1.0] - 2026-11-18
+
+### Changed
+- **The colour board is back in its old look, with the new numbers** (Tāne preferred it). The top three stand on the podium again and the rest are cards with each player's best and worst domain. Each shows the overall colour, the season colour score, games, average and best game. The order, the top ten to hundred button, the pinned own row and the four season numbers are unchanged.
+
 ## [0.53.0.0] - 2026-11-18
 
 ### Changed
