@@ -11,8 +11,8 @@
 //   4  one row of links: Log a workout · My events · Play history
 //
 // The colours radar and the four stat tiles are gone: the radar repeated the
-// domain list and the tiles became the line under your name. The Colours guide
-// is the COLOURS tab, so HOME does not link it.
+// domain list and the tiles became the line under your name. The colour rules
+// sit in How to Play (a tab of its own), so HOME does not link them.
 
 import { useCallback, useEffect, useMemo, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'

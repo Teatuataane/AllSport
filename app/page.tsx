@@ -233,7 +233,7 @@ export default async function Home() {
               <p style={{ color: '#888', fontSize: '15px', lineHeight: 1.7, marginBottom: '24px' }}>
                 Lift all ten domains to raise your overall colour. Age allowances built in.
               </p>
-              <Link href="/grades" className="lp-btn lp-outline" style={{ fontSize: '17px', padding: '11px 28px' }}>See The Standards</Link>
+              <Link href="/how-to-play#colours" className="lp-btn lp-outline" style={{ fontSize: '17px', padding: '11px 28px' }}>See The Standards</Link>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>

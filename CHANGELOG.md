@@ -2,6 +2,12 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.52.0.0] - 2026-11-18
+
+### Changed
+- **The top bar reads HOME · HOW TO PLAY · LEADERBOARD when signed in** (was HOME · COLOURS · BOARD). Phones say the same: the icon tabs now size to their labels so How to play and Leaderboard fit.
+- **The Colours page is gone; its rules now open from How to Play.** Under the colour ladder, "The full colour rules" opens the twelve colours, domain and overall colour, age and sex scaling tables, sports ratings and the yearly reset (`components/ColourRules.tsx`). `/grades` redirects to `/how-to-play#colours`.
+
 ## [0.51.2.0] - 2026-11-18
 
 ### Changed

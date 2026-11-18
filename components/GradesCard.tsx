@@ -3,7 +3,7 @@
 // ─── YOUR COLOURS ────────────────────────────────────────────────────────────
 // HOME's colours section, and since the home colours rework (24 September 2026,
 // docs/designs/home-colours-rework-spec.md) the ONLY place a player's own colour
-// detail lives: the COLOURS tab (/grades) is a guide with no personal data.
+// detail lives: the colour rules (How to Play, once /grades) carry no personal data.
 //
 // Top to bottom (redesigned with Tāne 2026-09-28): the overall colour's name,
 // the thirteen-colour ladder as circles on a track under it, a proud headline

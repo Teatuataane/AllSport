@@ -167,8 +167,8 @@ export default function Navbar() {
   const desktopTabs = [
     ...(isJudge ? [] : [{ href: playHref, label: playLabel.toUpperCase(), colour: playColour, match: '/scoring' }]),
     { href: '/dashboard', label: 'HOME', match: '/dashboard' },
-    { href: '/grades', label: 'COLOURS', match: '/grades' },
-    { href: '/leaderboard', label: 'BOARD', match: '/leaderboard' },
+    { href: '/how-to-play', label: 'HOW TO PLAY', match: '/how-to-play' },
+    { href: '/leaderboard', label: 'LEADERBOARD', match: '/leaderboard' },
   ]
 
   return (
@@ -198,7 +198,7 @@ export default function Navbar() {
               playHref={playHref} playLabel={playLabel} playColour={playColour} live={!!liveSessionId}
               active={{
                 play: onPath('/scoring') || (isJudge && onPath('/judge')),
-                home: onPath('/dashboard'), colours: onPath('/grades'), board: onPath('/leaderboard'),
+                home: onPath('/dashboard'), guide: onPath('/how-to-play'), board: onPath('/leaderboard'),
                 more: moreOpen,
               }}
               onMore={() => setMoreOpen(o => !o)}

@@ -3,10 +3,11 @@
 // ─── The tabs, and the MORE menu ─────────────────────────────────────────────
 // Five destinations on every logged-in page:
 //
-//   PLAY · HOME · COLOURS · BOARD · MORE
+//   PLAY · HOME · HOW TO PLAY · LEADERBOARD · MORE
 //
-// Colours is a tab because it is the sport: since September 2026 a colour is
-// the thing every player is working toward.
+// HOW TO replaced COLOURS in v0.52.0.0 (Tāne, 18 Nov 2026): the public How to
+// Play page now carries the colour rules too, so there is one guide, not two.
+// Phones say the same words as the desktop bar (Tāne, 18 Nov 2026).
 //
 // PLAY is the only context-aware tab:
 //
@@ -30,7 +31,7 @@ import { useRouter } from 'next/navigation'
 // that only a signed-in player can ever reach.
 const supabaseModule = () => import('@/lib/supabase-browser')
 
-type TabKey = 'play' | 'home' | 'colours' | 'board' | 'more'
+type TabKey = 'play' | 'home' | 'guide' | 'board' | 'more'
 
 const RESTING = '#5c5c5c'
 const ACTIVE = '#ffffff'
@@ -53,10 +54,11 @@ function Icon({ tab, colour }: { tab: TabKey; colour: string }) {
           <path d="M5 19V11" /><path d="M12 19V5" /><path d="M19 19v-5" />
         </svg>
       )
-    case 'colours':
+    case 'guide':
       return (
         <svg {...common} strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="4.5" /><circle cx="12" cy="12" r="0.8" />
+          <circle cx="12" cy="12" r="9" /><path d="M9.6 9.3a2.5 2.5 0 014.8 1c0 1.7-2.4 2.1-2.4 3.6" />
+          <circle cx="12" cy="17.2" r="0.6" />
         </svg>
       )
     case 'board':
@@ -108,7 +110,9 @@ function Tab({ tab, label, colour, active, live, onClick, href }: {
     display: 'flex', flexDirection: 'column', alignItems: 'center',
     justifyContent: 'center', gap: 3,
     // 44px is the touch floor; the bar is 48px, so the target fills it.
-    minHeight: 44, padding: '0 2px',
+    // Grows to share the strip's spare width, so every pixel of it is a tap
+    // target and nothing is a dead gap; no min width, or a 320px phone overflows.
+    minHeight: 44, flex: '1 1 auto', padding: '0 3px',
     background: 'transparent', border: 'none',
     cursor: 'pointer', textDecoration: 'none',
     WebkitTapHighlightColor: 'transparent',
@@ -138,14 +142,18 @@ export function PhoneTabStrip({ playHref, playLabel, playColour, live, active, o
       role="navigation"
       aria-label="Main"
       style={{
-        display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
-        alignItems: 'center', flex: 1, minWidth: 0, maxWidth: 320,
+        // Tabs sized to their words, not five equal columns: LEADERBOARD
+        // (57px at 10px) does not fit a fifth of a 375px phone's free 281px,
+        // but the five labels together take about 175px, so they fit with room
+        // down to a 320px phone (measured: 216px of 226 there).
+        display: 'flex',
+        alignItems: 'center', flex: 1, minWidth: 0, maxWidth: 360,
       }}
     >
       <Tab tab="play" label={playLabel} colour={playColour} active={active.play} live={live} href={playHref} />
       <Tab tab="home" label="Home" colour={ink(active.home)} active={active.home} href="/dashboard" />
-      <Tab tab="colours" label="Colours" colour={ink(active.colours)} active={active.colours} href="/grades" />
-      <Tab tab="board" label="Board" colour={ink(active.board)} active={active.board} href="/leaderboard" />
+      <Tab tab="guide" label="How to play" colour={ink(active.guide)} active={active.guide} href="/how-to-play" />
+      <Tab tab="board" label="Leaderboard" colour={ink(active.board)} active={active.board} href="/leaderboard" />
       <Tab tab="more" label="More" colour={ink(active.more)} active={active.more} onClick={onMore} />
     </div>
   )
