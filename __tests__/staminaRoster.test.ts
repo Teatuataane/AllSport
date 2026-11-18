@@ -118,7 +118,7 @@ describe('stamina roster migration', () => {
       'iron-cross', 'jump-rope', 'kubb', 'l-sit-hold', 'lacrosse', 'middle-split', 'needle-pose', 'netball',
       'nordic-curl', 'pancake', 'planche', 'push-up-contest', 'rear-hand-clasp', 'repeat-high-jump',
       'rope-climb', 'seiza', 'shoulder-dislocate', 'side-bend', 'skate', 'skipping-rope', 'slackline',
-      'squash', 'table-tennis', 'tennis', 'teqball', 'ti-rakau', 'touch-rugby', 'trampolining',
+      'squash', 'table-tennis', 'tennis', 'teqball', 'ti-rakau', 'toes-2-bar', 'touch-rugby', 'trampolining',
       'ultimate-frisbee', 'volleyball', 'water-polo', 'wrestler-pullover',
     ])
     for (const slug of slugs) {

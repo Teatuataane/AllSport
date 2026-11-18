@@ -21,9 +21,11 @@ const WEIGHT_RUNGS = {
   // Weighted by share of bodyweight on an estimated one-rep max (3 Nov 2026).
   'GHD Situp': 'Weighted GHD Situp',
   'Wrestler Pullover': 'Wrestler Pullover',
+  // Weighted Tuck became Toes 2 Bar with a bodyweight ladder (Tāne, 18 Nov 2026).
+  'Toes 2 Bar': 'Weighted Toes 2 Bar',
 }
 // Weight rungs whose score is the estimated one-rep max of the load and reps.
-const ESTIMATE_RUNGS = new Set(['GHD Situp', 'Wrestler Pullover'])
+const ESTIMATE_RUNGS = new Set(['GHD Situp', 'Wrestler Pullover', 'Toes 2 Bar'])
 // Levels of a rep event that count seconds instead (Tāne, 3 Nov 2026).
 const SECONDS_RUNGS = {
   'Nordic Curl': ['Band Assisted', 'Isometric Hold'],

@@ -80,9 +80,13 @@ Every event has a list of levels under it, or `**NONE**`. D1 is the easiest. A l
 
 **NONE**
 
-### 17. Weighted Tuck
+### 17. Toes 2 Bar
 
-**NONE**
+- D1: Lying Knee Tuck   (On the back, hands by the hips, knees drawn to the chest and lowered until the legs are straight)
+- D2: Hanging Tuck   (Straight-arm hang, knees to the chest, no swing)
+- D3: Hanging Leg Raise   (Straight-arm hang, straight legs raised to hip height, no swing)
+- D4: Toes 2 Bar   (Straight-arm hang, both feet touch the bar between the hands, no kip)
+- D5: Weighted Toes 2 Bar   (Toes 2 Bar with a dumbbell between the feet; weight and reps give an estimated one-rep max)
 
 ## 2. Calisthenics
 

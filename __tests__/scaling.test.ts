@@ -134,6 +134,18 @@ describe('a weighted level in shares of bodyweight', () => {
     expect(eventGrade(pull, [onTop(800, null)], man()).rung).toBe(6)
     expect(eventGrade(pull, [row('Wrestler Pullover', 10030, { difficulty_tier: 'Elevated Assisted Wrestler Bridge' })], man()).rung).toBe(3)
   })
+
+  // Toes 2 Bar (18 Nov 2026): four bodyweight levels on reps, the fifth weighted.
+  const t2b = ev('toes-2-bar')
+  const weighted = (centiKg: number, bw: number | null) =>
+    row('Toes 2 Bar', 40000 + centiKg, { difficulty_tier: 'Weighted Toes 2 Bar', bodyweightKg: bw })
+  it('grades Toes 2 Bar on reps below the weighted level and on bodyweight share on it', () => {
+    expect(eventGrade(t2b, [row('Toes 2 Bar', 10015, { difficulty_tier: 'Hanging Tuck' })], man()).rung).toBe(4)
+    expect(eventGrade(t2b, [row('Toes 2 Bar', 30010, { difficulty_tier: 'Toes 2 Bar' })], man()).rung).toBe(9)
+    expect(eventGrade(t2b, [weighted(800, 80)], man()).rung).toBe(10) // 0.1× BW is 8kg
+    expect(eventGrade(t2b, [weighted(799, 80)], man()).rung).toBe(9)
+    expect(eventGrade(t2b, [weighted(1600, null)], man()).rung).toBe(9)
+  })
 })
 
 describe('AGE_ALLOWANCE_REVIEW.md is the table the code runs', () => {

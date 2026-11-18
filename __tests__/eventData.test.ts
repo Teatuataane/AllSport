@@ -189,7 +189,7 @@ describe('getEventByName', () => {
     'Mas Wrestling', 'Obstacle Course', 'Swim', 'Walking',
     'Diving', 'Poi', 'Water Polo', 'Cornhole', 'Airsoft/Nerf',
     // Added 3 Nov 2026
-    'Overhead Press', 'Wrestler Pullover', 'Plate Hold', 'Weighted Tuck', 'Nordic Curl', 'Discus', 'Sprint Race',
+    'Overhead Press', 'Wrestler Pullover', 'Plate Hold', 'Toes 2 Bar', 'Nordic Curl', 'Discus', 'Sprint Race',
     'Hurdles', 'Hang', 'Skipping Rope', 'Underwater Swim', 'Cobra Pose', 'Butterfly Pose', 'Deep Squat',
     'Bent Wrist Stretch', 'Shoulder Dislocate', 'Cheststand', 'Tī Rākau', 'Goal Kicking',
   ])('new event %s is defined with real content', (name) => {

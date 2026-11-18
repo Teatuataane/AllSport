@@ -149,7 +149,7 @@ export const EVENT_SUMMARIES: Record<string, EventSummary> = {
   'overhead-press': { how: 'Press a barbell from your shoulders to straight arms overhead, standing.', rules: 'No leg drive or lean back, bar still at the top. Ranks on estimated one-rep max.' },
   'wrestler-pullover': { how: 'Hold a wrestler bridge, then pull a barbell over your face to your chest.', rules: 'Bridges rank on your hold. Top level ranks on estimated one-rep max against bodyweight.' },
   'plate-hold': { how: 'Pinch plates in one hand with fingers and thumb, and hold them at your side.', rules: 'No palm on the rim. Heaviest load for 30 seconds.' },
-  'weighted-tuck': { how: 'Hang with a dumbbell between your feet and bring your knees to your chest.', rules: 'Still hang each rep, no swing. Ranks on estimated one-rep max.' },
+  'toes-2-bar': { how: 'From a knee tuck on the floor up to feet to the bar, then a dumbbell between your feet.', rules: 'Still start each rep, no kip. Top level ranks on estimated one-rep max against bodyweight.' },
   'nordic-curl': { how: 'Knees held down, lower your straight body forward and pull back up.', rules: 'Hips stay straight. Hold levels count seconds, rep levels count reps.' },
   'discus': { how: 'Throw the discus from the circle, as far as you can.', rules: 'Stay in the circle, land in the sector. Best of three.' },
   'sprint-race': { how: 'Race the other players over the distance set on the day.', rules: 'First across the line wins. Win, draw or loss.' },

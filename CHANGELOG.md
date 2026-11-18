@@ -2,6 +2,16 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.52.0.0] - 2026-11-18
+
+### Changed
+- **Weighted Tuck is now Toes 2 Bar, with five levels.** D1 Lying Knee Tuck, D2 Hanging Tuck, D3 Hanging Leg Raise, D4 Toes 2 Bar, each on strict reps, and D5 Weighted Toes 2 Bar on an estimated one-rep max against bodyweight, like Wrestler Pullover. Hanging Leg Raise was added between the tuck and Toes 2 Bar, the biggest jump on the ladder. Standards (drafted for Tāne to check): Kiwikiwi D1 any, Whero D1 20, Karaka D2 5, Kōwhai D2 15, Kākāriki D3 5, Kahurangi D3 10, Poroporo D4 any, Parahi D4 5, Hiriwa D4 10, Kōura to Taniwha D5 0.1, 0.15, 0.2× BW. Women and girls from 12 move one colour, as on the other hanging events, instead of 70% of the load.
+- New slug `toes-2-bar`. Migration `20261118000952_toes_2_bar.sql` moves the two logged Weighted Tuck entries to D2 Hanging Tuck on their reps (load kept in a pre-image), repoints two planned workouts, adds the ladder to the database guard, refuses new scores on the old slug, takes the event out of the lift trigger, and adds log aliases (toes to bar, t2b, hanging knee raise, hanging leg raise, weighted tuck and others).
+- Rules version bumped, so every player is rechecked.
+
+### Fixed
+- **The Toes 2 Bar (was Weighted Tuck) icon drew as a solid block.** Its white background was opaque, so the mask filled the whole tile. The background is now transparent.
+
 ## [0.51.1.0] - 2026-11-11
 
 ### Changed

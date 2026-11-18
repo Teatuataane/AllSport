@@ -167,6 +167,12 @@
 
 ## P1 — Do Next
 
+### Toes 2 Bar (v0.52.0.0): apply the migration, check the numbers, draw the icon
+- Apply `20261118000952_toes_2_bar.sql` from `main` straight after the deploy (`db query --linked` plus the ledger row). Rehearsed 18 Nov 2026 in a rolled-back transaction: 154 rows, both entries moved to D2 Hanging Tuck, 2 planned workouts and 10 aliases repointed; as `authenticated` a weighted entry kept its score, and the old slug and an off-band score were refused.
+- Tāne to check the drafted standards, and whether Hanging Leg Raise belongs as D3.
+- The icon is still the hanging tuck picture; a toes-to-bar silhouette would suit the top levels better.
+
+
 ### ~~Apply `20261014222805_stamina_arm_events.sql` after v0.36.0.0 deploys~~ DONE 2026-10-15
 **Done:** pushed by `supabase db push` from a clean worktree on `main` after allsport.nz served the new events. Verified: 148 rows in `event_domains`, 18 in Stamina, the four slugs present, ledger row written; as `authenticated`, in a rolled-back transaction, a Strict Curl workout entry was accepted. Still to do: hard-refresh kaiwhakawā devices.
 

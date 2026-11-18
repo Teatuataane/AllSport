@@ -321,26 +321,24 @@ Each colour must be harder than the one before. Game events list six colours; th
 - Uenuku: 0.45× BW · 30s
 - Taniwha: 0.5× BW · 30s
 
-### 17. Weighted Tuck
+### 17. Toes 2 Bar
 
-*Scored by: heaviest weight lifted, as a ratio of bodyweight*
+*Scored by: difficulty level, then most reps or estimated one-rep max*
 
 **Everyone**
 
-- Kiwikiwi: empty bar
-- Whero: 0.05× BW
-- Karaka: 0.1× BW
-- Kōwhai: 0.15× BW
-- Kākāriki: 0.175× BW
-- Kahurangi: 0.2× BW
-- Poroporo: 0.25× BW
-- Parahi: 0.3× BW
-- Hiriwa: 0.35× BW
-- Kōura: 0.4× BW
-- Uenuku: 0.45× BW
-- Taniwha: 0.5× BW
-
-## 2. Calisthenics
+- Kiwikiwi: D1 · any
+- Whero: D1 · 20
+- Karaka: D2 · 5
+- Kōwhai: D2 · 15
+- Kākāriki: D3 · 5
+- Kahurangi: D3 · 10
+- Poroporo: D4 · any
+- Parahi: D4 · 5
+- Hiriwa: D4 · 10
+- Kōura: D5 · 0.1× BW
+- Uenuku: D5 · 0.15× BW
+- Taniwha: D5 · 0.2× BW
 
 ### 1. 1 Leg Squat
 

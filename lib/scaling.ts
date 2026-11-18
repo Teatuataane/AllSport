@@ -37,7 +37,7 @@ export const LOWER_LOAD_SLUGS: ReadonlySet<string> = new Set([
 ])
 /** Upper body and carries. Reps and times stay the same. */
 export const UPPER_LOAD_SLUGS: ReadonlySet<string> = new Set([
-  'pause-bench', 'overhead-press', 'pause-row', 'one-arm-press', 'turkish-get-up', 'plate-hold', 'weighted-tuck',
+  'pause-bench', 'overhead-press', 'pause-row', 'one-arm-press', 'turkish-get-up', 'plate-hold',
   'skullcrusher', 'strict-curl', 'overhead-tricep-extension', 'overhead-raise', 'wrist-extension',
   'sandbag-carry', 'farmer-carry', 'weighted-drag',
 ])
@@ -52,7 +52,7 @@ export const TIMED_ENDURANCE_SLUGS: ReadonlySet<string> = new Set([
 export const UPPER_LEVEL_SLUGS: ReadonlySet<string> = new Set([
   'pause-dips', 'clap-pushups', 'chin-up-contest', 'push-up-contest', 'finger-push-up', 'planche', 'front-lever',
   'back-lever', 'flag', 'iron-cross', 'reverse-maltese', 'hand-walk', 'chin-hang', 'hang', 'windshield-wipers',
-  'wrestler-pullover',
+  'wrestler-pullover', 'toes-2-bar',
 ])
 
 /** Adults: the first age of each step, as lib/ageAllowance.ts ADULT_AGES. Under 35 is 0. */
