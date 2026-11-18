@@ -2,47 +2,54 @@
 
 // ─── /leaderboard ────────────────────────────────────────────────────────────
 // The board exists so players who could never play together — a woman of 65,
-// a U14 boy, a Men's player — can compete anyway. Settled with Tāne on
-// 2026-09-25. ONE board, SEASON: this calendar year. In every finished game,
-// each player's official events score the colour rungs they reached, and
-// everyone in the game is ranked together on that total, whatever their
-// division: 1st scores 100, 2nd 99, 3rd 98 (Tāne, 2026-09-28). The colour
-// ladder already shifts for age and sex and scales strength by bodyweight, so
-// the totals are comparable across every division, and the one-point gap
-// makes turning up worth more than any finish.
+// a U14 boy, a Men's player — can compete anyway. ONE board, SEASON: this
+// calendar year, a tab for each year (colours are earned per year, Tāne
+// 13 Oct 2026).
 //
-// Each card also shows the player's conferred colour and their best and worst
-// domain by the standards. A lifetime Skill board (the average domain colour)
-// was built and removed the same day, at Tāne's call.
+// Two sections since 18 Nov 2026 (Tāne):
+//   1. COLOUR. Players with a game this season, ranked on their top colour
+//      the way HOME shows it: the overall colour (the average of the ten
+//      domain colours conferred this year, rounded down, capped by this
+//      year's games), then the rankByColours tie-breaks, then the season's
+//      colour score (every colour total from official games, added up;
+//      player_game_colours), which replaced the place points (100, 99, 98 …,
+//      28 Sept 2026) and is shown with average and best game. Top ten,
+//      expandable to a hundred, the visitor's own row pinned beneath when it
+//      is further down. Rules: lib/seasonColourBoard.ts.
+//   2. EVENT RECORDS. The season's best Men's, Women's and Juniors score in
+//      every event, by domain (components/EventRecords.tsx, lib/eventRecords.ts),
+//      loaded as its own chunk because it needs the whole roster.
 //
-// Colours are earned per calendar year (Tāne, 13 Oct 2026), so the board has a
-// tab for each year: that year's season points, that year's conferred colours,
-// capped by that year's games.
-//
-// The colours are computed on the server by the recheck route (strength rungs
-// need the private bodyweight) and published in player_domain_colours /
-// player_game_colours; the season_points view ranks each game. This page only
-// reads and ranks them. All-Divisions
-// opens first.
+// The colours are computed on the server by the recheck route (strength rungs need the
+// private bodyweight) and published; this page only reads and ranks them.
+// All-Divisions opens first, and a division chip narrows both sections.
 
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase-browser'
-import { gradeForRung, DOMAIN_COUNT } from '@/lib/grading'
-import { rankBy, bestAndWorst } from '@/lib/leaderboardScores'
-import { colourStanding, displayOverall } from '@/lib/colourBoard'
+import { gradeForRung } from '@/lib/grading'
+import { colourStanding } from '@/lib/colourBoard'
 import { loadGameCounts } from '@/lib/gameCounts'
 import { nzYear } from '@/lib/seasonYear'
 import { divisionPool } from '@/lib/rating'
-import { loadSeasonPoints, type SeasonPointsRow } from '@/lib/leaderboardData'
+import { loadSeasonGames, loadGameColours } from '@/lib/leaderboardData'
+import { seasonColourBoard, seasonHighlights, type SeasonGame, type GameColourRow, type ColourStanding } from '@/lib/seasonColourBoard'
+import { formatNZDate } from '@/lib/dates'
+import { useActivePlayer } from '@/lib/useActivePlayer'
 import { RAINBOW, DOMAIN_COLORS } from '@/lib/domainColours'
 import { GradeDot } from '@/components/GradeDot'
-import DomainIcon from '@/components/DomainIcon'
 
-// Literal, not derived from EVENTS: importing lib/eventData.ts would ship the
-// how-to prose for every event to a page that needs ten names.
-const DOMAIN_NAMES = ['Maximal Strength', 'Calisthenics', 'Power', 'Speed', 'Stamina',
-  'Endurance', 'Flexibility', 'Control', 'Coordination', 'Aim']
+// Its own chunk: the records need lib/eventData.ts, the whole roster with
+// every event's how-to prose, which the colour board does not.
+const EventRecords = dynamic(() => import('@/components/EventRecords'), {
+  ssr: false,
+  loading: () => <div style={{ height: 224, maxWidth: 720, background: '#0d0d0d', border: '1px solid #1a1a1a', borderRadius: 12 }} />,
+})
+
+/** The board shows ten, then a hundred. */
+const TOP = 10
+const MORE = 100
 
 type ActiveSession = {
   id: string
@@ -77,18 +84,7 @@ type RosterPlayer = {
   is_active: boolean | null
 }
 
-type DomainColoursRow = { player_id: string; domain_rungs: number[]; updated_at?: string }
-
-type BoardRow = {
-  playerId: string
-  name: string
-  division: string | null
-  domainRungs: number[]
-  points: number
-  games: number
-  /** Overall CONFERRED colour (average of the ten domains, rounded down), or null while it is Mā. */
-  overall: number | null
-}
+type BoardRow = ColourStanding
 
 const tabs = [
   { key: 'all-divisions', label: 'All-Divisions', division: null, color: '#F9B051' },
@@ -105,36 +101,6 @@ const SHORT_DIVISION: Record<string, string> = {
 
 const inTab = (division: string | null, tab: typeof tabs[number]) =>
   tab.division == null || divisionPool(division) === divisionPool(tab.division)
-
-/** The player's colour: the overall one CONFERRED, or Mā, where every player starts. */
-function ColourChip({ rung, size = 'md' }: { rung: number | null; size?: 'sm' | 'md' }) {
-  const g = gradeForRung(rung ?? 0)
-  return (
-    <span className="lb-colour" style={{ fontSize: size === 'sm' ? 11 : 12 }}>
-      <GradeDot grade={g} size={size === 'sm' ? 9 : 11} />
-      {g.name}
-    </span>
-  )
-}
-
-/** One domain with its colour: "BEST · [icon] Power · ● Kōwhai". */
-function DomainStat({ kind, index, rung, compact = false }: { kind: 'Best' | 'Worst'; index: number; rung: number; compact?: boolean }) {
-  const g = rung > 0 ? gradeForRung(rung) : null
-  const name = DOMAIN_NAMES[index]
-  return (
-    <div className={compact ? 'lb-dstat lb-dstat-compact' : 'lb-dstat'} title={`${kind} domain: ${name}, ${g ? g.name : 'no colour yet'}`}>
-      <span className="lb-dstat-label" style={{ color: kind === 'Best' ? '#4DB26E' : '#EA4742' }}>{kind}</span>
-      <DomainIcon domainName={name} domainNumber={index + 1} size={compact ? 22 : 26} />
-      <span style={{ minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-        <span className="lb-dstat-name">{name}</span>
-        <span className="lb-dstat-grade">
-          {g ? <GradeDot grade={g} size={8} /> : null}
-          {g ? g.name : 'Not yet'}
-        </span>
-      </span>
-    </div>
-  )
-}
 
 function Banner() {
   return (
@@ -181,75 +147,92 @@ function LiveGame({ session }: { session: ActiveSession }) {
   )
 }
 
-// The medal inks (globals.css --medal-*), as hex because the card border appends alpha.
-const PODIUM = [
-  { place: 2, color: '#C9D0D9', lift: 24 },
-  { place: 1, color: '#D9B84A', lift: 0 },
-  { place: 3, color: '#C08A5A', lift: 40 },
-] as const
 
-function Podium({ rows }: { rows: (BoardRow & { rank: number })[] }) {
-  if (rows.length < 3) return null
-  const top = rows.slice(0, 3)
+const RANK_INK = ['var(--medal-gold)', 'var(--medal-silver)', 'var(--medal-bronze)']
+
+/** One decimal only when there is one: 54, 54.5. */
+const num = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1))
+
+function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="lb-podium">
-      {PODIUM.map(({ place, color, lift }) => {
-        const p = top[place - 1]
-        const bw = bestAndWorst(p.domainRungs)
-        return (
-          <div key={place} className="lb-podium-card" style={{ marginTop: lift, borderColor: `${color}33` }}>
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: place === 1 ? RAINBOW : color }} />
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: place === 1 ? 52 : 40, color, lineHeight: 1 }}>{p.rank}</div>
-            <div className="lb-podium-name">{p.name}</div>
-            <div style={{ display: 'flex', justifyContent: 'center', margin: '-2px 0 10px' }}><ColourChip rung={p.overall} size="sm" /></div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: place === 1 ? 32 : 26, color: '#fff', lineHeight: 1 }}>{p.points}<span style={{ fontSize: 13, color: '#666', marginLeft: 3 }}>PTS</span></div>
-            <div className="lb-podium-domains">
-              {p.domainRungs[bw.best] > 0 ? (
-                <>
-                  <DomainStat kind="Best" index={bw.best} rung={p.domainRungs[bw.best]} compact />
-                  <DomainStat kind="Worst" index={bw.worst} rung={p.domainRungs[bw.worst]} compact />
-                </>
-              ) : <span className="lb-nodomains">No domain colours yet</span>}
-            </div>
-          </div>
-        )
-      })}
+    <div className="lb-stat">
+      <span className="lb-stat-label">{label}</span>
+      <span className="lb-stat-value">{value}</span>
+      {sub && <span className="lb-stat-sub">{sub}</span>}
     </div>
   )
 }
 
-function BoardList({ rows, showDivision }: { rows: (BoardRow & { rank: number })[]; showDivision: boolean }) {
+function Highlights({ h }: { h: ReturnType<typeof seasonHighlights> }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {rows.map(p => {
-        const { best, worst } = bestAndWorst(p.domainRungs)
-        return (
-          <div key={p.playerId} className="lb-row" style={{ borderColor: p.rank <= 3 ? '#F9B05126' : '#1a1a1a' }}>
-            <div className="lb-rank" style={{ color: p.rank === 1 ? 'var(--medal-gold)' : p.rank === 2 ? 'var(--medal-silver)' : p.rank === 3 ? 'var(--medal-bronze)' : '#3a3a3a' }}>{p.rank}</div>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flexWrap: 'wrap' }}>
-                <span className="lb-name">{p.name}</span>
-                <ColourChip rung={p.overall} />
-                {showDivision && p.division && <span className="lb-div">{SHORT_DIVISION[p.division] ?? p.division}</span>}
-              </div>
-              <div className="lb-domains">
-                {/* With nothing held, best and worst would both name the first
-                    domain as "Not yet", which reads like a real result. */}
-                {p.domainRungs[best] > 0 ? (
-                  <>
-                    <DomainStat kind="Best" index={best} rung={p.domainRungs[best]} />
-                    <DomainStat kind="Worst" index={worst} rung={p.domainRungs[worst]} />
-                  </>
-                ) : <span className="lb-nodomains">No domain colours yet</span>}
-              </div>
-            </div>
-            <div style={{ textAlign: 'right', alignSelf: 'start' }}>
-              <span style={{ fontFamily: 'var(--font-display)', fontSize: 30, color: '#fff', lineHeight: 1 }}>{p.points}</span>
-              <div className="lb-unit">{`Pts · ${p.games} ${p.games === 1 ? 'game' : 'games'}`}</div>
-            </div>
-          </div>
-        )
-      })}
+    <div className="lb-stats">
+      <Stat label="Games" value={String(h.games)} />
+      <Stat label="Players" value={String(h.players)} />
+      <Stat label="Best game" value={h.topGame ? num(h.topGame.total) : '–'}
+        sub={h.topGame ? `${h.topGame.name}${h.topGame.date ? `, ${formatNZDate(h.topGame.date, { day: 'numeric', month: 'short' })}` : ''}` : undefined} />
+      <Stat label="Most games" value={h.mostGames ? String(h.mostGames.games) : '–'}
+        sub={h.mostGames ? (h.mostGames.names.length > 2 ? `${h.mostGames.names.length} players` : h.mostGames.names.join(', ')) : undefined} />
+    </div>
+  )
+}
+
+/** The player's colour: the overall one CONFERRED, or Mā, where every player starts. */
+function ColourChip({ rung }: { rung: number }) {
+  const g = gradeForRung(rung)
+  return (
+    <span className="lb-colour">
+      <GradeDot grade={g} size={14} />
+      {g.name}
+    </span>
+  )
+}
+
+function Row({ p, showDivision, mine }: { p: BoardRow; showDivision: boolean; mine: boolean }) {
+  return (
+    <div className="lb-row" style={mine ? { borderColor: '#F9B05166', background: '#14100a' } : undefined}>
+      <div className="lb-rank" style={{ color: RANK_INK[p.rank - 1] ?? '#444' }}>
+        {p.rank}
+      </div>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flexWrap: 'wrap' }}>
+          <span className="lb-name">{p.name}</span>
+          {showDivision && p.division && <span className="lb-div">{SHORT_DIVISION[p.division] ?? p.division}</span>}
+        </div>
+        <div className="lb-sub">{`${p.games} ${p.games === 1 ? 'game' : 'games'} · score ${num(p.total)}`}</div>
+      </div>
+      <div className="lb-num lb-wide">{p.games}</div>
+      <div className="lb-num lb-wide">{num(p.average)}</div>
+      <div className="lb-num lb-wide">{num(p.best)}</div>
+      <div className="lb-num lb-wide">{num(p.total)}</div>
+      <div className="lb-colcell"><ColourChip rung={p.overall} /></div>
+    </div>
+  )
+}
+
+function ColourBoard({ rows, showDivision, myId }: { rows: BoardRow[]; showDivision: boolean; myId: string | null }) {
+  const [expanded, setExpanded] = useState(false)
+  const shown = rows.slice(0, expanded ? MORE : TOP)
+  const me = myId ? rows.find(r => r.playerId === myId) : undefined
+  const pinMe = me && !shown.some(r => r.playerId === me.playerId)
+  return (
+    <div className="lb-board">
+      <div className="lb-row lb-headrow" aria-hidden>
+        <span>#</span><span>Player</span>
+        <span className="lb-wide">Games</span><span className="lb-wide">Avg</span><span className="lb-wide">Best</span>
+        <span className="lb-wide">Score</span><span>Colour</span>
+      </div>
+      {shown.map(p => <Row key={p.playerId} p={p} showDivision={showDivision} mine={p.playerId === myId} />)}
+      {pinMe && (
+        <>
+          <div className="lb-gap" aria-hidden>&middot; &middot; &middot;</div>
+          <Row p={me} showDivision={showDivision} mine />
+        </>
+      )}
+      {rows.length > TOP && (
+        <button type="button" className="lb-more press" onClick={() => setExpanded(e => !e)}>
+          {expanded ? `Show top ${TOP}` : rows.length > MORE ? `Show top ${MORE}` : `Show all ${rows.length}`}
+        </button>
+      )}
     </div>
   )
 }
@@ -259,8 +242,8 @@ export default function LeaderboardPage() {
   const [loading, setLoading] = useState(true)
   const [seasonFailed, setSeasonFailed] = useState(false)
   const [roster, setRoster] = useState<RosterPlayer[]>([])
-  const [domainColours, setDomainColours] = useState<Map<string, DomainColoursRow>>(new Map())
-  const [season, setSeason] = useState<Map<string, SeasonPointsRow>>(new Map())
+  const [games, setGames] = useState<SeasonGame[]>([])
+  const [colours, setColours] = useState<GameColourRow[]>([])
   // Every conferred colour, per year. Read once; a year tab picks its own.
   const [grades, setGrades] = useState<NonNullable<LeaderboardPayload['grades']>>([])
   // The season's official games per player, which cap the overall colour. Null = unknown.
@@ -268,35 +251,35 @@ export default function LeaderboardPage() {
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null)
   const [thisYear] = useState(() => nzYear())
   const [seasonYear, setSeasonYear] = useState(thisYear)
+  const { activePlayerId } = useActivePlayer()
 
-  // Four reads in ONE parallel wave. leaderboard_page() heals expired sessions
-  // before reading (20260827211610) and carries the live game and conferred
-  // colours. The roster comes from players_public — never a `players(...)`
-  // embed, which reads the closed base table and takes the whole request down
-  // with 42501. The two score tables are public and written only by the server.
+  // One parallel wave, then the season's colour totals once its games are
+  // known. leaderboard_page() heals expired sessions before reading
+  // (20260827211610) and carries the live game and conferred colours. The
+  // roster comes from players_public — never a `players(...)` embed, which
+  // reads the closed base table and takes the whole request down with 42501.
   useEffect(() => {
     const supabase = createClient()
     let cancelled = false
     ;(async () => {
-      const [page, rosterRes, domainRes, seasonRes, yearGames] = await Promise.all([
+      const [page, rosterRes, seasonGames, yearGames] = await Promise.all([
         supabase.rpc('leaderboard_page', { p_season: seasonYear }),
         supabase.from('players_public').select('id, display_name, username, division, is_guest, is_active'),
-        supabase.from('player_domain_colours').select('player_id, domain_rungs, updated_at'),
-        loadSeasonPoints(supabase, seasonYear),
+        loadSeasonGames(supabase, seasonYear),
         // That YEAR's official games, which cap the overall colour
         // (overallRung): colours are earned per year, and so is their cap.
         loadGameCounts(supabase, null, seasonYear),
       ])
+      const totals = seasonGames ? await loadGameColours(supabase, seasonGames.map(g => g.id)) : null
       if (cancelled) return
 
       const d = (page.data ?? null) as LeaderboardPayload | null
       setGrades(d?.grades ?? [])
       setActiveSession(d?.active_session ?? null)
       setRoster(((rosterRes.data ?? []) as RosterPlayer[]).filter(p => !p.is_guest && p.is_active !== false))
-      // A missing table (PGRST205, before 20260924213359) reads as empty.
-      setDomainColours(new Map(((domainRes.data ?? []) as DomainColoursRow[]).map(r => [r.player_id, r])))
-      setSeason(new Map(seasonRes.rows.map(r => [r.player_id, r])))
-      setSeasonFailed(seasonRes.failed)
+      setGames(seasonGames ?? [])
+      setColours(totals ?? [])
+      setSeasonFailed(totals == null)
       setGamesPlayed(yearGames)
       setLoading(false)
     })()
@@ -321,32 +304,22 @@ export default function LeaderboardPage() {
     return h
   }, [grades, seasonYear, thisYear])
 
-  const rows = useMemo(() => {
-    const all: BoardRow[] = roster.map(p => {
-      const sp = season.get(p.id)
-      // Best and worst domain: this year, the published standards colours, but
-      // only once they have been recomputed this year (a row from last year is
-      // last year's colours until the player's next recheck). A past year:
-      // the colours conferred in it.
-      const dc = seasonYear === thisYear ? domainColours.get(p.id) : undefined
-      const fresh = dc && (!dc.updated_at || nzYear(dc.updated_at) === thisYear)
-      const pastHeld = seasonYear !== thisYear ? held.get(p.id) : undefined
-      return {
-        playerId: p.id,
-        name: p.display_name || p.username || 'Anonymous',
-        division: p.division,
-        domainRungs: fresh ? dc.domain_rungs
-          : Array.from({ length: DOMAIN_COUNT }, (_, i) => pastHeld?.get(i + 1) ?? 0),
-        points: sp?.points ?? 0,
-        games: sp?.games ?? 0,
-        // The average of the ten conferred domain colours, rounded down and
-        // capped by that year's games (lib/colourBoard.ts). An unreadable count is
-        // unknown, not zero, so the cap is left off rather than showing Mā.
-        overall: displayOverall(colourStanding(held.get(p.id), gamesPlayed ? (gamesPlayed.get(p.id) ?? 0) : Number.MAX_SAFE_INTEGER)),
-      }
-    }).filter(r => inTab(r.division, tab))
-    return rankBy(all.filter(r => r.points > 0 || r.games > 0), r => [r.points, r.games])
-  }, [roster, domainColours, season, held, gamesPlayed, tab, seasonYear, thisYear])
+  // Everyone on the board, and the division chip's share of them.
+  const allPlayers = useMemo(() => new Map(roster.map(p => [p.id, {
+    name: p.display_name || p.username || 'Anonymous',
+    division: p.division,
+  }])), [roster])
+  const players = useMemo(() => new Map([...allPlayers].filter(([, p]) => inTab(p.division, tab))), [allPlayers, tab])
+
+  // Each player's colour as HOME shows it: the average of the ten conferred
+  // domain colours, rounded down and capped by that year's games
+  // (lib/colourBoard.ts). An unreadable count is unknown, not zero, so the cap
+  // is left off rather than showing Mā.
+  const rows: BoardRow[] = useMemo(() => seasonColourBoard(games, colours, players,
+    id => colourStanding(held.get(id), gamesPlayed ? (gamesPlayed.get(id) ?? 0) : Number.MAX_SAFE_INTEGER),
+  ), [games, colours, players, held, gamesPlayed])
+
+  const highlights = useMemo(() => seasonHighlights(games, colours, players), [games, colours, players])
 
   return (
     <>
@@ -372,38 +345,45 @@ export default function LeaderboardPage() {
         .lb-ping { position: absolute; inset: 0; border-radius: 50%; background: #4DB26E; animation: lbPing 1.4s cubic-bezier(0,0,0.2,1) infinite; }
         @keyframes lbPing { 0% { transform: scale(1); opacity: 0.8; } 100% { transform: scale(2.2); opacity: 0; } }
 
-        .lb-chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin: 16px 0 32px; scrollbar-width: none; }
+        .lb-chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin: 16px 0 28px; scrollbar-width: none; }
         .lb-chips::-webkit-scrollbar { display: none; }
         .lb-chip { flex-shrink: 0; min-height: 44px; padding: 0 16px; border-radius: 999px; cursor: pointer; border: 1px solid #1e1e1e; background: transparent;
           font-family: var(--font-label); font-weight: 700; font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; color: #777; transition: color .15s, border-color .15s; }
         .lb-chip:hover { color: #fff; border-color: #333; }
 
-        .lb-podium { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-width: 720px; margin-bottom: 28px; }
-        .lb-podium-card { position: relative; overflow: hidden; background: #111; border: 1px solid; border-radius: 16px; padding: 22px 10px 18px; text-align: center; }
-        .lb-podium-name { font-family: var(--font-label); font-weight: 700; font-size: 14px; color: #fff; margin: 6px 0 10px;
-          overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .lb-h3 { font-family: var(--font-display); font-size: clamp(26px, 4vw, 34px); line-height: 1; margin: 0 0 4px; color: #fff; letter-spacing: 0.02em; }
+        .lb-lede { font-family: var(--font-body); font-size: 15px; color: #888; margin: 0 0 16px; max-width: 560px; }
 
-        .lb-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 12px; align-items: center; max-width: 720px;
-          padding: 14px 16px; background: #0d0d0d; border: 1px solid; border-radius: 12px; }
-        .lb-rank { font-family: var(--font-display); font-size: 26px; line-height: 1; }
+        .lb-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; max-width: 720px; margin-bottom: 16px; }
+        @media (max-width: 560px) { .lb-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        .lb-stat { display: flex; flex-direction: column; min-width: 0; padding: 12px 14px; background: #0d0d0d; border: 1px solid #1a1a1a; border-radius: 12px; }
+        .lb-stat-label { font-family: var(--font-label); font-weight: 700; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: #666; }
+        .lb-stat-value { font-family: var(--font-display); font-size: 32px; line-height: 1.05; color: #fff; }
+        .lb-stat-sub { font-family: var(--font-label); font-size: 13px; color: #999; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        .lb-board { display: flex; flex-direction: column; gap: 6px; max-width: 720px; }
+        .lb-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) 48px 48px 48px 60px 120px; gap: 10px; align-items: center;
+          padding: 12px 14px; background: #0d0d0d; border: 1px solid #1a1a1a; border-radius: 12px; }
+        .lb-headrow { background: none; border-color: transparent; padding-top: 0; padding-bottom: 0;
+          font-family: var(--font-label); font-weight: 700; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: #555; }
+        .lb-headrow > span:nth-child(n+3) { text-align: right; }
+        .lb-rank { display: flex; flex-direction: column; font-family: var(--font-display); font-size: 26px; line-height: 1; }
         .lb-name { font-family: var(--font-label); font-weight: 700; font-size: 16px; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .lb-div { flex-shrink: 0; font-family: var(--font-label); font-weight: 700; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
-          color: #777; border: 1px solid #262626; border-radius: 999px; padding: 2px 8px; }
-        .lb-colour { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; padding: 3px 9px 3px 6px; border: 1px solid #262626; border-radius: 999px;
-          font-family: var(--font-label); font-weight: 700; letter-spacing: 0.06em; color: #ddd; }
-        .lb-domains { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; margin-top: 12px; }
-        @media (max-width: 520px) { .lb-domains { grid-template-columns: 1fr; } }
-        .lb-dstat { display: flex; align-items: center; gap: 8px; min-width: 0; }
-        .lb-dstat-label { width: 38px; flex-shrink: 0; font-family: var(--font-label); font-weight: 700; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; }
-        .lb-dstat-name { font-family: var(--font-label); font-weight: 700; font-size: 13px; color: #ccc; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .lb-dstat-grade { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-label); font-size: 12px; color: #777; }
-        .lb-nodomains { font-family: var(--font-label); font-size: 12px; letter-spacing: 0.06em; color: #555; }
-        .lb-podium-domains { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid #1e1e1e; text-align: left; }
-        .lb-dstat-compact .lb-dstat-label { width: auto; writing-mode: vertical-rl; transform: rotate(180deg); font-size: 8px; letter-spacing: 0.1em; }
-        .lb-dstat-compact .lb-dstat-name { font-size: 11px; }
-        .lb-dstat-compact .lb-dstat-grade { font-size: 10px; }
-        @media (max-width: 520px) { .lb-dstat-compact { gap: 5px; } .lb-podium-card { padding-left: 8px; padding-right: 8px; } }
-        .lb-unit { font-family: var(--font-label); font-weight: 700; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #444; margin-top: 2px; }
+        .lb-div { flex-shrink: 0; font-family: var(--font-label); font-weight: 700; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+          color: #777; border: 1px solid #262626; border-radius: 999px; padding: 1px 8px; }
+        .lb-colcell { display: flex; justify-content: flex-end; }
+        .lb-colour { display: inline-flex; align-items: center; gap: 7px; flex-shrink: 0; padding: 5px 12px 5px 8px; border: 1px solid #2a2a2a; border-radius: 999px;
+          font-family: var(--font-label); font-weight: 700; font-size: 15px; letter-spacing: 0.04em; color: #fff; white-space: nowrap; }
+        .lb-sub { display: none; font-family: var(--font-label); font-size: 13px; color: #777; margin-top: 4px; }
+        .lb-num { font-family: var(--font-label); font-weight: 700; font-size: 16px; color: #aaa; text-align: right; }
+        .lb-gap { text-align: center; color: #444; font-size: 14px; letter-spacing: 0.3em; }
+        .lb-more { align-self: flex-start; min-height: 44px; margin-top: 6px; padding: 0 18px; border-radius: 999px; cursor: pointer;
+          background: transparent; border: 1px solid #333; color: #fff; font-family: var(--font-label); font-weight: 700; font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; }
+        @media (max-width: 560px) {
+          .lb-row { grid-template-columns: 36px minmax(0, 1fr) auto; }
+          .lb-wide { display: none; }
+          .lb-sub { display: block; }
+        }
       `}</style>
 
       <Banner />
@@ -442,6 +422,9 @@ export default function LeaderboardPage() {
             })}
           </div>
 
+          <h3 className="lb-h3">Colours</h3>
+          <p className="lb-lede">Ranked on overall colour, as on HOME. A tie goes to the higher colour score: every colour earned in official games this season, added up.</p>
+
           {loading ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxWidth: 720 }}>
               {[1, 2, 3, 4, 5].map(i => (
@@ -449,14 +432,21 @@ export default function LeaderboardPage() {
               ))}
             </div>
           ) : rows.length === 0 ? (
-            <div style={{ padding: '72px 0', fontFamily: 'var(--font-display)', fontSize: 32, color: '#333' }}>
+            <div style={{ padding: '48px 0', fontFamily: 'var(--font-display)', fontSize: 32, color: '#333' }}>
               {seasonFailed ? 'Could not load the season. Refresh to try again.' : `No ${seasonYear} games yet`}
             </div>
           ) : (
             <>
-              <Podium rows={rows} />
-              <BoardList rows={rows.length >= 3 ? rows.slice(3) : rows} showDivision={tab.division == null} />
+              <Highlights h={highlights} />
+              <ColourBoard key={`${seasonYear}-${activeTab}`} rows={rows} showDivision={tab.division == null} myId={activePlayerId} />
             </>
+          )}
+
+          <h3 className="lb-h3" style={{ marginTop: 56 }}>Event records</h3>
+          <p className="lb-lede">The best score in each event this season, from official games. Contests decided by a win are not listed.</p>
+          {!loading && (
+            <EventRecords games={games} players={allPlayers} year={seasonYear}
+              pool={tab.division == null ? null : divisionPool(tab.division)} />
           )}
         </div>
       </section>
