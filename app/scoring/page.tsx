@@ -7,7 +7,7 @@
 // game are one experience — the first thing the September 2026 customisation
 // review asked for.
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase-browser'
 import { DOMAIN_ORDER } from '@/lib/eventData'
@@ -15,6 +15,8 @@ import { DOMAIN_COLORS } from '@/lib/domainColours'
 import { sessionStart } from '@/lib/dates'
 import { drawPlan, planEvents } from '@/lib/personalGame'
 import EventPlanPicker from '@/components/play/EventPlanPicker'
+import { loadWeeklyBoard, type WeeklyBoard } from '@/lib/weeklyGamesData'
+import { matchWeeklyGame, slotLabel, sortWeekly } from '@/lib/weeklyGames'
 
 export default function ScoringSetup() {
   const router = useRouter()
@@ -27,6 +29,31 @@ export default function ScoringSetup() {
   const [plan, setPlan] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  // Which weekly game this is (v0.53.0.0), so the game screen can offer it to
+  // walk-ups and attendance can be counted against registrations. Pre-picked
+  // by weekday and start time; '' = none. Null board = tables not live yet.
+  const [weekly, setWeekly] = useState<WeeklyBoard | null>(null)
+  const [weeklyGameId, setWeeklyGameId] = useState('')
+  useEffect(() => {
+    let cancelled = false
+    loadWeeklyBoard(createClient(), null).then(b => {
+      if (cancelled || !b) return
+      setWeekly(b)
+      const match = matchWeeklyGame(b.games, new Date())
+      if (match) {
+        setWeeklyGameId(match.id)
+        const site = b.sites.find(s => s.id === match.site_id)
+        if (site) setLocation(site.name)
+      }
+    }).catch(() => {})
+    return () => { cancelled = true }
+  }, [])
+  const pickWeekly = (id: string) => {
+    setWeeklyGameId(id)
+    const g = weekly?.games.find(x => x.id === id)
+    const site = g && weekly?.sites.find(s => s.id === g.site_id)
+    if (site) setLocation(site.name)
+  }
 
   const events = planEvents(plan)
   const allSelected = events.length === 10
@@ -66,6 +93,9 @@ export default function ScoringSetup() {
           is_active: true,
           started_at: started.toISOString(),
           session_code: sessionCode,
+          // Only sent when chosen: before the migration the column does not
+          // exist and sending it at all would refuse the whole insert (42703).
+          ...(weeklyGameId ? { weekly_game_id: weeklyGameId } : {}),
         })
         .select()
         .single()
@@ -145,6 +175,24 @@ export default function ScoringSetup() {
               />
             </div>
           </div>
+          {weekly && weekly.games.length > 0 && (
+            <div>
+              <label htmlFor="weekly-game" style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '11px', color: '#555', letterSpacing: '0.15em', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>Weekly game</label>
+              <select
+                id="weekly-game"
+                value={weeklyGameId}
+                onChange={e => pickWeekly(e.target.value)}
+                style={{ width: '100%', background: '#0a0a0a', border: '1px solid #2a2a2a', borderRadius: '8px', padding: '10px 14px', color: '#fff', fontSize: '16px', fontFamily: 'var(--font-body)', boxSizing: 'border-box' as const, minHeight: '44px', colorScheme: 'dark' as const }}
+              >
+                <option value="">None (a one-off game)</option>
+                {sortWeekly(weekly.games).map(g => (
+                  <option key={g.id} value={g.id}>
+                    {slotLabel(g)} · {weekly.sites.find(s => s.id === g.site_id)?.name ?? ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
             <input
               type="checkbox"

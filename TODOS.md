@@ -167,6 +167,15 @@
 
 ## P1 — Do Next
 
+### Apply `20261118010039_weekly_games.sql` after v0.53.0.0 deploys
+From `main`, `db query --linked -f` plus the ledger row. Verify: five tables with RLS on, three weekly games seeded, `sessions.weekly_game_id` present; as `anon` the sites, games and notices read and no write works; as `authenticated` (rolled back) a player can join and leave their own weekly game but not another player's, cannot read another player's registration, and cannot post a notice; a kaiwhakawā can.
+
+### Weekly games phase 2: web push and email (Tāne, 18 Nov 2026)
+Every `game_notices` row goes to the weekly game's registered players who are not away that date. Web push (service worker, app manifest, VAPID keys, a `push_subscriptions` table) with email as the fallback for players without push (Resend free tier). Needs a second server route, so `__tests__/autoConferral.test.ts`'s service-key rule changes. iPhones only get push after Add to Home Screen; HOME should say so. Update the privacy page.
+
+### Weekly games phase 3: attendance and more than one game at once
+Count who played against who registered (`sessions.weekly_game_id`), per site and slot. Two sites can run at the same time in 2027, but New Game refuses a second active game, HOME and the top bar read ONE active session (`maybeSingle`), and `/schedule` and `lib/schedule.ts` still carry the fixed times. All need to go per site before a second site plays at the same time as HQ. Optional: pre-fill the kaiwhakawā's game list from the registered players.
+
 ### ~~Apply `20261014222805_stamina_arm_events.sql` after v0.36.0.0 deploys~~ DONE 2026-10-15
 **Done:** pushed by `supabase db push` from a clean worktree on `main` after allsport.nz served the new events. Verified: 148 rows in `event_domains`, 18 in Stamina, the four slugs present, ledger row written; as `authenticated`, in a rolled-back transaction, a Strict Curl workout entry was accepted. Still to do: hard-refresh kaiwhakawā devices.
 

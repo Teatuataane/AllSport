@@ -34,6 +34,7 @@ import { hasGameRow, isNewPR, mergeRows, seasonGameBest, type PRRow } from '@/li
 import { useSessionResults, type SaveJob, type SessionResult } from '@/lib/useSessionResults'
 import { nextUnscored } from '@/lib/nextEvent'
 import GameBanner from '@/components/play/GameBanner'
+import WeeklyGameOffer from '@/components/play/WeeklyGameOffer'
 import Toast, { ToastButton, ToastText } from '@/components/play/Toast'
 import { averageBefore, awardsForGame, nextStep } from '@/lib/gameReport'
 import { ColourScore, EarnedColours, NextTime, PlacementHeader } from '@/components/GameReportParts'
@@ -1322,6 +1323,12 @@ export default function SessionPage() {
           </button>
         )}
       </div>
+
+      {/* A walk-up playing on their own login is offered this game's weekly
+          game (v0.53.0.0). Only on their own tab, never for a kaiwhakawā. */}
+      {!isJudge && authUserId && activeTab === `player-${authUserId}` && typeof session?.weekly_game_id === 'string' && (
+        <WeeklyGameOffer weeklyGameId={session.weekly_game_id} playerId={authUserId} />
+      )}
 
       {/* Player tabs */}
       {allPlayers.map(p => {

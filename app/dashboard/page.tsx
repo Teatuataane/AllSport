@@ -6,7 +6,9 @@
 //   0  a running game's JOIN card, only while one is on
 //   1  identity: the avatar ringed in your overall colour, name, division, and
 //      one line of numbers (games · events won · games won · PRs)
-//   2  the next session as one slim line, when no game is on
+//   2  WEEKLY GAMES: join the games you come to, see rain calls and moves
+//      (components/WeeklyGamesCard.tsx). Before migration 20261118010039 is
+//      live, the next session as one slim line, when no game is on
 //   3  YOUR COLOURS (components/GradesCard.tsx)
 //   4  one row of links: Log a workout · My events · Play history
 //
@@ -40,6 +42,10 @@ import {
 } from '@/lib/rating'
 import { computePercentiles } from '@/lib/percentile'
 import { loadMyGamePlaces } from '@/lib/loadGamePlace'
+import WeeklyGamesCard from '@/components/WeeklyGamesCard'
+import {
+  loadWeeklyBoard, joinWeeklyGame, leaveWeeklyGame, setAway, awayKey, type WeeklyBoard,
+} from '@/lib/weeklyGamesData'
 
 const supabase = createClient()
 
@@ -234,6 +240,60 @@ function DashboardInner() {
     return () => { cancelled = true; stop() }
   }, [activePlayerId])
 
+  // ── Weekly games (v0.53.0.0) ────────────────────────────────────────────────
+  // Read once per visit, for the player being viewed (a parent registers a
+  // child the same way). Null until loaded, and null for good when the tables
+  // are not live yet, in which case the fixed schedule line shows instead.
+  const [weekly, setWeekly] = useState<{ id: string; board: WeeklyBoard | null } | null>(null)
+  const [weeklyBusy, setWeeklyBusy] = useState<string | null>(null)
+  const [weeklyError, setWeeklyError] = useState('')
+  useEffect(() => {
+    if (!activePlayerId) return
+    let cancelled = false
+    setWeeklyError('')
+    loadWeeklyBoard(supabase, activePlayerId)
+      .then(board => { if (!cancelled) setWeekly({ id: activePlayerId, board }) })
+      .catch(() => { if (!cancelled) setWeekly({ id: activePlayerId, board: null }) })
+    return () => { cancelled = true }
+  }, [activePlayerId])
+  const weeklyBoard = weekly && weekly.id === activePlayerId ? weekly.board : null
+
+  // Each write updates the card at once and puts it back if the write fails.
+  const changeWeekly = async (
+    gameId: string, apply: (b: WeeklyBoard) => WeeklyBoard, write: () => Promise<string | null>,
+  ) => {
+    if (!weeklyBoard || !activePlayerId) return
+    const before = weeklyBoard
+    const forId = activePlayerId
+    setWeeklyBusy(gameId)
+    setWeeklyError('')
+    setWeekly({ id: forId, board: apply(before) })
+    const err = await write()
+    setWeeklyBusy(null)
+    if (err) {
+      setWeekly(w => (w && w.id === forId ? { id: forId, board: before } : w))
+      setWeeklyError('That did not save. Check your connection and try again.')
+      console.warn('weekly game write failed', err)
+    }
+  }
+  const withSet = (set: Set<string>, key: string, on: boolean) => {
+    const next = new Set(set)
+    if (on) next.add(key); else next.delete(key)
+    return next
+  }
+  const onJoinWeekly = (gameId: string) => activePlayerId && changeWeekly(
+    gameId, b => ({ ...b, mine: withSet(b.mine, gameId, true) }),
+    () => joinWeeklyGame(supabase, gameId, activePlayerId, 'home'),
+  )
+  const onLeaveWeekly = (gameId: string) => activePlayerId && changeWeekly(
+    gameId, b => ({ ...b, mine: withSet(b.mine, gameId, false) }),
+    () => leaveWeeklyGame(supabase, gameId, activePlayerId),
+  )
+  const onAwayWeekly = (gameId: string, date: string, isAway: boolean) => activePlayerId && changeWeekly(
+    gameId, b => ({ ...b, away: withSet(b.away, awayKey(gameId, date), isAway) }),
+    () => setAway(supabase, gameId, activePlayerId, date, isAway),
+  )
+
   // Silent auto-join from the QR code. The typed code box is gone (home
   // colours rework, 24 September 2026): a running game gets one JOIN button.
   useEffect(() => {
@@ -370,7 +430,20 @@ function DashboardInner() {
         </div>
 
         {/* ── 2. When the next game is, when none is running ───────────────── */}
-        {game ? <div style={{ height: 18 }} /> : (
+        {/* Weekly games replace the fixed schedule line once they are live.
+            Shown while a game runs too: today's notice may be the news. */}
+        {weeklyBoard && weeklyBoard.games.length > 0 ? (
+          <>
+            {!game && joinError && <div style={{ color: 'var(--red)', fontSize: 13, marginTop: 16 }}>{joinError}</div>}
+            <WeeklyGamesCard
+              sites={weeklyBoard.sites} games={weeklyBoard.games} notices={weeklyBoard.notices}
+              mine={weeklyBoard.mine} away={weeklyBoard.away}
+              who={activePlayerId !== userId ? playerLabel(activePlayer) : null}
+              busy={weeklyBusy} error={weeklyError}
+              onJoin={onJoinWeekly} onLeave={onLeaveWeekly} onAway={onAwayWeekly}
+            />
+          </>
+        ) : game ? <div style={{ height: 18 }} /> : (
           <NextSessionLine nextSession={nextSession} firstRun={firstRun} error={joinError} />
         )}
 

@@ -2,6 +2,14 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.53.0.0] - 2026-11-18
+
+### Added
+- **Weekly games: register once, hear about every game.** HOME lists each site's weekly games (a site, a day and a time). Join the ones you usually come to and HOME tells you about the next date: cancelled for rain, moved to another park, or a note from the kaiwhakawā. "Can't make it" marks one date; "Leave" stops it. A parent does the same for a child. Registering is never needed to play; walk-ups are welcome. No cap.
+- **Kaiwhakawā panel: Weekly games.** Who is registered to each game (and who said they are away), and four buttons for its next date: Cancel (rain), Change park, Message and Back on. Sites and weekly games are added here too, so a second site is a form, not a code change.
+- **New Game picks the weekly game.** Pre-selected by day and time, and it fills in the location. A walk-up playing on their own login is then offered "Join weekly game" on the game screen.
+- Migration `20261118010039_weekly_games.sql` adds `sites`, `weekly_games`, `weekly_game_members`, `weekly_game_absences`, `game_notices` and `sessions.weekly_game_id`, and seeds AllSport HQ with Tue/Thu 4:30pm and Sat 9:00am. Deploy the code first, then apply it: until then HOME shows the old schedule line and nothing else changes. Push and email notices are phase 2.
+
 ## [0.52.0.0] - 2026-11-18
 
 ### Changed
