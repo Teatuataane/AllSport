@@ -76,6 +76,7 @@ function withTimeout(work: Promise<unknown>, ms: number): Promise<void> {
 export const config = {
   matcher: [
     // Run on all paths except Next.js internals and static files
-    '/((?!_next/static|_next/image|favicon.ico|logo\\.png|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    // sw.js and the manifest are static; no session refresh for them.
+    '/((?!_next/static|_next/image|favicon.ico|logo\\.png|sw\\.js|manifest\\.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }

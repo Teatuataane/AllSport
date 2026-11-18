@@ -170,8 +170,14 @@
 ### Apply `20261118010039_weekly_games.sql` after v0.54.0.0 deploys
 From `main`, `db query --linked -f` plus the ledger row. Verify: five tables with RLS on, three weekly games seeded, `sessions.weekly_game_id` present; as `anon` the sites, games and notices read and no write works; as `authenticated` (rolled back) a player can join and leave their own weekly game but not another player's, cannot read another player's registration, and cannot post a notice; a kaiwhakawā can.
 
-### Weekly games phase 2: web push and email (Tāne, 18 Nov 2026)
-Every `game_notices` row goes to the weekly game's registered players who are not away that date. Web push (service worker, app manifest, VAPID keys, a `push_subscriptions` table) with email as the fallback for players without push (Resend free tier). Needs a second server route, so `__tests__/autoConferral.test.ts`'s service-key rule changes. iPhones only get push after Add to Home Screen; HOME should say so. Update the privacy page.
+### Apply `20261118234820_weekly_game_push.sql` after v0.55.0.0 merges
+From `main`, `db query --linked -f` with the ledger row in the same transaction. Rehearsed 19 Nov 2026 (rolled back): a player saves their own subscription (a second save updates it), cannot call `notice_recipients` or `record_notice_sent`, and cannot see others' subscriptions; a kaiwhakawā gets the notice, accounts with emails and push targets, and `record_notice_sent` stamps counts and drops gone endpoints. Re-run the same checks live.
+
+### Set up the two notice channels (Tāne)
+1. Web push: run `npx web-push generate-vapid-keys` once. In Vercel set `NEXT_PUBLIC_VAPID_PUBLIC_KEY` (public), `VAPID_PRIVATE_KEY` (secret) and `VAPID_SUBJECT` (`mailto:` an AllSport address). Redeploy (the public key is built into the page). Never change the keys afterwards, or every phone has to turn notices on again.
+2. Email: make a Resend account, verify allsport.nz (DNS records), then set `RESEND_API_KEY` and `NOTICE_EMAIL_FROM` (e.g. `AllSport <notices@allsport.nz>`). Free tier: 3,000 emails a month, 100 a day.
+3. Add a line about notices to `/privacy` (push subscriptions and emails are used only for weekly game notices).
+4. Test: join a weekly game on your phone, turn on notices, send a Message from /judge.
 
 ### Weekly games phase 3: attendance and more than one game at once
 Count who played against who registered (`sessions.weekly_game_id`), per site and slot. Two sites can run at the same time in 2027, but New Game refuses a second active game, HOME and the top bar read ONE active session (`maybeSingle`), and `/schedule` and `lib/schedule.ts` still carry the fixed times. All need to go per site before a second site plays at the same time as HQ. Optional: pre-fill the kaiwhakawā's game list from the registered players.

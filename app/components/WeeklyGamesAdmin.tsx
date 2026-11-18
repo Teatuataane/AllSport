@@ -15,7 +15,7 @@ import {
   DAY_NAMES, dateLabel, dayStatus, nextGameDate, slotLabel, sortWeekly, type NoticeKind, type WeeklyGame,
 } from '@/lib/weeklyGames'
 import {
-  loadWeeklyBoard, loadRosters, postNotice, deleteNotice, type RosterRow, type WeeklyBoard,
+  loadWeeklyBoard, loadRosters, postNotice, deleteNotice, sendNotice, sendSummary, loadSentCounts, type RosterRow, type WeeklyBoard,
 } from '@/lib/weeklyGamesData'
 
 const supabase = createClient()
@@ -38,6 +38,13 @@ const PROMPTS: Record<Composer['kind'], { button: string; placeholder: string; s
   message: { button: 'Send message', placeholder: 'What players need to know', start: '' },
 }
 
+/** The board with each notice's sent counts merged in (phase 2). */
+async function withSent(b: WeeklyBoard | null): Promise<WeeklyBoard | null> {
+  if (!b) return b
+  const counts = await loadSentCounts(supabase, b.notices.map(n => n.id))
+  return { ...b, notices: b.notices.map(n => ({ ...n, ...(counts.get(n.id) ?? {}) })) }
+}
+
 export default function WeeklyGamesAdmin({ judgeId }: { judgeId: string }) {
   const [board, setBoard] = useState<WeeklyBoard | null | undefined>(undefined)
   const [rosters, setRosters] = useState<Map<string, RosterRow[]>>(new Map())
@@ -45,17 +52,19 @@ export default function WeeklyGamesAdmin({ judgeId }: { judgeId: string }) {
   const [composer, setComposer] = useState<Composer | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  // What the last send did, for the game it was about.
+  const [sent, setSent] = useState<{ gameId: string; line: string } | null>(null)
   const [adding, setAdding] = useState<'site' | 'game' | null>(null)
 
   const reload = useCallback(async () => {
-    const b = await loadWeeklyBoard(supabase, null)
+    const b = await withSent(await loadWeeklyBoard(supabase, null))
     setBoard(b)
     if (b) setRosters(await loadRosters(supabase, b.games))
   }, [])
 
   useEffect(() => {
     let cancelled = false
-    loadWeeklyBoard(supabase, null).then(async b => {
+    loadWeeklyBoard(supabase, null).then(withSent).then(async b => {
       if (cancelled) return
       setBoard(b)
       if (!b) return
@@ -70,10 +79,15 @@ export default function WeeklyGamesAdmin({ judgeId }: { judgeId: string }) {
   const send = async (gameId: string, date: string, kind: NoticeKind, text: string | null) => {
     setBusy(true)
     setError('')
-    const err = await postNotice(supabase, gameId, date, kind, text, judgeId)
-    setBusy(false)
-    if (err) { setError(`Not sent: ${err}`); return }
+    setSent(null)
+    const saved = await postNotice(supabase, gameId, date, kind, text, judgeId)
+    if (saved.error || !saved.id) { setBusy(false); setError(`Not sent: ${saved.error ?? 'no id'}`); return }
     setComposer(null)
+    // Saved: it is on HOME now. Then push and email it (phase 2).
+    setSent({ gameId, line: 'Sending…' })
+    const result = await sendNotice(saved.id)
+    setSent({ gameId, line: sendSummary(result) })
+    setBusy(false)
     await reload()
   }
 
@@ -108,6 +122,7 @@ export default function WeeklyGamesAdmin({ judgeId }: { judgeId: string }) {
                 key={g.id} game={g} board={board} roster={rosters.get(g.id) ?? []}
                 open={open === g.id} onToggle={() => setOpen(o => (o === g.id ? null : g.id))}
                 composer={composer?.gameId === g.id ? composer : null}
+                sentLine={sent?.gameId === g.id ? sent.line : null}
                 setComposer={setComposer} busy={busy} onSend={send} onRemove={remove}
                 onRetire={async () => {
                   setBusy(true)
@@ -137,8 +152,9 @@ export default function WeeklyGamesAdmin({ judgeId }: { judgeId: string }) {
 }
 
 function GameAdminRow({
-  game, board, roster, open, onToggle, composer, setComposer, busy, onSend, onRemove, onRetire,
+  game, board, roster, open, onToggle, composer, setComposer, busy, onSend, onRemove, onRetire, sentLine,
 }: {
+  sentLine: string | null
   game: WeeklyGame
   board: WeeklyBoard
   roster: RosterRow[]
@@ -192,12 +208,21 @@ function GameAdminRow({
                 {n.kind === 'cancelled' ? 'Cancelled' : n.kind === 'on' ? 'Back on' : n.kind === 'moved' ? 'Where' : 'Note'}
               </span>
               <span style={{ flexGrow: 1 }}>{n.message}</span>
+              {n.sent_at != null && (
+                <span style={{ fontSize: 12, color: '#777', whiteSpace: 'nowrap' }}>
+                  {n.push_count ?? 0} phones · {n.email_count ?? 0} emails
+                </span>
+              )}
               <button type="button" disabled={busy} onClick={() => onRemove(n.id)} style={{
                 background: 'none', border: 'none', color: '#777', cursor: 'pointer', fontSize: 12, textDecoration: 'underline',
               }}>Remove</button>
             </div>
           ))}
         </div>
+      )}
+
+      {sentLine && (
+        <div role="status" style={{ fontSize: 13, color: 'var(--green)', marginTop: 8 }}>{sentLine}</div>
       )}
 
       {composer ? (

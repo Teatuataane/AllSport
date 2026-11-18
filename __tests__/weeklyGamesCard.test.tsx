@@ -110,3 +110,28 @@ describe('WeeklyGameOfferView', () => {
     expect(screen.getByText(/You will hear about Saturday 9:00am at AllSport HQ/)).toBeTruthy()
   })
 })
+
+describe('PushStrip (phase 2)', () => {
+  const base = { busy: false, error: '', onTurnOn: vi.fn(), onTurnOff: vi.fn() }
+  it('shows only once the player has joined a game', () => {
+    renderCard({ push: { ...base, state: 'off' } })
+    expect(screen.queryByTestId('push-strip')).toBeNull()
+    cleanup()
+    renderCard({ mine: new Set(['sat']), push: { ...base, state: 'off' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Turn on notices' }))
+    expect(base.onTurnOn).toHaveBeenCalled()
+  })
+  it('tells an iPhone to add to Home Screen, and says email covers the rest', () => {
+    renderCard({ mine: new Set(['sat']), push: { ...base, state: 'ios-install' } })
+    expect(screen.getByText(/Add to Home Screen/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Turn on notices' })).toBeNull()
+    cleanup()
+    renderCard({ mine: new Set(['sat']), push: { ...base, state: 'denied' } })
+    expect(screen.getByText(/come by email/)).toBeTruthy()
+  })
+  it('lets a phone with notices on turn them off', () => {
+    renderCard({ mine: new Set(['sat']), push: { ...base, state: 'on' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Turn off' }))
+    expect(base.onTurnOff).toHaveBeenCalled()
+  })
+})

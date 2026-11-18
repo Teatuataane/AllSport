@@ -7,6 +7,7 @@
 // Props only (no Supabase) so it is component-tested; the page does the writes.
 
 import type { ReactNode } from 'react'
+import type { PushState } from '@/lib/noticeDelivery'
 import {
   dateLabel, dayStatus, nextGameDate, slotLabel, sortWeekly,
   type GameNotice, type Site, type WeeklyGame,
@@ -28,6 +29,14 @@ export type WeeklyGamesCardProps = {
   onJoin: (gameId: string) => void
   onLeave: (gameId: string) => void
   onAway: (gameId: string, date: string, away: boolean) => void
+  /** This phone's notices (v0.55.0.0). Absent = not offered (no VAPID key yet). */
+  push?: {
+    state: PushState
+    busy: boolean
+    error: string
+    onTurnOn: () => void
+    onTurnOff: () => void
+  }
 }
 
 const label = {
@@ -36,7 +45,7 @@ const label = {
 }
 
 export default function WeeklyGamesCard({
-  sites, games, notices, mine, away, now = new Date(), who, busy, error, onJoin, onLeave, onAway,
+  sites, games, notices, mine, away, now = new Date(), who, busy, error, onJoin, onLeave, onAway, push,
 }: WeeklyGamesCardProps) {
   if (games.length === 0) return null
   const bySite = [...sites].sort((a, b) => a.name.localeCompare(b.name))
@@ -58,6 +67,7 @@ export default function WeeklyGamesCard({
           : 'Join the games you usually come to and you will hear here if one is cancelled or moved. Walk-ups are always welcome.'}
       </p>
       {error && <div role="alert" style={{ color: 'var(--red)', fontSize: 13, margin: '6px 0' }}>{error}</div>}
+      {registered && push && <PushStrip {...push} />}
 
       {bySite.map(({ site, games: siteGames }) => (
         <div key={site.id} style={{ marginTop: 12 }}>
@@ -191,5 +201,38 @@ function TextButton({ children, onClick, disabled, muted }: {
     }}>
       {children}
     </button>
+  )
+}
+
+/**
+ * How notices reach this phone. A player with no phone that takes push is
+ * emailed instead (app/api/notices/send), so every state says what happens.
+ */
+export function PushStrip({ state, busy, error, onTurnOn, onTurnOff }: NonNullable<WeeklyGamesCardProps['push']>) {
+  const text: Record<PushState, string> = {
+    off: 'Get notices on this phone the moment the kaiwhakawā sends one. Until then they come by email.',
+    on: 'Notices are on for this phone.',
+    'ios-install': 'On iPhone, notices need AllSport on your Home Screen: tap Share, then Add to Home Screen, and open it from there. Until then they come by email.',
+    denied: 'Notices are blocked for AllSport in this browser\'s settings, so they come by email.',
+    unsupported: 'This browser cannot show notices, so they come by email.',
+  }
+  return (
+    <div data-testid="push-strip" style={{
+      marginTop: 10, padding: '10px 12px', borderRadius: 10,
+      border: `1px solid ${state === 'on' ? 'var(--green)' : 'var(--border-strong)'}`,
+      display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+    }}>
+      <span style={{ fontSize: 13, color: 'var(--grey-light)', lineHeight: 1.45, flex: '1 1 200px' }}>{text[state]}</span>
+      {state === 'off' && (
+        <button type="button" className="press" disabled={busy} onClick={onTurnOn} style={{
+          ...label, fontSize: 13, color: '#0a0a0a', background: 'var(--blue)', border: 'none',
+          borderRadius: 999, padding: '0 16px', minHeight: 40, cursor: 'pointer', opacity: busy ? 0.6 : 1,
+        }}>
+          Turn on notices
+        </button>
+      )}
+      {state === 'on' && <TextButton disabled={busy} onClick={onTurnOff} muted>Turn off</TextButton>}
+      {error && <div role="alert" style={{ color: 'var(--red)', fontSize: 13, width: '100%' }}>{error}</div>}
+    </div>
   )
 }

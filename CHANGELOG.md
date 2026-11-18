@@ -2,6 +2,18 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.55.0.0] - 2026-11-19
+
+### Added
+- **Weekly game notices reach your phone, or your email.** When the kaiwhakawā cancels, moves or sends a note about a weekly game, everyone registered to it (and not away that day) gets a notification on every phone they turned notices on for. Anyone no phone reached gets an email instead. A child's notices go to their parent.
+- **Turn on notices** on HOME's weekly games card. On iPhone it explains Add to Home Screen first (Apple only allows web push for a site on the Home Screen). Turn off is one tap.
+- **The kaiwhakawā sees what a send did:** "Sent to 12 phones and 5 emails", with the count kept on each notice.
+- An app manifest (`app/manifest.ts`) and a service worker (`public/sw.js`, notifications only, no caching). A second server route, `app/api/notices/send`, which runs under the kaiwhakawā's login and never uses the service key.
+- Migration `20261118234820_weekly_game_push.sql`: `push_subscriptions`, sent counts on `game_notices`, and the kaiwhakawā-only `notice_recipients()` and `record_notice_sent()`. Either deploy order works.
+
+### Setup (Tāne)
+- Web push: `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` and `VAPID_SUBJECT` (`mailto:` or the site URL) in Vercel. Email: a Resend account with allsport.nz verified, then `RESEND_API_KEY` and `NOTICE_EMAIL_FROM`. Until a channel is set up it is skipped and the notice still shows on HOME.
+
 ## [0.54.0.0] - 2026-11-19
 
 ### Added

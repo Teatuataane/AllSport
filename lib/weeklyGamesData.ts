@@ -178,13 +178,75 @@ export async function loadRosters(
 
 export async function postNotice(
   supabase: SupabaseClient, gameId: string, date: string, kind: GameNotice['kind'], message: string | null, judgeId: string,
-): Promise<string | null> {
-  const { error } = await supabase.from('game_notices').insert({
+): Promise<{ id: string | null; error: string | null }> {
+  const { data, error } = await supabase.from('game_notices').insert({
     weekly_game_id: gameId, game_date: date, kind,
     message: message?.trim() ? message.trim() : null,
     created_by: judgeId,
-  })
-  return error?.message ?? null
+  }).select('id').single()
+  return { id: (data as { id: string } | null)?.id ?? null, error: error?.message ?? null }
+}
+
+export type SendResult = {
+  pushCount: number
+  emailCount: number
+  players: number
+  pushReady: boolean
+  emailReady: boolean
+  emailFailed: boolean
+  unreached: number
+}
+
+/**
+ * Ask the server to push and email a saved notice (phase 2). Null when sending
+ * is not live (route or migration missing) or the request failed: the notice
+ * is saved and on HOME either way.
+ */
+export async function sendNotice(noticeId: string): Promise<SendResult | null> {
+  try {
+    const res = await fetch('/api/notices/send', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ noticeId }),
+    })
+    if (!res.ok) return null
+    return (await res.json()) as SendResult
+  } catch {
+    return null
+  }
+}
+
+/** One line for the kaiwhakawā about what a send did. */
+export function sendSummary(r: SendResult | null): string {
+  if (!r) return 'Saved and on HOME. Phones and email are not set up yet, so nothing was sent.'
+  if (r.players === 0) return 'Saved. Nobody is registered to this game yet.'
+  const parts: string[] = []
+  if (r.pushCount) parts.push(`${r.pushCount} phone${r.pushCount === 1 ? '' : 's'}`)
+  if (r.emailCount) parts.push(`${r.emailCount} email${r.emailCount === 1 ? '' : 's'}`)
+  let line = parts.length ? `Sent to ${parts.join(' and ')}.` : 'Saved and on HOME.'
+  if (r.unreached > 0) {
+    const why = !r.emailReady ? 'email is not set up yet' : r.emailFailed ? 'email failed' : 'no phone or email'
+    line += ` ${r.unreached} player${r.unreached === 1 ? '' : 's'} not reached (${why}); they see it on HOME.`
+  }
+  return line
+}
+
+/**
+ * Sent counts for notices, its own query: the columns arrive with migration
+ * 20261118234820, and asking for them before that would fail the whole read
+ * (42703). Empty map when not live.
+ */
+export async function loadSentCounts(
+  supabase: SupabaseClient, ids: string[],
+): Promise<Map<string, { sent_at: string | null; push_count: number | null; email_count: number | null }>> {
+  const out = new Map<string, { sent_at: string | null; push_count: number | null; email_count: number | null }>()
+  if (ids.length === 0) return out
+  const { data, error } = await supabase.from('game_notices')
+    .select('id, sent_at, push_count, email_count').in('id', ids)
+  if (error) return out
+  for (const r of (data ?? []) as { id: string; sent_at: string | null; push_count: number | null; email_count: number | null }[]) {
+    out.set(r.id, r)
+  }
+  return out
 }
 
 export async function deleteNotice(supabase: SupabaseClient, id: string): Promise<string | null> {

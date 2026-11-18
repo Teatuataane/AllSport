@@ -39,6 +39,10 @@ export type GameNotice = {
   kind: NoticeKind
   message: string | null
   created_at: string
+  /** Phase 2 (20261118234820): when it was pushed and emailed, and to how many. */
+  sent_at?: string | null
+  push_count?: number | null
+  email_count?: number | null
 }
 
 /** A game runs 100 minutes; until then it is still "today's game". */

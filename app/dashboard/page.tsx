@@ -43,6 +43,7 @@ import {
 import { computePercentiles } from '@/lib/percentile'
 import { loadMyGamePlaces } from '@/lib/loadGamePlace'
 import WeeklyGamesCard from '@/components/WeeklyGamesCard'
+import { usePushNotices } from '@/lib/usePushNotices'
 import {
   loadWeeklyBoard, joinWeeklyGame, leaveWeeklyGame, setAway, awayKey, type WeeklyBoard,
 } from '@/lib/weeklyGamesData'
@@ -257,6 +258,8 @@ function DashboardInner() {
     return () => { cancelled = true }
   }, [activePlayerId])
   const weeklyBoard = weekly && weekly.id === activePlayerId ? weekly.board : null
+  // This phone's notices (phase 2). Per login, so the same for every profile tab.
+  const push = usePushNotices()
 
   // Each write updates the card at once and puts it back if the write fails.
   const changeWeekly = async (
@@ -441,6 +444,10 @@ function DashboardInner() {
               who={activePlayerId !== userId ? playerLabel(activePlayer) : null}
               busy={weeklyBusy} error={weeklyError}
               onJoin={onJoinWeekly} onLeave={onLeaveWeekly} onAway={onAwayWeekly}
+              push={push.state ? {
+                state: push.state, busy: push.busy, error: push.error,
+                onTurnOn: () => { void push.turnOn() }, onTurnOff: () => { void push.turnOff() },
+              } : undefined}
             />
           </>
         ) : game ? <div style={{ height: 18 }} /> : (
