@@ -167,7 +167,7 @@
 
 ## P1 — Do Next
 
-### Apply `20261118010039_weekly_games.sql` after v0.54.0.0 deploys
+### ~~Apply `20261118010039_weekly_games.sql` after v0.54.0.0 deploys~~ DONE 2026-11-19 (16 checks, rehearsed then verified live)
 From `main`, `db query --linked -f` plus the ledger row. Verify: five tables with RLS on, three weekly games seeded, `sessions.weekly_game_id` present; as `anon` the sites, games and notices read and no write works; as `authenticated` (rolled back) a player can join and leave their own weekly game but not another player's, cannot read another player's registration, and cannot post a notice; a kaiwhakawā can.
 
 ### Weekly games phase 2: web push and email (Tāne, 18 Nov 2026)
