@@ -2,6 +2,17 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.53.0.0] - 2026-11-18
+
+### Changed
+- **The season board ranks on overall colour, the way HOME shows it** (the average of the ten domain colours, capped by games). A tie goes to the sum of the domain colours, then the season's colour score. Place points (100, 99, 98 … per game) are gone.
+- **Colour score.** Every colour total from this season's official games, added up. Each row shows it with games, average and best game; it breaks a tie on colour.
+- **Top ten, then top hundred.** The board opens on ten with a button for the rest, and your own row is pinned underneath when you are further down. The big podium is gone, and so are the best and worst domain lines.
+- **Four season numbers above the board:** games played, players, the best single game (who and when) and the most games played.
+
+### Added
+- **Event records.** Under the board, every event on the roster, grouped by domain, with the season's best Men's, Women's and Juniors score from official games. Raw best, not colour, so a record is the number itself. Pure contests (a win has no size) are not listed, and a Game-rung result never stands as a drill record. A search box finds an event, and a division chip narrows both sections. Loaded as its own chunk because it needs the whole roster (`components/EventRecords.tsx`, rules in `lib/eventRecords.ts`).
+
 ## [0.52.0.0] - 2026-11-18
 
 ### Changed

@@ -47,7 +47,7 @@ describe('the games cap is counted the same way on every surface', () => {
   it('the leaderboard caps the overall colour by the YEAR\'s games, through the shared counter', () => {
     const s = src('app/leaderboard/page.tsx')
     expect(s).toMatch(/loadGameCounts\(supabase, null, seasonYear\)/)
-    expect(s).toMatch(/colourStanding\(held\.get\(p\.id\), gamesPlayed/)
+    expect(s).toMatch(/colourStanding\(held\.get\((p\.id|s\.playerId|id)\), gamesPlayed/)
   })
 
   it('the family chips and the kaiwhakawā list count games through the shared paged counter', () => {
