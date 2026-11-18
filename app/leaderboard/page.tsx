@@ -15,7 +15,7 @@
 //      player_game_colours), which replaced the place points (100, 99, 98 …,
 //      28 Sept 2026) and is shown with average and best game. Rules:
 //      lib/seasonColourBoard.ts.
-//      Since v0.54.0.0 (Tāne, 19 Nov 2026) every player is a podium-style card
+//      Since v0.55.0.0 (Tāne, 19 Nov 2026) every player is a podium-style card
 //      with best and worst domain, in one strip that scrolls right to the top
 //      hundred, with no heading, explainer or season stats above it: the page
 //      reads SEASON, the division chips, then the cards.
