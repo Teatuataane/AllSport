@@ -5,6 +5,7 @@ import { createClient, getSessionUser } from '@/lib/supabase-browser'
 import JudgeCard from '@/app/components/JudgeCard'
 import WellbeingReport from '@/app/components/WellbeingReport'
 import ActivityReport from '@/app/components/ActivityReport'
+import WeeklyGamesAdmin from '@/app/components/WeeklyGamesAdmin'
 import Link from 'next/link'
 
 const supabase = createClient()
@@ -67,6 +68,7 @@ export default function JudgePage() {
         </div>
 
         <JudgeCard playerRole={player.role} playerId={player.id} />
+        <WeeklyGamesAdmin judgeId={player.id} />
         <WellbeingReport />
         <ActivityReport />
       </div>
