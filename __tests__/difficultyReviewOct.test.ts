@@ -146,7 +146,8 @@ describe('20261005012108 redefines the functions it must', () => {
     // Frozen too: the 3 Nov 2026 roster took two out and put three in.
     const later = ['steinborn', 'overhead-press', 'weighted-tuck', 'sandbag-to-shoulder']
     const lifts = EVENTS.filter(e => e.inputMode === 'strength' && !later.includes(e.slug))
-    expect(list('IF v_name IN')).toEqual([...lifts.map(e => e.name), 'Clean & Press', 'Pullover & Press'].sort())
+    // Bent Row was Pause Row until 20261118000741.
+    expect(list('IF v_name IN')).toEqual([...lifts.map(e => e.name === 'Bent Row' ? 'Pause Row' : e.name), 'Clean & Press', 'Pullover & Press'].sort())
     expect(list('OR v_slug IN')).toEqual([...lifts.map(e => e.slug), 'clean-and-press', 'pullover-and-press'].sort())
     expect(body).toContain("(v_name = 'Tibialis Curl' OR v_slug = 'tibialis-curl') AND NEW.difficulty_tier IS NOT NULL")
   })

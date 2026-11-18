@@ -4038,3 +4038,7 @@ Key routing rules:
 - Architecture review → invoke plan-eng-review
 - Save progress, checkpoint, resume → invoke checkpoint
 - Code quality, health check → invoke health
+
+### Pause Row renamed Bent Row (v0.51.2.0, 18 Nov 2026)
+
+Tāne dropped the one-second pause on the body, so the event's name dropped it too. Name and wording only: the slug stays `pause-row` (like L-Sit in `20261005032653`), so results, entries, plans, aliases, exemptions and `grade_awards.events` are untouched. History is kept together because every old lift was paused, which is stricter. Migration `20261118000741_bent_row_rename.sql` renames past draws in `session_events`, re-seeds `event_domains` (still 154) and redefines `enforce_lift_estimate` with 'Bent Row' in place of 'Pause Row' (that trigger finds a game result's lift by the draw's name). Deploy code first, then the migration; re-run it if an old bundle drew the event in between.

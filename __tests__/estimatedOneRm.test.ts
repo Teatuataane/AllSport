@@ -27,6 +27,9 @@ const NEWEST_TRIGGER = (() => {
 const LIFTS_ADDED_LATER = new Set(['steinborn', 'overhead-press', 'weighted-tuck', 'sandbag-to-shoulder'])
 // Lifts the history migration re-encoded that have since left the roster.
 const LIFTS_REMOVED_LATER = { names: ['Clean & Press', 'Pullover & Press'], slugs: ['clean-and-press', 'pullover-and-press'] }
+// Lifts renamed since: the history migration names them as they were then.
+const NAME_THEN: Record<string, string> = { 'Steinborn Lift': 'Steinborn', 'Bent Row': 'Pause Row' }
+const nameThen = (name: string) => NAME_THEN[name] ?? name
 
 /** Postgres numeric: exact w × 36 / (37 − r), rounded half away from zero to 0.1. */
 function exactSql(weightKg: number, reps: number): number {
@@ -113,7 +116,7 @@ describe('the history migration', () => {
   it('re-encodes exactly the strength events, and never Shoulder Dislocate', () => {
     const lifts = EVENTS.filter(e => e.inputMode === 'strength' && !LIFTS_ADDED_LATER.has(e.slug))
     for (const e of lifts) {
-      expect(MIGRATION).toContain(`'${e.name === 'Steinborn Lift' ? 'Steinborn' : e.name}'`)
+      expect(MIGRATION).toContain(`'${nameThen(e.name)}'`)
       expect(MIGRATION).toContain(`'${e.slug}'`)
     }
     expect(MIGRATION).not.toContain('shoulder-dislocate')
@@ -127,7 +130,7 @@ describe('the history migration', () => {
       const body = MIGRATION.slice(MIGRATION.indexOf('IN (', from) + 4, MIGRATION.indexOf(')', MIGRATION.indexOf('IN (', from)))
       return [...body.matchAll(/'((?:[^']|'')*)'/g)].map(m => m[1]).sort()
     }
-    expect(listAfter('WHERE se.event_name IN (')).toEqual([...lifts.map(e => e.name), ...LIFTS_REMOVED_LATER.names].sort())
+    expect(listAfter('WHERE se.event_name IN (')).toEqual([...lifts.map(e => nameThen(e.name)), ...LIFTS_REMOVED_LATER.names].sort())
     expect(listAfter('WHERE e.event_slug IN (')).toEqual([...lifts.map(e => e.slug), ...LIFTS_REMOVED_LATER.slugs].sort())
   })
 

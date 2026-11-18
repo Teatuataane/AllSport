@@ -155,8 +155,8 @@ describe('the live game list', () => {
     // No heading between events: the domain is a line inside each button.
     expect(screen.getAllByText(/^1 · Maximal Strength/)).toHaveLength(2)
     expect(screen.getAllByText(/^9 · Coordination/)).toHaveLength(1)
-    const order = screen.getAllByText(/^(Deadlift|Pause Row|Tennis)$/).map(n => n.textContent)
-    expect(order).toEqual(['Deadlift', 'Pause Row', 'Tennis'])
+    const order = screen.getAllByText(/^(Deadlift|Bent Row|Tennis)$/).map(n => n.textContent)
+    expect(order).toEqual(['Deadlift', 'Bent Row', 'Tennis'])
   })
 
   it('opens the domain from the + on its official event', () => {
@@ -169,17 +169,17 @@ describe('the live game list', () => {
   it('removes an unscored added event, and keeps a scored one', () => {
     const onRemove = vi.fn()
     const { unmount } = render(<GameEventList {...base} canAdd onRemove={onRemove} />)
-    fireEvent.click(screen.getByLabelText('Remove Pause Row'))
+    fireEvent.click(screen.getByLabelText('Remove Bent Row'))
     expect(onRemove).toHaveBeenCalledWith('pause-row')
     unmount()
     render(<GameEventList {...base} canAdd scoredSlugs={new Set(['pause-row'])} />)
-    expect(screen.queryByLabelText('Remove Pause Row')).toBeNull()
+    expect(screen.queryByLabelText('Remove Bent Row')).toBeNull()
   })
 
   it('offers no + and no ✕ to a guest or after the game', () => {
     render(<GameEventList {...base} canAdd={false} />)
     expect(screen.queryByLabelText('Add Maximal Strength events')).toBeNull()
-    expect(screen.queryByLabelText('Remove Pause Row')).toBeNull()
+    expect(screen.queryByLabelText('Remove Bent Row')).toBeNull()
   })
 
   it('names the colour a score reached beside its rank', () => {
@@ -197,7 +197,7 @@ describe('the add events sheet', () => {
     render(<AddEventsSheet domainName="Maximal Strength" domainNumber={1}
       exclude={['deadlift', 'pause-row']} onAdd={onAdd} onClose={vi.fn()} />)
     expect(screen.queryByText('Deadlift')).toBeNull()
-    expect(screen.queryByText('Pause Row')).toBeNull()
+    expect(screen.queryByText('Bent Row')).toBeNull()
     expect(screen.queryByText('Tennis')).toBeNull()
     fireEvent.click(screen.getByText('Pause Bench'))
     fireEvent.click(screen.getByText('Arthur Lift'))
