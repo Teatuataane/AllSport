@@ -1325,7 +1325,7 @@ export default function SessionPage() {
       </div>
 
       {/* A walk-up playing on their own login is offered this game's weekly
-          game (v0.53.0.0). Only on their own tab, never for a kaiwhakawā. */}
+          game (v0.54.0.0). Only on their own tab, never for a kaiwhakawā. */}
       {!isJudge && authUserId && activeTab === `player-${authUserId}` && typeof session?.weekly_game_id === 'string' && (
         <WeeklyGameOffer weeklyGameId={session.weekly_game_id} playerId={authUserId} />
       )}

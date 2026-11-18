@@ -1,4 +1,4 @@
--- ─── Weekly games: sites, registration and same-day notices (v0.53.0.0) ─────
+-- ─── Weekly games: sites, registration and same-day notices (v0.54.0.0) ─────
 --
 -- AllSport runs at more than one site from 2027. A player registers ONCE to a
 -- weekly game (a site, a weekday and a start time, e.g. "Saturday 9:00am at

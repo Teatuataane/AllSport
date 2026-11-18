@@ -2,13 +2,29 @@
 
 All notable changes to AllSport are documented here.
 
-## [0.53.0.0] - 2026-11-18
+## [0.54.0.0] - 2026-11-19
 
 ### Added
 - **Weekly games: register once, hear about every game.** HOME lists each site's weekly games (a site, a day and a time). Join the ones you usually come to and HOME tells you about the next date: cancelled for rain, moved to another park, or a note from the kaiwhakawā. "Can't make it" marks one date; "Leave" stops it. A parent does the same for a child. Registering is never needed to play; walk-ups are welcome. No cap.
 - **Kaiwhakawā panel: Weekly games.** Who is registered to each game (and who said they are away), and four buttons for its next date: Cancel (rain), Change park, Message and Back on. Sites and weekly games are added here too, so a second site is a form, not a code change.
 - **New Game picks the weekly game.** Pre-selected by day and time, and it fills in the location. A walk-up playing on their own login is then offered "Join weekly game" on the game screen.
 - Migration `20261118010039_weekly_games.sql` adds `sites`, `weekly_games`, `weekly_game_members`, `weekly_game_absences`, `game_notices` and `sessions.weekly_game_id`, and seeds AllSport HQ with Tue/Thu 4:30pm and Sat 9:00am. Deploy the code first, then apply it: until then HOME shows the old schedule line and nothing else changes. Push and email notices are phase 2.
+
+## [0.53.1.0] - 2026-11-18
+
+### Changed
+- **The colour board is back in its old look, with the new numbers** (Tāne preferred it). The top three stand on the podium again and the rest are cards with each player's best and worst domain. Each shows the overall colour, the season colour score, games, average and best game. The order, the top ten to hundred button, the pinned own row and the four season numbers are unchanged.
+
+## [0.53.0.0] - 2026-11-18
+
+### Changed
+- **The season board ranks on overall colour, the way HOME shows it** (the average of the ten domain colours, capped by games). A tie goes to the sum of the domain colours, then the season's colour score. Place points (100, 99, 98 … per game) are gone.
+- **Colour score.** Every colour total from this season's official games, added up. Each row shows it with games, average and best game; it breaks a tie on colour.
+- **Top ten, then top hundred.** The board opens on ten with a button for the rest, and your own row is pinned underneath when you are further down. The big podium is gone, and so are the best and worst domain lines.
+- **Four season numbers above the board:** games played, players, the best single game (who and when) and the most games played.
+
+### Added
+- **Event records.** Under the board, every event on the roster, grouped by domain, with the season's best Men's, Women's and Juniors score from official games. Raw best, not colour, so a record is the number itself. Pure contests (a win has no size) are not listed, and a Game-rung result never stands as a drill record. A search box finds an event, and a division chip narrows both sections. Loaded as its own chunk because it needs the whole roster (`components/EventRecords.tsx`, rules in `lib/eventRecords.ts`).
 
 ## [0.52.0.0] - 2026-11-18
 

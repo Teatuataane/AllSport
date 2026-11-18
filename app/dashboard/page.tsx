@@ -240,7 +240,7 @@ function DashboardInner() {
     return () => { cancelled = true; stop() }
   }, [activePlayerId])
 
-  // ── Weekly games (v0.53.0.0) ────────────────────────────────────────────────
+  // ── Weekly games (v0.54.0.0) ────────────────────────────────────────────────
   // Read once per visit, for the player being viewed (a parent registers a
   // child the same way). Null until loaded, and null for good when the tables
   // are not live yet, in which case the fixed schedule line shows instead.

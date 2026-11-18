@@ -29,7 +29,7 @@ export default function ScoringSetup() {
   const [plan, setPlan] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  // Which weekly game this is (v0.53.0.0), so the game screen can offer it to
+  // Which weekly game this is (v0.54.0.0), so the game screen can offer it to
   // walk-ups and attendance can be counted against registrations. Pre-picked
   // by weekday and start time; '' = none. Null board = tables not live yet.
   const [weekly, setWeekly] = useState<WeeklyBoard | null>(null)
