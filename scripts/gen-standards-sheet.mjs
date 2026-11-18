@@ -137,7 +137,7 @@ const LIFT = {
   'Zercher Dead': [1.2, 'about 1.2 times a bench press'],
   'Pause Front Squat': [1.1, 'about 1.1 times a bench press'],
   'Clean & Jerk': [1.0, 'about a bench press'],
-  'Pause Row': [0.9, 'about 0.9 times a bench press'],
+  'Bent Row': [0.9, 'about 0.9 times a bench press'],
   'Snatch': [0.8, 'about 0.8 times a bench press'],
   'Arthur Lift': [0.7, 'a clean and jerk to behind the neck, about 0.7 times a bench press'],
   'Clean & Press': [0.65, 'a strict overhead press, about 0.65 times a bench press'],

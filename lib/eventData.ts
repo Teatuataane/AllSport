@@ -211,13 +211,16 @@ export const EVENTS: EventData[] = [
   },
   {
     slug: 'pause-row',
-    name: 'Pause Row',
+    // Pause Row until 18 Nov 2026: the pause on the body was dropped, so the
+    // name went with it. The slug stays 'pause-row' (results, entries, plans,
+    // awards and aliases are all keyed on it).
+    name: 'Bent Row',
     domain: 'Maximal Strength',
     domainNumber: 1,
     inputMode: 'strength',
     hasDifficultyTiers: false,
-    howToPerform: "Hinge over with a flat back and the barbell hanging at arms length. Row the bar to your lower chest, hold a dead pause against the body, then lower under control to a full stretch.",
-    rules: "One-second pause with the bar held against the torso every rep, then a controlled lower to full arm extension. Torso angle stays fixed; no jerking or standing up to move the weight. Score is your estimated one-rep max: more reps at a weight score higher, counted up to 10 reps.",
+    howToPerform: "Hinge over with a flat back and the barbell hanging at arms length. Row the bar to touch your lower chest, then lower under control to a full stretch.",
+    rules: "The bar touches the torso every rep, then lowers under control to full arm extension. No pause is needed. Torso angle stays fixed; no jerking or standing up to move the weight. Score is your estimated one-rep max: more reps at a weight score higher, counted up to 10 reps.",
     videoPlaceholder: true,
     emoji: '🏋️',
   },

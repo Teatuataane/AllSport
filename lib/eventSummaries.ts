@@ -19,7 +19,7 @@ export const EVENT_SUMMARIES: Record<string, EventSummary> = {
   'pause-bench': { how: 'Bench press with a pause on the chest.', rules: 'Bar still on the chest for one second, full lockout, butt and feet down. Ranks on estimated one-rep max.' },
   'turkish-get-up': { how: 'Go from lying to standing with a weight locked out overhead.', rules: 'Arm stays locked the whole way; finish standing tall. Ranks on estimated one-rep max.' },
   'arthur-lift': { how: 'Clean the barbell to behind your neck, then jerk it overhead.', rules: 'From behind the neck to a solid lockout; no press-outs. Ranks on estimated one-rep max.' },
-  'pause-row': { how: 'Bent-over barbell row with a pause at your chest.', rules: 'One-second pause on the body, fixed torso, no jerking. Ranks on estimated one-rep max.' },
+  'pause-row': { how: 'Bent-over barbell row to your chest.', rules: 'Bar touches the body, no pause needed, fixed torso, no jerking. Ranks on estimated one-rep max.' },
   'pause-front-squat': { how: 'Front squat below parallel, pause, then stand.', rules: 'One-second pause, elbows up, no bounce. Ranks on estimated one-rep max.' },
   'loaded-lunge': { how: 'Lunge with a load, one rep each leg.', rules: 'Back knee within a fist of the floor on both legs. Ranks on estimated one-rep max.' },
   'steinborn': { how: 'Tip an upright barbell onto your back in a deep squat and stand up.', rules: 'No rack, stand fully, never drop the bar off your back. Ranks on estimated one-rep max.' },
