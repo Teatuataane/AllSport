@@ -8,6 +8,11 @@ All notable changes to AllSport are documented here.
 - **The top bar reads HOME · HOW TO PLAY · LEADERBOARD when signed in** (was HOME · COLOURS · BOARD). Phones say the same: the icon tabs now size to their labels so How to play and Leaderboard fit.
 - **The Colours page is gone; its rules now open from How to Play.** Under the colour ladder, "The full colour rules" opens the twelve colours, domain and overall colour, age and sex scaling tables, sports ratings and the yearly reset (`components/ColourRules.tsx`). `/grades` redirects to `/how-to-play#colours`.
 
+## [0.51.2.0] - 2026-11-18
+
+### Changed
+- **Pause Row is now Bent Row.** The one-second pause on the body is no longer required: row the bar to touch your lower chest and lower it under control. The slug stays `pause-row`, so every past lift, record and colour carries over; past lifts were all paused, which is stricter, so they stand. Migration `20261118000741_bent_row_rename.sql` renames past draws, re-seeds `event_domains` and puts the new name in `enforce_lift_estimate`. Apply it after the deploy.
+
 ## [0.51.1.0] - 2026-11-11
 
 ### Changed

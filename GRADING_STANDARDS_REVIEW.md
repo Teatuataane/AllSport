@@ -169,7 +169,7 @@ Each colour must be harder than the one before. Game events list six colours; th
 - Uenuku: 1.4× BW
 - Taniwha: 1.5× BW
 
-### 9. Pause Row
+### 9. Bent Row
 
 *Scored by: heaviest weight lifted, as a ratio of bodyweight*
 

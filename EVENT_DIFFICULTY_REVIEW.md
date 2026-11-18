@@ -45,7 +45,7 @@ Every event has a list of levels under it, or `**NONE**`. D1 is the easiest. A l
 
 **NONE**
 
-### 9. Pause Row
+### 9. Bent Row
 
 **NONE**
 

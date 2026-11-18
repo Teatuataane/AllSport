@@ -40,7 +40,7 @@ From age 12. Under 12s share the listed standard, and "Other" stays on it.
 | Events | Women's standard |
 |---|---|
 | Deadlift, Back Squat, Front Squat, Loaded Lunge, Zercher Dead, Steinborn Lift, Arthur Lift, Glute Thrust, Leg Extension Hold, Tibialis Curl, Toe Lift, Sandbag to Shoulder, Clean & Jerk, Snatch, Kelly Snatch, 1A Snatch | 80% of the load |
-| Pause Bench, Overhead Press, Pause Row, 1A Press, Turkish Getup, Plate Hold, Weighted Tuck, Skullcrusher, Strict Curl, OH Tricep Extension, Overhead Raise, Wrist Extension, Sandbag Carry, Farmer Carry, Weighted Drag | 70% of the load |
+| Pause Bench, Overhead Press, Bent Row, 1A Press, Turkish Getup, Plate Hold, Weighted Tuck, Skullcrusher, Strict Curl, OH Tricep Extension, Overhead Raise, Wrist Extension, Sandbag Carry, Farmer Carry, Weighted Drag | 70% of the load |
 | Vertical Jump, Standing Broad Jump, Triple Jump, High Jump | 80% of the height or distance |
 | Running, Cycling, Ski Erg, Row Erg, Swim, Walking, Scooting, Burpee Broad Jump | 12% more time |
 | Pause Dips, Clap Pushups, Chinups, Pushups, Finger Pushup, Planche, Front Lever, Back Lever, Human Flag, Iron Cross, Reverse Maltese, Handstand, Chin Hang, Hang, Windshield Wipers, Wrestler Pullover | 1 colour |
