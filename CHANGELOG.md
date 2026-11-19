@@ -2,6 +2,12 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.55.0.1] - 2026-11-19
+
+### Changed
+- **How to Play reworded** (Tāne). The headline reads 1 Game – 10 Events – 100 Minutes, the domains are Ten Physical Domains, and How It Works is Ten events drawn (with the ten domain symbols), Play Everything, and Graded as a colour. The colours section is Climb the Colour System, with the "How colours work" link removed.
+- **Play Your First Game** now takes a signed-in player to HOME and anyone else to /play (sign in or join), instead of always to /register.
+
 ## [0.55.0.0] - 2026-11-19
 
 ### Changed
