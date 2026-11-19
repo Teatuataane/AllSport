@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { seasonColourBoard, type SeasonGame, type GameColourRow } from '@/lib/seasonColourBoard'
+import { seasonColourBoard, bestGameRung, type SeasonGame, type GameColourRow } from '@/lib/seasonColourBoard'
 
 const games: SeasonGame[] = [
   { id: 'g1', started_at: '2026-11-03T03:30:00Z', session_date: '2026-11-03' },
@@ -51,5 +51,20 @@ describe('seasonColourBoard', () => {
   it('lists only players with a game this season on the board', () => {
     const board = seasonColourBoard(games, [row('a', 'other', 99), row('z', 'g1', 99), row('b', 'g1', 10)], players, () => colour(6))
     expect(board.map(r => [r.name, r.total])).toEqual([['Bryn', 10]])
+  })
+})
+
+describe('bestGameRung', () => {
+  it('is a tenth of the colour total, rounded down', () => {
+    expect(bestGameRung(94)).toBe(9)
+    expect(bestGameRung(80)).toBe(8)
+    expect(bestGameRung(79.9)).toBe(7)
+    expect(bestGameRung(60.1)).toBe(6)
+  })
+  it('is Mā with no colour and never above Taniwha', () => {
+    expect(bestGameRung(0)).toBe(0)
+    expect(bestGameRung(9.5)).toBe(0)
+    expect(bestGameRung(120)).toBe(12)
+    expect(bestGameRung(130)).toBe(12)
   })
 })

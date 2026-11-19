@@ -80,3 +80,14 @@ export function seasonColourBoard(
   })
   return rankBy(list, r => [r.overall, r.colourSum, r.domainsHeld, r.total, r.games])
 }
+
+/**
+ * A game's colour total as the colour it was played at: ten events, each up to
+ * Taniwha (12), so a tenth of the total, rounded down, capped at Taniwha.
+ * 0 is Mā. The leaderboard card shows the best game this way, not as a number
+ * (Tāne, 19 Nov 2026).
+ */
+export function bestGameRung(total: number): number {
+  if (!(total > 0)) return 0
+  return Math.min(12, Math.floor(tenths(total) / 10 + 1e-9))
+}
