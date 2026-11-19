@@ -41,19 +41,8 @@ export type ColourStanding = PlayerColour & {
   rank: number
 }
 
-export type SeasonHighlights = {
-  games: number
-  players: number
-  /** The highest colour total in one game this season. */
-  topGame: { name: string; total: number; sessionId: string; at: string; date: string | null } | null
-  /** The players who played most games, and how many. */
-  mostGames: { names: string[]; games: number } | null
-}
-
 /** Sums float colour totals without drifting off tenths (4.5 + 3.1 ≠ 7.6 in floats). */
 const tenths = (n: number) => Math.round(n * 10) / 10
-
-const when = (g: SeasonGame) => g.started_at ?? g.session_date ?? ''
 
 const NO_COLOUR: PlayerColour = { overall: 0, colourSum: 0, domainsHeld: 0 }
 
@@ -90,39 +79,4 @@ export function seasonColourBoard(
     }
   })
   return rankBy(list, r => [r.overall, r.colourSum, r.domainsHeld, r.total, r.games])
-}
-
-/** The four numbers above the board. Same inputs as seasonColourBoard. */
-export function seasonHighlights(
-  games: readonly SeasonGame[],
-  rows: readonly GameColourRow[],
-  players: ReadonlyMap<string, BoardPlayer>,
-): SeasonHighlights {
-  const byId = new Map(games.map(g => [g.id, g]))
-  const counted = rows.filter(r => byId.has(r.session_id) && players.has(r.player_id))
-
-  let topGame: SeasonHighlights['topGame'] = null
-  for (const r of counted) {
-    const t = Number(r.colour_total) || 0
-    const g = byId.get(r.session_id)!
-    // A tie goes to whoever did it first.
-    if (!topGame || t > topGame.total || (t === topGame.total && when(g) < topGame.at)) {
-      // session_date is the NZ day; started_at is UTC and can be the day before.
-      topGame = { name: players.get(r.player_id)!.name, total: t, sessionId: r.session_id, at: when(g), date: g.session_date }
-    }
-  }
-
-  const gamesBy = new Map<string, number>()
-  for (const r of counted) gamesBy.set(r.player_id, (gamesBy.get(r.player_id) ?? 0) + 1)
-  const most = Math.max(0, ...gamesBy.values())
-  const mostGames = most > 0
-    ? { games: most, names: [...gamesBy].filter(([, n]) => n === most).map(([id]) => players.get(id)!.name).sort() }
-    : null
-
-  return {
-    games: new Set(counted.map(r => r.session_id)).size,
-    players: gamesBy.size,
-    topGame,
-    mostGames,
-  }
 }
