@@ -7,10 +7,10 @@ import Link from 'next/link'
 import { RainbowText, SectionLabel } from '@/components/ui'
 import DomainIcon from '@/components/DomainIcon'
 import ColourRules from '@/components/ColourRules'
+import FirstGameButton from './FirstGameButton'
 import { DOMAIN_ORDER, EVENTS } from '@/lib/eventData'
 import { GRADES, MA, gradeFill } from '@/lib/grading'
-import { MAX_GAME_COLOUR_TOTAL } from '@/lib/leaderboardScores'
-import { domainColor, RAINBOW } from '@/lib/domainColours'
+import { RAINBOW } from '@/lib/domainColours'
 
 // Mā at the bottom, Taniwha at the top: the ladder reads as a climb.
 const ladder = [MA, ...GRADES]
@@ -64,11 +64,11 @@ export default function HowToPlay() {
             HOW TO <RainbowText>PLAY</RainbowText>
           </h1>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 28px', fontFamily: 'var(--font-display)', fontSize: 'clamp(32px, 5vw, 52px)', lineHeight: 1, color: 'var(--white)' }}>
-            <span>10 events</span>
-            <span style={{ color: 'var(--grey)' }}>·</span>
-            <span>100 minutes</span>
-            <span style={{ color: 'var(--grey)' }}>·</span>
-            <span>1 game</span>
+            <span>1 Game</span>
+            <span style={{ color: 'var(--grey)' }}>–</span>
+            <span>10 Events</span>
+            <span style={{ color: 'var(--grey)' }}>–</span>
+            <span>100 Minutes</span>
           </div>
         </div>
       </section>
@@ -77,7 +77,7 @@ export default function HowToPlay() {
       <section className="section" style={{ background: '#0d0d0d', borderTop: '1px solid var(--border)' }}>
         <div className="container">
           <SectionLabel style={{ marginBottom: 12 }}>One from each</SectionLabel>
-          <h2 style={{ fontSize: 'clamp(36px, 5vw, 56px)', marginBottom: '24px' }}>TEN <span style={{ color: 'var(--red)' }}>DOMAINS</span></h2>
+          <h2 style={{ fontSize: 'clamp(36px, 5vw, 56px)', marginBottom: '24px' }}>TEN PHYSICAL <span style={{ color: 'var(--red)' }}>DOMAINS</span></h2>
           <div className="htp-domains">
             {DOMAIN_ORDER.map((name, i) => (
               <div key={name} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', textAlign: 'center' }}>
@@ -99,19 +99,19 @@ export default function HowToPlay() {
           <h2 style={{ fontSize: 'clamp(36px, 5vw, 56px)', marginBottom: '24px' }}>HOW IT <span style={{ color: 'var(--green)' }}>WORKS</span></h2>
           <div className="htp-steps">
             <div className="htp-card">
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '6px', maxWidth: 160, marginBottom: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, max-content)', gap: '6px', marginBottom: '16px' }}>
                 {DOMAIN_ORDER.map((name, i) => (
-                  <span key={name} style={{ aspectRatio: '1', borderRadius: '50%', background: domainColor(i + 1) }} />
+                  <DomainIcon key={name} domainName={name} domainNumber={i + 1} size={30} />
                 ))}
               </div>
-              <h3 style={{ fontSize: '26px', color: 'var(--white)', marginBottom: '4px' }}>Ten drawn</h3>
-              <p style={{ color: 'var(--grey)', fontSize: '15px', lineHeight: 1.5, margin: 0 }}>One event from each domain.</p>
+              <h3 style={{ fontSize: '26px', color: 'var(--white)', marginBottom: '4px' }}>Ten events drawn</h3>
+              <p style={{ color: 'var(--grey)', fontSize: '15px', lineHeight: 1.5, margin: 0 }}>One from each physical domain.</p>
             </div>
             <div className="htp-arrow" aria-hidden="true">→</div>
             <div className="htp-card">
               <div style={{ fontFamily: 'var(--font-display)', fontSize: '44px', lineHeight: 1, color: 'var(--amber)', marginBottom: '16px' }}>100:00</div>
-              <h3 style={{ fontSize: '26px', color: 'var(--white)', marginBottom: '4px' }}>Shown, then played</h3>
-              <p style={{ color: 'var(--grey)', fontSize: '15px', lineHeight: 1.5, margin: 0 }}>Every event is explained first. Injured? Swap it.</p>
+              <h3 style={{ fontSize: '26px', color: 'var(--white)', marginBottom: '4px' }}>Play Everything</h3>
+              <p style={{ color: 'var(--grey)', fontSize: '15px', lineHeight: 1.5, margin: 0 }}>All events are explained on the day. Injured? Swap it.</p>
             </div>
             <div className="htp-arrow" aria-hidden="true">→</div>
             <div className="htp-card" style={{ borderColor: 'var(--border-strong)' }}>
@@ -120,8 +120,8 @@ export default function HowToPlay() {
                   <span key={i} style={{ flex: 1, height: 28, borderRadius: 3, background: rungFill(r) }} />
                 ))}
               </div>
-              <h3 style={{ fontSize: '26px', color: 'var(--white)', marginBottom: '4px' }}>Add up your colours</h3>
-              <p style={{ color: 'var(--grey)', fontSize: '15px', lineHeight: 1.5, margin: 0 }}>Each score earns a colour, up to {MAX_GAME_COLOUR_TOTAL} a game.</p>
+              <h3 style={{ fontSize: '26px', color: 'var(--white)', marginBottom: '4px' }}>Graded as a colour</h3>
+              <p style={{ color: 'var(--grey)', fontSize: '15px', lineHeight: 1.5, margin: 0 }}>Every score earns a colour. The best colours across all ten events win!</p>
             </div>
           </div>
           <div style={{ marginTop: '32px', fontFamily: 'var(--font-display)', fontSize: 'clamp(44px, 8vw, 88px)', lineHeight: 0.95, textAlign: 'center' }}>
@@ -134,17 +134,14 @@ export default function HowToPlay() {
       <section id="colours" className="section" style={{ background: '#0d0d0d', borderTop: '1px solid var(--border)' }}>
         <div className="container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '40px', alignItems: 'center' }}>
           <div>
-            <SectionLabel style={{ marginBottom: 12 }}>Between games</SectionLabel>
-            <h2 style={{ fontSize: 'clamp(36px, 5vw, 56px)', marginBottom: '16px' }}>CLIMB THE <span style={{ color: 'var(--amber)' }}>COLOURS</span></h2>
+            <SectionLabel style={{ marginBottom: 12 }}>Improve &amp; get better!</SectionLabel>
+            <h2 style={{ fontSize: 'clamp(36px, 5vw, 56px)', marginBottom: '16px' }}>CLIMB THE <span style={{ color: 'var(--amber)' }}>COLOUR SYSTEM</span></h2>
             <p style={{ color: 'var(--grey-light)', fontSize: '17px', lineHeight: 1.6, marginBottom: '12px' }}>
-              Hit an event&apos;s standard and the colour is yours for the year. Every 1 January starts fresh.
+              Earn a colour during an event and it&apos;s yours for that year. Season starts fresh Jan 1.
             </p>
-            <p style={{ color: 'var(--grey)', fontSize: '15px', lineHeight: 1.6, marginBottom: '20px' }}>
+            <p style={{ color: 'var(--grey)', fontSize: '15px', lineHeight: 1.6, margin: 0 }}>
               Measured against a standard, not the room. Coming last costs you nothing.
             </p>
-            <a href="#colour-rules" style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: '14px', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--blue)' }}>
-              How colours work ↓
-            </a>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column-reverse', gap: '4px', maxWidth: 360, width: '100%', justifySelf: 'center' }}>
             {ladder.map(g => (
@@ -184,7 +181,7 @@ export default function HowToPlay() {
               </span>
             ))}
           </div>
-          <Link href="/register" className="btn btn-primary" style={{ fontSize: '17px' }}>Play Your First Game</Link>
+          <FirstGameButton />
         </div>
       </section>
     </>
