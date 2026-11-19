@@ -13,11 +13,12 @@
 //      year's games), then the rankByColours tie-breaks, then the season's
 //      colour score (every colour total from official games, added up;
 //      player_game_colours), which replaced the place points (100, 99, 98 …,
-//      28 Sept 2026) and is shown with average and best game. Top ten,
-//      expandable to a hundred, the visitor's own row pinned beneath when it
-//      is further down. Rules: lib/seasonColourBoard.ts.
-//      Drawn in the old podium-and-cards style with best and worst domain
-//      (Tāne preferred it to a table, 18 Nov 2026, v0.53.1.0).
+//      28 Sept 2026) and is shown with average and best game. Rules:
+//      lib/seasonColourBoard.ts.
+//      Since v0.55.0.0 (Tāne, 19 Nov 2026) every player is a podium-style card
+//      with best and worst domain, in one strip that scrolls right to the top
+//      hundred, with no heading, explainer or season stats above it: the page
+//      reads SEASON, the division chips, then the cards.
 //   2. EVENT RECORDS. The season's best Men's, Women's and Juniors score in
 //      every event, by domain (components/EventRecords.tsx, lib/eventRecords.ts),
 //      loaded as its own chunk because it needs the whole roster.
@@ -26,7 +27,7 @@
 // private bodyweight) and published; this page only reads and ranks them.
 // All-Divisions opens first, and a division chip narrows both sections.
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase-browser'
@@ -37,8 +38,7 @@ import { loadGameCounts } from '@/lib/gameCounts'
 import { nzYear } from '@/lib/seasonYear'
 import { divisionPool } from '@/lib/rating'
 import { loadSeasonGames, loadGameColours } from '@/lib/leaderboardData'
-import { seasonColourBoard, seasonHighlights, type SeasonGame, type GameColourRow, type ColourStanding } from '@/lib/seasonColourBoard'
-import { formatNZDate } from '@/lib/dates'
+import { seasonColourBoard, type SeasonGame, type GameColourRow, type ColourStanding } from '@/lib/seasonColourBoard'
 import { useActivePlayer } from '@/lib/useActivePlayer'
 import { RAINBOW, DOMAIN_COLORS } from '@/lib/domainColours'
 import { GradeDot } from '@/components/GradeDot'
@@ -56,8 +56,7 @@ const EventRecords = dynamic(() => import('@/components/EventRecords'), {
   loading: () => <div style={{ height: 224, maxWidth: 720, background: '#0d0d0d', border: '1px solid #1a1a1a', borderRadius: 12 }} />,
 })
 
-/** The board shows ten, then a hundred. */
-const TOP = 10
+/** The strip runs to a hundred. */
 const MORE = 100
 
 type ActiveSession = {
@@ -163,29 +162,6 @@ function LiveGame({ session }: { session: ActiveSession }) {
 /** One decimal only when there is one: 54, 54.5. */
 const num = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1))
 
-function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
-  return (
-    <div className="lb-stat">
-      <span className="lb-stat-label">{label}</span>
-      <span className="lb-stat-value">{value}</span>
-      {sub && <span className="lb-stat-sub">{sub}</span>}
-    </div>
-  )
-}
-
-function Highlights({ h }: { h: ReturnType<typeof seasonHighlights> }) {
-  return (
-    <div className="lb-stats">
-      <Stat label="Games" value={String(h.games)} />
-      <Stat label="Players" value={String(h.players)} />
-      <Stat label="Best game" value={h.topGame ? num(h.topGame.total) : '–'}
-        sub={h.topGame ? `${h.topGame.name}${h.topGame.date ? `, ${formatNZDate(h.topGame.date, { day: 'numeric', month: 'short' })}` : ''}` : undefined} />
-      <Stat label="Most games" value={h.mostGames ? String(h.mostGames.games) : '–'}
-        sub={h.mostGames ? (h.mostGames.names.length > 2 ? `${h.mostGames.names.length} players` : h.mostGames.names.join(', ')) : undefined} />
-    </div>
-  )
-}
-
 /** The player's colour: the overall one CONFERRED, or Mā, where every player starts. */
 function ColourChip({ rung, size = 'md' }: { rung: number; size?: 'sm' | 'md' }) {
   const g = gradeForRung(rung)
@@ -233,83 +209,71 @@ function Domains({ rungs, compact = false }: { rungs: number[]; compact?: boolea
 const gamesWord = (n: number) => `${n} ${n === 1 ? 'game' : 'games'}`
 
 // The medal inks (globals.css --medal-*), as hex because the card border appends alpha.
-const PODIUM = [
-  { place: 2, color: '#C9D0D9', lift: 24 },
-  { place: 1, color: '#D9B84A', lift: 0 },
-  { place: 3, color: '#C08A5A', lift: 40 },
-] as const
+const MEDAL: Record<number, string> = { 1: '#D9B84A', 2: '#C9D0D9', 3: '#C08A5A' }
 
-function Podium({ rows, rungsOf }: { rows: BoardRow[]; rungsOf: (id: string) => number[] }) {
-  if (rows.length < 3) return null
-  const top = rows.slice(0, 3)
+/** One player's card: rank, name, colour, colour score, games, average and best, best and worst domain. */
+function Card({ p, showDivision, mine, rungs }: { p: BoardRow; showDivision: boolean; mine: boolean; rungs: number[] }) {
+  const medal = MEDAL[p.rank]
   return (
-    <div className="lb-podium">
-      {PODIUM.map(({ place, color, lift }) => {
-        const p = top[place - 1]
-        return (
-          <div key={place} className="lb-podium-card" style={{ marginTop: lift, borderColor: `${color}33` }}>
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: place === 1 ? RAINBOW : color }} />
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: place === 1 ? 52 : 40, color, lineHeight: 1 }}>{p.rank}</div>
-            <div className="lb-podium-name">{p.name}</div>
-            <div style={{ display: 'flex', justifyContent: 'center', margin: '-2px 0 10px' }}><ColourChip rung={p.overall} size="sm" /></div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: place === 1 ? 32 : 26, color: '#fff', lineHeight: 1 }}>{num(p.total)}<span className="lb-podium-unit">SCORE</span></div>
-            <div className="lb-podium-meta">{gamesWord(p.games)}</div>
-            <div className="lb-podium-meta">{`Avg ${num(p.average)} · Best ${num(p.best)}`}</div>
-            <div className="lb-podium-domains"><Domains rungs={rungsOf(p.playerId)} compact /></div>
-          </div>
-        )
-      })}
-    </div>
+    <li className="lb-card" data-me={mine || undefined}
+      style={{ borderColor: mine ? '#F9B051' : medal ? `${medal}55` : '#1e1e1e', background: mine ? '#14100a' : undefined }}>
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: p.rank === 1 ? RAINBOW : medal ?? '#1e1e1e' }} />
+      <div className="lb-card-rank" style={{ color: medal ?? '#555' }}>{p.rank}</div>
+      <div className="lb-card-name">{p.name}</div>
+      <div className="lb-card-tags">
+        <ColourChip rung={p.overall} size="sm" />
+        {showDivision && p.division && <span className="lb-div">{SHORT_DIVISION[p.division] ?? p.division}</span>}
+      </div>
+      <div className="lb-card-score">{num(p.total)}<span className="lb-card-unit">SCORE</span></div>
+      <div className="lb-card-meta">{gamesWord(p.games)}</div>
+      <div className="lb-card-meta">{`Avg ${num(p.average)} · Best ${num(p.best)}`}</div>
+      <div className="lb-card-domains"><Domains rungs={rungs} compact /></div>
+    </li>
   )
 }
 
-function Row({ p, showDivision, mine, rungs }: { p: BoardRow; showDivision: boolean; mine: boolean; rungs: number[] }) {
-  return (
-    <div className="lb-row" style={mine ? { borderColor: '#F9B05166', background: '#14100a' } : { borderColor: p.rank <= 3 ? '#F9B05126' : '#1a1a1a' }}>
-      <div className="lb-rank" style={{ color: p.rank === 1 ? 'var(--medal-gold)' : p.rank === 2 ? 'var(--medal-silver)' : p.rank === 3 ? 'var(--medal-bronze)' : '#3a3a3a' }}>{p.rank}</div>
-      <div style={{ minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flexWrap: 'wrap' }}>
-          <span className="lb-name">{p.name}</span>
-          <ColourChip rung={p.overall} />
-          {showDivision && p.division && <span className="lb-div">{SHORT_DIVISION[p.division] ?? p.division}</span>}
-        </div>
-        <div className="lb-domains"><Domains rungs={rungs} /></div>
-      </div>
-      <div style={{ textAlign: 'right', alignSelf: 'start' }}>
-        <span style={{ fontFamily: 'var(--font-display)', fontSize: 30, color: '#fff', lineHeight: 1 }}>{num(p.total)}</span>
-        <div className="lb-unit">{`Score · ${gamesWord(p.games)}`}</div>
-        <div className="lb-unit">{`Avg ${num(p.average)} · Best ${num(p.best)}`}</div>
-      </div>
-    </div>
-  )
-}
-
-/** Podium for the top three, cards to ten, a hundred on request, the visitor's own row pinned. */
-function ColourBoard({ rows, showDivision, myId, rungsOf }: { rows: BoardRow[]; showDivision: boolean; myId: string | null; rungsOf: (id: string) => number[] }) {
-  const [expanded, setExpanded] = useState(false)
-  const shown = rows.slice(0, expanded ? MORE : TOP)
-  const podium = shown.length >= 3
+/**
+ * Every player as a card, in a strip that scrolls right to the top hundred
+ * (Tāne, 19 Nov 2026: the podium cards, kept going). Arrows page it on a
+ * desktop; a phone swipes. The visitor's own card is ringed in orange, a
+ * "Me" button scrolls to it, and below the hundred it is added at the end.
+ */
+function ColourStrip({ rows, showDivision, myId, rungsOf }: { rows: BoardRow[]; showDivision: boolean; myId: string | null; rungsOf: (id: string) => number[] }) {
+  const ref = useRef<HTMLOListElement>(null)
+  const shown = rows.slice(0, MORE)
   const me = myId ? rows.find(r => r.playerId === myId) : undefined
   const pinMe = me && !shown.some(r => r.playerId === me.playerId)
-  const row = (p: BoardRow) => <Row key={p.playerId} p={p} showDivision={showDivision} mine={p.playerId === myId} rungs={rungsOf(p.playerId)} />
+  const smooth = (): ScrollBehavior =>
+    typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'
+  const page = (dir: 1 | -1) => {
+    const el = ref.current
+    if (el) el.scrollBy({ left: dir * el.clientWidth * 0.9, behavior: smooth() })
+  }
+  const toMe = () => {
+    const el = ref.current
+    const card = el?.querySelector<HTMLElement>('[data-me]')
+    if (el && card) el.scrollTo({ left: card.offsetLeft - el.offsetLeft - 8, behavior: smooth() })
+  }
+  const card = (p: BoardRow) => <Card key={p.playerId} p={p} showDivision={showDivision} mine={p.playerId === myId} rungs={rungsOf(p.playerId)} />
   return (
-    <>
-      {podium && <Podium rows={shown} rungsOf={rungsOf} />}
-      <div className="lb-board">
-        {(podium ? shown.slice(3) : shown).map(row)}
+    <div className="lb-strip-wrap">
+      <ol ref={ref} className="lb-strip" aria-label="Season colour board">
+        {shown.map(card)}
         {pinMe && (
           <>
-            <div className="lb-gap" aria-hidden>&middot; &middot; &middot;</div>
-            {row(me)}
+            <li className="lb-strip-gap" aria-hidden>&middot; &middot; &middot;</li>
+            {card(me)}
           </>
         )}
-        {rows.length > TOP && (
-          <button type="button" className="lb-more press" onClick={() => setExpanded(e => !e)}>
-            {expanded ? `Show top ${TOP}` : rows.length > MORE ? `Show top ${MORE}` : `Show all ${rows.length}`}
-          </button>
-        )}
-      </div>
-    </>
+      </ol>
+      {(shown.length > 1 || me) && (
+        <div className="lb-strip-nav">
+          <button type="button" className="lb-nav press" aria-label="Back" onClick={() => page(-1)}>&larr;</button>
+          <button type="button" className="lb-nav press" aria-label="Next" onClick={() => page(1)}>&rarr;</button>
+          {me && <button type="button" className="lb-nav lb-nav-me press" onClick={toMe}>{`Me · ${me.rank}`}</button>}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -410,8 +374,6 @@ export default function LeaderboardPage() {
     return Array.from({ length: DOMAIN_COUNT }, (_, i) => past?.get(i + 1) ?? 0)
   }
 
-  const highlights = useMemo(() => seasonHighlights(games, colours, players), [games, colours, players])
-
   return (
     <>
       <style>{`
@@ -445,45 +407,40 @@ export default function LeaderboardPage() {
         .lb-h3 { font-family: var(--font-display); font-size: clamp(26px, 4vw, 34px); line-height: 1; margin: 0 0 4px; color: #fff; letter-spacing: 0.02em; }
         .lb-lede { font-family: var(--font-body); font-size: 15px; color: #888; margin: 0 0 16px; max-width: 560px; }
 
-        .lb-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; max-width: 720px; margin-bottom: 16px; }
-        @media (max-width: 560px) { .lb-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-        .lb-stat { display: flex; flex-direction: column; min-width: 0; padding: 12px 14px; background: #0d0d0d; border: 1px solid #1a1a1a; border-radius: 12px; }
-        .lb-stat-label { font-family: var(--font-label); font-weight: 700; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: #666; }
-        .lb-stat-value { font-family: var(--font-display); font-size: 32px; line-height: 1.05; color: #fff; }
-        .lb-stat-sub { font-family: var(--font-label); font-size: 13px; color: #999; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-        .lb-podium { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-width: 720px; margin-bottom: 28px; }
-        .lb-podium-card { position: relative; overflow: hidden; background: #111; border: 1px solid; border-radius: 16px; padding: 22px 10px 18px; text-align: center; }
-        .lb-podium-name { font-family: var(--font-label); font-weight: 700; font-size: 14px; color: #fff; margin: 6px 0 10px;
+        .lb-strip-wrap { margin-bottom: 8px; }
+        /* The fade on the right shows there is more; the end padding lets the last card clear it. */
+        .lb-strip { list-style: none; margin: 0; padding: 8px 48px 14px 2px; display: flex; gap: 12px; overflow-x: auto;
+          mask-image: linear-gradient(90deg, #000 calc(100% - 48px), transparent);
+          scroll-snap-type: x mandatory; scroll-padding-left: 2px; overscroll-behavior-x: contain;
+          scrollbar-width: thin; scrollbar-color: #2a2a2a transparent; }
+        .lb-card { position: relative; overflow: hidden; flex: 0 0 min(232px, 70vw); scroll-snap-align: start;
+          background: #111; border: 1px solid; border-radius: 16px; padding: 22px 12px 18px; text-align: center; }
+        .lb-card-rank { font-family: var(--font-display); font-size: 48px; line-height: 1; }
+        .lb-card-name { font-family: var(--font-label); font-weight: 700; font-size: 15px; color: #fff; margin: 6px 0 8px;
           overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .lb-podium-unit { font-size: 13px; color: #666; margin-left: 3px; }
-        .lb-podium-meta { font-family: var(--font-label); font-weight: 700; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #777; margin-top: 4px; }
-
-        .lb-board { display: flex; flex-direction: column; gap: 8px; max-width: 720px; }
-        .lb-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 12px; align-items: center;
-          padding: 14px 16px; background: #0d0d0d; border: 1px solid; border-radius: 12px; }
-        .lb-rank { font-family: var(--font-display); font-size: 26px; line-height: 1; }
-        .lb-name { font-family: var(--font-label); font-weight: 700; font-size: 16px; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .lb-card-tags { display: flex; justify-content: center; align-items: center; gap: 6px; margin-bottom: 12px; }
+        .lb-card-score { font-family: var(--font-display); font-size: 32px; color: #fff; line-height: 1; }
+        .lb-card-unit { font-size: 13px; color: #666; margin-left: 4px; }
+        .lb-card-meta { font-family: var(--font-label); font-weight: 700; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #777; margin-top: 4px; }
+        .lb-card-domains { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid #1e1e1e; text-align: left; }
+        .lb-strip-gap { flex: 0 0 auto; align-self: center; color: #444; font-size: 14px; letter-spacing: 0.3em; }
+        .lb-strip-nav { display: flex; gap: 8px; }
+        .lb-nav { min-width: 44px; min-height: 44px; padding: 0 14px; border-radius: 999px; cursor: pointer; background: transparent; border: 1px solid #333;
+          color: #fff; font-family: var(--font-label); font-weight: 700; font-size: 15px; letter-spacing: 0.1em; text-transform: uppercase; }
+        .lb-nav:hover { border-color: #666; }
+        .lb-nav-me { margin-left: auto; border-color: #F9B05166; color: #F9B051; font-size: 13px; }
         .lb-div { flex-shrink: 0; font-family: var(--font-label); font-weight: 700; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
           color: #777; border: 1px solid #262626; border-radius: 999px; padding: 2px 8px; }
         .lb-colour { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; padding: 3px 9px 3px 6px; border: 1px solid #262626; border-radius: 999px;
           font-family: var(--font-label); font-weight: 700; letter-spacing: 0.06em; color: #ddd; }
-        .lb-domains { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; margin-top: 12px; }
-        @media (max-width: 520px) { .lb-domains { grid-template-columns: 1fr; } }
         .lb-dstat { display: flex; align-items: center; gap: 8px; min-width: 0; }
         .lb-dstat-label { width: 38px; flex-shrink: 0; font-family: var(--font-label); font-weight: 700; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; }
         .lb-dstat-name { font-family: var(--font-label); font-weight: 700; font-size: 13px; color: #ccc; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .lb-dstat-grade { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-label); font-size: 12px; color: #777; }
         .lb-nodomains { font-family: var(--font-label); font-size: 12px; letter-spacing: 0.06em; color: #555; }
-        .lb-podium-domains { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid #1e1e1e; text-align: left; }
         .lb-dstat-compact .lb-dstat-label { width: auto; writing-mode: vertical-rl; transform: rotate(180deg); font-size: 8px; letter-spacing: 0.1em; }
         .lb-dstat-compact .lb-dstat-name { font-size: 11px; }
         .lb-dstat-compact .lb-dstat-grade { font-size: 10px; }
-        @media (max-width: 520px) { .lb-dstat-compact { gap: 5px; } .lb-podium-card { padding-left: 8px; padding-right: 8px; } .lb-podium-meta { font-size: 10px; letter-spacing: 0.04em; } .lb-podium-unit { display: block; margin: 2px 0 0; font-size: 11px; } }
-        .lb-unit { font-family: var(--font-label); font-weight: 700; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #444; margin-top: 2px; white-space: nowrap; }
-        .lb-gap { text-align: center; color: #444; font-size: 14px; letter-spacing: 0.3em; }
-        .lb-more { align-self: flex-start; min-height: 44px; margin-top: 6px; padding: 0 18px; border-radius: 999px; cursor: pointer;
-          background: transparent; border: 1px solid #333; color: #fff; font-family: var(--font-label); font-weight: 700; font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; }
       `}</style>
 
       <Banner />
@@ -522,13 +479,10 @@ export default function LeaderboardPage() {
             })}
           </div>
 
-          <h3 className="lb-h3">Colours</h3>
-          <p className="lb-lede">Ranked on overall colour, as on HOME. A tie goes to the higher score: every colour earned in official games this season, added up.</p>
-
           {loading ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxWidth: 720 }}>
-              {[1, 2, 3, 4, 5].map(i => (
-                <div key={i} style={{ height: 64, background: '#111', border: '1px solid #1a1a1a', borderRadius: 12, opacity: 1 - i * 0.15 }} />
+            <div className="lb-strip" aria-hidden>
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} className="lb-card" style={{ height: 300, borderColor: '#1a1a1a', opacity: 1 - i * 0.18 }} />
               ))}
             </div>
           ) : rows.length === 0 ? (
@@ -536,10 +490,7 @@ export default function LeaderboardPage() {
               {seasonFailed ? 'Could not load the season. Refresh to try again.' : `No ${seasonYear} games yet`}
             </div>
           ) : (
-            <>
-              <Highlights h={highlights} />
-              <ColourBoard key={`${seasonYear}-${activeTab}`} rows={rows} showDivision={tab.division == null} myId={activePlayerId} rungsOf={rungsOf} />
-            </>
+            <ColourStrip key={`${seasonYear}-${activeTab}`} rows={rows} showDivision={tab.division == null} myId={activePlayerId} rungsOf={rungsOf} />
           )}
 
           <h3 className="lb-h3" style={{ marginTop: 56 }}>Event records</h3>

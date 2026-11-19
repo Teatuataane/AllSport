@@ -4056,3 +4056,7 @@ Tāne asked for the season stats to be colour score from official games, top ten
 ### Leaderboard: the old look back (v0.53.1.0, 18 Nov 2026)
 
 Tāne preferred the old colour board's look to the v0.53.0.0 table. The podium for the top three and the cards with best and worst domain are back (read again from `player_domain_colours`), now carrying the new numbers: overall colour, season colour score, games, average and best game. Ranking, the top ten to hundred button, the pinned own row and the season numbers are unchanged. On phones the podium's SCORE label sits under the number so a four figure total fits.
+
+### Leaderboard: one strip of cards (v0.55.0.0, 19 Nov 2026)
+
+Tāne asked for the section to read SEASON, the division chips and the podium cards, nothing else, with the cards carrying on to the right to the top hundred. The "Colours" heading and explainer, the four season numbers and the top ten button went, and `seasonHighlights` with them. Every player is now a podium card in a horizontal strip (scroll snap, about 70% of a phone's width so the next card shows, a fade on the right edge). Added to make a hundred sideways cards usable: arrows that page it on a computer, an orange ring on the viewer's own card and a "Me · rank" button that scrolls to it, with the card added at the end when it is below the hundred. Event records stay below.
