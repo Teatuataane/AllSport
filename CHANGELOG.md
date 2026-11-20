@@ -2,6 +2,14 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.56.0.0] - 2026-11-19
+
+### Changed
+- **Leaderboard cards show colours, not numbers** (Tāne). The colour and division badges are larger and stacked under the name. The best game shows as the colour it was played at (a tenth of its colour total, rounded down), and best and worst domain keep their colours with plain grey icons.
+
+### Removed
+- The colour score, games count and average game from each card. The colour score still breaks ties; it is just not shown. Only the rank is a number now.
+
 ## [0.55.0.1] - 2026-11-19
 
 ### Changed

@@ -19,6 +19,10 @@
 //      with best and worst domain, in one strip that scrolls right to the top
 //      hundred, with no heading, explainer or season stats above it: the page
 //      reads SEASON, the division chips, then the cards.
+//      Since v0.56.0.0 (Tāne, 19 Nov 2026) the cards carry no numbers but the
+//      rank: a larger colour and division, the best game as a colour
+//      (bestGameRung), and best and worst domain with plain icons. The colour
+//      score still ranks and breaks ties; it is just not shown.
 //   2. EVENT RECORDS. The season's best Men's, Women's and Juniors score in
 //      every event, by domain (components/EventRecords.tsx, lib/eventRecords.ts),
 //      loaded as its own chunk because it needs the whole roster.
@@ -38,7 +42,7 @@ import { loadGameCounts } from '@/lib/gameCounts'
 import { nzYear } from '@/lib/seasonYear'
 import { divisionPool } from '@/lib/rating'
 import { loadSeasonGames, loadGameColours } from '@/lib/leaderboardData'
-import { seasonColourBoard, type SeasonGame, type GameColourRow, type ColourStanding } from '@/lib/seasonColourBoard'
+import { seasonColourBoard, bestGameRung, type SeasonGame, type GameColourRow, type ColourStanding } from '@/lib/seasonColourBoard'
 import { useActivePlayer } from '@/lib/useActivePlayer'
 import { RAINBOW, DOMAIN_COLORS } from '@/lib/domainColours'
 import { GradeDot } from '@/components/GradeDot'
@@ -159,19 +163,20 @@ function LiveGame({ session }: { session: ActiveSession }) {
 
 
 
-/** One decimal only when there is one: 54, 54.5. */
-const num = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1))
-
 /** The player's colour: the overall one CONFERRED, or Mā, where every player starts. */
-function ColourChip({ rung, size = 'md' }: { rung: number; size?: 'sm' | 'md' }) {
+function ColourChip({ rung }: { rung: number }) {
   const g = gradeForRung(rung)
   return (
-    <span className="lb-colour" style={{ fontSize: size === 'sm' ? 11 : 12 }}>
-      <GradeDot grade={g} size={size === 'sm' ? 9 : 11} />
+    <span className="lb-colour">
+      <GradeDot grade={g} size={18} />
       {g.name}
     </span>
   )
 }
+
+// Domain icons are not coloured on this page (Tāne, 19 Nov 2026): the only
+// colour on a domain row is the player's own colour dot.
+const PLAIN_ICON = '#d4d4d4'
 
 /** One domain with its colour: "BEST · [icon] Power · ● Kōwhai". */
 function DomainStat({ kind, index, rung, compact = false }: { kind: 'Best' | 'Worst'; index: number; rung: number; compact?: boolean }) {
@@ -180,7 +185,7 @@ function DomainStat({ kind, index, rung, compact = false }: { kind: 'Best' | 'Wo
   return (
     <div className={compact ? 'lb-dstat lb-dstat-compact' : 'lb-dstat'} title={`${kind} domain: ${name}, ${g ? g.name : 'no colour yet'}`}>
       <span className="lb-dstat-label" style={{ color: kind === 'Best' ? '#4DB26E' : '#EA4742' }}>{kind}</span>
-      <DomainIcon domainName={name} domainNumber={index + 1} size={compact ? 22 : 26} />
+      <DomainIcon domainName={name} domainNumber={index + 1} size={compact ? 22 : 26} tint={PLAIN_ICON} />
       <span style={{ minWidth: 0, display: 'flex', flexDirection: 'column' }}>
         <span className="lb-dstat-name">{name}</span>
         <span className="lb-dstat-grade">
@@ -206,12 +211,21 @@ function Domains({ rungs, compact = false }: { rungs: number[]; compact?: boolea
   )
 }
 
-const gamesWord = (n: number) => `${n} ${n === 1 ? 'game' : 'games'}`
-
 // The medal inks (globals.css --medal-*), as hex because the card border appends alpha.
 const MEDAL: Record<number, string> = { 1: '#D9B84A', 2: '#C9D0D9', 3: '#C08A5A' }
 
-/** One player's card: rank, name, colour, colour score, games, average and best, best and worst domain. */
+/** The best game as the colour it was played at: a tenth of its colour total, rounded down. */
+function BestGame({ rung }: { rung: number }) {
+  const g = gradeForRung(rung)
+  return (
+    <div className="lb-best" title={`Best game: ${g.name}`}>
+      <div className="lb-best-label">Best game</div>
+      <span className="lb-best-grade"><GradeDot grade={g} size={12} />{g.name}</span>
+    </div>
+  )
+}
+
+/** One player's card: rank, name, colour, division, best game as a colour, best and worst domain. No other numbers. */
 function Card({ p, showDivision, mine, rungs }: { p: BoardRow; showDivision: boolean; mine: boolean; rungs: number[] }) {
   const medal = MEDAL[p.rank]
   return (
@@ -221,12 +235,10 @@ function Card({ p, showDivision, mine, rungs }: { p: BoardRow; showDivision: boo
       <div className="lb-card-rank" style={{ color: medal ?? '#555' }}>{p.rank}</div>
       <div className="lb-card-name">{p.name}</div>
       <div className="lb-card-tags">
-        <ColourChip rung={p.overall} size="sm" />
+        <ColourChip rung={p.overall} />
         {showDivision && p.division && <span className="lb-div">{SHORT_DIVISION[p.division] ?? p.division}</span>}
       </div>
-      <div className="lb-card-score">{num(p.total)}<span className="lb-card-unit">SCORE</span></div>
-      <div className="lb-card-meta">{gamesWord(p.games)}</div>
-      <div className="lb-card-meta">{`Avg ${num(p.average)} · Best ${num(p.best)}`}</div>
+      <BestGame rung={bestGameRung(p.best)} />
       <div className="lb-card-domains"><Domains rungs={rungs} compact /></div>
     </li>
   )
@@ -418,10 +430,12 @@ export default function LeaderboardPage() {
         .lb-card-rank { font-family: var(--font-display); font-size: 48px; line-height: 1; }
         .lb-card-name { font-family: var(--font-label); font-weight: 700; font-size: 15px; color: #fff; margin: 6px 0 8px;
           overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .lb-card-tags { display: flex; justify-content: center; align-items: center; gap: 6px; margin-bottom: 12px; }
-        .lb-card-score { font-family: var(--font-display); font-size: 32px; color: #fff; line-height: 1; }
-        .lb-card-unit { font-size: 13px; color: #666; margin-left: 4px; }
-        .lb-card-meta { font-family: var(--font-label); font-weight: 700; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #777; margin-top: 4px; }
+        .lb-card-tags { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-bottom: 14px; }
+        .lb-card-tags .lb-colour { gap: 9px; padding: 7px 16px 7px 10px; font-size: 18px; }
+        .lb-card-tags .lb-div { font-size: 13px; padding: 4px 12px; color: #aaa; border-color: #333; }
+        .lb-best { border: 1px solid #1e1e1e; border-radius: 10px; padding: 8px 4px; }
+        .lb-best-label { font-family: var(--font-label); font-weight: 700; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #666; margin-bottom: 5px; }
+        .lb-best-grade { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-label); font-weight: 700; font-size: 14px; color: #ddd; }
         .lb-card-domains { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid #1e1e1e; text-align: left; }
         .lb-strip-gap { flex: 0 0 auto; align-self: center; color: #444; font-size: 14px; letter-spacing: 0.3em; }
         .lb-strip-nav { display: flex; gap: 8px; }
