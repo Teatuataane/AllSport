@@ -2,6 +2,14 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.64.0.0] - 2026-11-24
+
+### Changed
+- **More than one game can be live at once** (multi-location games step 6). HQ and a school game can now run at the same time. New Game only refuses a second session of the same game.
+- **HOME shows a Join card for every live game** (Tāne): the player's own game (one they are registered to) first, the rest under it, each with its site.
+- **The PLAY / RUN button** opens the game you are running, or the only live game, or your own game. When several are live and none is clearly yours, it goes to HOME's Join cards, still green.
+- **The leaderboard** shows a live banner for each game, named by site when there is more than one.
+
 ## [0.63.0.0] - 2026-11-23
 
 ### Added

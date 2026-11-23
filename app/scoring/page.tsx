@@ -21,6 +21,7 @@ import { matchWeeklyGame, nzWallClock, startableGames } from '@/lib/weeklyGames'
 import { loadOwnKaiarahi } from '@/lib/kaiarahiData'
 import GamePicker, { choiceReady, type GameChoice } from '@/components/play/GamePicker'
 import type { Pin } from '@/lib/sites'
+import { LIVE_GAME_COLUMNS, gameAlreadyLive, liveOnly, type LiveGameRow } from '@/lib/liveGames'
 
 export default function ScoringSetup() {
   const router = useRouter()
@@ -99,15 +100,16 @@ export default function ScoringSetup() {
     try {
       const supabase = createClient()
 
-      // Guard: reject if a session is already active
-      const { count } = await supabase
-        .from('sessions')
-        .select('*', { count: 'exact', head: true })
-        .eq('is_active', true)
-      if (count && count > 0) {
-        setError('A session is already active — end it before starting a new one.')
-        setLoading(false)
-        return
+      // Several games may be live at once (v0.64.0.0), but not the same game
+      // twice: two sessions of one game would split its players and places.
+      if (choice?.kind === 'game') {
+        const { data: live } = await supabase.from('sessions')
+          .select(LIVE_GAME_COLUMNS).eq('is_active', true).eq('weekly_game_id', choice.gameId)
+        if (gameAlreadyLive(liveOnly((live ?? []) as LiveGameRow[]), choice.gameId)) {
+          setError('That game is already on. Open it from HOME, or end it first.')
+          setLoading(false)
+          return
+        }
       }
 
       // started_at and session_date come from ONE derivation so they cannot
