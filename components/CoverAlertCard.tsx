@@ -5,14 +5,20 @@
 // Until push and email land, being told means this card on HOME: the covers
 // this Kaiārahi could claim, and for a Kaiwhakawā the ones still unfilled 48
 // hours out. Read once per visit, only for a Kaiārahi; links to the panel.
+//
+// Step 8 adds "Only 2 coming. Still on?" for the Kaiārahi leading a game in
+// the next two hours (a Kaiwhakawā sees it for any game nobody leads), so they
+// can cancel with the reason "Not enough players" before people travel.
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase-browser'
 import { loadWeeklyBoard, gamesV2Live } from '@/lib/weeklyGamesData'
-import { dateLabel, formatTime, nzWallClock } from '@/lib/weeklyGames'
+import { dateLabel, dayStatus, formatTime, nextGameDate, nzWallClock } from '@/lib/weeklyGames'
+import { countsKey, fewComingPrompt, FEW_HOURS } from '@/lib/bookings'
+import { loadCounts } from '@/lib/bookingsData'
 import { loadOwnKaiarahi } from '@/lib/kaiarahiData'
-import { openCovers, rosterWindow, unfilledAlerts, untilLabel } from '@/lib/roster'
+import { leadFor, minutesUntil, openCovers, rosterWindow, unfilledAlerts, untilLabel } from '@/lib/roster'
 import { loadRoster } from '@/lib/rosterData'
 import type { KaiarahiLevel } from '@/lib/kaiarahi'
 
@@ -31,7 +37,7 @@ export default function CoverAlertCard({ userId, level }: { userId: string; leve
       loadWeeklyBoard(supabase, null),
       loadRoster(supabase, from, to),
       loadOwnKaiarahi(supabase, userId, null, nzWallClock(now).date),
-    ]).then(([board, roster, own]) => {
+    ]).then(async ([board, roster, own]) => {
       if (cancelled || !board || !gamesV2Live(board) || !roster) return
       const site = (id: string) => board.sites.find(s => s.id === id)?.name ?? ''
       const me = { id: userId, level: own.level ?? level, checksCurrent: own.checksCurrent }
@@ -50,6 +56,23 @@ export default function CoverAlertCard({ userId, level }: { userId: string; leve
           key: `c-${c.row.id}`, urgent: false,
           text: `Cover needed: ${dateLabel(c.date, now)} ${formatTime(c.game.start_time)} · ${site(c.game.site_id)}`,
         })
+      }
+      // Few coming: games this Kaiārahi leads that start within two hours.
+      const soon = board.games
+        .map(g => ({ g, date: nextGameDate(g, now) }))
+        .filter(({ g, date }) => {
+          const m = minutesUntil(g, date, now)
+          if (m <= 0 || m > FEW_HOURS * 60) return false
+          const lead = leadFor(g, date, roster)
+          return lead === userId || (lead === null && me.level === 'head')
+        })
+      if (soon.length > 0) {
+        const counts = await loadCounts(supabase, soon.map(({ g, date }) => ({ gameId: g.id, date })))
+        if (cancelled) return
+        for (const { g, date } of soon) {
+          const ask = fewComingPrompt(g, date, counts?.get(countsKey(g.id, date)), now, dayStatus(g.id, date, board.notices).cancelled)
+          if (ask) out.unshift({ key: `f-${g.id}`, urgent: true, text: `${ask} ${formatTime(g.start_time)} · ${site(g.site_id)}` })
+        }
       }
       setLines(out.slice(0, 4))
     }).catch(() => {})

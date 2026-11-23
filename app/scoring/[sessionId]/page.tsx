@@ -35,6 +35,7 @@ import { useSessionResults, type SaveJob, type SessionResult } from '@/lib/useSe
 import { nextUnscored } from '@/lib/nextEvent'
 import GameBanner from '@/components/play/GameBanner'
 import WeeklyGameOffer from '@/components/play/WeeklyGameOffer'
+import ComingList from '@/components/play/ComingList'
 import Toast, { ToastButton, ToastText } from '@/components/play/Toast'
 import { averageBefore, awardsForGame, nextStep } from '@/lib/gameReport'
 import { ColourScore, EarnedColours, NextTime, PlacementHeader } from '@/components/GameReportParts'
@@ -1621,6 +1622,11 @@ export default function SessionPage() {
                 <div style={{ color: 'var(--red)', fontWeight: 700, fontFamily: 'var(--font-display)', fontSize: '18px' }}>Session Ended</div>
                 <div style={{ color: 'var(--grey)', fontSize: '13px', marginTop: '4px' }}>Score submission is locked</div>
               </div>
+            )}
+
+            {/* Who said Yes for today (step 8), to tick off as they arrive */}
+            {typeof session?.weekly_game_id === 'string' && typeof session?.started_at === 'string' && !sessionEnded && (
+              <ComingList weeklyGameId={session.weekly_game_id} startedAt={session.started_at} hereIds={judgeRoster.registeredIds} />
             )}
 
             {/* Player chips */}

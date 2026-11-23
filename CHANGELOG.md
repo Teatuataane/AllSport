@@ -2,6 +2,20 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.67.0.0] - 2026-11-24
+
+### Added
+- **Coming?** (multi-location games step 8, bookings). Under each weekly game a player has joined, HOME asks "Coming tomorrow? Yes / Not this time" for the next date. It stands out from 4pm the day before. A second tap takes the answer back, and answers close when the game starts. Booking is never needed to play.
+- **Parents answer for their children** at once from their own HOME, one Yes / Not this time per child registered to the game.
+- **Counts on HOME:** "6 coming · 3 not · 11 haven't said". Players see counts only, never names.
+- **The Kaiārahi sees who said Yes** on the game screen and ticks them off as they arrive. Anyone who has scored is ticked already.
+- **"Only 2 coming. Still on?"** on HOME for the Kaiārahi leading a game in the next two hours with fewer than four coming.
+- The Kaiwhakawā's game list shows each registered player's answer.
+
+### Changed
+- Away dates become a "Not this time". Until the migration is applied, HOME keeps "Can't make it" as before.
+- Migration `20261123214052_bookings.sql` (not yet applied). Answers are written only through `set_booking`. Push, email and the signed email links for parents come with the push and email work.
+
 ## [0.66.0.0] - 2026-11-24
 
 ### Added

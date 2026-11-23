@@ -10,6 +10,8 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { addDays, isUpcoming, nextGameDate, nzWallClock, type GameNotice, type Site, type WeeklyGame } from '@/lib/weeklyGames'
+import { answerKey, type Answer, type BookingCounts } from '@/lib/bookings'
+import { loadAnswers, loadCounts } from '@/lib/bookingsData'
 
 type PgError = { code?: string; message?: string } | null | undefined
 
@@ -24,19 +26,27 @@ export type WeeklyBoard = {
   notices: GameNotice[]
   /** Weekly game ids the player is registered to. */
   mine: Set<string>
-  /** `${gameId}|${date}` the player said they will miss. */
-  away: Set<string>
+  /**
+   * Registrations of the player's children, when a parent views their own
+   * HOME: a parent answers "Coming?" for each child at once (step 8).
+   */
+  family: Map<string, Set<string>>
+  /** Answers by answerKey(game, date, player), for the player and `family`. */
+  answers: Map<string, Answer>
+  /** False until 20261123214052: answers are away dates and Yes is not kept. */
+  bookingsLive: boolean
+  /** Counts for each shown game's next date, by countsKey. Null when not live. */
+  counts: Map<string, BookingCounts> | null
 }
-
-export const awayKey = (gameId: string, date: string) => `${gameId}|${date}`
 
 /**
  * Sites, active weekly games, upcoming notices and (with a player) their
- * registrations and absences. Null when the tables are not live, or when the
- * timetable itself fails to load.
+ * registrations, answers and the counts. Null when the tables are not live, or
+ * when the timetable itself fails to load. `familyIds`: the children a parent
+ * may answer for, when the parent is viewing their own HOME.
  */
 export async function loadWeeklyBoard(
-  supabase: SupabaseClient, playerId: string | null, now: Date = new Date(),
+  supabase: SupabaseClient, playerId: string | null, now: Date = new Date(), familyIds: string[] = [],
 ): Promise<WeeklyBoard | null> {
   const today = nzWallClock(now).date
   const [sitesRes, gamesRes, noticesRes] = await Promise.all([
@@ -60,18 +70,28 @@ export async function loadWeeklyBoard(
   const notices = noticesRes.error ? [] : (noticesRes.data ?? []) as GameNotice[]
 
   const mine = new Set<string>()
-  const away = new Set<string>()
+  const family = new Map<string, Set<string>>()
+  let answers = new Map<string, Answer>()
+  let bookingsLive = true
+  let counts: Map<string, BookingCounts> | null = null
   if (playerId) {
-    const [memRes, awayRes] = await Promise.all([
-      supabase.from('weekly_game_members').select('weekly_game_id').eq('player_id', playerId).is('left_at', null),
-      supabase.from('weekly_game_absences').select('weekly_game_id, game_date').eq('player_id', playerId).gte('game_date', today),
+    const ids = [playerId, ...familyIds.filter(id => id !== playerId)]
+    const [memRes, loaded, countsRes] = await Promise.all([
+      supabase.from('weekly_game_members').select('weekly_game_id, player_id').in('player_id', ids).is('left_at', null),
+      loadAnswers(supabase, ids, today),
+      loadCounts(supabase, games.map(g => ({ gameId: g.id, date: nextGameDate(g, now) }))),
     ])
-    for (const r of (memRes.data ?? []) as { weekly_game_id: string }[]) mine.add(r.weekly_game_id)
-    for (const r of (awayRes.data ?? []) as { weekly_game_id: string; game_date: string }[]) {
-      away.add(awayKey(r.weekly_game_id, r.game_date))
+    for (const r of (memRes.data ?? []) as { weekly_game_id: string; player_id: string }[]) {
+      if (r.player_id === playerId) { mine.add(r.weekly_game_id); continue }
+      const set = family.get(r.player_id) ?? new Set<string>()
+      set.add(r.weekly_game_id)
+      family.set(r.player_id, set)
     }
+    answers = loaded.answers
+    bookingsLive = loaded.live
+    counts = countsRes
   }
-  return { sites, games, notices, mine, away }
+  return { sites, games, notices, mine, family, answers, bookingsLive, counts }
 }
 
 // Columns added by 20261123035106. Until it is applied, the same read without
@@ -121,19 +141,6 @@ export async function leaveWeeklyGame(supabase: SupabaseClient, gameId: string, 
   return error?.message ?? null
 }
 
-/** "Can't make it" for one date, or take it back. */
-export async function setAway(
-  supabase: SupabaseClient, gameId: string, playerId: string, date: string, away: boolean,
-): Promise<string | null> {
-  const { error } = away
-    ? await supabase.from('weekly_game_absences').insert({ weekly_game_id: gameId, player_id: playerId, game_date: date })
-    : await supabase.from('weekly_game_absences').delete()
-      .eq('weekly_game_id', gameId).eq('player_id', playerId).eq('game_date', date)
-  // Tapping twice on a slow phone inserts a duplicate; that is already done.
-  if (error && error.code === '23505') return null
-  return error?.message ?? null
-}
-
 /** Is this player registered to this weekly game? Null when not live. */
 export async function isRegistered(supabase: SupabaseClient, gameId: string, playerId: string): Promise<boolean | null> {
   const { data, error } = await supabase.from('weekly_game_members')
@@ -155,12 +162,12 @@ export async function loadWeeklyGame(
 
 // ── Kaiwhakawā ───────────────────────────────────────────────────────────────
 
-export type RosterRow = { player_id: string; name: string; away: boolean }
+export type RosterRow = { player_id: string; name: string; answer: Answer | null }
 
 /**
  * Who is registered to each weekly game, with names from players_public and
- * whether they said they will miss the game's next date. RLS lets only a
- * kaiwhakawā read other players' rows.
+ * their answer for the game's next date. RLS lets only a kaiwhakawā read
+ * other players' rows.
  */
 export async function loadRosters(
   supabase: SupabaseClient, games: WeeklyGame[], now: Date = new Date(),
@@ -169,12 +176,11 @@ export async function loadRosters(
   if (games.length === 0) return out
   const ids = games.map(g => g.id)
   const today = nzWallClock(now).date
-  const [memRes, awayRes] = await Promise.all([
-    supabase.from('weekly_game_members').select('weekly_game_id, player_id').in('weekly_game_id', ids).is('left_at', null),
-    supabase.from('weekly_game_absences').select('weekly_game_id, player_id, game_date').in('weekly_game_id', ids).gte('game_date', today),
-  ])
+  const memRes = await supabase.from('weekly_game_members')
+    .select('weekly_game_id, player_id').in('weekly_game_id', ids).is('left_at', null)
   const members = (memRes.data ?? []) as { weekly_game_id: string; player_id: string }[]
   const playerIds = [...new Set(members.map(m => m.player_id))]
+  const { answers } = await loadAnswers(supabase, playerIds, today)
   const names = new Map<string, string>()
   if (playerIds.length > 0) {
     const { data } = await supabase.from('players_public')
@@ -183,15 +189,13 @@ export async function loadRosters(
       names.set(p.id, p.display_name || p.username || 'Player')
     }
   }
-  const away = new Set(((awayRes.data ?? []) as { weekly_game_id: string; player_id: string; game_date: string }[])
-    .map(a => `${a.weekly_game_id}|${a.player_id}|${a.game_date}`))
   const nextDate = new Map(games.map(g => [g.id, nextGameDate(g, now)]))
   for (const m of members) {
     const list = out.get(m.weekly_game_id) ?? []
     list.push({
       player_id: m.player_id,
       name: names.get(m.player_id) ?? 'Player',
-      away: away.has(`${m.weekly_game_id}|${m.player_id}|${nextDate.get(m.weekly_game_id)}`),
+      answer: answers.get(answerKey(m.weekly_game_id, nextDate.get(m.weekly_game_id) ?? '', m.player_id)) ?? null,
     })
     out.set(m.weekly_game_id, list)
   }

@@ -2,7 +2,13 @@
 // A player registers once to a weekly game and hears about every date of it
 // (Tāne, 18 Nov 2026). This card lists each site's weekly games with the next
 // date, whether that date is on, cancelled or moved, the kaiwhakawā's notices,
-// and Join / Leave / "Can't make it". Registering is never needed to play.
+// and Join / Leave. Registering is never needed to play.
+//
+// Step 8 (bookings): under each joined game, "Coming tomorrow? Yes / Not this
+// time" for the next date, for the player and, when a parent views their own
+// HOME, each child registered to it, plus the counts ("6 coming · 3 not").
+// It stands out from 4pm the day before, when the question is asked. Until
+// the bookings migration is applied the old "Can't make it" stays.
 //
 // Props only (no Supabase) so it is component-tested; the page does the writes.
 
@@ -11,14 +17,29 @@ import {
   dateLabel, dayStatus, nextGameDate, slotLabel, sortWeekly,
   type GameNotice, type Site, type WeeklyGame,
 } from '@/lib/weeklyGames'
+import {
+  answerKey, askOpen, canAnswer, countsKey, countsLine, nextAnswer, questionLabel,
+  type Answer, type BookingCounts,
+} from '@/lib/bookings'
+
+/** A child a parent may answer for, and the games the child is registered to. */
+export type FamilyEntry = { id: string; name: string; games: Set<string> }
 
 export type WeeklyGamesCardProps = {
   sites: Site[]
   games: WeeklyGame[]
   notices: GameNotice[]
   mine: Set<string>
-  /** `${gameId}|${date}` the player will miss. */
-  away: Set<string>
+  /** Whose card this is (the active player). */
+  playerId: string
+  /** Children the viewer answers for too (a parent on their own HOME). */
+  family?: FamilyEntry[]
+  /** By answerKey(game, date, player). */
+  answers: Map<string, Answer>
+  /** False before the bookings migration: only "Can't make it" works. */
+  bookingsLive?: boolean
+  /** By countsKey(game, date); null or missing: no counts shown. */
+  counts?: Map<string, BookingCounts> | null
   now?: Date
   /** Whose registration this is when a parent is viewing a child. */
   who?: string | null
@@ -27,7 +48,7 @@ export type WeeklyGamesCardProps = {
   error?: string
   onJoin: (gameId: string) => void
   onLeave: (gameId: string) => void
-  onAway: (gameId: string, date: string, away: boolean) => void
+  onAnswer: (gameId: string, date: string, playerId: string, answer: Answer | null) => void
 }
 
 const label = {
@@ -36,11 +57,13 @@ const label = {
 }
 
 export default function WeeklyGamesCard({
-  sites, games: allGames, notices, mine, away, now = new Date(), who, busy, error, onJoin, onLeave, onAway,
+  sites, games: allGames, notices, mine, playerId, family = [], answers, bookingsLive = true, counts, now = new Date(),
+  who, busy, error, onJoin, onLeave, onAnswer,
 }: WeeklyGamesCardProps) {
   // Weekly games only (a one-off is found on Find a game), and an unlisted one
-  // (a school game) only for someone already registered to it.
-  const games = allGames.filter(g => !g.one_off_date && (g.listed !== false || mine.has(g.id)))
+  // (a school game) only for someone in the household registered to it.
+  const games = allGames.filter(g => !g.one_off_date
+    && (g.listed !== false || mine.has(g.id) || family.some(f => f.games.has(g.id))))
   if (games.length === 0) return null
   const bySite = [...sites].sort((a, b) => a.name.localeCompare(b.name))
     .map(site => ({ site, games: sortWeekly(games.filter(g => g.site_id === site.id)) }))
@@ -77,8 +100,9 @@ export default function WeeklyGamesCard({
           {siteGames.map(g => (
             <GameRow
               key={g.id} game={g} notices={notices} now={now}
-              joined={mine.has(g.id)} away={away} busy={busy === g.id}
-              onJoin={onJoin} onLeave={onLeave} onAway={onAway}
+              joined={mine.has(g.id)} playerId={playerId} family={family} answers={answers}
+              bookingsLive={bookingsLive} counts={counts ?? null} busy={busy === g.id}
+              onJoin={onJoin} onLeave={onLeave} onAnswer={onAnswer}
             />
           ))}
         </div>
@@ -87,24 +111,39 @@ export default function WeeklyGamesCard({
   )
 }
 
-function GameRow({ game, notices, now, joined, away, busy, onJoin, onLeave, onAway }: {
+function GameRow({
+  game, notices, now, joined, playerId, family, answers, bookingsLive, counts, busy, onJoin, onLeave, onAnswer,
+}: {
   game: WeeklyGame
   notices: GameNotice[]
   now: Date
   joined: boolean
-  away: Set<string>
+  playerId: string
+  family: FamilyEntry[]
+  answers: Map<string, Answer>
+  bookingsLive: boolean
+  counts: Map<string, BookingCounts> | null
   busy: boolean
   onJoin: (gameId: string) => void
   onLeave: (gameId: string) => void
-  onAway: (gameId: string, date: string, away: boolean) => void
+  onAnswer: (gameId: string, date: string, playerId: string, answer: Answer | null) => void
 }) {
   const date = nextGameDate(game, now)
   const day = dateLabel(date, now)
   // 'today', 'tomorrow' or 'Sat 21 Nov', for the middle of a sentence.
   const when = day === 'Today' || day === 'Tomorrow' ? day.toLowerCase() : day
   const status = dayStatus(game.id, date, notices)
-  const isAway = away.has(`${game.id}|${date}`)
+  const myAnswer = answers.get(answerKey(game.id, date, playerId))
+  const isAway = myAnswer === 'no'
   const news = status.cancelled || status.venue || status.notices.length > 0
+  // Everyone in the household registered to this game answers for this date.
+  const people = [
+    ...(joined ? [{ id: playerId, name: 'You' }] : []),
+    ...family.filter(f => f.games.has(game.id)).map(f => ({ id: f.id, name: f.name })),
+  ]
+  const answering = bookingsLive && !status.cancelled && people.length > 0 && canAnswer(game, date, now)
+  const asking = answering && askOpen(game, date, now) && people.some(p => !answers.has(answerKey(game.id, date, p.id)))
+  const tally = status.cancelled ? null : countsLine(counts?.get(countsKey(game.id, date)))
 
   return (
     <div data-testid={`weekly-game-${game.id}`} style={{
@@ -117,8 +156,9 @@ function GameRow({ game, notices, now, joined, away, busy, onJoin, onLeave, onAw
             <span>Next: {day}</span>
             {status.cancelled && <Chip tone="red">Cancelled</Chip>}
             {!status.cancelled && status.venue && <Chip tone="amber">Moved</Chip>}
-            {joined && isAway && !status.cancelled && <Chip tone="grey">You are away</Chip>}
+            {joined && isAway && !status.cancelled && <Chip tone="grey">Not coming</Chip>}
           </div>
+          {tally && <div style={{ fontSize: 12.5, color: 'var(--grey-light)', marginTop: 3 }}>{tally}</div>}
         </div>
         {joined ? (
           <span style={{
@@ -160,10 +200,36 @@ function GameRow({ game, notices, now, joined, away, busy, onJoin, onLeave, onAw
         </div>
       )}
 
+      {answering && (
+        <div aria-label={questionLabel(date, now)} role="group" style={{
+          marginTop: 10, padding: '10px 12px', borderRadius: 10,
+          border: `1px solid ${asking ? 'var(--blue)' : 'var(--border)'}`,
+          background: asking ? 'var(--blue-tint)' : 'transparent',
+        }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--white)' }}>{questionLabel(date, now)}</div>
+          {people.map(p => {
+            const current = answers.get(answerKey(game.id, date, p.id))
+            return (
+              <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+                {people.length > 1 && (
+                  <span style={{ fontSize: 13.5, color: 'var(--grey-light)', minWidth: 72, flexGrow: 1 }}>{p.name}</span>
+                )}
+                <AnswerButton label="Yes" chosen={current === 'yes'} disabled={busy}
+                  name={people.length > 1 ? `${p.name}: Yes` : undefined}
+                  onClick={() => onAnswer(game.id, date, p.id, nextAnswer(current, 'yes'))} />
+                <AnswerButton label="Not this time" chosen={current === 'no'} disabled={busy}
+                  name={people.length > 1 ? `${p.name}: Not this time` : undefined}
+                  onClick={() => onAnswer(game.id, date, p.id, nextAnswer(current, 'no'))} />
+              </div>
+            )
+          })}
+        </div>
+      )}
+
       {joined && (
         <div style={{ display: 'flex', gap: 16, marginTop: 8, flexWrap: 'wrap' }}>
-          {!status.cancelled && (
-            <TextButton disabled={busy} onClick={() => onAway(game.id, date, !isAway)}>
+          {!bookingsLive && !status.cancelled && (
+            <TextButton disabled={busy} onClick={() => onAnswer(game.id, date, playerId, isAway ? null : 'no')}>
               {isAway ? `I can come ${when} after all` : `Can't make it ${when}`}
             </TextButton>
           )}
@@ -171,6 +237,22 @@ function GameRow({ game, notices, now, joined, away, busy, onJoin, onLeave, onAw
         </div>
       )}
     </div>
+  )
+}
+
+function AnswerButton({ label: text, chosen, disabled, name, onClick }: {
+  label: string; chosen: boolean; disabled?: boolean; name?: string; onClick: () => void
+}) {
+  return (
+    <button type="button" className="press" aria-pressed={chosen} aria-label={name} disabled={disabled} onClick={onClick} style={{
+      ...label, fontSize: 13, minHeight: 40, padding: '0 16px', borderRadius: 999, cursor: 'pointer',
+      color: chosen ? '#0a0a0a' : 'var(--white)',
+      background: chosen ? (text === 'Yes' ? 'var(--green)' : 'var(--grey-light)') : 'transparent',
+      border: `1px solid ${chosen ? 'transparent' : 'var(--border)'}`,
+      opacity: disabled ? 0.6 : 1,
+    }}>
+      {text}
+    </button>
   )
 }
 
