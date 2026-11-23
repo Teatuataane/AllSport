@@ -4072,3 +4072,7 @@ Players said pages loaded slowly. Nearly every signed-in page is drawn in the br
 ## Fewer requests (v0.58.0.0, 23 Nov 2026)
 
 Step 2 of the speed plan. Measured as anon against production: `stats_bundle` 426 KB (HOME read it on every visit for the "best event" tie-break), `leaderboard_page` 435 KB of which 405 KB was the same bundle the leaderboard no longer read, all matches 19 KB plus plain game results 171 KB per page that grades. HOME now breaks the tie on the exact score; the leaderboard reads `grade_awards` and `sessions` directly (no heal; pg_cron closes games, `isLiveSession` hides one past 100 minutes); the browser shares the match read for 60 seconds and every match write calls `forgetLoadedMatches()`. Joining HOME's grade reads into one RPC was not done: it needs a migration and the grading rules live in TypeScript. Prefetching the next page's data was not done either: it would add database load, which is the thing being cut.
+
+## Speed Insights (v0.59.0.0, 23 Nov 2026)
+
+Step 3 of the speed plan. Tāne asked for real data from players' phones. `@vercel/speed-insights` 1.2.0 is mounted in the root layout through `components/SpeedTiming.tsx`, whose `beforeSend` cuts the query string and hash (join links carry `?code=`). No cookie and no player id; the script and data use our own origin, so the CSP is unchanged. The privacy policy promised "no analytics", so it was reworded to say pages are timed through Vercel without identifying anyone. It must be switched on once in the Vercel project (Speed Insights tab) before any data arrives.

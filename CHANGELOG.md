@@ -2,6 +2,14 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.59.0.0] - 2026-11-23
+
+### Added
+- **Real load times from players' phones** (Tāne). Vercel Speed Insights (`@vercel/speed-insights` 1.2.0, `components/SpeedTiming.tsx`) records how long each page takes on the devices players use, so speed work rests on real numbers. It sends the page's route and timings, plus the device type, browser and country; no cookie, no player id, and the query string is cut before sending (a join link carries a game code). It needs switching on once in the Vercel dashboard.
+
+### Changed
+- The privacy policy says the site measures page speed through Vercel, and that this does not identify anyone (last updated 23 November 2026).
+
 ## [0.58.0.0] - 2026-11-23
 
 ### Changed

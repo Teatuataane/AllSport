@@ -9,7 +9,7 @@ export const metadata = {
 }
 
 // Last substantive review of this page. Update whenever the content changes.
-const LAST_UPDATED = '15 September 2026'
+const LAST_UPDATED = '23 November 2026'
 
 // Role address, not a personal one: this is published on a public page, it is
 // the Privacy Act contact of record, and it has to outlive whoever is currently
@@ -177,7 +177,7 @@ const thirdParties = [
     name: 'Vercel',
     role: 'Website hosting',
     detail:
-      'Serves the site. Its servers automatically log request information including your IP address, browser type and the pages you request, for security and reliability. Vercel Inc. is a United States company.',
+      'Serves the site. Its servers automatically log request information including your IP address, browser type and the pages you request, for security and reliability. We also use Vercel Speed Insights to see how fast pages load on real phones: it records how long each page took, the page (never your name, account or anything you typed), and the device type, browser and country. It sets no cookie and does not follow you between visits. Vercel Inc. is a United States company.',
   },
   {
     name: 'Google Fonts',
@@ -291,7 +291,7 @@ export default function PrivacyPolicy() {
               ['Your scores are public', 'AllSport is a competition. Your display name, scores, placements, colour, domain colours and season points are visible to anyone — that is how a leaderboard works.'],
               ['Your contact details are not', 'Your email, phone number, date of birth and bodyweight are never shown anywhere on the site. They are for kaiwhakawā to run sessions, keep you safe and grade you fairly.'],
               ['The wellbeing check-in is yours', 'Nobody at AllSport can read your individual answers. Kaiwhakawā only ever see group averages, and only when at least three people have answered.'],
-              ['We do not sell or advertise', 'No advertising, no tracking pixels, no analytics, no data broker. We have never sold personal information and we will not.'],
+              ['We do not sell or advertise', 'No advertising, no tracking pixels, no visitor tracking, no data broker. We measure only how fast pages load, never who you are. We have never sold personal information and we will not.'],
               ['You can leave', 'One button on your profile erases your details for good. Another downloads everything we hold about you. Neither needs to go through us.'],
               ['You choose your name', 'Play under a username. You never have to show your legal name to other players.'],
             ].map(([title, body]) => (
@@ -453,7 +453,8 @@ export default function PrivacyPolicy() {
           <p className="privacy-p" style={{ marginTop: '16px', marginBottom: '28px' }}>
             We are a small charity and we do not run our own servers. These are the only companies your
             information reaches, and each is used strictly to run AllSport. We do not use advertising networks,
-            analytics services, social media pixels or data brokers — there are none on this site.
+            visitor analytics, social media pixels or data brokers — there are none on this site. The one
+            measurement we take is how fast pages load (Vercel, below), and it does not identify you.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {thirdParties.map(t => (
