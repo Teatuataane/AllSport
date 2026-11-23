@@ -27,7 +27,8 @@ import PlayerTabs, { ViewingAsBanner } from '@/components/PlayerTabs'
 import GradesCard from '@/components/GradesCard'
 import { ColourAvatar, GameOnCard, TrainingOnCard, NextSessionLine, HomeLink } from '@/components/HomeParts'
 import { loadOpenTraining } from '@/lib/training'
-import { isLiveSession, pollWhileVisible } from '@/lib/livePoll'
+import { pollWhileVisible } from '@/lib/livePoll'
+import { LIVE_GAME_COLUMNS, liveOnly, orderLiveGames, type LiveGameRow } from '@/lib/liveGames'
 import { loadGradeInputs, gradeStateFrom, type GradeState } from '@/lib/loadGrades'
 import { GRADING_RULES_VERSION } from '@/lib/grading'
 import { readPageCache, writePageCache } from '@/lib/pageCache'
@@ -92,7 +93,8 @@ function DashboardInner() {
     seasonPRs?: number
   } | null>(null)
   const [eventsWon, setEventsWon] = useState<number | null>(null)
-  const [activeSession, setActiveSession] = useState<any>(null)
+  // Every live game (several can run at once since v0.64.0.0). Null until read.
+  const [liveGames, setLiveGames] = useState<LiveGameRow[] | null>(null)
   // Only the QR link's ?code= joins by code now; nobody types one.
   const [joinError, setJoinError] = useState('')
 
@@ -237,10 +239,10 @@ function DashboardInner() {
         // No close_expired_sessions() first: pg_cron closes games every 5
         // minutes, and a game past its 100 minutes reads as over here anyway
         // (isLiveSession). The RPC was a write on every poll (lib/livePoll.ts).
-        const { data, error } = await supabase.from('sessions').select('*').eq('is_active', true).maybeSingle()
+        const { data, error } = await supabase.from('sessions').select(LIVE_GAME_COLUMNS).eq('is_active', true)
         // A failed poll keeps the last known answer: one flaky request must not
         // take the JOIN button away mid-game.
-        if (!cancelled && !error) setActiveSession(isLiveSession(data) ? data : null)
+        if (!cancelled && !error) setLiveGames(liveOnly((data ?? []) as LiveGameRow[]))
       } finally {
         running = false
       }
@@ -392,7 +394,9 @@ function DashboardInner() {
   const hasPlayed = (counts?.games ?? 0) > 0
   const firstRun = householdLoaded && !hasPlayed
 
-  const game = activeSession ? { id: activeSession.id, location: activeSession.location ?? null } : null
+  // The viewed player's own games first (Tāne, 24 Nov 2026), then the rest.
+  const games = orderLiveGames(liveGames ?? [], weeklyBoard?.mine ?? new Set<string>())
+  const game = games[0] ?? null
 
   return (
     <>
@@ -404,7 +408,9 @@ function DashboardInner() {
         {/* ── 0. A running game is the one action that outranks you ────────── */}
         {/* #join is where the PLAY tab lands when no game is on (useNavState). */}
         <div id="join">
-          {game && <GameOnCard game={game} isJudge={isJudge} error={joinError} />}
+          {games.map((g, i) => (
+            <GameOnCard key={g.id} game={{ id: g.id, location: g.location }} isJudge={isJudge} error={i === 0 ? joinError : ''} />
+          ))}
           {training && (
             <TrainingOnCard
               session={training}

@@ -47,7 +47,7 @@ import { loadSeasonGames, loadGameColours } from '@/lib/leaderboardData'
 import { seasonColourBoard, bestGameRung, type SeasonGame, type GameColourRow, type ColourStanding } from '@/lib/seasonColourBoard'
 import { useActivePlayer } from '@/lib/useActivePlayer'
 import { allRows } from '@/lib/allRows'
-import { isLiveSession } from '@/lib/livePoll'
+import { liveOnly } from '@/lib/liveGames'
 import { RAINBOW, DOMAIN_COLORS } from '@/lib/domainColours'
 import { GradeDot } from '@/components/GradeDot'
 import DomainIcon from '@/components/DomainIcon'
@@ -153,7 +153,7 @@ function Banner() {
 }
 
 // No one is shown leading: a game's places come from colour scores when it closes.
-function LiveGame({ session }: { session: ActiveSession }) {
+function LiveGame({ session, several }: { session: ActiveSession; several: boolean }) {
   return (
     <Link href={`/scoring/${session.id}`} style={{ display: 'block', background: '#0a1a0a', borderBottom: '1px solid #1e2e1e', padding: '18px 0', textDecoration: 'none' }}>
       <div className="container" style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
@@ -162,7 +162,7 @@ function LiveGame({ session }: { session: ActiveSession }) {
           <span style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: '#4DB26E' }} />
         </span>
         <span style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: 13, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#4DB26E' }}>
-          Game live{session.is_championship ? ' · Championship' : ''}
+          Game live{several && session.location ? ` · ${session.location}` : ''}{session.is_championship ? ' · Championship' : ''}
         </span>
         <span style={{ marginLeft: 'auto', fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: 13, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#4DB26E' }}>Watch →</span>
       </div>
@@ -310,7 +310,8 @@ export default function LeaderboardPage() {
   const [grades, setGrades] = useState<NonNullable<LeaderboardPayload['grades']>>([])
   // The season's official games per player, which cap the overall colour. Null = unknown.
   const [gamesPlayed, setGamesPlayed] = useState<Map<string, number> | null>(null)
-  const [activeSession, setActiveSession] = useState<ActiveSession | null>(null)
+  // Every live game: several can run at once since v0.64.0.0.
+  const [liveGames, setLiveGames] = useState<ActiveSession[]>([])
   const [thisYear] = useState(() => nzYear())
   const [seasonYear, setSeasonYear] = useState(thisYear)
   const { activePlayerId } = useActivePlayer()
@@ -371,12 +372,12 @@ export default function LeaderboardPage() {
         seasonGames ? loadGameColours(supabase, seasonGames.map(g => g.id)) : Promise.resolve(null),
         supabase.from('sessions')
           .select('id, session_date, started_at, location, is_championship, is_active')
-          .eq('is_active', true).limit(1).maybeSingle(),
+          .eq('is_active', true).order('started_at'),
       ])
       if (cancelled) return
 
       const awards = awardsRes.error ? null : awardsRes.rows
-      setActiveSession(!live.error && isLiveSession(live.data) ? (live.data as ActiveSession) : null)
+      if (!live.error) setLiveGames(liveOnly((live.data ?? []) as ActiveSession[]))
       setFreshYear(seasonYear)
       // A failed read keeps the saved board on screen rather than blanking it.
       if (saved && (!awards || rosterRes.error || totals == null)) return
@@ -519,7 +520,7 @@ export default function LeaderboardPage() {
 
       <Banner />
 
-      {activeSession && <LiveGame session={activeSession} />}
+      {liveGames.map(g => <LiveGame key={g.id} session={g} several={liveGames.length > 1} />)}
 
       <section className="section" style={{ background: '#0a0a0a', paddingTop: 40 }}>
         <div className="container">

@@ -18,7 +18,8 @@ describe('no page downloads every result for a tie-break', () => {
   it('the leaderboard does not call leaderboard_page (it carried stats_bundle)', () => {
     expect(code('app/leaderboard/page.tsx')).not.toMatch(/leaderboard_page/)
     expect(code('app/leaderboard/page.tsx')).toMatch(/from\('grade_awards'\)\.select\('player_id, domain_number, rung, season_year'\)/)
-    expect(code('app/leaderboard/page.tsx')).toMatch(/isLiveSession\(live\.data\)/)
+    // A game past its 100 minutes reads as over (liveOnly uses isLiveSession); every live game since v0.64.0.0.
+    expect(code('app/leaderboard/page.tsx')).toMatch(/liveOnly\(\(live\.data/)
   })
 })
 
