@@ -127,3 +127,64 @@ describe('migration 20261123202226', () => {
     for (const d of definers) expect(d).toMatch(/SET search_path/)
   })
 })
+
+// ── Second adult (step 7b) ───────────────────────────────────────────────────
+import { ageOn, secondAdultRule, secondReady } from '@/lib/roster'
+
+describe('ageOn', () => {
+  it('counts whole years, turning on the birthday', () => {
+    expect(ageOn('2009-11-24', '2026-11-24')).toBe(17)
+    expect(ageOn('2009-11-25', '2026-11-24')).toBe(16)
+    expect(ageOn(null, '2026-11-24')).toBeNull()
+  })
+})
+
+describe('secondAdultRule (mirrors session_start_blocker)', () => {
+  it('asks for a second at a two-adult game, whoever runs it', () => {
+    expect(secondAdultRule({ two_adults: true }, { level: 'head', age: 40 })).toEqual({ needed: true, mustBeAdult: false })
+  })
+  it('asks a Kaiako under 18 for an adult second at any game', () => {
+    expect(secondAdultRule({ two_adults: false }, { level: 'community', age: 17 })).toEqual({ needed: true, mustBeAdult: true })
+    expect(secondAdultRule(null, { level: 'community', age: 16 })).toEqual({ needed: true, mustBeAdult: true })
+  })
+  it('asks nothing of an adult, or of a Kaiako whose age is unknown, at an ordinary game', () => {
+    expect(secondAdultRule({ two_adults: false }, { level: 'community', age: 18 })).toEqual({ needed: false, mustBeAdult: false })
+    expect(secondAdultRule({ two_adults: false }, { level: 'community', age: null })).toEqual({ needed: false, mustBeAdult: false })
+  })
+})
+
+describe('secondReady', () => {
+  it('needs a Kaiārahi or a named helper', () => {
+    expect(secondReady(null, false)).toBe(false)
+    expect(secondReady({ kind: 'kaiarahi', playerId: 'k' }, true)).toBe(true)
+    expect(secondReady({ kind: 'helper', name: ' ', adult: true }, false)).toBe(false)
+    expect(secondReady({ kind: 'helper', name: 'Ms T', adult: false }, false)).toBe(true)
+  })
+  it('needs the helper confirmed 18 or over for a young Kaiako', () => {
+    expect(secondReady({ kind: 'helper', name: 'Ms T', adult: false }, true)).toBe(false)
+    expect(secondReady({ kind: 'helper', name: 'Ms T', adult: true }, true)).toBe(true)
+  })
+})
+
+describe('migration 20261123205536', () => {
+  const sql = readFileSync('supabase/migrations/20261123205536_two_adults.sql', 'utf8')
+  it('keeps ages private', () => {
+    expect(sql).toMatch(/REVOKE EXECUTE ON FUNCTION public\.age_today\(uuid\), public\.second_is_adult\(uuid, date\) FROM authenticated/)
+  })
+  it('answers the start check only about the caller', () => {
+    const fn = sql.slice(sql.indexOf('FUNCTION public.session_start_blocker'), sql.indexOf('REVOKE EXECUTE ON FUNCTION public.session_start_blocker'))
+    expect(fn).toMatch(/age_today\(auth\.uid\(\)\)/)
+    expect(fn).not.toMatch(/p_player/)
+  })
+  it('guards the start after the runner is stamped', () => {
+    expect('session_zzz_adults_guard' > 'session_zz_runner_guard').toBe(true)
+    expect(sql).toMatch(/CREATE TRIGGER session_zzz_adults_guard\s+BEFORE INSERT ON public\.sessions/)
+  })
+  it('keeps Kaiārahi 16 and over, and Kaimahi 18 and over', () => {
+    expect(sql).toMatch(/must be 16 or over/)
+    expect(sql).toMatch(/Kaimahi or Kaiwhakawā must be 18 or over/)
+  })
+  it('does not enforce the parent-present rule (Tāne, 24 Nov 2026)', () => {
+    expect(sql).toMatch(/parent-present rule for juniors is NOT enforced/)
+  })
+})

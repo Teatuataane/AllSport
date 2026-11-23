@@ -56,3 +56,17 @@ export async function rosterLead(supabase: SupabaseClient, gameId: string, date:
   const { error } = await supabase.rpc('roster_lead', { p_game_id: gameId, p_date: date, p_player_id: playerId })
   return say(error)
 }
+
+/** Record the second adult for a game and date (20261123205536). */
+export async function setSecondAdult(
+  supabase: SupabaseClient, gameId: string, date: string,
+  second: { playerId?: string | null; helperName?: string | null; helperAdult?: boolean },
+): Promise<string | null> {
+  const { error } = await supabase.rpc('set_second_adult', {
+    p_game_id: gameId, p_date: date, p_player_id: second.playerId ?? null,
+    p_helper_name: second.helperName ?? null, p_helper_adult: !!second.helperAdult,
+  })
+  // Before 20261123205536 there is nothing to record and no rule to meet.
+  if (notLive(error)) return null
+  return say(error)
+}

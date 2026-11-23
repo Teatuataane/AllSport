@@ -19,8 +19,9 @@ import EventPlanPicker from '@/components/play/EventPlanPicker'
 import { loadWeeklyBoard, gamesV2Live, createGame, createSite, type WeeklyBoard } from '@/lib/weeklyGamesData'
 import { matchWeeklyGame, nzWallClock, startableGames } from '@/lib/weeklyGames'
 import { loadOwnKaiarahi } from '@/lib/kaiarahiData'
-import { startableToday, rosterWindow, type RosterRow } from '@/lib/roster'
-import { loadRoster } from '@/lib/rosterData'
+import { startableToday, rosterWindow, ageOn, secondAdultRule, secondReady, type RosterRow, type SecondAdult } from '@/lib/roster'
+import { loadRoster, loadDirectory, setSecondAdult, type DirectoryRow } from '@/lib/rosterData'
+import SecondAdultField from '@/components/play/SecondAdultField'
 import GamePicker, { choiceReady, type GameChoice } from '@/components/play/GamePicker'
 import type { Pin } from '@/lib/sites'
 import { LIVE_GAME_COLUMNS, gameAlreadyLive, liveOnly, type LiveGameRow } from '@/lib/liveGames'
@@ -47,21 +48,34 @@ export default function ScoringSetup() {
   // Today's roster (20261123202226): who leads which game. Null before it is
   // live, when the older rule (startableGames) decides.
   const [roster, setRoster] = useState<RosterRow[] | null>(null)
+  // The second adult (20261123205536): for a game with two_adults, or a Kaiako
+  // under 18. Own age comes from the player's own row; nobody else's is read.
+  const [myAge, setMyAge] = useState<number | null>(null)
+  const [directory, setDirectory] = useState<DirectoryRow[]>([])
+  const [second, setSecond] = useState<SecondAdult>(null)
+  // A pop-up made on an earlier try, so a retry does not make a second one.
+  const [madeGameId, setMadeGameId] = useState<string | null>(null)
   useEffect(() => {
     let cancelled = false
     const supabase = createClient()
     ;(async () => {
       const user = await getSessionUser()
       const today = nzWallClock(new Date()).date
-      const [b, me, r] = await Promise.all([
+      const [b, me, r, dir] = await Promise.all([
         loadWeeklyBoard(supabase, null),
         user
-          ? supabase.from('players').select('role').eq('id', user.id).maybeSingle()
-              .then(res => loadOwnKaiarahi(supabase, user.id, (res.data as { role?: string } | null)?.role, today))
+          ? supabase.from('players').select('role, date_of_birth').eq('id', user.id).maybeSingle()
+              .then(res => {
+                const row = res.data as { role?: string; date_of_birth?: string | null } | null
+                if (!cancelled) setMyAge(ageOn(row?.date_of_birth, today))
+                return loadOwnKaiarahi(supabase, user.id, row?.role, today)
+              })
           : Promise.resolve(null),
         loadRoster(supabase, rosterWindow(new Date()).from, today),
+        loadDirectory(supabase),
       ])
       if (cancelled) return
+      setDirectory(dir ?? [])
       setWeekly(b)
       setRoster(r)
       if (user && me) setMine({ id: user.id, ...me })
@@ -99,7 +113,11 @@ export default function ScoringSetup() {
     )
   }
   // Before the migration a game may still be started with no weekly game.
-  const gameReady = v2 ? choiceReady(choice) : true
+  const chosenGame = choice?.kind === 'game' ? weekly?.games.find(g => g.id === choice.gameId) ?? null : null
+  // A pop-up is a community game without two_adults; only a young Kaiako needs a second for one.
+  const adults = secondAdultRule(chosenGame, { level: mine?.level ?? null, age: myAge })
+  const secondOk = !adults.needed || secondReady(second, adults.mustBeAdult)
+  const gameReady = (v2 ? choiceReady(choice) : true) && secondOk
 
   const events = planEvents(plan)
   const allSelected = events.length === 10
@@ -133,9 +151,9 @@ export default function ScoringSetup() {
       // Which game. A pop-up makes its site (if new) and a one-off community
       // game for today first; the database stamps created_by on both, and
       // can_start_game() lets the creator start it.
-      let gameId: string | null = choice?.kind === 'game' ? choice.gameId : null
+      let gameId: string | null = choice?.kind === 'game' ? choice.gameId : madeGameId
       let place = location
-      if (v2 && choice?.kind === 'popup') {
+      if (v2 && choice?.kind === 'popup' && !madeGameId) {
         let siteId = choice.popup.kind === 'site' ? choice.popup.siteId : ''
         if (choice.popup.kind === 'new-site') {
           const made = await createSite(supabase, {
@@ -152,6 +170,16 @@ export default function ScoringSetup() {
         })
         if ('error' in game) throw new Error(game.error)
         gameId = game.id
+        setMadeGameId(game.id)
+      }
+
+      // Record the second adult for today before starting: the database will
+      // not start a two-adult game, or a young Kaiako's game, without one.
+      if (adults.needed && gameId && second) {
+        const err = await setSecondAdult(supabase, gameId, today, second.kind === 'kaiarahi'
+          ? { playerId: second.playerId }
+          : { helperName: second.name, helperAdult: second.adult })
+        if (err) throw new Error(err)
       }
 
       const { data: session, error: sessionError } = await supabase
@@ -172,7 +200,10 @@ export default function ScoringSetup() {
         .select()
         .single()
 
-      if (sessionError) throw sessionError
+      if (sessionError) {
+        // The start guard's words are written for people; drop the prefix.
+        throw new Error(sessionError.message.replace(/^sessions: /, ''))
+      }
 
       const eventsToInsert = events.map(ev => ({
         session_id: session.id,
@@ -260,6 +291,14 @@ export default function ScoringSetup() {
               locating={locating}
             />
           )}
+          {adults.needed && (
+            <SecondAdultField directory={directory} meId={mine?.id ?? null} mustBeAdult={adults.mustBeAdult}
+              twoAdults={!!chosenGame?.two_adults} value={second} onChange={setSecond} />
+          )}
+          {mine?.level === 'community' && (
+            // Not enforced (Tāne, 24 Nov 2026): juniors nearly always play on a parent's phone.
+            <div style={{ fontSize: 13, color: '#888' }}>Juniors at your game need a parent or guardian here.</div>
+          )}
           <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
             <input
               type="checkbox"
@@ -310,7 +349,7 @@ export default function ScoringSetup() {
             opacity: loading ? 0.7 : 1,
           }}
         >
-          {loading ? 'Starting game...' : !gameReady ? 'Choose which game' : allSelected ? 'Start Game →' : `Select ${10 - events.length} more event${10 - events.length !== 1 ? 's' : ''}`}
+          {loading ? 'Starting game...' : !gameReady ? (secondOk ? 'Choose which game' : 'Add the second adult') : allSelected ? 'Start Game →' : `Select ${10 - events.length} more event${10 - events.length !== 1 ? 's' : ''}`}
         </button>
       </div>
     </div>
