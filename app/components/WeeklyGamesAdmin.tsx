@@ -1,11 +1,15 @@
 'use client'
 
-// ─── Kaiwhakawā: weekly games ────────────────────────────────────────────────
-// Who is registered to each weekly game, and the buttons that tell them about
-// its next date: Cancel (rain), Change park, Message, and Back on. Each one
-// writes a game_notices row; HOME shows it to every registered player (phase 1)
-// and phase 2 will push and email the same row. Also adds sites and weekly
-// games, so a second site is a form here, not a code change.
+// ─── Kaiārahi panel: games ───────────────────────────────────────────────────
+// Who is registered to each game, and the buttons that tell them about its next
+// date: Cancel (rain), Change park, Message, and Back on. Each one writes a
+// game_notices row; HOME shows it to every registered player. Also adds sites
+// and games, so a new site is a form here, not a code change.
+//
+// By level (20261123035106, MULTI_LOCATION_PLAN.md §2): a Kaiwhakawā (head)
+// sees every game, manages programmes and makes funded games; any other
+// Kaiārahi sees and manages only the community games they made
+// (public.manages_game). The database refuses anything else; this only hides it.
 //
 // Hidden until migration 20261118010039 is live.
 
@@ -15,8 +19,11 @@ import {
   DAY_NAMES, dateLabel, dayStatus, nextGameDate, slotLabel, sortWeekly, type NoticeKind, type WeeklyGame,
 } from '@/lib/weeklyGames'
 import {
-  loadWeeklyBoard, loadRosters, postNotice, deleteNotice, type RosterRow, type WeeklyBoard,
+  loadWeeklyBoard, loadRosters, postNotice, deleteNotice, gamesV2Live, loadProgrammes, createProgramme,
+  createGame, createSite, type Programme, type RosterRow, type WeeklyBoard,
 } from '@/lib/weeklyGamesData'
+import { gameKind, nzWallClock, isOneOff } from '@/lib/weeklyGames'
+import { pinFromMapUrl } from '@/lib/sites'
 
 const supabase = createClient()
 
@@ -38,34 +45,51 @@ const PROMPTS: Record<Composer['kind'], { button: string; placeholder: string; s
   message: { button: 'Send message', placeholder: 'What players need to know', start: '' },
 }
 
-export default function WeeklyGamesAdmin({ judgeId }: { judgeId: string }) {
+export default function WeeklyGamesAdmin({ judgeId, isHead }: { judgeId: string; isHead: boolean }) {
   const [board, setBoard] = useState<WeeklyBoard | null | undefined>(undefined)
   const [rosters, setRosters] = useState<Map<string, RosterRow[]>>(new Map())
   const [open, setOpen] = useState<string | null>(null)
   const [composer, setComposer] = useState<Composer | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [adding, setAdding] = useState<'site' | 'game' | null>(null)
+  const [adding, setAdding] = useState<'site' | 'game' | 'programme' | null>(null)
+  const [programmes, setProgrammes] = useState<Programme[] | null>(null)
+
+  // A Kaiārahi who is not a head manages only the community games they made.
+  const mineOnly = useCallback((b: WeeklyBoard): WeeklyBoard => isHead ? b : {
+    ...b, games: b.games.filter(g => gameKind(g) === 'community' && g.created_by === judgeId),
+  }, [isHead, judgeId])
 
   const reload = useCallback(async () => {
     const b = await loadWeeklyBoard(supabase, null)
-    setBoard(b)
-    if (b) setRosters(await loadRosters(supabase, b.games))
-  }, [])
+    const shown = b ? mineOnly(b) : b
+    setBoard(shown)
+    if (shown) setRosters(await loadRosters(supabase, shown.games))
+    if (isHead) setProgrammes(await loadProgrammes(supabase))
+  }, [mineOnly, isHead])
 
   useEffect(() => {
     let cancelled = false
     loadWeeklyBoard(supabase, null).then(async b => {
       if (cancelled) return
-      setBoard(b)
-      if (!b) return
-      const r = await loadRosters(supabase, b.games)
-      if (!cancelled) setRosters(r)
+      const shown = b ? mineOnly(b) : b
+      setBoard(shown)
+      if (!shown) return
+      const [r, p] = await Promise.all([
+        loadRosters(supabase, shown.games),
+        isHead ? loadProgrammes(supabase) : Promise.resolve(null),
+      ])
+      if (cancelled) return
+      setRosters(r)
+      setProgrammes(p)
     }).catch(() => { if (!cancelled) setBoard(null) })
     return () => { cancelled = true }
-  }, [])
+  }, [mineOnly, isHead])
 
   if (board === undefined || board === null) return null
+  const v2 = gamesV2Live(board)
+  // Before 20261123035106 only a head may add anything.
+  if (!isHead && !v2) return null
 
   const send = async (gameId: string, date: string, kind: NoticeKind, text: string | null) => {
     setBusy(true)
@@ -85,15 +109,18 @@ export default function WeeklyGamesAdmin({ judgeId }: { judgeId: string }) {
     await reload()
   }
 
-  const sites = [...board.sites].sort((a, b) => a.name.localeCompare(b.name))
+  const allSites = [...board.sites].sort((a, b) => a.name.localeCompare(b.name))
+  // A head sees every site; anyone else the sites of their games and the ones they added.
+  const sites = isHead ? allSites
+    : allSites.filter(s => s.created_by === judgeId || board.games.some(g => g.site_id === s.id))
 
   return (
     <div style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: 12, padding: 20, marginBottom: 20 }}>
       <div style={{ fontFamily: 'var(--font-display)', fontSize: 24, letterSpacing: '0.05em', lineHeight: 1 }}>
-        Weekly games
+        {isHead ? 'Games' : 'Your games'}
       </div>
       <p style={{ fontSize: 13, color: '#888', lineHeight: 1.5, margin: '6px 0 0' }}>
-        A notice goes to everyone registered to that weekly game, about its next date. They see it on HOME.
+        A notice goes to everyone registered to that game, about its next date. They see it on HOME.
       </p>
       {error && <div role="alert" style={{ color: 'var(--red)', fontSize: 13, marginTop: 10 }}>{error}</div>}
 
@@ -102,7 +129,7 @@ export default function WeeklyGamesAdmin({ judgeId }: { judgeId: string }) {
         return (
           <div key={site.id} style={{ marginTop: 18 }}>
             <div style={labelStyle}>{site.name}{site.address ? ` · ${site.address}` : ''}</div>
-            {games.length === 0 && <div style={{ fontSize: 13, color: '#666', marginTop: 8 }}>No weekly games yet.</div>}
+            {games.length === 0 && <div style={{ fontSize: 13, color: '#666', marginTop: 8 }}>No games yet.</div>}
             {games.map(g => (
               <GameAdminRow
                 key={g.id} game={g} board={board} roster={rosters.get(g.id) ?? []}
@@ -122,15 +149,33 @@ export default function WeeklyGamesAdmin({ judgeId }: { judgeId: string }) {
         )
       })}
 
+      {isHead && programmes && (
+        <div style={{ marginTop: 22 }}>
+          <div style={labelStyle}>Programmes</div>
+          {programmes.length === 0 && <div style={{ fontSize: 13, color: '#666', marginTop: 8 }}>No programmes yet. A funded game belongs to one.</div>}
+          {programmes.map(p => (
+            <div key={p.id} style={{ fontSize: 14, marginTop: 8 }}>
+              <span style={{ fontWeight: 600 }}>{p.name}</span>
+              <span style={{ color: '#888' }}> · {p.funder} · {p.starts_on} to {p.ends_on}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div style={{ display: 'flex', gap: 10, marginTop: 18, flexWrap: 'wrap' }}>
-        <SmallButton onClick={() => setAdding(a => (a === 'game' ? null : 'game'))}>+ Weekly game</SmallButton>
+        <SmallButton onClick={() => setAdding(a => (a === 'game' ? null : 'game'))}>+ Game</SmallButton>
         <SmallButton onClick={() => setAdding(a => (a === 'site' ? null : 'site'))}>+ Site</SmallButton>
+        {isHead && programmes && <SmallButton onClick={() => setAdding(a => (a === 'programme' ? null : 'programme'))}>+ Programme</SmallButton>}
       </div>
       {adding === 'site' && (
-        <AddSite onDone={async msg => { if (msg) setError(msg); else { setAdding(null); await reload() } }} />
+        <AddSite v2={v2} onDone={async msg => { if (msg) setError(msg); else { setAdding(null); await reload() } }} />
       )}
       {adding === 'game' && (
-        <AddGame sites={sites} onDone={async msg => { if (msg) setError(msg); else { setAdding(null); await reload() } }} />
+        <AddGame sites={isHead ? allSites : sites} v2={v2} isHead={isHead} programmes={programmes ?? []}
+          onDone={async msg => { if (msg) setError(msg); else { setAdding(null); await reload() } }} />
+      )}
+      {adding === 'programme' && (
+        <AddProgramme onDone={async msg => { if (msg) setError(msg); else { setAdding(null); await reload() } }} />
       )}
     </div>
   )
@@ -164,7 +209,14 @@ function GameAdminRow({
     <div style={{ borderTop: '1px solid #1e1e1e', padding: '12px 0', marginTop: 8 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <div style={{ flexGrow: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 16, fontWeight: 600 }}>{slotLabel(game)}</div>
+          <div style={{ fontSize: 16, fontWeight: 600 }}>
+            {slotLabel(game)}
+            {(game.kind || isOneOff(game) || game.listed === false) && (
+              <span style={{ fontSize: 12, color: '#888', fontWeight: 400 }}>
+                {' '}· {gameKind(game) === 'funded' ? 'Funded' : 'Community'}{isOneOff(game) ? ' · one-off' : ''}{game.listed === false ? ' · unlisted' : ''}{game.two_adults ? ' · two adults' : ''}
+              </span>
+            )}
+          </div>
           <div style={{ fontSize: 13, color: '#888', marginTop: 2 }}>
             Next: {day} · {roster.length} registered{awayCount ? ` (${awayCount} away)` : ''}
             {status.cancelled && <b style={{ color: 'var(--red)', fontWeight: 600 }}> · Cancelled</b>}
@@ -233,7 +285,7 @@ function GameAdminRow({
               setTimeout(() => setRetireArmed(false), 3000)
             }
           }}>
-            {retireArmed ? 'Tap again to stop it' : 'Stop weekly game'}
+            {retireArmed ? 'Tap again to stop it' : 'Stop game'}
           </SmallButton>
         </div>
       )}
@@ -241,43 +293,73 @@ function GameAdminRow({
   )
 }
 
-function AddSite({ onDone }: { onDone: (error: string | null) => void }) {
+function AddSite({ v2, onDone }: { v2: boolean; onDone: (error: string | null) => void }) {
   const [name, setName] = useState('')
   const [address, setAddress] = useState('')
   const [mapUrl, setMapUrl] = useState('')
   const [busy, setBusy] = useState(false)
   const mapOk = !mapUrl.trim() || mapUrl.trim().startsWith('https://')
+  // A Google Maps link carries the pin, so Find a game can put the site on a map.
+  const pin = pinFromMapUrl(mapUrl)
   const save = async () => {
     setBusy(true)
-    const { error } = await supabase.from('sites').insert({
-      name: name.trim(), address: address.trim() || null, map_url: mapUrl.trim() || null,
+    const made = await createSite(supabase, {
+      name, address, map_url: mapUrl, ...(v2 && pin ? { lat: pin.lat, lng: pin.lng } : {}),
     })
     setBusy(false)
-    onDone(error ? `Site not added: ${error.message}` : null)
+    onDone('error' in made ? `Site not added: ${made.error}` : null)
   }
   return (
     <FormBox>
       <Field label="Name"><input value={name} onChange={e => setName(e.target.value)} maxLength={80} style={inputStyle} /></Field>
       <Field label="Address"><input value={address} onChange={e => setAddress(e.target.value)} maxLength={200} style={inputStyle} /></Field>
       <Field label="Map link (https, optional)"><input value={mapUrl} onChange={e => setMapUrl(e.target.value)} style={inputStyle} /></Field>
+      {v2 && mapUrl.trim() && (
+        <div style={{ fontSize: 13, color: pin ? '#8c8' : 'var(--amber)' }}>
+          {pin ? 'Pinned from the link.' : 'No pin in that link. Open the place in Google Maps and copy the link from the address bar.'}
+        </div>
+      )}
       <SmallButton primary="blue" disabled={busy || !name.trim() || !mapOk} onClick={save}>Add site</SmallButton>
     </FormBox>
   )
 }
 
-function AddGame({ sites, onDone }: { sites: WeeklyBoard['sites']; onDone: (error: string | null) => void }) {
+function AddGame({ sites, v2, isHead, programmes, onDone }: {
+  sites: WeeklyBoard['sites']; v2: boolean; isHead: boolean; programmes: Programme[]
+  onDone: (error: string | null) => void
+}) {
   const [siteId, setSiteId] = useState(sites[0]?.id ?? '')
   const [dow, setDow] = useState(6)
   const [time, setTime] = useState('09:00')
+  const [oneOff, setOneOff] = useState('')
+  const [funded, setFunded] = useState(false)
+  const [programmeId, setProgrammeId] = useState(programmes[0]?.id ?? '')
+  const [paidBlock, setPaidBlock] = useState('150')
+  const [twoAdults, setTwoAdults] = useState(false)
+  const [listed, setListed] = useState(true)
   const [busy, setBusy] = useState(false)
+  const today = nzWallClock(new Date()).date
+  // A one-off's weekday is its date's (weekly_games_one_off_weekday).
+  const oneOffDow = oneOff ? new Date(`${oneOff}T12:00:00Z`).getUTCDay() : null
   const save = async () => {
     setBusy(true)
-    const { error } = await supabase.from('weekly_games').insert({ site_id: siteId, dow, start_time: time })
+    if (!v2) {
+      const { error } = await supabase.from('weekly_games').insert({ site_id: siteId, dow, start_time: time })
+      setBusy(false)
+      onDone(error
+        ? (error.code === '23505' ? 'That site already has a game at that day and time.' : `Not added: ${error.message}`)
+        : null)
+      return
+    }
+    const made = await createGame(supabase, {
+      site_id: siteId, dow: oneOffDow ?? dow, start_time: time, one_off_date: oneOff || null,
+      kind: funded ? 'funded' : 'community', programme_id: funded ? programmeId : null,
+      paid_block_minutes: funded ? Number(paidBlock) || null : null, two_adults: twoAdults, listed,
+    })
     setBusy(false)
-    onDone(error
-      ? (error.code === '23505' ? 'That site already has a game at that day and time.' : `Not added: ${error.message}`)
-      : null)
+    onDone('error' in made ? `Not added: ${made.error}` : null)
   }
+  const fundedNotReady = funded && (!programmeId || !(Number(paidBlock) >= 30 && Number(paidBlock) <= 600))
   return (
     <FormBox>
       <Field label="Site">
@@ -285,18 +367,80 @@ function AddGame({ sites, onDone }: { sites: WeeklyBoard['sites']; onDone: (erro
           {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
       </Field>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10 }}>
-        <Field label="Day">
-          <select value={dow} onChange={e => setDow(Number(e.target.value))} style={inputStyle}>
-            {DAY_NAMES.map((d, i) => <option key={d} value={i}>{d}</option>)}
-          </select>
+      {v2 && (
+        <Field label="One-off date (leave empty for every week)">
+          <input type="date" value={oneOff} min={today} onChange={e => setOneOff(e.target.value)} style={inputStyle} />
         </Field>
+      )}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10 }}>
+        {!oneOff ? (
+          <Field label="Day">
+            <select value={dow} onChange={e => setDow(Number(e.target.value))} style={inputStyle}>
+              {DAY_NAMES.map((d, i) => <option key={d} value={i}>{d}</option>)}
+            </select>
+          </Field>
+        ) : <div style={{ alignSelf: 'end', fontSize: 14, color: '#888', paddingBottom: 12 }}>{DAY_NAMES[oneOffDow ?? 0]}</div>}
         <Field label="Start">
           <input type="time" value={time} onChange={e => setTime(e.target.value)} style={inputStyle} />
         </Field>
       </div>
-      <SmallButton primary="blue" disabled={busy || !siteId || !time} onClick={save}>Add weekly game</SmallButton>
+      {v2 && isHead && (
+        <Check checked={funded} onChange={setFunded}>Funded (paid Kaiārahi, part of a programme)</Check>
+      )}
+      {v2 && funded && (
+        <>
+          <Field label="Programme">
+            <select value={programmeId} onChange={e => setProgrammeId(e.target.value)} style={inputStyle}>
+              {programmes.length === 0 && <option value="">Add a programme first</option>}
+              {programmes.map(p => <option key={p.id} value={p.id}>{p.name} · {p.funder}</option>)}
+            </select>
+          </Field>
+          <Field label="Paid block (minutes)">
+            <input type="number" inputMode="numeric" min={30} max={600} value={paidBlock} onChange={e => setPaidBlock(e.target.value)} style={inputStyle} />
+          </Field>
+        </>
+      )}
+      {v2 && <Check checked={twoAdults} onChange={setTwoAdults}>Needs two adults (a school game)</Check>}
+      {v2 && <Check checked={listed} onChange={setListed}>Show it on Find a game</Check>}
+      <SmallButton primary="blue" disabled={busy || !siteId || !time || fundedNotReady} onClick={save}>Add game</SmallButton>
     </FormBox>
+  )
+}
+
+function AddProgramme({ onDone }: { onDone: (error: string | null) => void }) {
+  const [name, setName] = useState('')
+  const [funder, setFunder] = useState('')
+  const [starts, setStarts] = useState('')
+  const [ends, setEnds] = useState('')
+  const [notes, setNotes] = useState('')
+  const [busy, setBusy] = useState(false)
+  const ok = name.trim() && funder.trim() && starts && ends && ends >= starts
+  const save = async () => {
+    setBusy(true)
+    const err = await createProgramme(supabase, { name, funder, starts_on: starts, ends_on: ends, notes })
+    setBusy(false)
+    onDone(err ? `Programme not added: ${err}` : null)
+  }
+  return (
+    <FormBox>
+      <Field label="Name"><input value={name} onChange={e => setName(e.target.value)} maxLength={120} placeholder="e.g. Burnside Term 1 2027" style={inputStyle} /></Field>
+      <Field label="Funder"><input value={funder} onChange={e => setFunder(e.target.value)} maxLength={120} style={inputStyle} /></Field>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <Field label="Starts"><input type="date" value={starts} onChange={e => setStarts(e.target.value)} style={inputStyle} /></Field>
+        <Field label="Ends"><input type="date" value={ends} min={starts || undefined} onChange={e => setEnds(e.target.value)} style={inputStyle} /></Field>
+      </div>
+      <Field label="Notes (optional)"><input value={notes} onChange={e => setNotes(e.target.value)} maxLength={500} style={inputStyle} /></Field>
+      <SmallButton primary="blue" disabled={busy || !ok} onClick={save}>Add programme</SmallButton>
+    </FormBox>
+  )
+}
+
+function Check({ checked, onChange, children }: { checked: boolean; onChange: (v: boolean) => void; children: ReactNode }) {
+  return (
+    <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 14 }}>
+      <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)} style={{ width: 18, height: 18 }} />
+      <span>{children}</span>
+    </label>
   )
 }
 

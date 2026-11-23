@@ -134,3 +134,80 @@ describe('weekly games migration', () => {
     expect(sql).not.toMatch(/weekly_game_members[^;]*FOR DELETE/)
   })
 })
+
+// ── Games and programmes (20261123035106) ───────────────────────────────────
+import { isUpcoming, startableGames, isOneOff, gameKind } from '@/lib/weeklyGames'
+
+describe('one-off games', () => {
+  // Saturday 21 Nov 2026, 9am.
+  const popUp: WeeklyGame = { ...game('p', 6, '09:00:00'), one_off_date: '2026-11-21', kind: 'community' }
+  it('has one date, whatever today is', () => {
+    expect(nextGameDate(popUp, nz('2026-11-17T09:00:00'))).toBe('2026-11-21')
+    expect(isOneOff(popUp)).toBe(true)
+  })
+  it('is upcoming until its 100 minutes are over', () => {
+    expect(isUpcoming(popUp, nz('2026-11-20T12:00:00'))).toBe(true)
+    expect(isUpcoming(popUp, nz('2026-11-21T10:30:00'))).toBe(true)
+    expect(isUpcoming(popUp, nz('2026-11-21T10:41:00'))).toBe(false)
+    expect(isUpcoming(popUp, nz('2026-11-22T08:00:00'))).toBe(false)
+  })
+  it('is labelled by its date', () => {
+    expect(slotLabel(popUp, nz('2026-11-17T09:00:00'))).toBe('Sat 21 Nov 9:00am')
+  })
+  it('is never matched on another Saturday', () => {
+    expect(matchWeeklyGame([popUp], nz('2026-11-28T09:00:00'))).toBeNull()
+    expect(matchWeeklyGame([popUp], nz('2026-11-21T09:10:00'))?.id).toBe('p')
+  })
+  it('sorts after the weekly games', () => {
+    expect(sortWeekly([popUp, game('t', 2, '16:30')]).map(g => g.id)).toEqual(['t', 'p'])
+  })
+  it('reads a game from before the migration as weekly community', () => {
+    expect(gameKind(game('old', 2, '16:30'))).toBe('community')
+    expect(isOneOff(game('old', 2, '16:30'))).toBe(false)
+  })
+})
+
+describe('startableGames (mirrors can_start_game)', () => {
+  const funded: WeeklyGame = { ...game('f', 5, '15:15'), kind: 'funded', programme_id: 'prog', created_by: 'head' }
+  const mine: WeeklyGame = { ...game('m', 0, '10:00'), kind: 'community', created_by: 'me' }
+  const theirs: WeeklyGame = { ...game('o', 0, '11:00'), kind: 'community', created_by: 'other' }
+  const all = [funded, mine, theirs]
+  const ids = (who: Parameters<typeof startableGames>[1]) => startableGames(all, who).map(g => g.id)
+  it('lets a Kaiwhakawā start any game', () => {
+    expect(ids({ id: 'me', level: 'head', checksCurrent: false })).toEqual(['f', 'm', 'o'])
+  })
+  it('lets a Kaiako start only the community games they made', () => {
+    expect(ids({ id: 'me', level: 'community', checksCurrent: true })).toEqual(['m'])
+  })
+  it('lets a Kaimahi start a funded game only with current checks', () => {
+    expect(ids({ id: 'me', level: 'staff', checksCurrent: true })).toEqual(['f', 'm'])
+    expect(ids({ id: 'me', level: 'staff', checksCurrent: false })).toEqual(['m'])
+  })
+  it('gives nobody else anything', () => {
+    expect(ids({ id: 'me', level: null, checksCurrent: true })).toEqual([])
+  })
+})
+
+describe('migration 20261123035106', () => {
+  const sql = readFileSync('supabase/migrations/20261123035106_games_and_programmes.sql', 'utf8')
+  it('ties every session to a game, with a pre-image of the backfill', () => {
+    expect(sql).toMatch(/ALTER COLUMN weekly_game_id SET NOT NULL/)
+    expect(sql).toMatch(/sessions_game_backfill_20261123/)
+    expect(sql).toMatch(/sessions_game_backfill_20261123 ENABLE ROW LEVEL SECURITY/)
+  })
+  it('lets only a head make a funded game, and needs a programme for one', () => {
+    expect(sql).toMatch(/weekly_games_funded_has_programme/)
+    expect(sql).toMatch(/guard_weekly_games_write/)
+  })
+  it('starts a session only on a game the Kaiārahi may start', () => {
+    expect(sql).toMatch(/is_kaiarahi\(\) AND public\.can_start_game\(weekly_game_id\)/)
+  })
+  it('stops the runner key from blocking account deletion', () => {
+    expect(sql).toMatch(/sessions_judge_id_fkey[\s\S]{0,200}ON DELETE SET NULL/)
+  })
+  it('pins search_path on every definer function', () => {
+    const definers = sql.match(/SECURITY DEFINER[\s\S]*?\$function\$/g) ?? []
+    expect(definers.length).toBeGreaterThan(0)
+    for (const d of definers) expect(d).toMatch(/SET search_path/)
+  })
+})

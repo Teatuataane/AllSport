@@ -211,8 +211,10 @@ function SheetRow({ href, label, accent, children, onClick }: {
   return <button onClick={onClick} style={{ ...style, borderBottom: 'none' }}>{body}</button>
 }
 
-export function MoreMenu({ isJudge, onClose }: {
+export function MoreMenu({ isJudge, isKaiarahi = isJudge, onClose }: {
   isJudge: boolean
+  /** Any level: the panel shows each level its own part. */
+  isKaiarahi?: boolean
   onClose: () => void
 }) {
   const router = useRouter()
@@ -268,8 +270,8 @@ export function MoreMenu({ isJudge, onClose }: {
         }}
       >
 
-        {isJudge && (
-          <SheetRow href="/judge" label="Kaiwhakawā panel" accent="var(--red)">
+        {isKaiarahi && (
+          <SheetRow href="/judge" label={isJudge ? 'Kaiwhakawā panel' : 'Kaiārahi panel'} accent="var(--red)">
             <svg {...stroke('var(--red)')} strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 3v3" /><path d="M5 8h14l-2 11H7z" /><path d="M9 12h6" />
             </svg>

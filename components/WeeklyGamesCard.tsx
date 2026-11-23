@@ -36,8 +36,11 @@ const label = {
 }
 
 export default function WeeklyGamesCard({
-  sites, games, notices, mine, away, now = new Date(), who, busy, error, onJoin, onLeave, onAway,
+  sites, games: allGames, notices, mine, away, now = new Date(), who, busy, error, onJoin, onLeave, onAway,
 }: WeeklyGamesCardProps) {
+  // Weekly games only (a one-off is found on Find a game), and an unlisted one
+  // (a school game) only for someone already registered to it.
+  const games = allGames.filter(g => !g.one_off_date && (g.listed !== false || mine.has(g.id)))
   if (games.length === 0) return null
   const bySite = [...sites].sort((a, b) => a.name.localeCompare(b.name))
     .map(site => ({ site, games: sortWeekly(games.filter(g => g.site_id === site.id)) }))

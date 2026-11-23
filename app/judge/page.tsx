@@ -7,7 +7,7 @@ import WellbeingReport from '@/app/components/WellbeingReport'
 import ActivityReport from '@/app/components/ActivityReport'
 import WeeklyGamesAdmin from '@/app/components/WeeklyGamesAdmin'
 import Link from 'next/link'
-import { isHead } from '@/lib/kaiarahi'
+import { isHead, isKaiarahi, LEVEL_NAME, type KaiarahiLevel } from '@/lib/kaiarahi'
 import { loadOwnLevel } from '@/lib/kaiarahiData'
 import KaiarahiAdmin from '@/app/components/KaiarahiAdmin'
 
@@ -17,6 +17,7 @@ export default function JudgePage() {
   const router = useRouter()
   const [player, setPlayer] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [level, setLevel] = useState<KaiarahiLevel | null>(null)
 
   useEffect(() => {
     const load = async () => {
@@ -29,13 +30,16 @@ export default function JudgePage() {
         .eq('id', user.id)
         .single()
 
-      // The panel is Kaiwhakawā (head staff) only. Other Kaiārahi start games
-      // from New Game (/scoring), which the nav sends them to.
-      if (!playerData || !isHead(await loadOwnLevel(supabase, user.id, playerData.role))) {
+      // Any Kaiārahi may open the panel; what it shows depends on the level.
+      // A Kaiwhakawā (head) gets everything; Kaimahi and Kaiako get their own
+      // games (WeeklyGamesAdmin) and nothing about other players.
+      const own = playerData ? await loadOwnLevel(supabase, user.id, playerData.role) : null
+      if (!playerData || !isKaiarahi(own)) {
         router.push('/dashboard')
         return
       }
 
+      setLevel(own)
       setPlayer(playerData)
       setLoading(false)
     }
@@ -64,19 +68,32 @@ export default function JudgePage() {
           </Link>
           <div>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '28px', letterSpacing: '0.05em', lineHeight: 1 }}>
-              Kaiwhakawā
+              {level ? LEVEL_NAME[level] : 'Kaiārahi'}
             </div>
-            <div style={{ fontSize: '11px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.1em' }}>
-              JUDGE PANEL
+            <div style={{ fontSize: '12px', color: '#555', fontFamily: 'var(--font-label)', letterSpacing: '0.1em' }}>
+              KAIĀRAHI PANEL
             </div>
           </div>
         </div>
 
-        <JudgeCard isHead playerId={player.id} />
-        <WeeklyGamesAdmin judgeId={player.id} />
-        <KaiarahiAdmin />
-        <WellbeingReport />
-        <ActivityReport />
+        {isHead(level) ? (
+          <>
+            <JudgeCard isHead playerId={player.id} />
+            <WeeklyGamesAdmin judgeId={player.id} isHead />
+            <KaiarahiAdmin />
+            <WellbeingReport />
+            <ActivityReport />
+          </>
+        ) : (
+          <>
+            <Link href="/scoring" className="press" style={{
+              display: 'block', textAlign: 'center', background: 'var(--blue)', color: '#0a0a0a', borderRadius: 10,
+              padding: '14px', marginBottom: 20, textDecoration: 'none',
+              fontFamily: 'var(--font-display)', fontSize: 22, letterSpacing: '0.08em',
+            }}>New game</Link>
+            <WeeklyGamesAdmin judgeId={player.id} isHead={false} />
+          </>
+        )}
       </div>
     </div>
   )
