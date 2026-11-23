@@ -24,6 +24,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { clearPageCache } from '@/lib/pageCache'
 
 // Dynamic, not module scope. This bar renders on every route from the root
 // layout, so a static import put the Supabase client and its realtime stack
@@ -223,6 +224,10 @@ export function MoreMenu({ isJudge, onClose }: {
     try {
       const { createClient } = await supabaseModule()
       await createClient().auth.signOut()
+      // No saved page copy may outlive the session (lib/pageCache.ts). The
+      // visit's remembered household goes too: useActivePlayer finds no auth
+      // cookie on the next page and forgets it.
+      clearPageCache()
       onClose()
       router.push('/')
     } catch {

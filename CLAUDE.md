@@ -46,6 +46,7 @@ Fonts: Bebas Neue (headings), Barlow (body), Barlow Condensed (labels). Use `var
 - Core tables: `players` (+ `players_public` view), `sessions`, `session_events`, `results`, `session_player_summary`, `rankings` (legacy, seasonal), `grade_awards`, `grade_exemptions`, `grade_withdrawals`, `player_bodyweights`, `matches` / `match_players`, `workouts`, `workout_entries`, `activity_aliases`, `player_game_colours` (+ `season_points` view), `player_domain_colours`, `event_domains`, `referrals`, `partners`, `event_votes*`, `wellbeing_surveys`. Several `*_archive_*` tables exist behind RLS with no policies.
 - Key SQL objects: `award_session_points`, `compute_event_placements`, `close_expired_sessions` (also run by pg_cron every 5 minutes), `leaderboard_page()`, `player_dashboard(uuid[])`, `confer_grade`, `grades_need_recheck`, `record_match`, `record_entry_match`, `settle_dispute`, `record_bodyweight`, `fit_activity`, `delete_my_account`, `enforce_lift_estimate` (trigger), plus `guard_*_write` triggers.
 - **Realtime: Broadcast only, never `postgres_changes`.** Polling the replication slot drained the Micro compute's Disk IO budget (Supabase warning, 21 Oct 2026) and the database stopped answering until restarted. Live game screens use `lib/liveSession.ts`: the scoring screen pings `session-live-{sessionId}` after its own saves and deletes, and the others re-read. `__tests__/liveSession.test.ts` blocks `postgres_changes`. The owner will not pay for a bigger compute, so fix load in code. **Second warning, 11 Nov 2026 (v0.51.0.1):** the server reports ~430 MB of RAM (Nano size) and swaps constantly, so the system disk reads MB/s even when idle while Postgres reads almost nothing; read the Prometheus endpoint (`/customer/v1/privileged/metrics`, service key) before blaming queries. Background checks go through `lib/livePoll.ts` (`pollWhileVisible`, `isLiveSession`): no polling in hidden tabs, and no `close_expired_sessions()` RPC from polls (pg_cron runs it).
+- **Fast pages (v0.57.0.0):** HOME, `/leaderboard` and `/prs` draw a saved copy from the device first (`lib/pageCache.ts`: per player, versioned with `GRADING_RULES_VERSION`, 30-day limit, drops `bodyweightKg`, wiped on sign out by `clearPageCache`/`forgetSavedPlayer`) and refresh behind it; never confer or write from a copy. The top loading bar (`components/LoadingBar.tsx`) starts on link taps and on `useLoadingBar(busy)`; page outlines are `components/Skeleton.tsx`. `useActivePlayer` shares one household read per page load across its callers.
 - `session_date` is derived from `started_at` at `Pacific/Auckland` by a DB trigger. Derive local days from `started_at`, not `session_date`, for data before v0.6.5.2.
 
 ## 5. Authentication and authorization
@@ -161,7 +162,7 @@ npx vitest run __tests__/grading.test.ts
 - New UI uses the canonical tokens and `components/ui.tsx` primitives; existing pages still use inline `style={{}}` heavily, so match the surrounding file.
 - Each new Supabase read of a possibly-missing table/column is its **own query** with PGRST205/42P01/42703 handled as "not live yet".
 - Dates: parse DATE columns with `lib/dates.ts` (`parseLocalDate`, `formatNZDate`, `sessionStart`), never `new Date('YYYY-MM-DD')`; all dates mean NZ time.
-- Commit/changelog: `VERSION` (currently `0.56.0.0`) and `CHANGELOG.md` are bumped per shipped change; open work is tracked in `TODOS.md`. Comments in this codebase explain *why* at length; match that density when you touch a risky area.
+- Commit/changelog: `VERSION` (currently `0.57.0.0`) and `CHANGELOG.md` are bumped per shipped change; open work is tracked in `TODOS.md`. Comments in this codebase explain *why* at length; match that density when you touch a risky area.
 - Event/standards/difficulty changes are made by editing the reviewed sheet and re-running the apply script, not by hand-editing generated output.
 
 ## 15. Important files and directories
@@ -191,4 +192,4 @@ npx vitest run __tests__/grading.test.ts
 | `*_PLAN.md`, `EVENT_*.md`, `design-canvas/` | Older design records and mockups; historical |
 | `.claude/` | Claude Code skills and launch config (tooling only) |
 
-*Last updated: 19 November 2026 (v0.56.0.0).*
+*Last updated: 23 November 2026 (v0.57.0.0).*

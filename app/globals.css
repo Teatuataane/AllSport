@@ -236,6 +236,23 @@ button, a, input, select, textarea, [role="button"] { touch-action: manipulation
   .press:active:not(:disabled) { transform: none; }
 }
 
+/* Page outlines (components/Skeleton.tsx): grey shapes where the page will be,
+   with a slow sweep of light so a waiting page reads as loading, not empty.
+   Players saw "Loading..." on a blank page and thought it was broken. */
+.skeleton {
+  background: linear-gradient(90deg, var(--surface) 0%, var(--surface-2) 40%, #1f1f1f 50%, var(--surface-2) 60%, var(--surface) 100%);
+  background-size: 300% 100%;
+  animation: skeletonSweep 1.4s ease-in-out infinite;
+  border-radius: 12px;
+}
+@keyframes skeletonSweep {
+  0% { background-position: 100% 0; }
+  100% { background-position: 0 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; background: var(--surface-2); }
+}
+
 .btn-primary { background: var(--red); color: var(--white); box-shadow: var(--glow-red); }
 .btn-blue { background: var(--blue); color: var(--white); box-shadow: var(--glow-blue); }
 .btn-rainbow { background: var(--rainbow); color: var(--white); }

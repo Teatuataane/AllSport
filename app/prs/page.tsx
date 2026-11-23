@@ -18,7 +18,10 @@ import EventIcon from '@/components/EventIcon'
 import { ColourCircle } from '@/components/GradesCard'
 import { loadGradeState, type GradeState } from '@/lib/loadGrades'
 import { shownDomainRungs } from '@/lib/colourDisplay'
-import { gradeForRung, gradeInk, formatExact } from '@/lib/grading'
+import { gradeForRung, gradeInk, formatExact, GRADING_RULES_VERSION } from '@/lib/grading'
+import { readPageCache, writePageCache } from '@/lib/pageCache'
+import { useLoadingBar } from '@/lib/useLoadingBar'
+import { SkeletonBlock } from '@/components/Skeleton'
 import { eventCredit } from '@/lib/playerGrades'
 import { STANDARDS } from '@/lib/standards'
 import { NEUTRAL_ICON_TINT } from '@/lib/scoreColour'
@@ -141,6 +144,14 @@ function EventColour({ state, event }: { state: GradeState; event: EventData }) 
   )
 }
 
+// ── The saved copy (lib/pageCache.ts) ────────────────────────────────────────
+// My Events draws the player's results as last seen at once, then the fresh
+// reads replace each part as it lands. Per player. The version carries
+// GRADING_RULES_VERSION because the colour on each event is graded.
+const SAVED_VERSION = `prs-1|${GRADING_RULES_VERSION}`
+const readSaved = <T,>(part: string, id: string) => readPageCache<T>(`prs-${part}:${id}`, SAVED_VERSION)
+const writeSaved = (part: string, id: string, data: unknown) => writePageCache(`prs-${part}:${id}`, SAVED_VERSION, data)
+
 export default function PRsPage() {
   const router = useRouter()
   const { loading: playerLoading, userId, activePlayerId } = useActivePlayer()
@@ -181,6 +192,10 @@ export default function PRsPage() {
   // were loaded for, so a switch never shows the previous player's logs.
   const [logged, setLogged] = useState<{ id: string; rows: PRResult[]; training: ReturnType<typeof trainingDistanceRows> } | null>(null)
 
+  // Whose results are fresh this visit; the top bar runs until they are.
+  const [resultsFreshFor, setResultsFreshFor] = useState<string | null>(null)
+  useLoadingBar(playerLoading || (!!activePlayerId && resultsFreshFor !== activePlayerId))
+
   useEffect(() => {
     if (playerLoading) return
     if (!userId) { router.replace('/play'); return }
@@ -188,7 +203,11 @@ export default function PRsPage() {
     let cancelled = false
     const load = async () => {
       const user = { id: activePlayerId }
-      setLoading(true)
+      const savedRows = readSaved<PRResult[]>('results', user.id)
+      const savedWins = readSaved<Record<string, number>>('wins', user.id)
+      if (savedRows) setGameLoaded(g => (g && g.id === user.id ? g : { id: user.id, rows: savedRows, failed: false }))
+      if (savedWins) setWinsLoaded(w => (w && w.id === user.id ? w : { id: user.id, counts: savedWins }))
+      setLoading(!savedRows)
 
       // All three reads at once. They are separate queries on purpose: folding
       // event_placement or voided_at into the results select would take the
@@ -239,7 +258,14 @@ export default function PRsPage() {
           domain_number: r.session_events.domain_number,
           distance_m: r.distance_m, time_seconds: r.time_seconds, weight_kg: r.weight_kg,
         }))
-      setGameLoaded({ id: user.id, rows: mapped, failed: !!resultsRes.error })
+      // A failed read keeps the saved rows on screen (and says nothing failed
+      // only because they are there); a good one replaces and re-saves them.
+      if (resultsRes.error && savedRows) {
+        setGameLoaded({ id: user.id, rows: savedRows, failed: false })
+      } else {
+        setGameLoaded({ id: user.id, rows: mapped, failed: !!resultsRes.error })
+        if (!resultsRes.error && !voidedRes.error) writeSaved('results', user.id, mapped)
+      }
 
       const { data: winRows, error: winErr } = winsRes
       if (winErr) {
@@ -250,8 +276,10 @@ export default function PRsPage() {
           m[w.event_name] = (m[w.event_name] ?? 0) + Number(w.wins)
         }
         setWinsLoaded({ id: user.id, counts: m })
+        writeSaved('wins', user.id, m)
       }
 
+      setResultsFreshFor(user.id)
       setLoading(false)
     }
     load()
@@ -262,6 +290,9 @@ export default function PRsPage() {
   useEffect(() => {
     if (!activePlayerId) return
     let cancelled = false
+    type SavedLogged = { rows: PRResult[]; training: ReturnType<typeof trainingDistanceRows> }
+    const savedLogged = readSaved<SavedLogged>('logged', activePlayerId)
+    if (savedLogged) setLogged(l => (l && l.id === activePlayerId ? l : { id: activePlayerId, ...savedLogged }))
     // Paged like the results read: PostgREST stops at 1000 rows whatever
     // `.range()` asks for, and the short training efforts (raw_score null) sort
     // last, so a single capped read would cut exactly the distance records this
@@ -281,13 +312,15 @@ export default function PRsPage() {
         // shows no logged bests.
         if (error) {
           console.warn('workout_entries unavailable — logged bests hidden', error.message)
-          setLogged({ id: activePlayerId, rows: [], training: [] })
+          if (!savedLogged) setLogged({ id: activePlayerId, rows: [], training: [] })
           return
         }
         const rows = loggedBestRows(entries).map(r => ({
           ...r, placement: null, is_championship: false, logged: true,
         }))
-        setLogged({ id: activePlayerId, rows, training: trainingDistanceRows(entries) })
+        const training = trainingDistanceRows(entries)
+        setLogged({ id: activePlayerId, rows, training })
+        writeSaved('logged', activePlayerId, { rows, training })
       })
     return () => { cancelled = true }
   }, [activePlayerId])
@@ -295,9 +328,16 @@ export default function PRsPage() {
   useEffect(() => {
     if (!activePlayerId) return
     let cancelled = false
+    const savedGrades = readSaved<GradeState>('grades', activePlayerId)
+    if (savedGrades) setGrades(g => (g && g.id === activePlayerId ? g : { id: activePlayerId, state: savedGrades }))
     loadGradeState(supabase, activePlayerId)
-      .then(st => { if (!cancelled) setGrades({ id: activePlayerId, state: st }) })
-      .catch(() => { if (!cancelled) setGrades({ id: activePlayerId, state: null }) })
+      .then(st => {
+        if (cancelled) return
+        if (!st && savedGrades) return
+        setGrades({ id: activePlayerId, state: st })
+        if (st && st.complete !== false) writeSaved('grades', activePlayerId, st)
+      })
+      .catch(() => { if (!cancelled && !savedGrades) setGrades({ id: activePlayerId, state: null }) })
     return () => { cancelled = true }
   }, [activePlayerId])
 
@@ -475,7 +515,11 @@ export default function PRsPage() {
           )}
         </div>
         {loading ? (
-          <div style={{ color: '#555', fontSize: '14px', fontFamily: 'var(--font-body)', textAlign: 'center', paddingTop: '48px' }}>Loading your results…</div>
+          <div aria-busy="true" aria-label="Loading your results" style={{ paddingTop: 8 }}>
+            {[0, 1, 2, 3, 4, 5].map(i => (
+              <SkeletonBlock key={i} height={58} radius={12} style={{ marginBottom: 10, opacity: 1 - i * 0.1 }} />
+            ))}
+          </div>
         ) : (
           DOMAIN_ORDER.map((domain, domainIdx) => {
             const domainNumber = domainIdx + 1
