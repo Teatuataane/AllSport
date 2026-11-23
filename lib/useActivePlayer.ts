@@ -20,6 +20,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { hasAuthCookie } from '@/lib/authCookie'
+import { readPageCache, writePageCache, clearPageCache, hasPageCache } from '@/lib/pageCache'
 import {
   ACTIVE_PLAYER_KEY, resolveActiveId, playerLabel, type ActivePlayerRow,
 } from '@/lib/activePlayer'
@@ -74,6 +75,57 @@ function writeStored(id: string | null) {
   }
 }
 
+// ── The household, loaded once and remembered ──────────────────────────────
+// Every page gates its first draw on this hook, and the shell mounts it two or
+// three times (Navbar, the tab strip, the page). It used to cost each of them
+// the same two `players` reads on every page change before anything drew.
+// Now one read is shared by every caller (`inflight`), the answer is kept for
+// the rest of the visit (`memo`, so the next page draws at once), and a copy is
+// saved on the device (lib/pageCache.ts) so even a cold open draws the name
+// and avatar straight away while the read runs. The read still happens on
+// every page load: a removed child or a changed role lands within one page.
+
+type Household = { userId: string; self: ActivePlayerRow | null; family: ActivePlayerRow[] }
+
+const SAVED_KEY = 'household'
+const SAVED_VERSION = '1'
+
+let memo: Household | null = null
+let inflight: Promise<Household | null> | null = null
+
+/**
+ * Forget the remembered household and every saved page copy. Sign out calls
+ * this, so the next person on a shared phone never sees the last one's pages.
+ */
+export function forgetSavedPlayer(): void {
+  memo = null
+  inflight = null
+  clearPageCache()
+}
+
+function loadHousehold(): Promise<Household | null> {
+  if (inflight) return inflight
+  inflight = (async () => {
+    const { createClient, getSessionUser } = await supabaseModule()
+    const supabase = createClient()
+    const user = await getSessionUser()
+    if (!user) return null
+    const [selfResult, familyResult] = await Promise.all([
+      supabase.from('players').select(`${FAMILY_COLUMNS}, role`).eq('id', user.id).single(),
+      supabase.from('players').select(FAMILY_COLUMNS).eq('parent_id', user.id).order('full_name'),
+    ])
+    return {
+      userId: user.id,
+      self: (selfResult.data as ActivePlayerRow) ?? null,
+      family: (familyResult.data ?? []) as ActivePlayerRow[],
+    }
+  })()
+  // Shared only while it runs: the next page load reads afresh.
+  const settle = () => { inflight = null }
+  inflight.then(settle, settle)
+  return inflight
+}
+
 export type UseActivePlayer = {
   loading: boolean
   /** The signed-in auth user. Null once we know there is no session. */
@@ -93,53 +145,66 @@ export type UseActivePlayer = {
 }
 
 export function useActivePlayer(): UseActivePlayer {
-  const [loading, setLoading] = useState(true)
-  const [userId, setUserId] = useState<string | null>(null)
-  const [self, setSelf] = useState<ActivePlayerRow | null>(null)
-  const [familyMembers, setFamilyMembers] = useState<ActivePlayerRow[]>([])
+  // Seeded from the visit's memory, so a page reached by a tap draws at once.
+  // On the first (server-rendered, then hydrated) draw `memo` is always null,
+  // so this never disagrees with the server's HTML.
+  const [known] = useState<Household | null>(() => (memo && hasAuthCookie() ? memo : null))
+  const [loading, setLoading] = useState(known === null)
+  const [userId, setUserId] = useState<string | null>(known?.userId ?? null)
+  const [self, setSelf] = useState<ActivePlayerRow | null>(known?.self ?? null)
+  const [familyMembers, setFamilyMembers] = useState<ActivePlayerRow[]>(known?.family ?? [])
   const [activeId, setActiveId] = useState<string | null>(currentId)
 
   useEffect(() => {
     let cancelled = false
 
+    const apply = (h: Household) => {
+      setUserId(h.userId)
+      setSelf(h.self)
+      setFamilyMembers(h.family)
+      const resolved = resolveActiveId(readStored(), h.userId, h.family)
+      // Write it back: a stored id we rejected must not survive to the next load.
+      writeStored(resolved === h.userId ? null : resolved)
+      broadcast(resolved)
+      setActiveId(resolved)
+      setLoading(false)
+    }
+
     const load = async () => {
       // No auth cookie means nobody is signed in, and answering that costs one
       // string search instead of downloading and parsing the Supabase client.
       if (!hasAuthCookie()) {
+        // Signed out since the household was saved (a lost or expired session,
+        // or a sign out in another tab): wipe what that player left. A visitor
+        // who never signed in keeps the public leaderboard copy.
+        if (memo || hasPageCache(SAVED_KEY)) forgetSavedPlayer()
         setUserId(null)
         setLoading(false)
         return
       }
 
-      const { createClient, getSessionUser } = await supabaseModule()
-      if (cancelled) return
-      const supabase = createClient()
+      // Draw the saved household first (a cold open), then read the real one.
+      if (!memo) {
+        const saved = readPageCache<Household>(SAVED_KEY, SAVED_VERSION)
+        if (saved && saved.userId) apply(saved)
+      }
 
-      const user = await getSessionUser()
+      const fresh = await loadHousehold()
       if (cancelled) return
-      if (!user) {
+      if (!fresh) {
+        // The session is gone: nothing saved may outlive it.
+        forgetSavedPlayer()
         setUserId(null)
+        setSelf(null)
+        setFamilyMembers([])
         setLoading(false)
         return
       }
-      setUserId(user.id)
-
-      const [selfResult, familyResult] = await Promise.all([
-        supabase.from('players').select(`${FAMILY_COLUMNS}, role`).eq('id', user.id).single(),
-        supabase.from('players').select(FAMILY_COLUMNS).eq('parent_id', user.id).order('full_name'),
-      ])
-      if (cancelled) return
-
-      const family = (familyResult.data ?? []) as ActivePlayerRow[]
-      setSelf((selfResult.data as ActivePlayerRow) ?? null)
-      setFamilyMembers(family)
-
-      const resolved = resolveActiveId(readStored(), user.id, family)
-      // Write it back: a stored id we rejected must not survive to the next load.
-      writeStored(resolved === user.id ? null : resolved)
-      broadcast(resolved)
-      setActiveId(resolved)
-      setLoading(false)
+      memo = fresh
+      // Saved only when the player row read worked, so a failed read never
+      // overwrites a good copy with an empty one.
+      if (fresh.self) writePageCache(SAVED_KEY, SAVED_VERSION, fresh)
+      apply(fresh)
     }
 
     // A rejected dynamic import would otherwise leave `loading` true forever,

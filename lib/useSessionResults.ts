@@ -18,6 +18,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase-browser'
 import { announceResultsChanged, onResultsChanged } from '@/lib/liveSession'
 import { applyPending, rowsSignature, saveErrorMessage, upsertRow, type Drawn, type PendingOp } from '@/lib/pendingResults'
+import { forgetLoadedMatches } from '@/lib/matchesShared'
 
 const supabase = createClient()
 
@@ -73,6 +74,7 @@ type Failed = { what: string; message: string } & ({ kind: 'save'; job: SaveJob 
 async function recordMatch(resultId: string, opponentIds: string[]): Promise<void> {
   const { error } = await supabase.rpc('record_match', { p_result_id: resultId, p_opponent_ids: opponentIds })
   if (error && error.code !== 'PGRST202') console.warn('record_match:', error.message)
+  forgetLoadedMatches()
 }
 
 /** The write itself, outside the hook (the React Compiler cannot yet compile a

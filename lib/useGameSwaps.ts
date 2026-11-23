@@ -21,6 +21,7 @@ import { addChoices, removeChoice } from '@/lib/gameSwaps'
 import { nzDay } from '@/lib/workouts'
 import type { EntryRow } from '@/components/play/chrome'
 import type { EntryVals } from '@/lib/scoring'
+import { forgetLoadedMatches } from '@/lib/matchesShared'
 
 const supabase = createClient()
 
@@ -184,6 +185,7 @@ export function useGameSwaps(args: {
           p_entry_id: entryId, p_opponent_ids: matchOpponents,
         })
         if (me && me.code !== 'PGRST202') console.warn('record_entry_match:', me.message)
+        forgetLoadedMatches()
       }
       // The row the write returned goes straight into local state, shaped as
       // `load` shapes it: one round trip per save, not a write and a re-read.

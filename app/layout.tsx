@@ -3,6 +3,8 @@ import { Bebas_Neue, Barlow, Barlow_Condensed } from 'next/font/google'
 import './globals.css'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
+import LoadingBar from '@/components/LoadingBar'
+import SpeedTiming from '@/components/SpeedTiming'
 
 // Self-hosted via next/font. The brand fonts were previously fetched from Google
 // TWICE — a <link> here AND an @import on line 1 of globals.css — and the
@@ -86,9 +88,11 @@ export default function RootLayout({
       className={`${bebasNeue.variable} ${barlow.variable} ${barlowCondensed.variable}`}
     >
       <body>
+        <LoadingBar />
         <Navbar />
         <main>{children}</main>
         <Footer />
+        <SpeedTiming />
       </body>
     </html>
   )

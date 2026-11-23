@@ -2,6 +2,31 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.59.0.0] - 2026-11-23
+
+### Added
+- **Real load times from players' phones** (Tāne). Vercel Speed Insights (`@vercel/speed-insights` 1.2.0, `components/SpeedTiming.tsx`) records how long each page takes on the devices players use, so speed work rests on real numbers. It sends the page's route and timings, plus the device type, browser and country; no cookie, no player id, and the query string is cut before sending (a join link carries a game code). It needs switching on once in the Vercel dashboard.
+
+### Changed
+- The privacy policy says the site measures page speed through Vercel, and that this does not identify anyone (last updated 23 November 2026).
+
+## [0.58.0.0] - 2026-11-23
+
+### Changed
+- **HOME no longer downloads every result in the database.** It read `stats_bundle` (about 426 KB) on every visit only to break a tie for "best event". A tie on the colour now goes to the higher exact score, which the colours already carry (`bestEventByColour`).
+- **The leaderboard no longer calls `leaderboard_page`,** which carried the same 405 KB bundle the page had stopped reading. It reads the conferred colours from `grade_awards` and the live game from `sessions` directly (the RPC was security invoker, so the same rules apply). A game past its 100 minutes reads as over, as on HOME; pg_cron still closes it.
+- **The match read is shared for a minute in the browser.** Ratings need every match and every plain game result (about 190 KB), and HOME, My Events, profile and the sport ratings each read them. Now one read serves them all for a minute; recording or settling a match on the device drops it at once (`lib/matchesShared.ts`). The recheck route still reads live rows.
+
+## [0.57.0.0] - 2026-11-23
+
+### Added
+- **A loading bar** (Tāne: players said pages were slow and wanted a sign something was happening). A thin white line under the rainbow strip creeps across on every tap to another page and while a page's fresh numbers are on their way, then runs to the end and fades. It only appears after 150ms, so a fast page never flashes it (`components/LoadingBar.tsx`, `lib/loadingBar.ts`, `lib/useLoadingBar.ts`).
+- **Page outlines** instead of "Loading…": grey shapes the size of the parts to come, with a slow sweep of light, on HOME, My Events, history, hapū and profile (`components/Skeleton.tsx`, a `loading.tsx` per page).
+- **A saved copy of HOME, the leaderboard and My Events** on the player's own phone (`lib/pageCache.ts`). The page draws what the player saw last time at once, and the fresh reads replace it as they land. Measured on the leaderboard: about 60ms to the cards with the copy, 0.6 to 4.3s without. The copy is never a source (nothing is written or conferred from it), it never holds a bodyweight, it is ignored after 30 days or under other grading rules, and it is wiped on sign out or a lost session.
+
+### Changed
+- The signed-in player and family are read once per page load and shared by the navbar, tab strip and page, instead of each reading them, and remembered for the visit so the next page draws at once.
+
 ## [0.56.0.0] - 2026-11-19
 
 ### Changed

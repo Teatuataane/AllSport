@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient, getSessionUser } from '@/lib/supabase-browser'
-import { ACTIVE_PLAYER_KEY, useActivePlayer } from '@/lib/useActivePlayer'
+import { ACTIVE_PLAYER_KEY, useActivePlayer, forgetSavedPlayer } from '@/lib/useActivePlayer'
 import Link from 'next/link'
 import HonoursCard from '@/components/HonoursCard'
 
@@ -216,6 +216,7 @@ export default function ProfilePage() {
     // Clear the locally-cached profile pointer before signing out, or the next
     // visitor on this device lands on a dashboard for an account that is gone.
     try { localStorage.removeItem(ACTIVE_PLAYER_KEY) } catch {}
+    forgetSavedPlayer()
     await supabase.auth.signOut()
     router.push('/')
   }

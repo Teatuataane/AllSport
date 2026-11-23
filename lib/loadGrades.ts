@@ -17,6 +17,7 @@
 // or nothing, which grades a junior on the men's ladder, leaves lifts
 // ungradeable and counts no logged training.
 
+import { sharedMatches, type SharedEntry } from './matchesShared'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   computePlayerGrades, heldRungs, voidedSessions, colourGates, gameEvidence, playerInYear,
@@ -164,8 +165,37 @@ export async function loadMatches(db: GradeDb): Promise<MatchRow[]> {
   return (await loadMatchesChecked(db)).rows
 }
 
+// ── Every match, shared for a minute in the browser ─────────────────────────
+// The head-to-head ratings are worked out from EVERY recorded match and every
+// plain win, draw or loss (about 190 KB and growing), because a rating moves
+// with the opponents' games too. HOME, My Events, profile and the sport
+// ratings each asked for all of it on every visit, so a player tapping between
+// them read it again and again from the Nano database. In the browser one read
+// now serves every page for MATCHES_FRESH_MS. Any write of a match on this
+// device (record_match, record_entry_match, settle_dispute) calls
+// forgetLoadedMatches() (lib/matchesShared.ts, kept tiny so the scoring
+// screens can import it without the grading engine), so the player's own new game is never missed; another
+// player's game shows within the minute. A failed read is never kept. The
+// server (the recheck route) and scripts are never served from it: their
+// colours must rest on the live rows.
+const MATCHES_FRESH_MS = 60_000
+
 /** loadMatches, saying whether the read failed rather than returning an empty list for it. */
-export async function loadMatchesChecked(db: GradeDb): Promise<{ rows: MatchRow[]; failed: boolean }> {
+export function loadMatchesChecked(db: GradeDb): Promise<{ rows: MatchRow[]; failed: boolean }> {
+  if (typeof window === 'undefined') return readMatchesChecked(db)
+  const now = Date.now()
+  const kept = sharedMatches.get() as SharedEntry<{ rows: MatchRow[]; failed: boolean }> | null
+  if (kept && now - kept.at < MATCHES_FRESH_MS) return kept.pending
+  const entry = { at: now, pending: readMatchesChecked(db) }
+  sharedMatches.set(entry)
+  entry.pending.then(
+    r => { if (r.failed) sharedMatches.dropIf(entry) },
+    () => sharedMatches.dropIf(entry),
+  )
+  return entry.pending
+}
+
+async function readMatchesChecked(db: GradeDb): Promise<{ rows: MatchRow[]; failed: boolean }> {
   const { data, error } = await db
     .from('matches')
     // event_name is stored on an entry match (a game played as a SWAP), which
