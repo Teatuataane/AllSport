@@ -526,9 +526,14 @@ function DashboardInner() {
           <HomeLink href="/hapu">Hapū</HomeLink>
         </nav>
 
-        {userId && activePlayerId && (
+        {userId && activePlayerId && activePlayer && (
           <div style={{ marginTop: 16 }}>
-            <WellbeingSurvey playerId={activePlayerId} />
+            <WellbeingSurvey
+              playerId={activePlayerId}
+              player={{ date_of_birth: activePlayer.date_of_birth, division: activePlayer.division }}
+              isSelf={activePlayerId === userId}
+              name={playerLabel(activePlayer)}
+            />
           </div>
         )}
       </div>

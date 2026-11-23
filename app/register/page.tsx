@@ -4,6 +4,9 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase-browser'
 import type { User } from '@supabase/supabase-js'
 import GoogleSignInButton from '@/components/GoogleSignInButton'
+import { ConsentQuestions, EthnicityPicker, type ConsentAnswers } from '@/components/ProfileQuestions'
+import { ethnicityAnswered, type Ethnicity } from '@/lib/privateProfile'
+import { saveEthnicity, saveJuniorConsent } from '@/lib/privateProfileData'
 
 function calculateAge(dob: string): number {
   const today = new Date()
@@ -68,6 +71,14 @@ function RegisterInner() {
     })
   }, [])
 
+  // Who plays, for funders (multi-location step 9, Tāne 24 Nov 2026). Saved to
+  // the private profile after the account exists, never to players. Ethnicity
+  // is required ("Prefer not to say" is an answer); a junior's parent answers
+  // the two consent questions here. If either save fails (an email sign-up
+  // with no session yet, or the migration not live), HOME asks again.
+  const [ethnicity, setEthnicity] = useState<Ethnicity[]>([])
+  const [consent, setConsent] = useState<ConsentAnswers>({ shareWithSchool: null, survey: null })
+
   const [form, setForm] = useState({
     full_name: '',
     email: '',
@@ -105,6 +116,9 @@ function RegisterInner() {
     : ''
 
   const isMinor = form.date_of_birth ? calculateAge(form.date_of_birth) < 17 : false
+  // The consent rule's junior: turning 16 or under this year (lib/privateProfile.ts isJunior).
+  const consentJunior = !!form.date_of_birth && ageThisYear(form.date_of_birth) <= 16
+  const consentAnswered = !consentJunior || (consent.shareWithSchool != null && consent.survey != null)
 
   const handleSubmit = async () => {
     setLoading(true)
@@ -158,6 +172,15 @@ function RegisterInner() {
           throw new Error(`Profile save failed: ${profileError.message}`)
         }
         console.warn('Profile insert deferred (email confirmation likely enabled):', profileError.message)
+      }
+
+      if ((existingUserId || newSession) && !profileError && userId) {
+        const saved = await saveEthnicity(supabase, userId, ethnicity)
+        if (saved && saved !== 'not live') console.warn('ethnicity not saved; HOME will ask:', saved)
+        if (consentJunior && consent.shareWithSchool != null && consent.survey != null) {
+          const c = await saveJuniorConsent(supabase, userId, consent.shareWithSchool, consent.survey)
+          if (c && c !== 'not live') console.warn('consent not saved; HOME will ask:', c)
+        }
       }
 
       if (existingUserId || newSession) {
@@ -270,12 +293,12 @@ function RegisterInner() {
   // safeguarding, most players compete under a username, and asking for a legal
   // name as a condition of playing a koha-based community sport collects more
   // than the sport needs.
-  const step1Valid = !!(form.email && form.password && form.date_of_birth && form.gender && division)
+  const step1Valid = !!(form.email && form.password && form.date_of_birth && form.gender && division && ethnicityAnswered(ethnicity))
   // Google sign-ups give their date of birth and division on step 2, so it must
   // insist on a division as step 1 does. It used to check only the username,
   // which let a Google player reach "Create account" with no division and fail
   // players_division_check on an empty string (reported 19 Oct 2026).
-  const step2Valid = !!(form.username && division)
+  const step2Valid = !!(form.username && division && ethnicityAnswered(ethnicity) && consentAnswered)
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--dark)', color: 'var(--white)', padding: '24px', maxWidth: '560px', margin: '0 auto' }}>
@@ -339,6 +362,7 @@ function RegisterInner() {
             <input type="date" value={form.date_of_birth} onChange={e => set('date_of_birth', e.target.value)} style={inputStyle} />
           </div>
           {divisionQuestion}
+          <EthnicityPicker value={ethnicity} onChange={setEthnicity} />
           <div>
             <label style={labelStyle}>Phone</label>
             <input value={form.phone} onChange={e => set('phone', e.target.value)} style={inputStyle} placeholder="+64 21 000 0000" />
@@ -376,6 +400,7 @@ function RegisterInner() {
                 <input type="date" value={form.date_of_birth} onChange={e => set('date_of_birth', e.target.value)} style={inputStyle} />
               </div>
               {divisionQuestion}
+              <EthnicityPicker value={ethnicity} onChange={setEthnicity} />
             </>
           )}
 
@@ -406,6 +431,10 @@ function RegisterInner() {
                   <label style={labelStyle}>Parent Phone</label>
                   <input value={form.parent_phone} onChange={e => set('parent_phone', e.target.value)} style={inputStyle} />
                 </div>
+                {consentJunior && (
+                  <ConsentQuestions value={consent} onChange={setConsent}
+                    childName={form.full_name.trim().split(/\s+/)[0] || form.username.trim() || 'your child'} forChild={false} />
+                )}
               </div>
             </div>
           )}
