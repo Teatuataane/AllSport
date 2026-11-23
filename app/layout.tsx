@@ -5,6 +5,7 @@ import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 import LoadingBar from '@/components/LoadingBar'
 import SpeedTiming from '@/components/SpeedTiming'
+import { SITE_NAME } from '@/lib/structuredData'
 
 // Self-hosted via next/font. The brand fonts were previously fetched from Google
 // TWICE — a <link> here AND an @import on line 1 of globals.css — and the
@@ -53,13 +54,13 @@ const barlowCondensed = Barlow_Condensed({
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://allsport.nz'),
-  title: 'AllSport | Get good at EVERYTHING!',
-  description: '10 events, 100 minutes, 150+ sports and exercises. AllSport tests strength, speed, flexibility, coordination and endurance — trained together, every session. Koha-based, Ōtautahi Aotearoa.',
+  title: 'One Sport, EVERY Sport',
+  description: '10 Events. 100 Minutes. 150+ Sports and Exercises. Get good at everything and have fun doing it. Free access sport programme in Ōtautahi (Christchurch). Find a game near you today.',
   // Share card for Facebook, WhatsApp and Messenger links (public/og-image.png,
   // made by scripts/gen-logo-assets.mjs). Pages set their own title, which the
   // card picks up; they never set openGraph, so this applies site-wide.
   openGraph: {
-    siteName: 'AllSport',
+    siteName: SITE_NAME,
     type: 'website',
     locale: 'en_NZ',
     images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'AllSport' }],

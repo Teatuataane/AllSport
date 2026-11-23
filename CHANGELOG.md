@@ -2,6 +2,12 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.67.0.1] - 2026-11-24
+
+### Changed
+- **Search results name the site Allsport Aotearoa.** The home page now tells Google the site's name (schema.org WebSite data), and link previews use the same name, so Google prints it above the address instead of guessing.
+- **New title and description in search:** "One Sport, EVERY Sport", and "10 Events. 100 Minutes. 150+ Sports and Exercises. Get good at everything and have fun doing it. Free access sport programme in Ōtautahi (Christchurch). Find a game near you today." Pages with their own title keep it.
+
 ## [0.67.0.0] - 2026-11-24
 
 ### Added

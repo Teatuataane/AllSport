@@ -13,6 +13,19 @@ const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 
 const hhmm = (mins: number) =>
   `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`
 
+// The name Google prints above the address in search results. Google reads it
+// from WebSite data on the home page, and drops it when other signals disagree,
+// so og:site_name in app/layout.tsx says the same (SITE_NAME).
+export const SITE_NAME = 'Allsport Aotearoa'
+
+export const WEBSITE = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: SITE_NAME,
+  alternateName: ['AllSport', 'allsport.nz'],
+  url: `${SITE}/`,
+}
+
 export const ORGANISATION = {
   '@context': 'https://schema.org',
   '@type': 'SportsActivityLocation',
