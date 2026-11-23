@@ -2,6 +2,16 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.66.0.0] - 2026-11-24
+
+### Added
+- **Two adults** (multi-location games step 7b). A game set to need two adults (Burnside) cannot start until New Game records a second adult: another Kaiārahi, or a named helper such as a teacher, who needs no account.
+- **Young Kaiako.** A Kaiako under 18 runs a game only with an adult (18 or over) as the second: a Kaiārahi, or a helper they confirm is 18 or over. Nobody under 16 can be made a Kaiārahi, and nobody under 18 a Kaimahi or Kaiwhakawā.
+- A Kaiako starting a game is reminded that juniors need a parent or guardian there. Tāne chose not to enforce it, because juniors nearly always play on a parent's phone.
+
+### Changed
+- Migration `20261123205536_two_adults.sql` (not yet applied). Ages stay private: only the start check reads them, and it only ever answers about the person starting.
+
 ## [0.65.0.0] - 2026-11-24
 
 ### Added

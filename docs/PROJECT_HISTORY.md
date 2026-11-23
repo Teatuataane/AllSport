@@ -4103,3 +4103,17 @@ Multi-location games step 7a. Tāne chose to split step 7 (roster, cover and rea
 **Reasons:** a cancel or move needs one (a check constraint, safe because no notices existed). A cancel is refused once a session of that game has started that day.
 
 **Moved to step 8:** the under-4 prompt, since it needs bookings. Applied 24 Nov 2026 once allsport.nz served the code, and verified live as head, plain player and `anon`.
+
+## Two adults and young Kaiako (v0.66.0.0, 24 Nov 2026)
+
+Multi-location games step 7b. Players join a game by scoring (there is no join list), so enforcing "a parent is present" would have meant refusing a junior's first result. Tāne decided against it: "Let the juniors play, they will almost always just use their parents phones". It is a reminder on New Game.
+
+**The second adult** is a `game_roster` row with role `second`: a Kaiārahi, or a named helper with `helper_adult` confirmed. It is recorded before the session is inserted.
+
+**The start check** `session_start_blocker()` is a definer function that only answers about `auth.uid()`, so a player can't use it to learn anyone's age. A first draft called `age_today` straight from the invoker trigger, which would have failed once the function was locked away from players.
+
+**Trigger order:** the start trigger is named `session_zzz_…` so it runs after `session_zz_runner_guard` has stamped the runner and `session_date_follows_started_at` has set the date.
+
+**Age limits** on granting (16+, and 18+ for Kaimahi and Kaiwhakawā) are a trigger on `kaiarahi`, so `grant_kaiarahi` is not redefined.
+
+Rehearsed in a rolled-back transaction, 23 checks passing.

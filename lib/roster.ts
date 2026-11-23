@@ -159,3 +159,38 @@ export function reasonReady(reason: NoticeReason | null, message: string): boole
   if (!reason) return false
   return reason !== 'other' || message.trim().length > 0
 }
+
+// ── Second adult (20261123205536, step 7b) ───────────────────────────────────
+// A game with two_adults needs a second adult recorded before it starts; a
+// Kaiako under 18 needs an ADULT second (a Kaiārahi 18 or over, or a helper
+// they confirm is 18 or over). The database decides (session_start_blocker);
+// this decides what New Game asks for.
+
+export type SecondAdult =
+  | { kind: 'kaiarahi'; playerId: string }
+  | { kind: 'helper'; name: string; adult: boolean }
+  | null
+
+/** Whole years from a date of birth ('YYYY-MM-DD') to `today` ('YYYY-MM-DD'). Null when unknown. */
+export function ageOn(dob: string | null | undefined, today: string): number | null {
+  if (!dob) return null
+  const [by, bm, bd] = dob.slice(0, 10).split('-').map(Number)
+  const [ty, tm, td] = today.split('-').map(Number)
+  if (!by || !ty) return null
+  return ty - by - (tm < bm || (tm === bm && td < bd) ? 1 : 0)
+}
+
+export function secondAdultRule(
+  game: { two_adults?: boolean | null } | null,
+  me: { level: KaiarahiLevel | null; age: number | null },
+): { needed: boolean; mustBeAdult: boolean } {
+  const young = me.level === 'community' && me.age != null && me.age < 18
+  return { needed: !!game?.two_adults || young, mustBeAdult: young }
+}
+
+/** Is the second adult filled in well enough to try starting? */
+export function secondReady(second: SecondAdult, mustBeAdult: boolean): boolean {
+  if (!second) return false
+  if (second.kind === 'kaiarahi') return !!second.playerId
+  return second.name.trim().length > 0 && (!mustBeAdult || second.adult)
+}
