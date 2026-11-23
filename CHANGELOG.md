@@ -2,6 +2,13 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.58.0.0] - 2026-11-23
+
+### Changed
+- **HOME no longer downloads every result in the database.** It read `stats_bundle` (about 426 KB) on every visit only to break a tie for "best event". A tie on the colour now goes to the higher exact score, which the colours already carry (`bestEventByColour`).
+- **The leaderboard no longer calls `leaderboard_page`,** which carried the same 405 KB bundle the page had stopped reading. It reads the conferred colours from `grade_awards` and the live game from `sessions` directly (the RPC was security invoker, so the same rules apply). A game past its 100 minutes reads as over, as on HOME; pg_cron still closes it.
+- **The match read is shared for a minute in the browser.** Ratings need every match and every plain game result (about 190 KB), and HOME, My Events, profile and the sport ratings each read them. Now one read serves them all for a minute; recording or settling a match on the device drops it at once (`lib/matchesShared.ts`). The recheck route still reads live rows.
+
 ## [0.57.0.0] - 2026-11-23
 
 ### Added

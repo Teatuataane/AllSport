@@ -45,6 +45,7 @@ import { gameEventLine, gameEventLineText } from '@/lib/gameEventLine'
 import { scoreRung, rungSegment, workoutColourRung, workoutSlugs } from '@/lib/scoreColour'
 import { gradeForRung } from '@/lib/grading'
 import type { EntryVals } from '@/lib/scoring'
+import { forgetLoadedMatches } from '@/lib/matchesShared'
 
 const supabase = createClient()
 
@@ -259,6 +260,7 @@ export default function PersonalGamePage() {
         p_entry_id: entryId, p_opponent_ids: matchOpponents,
       })
       if (me && me.code !== 'PGRST202') console.warn('record_entry_match:', me.message)
+      forgetLoadedMatches()
       sportRatings.reload()
     }
     // The records (for the next PR check) and the workout catch up behind the

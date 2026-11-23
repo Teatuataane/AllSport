@@ -32,19 +32,26 @@ export function bestScoreLabel(eg: Pick<EventGrade, 'slug' | 'best' | 'rating'>)
 }
 
 /**
- * The event holding the highest colour, Top % breaking a tie. Null when no
- * event has reached Kiwikiwi.
+ * The event holding the highest colour. A tie on the colour goes to the
+ * higher EXACT score (how far past that colour the best effort sits, Scoring
+ * v2), then to the better Top % when a caller has one. HOME stopped passing
+ * Top % in v0.58.0.0: working it out meant downloading every result in the
+ * database (stats_bundle, about 400 KB) on every visit, for a tie the exact
+ * score settles almost always. Null when no event has reached Kiwikiwi.
  */
 export function bestEventByColour(
-  events: ReadonlyMap<string, Pick<EventGrade, 'slug' | 'rung'>>,
+  events: ReadonlyMap<string, Pick<EventGrade, 'slug' | 'rung' | 'exact'>>,
   topPctByName: ReadonlyMap<string, number | null> = new Map(),
 ): { slug: string; rung: number } | null {
-  let best: { slug: string; rung: number; pct: number } | null = null
+  let best: { slug: string; rung: number; exact: number; pct: number } | null = null
   for (const eg of events.values()) {
     if (eg.rung <= 0) continue
     const name = getEventBySlug(eg.slug)?.name ?? ''
     const pct = topPctByName.get(name) ?? 101
-    if (!best || eg.rung > best.rung || (eg.rung === best.rung && pct < best.pct)) best = { slug: eg.slug, rung: eg.rung, pct }
+    const exact = eg.exact ?? eg.rung
+    const better = !best || eg.rung > best.rung || (eg.rung === best.rung && (
+      exact > best.exact || (exact === best.exact && pct < best.pct)))
+    if (better) best = { slug: eg.slug, rung: eg.rung, exact, pct }
   }
   return best && { slug: best.slug, rung: best.rung }
 }

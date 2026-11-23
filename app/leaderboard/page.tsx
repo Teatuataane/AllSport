@@ -46,6 +46,8 @@ import { divisionPool } from '@/lib/rating'
 import { loadSeasonGames, loadGameColours } from '@/lib/leaderboardData'
 import { seasonColourBoard, bestGameRung, type SeasonGame, type GameColourRow, type ColourStanding } from '@/lib/seasonColourBoard'
 import { useActivePlayer } from '@/lib/useActivePlayer'
+import { allRows } from '@/lib/allRows'
+import { isLiveSession } from '@/lib/livePoll'
 import { RAINBOW, DOMAIN_COLORS } from '@/lib/domainColours'
 import { GradeDot } from '@/components/GradeDot'
 import DomainIcon from '@/components/DomainIcon'
@@ -75,9 +77,14 @@ type ActiveSession = {
 
 type SessionResult = { player_id: string | null; player_name: string | null; placement: number | null }
 
-// Shape returned by the `leaderboard_page(p_season)` RPC. Called for the
-// active game and because it heals expired sessions first (20260827211610);
-// its `stats` bundle is no longer read here.
+// What the page reads besides the season itself. It used to come from the
+// `leaderboard_page(p_season)` RPC, which also carried `stats_bundle()`:
+// every result ever, about 400 KB, that this page had stopped reading. It is
+// now two small reads of the same rows (the RPC is SECURITY INVOKER, so the
+// same RLS applies): every conferred colour from grade_awards, and the live
+// game. The RPC's heal (close_expired_sessions) is left to pg_cron, which runs
+// it every five minutes, and a game past its 100 minutes reads as over here
+// anyway (isLiveSession), the same rule as HOME (lib/livePoll.ts).
 type LeaderboardPayload = {
   /**
    * Conferred colours, from grade_awards, highest per domain per year.
@@ -346,8 +353,13 @@ export default function LeaderboardPage() {
         setGamesPlayed(saved.gamesPlayed)
         setLoading(false)
       }
-      const [page, rosterRes, domainRes, seasonGames, yearGames] = await Promise.all([
-        supabase.rpc('leaderboard_page', { p_season: seasonYear }),
+      const [awardsRes, rosterRes, domainRes, seasonGames, yearGames] = await Promise.all([
+        // Every award (not only this year's): the year tabs are built from them.
+        // Paged, though there are a few hundred: PostgREST stops at 1000.
+        allRows<NonNullable<LeaderboardPayload['grades']>[number]>((from, to) => supabase
+          .from('grade_awards').select('player_id, domain_number, rung, season_year')
+          .order('player_id').order('domain_number').order('rung').order('season_year')
+          .range(from, to)),
         supabase.from('players_public').select('id, display_name, username, division, is_guest, is_active'),
         supabase.from('player_domain_colours').select('player_id, domain_rungs, updated_at'),
         loadSeasonGames(supabase, seasonYear),
@@ -355,16 +367,21 @@ export default function LeaderboardPage() {
         // (overallRung): colours are earned per year, and so is their cap.
         loadGameCounts(supabase, null, seasonYear),
       ])
-      const totals = seasonGames ? await loadGameColours(supabase, seasonGames.map(g => g.id)) : null
+      const [totals, live] = await Promise.all([
+        seasonGames ? loadGameColours(supabase, seasonGames.map(g => g.id)) : Promise.resolve(null),
+        supabase.from('sessions')
+          .select('id, session_date, started_at, location, is_championship, is_active')
+          .eq('is_active', true).limit(1).maybeSingle(),
+      ])
       if (cancelled) return
 
-      const d = (page.data ?? null) as LeaderboardPayload | null
-      setActiveSession(d?.active_session ?? null)
+      const awards = awardsRes.error ? null : awardsRes.rows
+      setActiveSession(!live.error && isLiveSession(live.data) ? (live.data as ActiveSession) : null)
       setFreshYear(seasonYear)
       // A failed read keeps the saved board on screen rather than blanking it.
-      if (saved && (page.error || rosterRes.error || totals == null)) return
+      if (saved && (!awards || rosterRes.error || totals == null)) return
       const board: SavedBoard = {
-        grades: d?.grades ?? [],
+        grades: awards ?? [],
         roster: ((rosterRes.data ?? []) as RosterPlayer[]).filter(p => !p.is_guest && p.is_active !== false),
         // A missing table reads as empty: no best or worst domain shown.
         domainColours: new Map(((domainRes.data ?? []) as DomainColoursRow[]).map(r => [r.player_id, r])),
@@ -380,7 +397,7 @@ export default function LeaderboardPage() {
       setSeasonFailed(totals == null)
       setGamesPlayed(board.gamesPlayed)
       setLoading(false)
-      if (!page.error && !rosterRes.error && totals != null) writePageCache(savedKey, SAVED_VERSION, board)
+      if (awards && !rosterRes.error && totals != null) writePageCache(savedKey, SAVED_VERSION, board)
     })()
     return () => { cancelled = true }
   }, [seasonYear])

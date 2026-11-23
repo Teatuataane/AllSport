@@ -42,6 +42,7 @@ import { yearOfDay } from '@/lib/seasonYear'
 import { reconcileGames, type Game, type MatchRow } from '@/lib/matches'
 import { formatNZDate, toNZDateString } from '@/lib/dates'
 import { GradeDot } from '@/components/GradeDot'
+import { forgetLoadedMatches } from '@/lib/matchesShared'
 
 const supabase = createClient()
 const DOMAIN_NAMES = Array.from({ length: 10 }, (_, i) => EVENTS.find(e => e.domainNumber === i + 1)?.domain ?? '')
@@ -322,6 +323,7 @@ export default function GradeReleasePanel() {
     })
     setBusy(null)
     if (e) { setError(e.code === 'PGRST202' ? 'Settling is not live yet: its migration has not been applied.' : e.message); return }
+    forgetLoadedMatches()
     // A settled game changes ratings, and so possibly colours: reload everyone.
     reloadAll()
   }

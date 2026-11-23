@@ -41,10 +41,6 @@ import NewColourCard from '@/components/NewColourCard'
 import VoteCard from '@/app/components/VoteCard'
 import WellbeingSurvey from '@/app/components/WellbeingSurvey'
 import { bestEventByColour, shownOverallRung } from '@/lib/colourDisplay'
-import {
-  type RatingResultRow, type RatingEventRow, type RatingSessionRow, type RatingPlayerRow,
-} from '@/lib/rating'
-import { computePercentiles } from '@/lib/percentile'
 import { loadMyGamePlaces } from '@/lib/loadGamePlace'
 import WeeklyGamesCard from '@/components/WeeklyGamesCard'
 import {
@@ -57,13 +53,6 @@ const supabase = createClient()
 // soon enough to see a JOIN button appear, and halves the requests.
 const HOME_POLL_MS = 60_000
 
-
-type StatsBundle = {
-  results: (RatingResultRow & { placement: number | null })[]
-  events: RatingEventRow[]
-  sessions: RatingSessionRow[]
-  players: RatingPlayerRow[]
-}
 
 type HouseholdBundle = {
   counts: { player_id: string; games: number; prs: number }[]
@@ -90,7 +79,6 @@ function DashboardInner() {
   } = useActivePlayer()
 
   const [household, setHousehold] = useState<HouseholdBundle | null>(null)
-  const [stats, setStats] = useState<StatsBundle | null>(null)
   // Tagged with the player it belongs to, so for the one render between a
   // family switch and the effect clearing it, the new player's name never
   // sits in the previous player's colour.
@@ -157,15 +145,9 @@ function DashboardInner() {
     return () => { cancelled = true }
   }, [activePlayerId])
 
-  // ── Percentiles. One shared dataset for every player on the page. ───────────
-  useEffect(() => {
-    let cancelled = false
-    supabase.rpc('stats_bundle').then(({ data, error }) => {
-      if (cancelled || error || !data) return
-      setStats(data as StatsBundle)
-    })
-    return () => { cancelled = true }
-  }, [])
+  // No percentile read: "best event" breaks a tie on the exact score instead
+  // (bestEventByColour). The old read was stats_bundle, every result in the
+  // database, about 400 KB on every visit to HOME.
 
   // ── Grades. Their OWN queries, never folded into the bundle above. ──────────
   // lib/loadGrades.ts reads every source separately, so a missing grading table
@@ -372,24 +354,13 @@ function DashboardInner() {
   // ── Derived ─────────────────────────────────────────────────────────────────
   const counts = household?.counts.find(c => c.player_id === activePlayerId) ?? null
 
-  const derived = useMemo(() => {
-    if (!stats || !activePlayerId) return null
-    const allPct = computePercentiles(stats.results, stats.events, stats.players)
-    const minePct = allPct.get(activePlayerId)
-    const eventPct = new Map<string, number | null>()
-    for (const [name, ep] of minePct ?? []) eventPct.set(name, ep.topPct)
-    return {
-      eventPct,
-    }
-  }, [stats, activePlayerId])
-
   // The overall colour, by the same rule the colours card uses, so the avatar
   // ring and the card can never disagree. Null until grades load.
   const overallRung = grades ? shownOverallRung(grades) : null
 
   const bestEvent = useMemo(
-    () => (grades ? bestEventByColour(grades.grades.events, derived?.eventPct) : null),
-    [grades, derived],
+    () => (grades ? bestEventByColour(grades.grades.events) : null),
+    [grades],
   )
 
   // The top bar runs until this player's colours are fresh, saved copy or not.
