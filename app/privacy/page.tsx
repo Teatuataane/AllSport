@@ -9,7 +9,7 @@ export const metadata = {
 }
 
 // Last substantive review of this page. Update whenever the content changes.
-const LAST_UPDATED = '23 November 2026'
+const LAST_UPDATED = '24 November 2026'
 
 // Role address, not a personal one: this is published on a public page, it is
 // the Privacy Act contact of record, and it has to outlive whoever is currently
@@ -127,6 +127,35 @@ const wellbeingData: Row[] = [
   },
 ]
 
+// Multi-location step 9 (v0.68.0.0): who plays, for funders.
+const whoPlaysData: Row[] = [
+  {
+    what: 'Ethnicity (asked at sign-up; "Prefer not to say" is an answer)',
+    why: 'Funders ask who we reach. We report totals only, and hide any group smaller than five.',
+    who: 'You (and a parent, for a child profile) and the Kaiwhakawā. Never public.',
+  },
+  {
+    what: 'Suburb, from a list',
+    why: 'To show funders how many players come from each part of the NZ Deprivation Index. We use the suburb, never your street.',
+    who: 'You, a parent for a child profile, and the Kaiwhakawā. Funders see totals by band only.',
+  },
+  {
+    what: 'School (juniors only)',
+    why: 'To show a school how many of its students play. Names go to the school only if a parent says yes.',
+    who: 'You, your parent and the Kaiwhakawā. A school sees totals, or names with a parent\'s yes.',
+  },
+  {
+    what: 'Disability (optional) and whether you were active before AllSport',
+    why: 'To check AllSport reaches people other sport misses.',
+    who: 'You, a parent for a child profile, and the Kaiwhakawā. Totals only for anyone else.',
+  },
+  {
+    what: 'A parent\'s answers for a junior',
+    why: 'Whether attendance may be shared with the school, and whether the junior may do the wellbeing check-in.',
+    who: 'The junior, their parent and the Kaiwhakawā.',
+  },
+]
+
 const kohaData: Row[] = [
   {
     what: 'Koha amounts',
@@ -204,7 +233,7 @@ const rights = [
   },
   {
     title: 'Erase your account',
-    body: 'There is an "Erase my account" button on your profile. It permanently destroys your name, contact details, date of birth, location, any parent details and every wellbeing answer. Your scores and placements stay in each session\'s record under "Former player" — removing them would change where other players finished in games already scored.',
+    body: 'There is an "Erase my account" button on your profile. It permanently destroys your name, contact details, date of birth, location, any parent details, your ethnicity, suburb, school and disability answers, and every wellbeing answer. Your scores and placements stay in each session\'s record under "Former player" — removing them would change where other players finished in games already scored.',
   },
   {
     title: 'Skip the wellbeing check-in',
@@ -373,6 +402,14 @@ export default function PrivacyPolicy() {
             whether AllSport actually improves wellbeing.
           </p>
           <DataTable rows={wellbeingData} />
+          <p className="privacy-p" style={{ marginTop: '28px' }}>
+            <strong style={{ color: 'var(--white)' }}>Who plays.</strong> At sign-up we ask your ethnicity, and
+            once a year the check-in asks your suburb, your school (juniors), whether you have a disability
+            (optional), and once only whether you were active before AllSport. Each check-in also records the
+            programme you were playing in, so a funder can see change over that programme. All of it is
+            private, and funders and schools only ever get totals.
+          </p>
+          <DataTable rows={whoPlaysData} />
         </div>
       </section>
 
@@ -406,6 +443,12 @@ export default function PrivacyPolicy() {
               A parent or guardian can create and manage profiles for their tamariki from their own account.
               If you do that, you can see and change everything on your child&apos;s profile, including their
               wellbeing check-in answers.
+            </p>
+            <p className="privacy-p">
+              For a junior, a parent answers two questions: may we share their attendance with their school, and
+              may they do the wellbeing check-in. Until a parent says yes, a junior is not shown the check-in.
+              Without the first yes, anything we give a school leaves the junior&apos;s name out. A parent can
+              change either answer at any time by emailing {CONTACT_EMAIL}.
             </p>
             <p className="privacy-p">
               Juniors are asked for a bodyweight, the same as everyone else, and the same as everyone else it
@@ -532,6 +575,10 @@ export default function PrivacyPolicy() {
               <strong style={{ color: 'var(--white)' }}>Wellbeing check-in answers</strong> — kept for as long as
               you have an account, and deleted with it. Once answers are rolled into a group average for a funder
               report, that average cannot be traced back to you.
+            </p>
+            <p className="privacy-p">
+              <strong style={{ color: 'var(--white)' }}>Ethnicity, suburb, school and disability</strong> — kept
+              while your account is open, and deleted with it.
             </p>
             <p className="privacy-p">
               <strong style={{ color: 'var(--white)' }}>Koha records</strong> — kept for seven years, because
