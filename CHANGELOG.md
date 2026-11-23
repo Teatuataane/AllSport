@@ -2,6 +2,16 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.57.0.0] - 2026-11-23
+
+### Added
+- **A loading bar** (Tāne: players said pages were slow and wanted a sign something was happening). A thin white line under the rainbow strip creeps across on every tap to another page and while a page's fresh numbers are on their way, then runs to the end and fades. It only appears after 150ms, so a fast page never flashes it (`components/LoadingBar.tsx`, `lib/loadingBar.ts`, `lib/useLoadingBar.ts`).
+- **Page outlines** instead of "Loading…": grey shapes the size of the parts to come, with a slow sweep of light, on HOME, My Events, history, hapū and profile (`components/Skeleton.tsx`, a `loading.tsx` per page).
+- **A saved copy of HOME, the leaderboard and My Events** on the player's own phone (`lib/pageCache.ts`). The page draws what the player saw last time at once, and the fresh reads replace it as they land. Measured on the leaderboard: about 60ms to the cards with the copy, 0.6 to 4.3s without. The copy is never a source (nothing is written or conferred from it), it never holds a bodyweight, it is ignored after 30 days or under other grading rules, and it is wiped on sign out or a lost session.
+
+### Changed
+- The signed-in player and family are read once per page load and shared by the navbar, tab strip and page, instead of each reading them, and remembered for the visit so the next page draws at once.
+
 ## [0.56.0.0] - 2026-11-19
 
 ### Changed

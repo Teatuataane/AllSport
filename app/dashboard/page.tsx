@@ -29,6 +29,10 @@ import { ColourAvatar, GameOnCard, TrainingOnCard, NextSessionLine, HomeLink } f
 import { loadOpenTraining } from '@/lib/training'
 import { isLiveSession, pollWhileVisible } from '@/lib/livePoll'
 import { loadGradeInputs, gradeStateFrom, type GradeState } from '@/lib/loadGrades'
+import { GRADING_RULES_VERSION } from '@/lib/grading'
+import { readPageCache, writePageCache } from '@/lib/pageCache'
+import { useLoadingBar } from '@/lib/useLoadingBar'
+import { HomeSkeleton, GradesSkeleton } from '@/components/Skeleton'
 import { nzYear } from '@/lib/seasonYear'
 import { ghostAverages } from '@/lib/honours'
 import { prMoments, prsByYear } from '@/lib/prCounts'
@@ -64,6 +68,19 @@ type StatsBundle = {
 type HouseholdBundle = {
   counts: { player_id: string; games: number; prs: number }[]
 }
+
+// ── The saved copy (lib/pageCache.ts) ────────────────────────────────────────
+// HOME draws what the player saw last time at once, then swaps in the fresh
+// reads below as each lands. Per player, so a family switch draws the child's
+// own copy. The version carries GRADING_RULES_VERSION: a rule change that
+// moves colours must not draw last week's colours under this week's rules.
+// Only what HOME draws is saved; the percentile bundle (everyone's results)
+// is far too big and only breaks a tie in "best event".
+const SAVED_VERSION = `home-1|${GRADING_RULES_VERSION}`
+type SavedGrades = { state: GradeState; ghost?: Map<number, number>; seasonPRs?: number }
+const savedKey = (part: string, id: string) => `home-${part}:${id}`
+const readSaved = <T,>(part: string, id: string) => readPageCache<T>(savedKey(part, id), SAVED_VERSION)
+const writeSaved = (part: string, id: string, data: unknown) => writePageCache(savedKey(part, id), SAVED_VERSION, data)
 
 function DashboardInner() {
   const router = useRouter()
@@ -107,11 +124,15 @@ function DashboardInner() {
   useEffect(() => {
     if (householdIds.length === 0) return
     let cancelled = false
+    const key = householdIds.join(',')
+    const saved = readSaved<HouseholdBundle>('household', key)
+    if (saved) setHousehold(h => h ?? saved)
     const load = async () => {
       const { data, error } = await supabase.rpc('player_dashboard', { p_player_ids: householdIds })
       if (cancelled) return
       if (error) { console.warn('player_dashboard unavailable', error.message); return }
       setHousehold(data as HouseholdBundle)
+      writeSaved('household', key, data)
     }
     load()
     return () => { cancelled = true }
@@ -125,8 +146,13 @@ function DashboardInner() {
   useEffect(() => {
     if (!activePlayerId) return
     let cancelled = false
+    const saved = readSaved<number>('games-won', activePlayerId)
+    if (saved != null) setGamesWon(g => (g && g.id === activePlayerId ? g : { id: activePlayerId, count: saved }))
     loadMyGamePlaces(supabase, activePlayerId).then(places => {
-      if (!cancelled) setGamesWon({ id: activePlayerId, count: [...places.values()].filter(p => p.place === 1).length })
+      if (cancelled) return
+      const count = [...places.values()].filter(p => p.place === 1).length
+      setGamesWon({ id: activePlayerId, count })
+      writeSaved('games-won', activePlayerId, count)
     })
     return () => { cancelled = true }
   }, [activePlayerId])
@@ -148,10 +174,16 @@ function DashboardInner() {
   // so the card below describes rows that are actually in the database.
   const [gradesNonce, setGradesNonce] = useState(0)
   const reloadGrades = useCallback(() => setGradesNonce(n => n + 1), [])
+  // Whose grades are FRESH (read this visit), as opposed to drawn from the
+  // saved copy. The loading bar runs until they are.
+  const [gradesFreshFor, setGradesFreshFor] = useState<string | null>(null)
   useEffect(() => {
     if (!activePlayerId) return
     let cancelled = false
-    setGradesEntry(null)
+    // Keep what is on screen for this player (a recheck reload), else draw the
+    // saved copy, else the outline.
+    const saved = readSaved<SavedGrades>('grades', activePlayerId)
+    setGradesEntry(e => (e && e.id === activePlayerId ? e : saved ? { id: activePlayerId, ...saved } : null))
     // A failed load settles as null, which hides the card rather than leaving
     // it on "Loading…" for good.
     // One read of the evidence; this year's colours, last year's ghost marker
@@ -159,16 +191,26 @@ function DashboardInner() {
     loadGradeInputs(supabase, activePlayerId)
       .then(inputs => {
         if (cancelled) return
-        if (!inputs) { setGradesEntry({ id: activePlayerId, state: null }); return }
+        setGradesFreshFor(activePlayerId)
+        // A failed read keeps a saved copy on screen rather than hiding the card.
+        if (!inputs) { setGradesEntry(e => (e && e.id === activePlayerId && e.state ? e : { id: activePlayerId, state: null })); return }
         const state = gradeStateFrom(activePlayerId, inputs)
         const year = state.year ?? nzYear()
-        setGradesEntry({
-          id: activePlayerId, state,
+        const fresh: SavedGrades = {
+          state,
           ghost: ghostAverages(activePlayerId, inputs, year),
           seasonPRs: prsByYear(prMoments(inputs)).get(year) ?? 0,
-        })
+        }
+        setGradesEntry({ id: activePlayerId, ...fresh })
+        // Saved only when every evidence read worked, so a half read never
+        // replaces a good copy.
+        if (state.complete !== false) writeSaved('grades', activePlayerId, fresh)
       })
-      .catch(() => { if (!cancelled) setGradesEntry({ id: activePlayerId, state: null }) })
+      .catch(() => {
+        if (cancelled) return
+        setGradesFreshFor(activePlayerId)
+        setGradesEntry(e => (e && e.id === activePlayerId && e.state ? e : { id: activePlayerId, state: null }))
+      })
     return () => { cancelled = true }
   }, [activePlayerId, gradesNonce])
 
@@ -184,11 +226,13 @@ function DashboardInner() {
   useEffect(() => {
     if (!activePlayerId) return
     let cancelled = false
-    setEventsWon(null)
+    setEventsWon(readSaved<number>('events-won', activePlayerId))
     supabase.from('player_event_wins').select('event_name, wins').eq('player_id', activePlayerId)
       .then(({ data, error }) => {
         if (cancelled || error) return
-        setEventsWon((data ?? []).filter((w: { wins: number }) => Number(w.wins) > 0).length)
+        const won = (data ?? []).filter((w: { wins: number }) => Number(w.wins) > 0).length
+        setEventsWon(won)
+        writeSaved('events-won', activePlayerId, won)
       })
     return () => { cancelled = true }
   }, [activePlayerId])
@@ -251,8 +295,16 @@ function DashboardInner() {
     if (!activePlayerId) return
     let cancelled = false
     setWeeklyError('')
+    // The saved card draws at once so HOME does not jump when it lands. A rain
+    // call made since is at most one read away, and the fresh board replaces it.
+    const saved = readSaved<WeeklyBoard>('weekly', activePlayerId)
+    if (saved) setWeekly(w => (w && w.id === activePlayerId ? w : { id: activePlayerId, board: saved }))
     loadWeeklyBoard(supabase, activePlayerId)
-      .then(board => { if (!cancelled) setWeekly({ id: activePlayerId, board }) })
+      .then(board => {
+        if (cancelled) return
+        setWeekly({ id: activePlayerId, board })
+        if (board) writeSaved('weekly', activePlayerId, board)
+      })
       .catch(() => { if (!cancelled) setWeekly({ id: activePlayerId, board: null }) })
     return () => { cancelled = true }
   }, [activePlayerId])
@@ -340,13 +392,10 @@ function DashboardInner() {
     [grades, derived],
   )
 
-  if (playerLoading) {
-    return (
-      <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ color: '#555' }}>Loading…</div>
-      </div>
-    )
-  }
+  // The top bar runs until this player's colours are fresh, saved copy or not.
+  useLoadingBar(playerLoading || (!!activePlayerId && gradesFreshFor !== activePlayerId))
+
+  if (playerLoading) return <HomeSkeleton />
 
   if (!activePlayer) {
     return (
@@ -451,14 +500,7 @@ function DashboardInner() {
 
         {/* ── 3. Colours ──────────────────────────────────────────────────── */}
         <NewColourCard awards={newColours.unseen} withdrawn={newColours.withdrawn} onDismiss={newColours.dismiss} />
-        {grades ? <GradesCard state={grades} bestEvent={bestEvent} ghost={ghost} /> : !gradesSettled && (
-          <div style={{
-            background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16,
-            height: 220, marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)',
-          }}>
-            Loading…
-          </div>
-        )}
+        {grades ? <GradesCard state={grades} bestEvent={bestEvent} ghost={ghost} /> : !gradesSettled && <GradesSkeleton />}
 
         {/* A player with no games gets what will fill the page, not zeros. */}
         {firstRun && <FirstRunPanel />}
