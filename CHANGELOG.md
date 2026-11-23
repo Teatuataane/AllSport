@@ -2,6 +2,18 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.65.0.0] - 2026-11-24
+
+### Added
+- **Regular Kaiārahi and cover** (multi-location games step 7a). A Kaiwhakawā sets who regularly leads each game; the maker of a community game can hand it on. The regular taps **Need cover** for a date, and the first eligible Kaiārahi to tap **Claim** takes it, with no approval. Anyone can lead a community game; a funded game needs a Kaimahi or Kaiwhakawā with current vetting and first aid.
+- **A Roster section in the Kaiārahi panel:** covers you can claim, the games you lead in the next four weeks (Need cover, or undo), and for a Kaiwhakawā the covers nobody has claimed, 48 hours out as a warning and 4 hours out as a decision (roster someone, or cancel and players are told).
+- **HOME tells a Kaiārahi about covers** they can claim, and a Kaiwhakawā about unfilled ones. Push and email will send the same alerts once that work lands.
+
+### Changed
+- **Only whoever leads a game that day can start it** (a Kaiwhakawā can start any). New Game lists those games.
+- **Cancelling or moving a game needs a reason:** weather, no Kaiārahi, not enough players, venue unavailable, or other (with a note). A game cannot be cancelled once it has started that day; void it instead.
+- Migration `20261123202226_roster_and_cover.sql` (not yet applied).
+
 ## [0.64.0.0] - 2026-11-24
 
 ### Changed

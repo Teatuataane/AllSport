@@ -10,6 +10,7 @@ import Link from 'next/link'
 import { isHead, isKaiarahi, LEVEL_NAME, type KaiarahiLevel } from '@/lib/kaiarahi'
 import { loadOwnLevel } from '@/lib/kaiarahiData'
 import KaiarahiAdmin from '@/app/components/KaiarahiAdmin'
+import RosterPanel from '@/app/components/RosterPanel'
 
 const supabase = createClient()
 
@@ -79,6 +80,7 @@ export default function JudgePage() {
         {isHead(level) ? (
           <>
             <JudgeCard isHead playerId={player.id} />
+            <RosterPanel />
             <WeeklyGamesAdmin judgeId={player.id} isHead />
             <KaiarahiAdmin />
             <WellbeingReport />
@@ -91,6 +93,7 @@ export default function JudgePage() {
               padding: '14px', marginBottom: 20, textDecoration: 'none',
               fontFamily: 'var(--font-display)', fontSize: 22, letterSpacing: '0.08em',
             }}>New game</Link>
+            <RosterPanel />
             <WeeklyGamesAdmin judgeId={player.id} isHead={false} />
           </>
         )}

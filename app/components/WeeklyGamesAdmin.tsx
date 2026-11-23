@@ -24,6 +24,9 @@ import {
 } from '@/lib/weeklyGamesData'
 import { gameKind, nzWallClock, isOneOff } from '@/lib/weeklyGames'
 import { pinFromMapUrl } from '@/lib/sites'
+import { NOTICE_REASONS, REASON_LABEL, canLeadGame, reasonReady, type NoticeReason } from '@/lib/roster'
+import { loadDirectory, setRegular, type DirectoryRow } from '@/lib/rosterData'
+import { LEVEL_NAME } from '@/lib/kaiarahi'
 
 const supabase = createClient()
 
@@ -37,10 +40,12 @@ const inputStyle: CSSProperties = {
   boxSizing: 'border-box', minHeight: 44, colorScheme: 'dark',
 }
 
-type Composer = { gameId: string; kind: Exclude<NoticeKind, 'on'>; text: string }
+// A cancel or a move needs a reason since 20261123202226 (MULTI_LOCATION_PLAN.md
+// "Cancelling and moving"); Other needs a note.
+type Composer = { gameId: string; kind: Exclude<NoticeKind, 'on'>; text: string; reason: NoticeReason | null }
 
 const PROMPTS: Record<Composer['kind'], { button: string; placeholder: string; start: string }> = {
-  cancelled: { button: 'Cancel game', placeholder: 'Why (optional)', start: 'Cancelled because of rain.' },
+  cancelled: { button: 'Cancel game', placeholder: 'Note for players (needed for Other)', start: '' },
   moved: { button: 'Send where', placeholder: 'e.g. Jellie Park, by the pavilion', start: '' },
   message: { button: 'Send message', placeholder: 'What players need to know', start: '' },
 }
@@ -54,10 +59,13 @@ export default function WeeklyGamesAdmin({ judgeId, isHead }: { judgeId: string;
   const [error, setError] = useState('')
   const [adding, setAdding] = useState<'site' | 'game' | 'programme' | null>(null)
   const [programmes, setProgrammes] = useState<Programme[] | null>(null)
+  // Kaiārahi names for the regular picker; null until 20261123202226 is live.
+  const [directory, setDirectory] = useState<DirectoryRow[] | null>(null)
 
-  // A Kaiārahi who is not a head manages only the community games they made.
+  // A Kaiārahi who is not a head manages the community games they made and
+  // the games they are the regular of (public.manages_game).
   const mineOnly = useCallback((b: WeeklyBoard): WeeklyBoard => isHead ? b : {
-    ...b, games: b.games.filter(g => gameKind(g) === 'community' && g.created_by === judgeId),
+    ...b, games: b.games.filter(g => (gameKind(g) === 'community' && g.created_by === judgeId) || g.regular_kaiarahi_id === judgeId),
   }, [isHead, judgeId])
 
   const reload = useCallback(async () => {
@@ -66,6 +74,7 @@ export default function WeeklyGamesAdmin({ judgeId, isHead }: { judgeId: string;
     setBoard(shown)
     if (shown) setRosters(await loadRosters(supabase, shown.games))
     if (isHead) setProgrammes(await loadProgrammes(supabase))
+    setDirectory(await loadDirectory(supabase))
   }, [mineOnly, isHead])
 
   useEffect(() => {
@@ -75,13 +84,15 @@ export default function WeeklyGamesAdmin({ judgeId, isHead }: { judgeId: string;
       const shown = b ? mineOnly(b) : b
       setBoard(shown)
       if (!shown) return
-      const [r, p] = await Promise.all([
+      const [r, p, d] = await Promise.all([
         loadRosters(supabase, shown.games),
         isHead ? loadProgrammes(supabase) : Promise.resolve(null),
+        loadDirectory(supabase),
       ])
       if (cancelled) return
       setRosters(r)
       setProgrammes(p)
+      setDirectory(d)
     }).catch(() => { if (!cancelled) setBoard(null) })
     return () => { cancelled = true }
   }, [mineOnly, isHead])
@@ -91,10 +102,10 @@ export default function WeeklyGamesAdmin({ judgeId, isHead }: { judgeId: string;
   // Before 20261123035106 only a head may add anything.
   if (!isHead && !v2) return null
 
-  const send = async (gameId: string, date: string, kind: NoticeKind, text: string | null) => {
+  const send = async (gameId: string, date: string, kind: NoticeKind, text: string | null, reason: NoticeReason | null = null) => {
     setBusy(true)
     setError('')
-    const err = await postNotice(supabase, gameId, date, kind, text, judgeId)
+    const err = await postNotice(supabase, gameId, date, kind, text, judgeId, reason)
     setBusy(false)
     if (err) { setError(`Not sent: ${err}`); return }
     setComposer(null)
@@ -136,6 +147,16 @@ export default function WeeklyGamesAdmin({ judgeId, isHead }: { judgeId: string;
                 open={open === g.id} onToggle={() => setOpen(o => (o === g.id ? null : g.id))}
                 composer={composer?.gameId === g.id ? composer : null}
                 setComposer={setComposer} busy={busy} onSend={send} onRemove={remove}
+                directory={directory}
+                canHandOn={isHead || (gameKind(g) === 'community' && (g.created_by === judgeId || g.regular_kaiarahi_id === judgeId))}
+                onSetRegular={async pid => {
+                  setBusy(true)
+                  setError('')
+                  const e = await setRegular(supabase, g.id, pid)
+                  setBusy(false)
+                  if (e) setError(`Not changed: ${e}`)
+                  else await reload()
+                }}
                 onRetire={async () => {
                   setBusy(true)
                   const { error: e } = await supabase.from('weekly_games').update({ is_active: false }).eq('id', g.id)
@@ -183,6 +204,7 @@ export default function WeeklyGamesAdmin({ judgeId, isHead }: { judgeId: string;
 
 function GameAdminRow({
   game, board, roster, open, onToggle, composer, setComposer, busy, onSend, onRemove, onRetire,
+  directory, canHandOn, onSetRegular,
 }: {
   game: WeeklyGame
   board: WeeklyBoard
@@ -192,11 +214,21 @@ function GameAdminRow({
   composer: Composer | null
   setComposer: (c: Composer | null) => void
   busy: boolean
-  onSend: (gameId: string, date: string, kind: NoticeKind, text: string | null) => void
+  onSend: (gameId: string, date: string, kind: NoticeKind, text: string | null, reason?: NoticeReason | null) => void
   onRemove: (id: string) => void
   onRetire: () => void
+  /** Null before 20261123202226: no regular to show. */
+  directory: DirectoryRow[] | null
+  canHandOn: boolean
+  onSetRegular: (playerId: string | null) => void
 }) {
   const [retireArmed, setRetireArmed] = useState(false)
+  const [picking, setPicking] = useState(false)
+  const regular = directory?.find(d => d.player_id === game.regular_kaiarahi_id) ?? null
+  // Who may be the regular: anyone for a community game, a Kaimahi with
+  // current checks for a funded one (public.can_lead_game).
+  const eligible = (directory ?? []).filter(d => canLeadGame({ level: d.level, checksCurrent: d.funded_ok }, game))
+  const needsReason = composer?.kind === 'cancelled' || composer?.kind === 'moved'
   const date = nextGameDate(game)
   const day = dateLabel(date)
   const status = dayStatus(game.id, date, board.notices)
@@ -226,6 +258,29 @@ function GameAdminRow({
         <SmallButton onClick={onToggle}>{open ? 'Hide' : 'Who'}</SmallButton>
       </div>
 
+      {directory && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, flexWrap: 'wrap', fontSize: 13, color: '#aaa' }}>
+          <span>
+            Regular: {regular ? `${regular.display_name} · ${LEVEL_NAME[regular.level]}`
+              : gameKind(game) === 'community' ? 'whoever made it' : <b style={{ color: 'var(--amber)', fontWeight: 600 }}>nobody yet</b>}
+          </span>
+          {canHandOn && !picking && (
+            <button type="button" onClick={() => setPicking(true)} style={{
+              background: 'none', border: 'none', color: '#9ab', cursor: 'pointer', fontSize: 13, textDecoration: 'underline', padding: 0,
+            }}>{gameKind(game) === 'community' ? 'Hand on' : 'Change'}</button>
+          )}
+          {picking && (
+            <select aria-label="Regular Kaiārahi" autoFocus defaultValue={game.regular_kaiarahi_id ?? ''} disabled={busy}
+              onChange={e => { setPicking(false); onSetRegular(e.target.value || null) }}
+              onBlur={() => setPicking(false)}
+              style={{ ...inputStyle, width: 'auto', minHeight: 38, padding: '6px 10px', fontSize: 14 }}>
+              <option value="">{gameKind(game) === 'community' ? 'Whoever made it' : 'Nobody'}</option>
+              {eligible.map(d => <option key={d.player_id} value={d.player_id}>{d.display_name} · {LEVEL_NAME[d.level]}</option>)}
+            </select>
+          )}
+        </div>
+      )}
+
       {open && (
         <div style={{ fontSize: 13, color: '#bbb', marginTop: 8, lineHeight: 1.7 }}>
           {roster.length === 0 ? 'Nobody registered yet.' : roster.map(r => (
@@ -254,6 +309,13 @@ function GameAdminRow({
 
       {composer ? (
         <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {needsReason && (
+            <select aria-label="Reason" value={composer.reason ?? ''} style={inputStyle}
+              onChange={e => setComposer({ ...composer, reason: (e.target.value || null) as NoticeReason | null })}>
+              <option value="">Reason</option>
+              {NOTICE_REASONS.map(r => <option key={r} value={r}>{REASON_LABEL[r]}</option>)}
+            </select>
+          )}
           <input
             aria-label={PROMPTS[composer.kind].placeholder}
             value={composer.text} maxLength={280} autoFocus
@@ -264,8 +326,10 @@ function GameAdminRow({
           <div style={{ display: 'flex', gap: 8 }}>
             <SmallButton
               primary={composer.kind === 'cancelled' ? 'red' : 'blue'}
-              disabled={busy || (composer.kind !== 'cancelled' && !composer.text.trim())}
-              onClick={() => onSend(game.id, date, composer.kind, composer.text)}
+              disabled={busy
+                || (composer.kind !== 'cancelled' && !composer.text.trim())
+                || (needsReason && !reasonReady(composer.reason, composer.text))}
+              onClick={() => onSend(game.id, date, composer.kind, composer.text, needsReason ? composer.reason : null)}
             >
               {PROMPTS[composer.kind].button} ({day})
             </SmallButton>
@@ -276,9 +340,9 @@ function GameAdminRow({
         <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
           {status.cancelled
             ? <SmallButton primary="green" disabled={busy} onClick={() => onSend(game.id, date, 'on', null)}>Back on</SmallButton>
-            : <SmallButton onClick={() => setComposer({ gameId: game.id, kind: 'cancelled', text: PROMPTS.cancelled.start })}>Cancel (rain)</SmallButton>}
-          <SmallButton onClick={() => setComposer({ gameId: game.id, kind: 'moved', text: '' })}>Change park</SmallButton>
-          <SmallButton onClick={() => setComposer({ gameId: game.id, kind: 'message', text: '' })}>Message</SmallButton>
+            : <SmallButton onClick={() => setComposer({ gameId: game.id, kind: 'cancelled', text: PROMPTS.cancelled.start, reason: null })}>Cancel</SmallButton>}
+          <SmallButton onClick={() => setComposer({ gameId: game.id, kind: 'moved', text: '', reason: null })}>Change park</SmallButton>
+          <SmallButton onClick={() => setComposer({ gameId: game.id, kind: 'message', text: '', reason: null })}>Message</SmallButton>
           <SmallButton disabled={busy} onClick={() => {
             if (retireArmed) { setRetireArmed(false); onRetire() } else {
               setRetireArmed(true)

@@ -19,6 +19,8 @@ import EventPlanPicker from '@/components/play/EventPlanPicker'
 import { loadWeeklyBoard, gamesV2Live, createGame, createSite, type WeeklyBoard } from '@/lib/weeklyGamesData'
 import { matchWeeklyGame, nzWallClock, startableGames } from '@/lib/weeklyGames'
 import { loadOwnKaiarahi } from '@/lib/kaiarahiData'
+import { startableToday, rosterWindow, type RosterRow } from '@/lib/roster'
+import { loadRoster } from '@/lib/rosterData'
 import GamePicker, { choiceReady, type GameChoice } from '@/components/play/GamePicker'
 import type { Pin } from '@/lib/sites'
 import { LIVE_GAME_COLUMNS, gameAlreadyLive, liveOnly, type LiveGameRow } from '@/lib/liveGames'
@@ -42,23 +44,30 @@ export default function ScoringSetup() {
   const [choice, setChoice] = useState<GameChoice>(null)
   const [here, setHere] = useState<Pin | null>(null)
   const [locating, setLocating] = useState(false)
+  // Today's roster (20261123202226): who leads which game. Null before it is
+  // live, when the older rule (startableGames) decides.
+  const [roster, setRoster] = useState<RosterRow[] | null>(null)
   useEffect(() => {
     let cancelled = false
     const supabase = createClient()
     ;(async () => {
       const user = await getSessionUser()
-      const [b, me] = await Promise.all([
+      const today = nzWallClock(new Date()).date
+      const [b, me, r] = await Promise.all([
         loadWeeklyBoard(supabase, null),
         user
           ? supabase.from('players').select('role').eq('id', user.id).maybeSingle()
-              .then(r => loadOwnKaiarahi(supabase, user.id, (r.data as { role?: string } | null)?.role, nzWallClock(new Date()).date))
+              .then(res => loadOwnKaiarahi(supabase, user.id, (res.data as { role?: string } | null)?.role, today))
           : Promise.resolve(null),
+        loadRoster(supabase, rosterWindow(new Date()).from, today),
       ])
       if (cancelled) return
       setWeekly(b)
+      setRoster(r)
       if (user && me) setMine({ id: user.id, ...me })
       if (!b || !user || !me) return
-      const startable = startableGames(b.games, { id: user.id, ...me })
+      const who = { id: user.id, ...me }
+      const startable = r ? startableToday(b.games, who, r, today) : startableGames(b.games, who)
       const match = matchWeeklyGame(startable, new Date())
       if (match) {
         setChoice({ kind: 'game', gameId: match.id })
@@ -69,7 +78,9 @@ export default function ScoringSetup() {
     return () => { cancelled = true }
   }, [])
   const v2 = gamesV2Live(weekly)
-  const startable = weekly && mine ? startableGames(weekly.games, mine) : []
+  const startable = !weekly || !mine ? []
+    : roster ? startableToday(weekly.games, mine, roster, nzWallClock(new Date()).date)
+    : startableGames(weekly.games, mine)
   const pick = (c: GameChoice) => {
     setChoice(c)
     const siteId = c?.kind === 'game' ? weekly?.games.find(g => g.id === c.gameId)?.site_id

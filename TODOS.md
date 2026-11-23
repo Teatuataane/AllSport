@@ -167,6 +167,19 @@
 
 ## P1 — Do Next
 
+### Apply `20261123202226_roster_and_cover.sql` after v0.65.0.0 deploys
+From `main`, `db query --linked -f` plus the ledger row. Ends with a check block (RLS on, no write policy on `game_roster`, `anon` cannot claim, every definer function pins `search_path`). Rehearsed 24 Nov 2026 in a rolled-back transaction, 40 checks passing:
+- **Kaiwhakawā:** sets regulars; can't make a Kaiako the regular of a funded game (22023); rosters a date and claims a cover; can't cancel a game once it has started that day (22023).
+- **Kaimahi:** as regular, starts the game, asks for cover, cancels with a reason. Refused a cancel with no reason and an Other with no note (23514). Can't undo someone else's claim, roster a date, or write the roster directly (42501).
+- **Kaiako:** can't claim or start a funded game or post its notices. Makes a community game, hands it on, and then no longer starts it.
+- **Plain player:** sees no roster or directory.
+- **`anon`:** can't claim or read the roster.
+
+Verify after applying: `game_roster` RLS on, `game_notices.reason` present, as `authenticated` a plain player reads 0 roster rows, `anon` cannot execute `claim_cover`. Then set a regular for each HQ game in the panel (until then only a Kaiwhakawā can start them, as now).
+
+### Two adults, under-18 Kaiako and parent present (step 7b)
+Before Burnside (Term 1 2027). A game with `two_adults` cannot start until a second adult is recorded (a Kaiārahi, or a named helper with no account) as `game_roster` role `second`; a Kaiako under 18 needs an adult second; juniors at a game run only by Kaiako need a parent present (ticked by the Kaiako, automatic when the parent adds them). Needs `guard_results_write` or a session-adults table; decide with the second-adult screen on New Game.
+
 ### ~~Apply `20261123035106_games_and_programmes.sql` after v0.63.0.0 deploys~~ DONE 2026-11-24
 **Done:** applied from a clean `main` checkout by `db query --linked` plus the ledger row once allsport.nz served the new New Game. Verified: 0 sessions without a game, NOT NULL, 81 back-fill rows with RLS on, `judge_id` FK set-null; head can start the HQ game, a plain player cannot and cannot add a site; `anon` refused `programmes` and `can_start_game` (42501). Still to do: pin HQ from a map link in the panel, and try a pop-up on a phone. Original note: from `main`, `db query --linked -f` plus the ledger row. One transaction ending in a check block. Rehearsed 23 Nov 2026 in a rolled-back transaction: 81 sessions back-filled (59 to an HQ weekly game, 22 to inactive unlisted past one-offs at HQ), sessions and results hashes unchanged; a head made a programme and a funded game and started it; a session with no game was refused; a Kaimahi (no checks recorded) made a pop-up, started it and posted a notice on it, and was refused starting or cancelling the HQ game and making a funded game (42501); a plain player could not add a site. Verify after applying: `sessions.weekly_game_id` has no nulls and is NOT NULL, `sessions_game_backfill_20261123` has RLS on and 81 rows, `programmes` reads 0 rows as a plain `authenticated` player, and `anon` cannot execute `can_start_game`. Then check New Game on a phone: the HQ game is pre-picked, and a pop-up adds a site and starts.
 
