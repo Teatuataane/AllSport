@@ -232,7 +232,8 @@ function GameAdminRow({
   const date = nextGameDate(game)
   const day = dateLabel(date)
   const status = dayStatus(game.id, date, board.notices)
-  const awayCount = roster.filter(r => r.away).length
+  const comingCount = roster.filter(r => r.answer === 'yes').length
+  const awayCount = roster.filter(r => r.answer === 'no').length
   const all = board.notices
     .filter(n => n.weekly_game_id === game.id && n.game_date === date)
     .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
@@ -250,7 +251,7 @@ function GameAdminRow({
             )}
           </div>
           <div style={{ fontSize: 13, color: '#888', marginTop: 2 }}>
-            Next: {day} · {roster.length} registered{awayCount ? ` (${awayCount} away)` : ''}
+            Next: {day} · {roster.length} registered{comingCount || awayCount ? ` (${[comingCount ? `${comingCount} coming` : '', awayCount ? `${awayCount} not` : ''].filter(Boolean).join(', ')})` : ''}
             {status.cancelled && <b style={{ color: 'var(--red)', fontWeight: 600 }}> · Cancelled</b>}
             {!status.cancelled && status.venue && <b style={{ color: 'var(--amber)', fontWeight: 600 }}> · Moved</b>}
           </div>
@@ -284,8 +285,8 @@ function GameAdminRow({
       {open && (
         <div style={{ fontSize: 13, color: '#bbb', marginTop: 8, lineHeight: 1.7 }}>
           {roster.length === 0 ? 'Nobody registered yet.' : roster.map(r => (
-            <span key={r.player_id} style={{ display: 'inline-block', marginRight: 12, color: r.away ? '#666' : '#ddd' }}>
-              {r.name}{r.away ? ' (away)' : ''}
+            <span key={r.player_id} style={{ display: 'inline-block', marginRight: 12, color: r.answer === 'no' ? '#666' : '#ddd' }}>
+              {r.name}{r.answer === 'yes' ? ' (coming)' : r.answer === 'no' ? ' (not this time)' : ''}
             </span>
           ))}
         </div>

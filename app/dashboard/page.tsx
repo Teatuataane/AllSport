@@ -45,9 +45,12 @@ import { bestEventByColour, shownOverallRung } from '@/lib/colourDisplay'
 import { loadMyGamePlaces } from '@/lib/loadGamePlace'
 import WeeklyGamesCard from '@/components/WeeklyGamesCard'
 import CoverAlertCard from '@/components/CoverAlertCard'
+import type { FamilyEntry } from '@/components/WeeklyGamesCard'
+import { adjustCounts, answerKey, countsKey, type Answer } from '@/lib/bookings'
+import { setBooking } from '@/lib/bookingsData'
 import { isHead, LEVEL_NAME } from '@/lib/kaiarahi'
 import {
-  loadWeeklyBoard, joinWeeklyGame, leaveWeeklyGame, setAway, awayKey, type WeeklyBoard,
+  loadWeeklyBoard, joinWeeklyGame, leaveWeeklyGame, type WeeklyBoard,
 } from '@/lib/weeklyGamesData'
 
 const supabase = createClient()
@@ -278,6 +281,8 @@ function DashboardInner() {
   // child the same way). Null until loaded, and null for good when the tables
   // are not live yet, in which case the fixed schedule line shows instead.
   const [weekly, setWeekly] = useState<{ id: string; board: WeeklyBoard | null } | null>(null)
+  // The children's ids as one string, so a new array of the same ids does not reload.
+  const familyKey = familyMembers.map(m => m.id).join(',')
   const [weeklyBusy, setWeeklyBusy] = useState<string | null>(null)
   const [weeklyError, setWeeklyError] = useState('')
   useEffect(() => {
@@ -288,7 +293,9 @@ function DashboardInner() {
     // call made since is at most one read away, and the fresh board replaces it.
     const saved = readSaved<WeeklyBoard>('weekly', activePlayerId)
     if (saved) setWeekly(w => (w && w.id === activePlayerId ? w : { id: activePlayerId, board: saved }))
-    loadWeeklyBoard(supabase, activePlayerId)
+    // On their own HOME a parent answers "Coming?" for each child too.
+    const familyIds = activePlayerId === userId && familyKey ? familyKey.split(',') : []
+    loadWeeklyBoard(supabase, activePlayerId, new Date(), familyIds)
       .then(board => {
         if (cancelled) return
         setWeekly({ id: activePlayerId, board })
@@ -296,8 +303,13 @@ function DashboardInner() {
       })
       .catch(() => { if (!cancelled) setWeekly({ id: activePlayerId, board: null }) })
     return () => { cancelled = true }
-  }, [activePlayerId])
+  }, [activePlayerId, userId, familyKey])
   const weeklyBoard = weekly && weekly.id === activePlayerId ? weekly.board : null
+  // A saved copy from before step 8 has no answers or family; draw it without.
+  const weeklyFamily: FamilyEntry[] = weeklyBoard?.family
+    ? familyMembers.filter(m => weeklyBoard.family.has(m.id))
+      .map(m => ({ id: m.id, name: playerLabel(m), games: weeklyBoard.family.get(m.id) ?? new Set<string>() }))
+    : []
 
   // Each write updates the card at once and puts it back if the write fails.
   const changeWeekly = async (
@@ -330,9 +342,20 @@ function DashboardInner() {
     gameId, b => ({ ...b, mine: withSet(b.mine, gameId, false) }),
     () => leaveWeeklyGame(supabase, gameId, activePlayerId),
   )
-  const onAwayWeekly = (gameId: string, date: string, isAway: boolean) => activePlayerId && changeWeekly(
-    gameId, b => ({ ...b, away: withSet(b.away, awayKey(gameId, date), isAway) }),
-    () => setAway(supabase, gameId, activePlayerId, date, isAway),
+  // Yes / Not this time (or a second tap, taking it back), for the player or a child.
+  const onAnswerWeekly = (gameId: string, date: string, forId: string, answer: Answer | null) => changeWeekly(
+    gameId, b => {
+      const key = answerKey(gameId, date, forId)
+      const before = b.answers?.get(key)
+      const answers = new Map(b.answers ?? [])
+      if (answer) answers.set(key, answer); else answers.delete(key)
+      const registered = forId === activePlayerId ? b.mine.has(gameId) : !!b.family?.get(forId)?.has(gameId)
+      const cKey = countsKey(gameId, date)
+      const was = b.counts?.get(cKey)
+      const counts = b.counts && was ? new Map(b.counts).set(cKey, adjustCounts(was, before, answer, registered)) : b.counts
+      return { ...b, answers, counts }
+    },
+    () => setBooking(supabase, gameId, date, forId, answer),
   )
 
   // Silent auto-join from the QR code. The typed code box is gone (home
@@ -472,10 +495,12 @@ function DashboardInner() {
             {!game && joinError && <div style={{ color: 'var(--red)', fontSize: 13, marginTop: 16 }}>{joinError}</div>}
             <WeeklyGamesCard
               sites={weeklyBoard.sites} games={weeklyBoard.games} notices={weeklyBoard.notices}
-              mine={weeklyBoard.mine} away={weeklyBoard.away}
+              mine={weeklyBoard.mine} playerId={activePlayerId ?? ''} family={weeklyFamily}
+              answers={weeklyBoard.answers ?? new Map()} bookingsLive={weeklyBoard.bookingsLive ?? false}
+              counts={weeklyBoard.counts ?? null}
               who={activePlayerId !== userId ? playerLabel(activePlayer) : null}
               busy={weeklyBusy} error={weeklyError}
-              onJoin={onJoinWeekly} onLeave={onLeaveWeekly} onAway={onAwayWeekly}
+              onJoin={onJoinWeekly} onLeave={onLeaveWeekly} onAnswer={onAnswerWeekly}
             />
           </>
         ) : game ? <div style={{ height: 18 }} /> : (

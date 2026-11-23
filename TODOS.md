@@ -167,6 +167,21 @@
 
 ## P1 — Do Next
 
+### Apply `20261123214052_bookings.sql` after v0.67.0.0 deploys
+From `main`, `db query --linked -f` plus the ledger row. Ends with a check block: RLS on, no writes or `anon` reads open, `anon` cannot read counts, every future away date copied.
+
+Rehearsed 24 Nov 2026 in a rolled-back transaction, 15 checks passing:
+- **Plain player:** answers Yes, changes it to No, and takes it back. Sees only their own row and the counts. Refused for another player (42501), for a day the game is not on, a past date, and an answer other than yes or no (22023). A direct insert is refused (42501).
+- **Kaimahi not leading:** sees only their own answer.
+- **Kaiwhakawā:** sees every answer.
+- **`anon`:** refused the counts and the table (42501).
+
+Verify after applying: `game_bookings` RLS on; `authenticated` cannot INSERT into it or into `weekly_game_absences`; `anon` cannot execute `booking_counts`. Then on a phone: answer Coming on HOME, see the count move, and see the name on the game screen's Kaiārahi tab.
+
+### Push and email for bookings (step 8, part 2)
+Once `claude/weekly-games-push-email` lands with its keys: send "Coming tomorrow?" at 4pm the day before (none 9pm to 7am), stop reminders after a No, send parents' questions by email by default, signed email links for parents with no account (one child, one date, expiring at the start), and send "Still on?" two hours out. Rules already in `lib/bookings.ts` (`ASK_HOUR`, `askOpen`, `fewComingPrompt`).
+
+
 ### ~~Apply `20261123202226_roster_and_cover.sql` after v0.65.0.0 deploys~~ DONE 2026-11-24
 **Done:** applied from a clean `main` checkout once allsport.nz served the roster code, ledger row written, verified (RLS on, no write policy, reason column and trigger present, plain player 0 rows and refused, `anon` refused). **Still to do:** set a regular for each HQ game in the panel. Original note: from `main`, `db query --linked -f` plus the ledger row. Ends with a check block (RLS on, no write policy on `game_roster`, `anon` cannot claim, every definer function pins `search_path`). Rehearsed 24 Nov 2026 in a rolled-back transaction, 40 checks passing:
 - **Kaiwhakawā:** sets regulars; can't make a Kaiako the regular of a funded game (22023); rosters a date and claims a cover; can't cancel a game once it has started that day (22023).
@@ -177,8 +192,8 @@
 
 Verify after applying: `game_roster` RLS on, `game_notices.reason` present, as `authenticated` a plain player reads 0 roster rows, `anon` cannot execute `claim_cover`. Then set a regular for each HQ game in the panel (until then only a Kaiwhakawā can start them, as now).
 
-### Apply `20261123205536_two_adults.sql` after v0.66.0.0 deploys
-From `main`, `db query --linked -f` plus the ledger row. Ends with a check block: ages not executable by players, no current Kaiārahi under 16, start trigger present.
+### ~~Apply `20261123205536_two_adults.sql` after v0.66.0.0 deploys~~ DONE 2026-11-24
+**Done:** applied from a clean `main` checkout by `db query --linked` plus the ledger row once allsport.nz served v0.66.0.0; the check block passed. Verified: `session_zzz_adults_guard` and `kaiarahi_age_guard` present, `game_roster.helper_adult` present, `authenticated` cannot execute `age_today` or `second_is_adult`, `anon` cannot execute `set_second_adult`; as `authenticated` the head gets no blocker on the HQ game, and a plain player calling `age_today` is refused (42501). Still to do: turn on "Needs two adults" for the Burnside game when it is made. Original note: from `main`, `db query --linked -f` plus the ledger row. Ends with a check block: ages not executable by players, no current Kaiārahi under 16, start trigger present.
 
 Rehearsed 24 Nov 2026 in a rolled-back transaction, 23 checks passing:
 - **Two-adult game:** refused with no second (23514). A Kaiako recorded a teacher and then started it, and couldn't be their own second (22023).

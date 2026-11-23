@@ -4117,3 +4117,18 @@ Multi-location games step 7b. Players join a game by scoring (there is no join l
 **Age limits** on granting (16+, and 18+ for Kaimahi and Kaiwhakawā) are a trigger on `kaiarahi`, so `grant_kaiarahi` is not redefined.
 
 Rehearsed in a rolled-back transaction, 23 checks passing.
+
+**Applied 24 Nov 2026** from a clean `main` checkout after allsport.nz served v0.66.0.0, by `db query --linked` plus the ledger row; the check block passed. Verified live: both triggers and `game_roster.helper_adult` present; `authenticated` cannot execute `age_today` or `second_is_adult`; `anon` cannot execute `set_second_adult`; as `authenticated` the head gets no blocker on the HQ game, and a plain player asking `age_today` is refused (42501).
+
+## Bookings in the app (v0.67.0.0, 24 Nov 2026)
+
+Multi-location games step 8. Tāne chose to build it in the app now, and send it by push and email once that branch lands, as for the roster alerts.
+
+**What players see.** Under each weekly game they have joined, HOME asks "Coming tomorrow? Yes / Not this time" for the next date. The box stands out from 4pm the day before, when the question would be sent; before that a player can still answer. A second tap takes an answer back. Answers close at the start (`set_booking` refuses after). A parent on their own HOME answers for each child registered to the game, and a child's game shows there even when the parent has not joined it. Every row shows the counts, "6 coming · 3 not · 11 haven't said", and never names.
+
+**What the Kaiārahi sees.** The Kaiārahi tab of a game screen lists who said Yes, ticked once they score or when tapped (the tick stays on that screen; the show-up rate will be worked out from scores). HOME tells the lead of a game starting in the next two hours with fewer than four coming: "Only 2 coming. Still on?". The Kaiwhakawā's game list shows each registered player's answer.
+
+**Database** (`20261123214052_bookings.sql`). `game_bookings` keyed on game, date and player. No write policy: `set_booking` is the only way in, for yourself or your child (not a Kaiwhakawā on someone's behalf, because an answer is the player's word), on a real date of that game, before it starts. `booking_counts` takes parallel arrays of game ids and dates (at most 50) and returns counts only. An unlisted game's counts go only to a Kaiārahi or a household registered to it. Away dates still to come are copied in as a No, and INSERT on `weekly_game_absences` is revoked, so an old open tab is told it did not save. Until the migration is applied, the loaders fall back to away dates and HOME keeps "Can't make it".
+
+Rehearsed in a rolled-back transaction, 15 checks passing.
+
