@@ -4102,4 +4102,4 @@ Multi-location games step 7a. Tāne chose to split step 7 (roster, cover and rea
 
 **Reasons:** a cancel or move needs one (a check constraint, safe because no notices existed). A cancel is refused once a session of that game has started that day.
 
-**Moved to step 8:** the under-4 prompt, since it needs bookings.
+**Moved to step 8:** the under-4 prompt, since it needs bookings. Applied 24 Nov 2026 once allsport.nz served the code, and verified live as head, plain player and `anon`.

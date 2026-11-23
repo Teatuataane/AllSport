@@ -167,8 +167,8 @@
 
 ## P1 — Do Next
 
-### Apply `20261123202226_roster_and_cover.sql` after v0.65.0.0 deploys
-From `main`, `db query --linked -f` plus the ledger row. Ends with a check block (RLS on, no write policy on `game_roster`, `anon` cannot claim, every definer function pins `search_path`). Rehearsed 24 Nov 2026 in a rolled-back transaction, 40 checks passing:
+### ~~Apply `20261123202226_roster_and_cover.sql` after v0.65.0.0 deploys~~ DONE 2026-11-24
+**Done:** applied from a clean `main` checkout once allsport.nz served the roster code, ledger row written, verified (RLS on, no write policy, reason column and trigger present, plain player 0 rows and refused, `anon` refused). **Still to do:** set a regular for each HQ game in the panel. Original note: from `main`, `db query --linked -f` plus the ledger row. Ends with a check block (RLS on, no write policy on `game_roster`, `anon` cannot claim, every definer function pins `search_path`). Rehearsed 24 Nov 2026 in a rolled-back transaction, 40 checks passing:
 - **Kaiwhakawā:** sets regulars; can't make a Kaiako the regular of a funded game (22023); rosters a date and claims a cover; can't cancel a game once it has started that day (22023).
 - **Kaimahi:** as regular, starts the game, asks for cover, cancels with a reason. Refused a cancel with no reason and an Other with no note (23514). Can't undo someone else's claim, roster a date, or write the roster directly (42501).
 - **Kaiako:** can't claim or start a funded game or post its notices. Makes a community game, hands it on, and then no longer starts it.
