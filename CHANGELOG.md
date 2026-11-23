@@ -2,6 +2,15 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.61.0.0] - 2026-11-23
+
+### Added
+- **Three levels of Kaiārahi** (Tāne, multi-location games, `MULTI_LOCATION_PLAN.md`). Kaiwhakawā (head staff) can do everything a judge could. Kaimahi (paid staff) and Kaiako (weekend course) can start a game and run the games they start: score anyone in it, add guests and events, weigh players in, record matches, end it. They cannot see players' contact details, change divisions or dates of birth, mark exemptions, settle disputes, void or delete a game, or touch another Kaiārahi's game. Heads grant, change, suspend and remove levels, and record vetting and first aid expiry dates, in a new Kaiārahi section of the judge panel. The database refuses anything that would leave no Kaiwhakawā.
+- The nav's play button reads RUN for a Kaimahi or Kaiako and takes them to New Game. HOME shows your level next to your division.
+
+### Changed
+- **One judge switch became levels in the database** (`20261123024501_kaiarahi_levels.sql`, not yet applied). `is_judge()` now means a current Kaiwhakawā, read from the new `kaiarahi` table; the rules about running a game use `runs_session()` instead. Every existing judge becomes a Kaiwhakawā, so nothing changes for anyone on the day. The server now records who started each game (`sessions.judge_id`). `players.role` no longer grants anything, and the app reads the level instead.
+
 ## [0.59.0.0] - 2026-11-23
 
 ### Added

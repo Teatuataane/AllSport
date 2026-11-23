@@ -167,6 +167,10 @@
 
 ## P1 — Do Next
 
+### Apply `20261123024501_kaiarahi_levels.sql` after v0.61.0.0 deploys
+From `main`, `db query --linked -f` plus the ledger row. It is one transaction and ends with a check that no policy or function still reads `players.role`. Rehearsed 23 Nov 2026 in a rolled-back transaction: the head kept every power and could not suspend the last head; a staff member started a game (judge_id stamped), added an event, scored another player, weighed them in, ended their own game, saw only their own players row, and was refused voiding, another's game, and granting; a plain player could not start a game or weigh anyone. Verify after applying: one `head` row for the existing judge, `is_judge()` true for them as `authenticated`, and `anon` cannot execute `grant_kaiarahi`.
+
+
 ### Apply `20261118010039_weekly_games.sql` after v0.54.0.0 deploys
 From `main`, `db query --linked -f` plus the ledger row. Verify: five tables with RLS on, three weekly games seeded, `sessions.weekly_game_id` present; as `anon` the sites, games and notices read and no write works; as `authenticated` (rolled back) a player can join and leave their own weekly game but not another player's, cannot read another player's registration, and cannot post a notice; a kaiwhakawā can.
 

@@ -46,6 +46,7 @@ import { scoreRung, rungSegment, workoutColourRung, workoutSlugs } from '@/lib/s
 import { gradeForRung } from '@/lib/grading'
 import type { EntryVals } from '@/lib/scoring'
 import { forgetLoadedMatches } from '@/lib/matchesShared'
+import { isHead } from '@/lib/kaiarahi'
 
 const supabase = createClient()
 
@@ -172,7 +173,8 @@ export default function PersonalGamePage() {
   // A witnessed workout is a training session a kaiwhakawā runs. Both of them
   // score in it while it is open; only the kaiwhakawā changes the plan or
   // finishes it (the database enforces the same split).
-  const isJudge = self?.role === 'judge'
+  // Running a training session is a Kaiwhakawā power (can_log_for).
+  const isJudge = isHead(self?.kaiarahi_level)
   const coached = !!workout?.witnessed
   const canRun = !coached || isJudge
 

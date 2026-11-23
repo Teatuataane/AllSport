@@ -45,7 +45,8 @@ type PastVote = {
 }
 
 type JudgeCardProps = {
-  playerRole: string
+  /** A Kaiwhakawā (head staff). Ending and voiding from the panel are theirs. */
+  isHead: boolean
   /** The signed-in kaiwhakawā, who the Training tab logs sessions under. */
   playerId?: string
 }
@@ -76,7 +77,7 @@ function formatCountdown(ms: number): string {
   return `${minutes}m ${seconds}s`
 }
 
-export default function JudgeCard({ playerRole, playerId }: JudgeCardProps) {
+export default function JudgeCard({ isHead, playerId }: JudgeCardProps) {
   const router = useRouter()
   const supabase = createClient()
 
@@ -286,7 +287,7 @@ export default function JudgeCard({ playerRole, playerId }: JudgeCardProps) {
   }
 
   const handleEndSession = async (sessionId: string) => {
-    if (playerRole !== 'judge') return
+    if (!isHead) return
     setEnding(sessionId)
     setEndError('')
     const { error } = await supabase
@@ -314,7 +315,7 @@ export default function JudgeCard({ playerRole, playerId }: JudgeCardProps) {
   }
 
   const handleVoidSession = async (sessionId: string) => {
-    if (playerRole !== 'judge') return
+    if (!isHead) return
     setVoiding(sessionId)
     setEndError('')
     const now = new Date().toISOString()

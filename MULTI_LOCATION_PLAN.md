@@ -175,7 +175,7 @@ To be designed properly in each PR. New objects follow CLAUDE.md §12 and §13: 
 ### First release
 Each a separate PR, in this order because each needs the one before:
 
-4. **Kaiārahi levels and permissions.** `kaiarahi` table, `is_head()`, `can_run_game()`, granting and suspending in `/judge`, vetting and first aid expiry. The riskiest PR: a mistake either locks Kaiārahi out on game day or lets one edit games anywhere. Test every policy as `authenticated`.
+4. **Kaiārahi levels and permissions.** *Built in v0.61.0.0 (`20261123024501_kaiarahi_levels.sql`, not yet applied). Tāne, 23 Nov: Kaimahi see no contact details (not even a parent's phone), exemptions stay Kaiwhakawā only, voiding is Kaiwhakawā only. Vetting and first aid dates are recorded but enforced only once funded games exist (PR 5).* `kaiarahi` table, `is_head()`, `can_run_game()`, granting and suspending in `/judge`, vetting and first aid expiry. The riskiest PR: a mistake either locks Kaiārahi out on game day or lets one edit games anywhere. Test every policy as `authenticated`.
 5. **Programmes and game types.** Funded and community games, one-off games, map-pinned sites with the nearby check, pop-ups, every session tied to a game, 2026 backfill to HQ.
 6. **More than one live game at once.** New Game refuses a second active game today; HOME and the top bar read one active session (`maybeSingle`). All go per game.
 7. **Roster and cover.** Regular Kaiārahi, Need cover, claiming, two-adult rule, parent-present rule, under-18 Kaiako rule, cancel and move with reasons, unfilled alerts at 48h and 4h, the under-4 prompt. Needs scheduled sends (pg_cron calling the notices route).

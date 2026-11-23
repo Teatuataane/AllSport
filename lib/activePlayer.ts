@@ -8,6 +8,8 @@
 
 export const ACTIVE_PLAYER_KEY = 'allsport_active_player_id'
 
+import type { KaiarahiLevel } from '@/lib/kaiarahi'
+
 export type ActivePlayerRow = {
   id: string
   full_name: string | null
@@ -17,6 +19,12 @@ export type ActivePlayerRow = {
   date_of_birth: string | null
   icon: string | null
   role?: string | null
+  /**
+   * The signed-in player's Kaiārahi level (lib/kaiarahi.ts), on their own row
+   * only. Null for everyone else. Read it with this, never `role`, which no
+   * longer grants anything since 20261123024501.
+   */
+  kaiarahi_level?: KaiarahiLevel | null
 }
 
 /**
