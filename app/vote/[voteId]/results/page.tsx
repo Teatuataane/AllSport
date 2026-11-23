@@ -2,6 +2,8 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient, getSessionUser } from '@/lib/supabase-browser'
+import { isHead } from '@/lib/kaiarahi'
+import { loadOwnLevel } from '@/lib/kaiarahiData'
 import Link from 'next/link'
 
 const DOMAINS = [
@@ -88,13 +90,13 @@ export default function VoteResultsPage() {
       const user = await getSessionUser()
       if (!user) { router.push('/play'); return }
 
-      // Check judge role
+      // A Kaiwhakawā (head staff) sees the breakdown.
       const { data: playerData } = await supabase
         .from('players')
         .select('role')
         .eq('id', user.id)
         .maybeSingle()
-      const judgeFlag = playerData?.role === 'judge'
+      const judgeFlag = isHead(await loadOwnLevel(supabase, user.id, playerData?.role))
       setIsJudge(judgeFlag)
 
       // Fetch vote

@@ -7,6 +7,9 @@ import WellbeingReport from '@/app/components/WellbeingReport'
 import ActivityReport from '@/app/components/ActivityReport'
 import WeeklyGamesAdmin from '@/app/components/WeeklyGamesAdmin'
 import Link from 'next/link'
+import { isHead } from '@/lib/kaiarahi'
+import { loadOwnLevel } from '@/lib/kaiarahiData'
+import KaiarahiAdmin from '@/app/components/KaiarahiAdmin'
 
 const supabase = createClient()
 
@@ -26,7 +29,9 @@ export default function JudgePage() {
         .eq('id', user.id)
         .single()
 
-      if (!playerData || playerData.role !== 'judge') {
+      // The panel is Kaiwhakawā (head staff) only. Other Kaiārahi start games
+      // from New Game (/scoring), which the nav sends them to.
+      if (!playerData || !isHead(await loadOwnLevel(supabase, user.id, playerData.role))) {
         router.push('/dashboard')
         return
       }
@@ -67,8 +72,9 @@ export default function JudgePage() {
           </div>
         </div>
 
-        <JudgeCard playerRole={player.role} playerId={player.id} />
+        <JudgeCard isHead playerId={player.id} />
         <WeeklyGamesAdmin judgeId={player.id} />
+        <KaiarahiAdmin />
         <WellbeingReport />
         <ActivityReport />
       </div>

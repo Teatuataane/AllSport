@@ -50,6 +50,8 @@ import {
   formatPR, sportWDL, sectionLabel, ProgressSegments, INP, QES_LBL as SHEET_LBL,
 } from '@/components/play/chrome'
 import BodyweightField from '@/components/play/BodyweightField'
+import { runsSession } from '@/lib/kaiarahi'
+import { loadOwnLevel } from '@/lib/kaiarahiData'
 const supabase = createClient()
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -1091,7 +1093,13 @@ export default function SessionPage() {
         const landOn = stored && (children ?? []).some(c => (c as { id: string }).id === stored) ? stored : authUser.id
         setActivePlayerId(landOn)
         setActiveTab(`player-${landOn}`) // leaderboard stays one tap away
-        if ((p as Record<string, unknown>).role === 'judge') setIsJudge(true)
+        // Runs THIS game: a Kaiwhakawā, or the Kaiārahi who started it
+        // (sessions.judge_id). Mirrors runs_session() in the database, which
+        // is what actually allows the writes. Its own read, after the wave,
+        // because the kaiarahi table may not be live yet (lib/kaiarahiData.ts).
+        const level = await loadOwnLevel(supabase, authUser.id, (p as Record<string, unknown>).role as string | null)
+        const judgeId = (sessionRes.data as Record<string, unknown> | null)?.judge_id as string | null | undefined
+        if (runsSession(level, authUser.id, judgeId)) setIsJudge(true)
       }
 
       const s = sessionRes.data

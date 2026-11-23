@@ -43,6 +43,7 @@ import WellbeingSurvey from '@/app/components/WellbeingSurvey'
 import { bestEventByColour, shownOverallRung } from '@/lib/colourDisplay'
 import { loadMyGamePlaces } from '@/lib/loadGamePlace'
 import WeeklyGamesCard from '@/components/WeeklyGamesCard'
+import { isHead, LEVEL_NAME } from '@/lib/kaiarahi'
 import {
   loadWeeklyBoard, joinWeeklyGame, leaveWeeklyGame, setAway, awayKey, type WeeklyBoard,
 } from '@/lib/weeklyGamesData'
@@ -95,7 +96,10 @@ function DashboardInner() {
   // Only the QR link's ?code= joins by code now; nobody types one.
   const [joinError, setJoinError] = useState('')
 
-  const isJudge = self?.role === 'judge'
+  // A Kaiwhakawā (head staff). Other Kaiārahi play and join like anyone else
+  // here; the scoring screen decides who runs which game.
+  const isJudge = isHead(self?.kaiarahi_level)
+  const myLevel = self?.kaiarahi_level ?? null
 
   useEffect(() => {
     if (!playerLoading && !userId) router.push('/play')
@@ -428,7 +432,7 @@ function DashboardInner() {
               letterSpacing: '0.1em', fontWeight: 600, fontSize: 12,
               color: 'var(--text-muted)', marginTop: 3,
             }}>
-              {activePlayer.division ?? 'No division'}{isJudge && activePlayerId === userId ? ' · Kaiwhakawā' : ''}
+              {activePlayer.division ?? 'No division'}{myLevel && activePlayerId === userId ? ` · ${LEVEL_NAME[myLevel]}` : ''}
             </div>
             {/* Not gated on the household loading: if that one RPC fails,
                 the numbers that DID load still show and the rest read "—". */}
