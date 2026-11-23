@@ -71,10 +71,11 @@ export function useNavState(): NavState {
   // session id behind, and deriving it avoids a setState in an effect body.
   const liveSessionId = userId ? liveSessionIdState : null
 
-  // A Kaimahi or Kaiako starts a game from New Game; only a head has the panel.
+  // Every Kaiārahi has the panel (since v0.63.0.0): a head sees everything, a
+  // Kaimahi or Kaiako their own games and a New game button.
   const playHref = liveSessionId
     ? `/scoring/${liveSessionId}`
-    : isJudge ? '/judge' : runsGames ? '/scoring' : '/dashboard#join'
+    : runsGames ? '/judge' : '/dashboard#join'
 
   return {
     userId,

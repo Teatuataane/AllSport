@@ -69,3 +69,21 @@ export async function removeKaiarahi(supabase: SupabaseClient, playerId: string)
   const { error } = await supabase.rpc('remove_kaiarahi', { p_player_id: playerId })
   if (error) throw error
 }
+
+/**
+ * Own level plus whether vetting and first aid are both current today (NZ),
+ * which a Kaimahi needs to start a funded game (public.can_start_game).
+ */
+export async function loadOwnKaiarahi(
+  supabase: SupabaseClient, userId: string, role: string | null | undefined, today: string,
+): Promise<{ level: KaiarahiLevel | null; checksCurrent: boolean }> {
+  const { data, error } = await supabase
+    .from('kaiarahi').select('level, suspended_at, vetting_expires, first_aid_expires').eq('player_id', userId).maybeSingle()
+  if (error) return { level: notLive(error) ? levelFrom(undefined, role) : null, checksCurrent: false }
+  const row = data as { level: string; suspended_at: string | null; vetting_expires: string | null; first_aid_expires: string | null } | null
+  return {
+    level: levelFrom(row, role),
+    checksCurrent: !!row?.vetting_expires && !!row?.first_aid_expires
+      && row.vetting_expires >= today && row.first_aid_expires >= today,
+  }
+}

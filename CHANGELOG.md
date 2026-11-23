@@ -2,6 +2,16 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.63.0.0] - 2026-11-23
+
+### Added
+- **Funded and community games, one-offs and pop-ups** (Tāne, multi-location games, `MULTI_LOCATION_PLAN.md` step 5). A Kaiwhakawā adds programmes (name, funder, dates) and funded games in one, with a paid block in minutes. Any Kaiārahi can add a community game, weekly or on one date, and hide it from Find a game. A game can be marked as needing two adults.
+- **New Game asks which game this is.** It lists the games you may start: a Kaiwhakawā any; a Kaimahi a funded game while their vetting and first aid are current; anyone their own community games. Or start a **pop-up** on the spot at a site, nearest first once you share where you are. Adding a new site offers sites within 500 m or with the same name first, so one park does not become three. A Google Maps link pins a site.
+- **The Kaiārahi panel opens to every level.** Kaimahi and Kaiako get a New game button and their own games, with the same Cancel, Change park and Message buttons; the More menu links to it. Everything else in the panel stays Kaiwhakawā only.
+
+### Changed
+- **Every game now belongs to a game slot** (`20261123035106_games_and_programmes.sql`, not yet applied). This year's 81 games are matched to the HQ weekly game they were played at, or to a past one-off at HQ, with a record of the match kept. Deleting the account of someone who ran a game no longer fails.
+
 ## [0.61.0.0] - 2026-11-23
 
 ### Added

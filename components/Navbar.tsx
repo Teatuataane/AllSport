@@ -45,7 +45,7 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
   const pathname = usePathname()
-  const { isJudge, liveSessionId, playHref, playLabel, playColour } = useNavState()
+  const { isJudge, isKaiarahi, liveSessionId, playHref, playLabel, playColour } = useNavState()
 
   // "No auth cookie" is knowable on the client with certainty and with no
   // network and no Supabase bundle — but NOT during prerender, where there is no
@@ -330,7 +330,7 @@ export default function Navbar() {
           bar: the page is not dimmed, a tap outside does not close it, and the
           backdrop swallows taps on the tabs. */}
       {isLoggedIn && moreOpen && (
-        <MoreMenu isJudge={isJudge} onClose={() => setMoreOpen(false)} />
+        <MoreMenu isJudge={isJudge} isKaiarahi={isKaiarahi} onClose={() => setMoreOpen(false)} />
       )}
 
       {/* Spacer. Logged in this is 53px, against the old 65 — and nothing is

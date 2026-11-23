@@ -17,7 +17,14 @@ export type Site = {
   address: string | null
   map_url: string | null
   is_active: boolean
+  /** Map pin (20261123035106). Absent before that migration, null when not pinned. */
+  lat?: number | null
+  lng?: number | null
+  created_by?: string | null
 }
+
+/** Funded games are paid and belong to a programme; community games are not (MULTI_LOCATION_PLAN.md). */
+export type GameKind = 'funded' | 'community'
 
 export type WeeklyGame = {
   id: string
@@ -27,6 +34,25 @@ export type WeeklyGame = {
   /** Postgres time, 'HH:MM:SS' (or 'HH:MM'). */
   start_time: string
   is_active: boolean
+  // ── Since 20261123035106. Absent (undefined) before it: read as a weekly
+  // community game, listed, which is what every game was.
+  kind?: GameKind
+  programme_id?: string | null
+  /** Set for a one-off (or pop-up) game: its only date. `dow` is that date's weekday. */
+  one_off_date?: string | null
+  listed?: boolean
+  two_adults?: boolean
+  paid_block_minutes?: number | null
+  regular_kaiarahi_id?: string | null
+  created_by?: string | null
+}
+
+export function isOneOff(game: Pick<WeeklyGame, 'one_off_date'>): boolean {
+  return !!game.one_off_date
+}
+
+export function gameKind(game: Pick<WeeklyGame, 'kind'>): GameKind {
+  return game.kind === 'funded' ? 'funded' : 'community'
 }
 
 export type NoticeKind = 'cancelled' | 'on' | 'moved' | 'message'
@@ -80,7 +106,9 @@ export function addDays(date: string, n: number): string {
  * The date of this weekly game's next game: today while today's has not yet
  * finished (start + 100 minutes), otherwise the next matching weekday.
  */
-export function nextGameDate(game: Pick<WeeklyGame, 'dow' | 'start_time'>, now: Date = new Date()): string {
+export function nextGameDate(game: Pick<WeeklyGame, 'dow' | 'start_time' | 'one_off_date'>, now: Date = new Date()): string {
+  // A one-off has one date, past or not.
+  if (game.one_off_date) return game.one_off_date
   const wall = nzWallClock(now)
   let ahead = (game.dow - wall.dow + 7) % 7
   if (ahead === 0 && wall.mins >= timeMins(game.start_time) + GAME_MINUTES) ahead = 7
@@ -96,9 +124,21 @@ export function formatTime(t: string): string {
   return `${h12}:${m.toString().padStart(2, '0')}${h < 12 ? 'am' : 'pm'}`
 }
 
-/** 'Saturday 9:00am'. */
-export function slotLabel(game: Pick<WeeklyGame, 'dow' | 'start_time'>): string {
+/** 'Saturday 9:00am', or for a one-off 'Sat 21 Nov 9:00am'. */
+export function slotLabel(game: Pick<WeeklyGame, 'dow' | 'start_time' | 'one_off_date'>, now: Date = new Date()): string {
+  if (game.one_off_date) return `${dateLabel(game.one_off_date, now)} ${formatTime(game.start_time)}`
   return `${DAY_NAMES[game.dow]} ${formatTime(game.start_time)}`
+}
+
+/**
+ * Still to come (or being played): a weekly game always; a one-off until its
+ * 100 minutes are over.
+ */
+export function isUpcoming(game: Pick<WeeklyGame, 'start_time' | 'one_off_date'>, now: Date = new Date()): boolean {
+  if (!game.one_off_date) return true
+  const wall = nzWallClock(now)
+  if (game.one_off_date !== wall.date) return game.one_off_date > wall.date
+  return wall.mins < timeMins(game.start_time) + GAME_MINUTES
 }
 
 /** 'Today', 'Tomorrow', or 'Sat 21 Nov'. */
@@ -148,6 +188,7 @@ export function matchWeeklyGame(games: WeeklyGame[], startedAt: Date): WeeklyGam
   let best: { game: WeeklyGame; gap: number } | null = null
   for (const g of games) {
     if (!g.is_active || g.dow !== wall.dow) continue
+    if (g.one_off_date && g.one_off_date !== wall.date) continue
     const gap = Math.abs(timeMins(g.start_time) - wall.mins)
     if (gap > 90) continue
     if (!best || gap < best.gap) best = { game: g, gap }
@@ -155,7 +196,25 @@ export function matchWeeklyGame(games: WeeklyGame[], startedAt: Date): WeeklyGam
   return best?.game ?? null
 }
 
-/** Weekly games in week order: Sunday first, then by start time. */
-export function sortWeekly<T extends Pick<WeeklyGame, 'dow' | 'start_time'>>(games: T[]): T[] {
-  return [...games].sort((a, b) => a.dow - b.dow || timeMins(a.start_time) - timeMins(b.start_time))
+/** Weekly games in week order: Sunday first, then by start time. One-offs after them, by date. */
+export function sortWeekly<T extends Pick<WeeklyGame, 'dow' | 'start_time' | 'one_off_date'>>(games: T[]): T[] {
+  return [...games].sort((a, b) =>
+    (a.one_off_date ?? '').localeCompare(b.one_off_date ?? '')
+    || a.dow - b.dow || timeMins(a.start_time) - timeMins(b.start_time))
+}
+
+/**
+ * Games this Kaiārahi may start (mirrors public.can_start_game): a Kaiwhakawā
+ * any; anyone else a community game they created; a Kaimahi also a funded game
+ * when their vetting and first aid are current (`checksCurrent`).
+ */
+export function startableGames(
+  games: WeeklyGame[], who: { id: string; level: 'head' | 'staff' | 'community' | null; checksCurrent: boolean },
+): WeeklyGame[] {
+  if (!who.level) return []
+  return games.filter(g => {
+    if (who.level === 'head') return true
+    if (gameKind(g) === 'community') return g.created_by === who.id
+    return who.level === 'staff' && who.checksCurrent
+  })
 }

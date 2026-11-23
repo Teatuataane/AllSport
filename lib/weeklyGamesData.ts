@@ -9,7 +9,7 @@
 // has no budget for a poll on every HOME tab (CLAUDE.md §4).
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { addDays, nextGameDate, nzWallClock, type GameNotice, type Site, type WeeklyGame } from '@/lib/weeklyGames'
+import { addDays, isUpcoming, nextGameDate, nzWallClock, type GameNotice, type Site, type WeeklyGame } from '@/lib/weeklyGames'
 
 type PgError = { code?: string; message?: string } | null | undefined
 
@@ -40,8 +40,8 @@ export async function loadWeeklyBoard(
 ): Promise<WeeklyBoard | null> {
   const today = nzWallClock(now).date
   const [sitesRes, gamesRes, noticesRes] = await Promise.all([
-    supabase.from('sites').select('id, name, address, map_url, is_active').eq('is_active', true),
-    supabase.from('weekly_games').select('id, site_id, dow, start_time, is_active').eq('is_active', true),
+    selectSites(supabase),
+    selectGames(supabase),
     supabase.from('game_notices')
       .select('id, weekly_game_id, game_date, kind, message, created_at')
       .gte('game_date', today).lte('game_date', addDays(today, 14)),
@@ -54,7 +54,8 @@ export async function loadWeeklyBoard(
   }
   const sites = (sitesRes.data ?? []) as Site[]
   const siteIds = new Set(sites.map(s => s.id))
-  const games = ((gamesRes.data ?? []) as WeeklyGame[]).filter(g => siteIds.has(g.site_id))
+  // A one-off whose 100 minutes are over is history, not a game to show.
+  const games = ((gamesRes.data ?? []) as WeeklyGame[]).filter(g => siteIds.has(g.site_id) && isUpcoming(g, now))
   // A failed notices read still shows the timetable; it just shows no news.
   const notices = noticesRes.error ? [] : (noticesRes.data ?? []) as GameNotice[]
 
@@ -71,6 +72,28 @@ export async function loadWeeklyBoard(
     }
   }
   return { sites, games, notices, mine, away }
+}
+
+// Columns added by 20261123035106. Until it is applied, the same read without
+// them (42703), so HOME and New Game keep working on the weekly games.
+const SITE_COLUMNS = 'id, name, address, map_url, is_active'
+const SITE_COLUMNS_V2 = `${SITE_COLUMNS}, lat, lng, created_by`
+const GAME_COLUMNS = 'id, site_id, dow, start_time, is_active'
+const GAME_COLUMNS_V2 = `${GAME_COLUMNS}, kind, programme_id, one_off_date, listed, two_adults, paid_block_minutes, regular_kaiarahi_id, created_by`
+
+async function selectSites(supabase: SupabaseClient) {
+  const v2 = await supabase.from('sites').select(SITE_COLUMNS_V2).eq('is_active', true)
+  return v2.error?.code === '42703' ? supabase.from('sites').select(SITE_COLUMNS).eq('is_active', true) : v2
+}
+
+async function selectGames(supabase: SupabaseClient) {
+  const v2 = await supabase.from('weekly_games').select(GAME_COLUMNS_V2).eq('is_active', true)
+  return v2.error?.code === '42703' ? supabase.from('weekly_games').select(GAME_COLUMNS).eq('is_active', true) : v2
+}
+
+/** True once 20261123035106 is live (games have a kind). */
+export function gamesV2Live(board: Pick<WeeklyBoard, 'games'> | null): boolean {
+  return !!board && board.games.some(g => g.kind !== undefined)
 }
 
 /** Register (or re-register: clears left_at). */
@@ -123,7 +146,7 @@ export async function isRegistered(supabase: SupabaseClient, gameId: string, pla
 export async function loadWeeklyGame(
   supabase: SupabaseClient, gameId: string,
 ): Promise<{ game: WeeklyGame; site: Site } | null> {
-  const g = await supabase.from('weekly_games').select('id, site_id, dow, start_time, is_active').eq('id', gameId).maybeSingle()
+  const g = await supabase.from('weekly_games').select(GAME_COLUMNS).eq('id', gameId).maybeSingle()
   if (g.error || !g.data) return null
   const s = await supabase.from('sites').select('id, name, address, map_url, is_active').eq('id', g.data.site_id).maybeSingle()
   if (s.error || !s.data) return null
@@ -191,3 +214,78 @@ export async function deleteNotice(supabase: SupabaseClient, id: string): Promis
   const { error } = await supabase.from('game_notices').delete().eq('id', id)
   return error?.message ?? null
 }
+
+// ── Programmes, games and sites (20261123035106) ─────────────────────────────
+
+export type Programme = {
+  id: string
+  name: string
+  funder: string
+  starts_on: string
+  ends_on: string
+  targets: Record<string, unknown>
+  notes: string | null
+}
+
+/** Every programme, for a Kaiwhakawā (RLS shows nobody else any). Null when not live. */
+export async function loadProgrammes(supabase: SupabaseClient): Promise<Programme[] | null> {
+  const { data, error } = await supabase.from('programmes')
+    .select('id, name, funder, starts_on, ends_on, targets, notes').order('starts_on', { ascending: false })
+  if (error) return notLive(error) ? null : []
+  return (data ?? []) as Programme[]
+}
+
+export async function createProgramme(
+  supabase: SupabaseClient, p: Pick<Programme, 'name' | 'funder' | 'starts_on' | 'ends_on' | 'notes'>,
+): Promise<string | null> {
+  const { error } = await supabase.from('programmes').insert({
+    name: p.name.trim(), funder: p.funder.trim(), starts_on: p.starts_on, ends_on: p.ends_on,
+    notes: p.notes?.trim() || null,
+  })
+  return error?.message ?? null
+}
+
+export type NewGame = {
+  site_id: string
+  dow: number
+  start_time: string
+  one_off_date?: string | null
+  kind: 'funded' | 'community'
+  programme_id?: string | null
+  listed: boolean
+  two_adults: boolean
+  paid_block_minutes?: number | null
+}
+
+/** Add a game. The database stamps created_by and refuses a funded game from anyone but a Kaiwhakawā. */
+export async function createGame(supabase: SupabaseClient, g: NewGame): Promise<{ id: string } | { error: string }> {
+  const { data, error } = await supabase.from('weekly_games').insert({
+    site_id: g.site_id, dow: g.dow, start_time: g.start_time, one_off_date: g.one_off_date ?? null,
+    kind: g.kind, programme_id: g.kind === 'funded' ? g.programme_id ?? null : null,
+    listed: g.listed, two_adults: g.two_adults,
+    paid_block_minutes: g.kind === 'funded' ? g.paid_block_minutes ?? null : null,
+  }).select('id').single()
+  if (error) {
+    return { error: error.code === '23505' ? 'That site already has a game at that day and time.' : error.message }
+  }
+  return { id: (data as { id: string }).id }
+}
+
+/** Add a site. created_by defaults to the caller. */
+export async function createSite(
+  supabase: SupabaseClient, s: { name: string; address?: string | null; map_url?: string | null; lat?: number | null; lng?: number | null },
+): Promise<{ id: string } | { error: string }> {
+  const { data, error } = await supabase.from('sites').insert({
+    name: s.name.trim(), address: s.address?.trim() || null, map_url: s.map_url?.trim() || null,
+    lat: s.lat ?? null, lng: s.lng ?? null,
+  }).select('id').single()
+  if (error) return { error: error.message }
+  return { id: (data as { id: string }).id }
+}
+
+/** Pin a site (the creator or a Kaiwhakawā). */
+export async function pinSite(supabase: SupabaseClient, siteId: string, lat: number, lng: number): Promise<string | null> {
+  const { error } = await supabase.from('sites').update({ lat, lng }).eq('id', siteId)
+  return error?.message ?? null
+}
+
