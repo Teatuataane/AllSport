@@ -30,6 +30,7 @@ import { useActivePlayer, playerLabel } from '@/lib/useActivePlayer'
 import EventPlanPicker from '@/components/play/EventPlanPicker'
 import EventIcon from '@/components/EventIcon'
 import PlayerTabs, { ViewingAsBanner } from '@/components/PlayerTabs'
+import { isHead } from '@/lib/kaiarahi'
 
 const supabase = createClient()
 
@@ -55,7 +56,8 @@ const dayLabel = (day: string, today: string) => {
 export default function NewWorkoutPage() {
   const router = useRouter()
   const { loading, userId, self, activePlayerId, activePlayer } = useActivePlayer()
-  const isJudge = (self as { role?: string } | null)?.role === 'judge'
+  // Training for someone else is a Kaiwhakawā power (can_log_for).
+  const isJudge = isHead(self?.kaiarahi_level)
 
   const days = allowedDays()
   const today = days[0]

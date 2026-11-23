@@ -8,6 +8,7 @@
 import { useEffect, useState } from 'react'
 import { useActivePlayer } from '@/lib/useActivePlayer'
 import { isLiveSession, pollWhileVisible } from '@/lib/livePoll'
+import { isHead, isKaiarahi } from '@/lib/kaiarahi'
 
 // Dynamic, not module scope: this hook is what Navbar and NavTabs call, so a
 // static import would drag the Supabase client into every page's bundle. See
@@ -17,11 +18,14 @@ const supabaseModule = () => import('@/lib/supabase-browser')
 
 export type NavState = {
   userId: string | null
+  /** A Kaiwhakawā (head staff): the judge panel. */
   isJudge: boolean
+  /** Any level of Kaiārahi: may start a game. */
+  isKaiarahi: boolean
   liveSessionId: string | null
   /** Where PLAY goes right now. */
   playHref: string
-  /** JUDGE for kaiwhakawā, PLAY for everyone else. */
+  /** JUDGE for a Kaiwhakawā, RUN for other Kaiārahi, PLAY for everyone else. */
   playLabel: string
   /** Red for kaiwhakawā, green while a session is live, otherwise resting grey. */
   playColour: string
@@ -33,7 +37,9 @@ export function useNavState(): NavState {
   const { userId, self } = useActivePlayer()
   const [liveSessionIdState, setLiveSessionId] = useState<string | null>(null)
 
-  const isJudge = self?.role === 'judge'
+  // The level, not players.role, which grants nothing since 20261123024501.
+  const isJudge = isHead(self?.kaiarahi_level)
+  const runsGames = isKaiarahi(self?.kaiarahi_level)
 
   useEffect(() => {
     if (!userId) return
@@ -65,16 +71,18 @@ export function useNavState(): NavState {
   // session id behind, and deriving it avoids a setState in an effect body.
   const liveSessionId = userId ? liveSessionIdState : null
 
-  const playHref = isJudge
-    ? (liveSessionId ? `/scoring/${liveSessionId}` : '/judge')
-    : (liveSessionId ? `/scoring/${liveSessionId}` : '/dashboard#join')
+  // A Kaimahi or Kaiako starts a game from New Game; only a head has the panel.
+  const playHref = liveSessionId
+    ? `/scoring/${liveSessionId}`
+    : isJudge ? '/judge' : runsGames ? '/scoring' : '/dashboard#join'
 
   return {
     userId,
     isJudge,
+    isKaiarahi: runsGames,
     liveSessionId,
     playHref,
-    playLabel: isJudge ? 'Judge' : 'Play',
+    playLabel: isJudge ? 'Judge' : runsGames ? 'Run' : 'Play',
     playColour: isJudge ? 'var(--red)' : liveSessionId ? 'var(--green)' : RESTING,
   }
 }

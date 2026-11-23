@@ -24,6 +24,8 @@ import { readPageCache, writePageCache, clearPageCache, hasPageCache } from '@/l
 import {
   ACTIVE_PLAYER_KEY, resolveActiveId, playerLabel, type ActivePlayerRow,
 } from '@/lib/activePlayer'
+import { levelFrom } from '@/lib/kaiarahi'
+import { notLive } from '@/lib/kaiarahiData'
 
 // Imported dynamically, NOT at module scope. This hook is reached from the
 // global shell (Navbar -> useNavState -> here), so a static import would put
@@ -88,7 +90,8 @@ function writeStored(id: string | null) {
 type Household = { userId: string; self: ActivePlayerRow | null; family: ActivePlayerRow[] }
 
 const SAVED_KEY = 'household'
-const SAVED_VERSION = '1'
+// 2: self carries kaiarahi_level (20261123024501).
+const SAVED_VERSION = '2'
 
 let memo: Household | null = null
 let inflight: Promise<Household | null> | null = null
@@ -110,13 +113,20 @@ function loadHousehold(): Promise<Household | null> {
     const supabase = createClient()
     const user = await getSessionUser()
     if (!user) return null
-    const [selfResult, familyResult] = await Promise.all([
+    const [selfResult, familyResult, levelResult] = await Promise.all([
       supabase.from('players').select(`${FAMILY_COLUMNS}, role`).eq('id', user.id).single(),
       supabase.from('players').select(FAMILY_COLUMNS).eq('parent_id', user.id).order('full_name'),
+      // Its own query: the table arrives with a migration applied after the
+      // deploy, and a missing table must not take the household read down.
+      supabase.from('kaiarahi').select('level, suspended_at').eq('player_id', user.id).maybeSingle(),
     ])
+    const selfRow = (selfResult.data as ActivePlayerRow) ?? null
+    const levelRow = levelResult.error
+      ? (notLive(levelResult.error) ? undefined : null)
+      : (levelResult.data ?? null)
     return {
       userId: user.id,
-      self: (selfResult.data as ActivePlayerRow) ?? null,
+      self: selfRow ? { ...selfRow, kaiarahi_level: levelFrom(levelRow, selfRow.role) } : null,
       family: (familyResult.data ?? []) as ActivePlayerRow[],
     }
   })()
