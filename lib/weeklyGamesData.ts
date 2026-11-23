@@ -201,13 +201,21 @@ export async function loadRosters(
 
 export async function postNotice(
   supabase: SupabaseClient, gameId: string, date: string, kind: GameNotice['kind'], message: string | null, judgeId: string,
+  reason: string | null = null,
 ): Promise<string | null> {
-  const { error } = await supabase.from('game_notices').insert({
+  const row = {
     weekly_game_id: gameId, game_date: date, kind,
     message: message?.trim() ? message.trim() : null,
     created_by: judgeId,
-  })
-  return error?.message ?? null
+  }
+  // A cancel or move carries a reason since 20261123202226. Before that the
+  // column is missing (42703), so send it again without.
+  const first = await supabase.from('game_notices').insert(reason ? { ...row, reason } : row)
+  if (first.error?.code === '42703' && reason) {
+    const { error } = await supabase.from('game_notices').insert(row)
+    return error?.message ?? null
+  }
+  return first.error?.message?.replace(/^notices: /, '') ?? null
 }
 
 export async function deleteNotice(supabase: SupabaseClient, id: string): Promise<string | null> {

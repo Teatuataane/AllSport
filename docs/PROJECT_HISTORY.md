@@ -4089,3 +4089,17 @@ Multi-location games, first release, PR 2 (MULTI_LOCATION_PLAN.md step 5). The w
 ## Several live games (v0.64.0.0, 24 Nov 2026)
 
 Multi-location games step 6. Four screens assumed one active session: New Game refused to start a second, HOME and the nav read it with `maybeSingle()` (which errors on two rows, so a second live game would have made the Join button vanish), and the leaderboard read the first. Tāne chose a Join card for every live game, the player's own first. The rules are pure in `lib/liveGames.ts`; the nav reads the player's registrations only when several games are live and none is theirs to run. The live database was checked first: no index, trigger or function limits sessions to one active, so no migration. The guard against two sessions of the same game is in New Game only.
+
+## Roster and cover (v0.65.0.0, 24 Nov 2026)
+
+Multi-location games step 7a. Tāne chose to split step 7 (roster, cover and reasons now; two adults, under-18 Kaiako and parent present next) and to show alerts in the app until the push and email branch (`claude/weekly-games-push-email`, still unmerged and waiting on its keys) lands.
+
+**Design:** no rows are generated per date. A game's regular leads every date, and `game_roster` holds only the exceptions: `cover_needed`, `covered` and `rostered`. `rostered_lead()` reads the answer, and `lib/roster.ts` mirrors it. All roster writes go through definer functions; the table has no write policy. `claim_cover` locks the row, so the first claim wins.
+
+**Starting a game** narrows to the lead of the day. Before this, any Kaimahi could start any funded game; none existed, so nothing was lost. The HQ games were seeded by a migration, so they have no creator and no regular, and stay head-only until a regular is set.
+
+**Rehearsal:** in a rolled-back transaction against production, 40 checks. It caught `can_start_game` returning NULL instead of false when a funded game has no regular. Policies read NULL as a refusal, so it was never a hole; a `COALESCE` now makes it say false.
+
+**Reasons:** a cancel or move needs one (a check constraint, safe because no notices existed). A cancel is refused once a session of that game has started that day.
+
+**Moved to step 8:** the under-4 prompt, since it needs bookings.

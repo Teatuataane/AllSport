@@ -44,6 +44,7 @@ import WellbeingSurvey from '@/app/components/WellbeingSurvey'
 import { bestEventByColour, shownOverallRung } from '@/lib/colourDisplay'
 import { loadMyGamePlaces } from '@/lib/loadGamePlace'
 import WeeklyGamesCard from '@/components/WeeklyGamesCard'
+import CoverAlertCard from '@/components/CoverAlertCard'
 import { isHead, LEVEL_NAME } from '@/lib/kaiarahi'
 import {
   loadWeeklyBoard, joinWeeklyGame, leaveWeeklyGame, setAway, awayKey, type WeeklyBoard,
@@ -411,6 +412,10 @@ function DashboardInner() {
           {games.map((g, i) => (
             <GameOnCard key={g.id} game={{ id: g.id, location: g.location }} isJudge={isJudge} error={i === 0 ? joinError : ''} />
           ))}
+          {/* Covers to claim, for a Kaiārahi viewing their own HOME. */}
+          {userId && activePlayerId === userId && self?.kaiarahi_level && (
+            <CoverAlertCard userId={userId} level={self.kaiarahi_level} />
+          )}
           {training && (
             <TrainingOnCard
               session={training}
