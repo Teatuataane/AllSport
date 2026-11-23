@@ -4120,6 +4120,16 @@ Rehearsed in a rolled-back transaction, 23 checks passing.
 
 **Applied 24 Nov 2026** from a clean `main` checkout after allsport.nz served v0.66.0.0, by `db query --linked` plus the ledger row; the check block passed. Verified live: both triggers and `game_roster.helper_adult` present; `authenticated` cannot execute `age_today` or `second_is_adult`; `anon` cannot execute `set_second_adult`; as `authenticated` the head gets no blocker on the HQ game, and a plain player asking `age_today` is refused (42501).
 
+## Find a game (v0.69.0.0, 24 Nov 2026)
+
+Multi-location games step 10. Tāne's answers, 24 Nov 2026: a logged-out visitor sees the games but not the Kaiārahi or the coming count; soonest first, with a "Near me" button that asks for location only when tapped; community games made by a Kaiako are public straight away, with no approval.
+
+**Page.** `/schedule` keeps its address (search engines know it) and becomes Find a game: `components/FindAGame.tsx` over `lib/findGame.ts` (`findCards`: listed, active, upcoming, a one-off within 28 days; soonest first or nearest first, unpinned sites last; `statusLabel`, `mapLink`) and `lib/findGameData.ts` (the weekly board, plus `game_leads` and names from `players_public` when signed in). Signed in, a card offers Join (weekly) or "I'm coming" (one-off, `set_booking`). The homepage "Next game" line now reads the soonest listed game once per visit and falls back to the fixed slots.
+
+**Database** (`20261123234843_find_a_game.sql`). Found while planning: `weekly_games_read` and `game_notices_read` were `USING (true)` for `anon`, so the API gave anyone every unlisted school game. `anon` now reads listed games and their notices only; signed-in reads are unchanged (TODOS: narrow them too). `game_leads(uuid[], date[])` returns the lead's id per date through `rostered_lead`, listed games only unless the caller is a Kaiārahi or registered, signed-in only.
+
+Rehearsed in a rolled-back transaction with an unlisted test game, 7 checks passing. Checked in the browser pane logged out at phone width: the three HQ games from the database, soonest first, and the homepage line "Today 4:30pm · AllSport HQ".
+
 ## Who plays: sign-up and survey (v0.68.0.0, 24 Nov 2026)
 
 Multi-location games step 9. Tāne's answers, 24 Nov 2026: Canterbury only for suburbs (with "Somewhere else") and schools (Ministry of Education list, with "Other school" and "Not at school"); ethnicity required, the Stats NZ boxes, "Prefer not to say" counts as an answer; a junior's wellbeing check-in held back until a parent says yes; suburb, school and disability re-confirmed in the first check-in each January.
@@ -4131,6 +4141,8 @@ Multi-location games step 9. Tāne's answers, 24 Nov 2026: Canterbury only for s
 **Erasure was broken.** The rehearsal found that `delete_my_account` failed for any player with a result in a finished game: its `UPDATE results SET player_name` trips `guard_results_write` ("session has ended"), because the guard sees the player's JWT. The redefinition sets the transaction-local `allsport.server_write` flag around the two results updates, the same flag `close_expired_sessions` uses, and adds the profile delete.
 
 Rehearsed in a rolled-back transaction, 17 checks passing.
+
+**Applied 24 Nov 2026** from a clean `main` checkout after allsport.nz served v0.68.0.0, both migrations by `db query --linked` plus their ledger rows; both check blocks passed. Verified live, 13 checks: RLS on; `authenticated` cannot INSERT or UPDATE `player_profile_private`; `anon` cannot read it or execute `save_private_profile`; `delete_my_account` deletes the profile and sets the server-write flag; the check-in insert policy calls `survey_allowed`; the programme trigger is present; `anon` reads 319 suburbs and 293 schools. As `authenticated`, rolled back: a plain player saved and read only their own profile and was refused another's (42501); a parent was refused a junior's check-in without consent (42501).
 
 ## Bookings in the app (v0.67.0.0, 24 Nov 2026)
 

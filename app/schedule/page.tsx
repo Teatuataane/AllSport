@@ -3,28 +3,22 @@
 // comes from the client-side ui module and stays a small client island.
 import Link from 'next/link'
 import { RainbowText } from '@/components/ui'
+import FindAGame from '@/components/FindAGame'
 
 // Without its own title Google wrote one from the page ("session schedule").
+// Find a game since v0.69.0.0 (multi-location step 10): the games come from
+// the database (components/FindAGame.tsx), not the fixed list this page held.
+// The address stays /schedule, which search engines already know.
 export const metadata = {
-  title: 'Game Schedule – AllSport',
-  description: 'Three AllSport games a week in Sockburn, Ōtautahi: Tuesday and Thursday 4:30pm, Saturday 9:00am. 100 minutes, 10 events. Koha-based.',
+  title: 'Find a Game – AllSport',
+  description: 'Find an AllSport game near you in Canterbury: where, when, and whether it is on. 100 minutes, 10 events. Koha-based.',
   alternates: { canonical: '/schedule' },
 }
-
-const sessions = [
-  { day: 'Tuesday', time: '4:30 PM', duration: '100 mins', spots: 100 },
-  { day: 'Thursday', time: '4:30 PM', duration: '100 mins', spots: 100 },
-  { day: 'Saturday', time: '9:00 AM', duration: '100 mins', spots: 100 },
-]
-
-const dayColors = ['var(--red)', 'var(--blue)', 'var(--green)']
 
 export default function Schedule() {
   return (
     <>
       <style>{`
-        .session-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 32px; transition: border-color 0.2s, transform 0.2s; overflow: hidden; position: relative; }
-        .session-card:hover { border-color: var(--border-strong); transform: translateY(-4px); }
         .info-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 28px; }
       `}</style>
 
@@ -35,12 +29,12 @@ export default function Schedule() {
         <div className="container" style={{ position: 'relative', zIndex: 1 }}>
           <div className="tag">Ōtautahi, Aotearoa</div>
           <h1 style={{ fontSize: 'clamp(56px, 8vw, 112px)', lineHeight: 0.92, marginBottom: '8px' }}>
-            GAME<br />
-            <RainbowText>SCHEDULE</RainbowText>
+            FIND A<br />
+            <RainbowText>GAME</RainbowText>
           </h1>
           <div className="rainbow-line" style={{ width: '88px', margin: '20px 0 28px', borderRadius: '2px' }} />
           <p style={{ color: 'var(--grey-light)', fontSize: '20px', maxWidth: '560px', lineHeight: 1.7 }}>
-            Three games a week in Sockburn. Register once, then just turn up.
+            Every AllSport game, soonest first. Register once, then just turn up.
           </p>
         </div>
       </section>
@@ -48,30 +42,18 @@ export default function Schedule() {
       {/* Weekly schedule */}
       <section className="section" style={{ background: '#0d0d0d', borderTop: '3px solid var(--green)' }}>
         <div className="container">
-          <div className="tag">Weekly Games</div>
+          <div className="tag">Games</div>
           <h2 style={{ fontSize: 'clamp(36px, 4vw, 56px)', marginBottom: '8px' }}>
             WHEN WE <span style={{ color: 'var(--green)' }}>PLAY</span>
           </h2>
           <div className="divider" style={{ background: 'var(--green)' }} />
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px', marginBottom: '32px' }}>
-            {sessions.map((session, i) => (
-              <div key={session.day} className="session-card">
-                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: dayColors[i] }} />
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: '48px', color: dayColors[i], lineHeight: 1, marginBottom: '4px' }}>{session.day}</div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: '28px', color: 'var(--white)', marginBottom: '16px' }}>{session.time}</div>
-                <div style={{ fontFamily: 'var(--font-label)', fontSize: '13px', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#666' }}>
-                  {session.duration} · up to {session.spots} players
-                </div>
-                <Link href="/register" className="btn btn-primary" style={{ width: '100%', marginTop: '20px', fontSize: '15px', display: 'flex' }}>
-                  Register
-                </Link>
-              </div>
-            ))}
+          <div style={{ marginBottom: '32px' }}>
+            <FindAGame />
           </div>
 
           <p style={{ color: '#555555', fontSize: '13px', fontStyle: 'italic' }}>
-            Times may change on public holidays.
+            A game can be cancelled for rain or moved. Each card shows the latest.
           </p>
         </div>
       </section>
