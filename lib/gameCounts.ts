@@ -28,7 +28,7 @@ const MAX_PAGES = 100
  *
  * `playerIds` narrows the read to those players (a household); null reads all.
  * `year` counts only the games played in that NZ calendar year: colours are
- * earned per year, and so is the games cap (Tāne, 13 Oct 2026).
+ * earned per year, and so is the six-games floor (Tāne, 13 Oct 2026).
  */
 export async function loadGameCounts(
   db: SupabaseClient,

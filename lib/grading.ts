@@ -12,8 +12,9 @@
 //      rounded down. An empty slot counts as Mā (Tāne, 26 September 2026 —
 //      was "the highest grade met in half the domain's events").
 //   3. Your overall grade is the AVERAGE of your ten domain colours, rounded
-//      down, and CAPPED by official games played (GAMES_REQUIRED). It was the
-//      LOWEST domain until 24 September 2026.
+//      down, once you have played GAMES_FOR_OVERALL (6) official games that
+//      year. It was the LOWEST domain until 24 September 2026, and was capped
+//      colour by colour by a games ladder until 23 November 2026.
 //
 // Rule 2 is what makes going wide pay. Until you have six events on the
 // board, every new one lifts the average from nothing; after six, a new event
@@ -21,9 +22,9 @@
 // scored your SIXTH-best event, so five brilliant events and a gap read as Mā.
 //
 // Rule 3 still says "one sport, every sport": the average is always over TEN,
-// so a domain on Mā counts zero and drags it. The games cap is what stops a
-// colour being built on solo logging alone: domain colours can be earned
-// anywhere, but the overall needs the games in the room behind it.
+// so a domain on Mā counts zero and drags it. The six-games floor is what
+// stops a colour being built on solo logging alone: domain colours can be
+// earned anywhere, but the overall needs games in the room behind it.
 //
 // Training units were a third gate on every domain colour until 26 September
 // 2026, and were removed from the app entirely on 27 September 2026.
@@ -167,7 +168,7 @@ export const TOP_RUNG = 12
  * conferred one. HOME forces one full recheck per player when this differs
  * from the version it last checked under (lib/useNewColours.ts).
  */
-export const GRADING_RULES_VERSION = '2026-11-11-solo-drills-skipping'
+export const GRADING_RULES_VERSION = '2026-11-23-six-games-floor'
 export const DOMAIN_COUNT = 10
 
 /**
@@ -337,25 +338,28 @@ export function domainGrade(input: DomainGradeInput): DomainGradeResult {
 // ─── Rule 3: the overall grade ───────────────────────────────────────────────
 
 /**
- * Cumulative OFFICIAL games needed to hold each OVERALL colour. Index = rung.
- * Tāne, 16 September 2026, when it gated each domain colour; since 26
- * September 2026 it caps the overall colour only.
+ * Official games a player must play in a year before they hold ANY overall
+ * colour that year (Tāne, 23 November 2026). Past it there is no cap.
+ *
+ * It replaced a ladder (1, 3, 5, 8 … 100 games) that capped the overall colour
+ * by colour. Tāne's reasoning: a domain is the average of the best six events,
+ * so a domain built from games needs about six games anyway; the ladder only
+ * slowed players who already had the games. The floor keeps the part that
+ * mattered: an overall colour cannot rest on logged workouts alone.
  *
  * A game is a finished, unvoided official session with any result. A
  * personal-training session run by a kaiwhakawā is witnessed evidence but NOT
- * a game: the cap exists to bring people into the room.
+ * a game: the floor exists to bring people into the room.
  */
-export const GAMES_REQUIRED: readonly number[] = [0, 1, 3, 5, 8, 12, 16, 20, 30, 40, 55, 75, 100]
+export const GAMES_FOR_OVERALL = 6
 
-/** The highest overall colour `games` official games allow. */
+/** The highest overall colour `games` official games allow: none below the floor, any above it. */
 export function gamesCapRung(games: number): number {
-  let r = 0
-  while (r < TOP_RUNG && games >= GAMES_REQUIRED[r + 1]) r++
-  return r
+  return games >= GAMES_FOR_OVERALL ? TOP_RUNG : 0
 }
 
 /**
- * The average of the ten domain colours, rounded down, BEFORE the games cap.
+ * The average of the ten domain colours, rounded down, BEFORE the games floor.
  * Always over DOMAIN_COUNT, never over the domains held, or holding one
  * Taniwha domain would make a player Taniwha overall.
  */
@@ -367,14 +371,15 @@ export function averageRung(rungs: Iterable<number>): number {
 
 /**
  * The overall colour: the AVERAGE of the ten domain colours, rounded down,
- * capped by official games played.
+ * once GAMES_FOR_OVERALL official games have been played that year (Mā before).
  *
  * An average so that raising ANY domain moves it (Tāne, 24 September 2026 —
- * was the lowest). A domain on Mā counts 0, so a gap still drags. The cap
- * (26 September 2026) is what stops a colour resting on solo logging alone.
+ * was the lowest). A domain on Mā counts 0, so a gap still drags. The games
+ * floor (23 November 2026; a per-colour cap from 26 September) is what stops
+ * a colour resting on solo logging alone.
  *
  * `games` is REQUIRED on purpose: every surface that shows an overall colour
- * must apply the same cap, or HOME and BOARD disagree. Defined ONCE, here:
+ * must apply the same floor, or HOME and BOARD disagree. Defined ONCE, here:
  * lib/colourBoard.ts, HOME and the family chips call it.
  */
 export function overallRung(rungs: Iterable<number>, games: number): number {
@@ -382,13 +387,13 @@ export function overallRung(rungs: Iterable<number>, games: number): number {
 }
 
 export type OverallGradeResult = {
-  /** The capped overall colour. 0 = Mā. */
+  /** The overall colour after the games floor. 0 = Mā. */
   rung: number
-  /** The average before the games cap. Above `rung` only when the cap binds. */
+  /** The average before the games floor. Above `rung` only below the floor. */
   average: number
   /**
    * The exact overall (Scoring v2): the average of the ten domains' exact
-   * averages, floored to hundredths, before the games cap. Display only; the
+   * averages, floored to hundredths, before the games floor. Display only; the
    * colour stays the average of the whole domain colours, the same rule the
    * published board applies.
    */

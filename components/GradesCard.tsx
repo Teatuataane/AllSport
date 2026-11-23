@@ -26,7 +26,7 @@ import { EVENTS, getEventBySlug } from '@/lib/eventData'
 import { STANDARDS } from '@/lib/standards'
 import { RAINBOW_CONIC } from '@/lib/domainColours'
 import {
-  GRADES, MA, gradeForRung, gradeInk, gradeAccent, gradeFill, averageRung, formatExact, GAMES_REQUIRED,
+  GRADES, MA, gradeForRung, gradeInk, gradeAccent, gradeFill, averageRung, formatExact, GAMES_FOR_OVERALL,
 } from '@/lib/grading'
 import { eventCredit } from '@/lib/playerGrades'
 import { bestScoreLabel, colourBlurb, pastOverallRungs, shownDomainRungs, shownOverallRung, topSlotRungs } from '@/lib/colourDisplay'
@@ -58,10 +58,11 @@ export default function GradesCard({ state, bestEvent = null, ghost }: {
   const shownRungs = shownDomainRungs(state)
   const rows = grades.domains.map(d => ({ d, shown: shownRungs.get(d.domainNumber) ?? 0 }))
   const overall = gradeForRung(shownOverallRung(state))
-  // The average before the games cap. Above `overall` only when the cap binds.
+  // The average before the games floor. Above `overall` only below the floor.
   const uncapped = averageRung(rows.map(r => r.shown))
   const blurb = colourBlurb(overall.rung)
-  const unlock = gradeForRung(overall.rung + 1)
+  const waiting = gradeForRung(uncapped)
+  const gamesLeft = Math.max(0, GAMES_FOR_OVERALL - state.games)
   const best = bestEvent ? getEventBySlug(bestEvent.slug) : null
   // Colours are earned per calendar year. Past years' stay on record, and are
   // shown under this year's so 1 January does not look like a demotion.
@@ -79,7 +80,7 @@ export default function GradesCard({ state, bestEvent = null, ghost }: {
       }}>
         {overall.name.toUpperCase()}
         {/* The exact overall (Scoring v2): how far toward the next colour,
-            before the games cap, which the amber line below explains. */}
+            before the games floor, which the amber line below explains. */}
         <span style={{ fontSize: 22, color: 'var(--grey-light)', marginLeft: 10 }}>
           {formatExact(Math.max(grades.overall.exact, overall.rung))}
         </span>
@@ -103,9 +104,9 @@ export default function GradesCard({ state, bestEvent = null, ghost }: {
       </div>
       <div style={{ fontSize: 13, color: 'var(--grey-light)', marginTop: 4 }}>{blurb.sub}</div>
       {uncapped > overall.rung && (
-        // The games cap is binding: the domains already say more.
+        // Below the games floor: the domains already say more.
         <div style={{ fontSize: 12.5, color: 'var(--amber)', marginTop: 6 }}>
-          {unlock.name} unlocks at {GAMES_REQUIRED[overall.rung + 1]} {GAMES_REQUIRED[overall.rung + 1] === 1 ? 'game' : 'games'} · you&apos;ve played {state.games}
+          {waiting.name} unlocks at {GAMES_FOR_OVERALL} games · {gamesLeft} more to play
         </div>
       )}
 

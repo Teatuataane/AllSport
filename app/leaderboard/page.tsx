@@ -9,7 +9,7 @@
 // Two sections since 18 Nov 2026 (Tāne):
 //   1. COLOUR. Players with a game this season, ranked on their top colour
 //      the way HOME shows it: the overall colour (the average of the ten
-//      domain colours conferred this year, rounded down, capped by this
+//      domain colours conferred this year, rounded down, held to six of this
 //      year's games), then the rankByColours tie-breaks, then the season's
 //      colour score (every colour total from official games, added up;
 //      player_game_colours), which replaced the place points (100, 99, 98 …,
@@ -428,7 +428,7 @@ export default function LeaderboardPage() {
   const players = useMemo(() => new Map([...allPlayers].filter(([, p]) => inTab(p.division, tab))), [allPlayers, tab])
 
   // Each player's colour as HOME shows it: the average of the ten conferred
-  // domain colours, rounded down and capped by that year's games
+  // domain colours, rounded down and held to six of that year's games
   // (lib/colourBoard.ts). An unreadable count is unknown, not zero, so the cap
   // is left off rather than showing Mā.
   const rows: BoardRow[] = useMemo(() => seasonColourBoard(games, colours, players,

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   GRADES, MA, TOP_RUNG, DOMAIN_COUNT, gradeForRung,
   slotsForDomain, domainGrade, overallGrade, overallRung, averageRung, gamesCapRung,
-  DOMAIN_TOP_EVENTS, GAMES_REQUIRED, colourGate,
+  DOMAIN_TOP_EVENTS, GAMES_FOR_OVERALL, colourGate,
   AGE_SHIFT, thresholdFor, rungForScore, ageBand,
   DRILL_CAP, MIN_RATED_GAMES, ratingRung, gameEventRung, RATING_FLOOR, RATING_START, ratingForRung,
   BODYWEIGHT_BANDS, JUNIOR_BODYWEIGHT_KG, ratioThresholdsKg, bandMidpointKg, bodyweightOn,
@@ -201,7 +201,7 @@ describe('rule 2 — events nobody can be graded in', () => {
   })
 })
 
-describe('rule 3 — the overall grade is the average domain, capped by games', () => {
+describe('rule 3 — the overall grade is the average domain, after six games', () => {
   const domains = (rungs: number[]): DomainGradeResult[] =>
     rungs.map((rung, i) => ({
       domainNumber: i + 1, rung, availableCount: 12, slots: 6, counted: [],
@@ -236,24 +236,23 @@ describe('rule 3 — the overall grade is the average domain, capped by games', 
     expect(overallRung([], LOTS)).toBe(0)
   })
 
-  it('caps the overall by official games played', () => {
-    // Tāne, 26 Sept 2026: the games ladder moved from each domain to the overall.
-    expect(GAMES_REQUIRED).toEqual([0, 1, 3, 5, 8, 12, 16, 20, 30, 40, 55, 75, 100])
+  it('holds no overall colour below six games, and no cap above it', () => {
+    // Tāne, 23 Nov 2026: the per-colour games ladder became a six-games floor.
+    expect(GAMES_FOR_OVERALL).toBe(6)
     expect(gamesCapRung(0)).toBe(0)
-    expect(gamesCapRung(1)).toBe(1)
-    expect(gamesCapRung(7)).toBe(3)
-    expect(gamesCapRung(8)).toBe(4)
-    expect(gamesCapRung(52)).toBe(9)
+    expect(gamesCapRung(5)).toBe(0)
+    expect(gamesCapRung(6)).toBe(12)
     expect(gamesCapRung(100)).toBe(12)
     const tens = Array(10).fill(10)
     expect(averageRung(tens)).toBe(10)
-    expect(overallRung(tens, 52)).toBe(9)
-    const r = overallGrade(domains(tens), 7)
-    expect(r.rung).toBe(3)
+    expect(overallRung(tens, 6)).toBe(10)
+    expect(overallRung(Array(10).fill(12), 6)).toBe(12)
+    const r = overallGrade(domains(tens), 5)
+    expect(r.rung).toBe(0)
     expect(r.average).toBe(10)
   })
 
-  it('never lets the cap LIFT a player above their average', () => {
+  it('never lets the floor LIFT a player above their average', () => {
     expect(overallRung(Array(10).fill(2), 100)).toBe(2)
   })
 })

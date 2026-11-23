@@ -106,9 +106,10 @@ describe('shownOverallRung — the one overall colour HOME shows', () => {
     expect(shownOverallRung(st({ computed: 5, held: new Map(), schemaReady: false, games: 100 }))).toBe(5)
   })
 
-  it('is capped by games played', () => {
+  it('needs six games played', () => {
     const held = new Map(Array.from({ length: 10 }, (_, i) => [i + 1, 4]))
-    expect(shownOverallRung(st({ computed: 0, held, schemaReady: true, games: 7 }))).toBe(3)
+    expect(shownOverallRung(st({ computed: 0, held, schemaReady: true, games: 5 }))).toBe(0)
+    expect(shownOverallRung(st({ computed: 0, held, schemaReady: true, games: 6 }))).toBe(4)
     expect(shownOverallRung(st({ computed: 0, held, schemaReady: true, games: 0 }))).toBe(0)
   })
 })

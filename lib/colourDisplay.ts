@@ -70,7 +70,7 @@ export function shownDomainRungs(state: Pick<GradeState, 'grades' | 'held' | 'sc
 
 /**
  * The overall colour SHOWN on HOME: the average of the shown domain colours,
- * capped by games. The colours card and the avatar ring both read it, so the
+ * held to six games. The colours card and the avatar ring both read it, so the
  * two can never disagree.
  */
 export function shownOverallRung(state: Pick<GradeState, 'grades' | 'held' | 'schemaReady' | 'games'>): number {
@@ -80,7 +80,7 @@ export function shownOverallRung(state: Pick<GradeState, 'grades' | 'held' | 'sc
 /**
  * The overall colour of each past year the player holds a colour in, newest
  * first: HOME's "2026: Kōwhai" line. Colours are earned per calendar year
- * (lib/seasonYear.ts), and last year's stay on record. Each year is capped by
+ * (lib/seasonYear.ts), and last year's stay on record. Each year is held to six of
  * its own games, the same rule as the year it was earned in.
  */
 export function pastOverallRungs(

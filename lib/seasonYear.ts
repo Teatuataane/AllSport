@@ -8,7 +8,7 @@
 //     entry to the day it was trained (performed_on);
 //   · an award belongs to grade_awards.season_year (20261012230318), or the NZ
 //     year it was conferred in against a database that has not caught up;
-//   · the games cap counts that year's official games, same table;
+//   · the six-games floor counts that year's official games, same table;
 //   · a head-to-head rating stays lifetime, but its colour only counts in a
 //     year the player played that sport (gradeStateFrom applies that).
 //

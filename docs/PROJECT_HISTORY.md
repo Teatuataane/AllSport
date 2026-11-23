@@ -4076,3 +4076,8 @@ Step 2 of the speed plan. Measured as anon against production: `stats_bundle` 42
 ## Speed Insights (v0.59.0.0, 23 Nov 2026)
 
 Step 3 of the speed plan. Tāne asked for real data from players' phones. `@vercel/speed-insights` 1.2.0 is mounted in the root layout through `components/SpeedTiming.tsx`, whose `beforeSend` cuts the query string and hash (join links carry `?code=`). No cookie and no player id; the script and data use our own origin, so the CSP is unchanged. The privacy policy promised "no analytics", so it was reworded to say pages are timed through Vercel without identifying anyone. It must be switched on once in the Vercel project (Speed Insights tab) before any data arrives.
+
+## Six-games floor (v0.60.0.0, 23 Nov 2026)
+
+Decided in the multi-location games question session (MULTI_LOCATION_PLAN.md, decision 17). Tāne asked to remove the games requirement because the colour system no longer needs it: a domain is the average of the best six events, so about six games are needed anyway. Challenged that domains can also be built from logged workouts, which the cap was there to stop, Tāne chose option B: no overall colour until six official games that year, then no cap. `GAMES_REQUIRED` (the ladder 0, 1, 3, 5, 8, 12, 16, 20, 30, 40, 55, 75, 100 set 16 Sept 2026 and moved to the overall 26 Sept) became `GAMES_FOR_OVERALL = 6`; `gamesCapRung` keeps its name and returns Taniwha at six or more, Mā below. No database change: the overall colour is computed, never conferred. Effect on players: one to five games now reads Mā overall instead of up to Karaka; six or more can jump to their full domain average.
+

@@ -28,7 +28,7 @@ export function ghostAverages(playerId: string, inputs: GradeInputs, year: numbe
 
 export type YearHonours = {
   year: number
-  /** The overall colour held that year, capped by that year's games. */
+  /** The overall colour held that year, held to six of that year's games. */
   overall: number
   games: number
   prs: number

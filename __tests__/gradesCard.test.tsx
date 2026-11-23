@@ -76,18 +76,18 @@ describe('GradesCard', () => {
     expect(screen.queryByText(/unlocks at/)).toBeNull()
   })
 
-  it('caps the overall by games, and says what the games would unlock', () => {
-    // Kōwhai (4) on the domains, but 7 games only allows Karaka (3).
+  it('holds the overall at Mā below six games, and says what six would unlock', () => {
+    // Kōwhai (4) on the domains, but only 4 games.
     const held = new Map(Array.from({ length: 10 }, (_, i) => [i + 1, 4]))
-    render(<GradesCard state={state({ held, games: 7 })} />)
-    expect(screen.getByText(GRADES[2].name.toUpperCase())).toBeTruthy()
-    expect(screen.getByText(/Kōwhai unlocks at 8 games · you've played 7/)).toBeTruthy()
+    render(<GradesCard state={state({ held, games: 4 })} />)
+    expect(screen.getByText(/Kōwhai unlocks at 6 games · 2 more to play/)).toBeTruthy()
   })
 
-  it('says one game, not one games, when nobody has played', () => {
-    const held = new Map(Array.from({ length: 10 }, (_, i) => [i + 1, 2]))
-    render(<GradesCard state={state({ held, games: 0 })} />)
-    expect(screen.getByText(/Kiwikiwi unlocks at 1 game · you've played 0/)).toBeTruthy()
+  it('shows the full overall from six games', () => {
+    const held = new Map(Array.from({ length: 10 }, (_, i) => [i + 1, 4]))
+    render(<GradesCard state={state({ held, games: 6 })} />)
+    expect(screen.getByText(GRADES[3].name.toUpperCase())).toBeTruthy()
+    expect(screen.queryByText(/unlocks at/)).toBeNull()
   })
 
   it('expands a domain row to Event · Your best · Colour with the tier name', () => {

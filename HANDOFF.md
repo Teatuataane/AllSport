@@ -105,7 +105,7 @@ Documentation only. No application code, migrations, scripts, tests or config we
 - Bump `GRADING_RULES_VERSION` in `lib/grading.ts` whenever a rule changes what the same evidence earns.
 - Renaming an event needs a backfill migration and a sweep of every table storing a slug or name.
 - `players` is not publicly readable; use `players_public`. The service-role key is server-only.
-- Several product rules are deliberate owner decisions (walkovers count, one-point place gap, games-cap table). Do not "fix" them without asking.
+- Several product rules are deliberate owner decisions (walkovers count, one-point place gap, six-games floor for an overall colour). Do not "fix" them without asking.
 - Work on the branch you were assigned; do not push elsewhere without permission.
 - The repo is public: no secrets, no documents naming players.
 - Keep this file current. If you stop mid-task, record what is done, what is half-done, and what you assumed.

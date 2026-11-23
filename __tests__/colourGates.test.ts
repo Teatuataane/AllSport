@@ -1,14 +1,13 @@
 import { describe, it, expect } from 'vitest'
-import { GAMES_REQUIRED, TOP_RUNG } from '@/lib/grading'
+import { GAMES_FOR_OVERALL } from '@/lib/grading'
 import { colourGates, releasable, eventGrade, gameEvidence, type GradePlayer } from '@/lib/playerGrades'
 import { normaliseActivity } from '@/lib/workouts'
 import { workoutEvidence, fitActivity, suggestEvents, allowedDays, addDays, type WorkoutEntryRow } from '@/lib/workouts'
 import { getEventByName } from '@/lib/eventData'
 
-describe('the games ladder', () => {
-  it('holds the games quota Tāne set, one per colour', () => {
-    expect(GAMES_REQUIRED).toEqual([0, 1, 3, 5, 8, 12, 16, 20, 30, 40, 55, 75, 100])
-    expect(GAMES_REQUIRED).toHaveLength(TOP_RUNG + 1)
+describe('the games floor', () => {
+  it('needs the six games Tāne set before any overall colour', () => {
+    expect(GAMES_FOR_OVERALL).toBe(6)
   })
 })
 

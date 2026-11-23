@@ -147,11 +147,11 @@ describe('1 January', () => {
     expect(gradeStateFrom('p', i, { year: 2027 }).games).toBe(0)
   })
 
-  it('caps a past year\'s overall colour by that year\'s own games', () => {
-    // Ten domains at Kōwhai, but one game in 2026: one game caps at Kiwikiwi.
+  it('holds a past year\'s overall colour to that year\'s own games', () => {
+    // Ten domains at Kōwhai, but one game in 2026: under six, so no overall colour.
     const awards = Array.from({ length: 10 }, (_, d) => award2026(d + 1, 4))
     const s = gradeStateFrom('p', inputs([row('s1', DEC, '2026-12-05')], awards))
-    expect(pastOverallRungs(s)).toEqual([{ year: 2026, rung: 1 }])
+    expect(pastOverallRungs(s)).toEqual([{ year: 2026, rung: 0 }])
   })
 
   it('a logged entry counts in the year it was trained', () => {

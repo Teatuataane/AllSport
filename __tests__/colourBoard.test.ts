@@ -12,10 +12,10 @@ describe('colourStanding', () => {
     const m = all(5); m.set(3, 2)
     expect(colourStanding(m, 100).overall).toBe(4)
   })
-  it('caps the overall by games played, as HOME does', () => {
-    // Kōwhai (4) needs 8 games; with 7 the board shows Karaka (3).
-    expect(colourStanding(all(4), 7).overall).toBe(3)
-    expect(colourStanding(all(4), 8).overall).toBe(4)
+  it('needs six games for an overall colour, as HOME does', () => {
+    // Kōwhai (4) on the domains: Mā with 5 games, Kōwhai from 6.
+    expect(colourStanding(all(4), 5).overall).toBe(0)
+    expect(colourStanding(all(4), 6).overall).toBe(4)
   })
   it('handles a player with nothing conferred', () => {
     expect(colourStanding(undefined, 0)).toEqual({ domainsHeld: 0, colourSum: 0, overall: 0 })

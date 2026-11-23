@@ -462,7 +462,7 @@ export default function JudgeCard({ playerRole, playerId }: JudgeCardProps) {
     setPlayersLoading(true)
     // Ordered by colours, the same rule as /leaderboard (lib/colourBoard.ts).
     // Points are retired, so nothing here reads rankings.
-    // Games cap the overall colour, so they are counted the way the board
+    // Games gate the overall colour, so they are counted the way the board
     // counts them (lib/gameCounts.ts). session_player_summary was the source
     // here and misses every game closed before 20260514.
     // This year's colours and this year's games: colours are earned per NZ

@@ -4,7 +4,7 @@
 //
 // The order, most important first:
 //   1. The overall colour (the average of the ten domains, rounded down and
-//      capped by games played; overallRung in lib/grading.ts).
+//      held to six games played; overallRung in lib/grading.ts).
 //   2. The sum of the ten domain colours held — progress toward the overall.
 //   3. Domains holding any colour.
 //   4. Games played. Nobody held a conferred colour at launch, so without this
@@ -30,7 +30,7 @@ export type BoardInput = {
 
 export type BoardRow = BoardInput & {
   rank: number
-  /** The average domain colour, rounded down and capped by games. 0 = Mā. */
+  /** The average domain colour, rounded down, Mā below six games. 0 = Mā. */
   overall: number
   domainsHeld: number
   colourSum: number

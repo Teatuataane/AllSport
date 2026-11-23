@@ -11,7 +11,7 @@
 
 import Link from 'next/link'
 import {
-  GRADES, MA, GAMES_REQUIRED, DOMAIN_TOP_EVENTS,
+  GRADES, MA, GAMES_FOR_OVERALL, DOMAIN_TOP_EVENTS,
   DRILL_CAP, RATING_FLOOR, RATING_STEP, RATING_START, gradeForRung, gradeInk, overallRung, averageRung,
   domainGrade, TOP_RUNG, ratingRung, ratingForRung,
 } from '@/lib/grading'
@@ -82,8 +82,8 @@ function P({ children }: { children: React.ReactNode }) {
 export default function ColourRules() {
   const exampleRungs = [5, 5, 5, 5, 5, 5, 5, 2, 2, 2]
   const exampleSum = exampleRungs.reduce((a, b) => a + b, 0)
-  // The overall example, capped: its average needs more games than this.
-  const exampleGames = GAMES_REQUIRED[averageRung(exampleRungs)] - 1
+  // The overall example, one game short of the floor.
+  const exampleGames = GAMES_FOR_OVERALL - 1
   const exampleCapped = gradeForRung(overallRung(exampleRungs, exampleGames))
   const exampleUncapped = gradeForRung(averageRung(exampleRungs))
 
@@ -106,11 +106,11 @@ export default function ColourRules() {
         <P>
           Everyone starts at Mā, and starts again every 1 January: colours are earned for a calendar year.
           Each colour&apos;s standards are aimed at a shrinking share of players: Whero at the top 90%, down
-          to Taniwha for the top one percent. Your overall colour also needs a number of official games
+          to Taniwha for the top one percent. Your overall colour also needs {GAMES_FOR_OVERALL} official games
           played in the room that year.
         </P>
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 62px 56px', gap: '0 8px', marginTop: 8 }}>
-          {['Colour', 'Aimed at', 'Games'].map((h, i) => (
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 62px', gap: '0 8px', marginTop: 8 }}>
+          {['Colour', 'Aimed at'].map((h, i) => (
             <span key={h} style={{ ...label, fontSize: 10, color: '#555', textAlign: i ? 'right' : 'left', paddingBottom: 6 }}>{h}</span>
           ))}
           {[MA, ...GRADES].map(g => (
@@ -123,7 +123,6 @@ export default function ColourRules() {
                 </span>
               </span>,
               g.rung === 0 ? '—' : g.populationTarget == null ? 'Everyone' : `Top ${g.populationTarget}%`,
-              g.rung === 0 ? '—' : String(GAMES_REQUIRED[g.rung]),
             ]} />
           ))}
         </div>
@@ -172,8 +171,9 @@ export default function ColourRules() {
           still on Mā counts as zero, so skipping one holds you back.
         </P>
         <P>
-          It also needs the games in the table above. Your domains can be built anywhere, but your overall
-          colour only goes as high as the official games you have played this year.
+          It starts once you have played {GAMES_FOR_OVERALL} official games this year. Your domains can be
+          built anywhere, but your overall colour needs games in the room behind it. After {GAMES_FOR_OVERALL},
+          there is no limit.
         </P>
         <div style={{ background: '#0b0b0b', border: '1px solid var(--border)', borderRadius: 12, padding: '12px 14px' }}>
           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8 }} aria-hidden>
@@ -183,7 +183,7 @@ export default function ColourRules() {
             Seven domains at {gradeForRung(5).name} (colour 5) and three at {gradeForRung(2).name} (colour 2):
             {' '}{exampleSum} ÷ 10 = {(exampleSum / 10).toFixed(1)}, so{' '}
             <span style={{ color: gradeInk(exampleUncapped), fontWeight: 600 }}>{exampleUncapped.name}</span>,
-            once you have played {GAMES_REQUIRED[exampleUncapped.rung]} games. With {exampleGames} games it is{' '}
+            once you have played {GAMES_FOR_OVERALL} games. With {exampleGames} games it is{' '}
             <span style={{ color: gradeInk(exampleCapped), fontWeight: 600 }}>{exampleCapped.name}</span>.
           </div>
         </div>

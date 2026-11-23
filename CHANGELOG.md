@@ -2,6 +2,12 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.60.0.0] - 2026-11-23
+
+### Changed
+- **An overall colour needs six games, then nothing more** (Tāne). The games ladder that capped the overall colour colour by colour (1, 3, 5, 8 … 100 official games) is gone. A player now holds no overall colour until they have played six official games that year, and from the sixth game their overall is simply the average of their ten domains. Domain colours are unchanged and still show from the first game. Tāne's reasoning: a domain is the average of the best six events, so it needs about six games anyway, and the ladder only held back players who had them. `GAMES_FOR_OVERALL` in `lib/grading.ts`; `GRADING_RULES_VERSION` bumped so every player is rechecked. HOME says which colour six games will unlock and how many games are left; the colour rules drop the Games column.
+- Players with one to five games this year now show Mā overall (they showed Kiwikiwi to Karaka), and on the season board rank below everyone with six games and an overall colour, then on their domain colours.
+
 ## [0.59.0.0] - 2026-11-23
 
 ### Added

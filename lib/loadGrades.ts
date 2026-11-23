@@ -97,7 +97,7 @@ export type GradeState = {
   schemaReady: boolean
   /** Official games played this year: sessions that finished and were not voided, with any result. Caps the overall colour. */
   games: number
-  /** The same count for every year played, so a past year's overall colour is capped by its own games. */
+  /** The same count for every year played, so a past year's overall colour needs six of its own games. */
   gamesByYear: Map<number, number>
   /** What every domain has waiting to be conferred. */
   gates: ColourGate[]

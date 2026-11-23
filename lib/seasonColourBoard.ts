@@ -1,7 +1,7 @@
 // ─── The season board, ranked on colour ──────────────────────────────────────
 // Tāne, 18 Nov 2026: the season board ranks on each player's top colour, the
 // way HOME shows it: the OVERALL colour, the average of the ten domain colours
-// conferred this year, rounded down and capped by this year's games
+// conferred this year, rounded down and held to six of this year's games
 // (overallRung in lib/grading.ts, colourStanding in lib/colourBoard.ts).
 // Ties break the way rankByColours does (lib/colourBoard.ts): the sum of the
 // ten domain colours, then domains held; then the season's COLOUR SCORE, then

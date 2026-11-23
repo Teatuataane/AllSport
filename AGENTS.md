@@ -24,7 +24,7 @@ A koha-funded (donation-based) community sport from Ōtautahi, Aotearoa. Players
 - Season leaderboard: everyone in a finished, unvoided game is ranked together on their game colour total; places pay 100, 99, 98 … never below 1; ties share.
 - A missed event ranks last. Voided games are excluded everywhere (`sessions.voided_at`). Events added on top of an official game are stored as workouts, never in `results`.
 - Points, units, effort tasks, taniwha and Elo skill ratings are retired. Do not reintroduce a second ranking metric.
-- Several rules are deliberate product decisions by the owner (walkovers count, the one-point place gap, the games-cap table, best-six without a breadth bonus). Do not "fix" them without being asked.
+- Several rules are deliberate product decisions by the owner (walkovers count, the one-point place gap, the six-games floor for an overall colour, best-six without a breadth bonus). Do not "fix" them without being asked.
 
 ## 4. Development principles
 
