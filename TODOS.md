@@ -174,6 +174,7 @@ From `main`, `db query --linked -f` plus the ledger row. Verify: five tables wit
 Every `game_notices` row goes to the weekly game's registered players who are not away that date. Web push (service worker, app manifest, VAPID keys, a `push_subscriptions` table) with email as the fallback for players without push (Resend free tier). Needs a second server route, so `__tests__/autoConferral.test.ts`'s service-key rule changes. iPhones only get push after Add to Home Screen; HOME should say so. Update the privacy page.
 
 ### Weekly games phase 3: attendance and more than one game at once
+**Superseded by `MULTI_LOCATION_PLAN.md`** (agreed with Tāne 23 Nov 2026): Kaiārahi levels, programmes, roster, bookings, funder data and Find a game. The notes below are folded into its build order.
 Count who played against who registered (`sessions.weekly_game_id`), per site and slot. Two sites can run at the same time in 2027, but New Game refuses a second active game, HOME and the top bar read ONE active session (`maybeSingle`), and `/schedule` and `lib/schedule.ts` still carry the fixed times. All need to go per site before a second site plays at the same time as HQ. Optional: pre-fill the kaiwhakawā's game list from the registered players.
 
 ### ~~Apply `20261014222805_stamina_arm_events.sql` after v0.36.0.0 deploys~~ DONE 2026-10-15
