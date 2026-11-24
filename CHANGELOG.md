@@ -2,6 +2,13 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.70.0.0] - 2026-11-24
+
+### Changed
+- **Kaiārahi for whoever runs a game** (multi-location games step 11). The top bar link, the panel title and the scoring screen's tab now say Kaiārahi. So do HOME's live-game line, training sessions, deleted-score messages, the join-code message, weekly game notes, and every event's rules ("set by the Kaiārahi"). Kaiwhakawā stays where it means head staff: division moves, exemptions, disputes, taking a colour back, vetting records, private details and erasure.
+- The bodyweight line now says only you and the Kaiwhakawā can see it. A Kaiārahi can record a weigh-in but never reads one.
+- The privacy page defines both words.
+
 ## [0.68.0.1] - 2026-11-24
 
 ### Changed
@@ -16,7 +23,7 @@ All notable changes to AllSport are documented here.
 - The homepage "Next game" line names the soonest listed game and its place, falling back to the fixed times.
 
 ### Changed
-- **Unlisted games are hidden from logged-out visitors.** Until now anyone could read every weekly game and notice through the API, unlisted school games included. Migration `20261123234843_find_a_game.sql` (not yet applied) limits `anon` to listed games and their notices, and adds `game_leads` (signed-in only, ids only).
+- **Unlisted games are hidden from logged-out visitors.** Until now anyone could read every weekly game and notice through the API, unlisted school games included. Migration `20261123234843_find_a_game.sql` (applied 24 Nov 2026) limits `anon` to listed games and their notices, and adds `game_leads` (signed-in only, ids only).
 
 ## [0.68.0.0] - 2026-11-24
 

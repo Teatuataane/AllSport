@@ -150,8 +150,8 @@ export default function BodyweightField({ playerId, eventSlugs, day, locked, for
           : carried
             ? <>Carried over from {carried.on}. Save today&apos;s to grade these lifts against it.</>
             : saved !== null
-              ? <>Today&apos;s lifts are graded against this. Only you and your kaiwhakawā can see it.</>
-              : <>Lifts are graded against your bodyweight. Without it they are not graded. Only you and your kaiwhakawā can see it.</>}
+              ? <>Today&apos;s lifts are graded against this. Only you and the Kaiwhakawā can see it.</>
+              : <>Lifts are graded against your bodyweight. Without it they are not graded. Only you and the Kaiwhakawā can see it.</>}
       </div>
     </div>
   )

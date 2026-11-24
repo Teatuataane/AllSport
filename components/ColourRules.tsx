@@ -272,7 +272,7 @@ export default function ColourRules() {
         </P>
         <P>
           Within a year, a change to the standards never takes a colour away. The only way to lose one is a
-          kaiwhakawā removing the score it rested on.
+          Kaiārahi removing the score it rested on.
         </P>
         <Link href="/events" style={{ ...label, fontSize: 12.5, color: 'var(--blue)' }}>
           Every event and its tiers →

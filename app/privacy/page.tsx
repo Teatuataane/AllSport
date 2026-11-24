@@ -347,7 +347,7 @@ export default function PrivacyPolicy() {
             <p className="privacy-p">
               This policy covers the AllSport website and app at allsport.nz. It is written to meet the
               New Zealand Privacy Act 2020. In this policy, &ldquo;we&rdquo; means the trust, and
-              &ldquo;kaiwhakawā&rdquo; means the judges who run sessions and hold administrator accounts.
+              &ldquo;Kaiārahi&rdquo; means whoever runs a game, and &ldquo;kaiwhakawā&rdquo; means the head staff who hold administrator accounts.
             </p>
             <p className="privacy-p">
               For anything about your privacy — a question, a correction, a copy of your information, or a deletion —
@@ -377,7 +377,7 @@ export default function PrivacyPolicy() {
           <SectionLabel style={{ marginBottom: 16 }}>What We Collect</SectionLabel>
           <h2 className="privacy-h2">YOUR <span style={{ color: 'var(--amber)' }}>RESULTS</span></h2>
           <p className="privacy-p" style={{ marginTop: '16px', marginBottom: '28px' }}>
-            Collected every time you or a kaiwhakawā records a score during a session. This is the public
+            Collected every time you or a Kaiārahi records a score during a session. This is the public
             part of AllSport — a leaderboard only works if the results are on it.
           </p>
           <DataTable rows={competitionData} />

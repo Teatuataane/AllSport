@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 //
 // ── A kaiwhakawā's desktop bar ───────────────────────────────────────────────
-// The PLAY tab was folded into the KAIWHAKAWĀ link for a judge, because both
+// The PLAY tab was folded into the KAIĀRAHI link for a judge, because both
 // pointed at /judge. That link must carry playHref, or a judge loses the route
 // to a live game. A player keeps PLAY and never sees the link.
 
@@ -36,24 +36,24 @@ afterEach(cleanup)
 const links = (c: HTMLElement) => [...c.querySelectorAll('a')].map(a => ({ text: a.textContent?.trim(), href: a.getAttribute('href') }))
 
 describe('desktop top bar tabs', () => {
-  it('a kaiwhakawā gets no PLAY or JUDGE tab, and the KAIWHAKAWĀ link goes to the live game', async () => {
+  it('a kaiwhakawā gets no PLAY or JUDGE tab, and the KAIĀRAHI link goes to the live game', async () => {
     nav.isJudge = true
     const Navbar = (await import('@/components/Navbar')).default
     const { container, findByText } = render(<Navbar />)
     await findByText('HOME')
-    await waitFor(() => expect(links(container).some(l => l.text === 'KAIWHAKAWĀ')).toBe(true))
+    await waitFor(() => expect(links(container).some(l => l.text === 'KAIĀRAHI')).toBe(true))
     const all = links(container)
-    expect(all.find(l => l.text === 'KAIWHAKAWĀ')!.href).toBe('/scoring/s9')
+    expect(all.find(l => l.text === 'KAIĀRAHI')!.href).toBe('/scoring/s9')
     expect(all.some(l => l.text === 'PLAY' || l.text === 'JUDGE')).toBe(false)
   })
 
-  it('a player keeps the PLAY tab and has no KAIWHAKAWĀ link', async () => {
+  it('a player keeps the PLAY tab and has no KAIĀRAHI link', async () => {
     nav.isJudge = false
     const Navbar = (await import('@/components/Navbar')).default
     const { container, findByText } = render(<Navbar />)
     await findByText('HOME')
     const all = links(container)
     expect(all.find(l => l.text === 'PLAY')?.href).toBe('/scoring/s9')
-    expect(all.some(l => l.text === 'KAIWHAKAWĀ')).toBe(false)
+    expect(all.some(l => l.text === 'KAIĀRAHI')).toBe(false)
   })
 })

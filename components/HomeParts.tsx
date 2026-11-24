@@ -127,8 +127,8 @@ export function TrainingOnCard({ session, who }: {
       </div>
       <div style={{ fontSize: 13, color: '#9db8d6', marginTop: 6 }}>
         {session.events > 0
-          ? `${session.events} event${session.events === 1 ? '' : 's'} so far, with your kaiwhakawā`
-          : 'Your kaiwhakawā is setting it up'}
+          ? `${session.events} event${session.events === 1 ? '' : 's'} so far, with your Kaiārahi`
+          : 'Your Kaiārahi is setting it up'}
       </div>
       <Link href={`/workout/${session.id}`} style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 50,
