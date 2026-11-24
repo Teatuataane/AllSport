@@ -423,7 +423,7 @@ function JudgeSummaryTab({
                                 <div style={{ fontSize: '13px', color: 'var(--grey)', marginBottom: '10px' }}>No score submitted yet</div>
                               )}
                               <div style={{ fontSize: '12px', color: 'var(--grey)', fontFamily: 'var(--font-label)' }}>
-                                To add or update a score, use the Kaiwhakawā tab and select {entry.playerName}.
+                                To add or update a score, use the Kaiārahi tab and select {entry.playerName}.
                               </div>
                             </div>
                           )}
@@ -1316,7 +1316,7 @@ export default function SessionPage() {
               color: activeTab === 'judge-mode' ? 'var(--red)' : 'var(--grey)',
               borderBottom: `2px solid ${activeTab === 'judge-mode' ? 'var(--red)' : 'transparent'}`,
             }}>
-            Kaiwhakawā
+            Kaiārahi
           </button>
         )}
         {isJudge && (
@@ -1614,7 +1614,7 @@ export default function SessionPage() {
 
         return (
           <div style={{ padding: '16px' }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', color: 'var(--red)', letterSpacing: '0.05em', lineHeight: 1 }}>Kaiwhakawā</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', color: 'var(--red)', letterSpacing: '0.05em', lineHeight: 1 }}>Kaiārahi</div>
             <div style={{ fontSize: '12px', color: 'var(--grey)', fontFamily: 'var(--font-label)', letterSpacing: '0.08em', marginBottom: '12px' }}>SCORE FOR ANY PLAYER</div>
 
             {sessionEnded && (

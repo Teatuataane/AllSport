@@ -89,7 +89,7 @@ async function writeResult(job: SaveJob): Promise<{ row: SessionResult } | { err
     if (row) return { row }
     return {
       error: job.editingId
-        ? 'This score was deleted by a kaiwhakawā — close and submit it as a new score'
+        ? 'This score was deleted by a Kaiārahi — close and submit it as a new score'
         : 'The score did not save. Try again.',
     }
   } catch (e) {

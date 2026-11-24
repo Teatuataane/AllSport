@@ -4120,6 +4120,14 @@ Rehearsed in a rolled-back transaction, 23 checks passing.
 
 **Applied 24 Nov 2026** from a clean `main` checkout after allsport.nz served v0.66.0.0, by `db query --linked` plus the ledger row; the check block passed. Verified live: both triggers and `game_roster.helper_adult` present; `authenticated` cannot execute `age_today` or `second_is_adult`; `anon` cannot execute `set_second_adult`; as `authenticated` the head gets no blocker on the HQ game, and a plain player asking `age_today` is refused (42501).
 
+## Wording sweep (v0.70.0.0, 24 Nov 2026)
+
+Multi-location games step 11, no migration. Since v0.61.0.0 Kaiwhakawā means head staff, but the screens still used it for whoever runs a game. Tāne chose Kaiārahi for the top bar link, the panel title and the scoring tab; the `/judge` address stays.
+
+Reworded to Kaiārahi: HOME's live-game line, training sessions on `/workout/[id]`, the join-code message, weekly game notes, deleted-score messages, the colour rules line on removing a score, the "ask for a demo" line, and the rules text of every event in `lib/eventData.ts` and `lib/eventSummaries.ts` (some spelt without the macron). Event rules are hand-written in `eventData.ts`, not compiled from `EVENT_DIFFICULTY_REVIEW.md`.
+
+Kept as Kaiwhakawā, since only a head can do these: division moves, exemptions, disputes, taking a colour back, vetting and first aid records, private details on the privacy page, erasure, and the level name. The bodyweight line said "your kaiwhakawā can see it"; a Kaiārahi running a game can record a weigh-in through `record_bodyweight` but cannot read one, so it now says the Kaiwhakawā. Database error messages and code names (`is_judge`, `kaiwhakawaId`) are unchanged.
+
 ## Find a game (v0.69.0.0, 24 Nov 2026)
 
 Multi-location games step 10. Tāne's answers, 24 Nov 2026: a logged-out visitor sees the games but not the Kaiārahi or the coming count; soonest first, with a "Near me" button that asks for location only when tapped; community games made by a Kaiako are public straight away, with no approval.
@@ -4128,7 +4136,9 @@ Multi-location games step 10. Tāne's answers, 24 Nov 2026: a logged-out visitor
 
 **Database** (`20261123234843_find_a_game.sql`). Found while planning: `weekly_games_read` and `game_notices_read` were `USING (true)` for `anon`, so the API gave anyone every unlisted school game. `anon` now reads listed games and their notices only; signed-in reads are unchanged (TODOS: narrow them too). `game_leads(uuid[], date[])` returns the lead's id per date through `rostered_lead`, listed games only unless the caller is a Kaiārahi or registered, signed-in only.
 
-Rehearsed in a rolled-back transaction with an unlisted test game, 7 checks passing. Checked in the browser pane logged out at phone width: the three HQ games from the database, soonest first, and the homepage line "Today 4:30pm · AllSport HQ".
+Rehearsed in a rolled-back transaction with an unlisted test game, 7 checks passing.
+
+**Applied 24 Nov 2026** from a clean `main` checkout after allsport.nz served v0.69.0.0, by `db query --linked` plus the ledger row; the check block passed. Verified live: the `anon` policies are listed-only; a real logged-out API call returned the 3 listed HQ games; the rehearsal's checks repeated (rolled back) with the same results. Checked in the browser pane logged out at phone width: the three HQ games from the database, soonest first, and the homepage line "Today 4:30pm · AllSport HQ".
 
 ## Who plays: sign-up and survey (v0.68.0.0, 24 Nov 2026)
 

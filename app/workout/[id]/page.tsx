@@ -200,7 +200,7 @@ export default function PersonalGamePage() {
   }, [kaiwhakawaId])
   const playsKaiwhakawa = !!kaiwhakawaId && open
   const opponents = useMemo(
-    () => playsKaiwhakawa ? [{ id: kaiwhakawaId!, name: kaiwhakawaName ?? 'Kaiwhakawā' }] : [],
+    () => playsKaiwhakawa ? [{ id: kaiwhakawaId!, name: kaiwhakawaName ?? 'Kaiārahi' }] : [],
     [playsKaiwhakawa, kaiwhakawaId, kaiwhakawaName])
 
   // "Repeat last session": the previous session's events, offered on an empty one.
@@ -356,14 +356,14 @@ export default function PersonalGamePage() {
         {locked && (
           <div style={{ marginTop: 10, fontSize: 13, color: 'var(--text-muted)' }}>
             {workout.finished_at ? 'Finished.' : 'This workout is from an earlier day, so it is closed.'}{' '}
-            {workout.witnessed ? 'Only a kaiwhakawā can change it.' : 'Your kaiwhakawā can still change it.'}
+            {workout.witnessed ? 'Only a Kaiārahi can change it.' : 'Your Kaiārahi can still change it.'}
           </div>
         )}
       </div>
 
       {coached && !isJudge && open && (
         <div style={{ margin: '0 0 14px', fontSize: 13, color: 'var(--text-muted)' }}>
-          Your kaiwhakawā is running this session. Enter your scores here as you go.
+          Your Kaiārahi is running this session. Enter your scores here as you go.
         </div>
       )}
 
@@ -395,7 +395,7 @@ export default function PersonalGamePage() {
 
       {events.length === 0 && (
         <div style={{ color: 'var(--text-muted)', fontSize: 14, padding: '20px 4px' }}>
-          {canRun ? 'Nothing planned yet. Add an event below.' : 'Nothing planned yet. Your kaiwhakawā will add the events.'}
+          {canRun ? 'Nothing planned yet. Add an event below.' : 'Nothing planned yet. Your Kaiārahi will add the events.'}
         </div>
       )}
 

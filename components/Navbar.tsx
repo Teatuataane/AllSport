@@ -234,7 +234,7 @@ export default function Navbar() {
                   ? '2px solid var(--red)' : '2px solid transparent',
                 paddingBottom: 3, lineHeight: 1,
               }}>
-                KAIWHAKAWĀ
+                KAIĀRAHI
               </Link>
             )}
             <button

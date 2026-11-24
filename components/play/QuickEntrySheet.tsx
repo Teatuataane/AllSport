@@ -385,7 +385,7 @@ export default function QuickEntrySheet({
             <div>
               <div style={{ ...QES_LBL, color: 'var(--amber)' }}>How to perform</div>
               <p style={{ fontSize: '14.5px', lineHeight: 1.6, color: 'var(--grey-light)', fontWeight: 300, margin: 0 }}>
-                {contentMissing ? 'Content coming soon — ask your kaiwhakawā for a demo.' : eventData!.howToPerform}
+                {contentMissing ? 'Content coming soon — ask your Kaiārahi for a demo.' : eventData!.howToPerform}
               </p>
               <div style={{ ...QES_LBL, color: 'var(--amber)' }}>Rules</div>
               <p style={{ fontSize: '14.5px', lineHeight: 1.6, color: 'var(--grey-light)', fontWeight: 300, margin: 0 }}>

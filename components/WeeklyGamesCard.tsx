@@ -80,7 +80,7 @@ export default function WeeklyGamesCard({
       </div>
       <p style={{ fontSize: 13, color: 'var(--grey-light)', lineHeight: 1.5, margin: '6px 0 4px' }}>
         {registered
-          ? 'You hear here about every game you have joined: rain calls, a change of park, notes from the kaiwhakawā.'
+          ? 'You hear here about every game you have joined: rain calls, a change of park, notes from the Kaiārahi.'
           : 'Join the games you usually come to and you will hear here if one is cancelled or moved. Walk-ups are always welcome.'}
       </p>
       {error && <div role="alert" style={{ color: 'var(--red)', fontSize: 13, margin: '6px 0' }}>{error}</div>}

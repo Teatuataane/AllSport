@@ -64,7 +64,7 @@ export default function NewColourCard({ awards, withdrawn = [], onDismiss }: {
               <div key={`w:${w.domain_number}:${w.rung}:${w.withdrawn_at}`}
                 style={{ fontSize: 13.5, color: 'var(--text-muted)', lineHeight: 1.5, marginTop: 8 }}>
                 <span style={{ color: 'var(--white)' }}>{w.grade_name}</span> in {DOMAIN_ORDER[w.domain_number - 1]} was
-                taken back. A logged score it relied on was removed by a kaiwhakawā.
+                taken back. A logged score it relied on was removed by a Kaiārahi.
                 {w.reason && <span style={{ display: 'block', marginTop: 2 }}>{w.reason}</span>}
               </div>
             ))}

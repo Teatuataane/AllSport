@@ -271,7 +271,7 @@ export function MoreMenu({ isJudge, isKaiarahi = isJudge, onClose }: {
       >
 
         {isKaiarahi && (
-          <SheetRow href="/judge" label={isJudge ? 'Kaiwhakawā panel' : 'Kaiārahi panel'} accent="var(--red)">
+          <SheetRow href="/judge" label="Kaiārahi panel" accent="var(--red)">
             <svg {...stroke('var(--red)')} strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 3v3" /><path d="M5 8h14l-2 11H7z" /><path d="M9 12h6" />
             </svg>

@@ -167,8 +167,8 @@
 
 ## P1 — Do Next
 
-### Apply `20261123234843_find_a_game.sql` after v0.69.0.0 deploys
-From `main`, `db query --linked -f` plus the ledger row. Ends with a check block: no `anon` SELECT policy of `true` left on `weekly_games` or `game_notices`, and `anon` cannot execute `game_leads`.
+### ~~Apply `20261123234843_find_a_game.sql` after v0.69.0.0 deploys~~ DONE 2026-11-24
+**Done:** applied from a clean `main` checkout by `db query --linked` plus the ledger row once allsport.nz served v0.69.0.0; the check block passed. Verified live: `anon` policies are listed-only; a real logged-out API call returned the 3 listed HQ games; rolled back with an unlisted test game, `anon` saw neither it nor its notice and was refused `game_leads` (42501); a plain player got leads for listed games only, a Kaiwhakawā for all. Still to do: open allsport.nz/schedule signed in on a phone. Original note: From `main`, `db query --linked -f` plus the ledger row. Ends with a check block: no `anon` SELECT policy of `true` left on `weekly_games` or `game_notices`, and `anon` cannot execute `game_leads`.
 
 Rehearsed 24 Nov 2026 in a rolled-back transaction, with an unlisted test game added (7 checks): `anon` read the 3 listed HQ games and not the unlisted one or its notice, and was refused `game_leads` (42501); a plain player read all 4 and got leads for the 3 listed (none set, since HQ has no regular); a Kaiwhakawā got all 4. Verify the same after applying, then open allsport.nz/schedule logged out and signed in.
 

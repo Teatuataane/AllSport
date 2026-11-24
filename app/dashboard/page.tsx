@@ -376,7 +376,7 @@ function DashboardInner() {
       .eq('session_code', code)
       .maybeSingle()
     if (error) { setJoinError(`Session lookup failed: ${error.message}`); return }
-    if (!sess) { setJoinError(`No session found with code "${code}". Ask the Kaiwhakawā to confirm it.`); return }
+    if (!sess) { setJoinError(`No session found with code "${code}". Ask the Kaiārahi to confirm it.`); return }
     if (!sess.is_active) { setJoinError(`Session "${code}" has ended.`); return }
     window.location.href = `/scoring/${sess.id}`
   }
