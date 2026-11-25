@@ -4120,6 +4120,14 @@ Rehearsed in a rolled-back transaction, 23 checks passing.
 
 **Applied 24 Nov 2026** from a clean `main` checkout after allsport.nz served v0.66.0.0, by `db query --linked` plus the ledger row; the check block passed. Verified live: both triggers and `game_roster.helper_adult` present; `authenticated` cannot execute `age_today` or `second_is_adult`; `anon` cannot execute `set_second_adult`; as `authenticated` the head gets no blocker on the HQ game, and a plain player asking `age_today` is refused (42501).
 
+## Reports for funders and schools (v0.73.0.0, 26 Nov 2026)
+
+Multi-location step 14. Tāne chose a printable report plus a CSV of the same numbers, a funder report scoped to one programme over a date range, a school report of attendance with names only where a parent agreed (`player_profile_private.share_with_school`), and wellbeing as the change over the programme.
+
+- The measures reuse `lib/successMeasures.ts` (new `periodSummary`, `reachOf`) so a report agrees with the scorecard. Report rules and CSVs are in `lib/reports.ts`, reads in `lib/reportsData.ts`, sheets in `components/ReportViews.tsx`, the page `/judge/report` (print CSS hides the site bars), the chooser `app/components/ReportsPanel.tsx`.
+- Wellbeing answers stay unreadable even to a head. `programme_wellbeing` (SECURITY DEFINER, head only) pairs each player's first and latest check-in stamped with the programme in the period, counts only players with two, and returns averages that are null under 5. Rehearsed live in a rolled-back transaction on 26 Nov 2026: five made-up respondents gave WHO-5 40.0 to 60.0, four gave nulls, a head still read no raw rows, a plain player and `anon` were refused (42501).
+- Groups of 1 to 4 people read "fewer than 5" everywhere; a school sheet hides its total games when fewer than 5 students played.
+
 ## Scorecard (v0.72.0.0, 26 Nov 2026)
 
 Multi-location games step 13, no migration. The plan's success measures are now one pure file, `lib/successMeasures.ts`, so the scorecard and step 14's exports cannot disagree.

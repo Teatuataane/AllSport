@@ -290,18 +290,106 @@ export function newThisTerm(att: Attendance, gameId: string | null, today: strin
 
 /** Reach: the new players this term by age, sex, ethnicity and deprivation. Head only. */
 export function reach(att: Attendance, gameId: string | null, people: ReadonlyMap<string, Person>, today: string): Reach {
+  // Age at their first game.
+  return reachOf(newThisTerm(att, gameId, today), people, id => att.first.get(id)!.date)
+}
+
+/** Reach of any set of players, each aged on the date `ageDate` gives. Head only. */
+export function reachOf(ids: Iterable<string>, people: ReadonlyMap<string, Person>, ageDate: (id: string) => string): Reach {
   const r: Reach = { total: 0, age: new Map(), sex: new Map(), ethnicity: new Map(), deprivation: new Map() }
   const bump = <K>(m: Map<K, number>, k: K) => m.set(k, (m.get(k) ?? 0) + 1)
-  for (const id of newThisTerm(att, gameId, today)) {
+  for (const id of ids) {
     const p = people.get(id)
-    const first = att.first.get(id)!.date
     r.total++
-    bump(r.age, ageBand(ageOn(p?.dob ?? null, first)))
+    bump(r.age, ageBand(ageOn(p?.dob ?? null, ageDate(id))))
     bump(r.sex, sexOf(p?.gender))
     for (const g of ethnicGroups(p?.ethnicity)) bump(r.ethnicity, g)
     bump(r.deprivation, quintile(p?.decile))
   }
   return r
+}
+
+// ── A period (the exports, step 14) ──────────────────────────────────────────
+// The same definitions over a chosen period and set of games (a programme).
+
+export type PeriodSummary = {
+  sessions: number
+  /** Player-games: each player once per session. */
+  attendances: number
+  players: string[]
+  turnUp: number | null
+  /** Played 3 or more of the last 6 sessions of these games up to the end. */
+  regulars: number
+  /** First game anywhere in the period, at one of these games. */
+  newPlayers: string[]
+  /** New players whose six weeks ended by the end of the period. */
+  comeback: Rate
+  showUp: Rate
+  cancelled: { reason: string; count: number }[]
+}
+
+export function periodSummary(args: {
+  att: Attendance
+  games: ReadonlySet<string>
+  from: string
+  to: string
+  bookings: readonly Booking[]
+  cancellations: readonly Cancellation[]
+}): PeriodSummary {
+  const { att, games, from, to, bookings, cancellations } = args
+  const mine = (id: string | null) => id != null && games.has(id)
+  const all = att.sessions.filter(s => mine(s.weekly_game_id) && s.session_date <= to)
+  const inside = all.filter(s => s.session_date >= from)
+  const players = new Set<string>()
+  let attendances = 0
+  for (const s of inside) for (const p of att.players.get(s.id)!) { players.add(p); attendances++ }
+
+  const times = new Map<string, number>()
+  for (const s of all.slice(-REGULAR_OF)) for (const p of att.players.get(s.id)!) times.set(p, (times.get(p) ?? 0) + 1)
+  const regulars = [...times.values()].filter(n => n >= REGULAR_MIN).length
+
+  const newPlayers = [...att.first].filter(([, f]) => mine(f.gameId) && f.date >= from && f.date <= to).map(([id]) => id)
+  const comeback: Rate = { of: 0, yes: 0 }
+  for (const id of newPlayers) {
+    const f = att.first.get(id)!
+    if (addDays(f.date, COMEBACK_DAYS) > to) continue
+    comeback.of++
+    const until = addDays(f.date, COMEBACK_DAYS)
+    if ((att.dates.get(id) ?? []).filter(d => d > f.date && d <= until).length >= COMEBACK_RETURNS) comeback.yes++
+  }
+
+  const playedOn = new Map<string, Set<string>>()
+  for (const s of inside) {
+    const key = `${s.weekly_game_id}|${s.session_date}`
+    const set = playedOn.get(key) ?? new Set<string>()
+    for (const p of att.players.get(s.id)!) set.add(p)
+    playedOn.set(key, set)
+  }
+  const showUp: Rate = { of: 0, yes: 0 }
+  for (const b of bookings) {
+    if (b.answer !== 'yes' || !mine(b.weekly_game_id)) continue
+    const set = playedOn.get(`${b.weekly_game_id}|${b.game_date}`)
+    if (!set) continue
+    showUp.of++
+    if (set.has(b.player_id)) showUp.yes++
+  }
+
+  const reasons = new Map<string, number>()
+  const seen = new Set<string>()
+  for (const c of cancellations) {
+    if (c.kind !== 'cancelled' || !mine(c.weekly_game_id) || c.game_date < from || c.game_date > to) continue
+    const key = `${c.weekly_game_id}|${c.game_date}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    reasons.set(c.reason ?? 'other', (reasons.get(c.reason ?? 'other') ?? 0) + 1)
+  }
+
+  return {
+    sessions: inside.length, attendances, players: [...players],
+    turnUp: inside.length ? attendances / inside.length : null,
+    regulars, newPlayers, comeback, showUp,
+    cancelled: [...reasons].map(([reason, count]) => ({ reason, count })).sort((a, b) => b.count - a.count),
+  }
 }
 
 /** The games a Kaiārahi sees: every one for a head; otherwise those they regularly lead or ran in the last 8 weeks. */

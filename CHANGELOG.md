@@ -2,6 +2,21 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.73.0.0] - 2026-11-26
+
+### Added
+- **Reports** (multi-location games step 14) in the Kaiārahi panel, for the Kaiwhakawā only. Choose a period (this term to date by default) and open a report at `/judge/report`; print it, save it as a PDF, or download the same numbers as a CSV.
+- **Funder report:** one programme over the period:
+  - games held, attendances, different players and average turn-up;
+  - regulars, new players and comebacks;
+  - show-up and games cancelled by reason;
+  - approved paid Kaiārahi hours;
+  - reach of everyone who played and of new players (age, sex, ethnicity, deprivation);
+  - wellbeing change from each player's first to latest check-in in the programme, shown only when 5 or more answered twice.
+- **School report:** students who named that school and whose parent agreed to share with it: games played, how many played often, age groups, and names with games only where a parent agreed. It never includes ethnicity, wellbeing or bodyweight.
+- Groups of 1 to 4 people show as "fewer than 5" on the sheet and in the CSV (Tāne, 26 Nov 2026).
+- Migration `20261125225819_programme_wellbeing.sql` (NOT YET APPLIED; apply after the deploy): `programme_wellbeing(programme, from, to)`, head only, returns averages only and nulls them under 5 respondents. Until it is live the wellbeing section reads "not available yet".
+
 ## [0.72.1.0] - 2026-11-26
 
 ### Changed
