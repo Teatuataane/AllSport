@@ -4120,6 +4120,16 @@ Rehearsed in a rolled-back transaction, 23 checks passing.
 
 **Applied 24 Nov 2026** from a clean `main` checkout after allsport.nz served v0.66.0.0, by `db query --linked` plus the ledger row; the check block passed. Verified live: both triggers and `game_roster.helper_adult` present; `authenticated` cannot execute `age_today` or `second_is_adult`; `anon` cannot execute `set_second_adult`; as `authenticated` the head gets no blocker on the HQ game, and a plain player asking `age_today` is refused (42501).
 
+## Former players (v0.74.0.0, 26 Nov 2026)
+
+Multi-location step 15, "anonymous attendance on account deletion". The plan said erasure removed attendance; checked live, it never did: `delete_my_account` anonymises the players row and keeps results under "Former player". What it lost was the reach detail (birth date, sex, ethnicity, suburb), and it never deleted the Supabase sign-in, so the email stayed in `auth.users` under the same id while /privacy said the details were destroyed.
+
+- Tāne chose: keep the age band on each game day (`former_player_games`), not one band or a birth year; delete the sign-in; erasing a parent erases their children (no sign-in of their own); vote answers stay with no player. Koha amounts follow the same rule (no rows yet; charity records are kept seven years).
+- `former_players` holds sex, level 1 ethnic groups and the quintile only. The SQL helpers `former_age_band` and `former_ethnic_groups` mirror `ageBand` and `ethnicGroups` and are pinned by `__tests__/formerPlayers.test.ts`. Reports read them in `loadPeople` (`addFormer`), and `personAgeBand` takes the band of the latest game on or before the day.
+- The first rehearsal failed: `guard_players_privileged_columns` refuses any `parent_id` change from a player's call (it keys on `auth.uid()`), so erasure could not unlink the children before deleting the sign-in. Fixed by pointing `players_parent_id_fkey` at `players(id)` instead of `auth.users`; an erased family stays a family of erased rows.
+- Rehearsed live, rolled back, 26 Nov 2026, erasing a parent with four children: 583 results and 72 game-days kept, each with a band; sign-in gone; children erased and still linked; 10 votes kept with no player; a child erased alone left the parent's sign-in; a plain player read nothing, could not write and could not erase another; `anon` refused.
+- `programme_wellbeing` (v0.73.0.0) applied the same day after the deploy and verified: definer with pinned path, a head gets a row, a plain player refused (42501), `anon` cannot execute.
+
 ## Reports for funders and schools (v0.73.0.0, 26 Nov 2026)
 
 Multi-location step 14. Tāne chose a printable report plus a CSV of the same numbers, a funder report scoped to one programme over a date range, a school report of attendance with names only where a parent agreed (`player_profile_private.share_with_school`), and wellbeing as the change over the programme.

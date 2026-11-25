@@ -11,7 +11,7 @@
 // and only matter for "new this term").
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Booking, Cancellation, Person, Played, ScoredSession } from '@/lib/successMeasures'
+import type { AgeBand, Booking, Cancellation, EthnicGroup, Person, Played, Quintile, ScoredSession } from '@/lib/successMeasures'
 
 const PAGE = 1000
 const MAX_PAGES = 50
@@ -95,5 +95,36 @@ export async function loadPeople(supabase: SupabaseClient, ids: string[]): Promi
       if (p) { p.ethnicity = q.ethnicity; p.decile = q.suburb_id ? decile.get(q.suburb_id) ?? null : null }
     }
   }
+  await addFormer(supabase, out, chunks)
   return out
+}
+
+/** Erased players' bands (step 15, head only). Their own queries: until
+ *  20261125231115 is live, or for anyone but a head, they return nothing and
+ *  an erased player simply counts as Unknown, as before. */
+async function addFormer(supabase: SupabaseClient, out: Map<string, Person>, chunks: string[][]) {
+  const parts = await Promise.all(chunks.flatMap(c => [
+    supabase.from('former_players').select('player_id, sex, ethnic_groups, quintile').in('player_id', c),
+    supabase.from('former_player_games').select('player_id, age_band, sessions(session_date)').in('player_id', c),
+  ]))
+  for (let i = 0; i < parts.length; i += 2) {
+    if (parts[i].error || parts[i + 1].error) continue
+    const games = new Map<string, { date: string; band: AgeBand }[]>()
+    for (const g of (parts[i + 1].data ?? []) as unknown as { player_id: string; age_band: AgeBand; sessions: { session_date: string } | null }[]) {
+      if (!g.sessions) continue
+      const list = games.get(g.player_id) ?? []
+      list.push({ date: g.sessions.session_date, band: g.age_band })
+      games.set(g.player_id, list)
+    }
+    for (const f of (parts[i].data ?? []) as { player_id: string; sex: string | null; ethnic_groups: EthnicGroup[]; quintile: number | null }[]) {
+      out.set(f.player_id, {
+        id: f.player_id, dob: null, gender: f.sex, ethnicity: null, decile: null,
+        former: {
+          bands: games.get(f.player_id) ?? [],
+          groups: f.ethnic_groups,
+          quintile: (f.quintile ? `Q${f.quintile}` : 'Unknown') as Quintile,
+        },
+      })
+    }
+  }
 }

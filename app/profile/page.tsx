@@ -221,7 +221,9 @@ export default function ProfilePage() {
     // visitor on this device lands on a dashboard for an account that is gone.
     try { localStorage.removeItem(ACTIVE_PLAYER_KEY) } catch {}
     forgetSavedPlayer()
-    await supabase.auth.signOut()
+    // The sign-in is already deleted (20261125231115), so the server side of
+    // sign-out may refuse; the local session must go regardless.
+    await supabase.auth.signOut({ scope: 'local' }).catch(() => {})
     router.push('/')
   }
 
@@ -763,18 +765,27 @@ export default function ProfilePage() {
             <div style={{ fontSize: '13.5px', color: '#bbb', fontFamily: 'var(--font-body)', lineHeight: 1.75 }}>
               <p style={{ margin: '0 0 10px' }}>
                 <strong style={{ color: '#fff' }}>Erased for good:</strong> your name, email, phone, date of
-                birth, location, any parent or guardian details, your username and icon, and every
-                wellbeing check-in answer you have given.
+                birth, location, any parent or guardian details, your username and icon, your
+                ethnicity, suburb, school and disability answers, every wellbeing check-in answer you
+                have given, and your sign-in.
               </p>
+              {familyMembers.length > 0 && (
+                <p style={{ margin: '0 0 10px' }}>
+                  <strong style={{ color: '#fff' }}>Your family is erased too:</strong>{' '}
+                  {familyMembers.map(m => m.display_name || m.username || m.full_name || 'a child').join(', ')}.
+                  They sign in through you, so nobody could reach them afterwards.
+                </p>
+              )}
               <p style={{ margin: '0 0 10px' }}>
                 <strong style={{ color: '#fff' }}>Kept, with your name removed:</strong> your scores,
                 placements and colours, along with any points from before September 2026. They stay in each session&apos;s record as
                 &ldquo;Former player&rdquo;. Removing them would change where everybody else finished in
-                games that have already been scored, so we do not.
+                games that have already been scored, so we do not. For our reports we keep only your
+                age group on each game day, your sex, your ethnic group and how deprived your suburb is
+                (one of five bands), with nothing that leads back to you.
               </p>
               <p style={{ margin: '0 0 16px', color: '#888' }}>
-                This cannot be undone, and it is not the same as closing your login — ask a kaiwhakawā
-                if you want the sign-in removed too.
+                This cannot be undone. You can sign up again later with the same email as a new player.
               </p>
             </div>
             {eraseError && (

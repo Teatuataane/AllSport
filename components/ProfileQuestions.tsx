@@ -45,7 +45,7 @@ export function EthnicityPicker({ value, onChange, heading = 'Which ethnic group
         ))}
       </div>
       <div style={HINT}>
-        Tick all that apply. It stays private: funders only ever see totals, never your name.
+        Tick all that apply. It stays private: funders only ever see totals, never your name. If you erase your account, only the broad group stays in those totals.
       </div>
     </div>
   )

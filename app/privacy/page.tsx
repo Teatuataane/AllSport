@@ -233,7 +233,7 @@ const rights = [
   },
   {
     title: 'Erase your account',
-    body: 'There is an "Erase my account" button on your profile. It permanently destroys your name, contact details, date of birth, location, any parent details, your ethnicity, suburb, school and disability answers, and every wellbeing answer. Your scores and placements stay in each session\'s record under "Former player" — removing them would change where other players finished in games already scored.',
+    body: 'There is an "Erase my account" button on your profile. It permanently destroys your name, contact details, date of birth, location, any parent details, your ethnicity, suburb, school and disability answers, every wellbeing answer, and your sign-in. Erasing yourself erases the family profiles you manage too, since they sign in through you. Your scores and placements stay in each session\'s record under "Former player" — removing them would change where other players finished in games already scored. For funder reports we keep only your age group on each game day, sex, ethnic group (Māori, Pacific and so on, not the detail you ticked) and the deprivation band of your suburb (one of five), with nothing that leads back to you.',
   },
   {
     title: 'Skip the wellbeing check-in',
@@ -578,7 +578,9 @@ export default function PrivacyPolicy() {
             </p>
             <p className="privacy-p">
               <strong style={{ color: 'var(--white)' }}>Ethnicity, suburb, school and disability</strong> — kept
-              while your account is open, and deleted with it.
+              while your account is open, and deleted with it. What stays for reports is only the broad group:
+              ethnic group (Māori, Pacific and so on), and which of five deprivation bands your suburb was in,
+              never the suburb, school or disability answer.
             </p>
             <p className="privacy-p">
               <strong style={{ color: 'var(--white)' }}>Koha records</strong> — kept for seven years, because
