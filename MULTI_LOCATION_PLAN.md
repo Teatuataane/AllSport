@@ -185,8 +185,8 @@ Each a separate PR, in this order because each needs the one before:
 11. **Wording sweep.** *Built in v0.70.0.0, no migration. Tāne, 24 Nov 2026: the nav link, panel and scoring tab say Kaiārahi; `/judge` keeps its address. Kaiwhakawā stays for head-only powers.* Kaiwhakawā to Kaiārahi wherever it means whoever runs a game; level names where a person is named.
 
 ### Second release
-12. Timesheets, approval and payroll export. *Built in v0.71.0.0 (`20261124223426_timesheets.sql`, not yet applied). Tāne, 24 to 25 Nov 2026: a Kaiako gets no line, even as second adult; the second adult gets the same block as the lead; fortnights from Monday 8 Feb 2027; lines made when the game starts; a game nobody scored in is held for Pay or Don't pay; a query holds the line until answered; two CSVs, per Kaiārahi and per programme.*
-13. Success measures (`lib/`), scorecard for Kaiwhakawā.
+12. Timesheets, approval and payroll export. *Built in v0.71.0.0 (`20261124223426_timesheets.sql`, applied 26 Nov 2026). Tāne, 24 to 25 Nov 2026: a Kaiako gets no line, even as second adult; the second adult gets the same block as the lead; fortnights from Monday 8 Feb 2027; lines made when the game starts; a game nobody scored in is held for Pay or Don't pay; a query holds the line until answered; two CSVs, per Kaiārahi and per programme.*
+13. Success measures (`lib/`), scorecard for Kaiwhakawā. *Built in v0.72.0.0, no migration. Tāne, 26 Nov 2026: the Kaiwhakawā sees every game with reach, a Kaimahi or Kaiako their own games without reach; terms are NZ school terms; deprivation in quintiles with Q5 highlighted; Sport NZ age bands; ethnicity by total response.*
 14. Funder and school exports (consent and under-5 rules).
 15. Anonymous attendance on account deletion. Until this lands, `delete_my_account` removes attendance with the player, so numbers can drop.
 

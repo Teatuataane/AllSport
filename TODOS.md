@@ -167,8 +167,8 @@
 
 ## P1 — Do Next
 
-### Apply `20261124223426_timesheets.sql` after v0.71.0.0 deploys
-From a clean `main` checkout by `db query --linked` plus the ledger row; the check block must pass. Then verify live: RLS on, no INSERT or UPDATE for `authenticated` on `timesheet_lines`, the trigger `session_timesheet_lines` present, `anon` refused `timesheet_period`, a plain player reads no lines. Rehearsed 25 Nov 2026, 23 checks.
+### ~~Apply `20261124223426_timesheets.sql` after v0.71.0.0 deploys~~ DONE 2026-11-26
+**Done:** applied from a clean `main` checkout by `db query --linked` plus the ledger row once allsport.nz served v0.71.0.0; the check block passed. Verified live: RLS on, no INSERT or UPDATE for `authenticated` on `timesheet_lines`, the trigger `session_timesheet_lines` present, `anon` refused `timesheet_period`, a plain player reads no lines. Rehearsed 25 Nov 2026, 23 checks.
 
 ### Timesheets: the pay block per funded game
 `weekly_games.paid_block_minutes` is set per funded game (30 to 600). Tāne to choose the size before the first funded game; until a game has one it makes no lines. Before 8 Feb 2027 lines fall in fortnights counted back from it.
@@ -459,6 +459,9 @@ now only reachable if Whānau's own art goes missing, and for Te Kāhui, which n
 ---
 
 ## P2 — Soon
+
+### School term dates for 2029
+`TERM_ENDS` in `lib/successMeasures.ts` holds the Ministry's term end dates for 2026 to 2028. Add 2029 when the Ministry publishes it (usually October); until then the scorecard's "this term" falls back to calendar quarters.
 
 - **Family member profiles have no gender.** A junior added through a family account is inserted with `gender` null, so from 12 they grade on the boys' list and at 17 `roll_juniors()` moves them to Men's. Ask for it when a parent adds a profile (found 20 Oct 2026).
 - **Revisit the age allowance after play testing** (February 2027). Tāne kept it in colours on 21 Oct 2026. Check with `scripts/replay-colours.ts` whether the whole colour gift to beginners looks unfair; the middle option is the smaller of one colour or a percentage (`AGE_ALLOWANCE_REVIEW.md`).
