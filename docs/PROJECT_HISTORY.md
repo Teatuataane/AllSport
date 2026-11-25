@@ -4120,6 +4120,18 @@ Rehearsed in a rolled-back transaction, 23 checks passing.
 
 **Applied 24 Nov 2026** from a clean `main` checkout after allsport.nz served v0.66.0.0, by `db query --linked` plus the ledger row; the check block passed. Verified live: both triggers and `game_roster.helper_adult` present; `authenticated` cannot execute `age_today` or `second_is_adult`; `anon` cannot execute `set_second_adult`; as `authenticated` the head gets no blocker on the HQ game, and a plain player asking `age_today` is refused (42501).
 
+## Scorecard (v0.72.0.0, 26 Nov 2026)
+
+Multi-location games step 13, no migration. The plan's success measures are now one pure file, `lib/successMeasures.ts`, so the scorecard and step 14's exports cannot disagree.
+
+**Tāne's choices (26 Nov 2026).** The Kaiwhakawā sees every game; a Kaimahi or Kaiako sees the games they lead, without the reach breakdown. "This term" is the NZ school term, the holidays counting toward the next term (the Ministry's end dates for 2026 to 2028 are in `TERM_ENDS`; a later year falls back to calendar quarters until added). Deprivation in quintiles, Q5 highlighted; Sport NZ age bands (5-11, 12-17, 18-24, 25-44, 45-64, 65+); ethnicity by total response, grouped to Stats NZ level 1 from the sign-up boxes.
+
+**Definitions.** A player played a session if they have a result in it; the session's Kaiārahi (`judge_id`) is left out, and voided sessions never count. Turn-up averages the last eight weeks, with a per-week trend. Regulars played 3 or more of the game's last 6 sessions. A comeback is a first-timer (first game anywhere, at this game, in the last 26 weeks, whose six weeks have run) who played twice more within six weeks. Show-up counts Yes answers on dates the game was played. This term counts sessions held and cancelled dates by reason. Reach is the new players this term (first game ever in the term, at this game) by age at their first game, sex, ethnicity and deprivation quintile, with 1 to 4 shown as "fewer than 5".
+
+**Reads.** Sessions and results (already readable by any signed-in player), bookings and cancellations; for a head only, birth date, sex, ethnicity and suburb decile through the existing policies. Sessions from the start of last year, results by session id in chunks.
+
+**Checked** on the live history (counts only, nothing saved): 70 sessions since 2025, 2.8 players a game over eight weeks, 3 regulars, 1 new player in Term 4 2026, no Coming answers yet.
+
 ## Timesheets (v0.71.0.0, 25 Nov 2026)
 
 Multi-location games step 12, the first of the second release. The app holds hours and approvals only; rates, bank accounts and tax stay in the payroll system.
@@ -4129,6 +4141,8 @@ Multi-location games step 12, the first of the second release. The app holds hou
 **Database** (`20261124223426_timesheets.sql`). `timesheet_lines` has no write policy and no insert or update grant; a Kaimahi reads their own lines, a head reads all. The AFTER INSERT trigger on `sessions` writes the lines once `judge_id` and `session_date` are stamped and the start rules have passed; the second adult comes from `game_roster`. `period_start` is a stored generated column from `pay_period_start` (the same rule as `periodStart` in `lib/timesheets.ts`). A line is held while it has an unsettled query, or, for a line made at the start, until a decision when its game was deleted, voided, or has no results. `approve_timesheet_period` refuses a fortnight that has not ended and approves every line not held; running it again picks up lines settled since. A query is refused once approved. `add_timesheet_line` takes funded games and paid levels only and starts as Pay.
 
 Rehearsed in a rolled-back transaction on the live database, 23 checks: a Kaimahi starting a funded game made a 150-minute lead line for them and a second-adult line for the rostered head; the Kaimahi read only their own line and could not insert or update directly; a query held the line; a plain player read nothing; the head saw `query` and `no_players`; approving the current fortnight was refused; settling with corrected minutes cleared the hold; a missing line added 30 days back was approved with its fortnight; adding for a plain player or a community game was refused; querying an approved line was refused; `anon` could not read a fortnight. (The staff test account is a junior's, so the rehearsal gave it an adult birth date inside the transaction.)
+
+**Applied 26 Nov 2026** from a clean `main` checkout after allsport.nz served v0.71.0.0, by `db query --linked` plus the ledger row; the check block passed. Verified live: RLS on with one SELECT policy; no INSERT or UPDATE for `authenticated`; the trigger present; `is_paid_kaiarahi` not executable by players; `anon` refused `timesheet_period`; a plain player reads no lines; approving a fortnight that has not ended is refused.
 
 ## Wording sweep (v0.70.0.0, 24 Nov 2026)
 

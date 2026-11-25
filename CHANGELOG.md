@@ -2,6 +2,21 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.72.0.0] - 2026-11-26
+
+### Added
+- **Scorecard** (multi-location games step 13) in the Kaiārahi panel. For each game:
+  - turn-up over the last eight weeks, with a weekly trend;
+  - regulars (3 or more of the last 6 games);
+  - comebacks (first-timers who came back at least twice within six weeks);
+  - show-up (of those who said Coming, how many played);
+  - games held and cancelled by reason this term;
+  - new players this term.
+- **The Kaiwhakawā** sees All games and every game, each with reach: new players this term by age (5-11, 12-17, 18-24, 25-44, 45-64, 65+), sex, ethnicity (total response) and deprivation quintile (Q5 highlighted). Groups of 1 to 4 show as "fewer than 5".
+- **A Kaimahi or Kaiako** sees the games they lead, without reach (Tāne, 26 Nov 2026).
+- "This term" is the NZ school term, holidays counting toward the next.
+- The measures live in one pure file (`lib/successMeasures.ts`) so the exports in step 14 agree with the scorecard. No migration.
+
 ## [0.71.0.0] - 2026-11-25
 
 ### Added
@@ -10,7 +25,7 @@ All notable changes to AllSport are documented here.
 - **Kaimahi** see their own lines in the Kaiārahi panel and can query one with a note. The line is held until the Kaiwhakawā answers.
 - **Kaiwhakawā** see everyone's lines. A game nobody scored in (or voided, or deleted) is held for Pay or Don't pay. They can correct the minutes, add a missing line, approve the fortnight once it has ended (held lines wait), and download two CSVs: hours per Kaiārahi and hours per programme.
 - The app holds hours and approvals only; rates, bank accounts and tax stay in payroll.
-- Migration `20261124223426_timesheets.sql` (apply after this deploy): `timesheet_lines` with no write policy, the start trigger, `timesheet_period`, `query_timesheet_line`, `settle_timesheet_line`, `add_timesheet_line`, `approve_timesheet_period`.
+- Migration `20261124223426_timesheets.sql` (applied 26 Nov 2026): `timesheet_lines` with no write policy, the start trigger, `timesheet_period`, `query_timesheet_line`, `settle_timesheet_line`, `add_timesheet_line`, `approve_timesheet_period`.
 
 ## [0.70.0.0] - 2026-11-24
 
