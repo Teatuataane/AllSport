@@ -13,6 +13,7 @@ import KaiarahiAdmin from '@/app/components/KaiarahiAdmin'
 import RosterPanel from '@/app/components/RosterPanel'
 import TimesheetsPanel from '@/app/components/TimesheetsPanel'
 import ScorecardPanel from '@/app/components/ScorecardPanel'
+import ReportsPanel from '@/app/components/ReportsPanel'
 
 const supabase = createClient()
 
@@ -85,6 +86,7 @@ export default function JudgePage() {
             <RosterPanel />
             <TimesheetsPanel head />
             <ScorecardPanel head />
+            <ReportsPanel />
             <WeeklyGamesAdmin judgeId={player.id} isHead />
             <KaiarahiAdmin />
             <WellbeingReport />
