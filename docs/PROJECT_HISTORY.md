@@ -4120,6 +4120,16 @@ Rehearsed in a rolled-back transaction, 23 checks passing.
 
 **Applied 24 Nov 2026** from a clean `main` checkout after allsport.nz served v0.66.0.0, by `db query --linked` plus the ledger row; the check block passed. Verified live: both triggers and `game_roster.helper_adult` present; `authenticated` cannot execute `age_today` or `second_is_adult`; `anon` cannot execute `set_second_adult`; as `authenticated` the head gets no blocker on the HQ game, and a plain player asking `age_today` is refused (42501).
 
+## Timesheets (v0.71.0.0, 25 Nov 2026)
+
+Multi-location games step 12, the first of the second release. The app holds hours and approvals only; rates, bank accounts and tax stay in the payroll system.
+
+**Tāne's choices (24 to 25 Nov 2026).** A Kaiako gets no line at all, even as the second adult at a funded game. A Kaimahi second adult gets the same block as the lead. Pay fortnights start on Monday 8 Feb 2027, the first work day. Lines are made when the game starts. A game where nobody scored is flagged, and the Kaiwhakawā chooses Pay or Don't pay. A query holds the line until the Kaiwhakawā settles it. The export is two CSVs: hours per Kaiārahi (for entering pay) and per programme (for funders).
+
+**Database** (`20261124223426_timesheets.sql`). `timesheet_lines` has no write policy and no insert or update grant; a Kaimahi reads their own lines, a head reads all. The AFTER INSERT trigger on `sessions` writes the lines once `judge_id` and `session_date` are stamped and the start rules have passed; the second adult comes from `game_roster`. `period_start` is a stored generated column from `pay_period_start` (the same rule as `periodStart` in `lib/timesheets.ts`). A line is held while it has an unsettled query, or, for a line made at the start, until a decision when its game was deleted, voided, or has no results. `approve_timesheet_period` refuses a fortnight that has not ended and approves every line not held; running it again picks up lines settled since. A query is refused once approved. `add_timesheet_line` takes funded games and paid levels only and starts as Pay.
+
+Rehearsed in a rolled-back transaction on the live database, 23 checks: a Kaimahi starting a funded game made a 150-minute lead line for them and a second-adult line for the rostered head; the Kaimahi read only their own line and could not insert or update directly; a query held the line; a plain player read nothing; the head saw `query` and `no_players`; approving the current fortnight was refused; settling with corrected minutes cleared the hold; a missing line added 30 days back was approved with its fortnight; adding for a plain player or a community game was refused; querying an approved line was refused; `anon` could not read a fortnight. (The staff test account is a junior's, so the rehearsal gave it an adult birth date inside the transaction.)
+
 ## Wording sweep (v0.70.0.0, 24 Nov 2026)
 
 Multi-location games step 11, no migration. Since v0.61.0.0 Kaiwhakawā means head staff, but the screens still used it for whoever runs a game. Tāne chose Kaiārahi for the top bar link, the panel title and the scoring tab; the `/judge` address stays.
