@@ -8,6 +8,9 @@
 //      each child), sees the counts, and the question stands out from 4pm the
 //      day before. Before the bookings migration, "Can't make it" still works.
 //   4. The walk-up offer joins, or goes away on "Not now".
+//   5. Folded (HOME's default), only the household's next game shows, plus
+//      any other of theirs with news or an open question; "All games" opens
+//      the full list.
 
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { render, cleanup, screen, fireEvent, within } from '@testing-library/react'
@@ -33,7 +36,7 @@ function renderCard(over: Partial<Parameters<typeof WeeklyGamesCard>[0]> = {}) {
   render(
     <WeeklyGamesCard
       sites={[site]} games={[sat, tue]} notices={[]} mine={new Set()} playerId="me" answers={new Map()} now={now}
-      {...handlers} {...over}
+      defaultOpen {...handlers} {...over}
     />,
   )
   return handlers
@@ -132,6 +135,66 @@ describe('WeeklyGamesCard', () => {
         onJoin={() => {}} onLeave={() => {}} onAnswer={() => {}} />,
     )
     expect(container.innerHTML).toBe('')
+  })
+})
+
+describe('WeeklyGamesCard folded', () => {
+  // Friday 20 Nov 2026, 5pm: Saturday's question is open, Tuesday's is not.
+  const fri = new Date('2026-11-20T17:00:00+13:00')
+  const thu: WeeklyGame = { id: 'thu', site_id: 's1', dow: 4, start_time: '16:30:00', is_active: true }
+  const folded = (over: Partial<Parameters<typeof WeeklyGamesCard>[0]> = {}) =>
+    renderCard({ defaultOpen: false, games: [sat, tue, thu], now: fri, ...over })
+
+  it('shows one bar for the next joined game and opens the full list on "All games"', () => {
+    const h = folded({ mine: new Set(['tue', 'thu']) })
+    expect(screen.queryAllByTestId(/weekly-game-/)).toHaveLength(0)
+    const pins = screen.getAllByTestId(/weekly-pin-/)
+    expect(pins.map(p => p.dataset.testid)).toEqual(['weekly-pin-tue'])
+    expect(within(pins[0]).getByText(/Next game · Tue 24 Nov/)).toBeTruthy()
+    expect(within(pins[0]).getByText('Tuesday 4:30pm')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'All games' }))
+    expect(screen.getAllByTestId(/weekly-game-/)).toHaveLength(3)
+    fireEvent.click(within(screen.getByTestId('weekly-game-sat')).getByRole('button', { name: 'Join' }))
+    expect(h.onJoin).toHaveBeenCalledWith('sat')
+    fireEvent.click(screen.getByRole('button', { name: 'Hide' }))
+    expect(screen.queryAllByTestId(/weekly-game-/)).toHaveLength(0)
+  })
+
+  it('asks "Coming?" on the bar, and pins another game with news', () => {
+    const h = folded({
+      mine: new Set(['sat', 'thu']),
+      counts: new Map([['sat|2026-11-21', { coming: 6, notComing: 0, unanswered: 2 }]]),
+      notices: [notice({ weekly_game_id: 'thu', game_date: '2026-11-26', kind: 'cancelled', message: 'Field closed.' })],
+    })
+    const pins = screen.getAllByTestId(/weekly-pin-/)
+    expect(pins.map(p => p.dataset.testid)).toEqual(['weekly-pin-sat', 'weekly-pin-thu'])
+    expect(within(pins[0]).getByText(/6 coming/)).toBeTruthy()
+    const q = within(pins[0]).getByRole('group', { name: 'Coming tomorrow?' })
+    fireEvent.click(within(q).getByRole('button', { name: 'Yes' }))
+    expect(h.onAnswer).toHaveBeenCalledWith('sat', '2026-11-21', 'me', 'yes')
+    expect(within(pins[1]).getByText('Thu 26 Nov · Cancelled')).toBeTruthy()
+    expect(within(pins[1]).getByText('Field closed.')).toBeTruthy()
+  })
+
+  it('folds an answered question to a chip', () => {
+    folded({ mine: new Set(['sat']), answers: new Map([['sat|2026-11-21|me', 'yes' as const]]) })
+    const pin = screen.getByTestId('weekly-pin-sat')
+    expect(within(pin).queryByRole('group')).toBeNull()
+    expect(within(pin).getByText('Coming')).toBeTruthy()
+  })
+
+  it('pins a child\'s game for a parent who has not joined it', () => {
+    folded({ family: [{ id: 'kid', name: 'Aroha', games: new Set(['sat']) }] })
+    const pin = screen.getByTestId('weekly-pin-sat')
+    expect(within(pin).getByRole('button', { name: 'Aroha: Yes' })).toBeTruthy()
+  })
+
+  it('invites a player registered to nothing to open the list', () => {
+    folded({ who: 'Aroha' })
+    expect(screen.queryAllByTestId(/weekly-pin-/)).toHaveLength(0)
+    expect(within(screen.getByTestId('weekly-summary')).getByText("Aroha's weekly games")).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'All games' }))
+    expect(screen.getAllByTestId(/weekly-game-/)).toHaveLength(3)
   })
 })
 

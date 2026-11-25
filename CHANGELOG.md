@@ -2,6 +2,11 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.72.1.0] - 2026-11-26
+
+### Changed
+- **HOME's weekly games fold away.** The card used to open in full and push your colours off the first screen. It now shows one small bar for your next game: when, where and how many are coming. From 4pm the day before, Yes / Not this time sit on the bar; once you answer it shows Coming or Not coming. Another of your games gets its own bar only when it needs you: cancelled (red), moved or a note from the Kaiārahi (amber), or a "Coming?" nobody in the household has answered. A parent's bar covers their children's games, with each child's name on the buttons. "All games" opens the full list (Join, Leave, counts) as before.
+
 ## [0.72.0.0] - 2026-11-26
 
 ### Added
