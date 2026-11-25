@@ -11,7 +11,7 @@ All notable changes to AllSport are documented here.
   - event-vote answers keep counting and koha amounts stay, with no person attached.
 - **Funder reports keep counting an erased player**, but only by broad groups: their age group on each game day, sex, ethnic group (level 1) and the deprivation quintile of their suburb. Never the birth date, suburb, school, the detailed ethnicity ticks or a wellbeing answer. Attendance already stayed under "Former player".
 - The privacy page, the erase screen and the sign-up ethnicity question say so.
-- Migration `20261125231115_former_players.sql` (NOT YET APPLIED; apply after the deploy): `former_players` and `former_player_games` (read by the Kaiwhakawā only, never written by a client), `delete_my_account` redefined, `players.parent_id` now points at `players`, four sign-in links set to SET NULL.
+- Migration `20261125231115_former_players.sql` (applied 26 Nov 2026): `former_players` and `former_player_games` (read by the Kaiwhakawā only, never written by a client), `delete_my_account` redefined, `players.parent_id` now points at `players`, four sign-in links set to SET NULL.
 
 ## [0.73.0.0] - 2026-11-26
 

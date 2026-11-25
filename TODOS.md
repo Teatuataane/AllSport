@@ -170,7 +170,8 @@
 ### ~~Apply `20261124223426_timesheets.sql` after v0.71.0.0 deploys~~ DONE 2026-11-26
 **Done:** applied from a clean `main` checkout by `db query --linked` plus the ledger row once allsport.nz served v0.71.0.0; the check block passed. Verified live: RLS on, no INSERT or UPDATE for `authenticated` on `timesheet_lines`, the trigger `session_timesheet_lines` present, `anon` refused `timesheet_period`, a plain player reads no lines. Rehearsed 25 Nov 2026, 23 checks.
 
-### Apply `20261125231115_former_players.sql` after v0.74.0.0 deploys
+### ~~Apply `20261125231115_former_players.sql` after v0.74.0.0 deploys~~ DONE 2026-11-26
+**Done:** applied from a clean `main` checkout by `db query --linked` plus the ledger row once allsport.nz served v0.74.0.0, and every check below passed live (rolled back).
 From a clean `main` checkout by `db query --linked` plus the ledger row. Verify: RLS on both tables with one SELECT policy each, no INSERT for `authenticated`, `anon` cannot read, `players_parent_id_fkey` points at `players`, and as `authenticated` (rolled back) erasing a parent with children deletes the sign-in, keeps results, writes a band per game-day and keeps vote answers with no player. Rehearsed 26 Nov 2026 (rolled back).
 
 ### ~~Apply `20261125225819_programme_wellbeing.sql` after v0.73.0.0 deploys~~ DONE 2026-11-26
