@@ -11,6 +11,7 @@ import { isHead, isKaiarahi, LEVEL_NAME, type KaiarahiLevel } from '@/lib/kaiara
 import { loadOwnLevel } from '@/lib/kaiarahiData'
 import KaiarahiAdmin from '@/app/components/KaiarahiAdmin'
 import RosterPanel from '@/app/components/RosterPanel'
+import TimesheetsPanel from '@/app/components/TimesheetsPanel'
 
 const supabase = createClient()
 
@@ -81,6 +82,7 @@ export default function JudgePage() {
           <>
             <JudgeCard isHead playerId={player.id} />
             <RosterPanel />
+            <TimesheetsPanel head />
             <WeeklyGamesAdmin judgeId={player.id} isHead />
             <KaiarahiAdmin />
             <WellbeingReport />
@@ -94,6 +96,8 @@ export default function JudgePage() {
               fontFamily: 'var(--font-display)', fontSize: 22, letterSpacing: '0.08em',
             }}>New game</Link>
             <RosterPanel />
+            {/* A Kaiako is never paid (Tāne, 25 Nov 2026), so has no lines. */}
+            {level === 'staff' && <TimesheetsPanel head={false} />}
             <WeeklyGamesAdmin judgeId={player.id} isHead={false} />
           </>
         )}

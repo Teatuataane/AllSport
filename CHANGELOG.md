@@ -2,6 +2,16 @@
 
 All notable changes to AllSport are documented here.
 
+## [0.71.0.0] - 2026-11-25
+
+### Added
+- **Timesheets** (multi-location games step 12). A funded game makes a timesheet line for its lead and its second adult the moment it starts, each the game's fixed block. Only a Kaimahi or a Kaiwhakawā gets a line; a Kaiako or a named helper never does (Tāne, 25 Nov 2026). A game that never starts makes no line.
+- **Pay fortnights** from Monday 8 Feb 2027, the first work day.
+- **Kaimahi** see their own lines in the Kaiārahi panel and can query one with a note. The line is held until the Kaiwhakawā answers.
+- **Kaiwhakawā** see everyone's lines. A game nobody scored in (or voided, or deleted) is held for Pay or Don't pay. They can correct the minutes, add a missing line, approve the fortnight once it has ended (held lines wait), and download two CSVs: hours per Kaiārahi and hours per programme.
+- The app holds hours and approvals only; rates, bank accounts and tax stay in payroll.
+- Migration `20261124223426_timesheets.sql` (apply after this deploy): `timesheet_lines` with no write policy, the start trigger, `timesheet_period`, `query_timesheet_line`, `settle_timesheet_line`, `add_timesheet_line`, `approve_timesheet_period`.
+
 ## [0.70.0.0] - 2026-11-24
 
 ### Changed

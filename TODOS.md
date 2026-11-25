@@ -167,6 +167,12 @@
 
 ## P1 — Do Next
 
+### Apply `20261124223426_timesheets.sql` after v0.71.0.0 deploys
+From a clean `main` checkout by `db query --linked` plus the ledger row; the check block must pass. Then verify live: RLS on, no INSERT or UPDATE for `authenticated` on `timesheet_lines`, the trigger `session_timesheet_lines` present, `anon` refused `timesheet_period`, a plain player reads no lines. Rehearsed 25 Nov 2026, 23 checks.
+
+### Timesheets: the pay block per funded game
+`weekly_games.paid_block_minutes` is set per funded game (30 to 600). Tāne to choose the size before the first funded game; until a game has one it makes no lines. Before 8 Feb 2027 lines fall in fortnights counted back from it.
+
 ### ~~Apply `20261123234843_find_a_game.sql` after v0.69.0.0 deploys~~ DONE 2026-11-24
 **Done:** applied from a clean `main` checkout by `db query --linked` plus the ledger row once allsport.nz served v0.69.0.0; the check block passed. Verified live: `anon` policies are listed-only; a real logged-out API call returned the 3 listed HQ games; rolled back with an unlisted test game, `anon` saw neither it nor its notice and was refused `game_leads` (42501); a plain player got leads for listed games only, a Kaiwhakawā for all. Still to do: open allsport.nz/schedule signed in on a phone. Original note: From `main`, `db query --linked -f` plus the ledger row. Ends with a check block: no `anon` SELECT policy of `true` left on `weekly_games` or `game_notices`, and `anon` cannot execute `game_leads`.
 
