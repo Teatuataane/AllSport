@@ -126,7 +126,23 @@ export type Played = { session_id: string; player_id: string }
 export type Booking = { weekly_game_id: string; game_date: string; player_id: string; answer: 'yes' | 'no' }
 export type Cancellation = { weekly_game_id: string; game_date: string; kind: string; reason: string | null }
 /** Head only: what reach needs. Never leaves this page as anything but counts. */
-export type Person = { id: string; dob: string | null; gender: string | null; ethnicity: string[] | null; decile: number | null }
+export type Person = {
+  id: string; dob: string | null; gender: string | null; ethnicity: string[] | null; decile: number | null
+  /** An erased player (step 15): only the bands kept at erasure. The age band
+   *  on each game day, the level 1 groups and the quintile; dob, ethnicity
+   *  ticks and decile are gone. */
+  former?: { bands: { date: string; band: AgeBand }[]; groups: EthnicGroup[]; quintile: Quintile }
+}
+
+/** A person's age band on `date`. An erased player has no birth date, only the
+ *  band on each game day: the latest on or before `date`, else the first. */
+export function personAgeBand(p: Person | undefined, date: string): AgeBand {
+  if (!p?.former) return ageBand(ageOn(p?.dob ?? null, date))
+  const bands = [...p.former.bands].sort((a, b) => a.date.localeCompare(b.date))
+  let out: AgeBand = bands[0]?.band ?? 'Unknown'
+  for (const b of bands) if (b.date <= date) out = b.band
+  return out
+}
 
 // ── Attendance ────────────────────────────────────────────────────────────────
 export type Attendance = {
@@ -301,10 +317,10 @@ export function reachOf(ids: Iterable<string>, people: ReadonlyMap<string, Perso
   for (const id of ids) {
     const p = people.get(id)
     r.total++
-    bump(r.age, ageBand(ageOn(p?.dob ?? null, ageDate(id))))
+    bump(r.age, personAgeBand(p, ageDate(id)))
     bump(r.sex, sexOf(p?.gender))
-    for (const g of ethnicGroups(p?.ethnicity)) bump(r.ethnicity, g)
-    bump(r.deprivation, quintile(p?.decile))
+    for (const g of p?.former ? p.former.groups : ethnicGroups(p?.ethnicity)) bump(r.ethnicity, g)
+    bump(r.deprivation, p?.former ? p.former.quintile : quintile(p?.decile))
   }
   return r
 }

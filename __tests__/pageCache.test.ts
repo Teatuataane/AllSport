@@ -60,7 +60,7 @@ describe('saved page copies (lib/pageCache.ts)', () => {
 describe('sign out wipes the saved copies', () => {
   it('both sign out paths clear them', () => {
     expect(readFileSync('components/NavTabs.tsx', 'utf8')).toMatch(/signOut\(\)[\s\S]{0,400}clearPageCache\(\)/)
-    expect(readFileSync('app/profile/page.tsx', 'utf8')).toMatch(/forgetSavedPlayer\(\)\s*\n\s*await supabase\.auth\.signOut\(\)/)
+    expect(readFileSync('app/profile/page.tsx', 'utf8')).toMatch(/forgetSavedPlayer\(\)[\s\S]{0,300}?await supabase\.auth\.signOut\(/)
   })
 
   it('a lost session forgets the saved household', () => {
